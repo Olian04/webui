@@ -6,7 +6,6 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-// The facade must behave exactly like the domain it wraps; only the types differ.
 func TestEcho(t *testing.T) {
 	t.Parallel()
 
