@@ -1,15 +1,13 @@
 // Package webui is the public library surface for this module.
 //
-// This is the library mode's IO adapter: a thin facade over
-// internal/domain/echo. Consumers outside this module cannot import `internal/`,
-// so the exported API lives here and delegates inward. Keep the translation in
-// this package — plain Go types out, domain types in — so the domain stays free
-// of compatibility concerns and the public surface can evolve separately.
+// This package is glue: it composes internal capabilities and exports the
+// API other modules import. Consumers cannot import internal/. Keep
+// behaviour in internal/<capability>; keep public types here.
 package webui
 
-import "github.com/Olian04/webui/internal/domain/echo"
+import "github.com/Olian04/webui/internal/echo"
 
 // Echo returns message with surrounding whitespace removed.
 func Echo(message string) string {
-	return echo.NewService().Echo(echo.Request{Message: message}).Message
+	return echo.Echo(message)
 }
