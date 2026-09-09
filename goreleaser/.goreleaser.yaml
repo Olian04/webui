@@ -10,11 +10,9 @@ before:
   hooks:
     - go mod download
 
-
 builds:
   - id: noop
     skip: true
-
 
 changelog:
   use: git
@@ -22,23 +20,19 @@ changelog:
   abbrev: 7
   filters:
     exclude:
-      - "(?i)^merge "
-      - "(?i)^merge pull request"
+      - '(?i)^merge '
+      - '(?i)^merge pull request'
       - "^chore\\(release\\):"
-      - "^ci:"
-      - "^docs:"
-
-
+      - '^ci:'
+      - '^docs:'
 
 release:
   prerelease: auto
-  name_template: "{{ .Env.RELEASE_NAME }}"
+  name_template: '{{ .Env.RELEASE_NAME }}'
   header: |
     {{ .Env.RELEASE_BODY }}
 
   footer: |
-
-
 
     ## Use as a Go module
 
@@ -47,7 +41,3 @@ release:
     ```
 
     Import from `github.com/Olian04/webui/pkg/webui`.
-
-
-
-
