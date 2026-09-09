@@ -35,5 +35,6 @@ profile.cov
 dist/
 
 # Isolated git worktrees
-.worktrees/
+.worktrees
+.superpowers
 
