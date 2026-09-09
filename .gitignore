@@ -34,3 +34,6 @@ profile.cov
 # This project (Makefile / GoReleaser)
 dist/
 
+# Isolated git worktrees
+.worktrees/
+
