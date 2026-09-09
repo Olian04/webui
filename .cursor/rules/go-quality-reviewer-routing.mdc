@@ -9,6 +9,6 @@ alwaysApply: false
 Use `.cursor/agents/go-quality-reviewer.md` whenever:
 
 - The user asks for Go quality review, standards review, pattern review, idiomatic Go audit, or subagent review.
-- Substantive Go changes are made in `internal/` or `cmd/`, especially around concurrency or error handling, before merge.
+- Substantive Go changes are made in `pkg/` or `internal/`, especially around concurrency or error handling, before merge.
 
 The `go-quality-reviewer` subagent is read-only and reports findings only.

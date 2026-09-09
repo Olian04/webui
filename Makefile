@@ -1,8 +1,7 @@
-.PHONY:  format lint test test-race help
+.PHONY: format lint test help
 
-# Only list trees this mode actually renders: a missing path fails the whole
-# target. `internal/` is unconditional because the domain model ships in every mode.
-SOURCE_CODE ?= ./internal/... ./test/unit/... ./pkg/...
+# Trees this library owns. A missing path fails the whole target.
+SOURCE_CODE ?= ./internal/... ./pkg/... ./test/...
 REV := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
 BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 BUILD_OUTPUT_DIR := ./dist
@@ -20,5 +19,5 @@ lint: ## Run go vet, module verify, vuln scan, golangci
 	go tool govulncheck $(SOURCE_CODE)
 	go tool golangci-lint run $(SOURCE_CODE)
 
-test: ## Run unit tests
+test: ## Run tests
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)
