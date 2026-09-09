@@ -1,0 +1,19 @@
+---
+description: Align all code changes with docs/AGENTS.md (product terms, layout, naming, anti-patterns).
+alwaysApply: true
+---
+
+# Align with `docs/AGENTS.md`
+
+For every code change in repo (new code, refactor, tests, wiring), follow `docs/AGENTS.md`.
+Goal: keep product words, package boundaries, repo conventions aligned.
+
+Before big edits, skim/re-read `docs/AGENTS.md` (and deeper refs it points to). Treat as source of truth for:
+
+- Layout/responsibility: where `cmd/`, `internal/app`, `internal/domain`, `internal/config`, `internal/transport`, mode-gated `internal/observability`, and `test/unit` unit tests belong.
+- Naming/imports: keep action-oriented names in `internal/app`; do not invent catch-all packages.
+- Errors/metrics: wrap with `%w`; in `http` mode follow metric naming from config/`docs/AGENTS.md`.
+- Anti-patterns: no catch-all `util` / `helpers`; test behavior changes under `test/unit/...`.
+
+If generic advice conflicts with `docs/AGENTS.md`, pick `docs/AGENTS.md`.
+If public behavior or big package boundaries change, update `docs/AGENTS.md` in same effort.

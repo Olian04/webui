@@ -1,0 +1,42 @@
+---
+description: 
+globs: **/*.go
+alwaysApply: false
+---
+
+# Go: compile-time interface satisfaction
+
+When concrete type must implement interface (especially cross-package contract), add package-level blank-identifier assignment.
+Compiler then enforces contract at build time. Signature drift fails fast.
+
+## Pattern
+
+Pointer receiver (common for mutable structs):
+
+Use `(*T)(nil)`. No allocation. Compile-time only.
+
+```go
+// ASSERT: Handler implements http.Handler
+var _ http.Handler = (*Handler)(nil)
+```
+
+Value receiver (only when value methods satisfy interface):
+
+```go
+// ASSERT: MyReader implements io.Reader
+var _ io.Reader = MyReader{}
+```
+
+## Where to put it
+
+- Put right above concrete type, or right below type block, in implementing package.
+- Prefer one-line comment like `// ASSERT: <Type> implements <pkg.Interface>`.
+
+## When to add or skip
+
+- Add for public contracts (DI, plugin, cross-package API) where mismatch would surface late.
+- Optional for tiny same-package interfaces already enforced by call sites, still useful if interface may grow.
+
+## Related conventions in this repo
+
+- In this repo, interfaces often defined at use site, implementations elsewhere. Assertion is cheap compile-time link between them.

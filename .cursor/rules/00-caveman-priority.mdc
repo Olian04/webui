@@ -1,0 +1,15 @@
+---
+description: Enforce caveman/caveman-commit first-load priority for all agent replies.
+alwaysApply: true
+---
+
+# Skill loading priority: caveman first
+
+For every non-commit-message task, load and follow `.cursor/skills/caveman/SKILL.md` first, before any other skill or rule logic.
+
+For commit-message generation tasks, load and follow `.cursor/skills/caveman-commit/SKILL.md` first, before any other skill or rule logic.
+
+Priority order:
+
+1. Commit-message task -> `caveman-commit` first; do not apply `caveman` style to commit-message output.
+2. All other tasks -> `caveman` first.

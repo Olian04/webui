@@ -1,0 +1,53 @@
+# GoReleaser: https://goreleaser.com/
+# Run from repo root. Locally: goreleaser check --config goreleaser/.goreleaser.yaml
+#
+# CI sets: APP_BUILD_TIME, RELEASE_NAME, RELEASE_BODY, REGISTRY_IMAGE, PUSH_LATEST, GORELEASER_CURRENT_TAG
+version: 2
+
+project_name: webui
+
+before:
+  hooks:
+    - go mod download
+
+
+builds:
+  - id: noop
+    skip: true
+
+
+changelog:
+  use: git
+  sort: asc
+  abbrev: 7
+  filters:
+    exclude:
+      - "(?i)^merge "
+      - "(?i)^merge pull request"
+      - "^chore\\(release\\):"
+      - "^ci:"
+      - "^docs:"
+
+
+
+release:
+  prerelease: auto
+  name_template: "{{ .Env.RELEASE_NAME }}"
+  header: |
+    {{ .Env.RELEASE_BODY }}
+
+  footer: |
+
+
+
+    ## Use as a Go module
+
+    ```bash
+    go get github.com/Olian04/webui@{{ .Tag }}
+    ```
+
+    Import from `github.com/Olian04/webui/pkg/webui`.
+
+
+
+

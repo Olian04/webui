@@ -1,0 +1,55 @@
+---
+description: 
+globs: **/*.go
+alwaysApply: false
+---
+
+# Go dev bar
+
+You senior Go dev. Write clean, safe, testable code.
+
+## Repo Go rules
+
+| Area | Rule | Why |
+| :-- | :-- | :-- |
+| Errors | Wrap with `fmt.Errorf("...: %w", err)` | Keep error chain |
+| Errors | Use `errors.Is()` / `errors.As()` | No fragile string compare |
+| Errors | Sentinel errors at package level | Consistent checks |
+| Errors | Never drop error with `_` | No silent fail |
+| Interfaces | Define where consumed | Lower coupling |
+| Interfaces | Keep small (1-3 methods) | Go idiom |
+| Interfaces | Accept interfaces, return structs | Better tests, less coupling |
+| Concurrency | `context.Context` first when cancel/deadline needed | Standard + cancel support |
+| Concurrency | Use `errgroup` for goroutine error coordination | Simpler lifecycle |
+| Concurrency | Prefer `sync.Mutex` for shared mutable state | Simpler than channel for mutex job |
+| Structure | No `util` / `helpers` catch-all packages | Avoid junk drawer |
+| Structure | Entrypoints in `./cmd/` | Clear boundary |
+| Structure | App-owned product code in `./internal/` | No public library API |
+| Structure | Package names singular, lowercase | Go convention |
+
+## Reply preamble (required)
+
+Every user-facing reply starts with this.
+
+### 1) Understanding
+
+Start short paragraph with bold label `Understanding:`. Restate ask, include named clusters/environments/comparisons when relevant.
+
+### 2) Assumptions table
+
+Then add bold label `Assumptions I am making:` and markdown table:
+
+| Assumption | Reason | Gap in prompt |
+
+Table rules:
+
+- One row per assumption (scope, file set, read/write, etc).
+- `Assumption`: concrete thing treated true.
+- `Reason`: why you believe it.
+- `Gap in prompt`: what missing in current prompt (`Not specified`, `Not re-stated in this message`, or `Stated clearly`).
+
+Do this even for clarifying questions.
+
+If markdown table unsupported, use bullets with same 3 parts.
+
+If user uses slang/ambiguous shorthand, confirm meaning first.

@@ -1,0 +1,112 @@
+name: Release
+
+run-name: Release ${{ inputs.version }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version: X.Y or X.Y.Z (release) or X.Y-Z / X.Y.Z-Z (prerelease; Z = increment, e.g. 0.1.0-3). Optional leading v."
+        required: true
+        type: string
+      prerelease:
+        description: "Mark this release as a prerelease (version must be X.Y-Z or X.Y.Z-Z)"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check version format and extract
+        id: version
+        run: |
+          VERSION="${{ inputs.version }}"
+          PRERELEASE="${{ inputs.prerelease }}"
+          if [ "$PRERELEASE" = "true" ]; then
+            if ! echo "$VERSION" | grep -qE '^v?[0-9]+\.[0-9]+(\.[0-9]+)?-[0-9]+$'; then
+              echo "::error::Prerelease version must match X.Y-Z or X.Y.Z-Z (optional leading v), e.g. 1.0-3 or v0.1.0-1. Got: $VERSION"
+              exit 1
+            fi
+          else
+            if ! echo "$VERSION" | grep -qE '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
+              echo "::error::Release version must match X.Y or X.Y.Z (optional leading v), e.g. 1.0 or v0.1.0. Got: $VERSION"
+              exit 1
+            fi
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "$PRERELEASE" = "true" ]; then
+            BASE_VERSION="${VERSION%-*}"
+            INCREMENT="${VERSION##*-}"
+            NO_V="${BASE_VERSION#v}"
+            git fetch --prune --tags origin
+            for tag in "$NO_V" "v$NO_V"; do
+              if [ "$tag" = "v" ]; then
+                continue
+              fi
+              if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
+                echo "::error::Tag '$tag' already exists on the remote. Prerelease '$VERSION' is for work toward stable **$NO_V**; that version must not be tagged or released yet (increment $INCREMENT is the Nth prerelease *before* $NO_V)."
+                exit 1
+              fi
+            done
+            echo "release_name=Prerelease increment ${INCREMENT} of upcoming release ${BASE_VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_body=**This is a prerelease** — draft increment ${INCREMENT} of the upcoming ${BASE_VERSION} build. Subject to change before the final release." >> "$GITHUB_OUTPUT"
+          else
+            echo "release_name=Release ${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "release_body=Official release ${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Version: $VERSION (prerelease=$PRERELEASE)"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Record build timestamp and release intro
+        run: |
+          echo "APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=${{ steps.version.outputs.release_name }}" >> "$GITHUB_ENV"
+          {
+            echo "RELEASE_BODY<<EOF"
+            echo "${{ steps.version.outputs.release_body }}"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+
+
+      - name: Create and push release tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION" "${GITHUB_SHA}"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Install Syft
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Run GoReleaser
+        id: goreleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --verbose --config goreleaser/.goreleaser.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APP_BUILD_TIME: ${{ env.APP_BUILD_TIME }}
+          RELEASE_NAME: ${{ env.RELEASE_NAME }}
+          RELEASE_BODY: ${{ env.RELEASE_BODY }}
+          GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}
+
