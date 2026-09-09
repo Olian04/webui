@@ -2,43 +2,27 @@
 
 ## Layout
 
-| Path | Role |
-| --- | --- |
-| `internal/domain/echo` | Domain logic only. Identical in every mode; no IO imports. |
+| Path                    | Role                                                                                               |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `pkg/webui`             | Public API. Glue only. Compose internal packages.                                                  |
+| `internal/<capability>` | Implementation `pkg/` consumes. Not importable outside this module. Echo lives at `internal/echo`. |
+| `test/`                 | Integration tests against `pkg/webui` only. External test package (`webui_test`).                  |
 
-
-
-
-| `pkg/webui` | Public API: exported facade delegating to the domain. |
-
-
-
-| `test/unit/...` | Unit tests beside mirrored paths. |
+Unit tests, when they exist, are `*_test.go` next to the source they cover, same package. Prefer integration tests. Echo is too thin for a colocated unit test.
 
 ## Dependency direction
 
-`internal/domain` is the fixed point. Mode-specific IO adapters depend on it; it
-depends on nothing but the standard library. Put behaviour in the domain and
-keep adapters to translation only.
+`pkg/webui` → `internal/<capability>`. Never reverse: `internal/` packages do not import `pkg/`.
 
-`pkg/webui` → `internal/domain/echo`. The facade is the public surface
-(consumers cannot import `internal/`); no side effects on import.
+`internal/` packages may import each other. `pkg/` is the composition root.
 
+Consumers outside this module cannot import `internal/`. No side effects on import.
 
+Keep behaviour in `internal/` packages. `pkg/` wires them and owns public types.
 
+## Tests
 
-## Mode notes
-
-
-- **Logging**: standard library `slog` defaults (no `observability/logging` package).
-
-
-- **Metrics**: off for this mode.
-
-
-## Commands (`make`)
-
-`lint`, `test`, `test-race`.
+`test/` must import `pkg/webui` only, not `internal/`.
 
 ---
 

@@ -23,16 +23,16 @@ Apply all rules below unless user narrows scope.
 - **`Must*` panic:** `Must*` APIs can panic by convention when failure means programmer/startup fatal error. Do not flag documented `Must*` panic used in intended abort context. Still flag undocumented panic, panic in non-`Must` API without strong reason, or unsafe `Must*` use at library boundary.
 - **Interfaces:** define where used; keep small (about 1-3 methods); accept interfaces, return concrete types when that improves coupling/testability.
 - **Concurrency:** `context.Context` first for cancel/timeout work; use `errgroup` for coordinated goroutines; use `sync.Mutex` (or fitting sync primitive) for shared mutable state instead of forcing channel pattern.
-- **Structure:** `cmd/` for entrypoints; `internal/` (or clear internal layout) for library code; no `util`/`helpers` junk-drawer packages; package names singular lowercase.
-- **Test placement:** unit tests for `cmd/*` and `internal/*` should live under `test/unit/...`, mirroring the package they test. Cross-package suites live under `test/integration`, `test/regression`, or `test/benchmark`.
+- **Structure:** `pkg/` is public glue; `internal/<capability>` holds implementation; no `util`/`helpers` junk-drawer packages; package names singular lowercase.
+- **Test placement:** unit tests are rare `*_test.go` next to the source they cover (same package). Integration tests live under `test/`, import `pkg/` only, use the external test package (`webui_test`). Do not import `internal/` from `test/`. Do not mirror paths under `test/unit`.
 
 ### Principles and patterns (common Go practice)
 
 - **Single responsibility:** package/type/function should have one clear reason to change; flag god units.
 - **SOLID in Go:** small interfaces, narrow boundary contracts, implementation respects contract (no hidden globals/surprise blocking).
-- **Dependency direction:** prefer constructor injection + explicit wiring in `main`, not implicit globals; flag deep domain coupling to concrete third-party types.
+- **Dependency direction:** `pkg/` is the composition root and depends on `internal/<capability>`; `internal/` must not import `pkg/`. Prefer constructor injection over implicit globals.
 - **Optional config:** functional options (`...Option`) or small config structs are idiomatic; flag huge parameter lists and half-used config structs without convention.
-- **Boundaries:** keep transport thin, domain thick; use repo/store interfaces at persistence edge; use adapters for external APIs; flag SDK/transport leakage across layers.
+- **Boundaries:** keep `pkg/` thin glue and behaviour in `internal/`; flag leakage of internal types into the public API.
 - **Concurrency patterns:** check missing cancellation, unbounded goroutines, unjustified fire-and-forget, races, missing synchronization.
 - **Testing:** table-driven tests for pure logic; flag risky untested error paths (suggestion unless user asked for test mandate).
 - **Module boundaries:** use `internal/` when appropriate; avoid exporting symbols only for tests unless justified.
