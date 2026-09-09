@@ -49,7 +49,7 @@ Rules:
 package echo
 
 func Echo(message string) string {
-	return strings.TrimSpace(message)
+ return strings.TrimSpace(message)
 }
 ```
 
@@ -57,7 +57,7 @@ func Echo(message string) string {
 
 ```go
 func Echo(message string) string {
-	return echo.Echo(message)
+ return echo.Echo(message)
 }
 ```
 
