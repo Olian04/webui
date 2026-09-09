@@ -21,7 +21,4 @@ lint: ## Run go vet, module verify, vuln scan, golangci
 	go tool golangci-lint run $(SOURCE_CODE)
 
 test: ## Run unit tests
-	go test -shuffle=on -timeout 120s $(SOURCE_CODE)
-
-test-race: ## Run unit tests with race detector
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)

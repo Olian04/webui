@@ -2,18 +2,11 @@
 
 ## Layout
 
-| Path | Role |
-| --- | --- |
+| Path                   | Role                                                       |
+| ---------------------- | ---------------------------------------------------------- |
 | `internal/domain/echo` | Domain logic only. Identical in every mode; no IO imports. |
-
-
-
-
-| `pkg/webui` | Public API: exported facade delegating to the domain. |
-
-
-
-| `test/unit/...` | Unit tests beside mirrored paths. |
+| `pkg/webui`            | Public API: exported facade delegating to the domain.      |
+| `test/unit/...`        | Unit tests beside mirrored paths.                          |
 
 ## Dependency direction
 
@@ -23,22 +16,6 @@ keep adapters to translation only.
 
 `pkg/webui` → `internal/domain/echo`. The facade is the public surface
 (consumers cannot import `internal/`); no side effects on import.
-
-
-
-
-## Mode notes
-
-
-- **Logging**: standard library `slog` defaults (no `observability/logging` package).
-
-
-- **Metrics**: off for this mode.
-
-
-## Commands (`make`)
-
-`lint`, `test`, `test-race`.
 
 ---
 
