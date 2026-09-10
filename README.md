@@ -14,7 +14,7 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-Devices := webui.Page{
+Devices := webui.Page[nil]{
    Path: webui.Path("device")
    Nav: webui.Nav{
       Label: "Devices",
@@ -25,7 +25,7 @@ Devices := webui.Page{
               return service.LoadAll()
           },
           RowClick: func (d Device) webui.Action {
-            return webui.Redirect(Details, DeviceId.Is(d.Id))
+            return webui.Redirect(Details, d.Id)
           },
           // No "Actions" or "BulkActions" means no action bar
           // No "BulkActions" means no row select checkboxes
@@ -39,21 +39,23 @@ Devices := webui.Page{
    }
 }
 
-DeviceId := webui.Var[String]() 
-Details := webui.Page{
-  Path: webui.Path("device", DeviceId),
-  // Query: webui.Query{ "id": DeviceId },
+Details := webui.Page[string]{
+  // :args: instructs that the args (a single string this time) should be used as part of the path.
+  // :args.Id: or :args.Count: if Args is a struct with Id and Count properties
+  // Any args not in the path will be treated as query parameters.
+  // Args with value equal to its zero value will be passed literally when used in path, and removes the query param otherwise.
+  Path: webui.Path("device", ":args:"), 
   Nav: webui.Nav{
     Shadow: Devices.Nav, // Doesn't show up in the Navbar, but shows as being on the "Device" entry when page is loaded
   },
   Sections: []webui.Section{
     webui.Form[Device]{
       Load: func (ctx context.Context) (Device, error) {
-         deviceId, err := DeviceId.Get(ctx)
-         if (err != nil) {
+         args, err := Details.Args(ctx)
+         if (err != nil || args.Id === "") {
            return Device{}, error.New("No device id provided")
          }
-         return service.Load(deviceId)
+         return service.Load(args.Id)
       },
       Store: func (ctx context.Context, d Device) error {
         return service.Store(d.Id, d)
