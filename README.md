@@ -25,7 +25,7 @@ Devices := webui.Page{
             return webui.Redirect(Details, DeviceId.Is(d.Id))
           },
           // No "Actions" or "BulkActions" means no action bar
-		  // No "BulkActions" means no row select checkboxes
+          // No "BulkActions" means no row select checkboxes
           Columns: []webui.Column{
               webui.String("id", func (d Device) string { return d.Id })
               webui.String("ip", func (d Device) string { return d.Ip })
