@@ -51,11 +51,11 @@ Details := webui.Page[string]{
   Sections: []webui.Section{
     webui.Form[Device]{
       Load: func (ctx context.Context) (Device, error) {
-         args, err := Details.Args(ctx)
-         if (err != nil || args.Id === "") {
+         id, err := Details.Args(ctx)
+         if (err != nil || id === "") {
            return Device{}, error.New("No device id provided")
          }
-         return service.Load(args.Id)
+         return service.Load(id)
       },
       Store: func (ctx context.Context, d Device) error {
         return service.Store(d.Id, d)
