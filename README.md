@@ -14,7 +14,7 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-Devices := webui.Page[nil]{
+var Devices = webui.Page[nil]{
    Path: webui.Path("device")
    Nav: webui.Nav{
       Label: "Devices",
@@ -39,7 +39,7 @@ Devices := webui.Page[nil]{
    }
 }
 
-Details := webui.Page[string]{
+var Details = webui.Page[string]{
   // :args: instructs that the args (a single string this time) should be used as part of the path.
   // :args.Id: or :args.Count: if Args is a struct with Id and Count properties
   // Any args not in the path will be treated as query parameters.
@@ -85,32 +85,34 @@ Details := webui.Page[string]{
   }
 }
 
-app := webui.App{
-  Brand: webui.Brand{
-    Name: "Demo", 
-    Logo: image.Load("./resources/logo.svg")
-  },
-  Theme: webui.ThemeDark,
-  Pages: []webui.Page{
-     Devices,
-     Details,
-  }
+func main() {
+	app := webui.App{
+	  Brand: webui.Brand{
+	    Name: "Demo", 
+	    Logo: image.Load("./resources/logo.svg")
+	  },
+	  Theme: webui.ThemeDark,
+	  Pages: []webui.Page{
+	     Devices,
+	     Details,
+	  }
+	}
+	
+	if err := app.Validate(); err != nil {
+	  log.Fatal(err)
+	}
+	
+	mux := http.NewServeMux()
+	
+	if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
+		log.Fatal(err)
+	}
+	
+	// Your own routes coexist; the library owns exactly its own subtree.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
-
-if err := app.Validate(); err != nil {
-  log.Fatal(err)
-}
-
-mux := http.NewServeMux()
-
-if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
-	log.Fatal(err)
-}
-
-// Your own routes coexist; the library owns exactly its own subtree.
-mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-})
-
-log.Fatal(http.ListenAndServe(":8080", mux))
 ```
