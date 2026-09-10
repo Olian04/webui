@@ -8,6 +8,9 @@ Declarative admin panels and control planes. No HTML, CSS or JavaScript — only
 package main
 
 import (
+	"log"
+	"net/http"
+	
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -52,7 +55,7 @@ Details := webui.Page{
          }
          return service.Load(deviceId)
       },
-      Submit: func (ctx context.Context, d Device) error {
+      Store: func (ctx context.Context, d Device) error {
         return service.Store(d.Id, d)
       },
       Fields: []webui.Field{
@@ -90,5 +93,22 @@ app := webui.App{
      Devices,
      Details,
   }
-} 
+}
+
+if err := app.Validate(); err != nil {
+  log.Fatal(err)
+}
+
+mux := http.NewServeMux()
+
+if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
+	log.Fatal(err)
+}
+
+// Your own routes coexist; the library owns exactly its own subtree.
+mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+})
+
+log.Fatal(http.ListenAndServe(":8080", mux))
 ```
