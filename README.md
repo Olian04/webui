@@ -14,7 +14,7 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-Devices := webui.Page{
+var Devices = webui.Page[nil]{
    Path: webui.Path("device")
    Nav: webui.Nav{
       Label: "Devices",
@@ -25,7 +25,7 @@ Devices := webui.Page{
               return service.LoadAll()
           },
           RowClick: func (d Device) webui.Action {
-            return webui.Redirect(Details, DeviceId.Is(d.Id))
+            return webui.Redirect(Details, d.Id)
           },
           // No "Actions" or "BulkActions" means no action bar
           // No "BulkActions" means no row select checkboxes
@@ -39,21 +39,23 @@ Devices := webui.Page{
    }
 }
 
-DeviceId := webui.Var[String]() 
-Details := webui.Page{
-  Path: webui.Path("device", DeviceId),
-  // Query: webui.Query{ "id": DeviceId },
+var Details = webui.Page[string]{
+  // :args: instructs that the args (a single string this time) should be used as part of the path.
+  // :args.Id: or :args.Count: if Args is a struct with Id and Count properties
+  // Any args not in the path will be treated as query parameters.
+  // Args with value equal to its zero value will be passed literally when used in path, and removes the query param otherwise.
+  Path: webui.Path("device", ":args:"), 
   Nav: webui.Nav{
     Shadow: Devices.Nav, // Doesn't show up in the Navbar, but shows as being on the "Device" entry when page is loaded
   },
   Sections: []webui.Section{
     webui.Form[Device]{
       Load: func (ctx context.Context) (Device, error) {
-         deviceId, err := DeviceId.Get(ctx)
-         if (err != nil) {
+         id, err := Details.Args(ctx)
+         if (err != nil || id === "") {
            return Device{}, error.New("No device id provided")
          }
-         return service.Load(deviceId)
+         return service.Load(id)
       },
       Store: func (ctx context.Context, d Device) error {
         return service.Store(d.Id, d)
@@ -83,32 +85,34 @@ Details := webui.Page{
   }
 }
 
-app := webui.App{
-  Brand: webui.Brand{
-    Name: "Demo", 
-    Logo: image.Load("./resources/logo.svg")
-  },
-  Theme: webui.ThemeDark,
-  Pages: []webui.Page{
-     Devices,
-     Details,
-  }
+func main() {
+	app := webui.App{
+	  Brand: webui.Brand{
+	    Name: "Demo", 
+	    Logo: image.Load("./resources/logo.svg")
+	  },
+	  Theme: webui.ThemeDark,
+	  Pages: []webui.Page{
+	     Devices,
+	     Details,
+	  }
+	}
+	
+	if err := app.Validate(); err != nil {
+	  log.Fatal(err)
+	}
+	
+	mux := http.NewServeMux()
+	
+	if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
+		log.Fatal(err)
+	}
+	
+	// Your own routes coexist; the library owns exactly its own subtree.
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
-
-if err := app.Validate(); err != nil {
-  log.Fatal(err)
-}
-
-mux := http.NewServeMux()
-
-if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
-	log.Fatal(err)
-}
-
-// Your own routes coexist; the library owns exactly its own subtree.
-mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-})
-
-log.Fatal(http.ListenAndServe(":8080", mux))
 ```
