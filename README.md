@@ -16,11 +16,13 @@ import (
  "github.com/Olian04/webui/pkg/webui"
 )
 
-var Devices = webui.Page[any]{
- Path: webui.Path("device"),
- Nav: webui.Nav{
+var DevicesNavItem = webui.Nav{
   Label: "Devices",
- },
+}
+
+var Devices = webui.Page[any]{
+ Path: webui.Path().Static("device"),
+ Nav: DevicesNavItem,
  Sections: []webui.Section{
   webui.Table[Device]{
    Load: func(ctx context.Context) ([]Device, error) {
@@ -40,33 +42,26 @@ var Devices = webui.Page[any]{
 }
 
 var EditDevice = webui.Action[Device]{
-  Guard: func(ctx context.Context) error {
-    return auth.AssertRole(ctx, auth.EditorRole)
-  },
   Run: func(d Device) webui.Effect {
-    return Details.Load(d.Id)
-  }
+    return Details.Open(d.Id)
+  },
 }
 
 var Details = webui.Page[string]{
- // :args: instructs that the args (a single string this time) should be used as part of the path.
- // :args.Id: or :args.Count: if Args is a struct with Id and Count properties
- // Any args not in the path will be treated as query parameters.
- // Args with value equal to its zero value will be passed literally when used in path, and removes the query param otherwise.
- Path: webui.Path("device", ":args:"),
+ Path: webui.Path().Static("device").Arg(func(id string) string { return id }), // /device/{arg}
  Nav: webui.Nav{
-  Shadow: Devices.Nav, // Doesn't show up in the Navbar, but shows as being on the "Device" entry when page is loaded
+  Shadow: DevicesNavItem, // Doesn't show up in the Navbar, but shows as being on the "Device" entry when page is loaded
  },
  Sections: []webui.Section{
   webui.Form[Device]{
    Load: func(ctx context.Context) (Device, error) {
-    id, err := Details.Args(ctx)
+    id, err := Details.GetArg(ctx)
     if err != nil || id == "" {
      return Device{}, errors.New("no device id provided")
     }
     return service.Load(id)
    },
-   Submit: 
+   Submit: SaveDevice,
    Fields: []webui.Field{
     webui.Group{
      webui.StringField{
@@ -77,7 +72,7 @@ var Details = webui.Page[string]{
      webui.StringField{
       Label: "IP",
       Load: func(d Device) string { return d.Ip },
-      Store: func(d Device, val string) error {
+      Store: func(d *Device, val string) error {
        d.Ip = val
        return nil
       },
@@ -92,7 +87,8 @@ var Details = webui.Page[string]{
  },
 }
 
-var SaveDevice = webui.Action{
+var SaveDevice = webui.Action[Device]{
+  // Guard is run on page load to enable UI elements based on access, it is also ran on action execution before Run to guard requests.
   Guard: func(ctx context.Context) error {
     return auth.AssertRole(ctx, auth.EditorRole)
   },
@@ -103,9 +99,9 @@ var SaveDevice = webui.Action{
       }
     }
     return webui.Effect{
-      Message: "Device saved!" // Submit was successful, show message as toast.
+      Message: "Device saved!", // Submit was successful, show message as toast.
     }
-  }
+  },
 }
 
 func main() {
@@ -114,8 +110,8 @@ func main() {
    Name: "Demo",
    Logo: image.Load("./resources/logo.svg"),
   },
-  Theme: webui.ThemeDark,
-  Pages: []webui.Page{
+  Theme: webui.Theme{}, // Default theme
+  Pages: webui.Pages{
    Devices,
    Details,
   },
