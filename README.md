@@ -26,19 +26,26 @@ var Devices = webui.Page[any]{
    Load: func(ctx context.Context) ([]Device, error) {
     return service.LoadAll()
    },
-   RowClick: func(d Device) webui.Action {
-    return webui.Redirect(Details, d.Id)
-   },
+   RowClick: EditDevice,
    // No "Actions" or "BulkActions" means no action bar
    // No "BulkActions" means no row select checkboxes
    Columns: []webui.Column{
     webui.String("id", func(d Device) string { return d.Id }),
     webui.String("ip", func(d Device) string { return d.Ip }),
-    webui.Int("occurances", func(d Device) int { return d.Count }),
+    webui.Int("occurrences", func(d Device) int { return d.Count }),
     webui.Float("rate", func(d Device) float64 { return float64(d.Count) / d.Duration }),
    },
   },
  },
+}
+
+var EditDevice = webui.Action[Device]{
+  Guard: func(ctx context.Context) error {
+    return auth.AssertRole(ctx, auth.EditorRole)
+  },
+  Run: func(d Device) webui.Effect {
+    return Details.Load(d.Id)
+  }
 }
 
 var Details = webui.Page[string]{
@@ -59,9 +66,7 @@ var Details = webui.Page[string]{
     }
     return service.Load(id)
    },
-   Store: func(ctx context.Context, d Device) error {
-    return service.Store(d.Id, d)
-   },
+   Submit: 
    Fields: []webui.Field{
     webui.Group{
      webui.StringField{
@@ -85,6 +90,22 @@ var Details = webui.Page[string]{
    },
   },
  },
+}
+
+var SaveDevice = webui.Action{
+  Guard: func(ctx context.Context) error {
+    return auth.AssertRole(ctx, auth.EditorRole)
+  },
+  Run: func(d Device) webui.Effect {
+    if err := service.Put(d.Id, d); err != nil {
+      return webui.Effect{
+        Error: err, // Submit failed, restore form fields and show error message
+      }
+    }
+    return webui.Effect{
+      Message: "Device saved!" // Submit was successful, show message as toast.
+    }
+  }
 }
 
 func main() {
