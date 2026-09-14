@@ -16,7 +16,7 @@ import (
  "github.com/Olian04/webui/pkg/webui"
 )
 
-var Devices = webui.Page[struct{}]{
+var Devices = webui.Page[any]{
  Path: webui.Path("device"),
  Nav: webui.Nav{
   Label: "Devices",
