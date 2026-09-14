@@ -105,10 +105,7 @@ func main() {
  }
 
  mux := http.NewServeMux()
-
- if err := app.Mount(mux, "/admin", authMiddleware); err != nil {
-  log.Fatal(err)
- }
+ mux.Handle("/admin/", authMiddleware(http.StripPrefix("/admin", app.HttpHandler("/admin"))))
 
  // Your own routes coexist; the library owns exactly its own subtree.
  mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
