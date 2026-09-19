@@ -1,0 +1,42 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Failed to compile</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin:0; padding:2rem 1.25rem; font:14px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+         color:#1b1b1f; background:#fff; max-width:56rem; }
+  h1 { color:#c0392b; font-size:1.9rem; font-weight:600; margin:0 0 .35rem; letter-spacing:-.01em; }
+  .count { color:#6b6b76; margin:0 0 1.75rem; }
+  section { margin:0 0 1.5rem; }
+  .where { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:#6b6b76; margin:0 0 .4rem; }
+  pre { margin:0; padding:1rem 1.1rem; background:#fdf1f0; border-left:3px solid #e6b3ad; border-radius:3px;
+        font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; color:#7a1f14; white-space:pre-wrap; overflow-x:auto; }
+  .fix { margin:.55rem 0 0; color:#3d3d46; }
+  .fix::before { content:"Fix: "; font-weight:600; color:#1b1b1f; }
+  footer { margin-top:2.25rem; color:#8b8b95; font-size:12.5px; }
+  @media (prefers-color-scheme: dark) {
+    body { color:#e6e6ea; background:#16161a; }
+    h1 { color:#ff6b5a; } .count, .where, footer { color:#9a9aa4; }
+    pre { background:#2a1a18; border-left-color:#7a3a32; color:#ffb4a8; }
+    .fix { color:#c9c9d2; } .fix::before { color:#e6e6ea; }
+  }
+</style>
+<h1>Failed to compile</h1>
+<p class="count">3 problem(s) in this app.</p>
+<section>
+<div class="where">/device/{id}  —  DetailsArgs</div>
+<pre>the path declares {id} but DetailsArgs has no field for it</pre>
+<p class="fix">Add a field named Id to DetailsArgs, or change the placeholder to match an existing field.</p>
+</section>
+<section>
+<div class="where">/org/{id}  —  DupeArgs</div>
+<pre>two fields both map to the argument &#34;id&#34;</pre>
+<p class="fix">Rename one field, or give it a distinct name with a `webui:&#34;...&#34;` tag.</p>
+</section>
+<section>
+<div class="where">/event/{id}  —  UnsupportedArgs</div>
+<pre>field When has unsupported type []string</pre>
+<p class="fix">Arguments must be string, bool, int, int64 or float64 — a URL carries one value per name.</p>
+</section>
+<footer>This error occurred while compiling the app and cannot be dismissed.
+Every page under this prefix will show it until the app compiles.</footer>
