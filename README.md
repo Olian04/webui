@@ -73,10 +73,14 @@ var Devices = webui.Page[webui.NoArgs]{
     Load: func(ctx context.Context) ([]Device, error) {
       return service.LoadAll(ctx)
     },
-    // A Link renders a real <a href>, so middle-click and open-in-new-tab work.
-    // An Action here would render a POST instead — for row clicks that mutate.
-    RowClick: webui.Link[Device]{
-      To: func(d Device) webui.Target { return Details.Open(DetailsArgs{Id: d.Id}) },
+    // A Link names its destination page as a field, so Compile can check the
+    // target exists. It renders a real <a href>, so middle-click and
+    // open-in-new-tab work; an Action here would render a POST instead.
+    RowClick: webui.Link[Device, DetailsArgs]{
+      Page: Details,
+      Args: func(ctx context.Context, d Device) DetailsArgs {
+        return DetailsArgs{Id: d.Id}
+      },
     },
     // No Actions or BulkActions means no action bar.
     // No BulkActions means no row select checkboxes.
@@ -183,12 +187,39 @@ func mustLogo() image.Image {
 }
 ```
 
-A page's arguments are one struct the user owns, so `Open` is checked by the
-compiler rather than at render, and `Guard` gets a typed parameter:
+The structs declare the app; the compiled runtime is the target of every
+runtime action; `ctx` is the gateway between them. So anything that touches the
+runtime takes `ctx`, and anything that is a pure function of the model does not
+— which is why an accessor's `Load` and `Store` stay `ctx`-free while `Open`,
+the loaders, and every `Guard` take it.
+
+`webui.Open` resolves the page through the runtime rather than reading the
+declaration, so it returns a real href including the mount prefix, and a page
+that was never mounted — or whose declaration was mutated after `Compile` — is
+reported instead of silently producing a dead link:
 
 ```
-/device/abc
-/device/abc?debug=true&offset=50
+mounted:     /admin/device/abc?debug=true
+not mounted: webui: Open "/never-mounted/{id}": that page is not mounted in this app
+mutated:     webui: Open "/CHANGED/{id}": that page is not mounted in this app
+no runtime:  webui: Open "/CHANGED/{id}": no compiled app in this context
+```
+
+A `Link` names its destination as a field rather than building a `Target` in a
+closure, so the target is data. Two consequences: the page and the argument
+struct must agree, checked by the compiler —
+
+```
+cannot use Details (variable of struct type Page[DetailsArgs]) as Page[OrphanArgs] value
+```
+
+— and `Compile` walks the `Body` tree and checks every target is mounted,
+however deeply nested:
+
+```
+page "/broken": a link targets "/never-mounted/{id}", which is not mounted in this app
+  Fix: Add that page to App.Pages, or point the link at a page that is already
+       there.
 ```
 
 `Compile` validates the app and prepares it — path matchers, argument decoders,
@@ -229,7 +260,7 @@ struct copy:
 ```go
 next := cur
 next.Offset = 50
-return Details.Open(next)   // /device/abc?debug=true&offset=50
+return webui.Open(Details, next)   // /device/abc?debug=true&offset=50
 ```
 
 A page's `Body` is a single `PageBody`. Leaves (`Table`, `Form`) load and
@@ -332,9 +363,19 @@ Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
   any other package using the same string, and `go vet` does not catch it.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an
   `Err`. Such a link renders disabled and is logged rather than panicking.
+- `Open` is `webui.Open(ctx, page, args)`, not a method, so `Page` carries no
+  behaviour at all. Type inference still gives a compile error on the wrong
+  argument struct: `type OtherArgs does not match inferred type DetailsArgs`.
+  Resolving through the runtime means `Target.URL` includes the mount prefix,
+  so it is a real href and the renderer no longer prepends anything; and an
+  unmounted page is caught at render rather than producing a dead link.
+  `Link` declares its destination page and an `Args` function instead of
+  building the `Target` itself, which moves target checking from render time to
+  `Compile`. `Open` remains for programmatic navigation, such as
+  `Effect.Redirect`.
 - `Compile(prefix)` replaces `Validate()` and `HttpHandler()`. It is the one
-  place the mount prefix is stated. `Target.URL` stays app-relative; the
-  renderer prepends the prefix, so `Open` never needs to know it. The compiled
+  place the mount prefix is stated. `Open` resolves the prefix
+  through the runtime, so `Target.URL` is absolute. The compiled
   form is a separate value, so mutating `App` afterwards has no effect — which
   is the intent.
 - `Compile` returns a handler even on failure, serving the error at every path
