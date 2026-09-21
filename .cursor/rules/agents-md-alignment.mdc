@@ -10,7 +10,7 @@ Goal: keep product words, package boundaries, repo conventions aligned.
 
 Before big edits, skim/re-read `docs/AGENTS.md` (and deeper refs it points to). Treat as source of truth for:
 
-- Layout/responsibility: `pkg/webui` is public glue; `internal/<capability>` is implementation; `test/` is integration vs `pkg/` only; rare unit tests are colocated `*_test.go`.
+- Layout/responsibility: `pkg/webui` owns the declaration AST; `internal/<phase>` (`args`, `rules`, `runtime`, `render`) holds algorithms; `test/` is integration vs `pkg/` only; unit tests are colocated `*_test.go`.
 - Naming/imports: `internal/` must not import `pkg/`; `test/` must not import `internal/`; do not invent catch-all packages.
 - Errors: wrap with `%w`.
 - Anti-patterns: no catch-all `util` / `helpers`; do not put unit tests under `test/`.

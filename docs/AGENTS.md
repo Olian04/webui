@@ -2,23 +2,28 @@
 
 ## Layout
 
-| Path                    | Role                                                                                               |
-| ----------------------- | -------------------------------------------------------------------------------------------------- |
-| `pkg/webui`             | Public API. Glue only. Compose internal packages.                                                  |
-| `internal/<capability>` | Implementation `pkg/` consumes. Not importable outside this module. Echo lives at `internal/echo`. |
-| `test/`                 | Integration tests against `pkg/webui` only. External test package (`webui_test`).                  |
+| Path               | Role                                                                              |
+| ------------------ | --------------------------------------------------------------------------------- |
+| `pkg/webui`        | Public API. Declaration AST, split by file. `Compile` lowers to internal runtime. |
+| `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
+| `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
+| `internal/runtime` | Compiled app in `ctx`, prefix, leaf ids, handler, `Open` resolve.                 |
+| `internal/render`  | IR → HTML.                                                                        |
+| `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 
-Unit tests, when they exist, are `*_test.go` next to the source they cover, same package. Prefer integration tests. Echo is too thin for a colocated unit test.
+`pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `link`, `open`, `compile`. One package, not one package per type.
+
+Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 
 ## Dependency direction
 
-`pkg/webui` → `internal/<capability>`. Never reverse: `internal/` packages do not import `pkg/`.
+`pkg/webui` → `internal/<phase>`. Never reverse: `internal/` packages do not import `pkg/`.
 
-`internal/` packages may import each other. `pkg/` is the composition root.
+`internal/` packages may import each other. `pkg/` owns public types and `Compile` glue.
 
 Consumers outside this module cannot import `internal/`. No side effects on import.
 
-Keep behaviour in `internal/` packages. `pkg/` wires them and owns public types.
+Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
 ## Tests
 
