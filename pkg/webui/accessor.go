@@ -36,17 +36,17 @@ type Int[M any] struct {
 	Label string
 	Load  func(M) int
 	Store func(*M, int)
-	Rules IntRules
+	Rules NumberRules[int]
 }
 
 func (Int[M]) isAccessor() {}
 
 // IntRules is declarative validation for an int value.
 // Min and Max are pointers because a zero bound is a real constraint.
-type IntRules struct {
+type NumberRules[T int | float64] struct {
 	Required bool
-	Min      *int
-	Max      *int
+	Min      *T
+	Max      *T
 }
 
 // Float projects a float64 field of M.
@@ -54,17 +54,10 @@ type Float[M any] struct {
 	Label string
 	Load  func(M) float64
 	Store func(*M, float64)
-	Rules FloatRules
+	Rules NumberRules[float64]
 }
 
 func (Float[M]) isAccessor() {}
-
-// FloatRules is declarative validation for a float64 value.
-type FloatRules struct {
-	Required bool
-	Min      *float64
-	Max      *float64
-}
 
 // Group composes accessors inside a form. It is not a table column;
 // Compile rejects Group listed in Columns.
