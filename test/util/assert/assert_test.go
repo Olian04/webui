@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Olian04/webui/test/assert"
+	"github.com/Olian04/webui/test/util/assert"
 )
 
 type fakeTB struct {
