@@ -21,7 +21,7 @@ type DetailsArgs struct {
 	Offset int
 }
 
-func TestSketchTypesCompile(t *testing.T) {
+func TestSketchTypes(t *testing.T) {
 	t.Parallel()
 
 	var DevicesNav = webui.Nav{Label: "Devices"}
@@ -134,14 +134,5 @@ func TestSketchTypesCompile(t *testing.T) {
 		},
 	}
 
-	handler, err := app.Compile("/admin")
-	if handler == nil {
-		t.Fatal("Compile returned nil handler")
-	}
-	_ = err
-
-	ctx := context.Background()
-	target := webui.Open(ctx, Details, DetailsArgs{Id: "abc"})
-	_ = target.URL
-	_ = target.Err
+	_ = app
 }

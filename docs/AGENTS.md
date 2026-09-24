@@ -10,6 +10,7 @@
 | `internal/runtime` | Compiled app in `ctx`, prefix, leaf ids, handler, `Open` resolve.                 |
 | `internal/render`  | IR → HTML.                                                                        |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
+| `test/assert`      | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
 
 `pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `link`, `open`, `compile`. One package, not one package per type.
 
@@ -27,7 +28,7 @@ Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
 ## Tests
 
-`test/` must import `pkg/webui` only, not `internal/`.
+`test/` must import `pkg/webui` only, not `internal/`. `test/assert` is the exception: assertions only, imported by tests.
 
 ---
 
