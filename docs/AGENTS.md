@@ -5,6 +5,7 @@
 | Path               | Role                                                                              |
 | ------------------ | --------------------------------------------------------------------------------- |
 | `pkg/webui`        | Public API. Declaration AST, split by file. `Compile` lowers to internal runtime. |
+| `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
 | `internal/runtime` | Compiled app in `ctx`, prefix, leaf ids, handler, `Open` resolve.                 |

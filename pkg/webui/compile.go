@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Olian04/webui/internal/router"
+	"github.com/Olian04/webui/internal/runtime"
 )
 
 // MustCompile is Compile panicking on error, like regexp.MustCompile.
@@ -24,7 +25,12 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 		return nil, errors
 	}
 
-	program, err := a.lower()
+	app, err := a.lower()
+	if err != nil {
+		return nil, err
+	}
+
+	program, err := runtime.NewProgram(app, prefix)
 	if err != nil {
 		return nil, err
 	}

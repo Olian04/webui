@@ -12,6 +12,10 @@ func (Action[M]) isRowClick() {}
 
 // Effect is the outcome of an understood action. A nil error on Run plus
 // Fields is a validation rejection the user can fix. Redirect navigates.
+//
+// Effect is a request-time value, not part of the declaration, so Redirect
+// holds a resolved Target: build it with Open, which has ctx and therefore the
+// runtime and the mount prefix.
 type Effect struct {
 	Toast    string
 	Fields   FieldErrors
