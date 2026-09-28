@@ -17,6 +17,19 @@
 
 Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 
+## Design
+
+| Path                     | Role                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `docs/design.md`         | The visual language: tokens, metrics, components, states. No code.            |
+| `docs/design-mapping.md` | Which declared type produces which design element, and where the two disagree. |
+| `docs/mock/`             | The design as static files. `node build.mjs`, then serve the folder.          |
+
+`internal/render` implements `design.md`. Every colour, radius and elevation is a
+`ir.Theme` token; no component reads a literal value. When the two documents and
+the code disagree, `design-mapping.md` names the gap on purpose — read its last
+two sections before adding a field to close one.
+
 ## Dependency direction
 
 `pkg/webui` → `internal/<phase>`. Never reverse: `internal/` packages do not import `pkg/`.
