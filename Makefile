@@ -21,3 +21,12 @@ lint: ## Run go vet, module verify, vuln scan, golangci
 
 test: ## Run tests
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)
+
+generate: ## Generate the application
+	go tool templ generate ./...
+
+build: generate ## Build the application
+	go build -o webui ./cmd/webui/main.go
+
+run: build ## Run the application
+	./webui

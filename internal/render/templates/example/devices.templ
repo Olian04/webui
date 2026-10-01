@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	c "github.com/Olian04/webui/internal/render/templates/components"
+	t "github.com/Olian04/webui/internal/render/templates"
 )
 
 type Device struct {
@@ -39,22 +40,16 @@ type DevicesData struct {
 
 // ---------------------------------------------------------------- the glue
 templ Shell(active string, crumbs []c.Crumb, toolbar templ.Component) {
-	@c.Document(c.DocumentProps{
+	@t.Page(t.PageProps{
 		Title:       "Devices — webui",
-		Theme:       c.ThemeDark,
+		Theme:       t.ThemeDark,
 		Role:        "editor",
 		Stylesheets: []string{"/assets/app.css"},
-	}) {
-		@c.AppShell(c.AppShellProps{
-			Sidebar: sidebar(active),
-			TopBar:  topbar(crumbs),
-			ToolBar: toolbar,
-			Status:  c.StatusBar(c.StatusBarProps{Method: "GET", URL: "/admin/device"}),
-			Toasts:  c.ToastRegion(),
-		}) {
-			{ children... }
-		}
-	}
+		Sidebar: sidebar(active),
+		TopBar:  topbar(crumbs),
+		ToolBar: toolbar,
+		Status:  c.StatusBar(c.StatusBarProps{Method: "GET", URL: "/admin/device"}),
+	})
 }
 
 templ sidebar(active string) {
@@ -145,7 +140,16 @@ func clearIf(d DevicesData, name string) string {
 
 // ------------------------------------------------------------- the page
 templ DevicesPage(d DevicesData) {
-	@Shell("devices", []c.Crumb{{Label: "Collector", Href: "/index.html"}, {Label: "Devices"}}, devicesToolbar(d)) {
+	@t.Page(t.PageProps{
+		Title:       "Devices — webui",
+		Theme:       t.ThemeDark,
+		Role:        "editor",
+		Stylesheets: []string{"/assets/app.css"},
+		Sidebar: sidebar("devices"),
+		TopBar:  topbar([]c.Crumb{{Label: "Collector", Href: "/index.html"}, {Label: "Devices"}}),
+		ToolBar: devicesToolbar(d),
+		Status:  c.StatusBar(c.StatusBarProps{Method: "GET", URL: "/admin/device"}),
+	}) {
 		@c.Section(c.SectionProps{ID: "overview", Label: "Overview", Count: fmt.Sprintf("%d devices", d.Total)}) {
 			@c.Stack(c.StackProps{}) {
 				@devicesTable(d)

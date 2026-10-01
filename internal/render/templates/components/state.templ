@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 // StatePageProps replaces the whole content region. The wording matters: a
 // guard rejection says the check ran BEFORE anything was loaded, because
 // nothing was fetched and the page should not imply otherwise.
@@ -60,5 +62,5 @@ func problemCount(n int) string {
 	if n == 1 {
 		return "1 problem in this app."
 	}
-	return itoa(n) + " problems in this app."
+	return strconv.FormatInt(int64(n), 10) + " problems in this app."
 }

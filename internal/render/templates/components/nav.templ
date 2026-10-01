@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 // The sidebar is the one piece of structure that never disappears. It does not
 // become a top bar and it does not become a menu button; below 820px it
 // collapses to an icon rail instead.
@@ -93,7 +95,7 @@ templ NavGroup(p NavGroupProps) {
 		data-group={ p.ID }
 		role="button"
 		tabindex="0"
-		aria-expanded={ boolAttr(p.Open) }
+		aria-expanded={ strconv.FormatBool(p.Open) }
 		aria-controls={ p.ID }
 		{ p.Attrs... }
 	>

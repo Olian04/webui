@@ -1,8 +1,4 @@
-package components
-
-import "strconv"
-
-func itoa(n int) string { return strconv.Itoa(n) }
+package templates
 
 // Theme selects the token block. Nothing else about the layout, spacing or
 // component structure differs between them.
@@ -32,7 +28,7 @@ templ Document(p DocumentProps) {
 	<!DOCTYPE html>
 	<html
 		lang="en"
-		data-theme={ themeOr(p.Theme) }
+		data-theme={ string(p.Theme) }
 		if p.Role != "" {
 			data-role={ p.Role }
 		}
@@ -56,13 +52,6 @@ templ Document(p DocumentProps) {
 			{ children... }
 		</body>
 	</html>
-}
-
-func themeOr(t Theme) string {
-	if t == ThemeLight {
-		return string(ThemeLight)
-	}
-	return string(ThemeDark)
 }
 
 // AppShellProps is the five fixed regions. Only the content region scrolls,

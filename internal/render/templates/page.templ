@@ -10,7 +10,7 @@ import c "github.com/Olian04/webui/internal/render/templates/components"
 // vocabularies meet.
 type PageProps struct {
 	Title       string
-	Theme       c.Theme
+	Theme       Theme
 	Role        string
 	Stylesheets []string
 	Scripts     []string
@@ -22,14 +22,14 @@ type PageProps struct {
 }
 
 templ Page(p PageProps) {
-	@c.Document(c.DocumentProps{
+	@Document(DocumentProps{
 		Title:       p.Title,
 		Theme:       p.Theme,
 		Role:        p.Role,
 		Stylesheets: p.Stylesheets,
 		Scripts:     p.Scripts,
 	}) {
-		@c.AppShell(c.AppShellProps{
+		@AppShell(AppShellProps{
 			Sidebar: p.Sidebar,
 			TopBar:  p.TopBar,
 			ToolBar: p.ToolBar,

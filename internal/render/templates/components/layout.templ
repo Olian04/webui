@@ -1,5 +1,7 @@
 package components
 
+import "strconv"
+
 // Layouts arrange and nothing else. They never load, never guard, and never
 // constrain what their children are about — a form for one model beside a
 // table of another is the ordinary case.
@@ -73,7 +75,7 @@ templ Section(p SectionProps) {
 		data-row={ p.ID }
 		role="button"
 		tabindex="0"
-		aria-expanded={ boolAttr(!p.Collapsed) }
+		aria-expanded={ strconv.FormatBool(!p.Collapsed) }
 		aria-controls={ p.ID }
 		{ p.Attrs... }
 	>
@@ -88,9 +90,3 @@ templ Section(p SectionProps) {
 	</div>
 }
 
-func boolAttr(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
-}
