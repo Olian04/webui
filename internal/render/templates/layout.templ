@@ -1,0 +1,42 @@
+// Package templates assembles pages from the component library. A page is glue:
+// it decides what goes where, and the components decide how it looks.
+package templates
+
+import c "github.com/Olian04/webui/internal/render/templates/components"
+
+// PageProps is one rendered screen. Every field is a region of the shell; the
+// body is { children... }. Nothing here is IR — internal/render maps ir.App and
+// ir.Page onto this and onto component props, which is the only place the two
+// vocabularies meet.
+type PageProps struct {
+	Title       string
+	Theme       c.Theme
+	Role        string
+	Stylesheets []string
+	Scripts     []string
+
+	Sidebar templ.Component
+	TopBar  templ.Component
+	ToolBar templ.Component
+	Status  templ.Component
+}
+
+templ Page(p PageProps) {
+	@c.Document(c.DocumentProps{
+		Title:       p.Title,
+		Theme:       p.Theme,
+		Role:        p.Role,
+		Stylesheets: p.Stylesheets,
+		Scripts:     p.Scripts,
+	}) {
+		@c.AppShell(c.AppShellProps{
+			Sidebar: p.Sidebar,
+			TopBar:  p.TopBar,
+			ToolBar: p.ToolBar,
+			Status:  p.Status,
+			Toasts:  c.ToastRegion(),
+		}) {
+			{ children... }
+		}
+	}
+}

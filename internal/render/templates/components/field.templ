@@ -1,0 +1,232 @@
+package components
+
+import "strconv"
+
+// Rules is the constraint set a field declares, expressed as the HTML
+// attributes it produces. The browser enforces them before anything is sent;
+// the server re-runs the same set after. One declaration, two enforcements —
+// and the first one needs no script.
+//
+// Min and Max are pointers because zero is a real bound. MinLen and MaxLen are
+// plain ints because a zero-length minimum is not a constraint.
+type Rules struct {
+	Required bool
+	MinLen   int
+	MaxLen   int
+	Min      *float64
+	Max      *float64
+	Pattern  string
+	Step     string
+}
+
+func num(f *float64) string {
+	if f == nil {
+		return ""
+	}
+	return strconv.FormatFloat(*f, 'f', -1, 64)
+}
+
+// FieldProps is the label, hint and error that wrap a control. The control
+// itself is { children... }: a field has no opinion about whether it holds an
+// input, a select or something this package has not met yet.
+//
+// Error and Hint occupy the same line. An error replaces the hint, because the
+// reader needs the problem, not the rule they just broke.
+type FieldProps struct {
+	// For must match the control's id, or the label is decorative.
+	For      string
+	Label    string
+	Required bool
+	Hint     string
+	Error    string
+	Attrs    templ.Attributes
+}
+
+templ Field(p FieldProps) {
+	<div class="field" { p.Attrs... }>
+		if p.Label != "" {
+			<label class="lbl" for={ p.For }>
+				{ p.Label }
+				if p.Required {
+					<span class="req" aria-hidden="true">*</span>
+				}
+			</label>
+		}
+		{ children... }
+		if p.Error != "" {
+			<div class="err" id={ p.For + "-error" }>
+				@Icon(IconProps{Name: IconAlert})
+				{ p.Error }
+			</div>
+		} else if p.Hint != "" {
+			<div class="hint" id={ p.For + "-hint" }>{ p.Hint }</div>
+		}
+	</div>
+}
+
+// FieldRow puts two fields side by side, collapsing to one column on a narrow
+// window.
+templ FieldRow() {
+	<div class="field-row">
+		{ children... }
+	</div>
+}
+
+// InputProps is a text-like control.
+// ReadOnly is what a field whose accessor declares no way to store a value
+// renders as. It is visibly not a hole you can type into, rather than being
+// hidden: the value is still worth reading.
+type InputProps struct {
+	ID          string
+	Name        string
+	Value       string
+	Type        string
+	Placeholder string
+	Mono        bool
+	ReadOnly    bool
+	Invalid     bool
+	Rules       Rules
+	Attrs       templ.Attributes
+}
+
+templ Input(p InputProps) {
+	<input
+		id={ p.ID }
+		class={ "input", templ.KV("mono", p.Mono), templ.KV("invalid", p.Invalid) }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Type != "" {
+			type={ p.Type }
+		} else {
+			type="text"
+		}
+		value={ p.Value }
+		if p.Placeholder != "" {
+			placeholder={ p.Placeholder }
+		}
+		readonly?={ p.ReadOnly }
+		required?={ p.Rules.Required }
+		if p.Rules.MinLen > 0 {
+			minlength={ strconv.Itoa(p.Rules.MinLen) }
+		}
+		if p.Rules.MaxLen > 0 {
+			maxlength={ strconv.Itoa(p.Rules.MaxLen) }
+		}
+		if p.Rules.Min != nil {
+			min={ num(p.Rules.Min) }
+		}
+		if p.Rules.Max != nil {
+			max={ num(p.Rules.Max) }
+		}
+		if p.Rules.Step != "" {
+			step={ p.Rules.Step }
+		}
+		if p.Rules.Pattern != "" {
+			pattern={ p.Rules.Pattern }
+		}
+		if p.Invalid {
+			aria-invalid="true"
+			aria-describedby={ p.ID + "-error" }
+		}
+		{ p.Attrs... }
+	/>
+}
+
+// Option is one choice in a Select. An Option with an empty Value is the
+// "unset" entry — the one that removes the argument from the URL.
+type Option struct {
+	Value string
+	Label string
+}
+
+type SelectProps struct {
+	ID      string
+	Name    string
+	Value   string
+	Options []Option
+	Attrs   templ.Attributes
+}
+
+templ Select(p SelectProps) {
+	<select
+		id={ p.ID }
+		class="input"
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		{ p.Attrs... }
+	>
+		for _, o := range p.Options {
+			<option value={ o.Value } selected?={ o.Value == p.Value }>{ o.Label }</option>
+		}
+	</select>
+}
+
+type CheckboxProps struct {
+	ID      string
+	Name    string
+	Value   string
+	Label   string
+	Checked bool
+	Attrs   templ.Attributes
+}
+
+templ Checkbox(p CheckboxProps) {
+	<input
+		id={ p.ID }
+		class="checkbox"
+		type="checkbox"
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		if p.Value != "" {
+			value={ p.Value }
+		}
+		if p.Label != "" {
+			aria-label={ p.Label }
+		}
+		checked?={ p.Checked }
+		{ p.Attrs... }
+	/>
+}
+
+// SwitchProps is a session-level mode, never saved data. If flipping it writes
+// something, it is a Checkbox in a form, not a Switch.
+type SwitchProps struct {
+	ID      string
+	Label   string
+	Checked bool
+	Attrs   templ.Attributes
+}
+
+templ Switch(p SwitchProps) {
+	<label class="switch">
+		<input id={ p.ID } type="checkbox" aria-label={ p.Label } checked?={ p.Checked } { p.Attrs... }/>
+		<span class="slider"></span>
+	</label>
+}
+
+// FormProps wraps a leaf's controls. Method defaults to post: a form that only
+// reads should be a link.
+type FormProps struct {
+	Action string
+	Method string
+	Attrs  templ.Attributes
+}
+
+templ Form(p FormProps) {
+	<form
+		if p.Action != "" {
+			action={ p.Action }
+		}
+		if p.Method != "" {
+			method={ p.Method }
+		} else {
+			method="post"
+		}
+		{ p.Attrs... }
+	>
+		{ children... }
+	</form>
+}

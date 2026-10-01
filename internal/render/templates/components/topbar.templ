@@ -1,0 +1,65 @@
+package components
+
+// Crumb is one step of the breadcrumb trail. The last one has no Href: it is
+// where you are.
+type Crumb struct {
+	Label string
+	Href  string
+}
+
+type BreadcrumbsProps struct {
+	Items []Crumb
+	Attrs templ.Attributes
+}
+
+templ Breadcrumbs(p BreadcrumbsProps) {
+	<nav class="crumbs" aria-label="Breadcrumb" { p.Attrs... }>
+		for i, c := range p.Items {
+			if i > 0 {
+				<span class="sep" aria-hidden="true">&rsaquo;</span>
+			}
+			if c.Href != "" && i < len(p.Items)-1 {
+				<a href={ c.Href }>{ c.Label }</a>
+			} else {
+				<span class="cur" aria-current="page">{ c.Label }</span>
+			}
+		}
+	</nav>
+}
+
+// TopBarProps is the application chrome above the content. The breadcrumb
+// lives here rather than in the page because it is the sidebar's partner: it
+// carries the location the sidebar cannot show.
+type TopBarProps struct {
+	Crumbs []Crumb
+	Attrs  templ.Attributes
+}
+
+templ TopBar(p TopBarProps) {
+	<header class="topbar" { p.Attrs... }>
+		@Breadcrumbs(BreadcrumbsProps{Items: p.Crumbs})
+		<div class="top-right">
+			{ children... }
+		</div>
+	</header>
+}
+
+type SearchProps struct {
+	Placeholder string
+	Shortcut    string
+	Attrs       templ.Attributes
+}
+
+templ Search(p SearchProps) {
+	<div class="search">
+		@Icon(IconProps{Name: IconSearch})
+		<input data-palette-input placeholder={ p.Placeholder } autocomplete="off" aria-label={ p.Placeholder } { p.Attrs... }/>
+		if p.Shortcut != "" {
+			<span class="kbd" aria-hidden="true">{ p.Shortcut }</span>
+		}
+	</div>
+}
+
+templ Avatar(initials string, name string) {
+	<div class="avatar" title={ name } aria-label={ name } role="img">{ initials }</div>
+}

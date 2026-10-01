@@ -1,0 +1,64 @@
+package components
+
+// StatePageProps replaces the whole content region. The wording matters: a
+// guard rejection says the check ran BEFORE anything was loaded, because
+// nothing was fetched and the page should not imply otherwise.
+type StatePageProps struct {
+	Icon  IconName
+	Title string
+	Desc  string
+	Attrs templ.Attributes
+}
+
+templ StatePage(p StatePageProps) {
+	<div class="state-page" { p.Attrs... }>
+		@Icon(IconProps{Name: p.Icon})
+		<p class="state-title">{ p.Title }</p>
+		if p.Desc != "" {
+			<p class="state-desc">{ p.Desc }</p>
+		}
+		{ children... }
+	</div>
+}
+
+// Problem is one compile failure: where it is, what is wrong, and what to do.
+// Fix is not optional. A problem a reader cannot act on is a problem reported
+// badly.
+type Problem struct {
+	Where  string
+	Detail string
+	Fix    string
+}
+
+// CompileErrorProps replaces the application at every address until it
+// compiles. Every problem is shown at once: the errors are structured rather
+// than scraped from a compiler, so there is no reason to report them one at a
+// time.
+type CompileErrorProps struct {
+	Problems []Problem
+	Attrs    templ.Attributes
+}
+
+templ CompileError(p CompileErrorProps) {
+	<div class="compile" { p.Attrs... }>
+		<h2>Failed to compile</h2>
+		<p class="count">{ problemCount(len(p.Problems)) }</p>
+		for _, e := range p.Problems {
+			<section>
+				<div class="where">{ e.Where }</div>
+				<pre>{ e.Detail }</pre>
+				if e.Fix != "" {
+					<p class="fix"><b>Fix:</b> { e.Fix }</p>
+				}
+			</section>
+		}
+		{ children... }
+	</div>
+}
+
+func problemCount(n int) string {
+	if n == 1 {
+		return "1 problem in this app."
+	}
+	return itoa(n) + " problems in this app."
+}

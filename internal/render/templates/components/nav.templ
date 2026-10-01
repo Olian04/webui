@@ -1,0 +1,107 @@
+package components
+
+// The sidebar is the one piece of structure that never disappears. It does not
+// become a top bar and it does not become a menu button; below 820px it
+// collapses to an icon rail instead.
+
+// Footer is a slot rather than part of { children... } because it sits outside
+// the scrolling nav: session switches are not navigation and must not scroll
+// away with it.
+type SidebarProps struct {
+	Brand  string
+	Footer templ.Component
+	Attrs  templ.Attributes
+}
+
+templ Sidebar(p SidebarProps) {
+	<aside class="sidebar" { p.Attrs... }>
+		<div class="side-brand">
+			<div class="logo" aria-hidden="true"><span></span></div>
+			<b>{ p.Brand }</b>
+		</div>
+		<nav class="side-scroll" aria-label="Main">
+			{ children... }
+		</nav>
+		if p.Footer != nil {
+			@p.Footer
+		}
+	</aside>
+}
+
+// SidebarFooter holds session-level switches. It is separated from the nav
+// because nothing in it navigates.
+templ SidebarFooter() {
+	<div class="side-foot">
+		{ children... }
+	</div>
+}
+
+// SidebarRow is one labelled control in the footer.
+templ SidebarRow(label string) {
+	<div class="side-row">
+		<span>{ label }</span>
+		{ children... }
+	</div>
+}
+
+templ NavSection(label string) {
+	<div class="nav-section">{ label }</div>
+}
+
+// NavItemProps is one entry.
+// Active is set by the page, not derived here, because a page may borrow
+// another page's entry: a detail page highlights the list it came from rather
+// than adding an entry of its own, and the breadcrumb carries the position.
+type NavItemProps struct {
+	Label  string
+	Href   string
+	Icon   IconName
+	Count  string
+	Active bool
+	Attrs  templ.Attributes
+}
+
+templ NavItem(p NavItemProps) {
+	<a
+		class={ "nav-item", templ.KV("active", p.Active) }
+		href={ p.Href }
+		if p.Active {
+			aria-current="page"
+		}
+		{ p.Attrs... }
+	>
+		@Icon(IconProps{Name: p.Icon, Class: "ni"})
+		<span>{ p.Label }</span>
+		if p.Count != "" {
+			<span class="nav-count">{ p.Count }</span>
+		}
+	</a>
+}
+
+// NavGroupProps is an expandable parent. Its children are NavItems.
+type NavGroupProps struct {
+	ID    string
+	Label string
+	Icon  IconName
+	Open  bool
+	Attrs templ.Attributes
+}
+
+templ NavGroup(p NavGroupProps) {
+	<div
+		class={ "nav-item", templ.KV("open", p.Open) }
+		data-group={ p.ID }
+		role="button"
+		tabindex="0"
+		aria-expanded={ boolAttr(p.Open) }
+		aria-controls={ p.ID }
+		{ p.Attrs... }
+	>
+		@Icon(IconProps{Name: p.Icon, Class: "ni"})
+		<span>{ p.Label }</span>
+		@Icon(IconProps{Name: IconChevron, Class: "chev"})
+	</div>
+	<div id={ p.ID } class={ "nav-sub", templ.KV("open", p.Open) } data-sub={ p.ID }>
+		{ children... }
+	</div>
+}

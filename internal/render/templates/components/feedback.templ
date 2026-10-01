@@ -1,0 +1,80 @@
+package components
+
+// ToastRegion is the live region toasts arrive in. It is rendered once per
+// document, empty, so that a toast added later is announced.
+templ ToastRegion() {
+	<div class="toasts" data-toasts role="status" aria-live="polite">
+		{ children... }
+	</div>
+}
+
+type ToastProps struct {
+	Tone  Tone
+	Title string
+	Desc  string
+	Attrs templ.Attributes
+}
+
+templ Toast(p ToastProps) {
+	<div class={ "toast", templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
+		<div>
+			<div class="toast-title">{ p.Title }</div>
+			if p.Desc != "" {
+				<div class="toast-desc">{ p.Desc }</div>
+			}
+		</div>
+	</div>
+}
+
+// EmptyStateProps replaces a leaf's rows when there are none. It names the
+// condition and then names the way out — an empty state that only says
+// "nothing here" has wasted the one moment it had.
+type EmptyStateProps struct {
+	Icon  IconName
+	Title string
+	Desc  string
+	Attrs templ.Attributes
+}
+
+templ EmptyState(p EmptyStateProps) {
+	<div class="empty" { p.Attrs... }>
+		@Icon(IconProps{Name: p.Icon})
+		<div class="empty-title">{ p.Title }</div>
+		if p.Desc != "" {
+			<div class="empty-desc">{ p.Desc }</div>
+		}
+		{ children... }
+	</div>
+}
+
+// NoteProps is an explanatory block beside content.
+type NoteProps struct {
+	Tone  Tone
+	Attrs templ.Attributes
+}
+
+templ Note(p NoteProps) {
+	<div class="note" { p.Attrs... }>
+		{ children... }
+	</div>
+}
+
+// StatusBarProps is the honesty bar: the request behind what is on screen. If
+// the screen changed, this says what changed and how much of it.
+type StatusBarProps struct {
+	Method string
+	URL    string
+	Note   string
+	Attrs  templ.Attributes
+}
+
+templ StatusBar(p StatusBarProps) {
+	<div class="statusbar" { p.Attrs... }>
+		<span class="method" data-method>{ p.Method }</span>
+		<span class="url" data-url>{ p.URL }</span>
+		<span class={ "netlog", templ.KV("on", p.Note != "") } data-netlog>
+			<span class="spin" aria-hidden="true"></span>
+			<span data-netmsg>{ p.Note }</span>
+		</span>
+	</div>
+}

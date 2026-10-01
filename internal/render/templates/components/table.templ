@@ -1,0 +1,289 @@
+package components
+
+import (
+	"fmt"
+	"strconv"
+)
+
+// The table is the densest surface in the design and the most common. It is
+// composed rather than configured: the caller loops its own rows and emits
+// cells, because the caller is the only thing that knows what a row is. A
+// data-driven Table(rows []Row) would force every caller to build an
+// intermediate shape first, and would still not cover a cell the design has
+// not met yet.
+
+type TableProps struct {
+	// Label is the accessible name, e.g. "Devices". Required: a table with no
+	// name is unusable with a screen reader.
+	Label string
+	Attrs templ.Attributes
+}
+
+templ Table(p TableProps) {
+	<table aria-label={ p.Label } { p.Attrs... }>
+		{ children... }
+	</table>
+}
+
+templ TableHead() {
+	<thead>
+		<tr>
+			{ children... }
+		</tr>
+	</thead>
+}
+
+templ TableBody() {
+	<tbody>
+		{ children... }
+	</tbody>
+}
+
+// ColumnProps is one header cell.
+// SortHref being non-empty is what makes a column sortable — there is no
+// separate Sortable bool, because a sortable column with no address is not a
+// thing this design can render. SortDir is set only on the column the table is
+// currently sorted by.
+type ColumnProps struct {
+	Label    string
+	Align    Align
+	Width    string
+	SortHref string
+	SortDir  SortDir
+	Attrs    templ.Attributes
+}
+
+templ Column(p ColumnProps) {
+	<th
+		class={ p.Align.cell(), templ.KV("sorted", p.SortDir != SortNone) }
+		if p.Width != "" {
+			style={ "width:" + p.Width }
+		}
+		if p.SortHref != "" {
+			aria-sort={ ariaSort(p.SortDir) }
+		}
+		{ p.Attrs... }
+	>
+		if p.SortHref != "" {
+			<a href={ p.SortHref }>
+				{ p.Label }
+				if p.SortDir == SortAsc {
+					@Icon(IconProps{Name: IconSortAsc, Class: "caret"})
+				}
+				if p.SortDir == SortDesc {
+					@Icon(IconProps{Name: IconSortDesc, Class: "caret"})
+				}
+			</a>
+		} else {
+			{ p.Label }
+		}
+	</th>
+}
+
+func ariaSort(d SortDir) string {
+	switch d {
+	case SortAsc:
+		return "ascending"
+	case SortDesc:
+		return "descending"
+	case SortNone:
+		return "none"
+	}
+	return "none"
+}
+
+// RowProps is one body row.
+//
+// Href makes the whole row a link. It sets the row up to be covered by the one
+// anchor that RowLink renders, which must appear in exactly one of the row's
+// cells. Two components rather than one because an anchor may only live inside
+// a cell — but the invariant is: Row.Href and RowLink.Href are the same
+// address, and there is never more than one RowLink in a row.
+type RowProps struct {
+	Href     string
+	Selected bool
+	Attrs    templ.Attributes
+}
+
+templ Row(p RowProps) {
+	<tr
+		class={ templ.KV("clickable", p.Href != ""), templ.KV("selected", p.Selected) }
+		{ p.Attrs... }
+	>
+		{ children... }
+	</tr>
+}
+
+// RowLink is the single anchor that covers a clickable row. The stylesheet
+// stretches it over every cell, so the row is one tab stop rather than six and
+// needs no script to be clickable.
+templ RowLink(href string) {
+	<a class="rowlink" href={ href }>
+		{ children... }
+	</a>
+}
+
+type CellProps struct {
+	Align   Align
+	Mono    bool
+	Dim     bool
+	ColSpan int
+	Attrs   templ.Attributes
+}
+
+templ Cell(p CellProps) {
+	<td
+		class={ p.Align.cell(), templ.KV("mono", p.Mono), templ.KV("dim", p.Dim) }
+		if p.ColSpan > 1 {
+			colspan={ strconv.Itoa(p.ColSpan) }
+		}
+		{ p.Attrs... }
+	>
+		{ children... }
+	</td>
+}
+
+// SelectAllColumn and SelectCell exist only when a table declares bulk
+// operations. A table that declares none has no checkbox column at all — not a
+// disabled one. Absence is the configuration.
+templ SelectAllColumn() {
+	<th class="pick">
+		<input class="checkbox" type="checkbox" data-pickall aria-label="Select all rows"/>
+	</th>
+}
+
+type SelectCellProps struct {
+	Name    string
+	Value   string
+	Label   string
+	Checked bool
+	Attrs   templ.Attributes
+}
+
+templ SelectCell(p SelectCellProps) {
+	<td class="pick">
+		<input
+			class="checkbox"
+			type="checkbox"
+			name={ p.Name }
+			value={ p.Value }
+			aria-label={ p.Label }
+			checked?={ p.Checked }
+			{ p.Attrs... }
+		/>
+	</td>
+}
+
+// ActionBarProps is the strip that appears above a table when rows are
+// selected. Selection is request state, not page state, so it never enters the
+// URL — which is why the count is rendered rather than read from an argument.
+type ActionBarProps struct {
+	Count int
+	Attrs templ.Attributes
+}
+
+templ ActionBar(p ActionBarProps) {
+	<div class="actionbar" { p.Attrs... }>
+		<strong data-selcount>{ fmt.Sprintf("%d selected", p.Count) }</strong>
+		<span class="dim" aria-hidden="true">·</span>
+		{ children... }
+	</div>
+}
+
+// GaugeProps draws a quantity as a bar beside its number. This is a cell
+// display mode, not a chart: the cell is still one field value. It is the
+// pressure-release valve for visual richness in a table, and it exists so that
+// a third kind of leaf does not have to.
+type GaugeProps struct {
+	Value float64
+	Max   float64
+	Text  string
+	Attrs templ.Attributes
+}
+
+func gaugeWidth(value, max float64) string {
+	if max <= 0 {
+		return "width:0%"
+	}
+	pct := value / max * 100
+	if pct < 3 {
+		pct = 3
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return fmt.Sprintf("width:%.0f%%", pct)
+}
+
+templ Gauge(p GaugeProps) {
+	<span class="gauge" { p.Attrs... }>
+		<span>{ p.Text }</span>
+		<span class="gauge-track" aria-hidden="true">
+			<span class="gauge-fill" style={ gaugeWidth(p.Value, p.Max) }></span>
+		</span>
+	</span>
+}
+
+// PagerProps is a table footer. Total below zero means the loader does not
+// know it — a real state, not an error: the range is shown without a total and
+// Next cannot be pre-disabled.
+type PagerProps struct {
+	Offset   int
+	Size     int
+	Total    int
+	PrevHref string
+	NextHref string
+	Attrs    templ.Attributes
+}
+
+func (p PagerProps) rangeLabel() string {
+	if p.Total == 0 {
+		return "No results"
+	}
+	end := p.Offset + p.Size
+	if p.Total > 0 && end > p.Total {
+		end = p.Total
+	}
+	if p.Total < 0 {
+		return fmt.Sprintf("%d–%d", p.Offset+1, end)
+	}
+	return fmt.Sprintf("%d–%d of %d", p.Offset+1, end, p.Total)
+}
+
+templ Pager(p PagerProps) {
+	<div class="pager-info">{ p.rangeLabel() }</div>
+	<div class="pager">
+		@Button(ButtonProps{
+			Href:     p.PrevHref,
+			Size:     SizeSmall,
+			Disabled: p.PrevHref == "",
+		}) {
+			Previous
+		}
+		@Button(ButtonProps{
+			Href:     p.NextHref,
+			Size:     SizeSmall,
+			Disabled: p.NextHref == "",
+		}) {
+			Next
+		}
+	</div>
+}
+
+// SkeletonRows stands in for a table body while that one panel reloads. It says
+// "this panel is reloading"; a whole-page cross-fade says "the page moved".
+// They are different claims and must never be substituted for each other.
+templ SkeletonRows(columns int, rows int) {
+	for range rows {
+		<tr class="skel-row" aria-hidden="true">
+			for i := range columns {
+				<td><span class="skel" style={ skelWidth(i) }></span></td>
+			}
+		</tr>
+	}
+}
+
+func skelWidth(i int) string {
+	widths := [...]int{70, 55, 40, 35, 50, 60}
+	return fmt.Sprintf("width:%d%%", widths[i%len(widths)])
+}

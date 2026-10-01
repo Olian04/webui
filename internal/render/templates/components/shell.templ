@@ -1,0 +1,103 @@
+package components
+
+import "strconv"
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// Theme selects the token block. Nothing else about the layout, spacing or
+// component structure differs between them.
+type Theme string
+
+const (
+	ThemeDark  Theme = "dark"
+	ThemeLight Theme = "light"
+)
+
+// DocumentProps is the whole page.
+//
+// Role is a document-level attribute rather than a prop on every control: the
+// stylesheet dims and explains gated controls from one place, so a viewer-only
+// render does not have to thread a permission through every component.
+type DocumentProps struct {
+	Title       string
+	Theme       Theme
+	Role        string
+	Stylesheets []string
+	Scripts     []string
+	Head        templ.Component
+	Attrs       templ.Attributes
+}
+
+templ Document(p DocumentProps) {
+	<!DOCTYPE html>
+	<html
+		lang="en"
+		data-theme={ themeOr(p.Theme) }
+		if p.Role != "" {
+			data-role={ p.Role }
+		}
+		{ p.Attrs... }
+	>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+			<title>{ p.Title }</title>
+			for _, href := range p.Stylesheets {
+				<link rel="stylesheet" href={ href }/>
+			}
+			for _, src := range p.Scripts {
+				<script src={ src } defer></script>
+			}
+			if p.Head != nil {
+				@p.Head
+			}
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
+
+func themeOr(t Theme) string {
+	if t == ThemeLight {
+		return string(ThemeLight)
+	}
+	return string(ThemeDark)
+}
+
+// AppShellProps is the five fixed regions. Only the content region scrolls,
+// and each region is a slot because the shell has no opinion about what goes
+// in them — it owns the geometry and the view-transition names, nothing else.
+type AppShellProps struct {
+	Sidebar templ.Component
+	TopBar  templ.Component
+	ToolBar templ.Component
+	Status  templ.Component
+	Toasts  templ.Component
+	Attrs   templ.Attributes
+}
+
+templ AppShell(p AppShellProps) {
+	<div class="app" { p.Attrs... }>
+		if p.Sidebar != nil {
+			@p.Sidebar
+		}
+		<div class="main">
+			if p.TopBar != nil {
+				@p.TopBar
+			}
+			if p.ToolBar != nil {
+				@p.ToolBar
+			}
+			<main class="scroll">
+				{ children... }
+			</main>
+		</div>
+	</div>
+	if p.Status != nil {
+		@p.Status
+	}
+	if p.Toasts != nil {
+		@p.Toasts
+	}
+}

@@ -1,0 +1,18 @@
+package components
+
+// BadgeProps is a status marker. The badge always carries its word: colour is
+// never the only thing saying what state something is in.
+type BadgeProps struct {
+	Tone  Tone
+	Dot   bool
+	Attrs templ.Attributes
+}
+
+templ Badge(p BadgeProps) {
+	<span class={ "badge", p.Tone.badge() } { p.Attrs... }>
+		if p.Dot {
+			<span class="dot" aria-hidden="true"></span>
+		}
+		{ children... }
+	</span>
+}

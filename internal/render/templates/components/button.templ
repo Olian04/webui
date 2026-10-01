@@ -1,0 +1,99 @@
+package components
+
+// ButtonProps describes one control.
+// Href is the field that matters. A control that navigates renders as an <a>
+// with a real address, so it works with scripting disabled, opens in a new tab
+// on middle click, and is reachable by keyboard without any help. Leave Href
+// empty only for a control that submits a form.
+//
+// Guard carries the reason the current viewer may not use this control. One
+// field drives both halves of the design's rule: the control dims and explains
+// itself, and the same check rejects the request. There is no second
+// authorisation rule to keep in sync.
+type ButtonProps struct {
+	Href    string
+	Variant Variant
+	Size    Size
+	Icon    IconName
+
+	// Type is the button type when Href is empty. The zero value is "submit",
+	// matching HTML.
+	Type  string
+	Name  string
+	Value string
+
+	// Disabled renders a control that cannot be used and has no explanation —
+	// a pager at the end of its range. If there IS an explanation, use Guard.
+	Disabled bool
+	Guard    string
+
+	Attrs templ.Attributes
+}
+
+templ Button(p ButtonProps) {
+	if p.Href != "" && !p.Disabled {
+		<a
+			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV("gated", p.Guard != "") }
+			href={ p.Href }
+			if p.Guard != "" {
+				data-guard={ p.Guard }
+			}
+			{ p.Attrs... }
+		>
+			@Icon(IconProps{Name: p.Icon})
+			{ children... }
+		</a>
+	} else if p.Href != "" {
+		// A disabled link is not a link. Rendering an <a> without href would
+		// leave a tab stop that goes nowhere.
+		<span class={ "btn", p.Variant.btn(), p.Size.btn(), "disabled" } aria-disabled="true" { p.Attrs... }>
+			@Icon(IconProps{Name: p.Icon})
+			{ children... }
+		</span>
+	} else {
+		<button
+			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV("gated", p.Guard != "") }
+			if p.Type != "" {
+				type={ p.Type }
+			} else {
+				type="submit"
+			}
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Value != "" {
+				value={ p.Value }
+			}
+			disabled?={ p.Disabled }
+			if p.Guard != "" {
+				data-guard={ p.Guard }
+			}
+			{ p.Attrs... }
+		>
+			@Icon(IconProps{Name: p.Icon})
+			{ children... }
+		</button>
+	}
+}
+
+// IconButtonProps is a control whose whole label is its icon, so Title is
+// required: it is the accessible name as well as the tooltip.
+type IconButtonProps struct {
+	Icon  IconName
+	Title string
+	Href  string
+	Guard string
+	Attrs templ.Attributes
+}
+
+templ IconButton(p IconButtonProps) {
+	if p.Href != "" {
+		<a class={ "iconbtn", templ.KV("gated", p.Guard != "") } href={ p.Href } title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
+			@Icon(IconProps{Name: p.Icon})
+		</a>
+	} else {
+		<button class={ "iconbtn", templ.KV("gated", p.Guard != "") } type="button" title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
+			@Icon(IconProps{Name: p.Icon})
+		</button>
+	}
+}
