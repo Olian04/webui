@@ -192,7 +192,7 @@ templ devicesTable(d DevicesData) {
 							@c.EmptyState(c.EmptyStateProps{
 								Icon:  c.IconSearch,
 								Title: "No devices match the current arguments",
-								Desc:  "Clear them in the toolbar to see all 37.",
+								Desc:  "Clear them in the toolbar to see all " + fmt.Sprintf("%d", d.Total) + ".",
 							})
 						}
 					}
@@ -207,8 +207,11 @@ templ devicesTable(d DevicesData) {
 
 templ column(d DevicesData, key string, label string, align c.Align, width string) {
 	@c.Column(c.ColumnProps{
-		Label: label, Align: align, Width: width,
-		SortHref: d.SortHref(key), SortDir: d.SortDir(key),
+		Label: label, 
+		Align: align, 
+		Width: width,
+		SortHref: d.SortHref(key), 
+		SortDir: d.SortDir(key),
 	})
 }
 
