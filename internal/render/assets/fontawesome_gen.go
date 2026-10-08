@@ -6,8 +6,8 @@
 //
 //	go run fontawesome_gen.go <fontawesome-free-X-desktop>
 //
-// The font, fonts/fa-solid-900.otf, is copied from that download by hand, with
-// its license.
+// The font, fonts/fa-solid-900.woff2, is the same release's webfonts/ file, and
+// the license is its LICENSE.txt; both are copied by hand.
 package main
 
 import (
@@ -62,7 +62,7 @@ func main() {
   font-style: normal;
   font-weight: 900;
   font-display: block;
-  src: url(fa-solid-900.otf) format('opentype');
+  src: url(fa-solid-900.woff2) format('woff2');
 }
 .fa-solid {
   font-family: 'Font Awesome Solid';

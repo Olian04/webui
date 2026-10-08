@@ -43,7 +43,7 @@ func (r *Renderer) Assets() (http.Handler, error) {
 	files := map[string]*asset{}
 	for name, path := range map[string]string{
 		"app.css": "css/app.css", "prefs.js": "js/prefs.js", "enhance.js": "js/enhance.js",
-		"fontawesome.css": "css/fontawesome.css", "fa-solid-900.otf": "fonts/fa-solid-900.otf",
+		"fontawesome.css": "css/fontawesome.css", "fa-solid-900.woff2": "fonts/fa-solid-900.woff2",
 	} {
 		body, err := assets.FS.ReadFile(path)
 		if err != nil {
@@ -53,8 +53,8 @@ func (r *Renderer) Assets() (http.Handler, error) {
 		switch {
 		case strings.HasSuffix(name, ".js"):
 			mime = "text/javascript; charset=utf-8"
-		case strings.HasSuffix(name, ".otf"):
-			mime = "font/otf"
+		case strings.HasSuffix(name, ".woff2"):
+			mime = "font/woff2"
 		}
 		files[name] = newAsset(body, mime)
 	}

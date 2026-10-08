@@ -101,11 +101,11 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 	css := serve(h, http.MethodGet, "/admin/_webui/fontawesome.css")
 	assert.Equal(t, css.Code, http.StatusOK)
 	assert.Contains(t, css.Body.String(), `.fa-house::before{content:"\f015"}`)
-	assert.Contains(t, css.Body.String(), `url(fa-solid-900.otf)`) // beside the stylesheet, so a relative url finds it
+	assert.Contains(t, css.Body.String(), `url(fa-solid-900.woff2)`) // beside the stylesheet, so a relative url finds it
 
-	font := serve(h, http.MethodGet, "/admin/_webui/fa-solid-900.otf")
+	font := serve(h, http.MethodGet, "/admin/_webui/fa-solid-900.woff2")
 	assert.Equal(t, font.Code, http.StatusOK)
-	assert.Equal(t, font.Header().Get("Content-Type"), "font/otf")
+	assert.Equal(t, font.Header().Get("Content-Type"), "font/woff2")
 }
 
 func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
