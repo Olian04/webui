@@ -33,6 +33,12 @@ Unit tests are `*_test.go` next to the source they cover, same package. Internal
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 
+Icons are Font Awesome Free (solid), drawn with a vendored font. The font is
+`internal/render/assets/fonts/` (SIL OFL, license beside it); `css/fontawesome.css`
+and `icons.txt` are generated from a Font Awesome Free download by
+`go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. `icons.txt`
+is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
+
 ## Dependency direction
 
 `pkg/webui` → `internal/<phase>`. Never reverse: `internal/` packages do not import `pkg/`.

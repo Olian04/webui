@@ -130,6 +130,25 @@ Straightforward: one page, one 32px entry, with the active treatment (Active
 background, full-strength text, 2px primary bar at the left edge) when it is
 the current page.
 
+`Nav.Icon` is the name of a Font Awesome Free solid icon, `"house"` for
+`fa-house`, drawn at the left of the entry. The renderer uses it as a class
+(`<i class="fa-solid fa-house">`) and serves the icon font itself, so the
+content security policy stays `'self'` and nothing is fetched from a CDN. A
+name that is not in the free solid set (or is written `fa-house`) is a compile
+error, so a typo cannot draw nothing. Every icon the library draws for itself
+(info, alert, filter, sort carets, refresh) is a Font Awesome icon too. The sidebar can be collapsed to a 56px rail of icons, by the
+button in its footer (the choice is a browser preference, so it stays out of
+the address) and always below 820px. An entry with no icon holds the place of one
+in the full sidebar, so labels line up, and shows its label's first letter,
+capitalised, in the rail.
+
+### The landing page
+
+A page declared at `Path: "/"` is the landing page. The brand in the sidebar
+(logo and name) and the first breadcrumb link to it. It usually has no `Nav`
+label of its own, since the brand is its entry. An app with no such page sends
+the root to the first entry in the navigation.
+
 ### `Nav.Shadow` → borrowed highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not

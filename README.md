@@ -22,7 +22,11 @@ import (
 //go:embed resources/logo.png
 var logoBytes []byte
 
-var DevicesNav = webui.Nav{Label: "Devices"}
+// An icon is the name of a Font Awesome Free solid icon, "display" for
+// fa-display, drawn with the icon font the library serves. An unknown name is a
+// compile error. An entry with none shows its label's first letter, capitalised,
+// where the sidebar is collapsed to icons.
+var DevicesNav = webui.Nav{Label: "Devices", Icon: "display"}
 
 // A page's arguments are one struct. Fields named in the Path are path
 // segments; the rest are query parameters.
@@ -222,9 +226,9 @@ corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
 | --- | --- |
 | `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs (`Key`) beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
 | `sites.go` | a nested path with a parent breadcrumb, `Nav.Shadow`, two stateful tables on one page with their own `ID`s, a second page contributing search results |
-| `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` that builds a query argument, gating under `-viewer` |
+| `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer` |
 | `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
-| `system.go` | a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
+| `system.go` | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
 | `main.go` and `logo.go` | `Brand.Logo`, `Theme.Tokens`, `Compile` and `MustCompile`, the compile-error page |
 
 Everything works with JavaScript switched off: every control is a real link or
