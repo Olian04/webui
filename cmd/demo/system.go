@@ -34,13 +34,16 @@ var (
 // shown as a value. Here that is a status page, with a badge and a bar.
 var System = webui.Page[webui.NoArgs]{
 	Path: "/system",
-	Nav:  webui.Nav{Label: "System", Section: "Operations"},
-	Body: webui.Form[SystemInfo]{
-		Title:  "Collector",
-		Desc:   "A Form with no Submit: read-only, nothing to save.",
-		Load:   func(context.Context) (SystemInfo, error) { return service.System(), nil },
-		Fields: []webui.Accessor[SystemInfo]{webui.Group[SystemInfo]{Version, Health}, webui.Group[SystemInfo]{Uptime, Queue}, DiskUsed},
-	},
+	Nav:  webui.Nav{Label: "System", Icon: "wave-square", Section: "Operations"},
+	Body: SystemStatus,
+}
+
+// SystemStatus is also on the landing page.
+var SystemStatus = webui.Form[SystemInfo]{
+	Title:  "Collector",
+	Desc:   "A Form with no Submit: read-only, nothing to save.",
+	Load:   func(context.Context) (SystemInfo, error) { return service.System(), nil },
+	Fields: []webui.Accessor[SystemInfo]{webui.Group[SystemInfo]{Version, Health}, webui.Group[SystemInfo]{Uptime, Queue}, DiskUsed},
 }
 
 var (
@@ -54,7 +57,7 @@ var (
 // a viewer the page is the "Not permitted" state, and the log was never read.
 var Audit = webui.Page[webui.NoArgs]{
 	Path:  "/audit",
-	Nav:   webui.Nav{Label: "Audit log"},
+	Nav:   webui.Nav{Label: "Audit log", Icon: "list"},
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
 		ID:       "audit",
@@ -69,4 +72,12 @@ var Audit = webui.Page[webui.NoArgs]{
 		},
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},
+}
+
+// The landing page is the page at "/". It has no Nav of its own: the brand in
+// the sidebar and the first breadcrumb both lead here. Without such a page the
+// root goes to the first entry in the navigation.
+var Overview = webui.Page[webui.NoArgs]{
+	Path: "/",
+	Body: webui.Stack{SystemStatus, SitesTable},
 }

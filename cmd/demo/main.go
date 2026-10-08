@@ -32,7 +32,7 @@ var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
 	// -accent flag overrides one token (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
-	Pages: webui.Pages{Devices, Details, Sites, SiteDetail, Alerts, Ingest, Retention, System, Audit},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
 }
 
 var (

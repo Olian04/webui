@@ -49,7 +49,7 @@ func TestEveryPageServes(t *testing.T) {
 	h := handler(t)
 	for _, path := range []string{
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw",
-		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/settings", "/admin/retention",
+		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/",
 	} {
 		rec := get(h, path)
@@ -103,14 +103,52 @@ func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
 	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw"), 3) // the Raw tab: the same table
 }
 
+func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
+	h := handler(t)
+	for _, root := range []string{"/admin", "/admin/"} {
+		rec := get(h, root)
+		assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
+		assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
+		assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it
+	}
+}
+
+func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
+	body := get(handler(t), "/admin/alert").Body.String()
+	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention</span>`) // no icon
+	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`))                                    // it has the bell
+}
+
 func TestTabsHaveAStableKey(t *testing.T) {
 	body := get(handler(t), "/admin/device/dev_27c38b?tabs.tab=raw").Body.String()
 	assert.Contains(t, body, `<a class="tab active" href="/admin/device/dev_27c38b?tabs.tab=raw" aria-current="page">Raw events</a>`)
 }
 
-func TestAlertsLinkToTheDeviceWithAQueryArgument(t *testing.T) {
-	body := get(handler(t), "/admin/alert").Body.String()
-	assert.Contains(t, body, `href="/admin/device/dev_27c38b?minutes=15&amp;webui.from=%2Fadmin%2Falert"`)
+func TestAnAlertHasItsOwnPageAndItsRowsOpenIt(t *testing.T) {
+	h := handler(t)
+	assert.Contains(t, get(h, "/admin/alert").Body.String(), `href="/admin/alert/alt_000?webui.from=%2Fadmin%2Falert"`)
+	assert.Contains(t, get(h, "/admin/site/Stockholm").Body.String(), `href="/admin/alert/alt_000?webui.from=%2Fadmin%2Fsite%2FStockholm"`)
+
+	// It shows the alert, lights Alerts in the sidebar, and cancels to the list.
+	page := get(h, "/admin/alert/alt_000").Body.String()
+	assert.Contains(t, page, "Ingest lag above 5s")
+	assert.Contains(t, page, `class="nav-item active" href="/admin/alert"`)
+	assert.Equal(t, cancelHref(t, h, "/admin/alert/alt_000"), "/admin/alert")
+
+	assert.Equal(t, get(h, "/admin/alert/nope").Code, http.StatusForbidden) // the Guard: no such alert
+}
+
+func TestTheAlertPageLinksToItsDeviceWithAQueryArgument(t *testing.T) {
+	body := get(handler(t), "/admin/alert/alt_000").Body.String()
+	assert.Contains(t, body, `href="/admin/device/dev_27c38b?minutes=15&amp;webui.from=%2Fadmin%2Falert%2Falt_000"`)
+}
+
+func TestAcknowledgingFromTheAlertPageReturnsToWhereItWasOpenedFrom(t *testing.T) {
+	h := handler(t)
+	rec := post(h, "/admin/alert/alt_001?webui.from=%2Fadmin%2Falert", url.Values{"_leaf": {"p.0"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
+	assert.False(t, strings.Contains(get(h, "/admin/alert").Body.String(), "alt_001"))
 }
 
 func TestActionsRowBulkAndDestructive(t *testing.T) {
@@ -139,6 +177,8 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	body := get(h, "/admin/alert").Body.String()
 	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role">`)
 	assert.Contains(t, body, `disabled>Dismiss</button>`)
+
+	assert.Contains(t, get(h, "/admin/alert/alt_000").Body.String(), `disabled>Acknowledge</button>`)
 
 	settings := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, settings, `disabled>Save</button>`) // a form's submit is gated by the same Guard

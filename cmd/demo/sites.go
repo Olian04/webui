@@ -11,7 +11,7 @@ import (
 
 // SitesNav is declared on its own so the site page can light it without having
 // an entry of its own: Nav.Shadow names it.
-var SitesNav = webui.Nav{Label: "Sites"}
+var SitesNav = webui.Nav{Label: "Sites", Icon: "location-dot"}
 
 // The site is a path argument, so each site has its own address, and the
 // breadcrumb reads Collector › Sites › Stockholm: the parent is the page mounted
@@ -66,34 +66,38 @@ var Sites = webui.Page[webui.NoArgs]{
 		}
 		return results, nil
 	},
-	Body: webui.Table[SiteSummary]{
-		Title: "Sites",
-		Desc:  "An unpaged table: Load returns every row, so it also does the sorting and the filtering.",
-		Load: func(_ context.Context, q webui.Query) (webui.Rows[SiteSummary], error) {
-			sites := filteredBy(service.Sites(), q.Filters, map[string]func(s SiteSummary, values []string) bool{
-				"name":   containing(func(s SiteSummary) string { return s.Name }),
-				"health": oneOf(func(s SiteSummary) string { return s.Health() }),
-			})
-			sites = within(sites, boundsOf(q.Ranges), map[string]func(SiteSummary) float64{
-				"devices":  func(s SiteSummary) float64 { return float64(s.Devices) },
-				"degraded": func(s SiteSummary) float64 { return float64(s.Degraded) },
-				"rate":     func(s SiteSummary) float64 { return s.Rate },
-			})
-			sites = sortedBy(sites, q.Sort, q.Desc, map[string]func(x, y SiteSummary) int{
-				"name":     func(x, y SiteSummary) int { return cmp.Compare(x.Name, y.Name) },
-				"devices":  func(x, y SiteSummary) int { return cmp.Compare(x.Devices, y.Devices) },
-				"degraded": func(x, y SiteSummary) int { return cmp.Compare(x.Degraded, y.Degraded) },
-				"health":   func(x, y SiteSummary) int { return cmp.Compare(x.Health(), y.Health()) },
-				"rate":     func(x, y SiteSummary) int { return cmp.Compare(x.Rate, y.Rate) },
-			})
-			return webui.Rows[SiteSummary]{Items: sites, Total: len(sites)}, nil
-		},
-		RowClick: webui.Link[SiteSummary, SiteArgs]{
-			Page: SiteDetail,
-			Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
-		},
-		Columns: []webui.Accessor[SiteSummary]{SiteName, SiteDevicesCount, SiteDegraded, SiteHealth, SiteRate},
+	Body: SitesTable,
+}
+
+// SitesTable is also on the landing page: a leaf is a value, so any page can
+// hold the one a page already has.
+var SitesTable = webui.Table[SiteSummary]{
+	Title: "Sites",
+	Desc:  "An unpaged table: Load returns every row, so it also does the sorting and the filtering.",
+	Load: func(_ context.Context, q webui.Query) (webui.Rows[SiteSummary], error) {
+		sites := filteredBy(service.Sites(), q.Filters, map[string]func(s SiteSummary, values []string) bool{
+			"name":   containing(func(s SiteSummary) string { return s.Name }),
+			"health": oneOf(func(s SiteSummary) string { return s.Health() }),
+		})
+		sites = within(sites, boundsOf(q.Ranges), map[string]func(SiteSummary) float64{
+			"devices":  func(s SiteSummary) float64 { return float64(s.Devices) },
+			"degraded": func(s SiteSummary) float64 { return float64(s.Degraded) },
+			"rate":     func(s SiteSummary) float64 { return s.Rate },
+		})
+		sites = sortedBy(sites, q.Sort, q.Desc, map[string]func(x, y SiteSummary) int{
+			"name":     func(x, y SiteSummary) int { return cmp.Compare(x.Name, y.Name) },
+			"devices":  func(x, y SiteSummary) int { return cmp.Compare(x.Devices, y.Devices) },
+			"degraded": func(x, y SiteSummary) int { return cmp.Compare(x.Degraded, y.Degraded) },
+			"health":   func(x, y SiteSummary) int { return cmp.Compare(x.Health(), y.Health()) },
+			"rate":     func(x, y SiteSummary) int { return cmp.Compare(x.Rate, y.Rate) },
+		})
+		return webui.Rows[SiteSummary]{Items: sites, Total: len(sites)}, nil
 	},
+	RowClick: webui.Link[SiteSummary, SiteArgs]{
+		Page: SiteDetail,
+		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
+	},
+	Columns: []webui.Accessor[SiteSummary]{SiteName, SiteDevicesCount, SiteDegraded, SiteHealth, SiteRate},
 }
 
 var SiteDetail = webui.Page[SiteArgs]{
@@ -146,9 +150,9 @@ var SiteAlerts = webui.Table[Alert]{
 		alerts := alertRows(service.AlertsAt(args.Name), q)
 		return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
 	},
-	RowClick: webui.Link[Alert, DeviceArgs]{
-		Page: Details,
-		Args: func(_ context.Context, a Alert) DeviceArgs { return DeviceArgs{ID: a.Device, Minutes: 15} },
+	RowClick: webui.Link[Alert, AlertArgs]{
+		Page: AlertDetails,
+		Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },
 	},
 	Columns: []webui.Accessor[Alert]{AlertID, Severity, AlertDevice},
 }

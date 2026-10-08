@@ -314,6 +314,18 @@ func (s *Service) Events(window int) []Event {
 	return events
 }
 
+// Alert is one alert, acknowledged or not.
+func (s *Service) Alert(id string) (Alert, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, a := range s.alerts {
+		if a.ID == id {
+			return a, true
+		}
+	}
+	return Alert{}, false
+}
+
 // OpenAlerts are the alerts nobody has acknowledged.
 func (s *Service) OpenAlerts() []Alert {
 	s.mu.Lock()

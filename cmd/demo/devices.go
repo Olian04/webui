@@ -8,7 +8,7 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-var DevicesNav = webui.Nav{Label: "Devices", Section: "Platform"}
+var DevicesNav = webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"}
 
 // The device id is a path argument, so each device has its own address. The query
 // arguments have no control on the page; they arrive in the address:

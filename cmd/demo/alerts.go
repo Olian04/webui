@@ -30,9 +30,11 @@ var (
 	}
 )
 
+var AlertsNav = webui.Nav{Label: "Alerts", Icon: "bell"}
+
 var Alerts = webui.Page[webui.NoArgs]{
 	Path: "/alert",
-	Nav:  webui.Nav{Label: "Alerts"},
+	Nav:  AlertsNav,
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
@@ -40,11 +42,10 @@ var Alerts = webui.Page[webui.NoArgs]{
 			alerts := alertRows(service.OpenAlerts(), q)
 			return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
 		},
-		// A row opens the device the alert is about, narrowed to the last 15
-		// minutes: the Link builds the destination's arguments, query ones too.
-		RowClick: webui.Link[Alert, DeviceArgs]{
-			Page: Details,
-			Args: func(_ context.Context, a Alert) DeviceArgs { return DeviceArgs{ID: a.Device, Minutes: 15} },
+		// A row opens that alert's own page, whose id is a path argument.
+		RowClick: webui.Link[Alert, AlertArgs]{
+			Page: AlertDetails,
+			Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },
 		},
 		// Actions and bulk actions name rows by Key, never by position.
 		Key:         func(a Alert) string { return a.ID },
@@ -52,6 +53,79 @@ var Alerts = webui.Page[webui.NoArgs]{
 		Actions:     []webui.Action[Alert]{Dismiss},
 		BulkActions: []webui.Action[[]Alert]{Acknowledge, Delete},
 	},
+}
+
+type AlertArgs struct {
+	ID string `webui:"id"`
+}
+
+// AlertDetails is one alert: a form of read-only fields whose only action is to
+// acknowledge it, beside the device it is about.
+var AlertDetails = webui.Page[AlertArgs]{
+	Path: "/alert/{id}",
+	Nav:  webui.Nav{Shadow: &AlertsNav}, // no entry of its own: it lights Alerts
+	Guard: func(_ context.Context, a AlertArgs) error {
+		if _, ok := service.Alert(a.ID); !ok {
+			return fmt.Errorf("there is no alert %q", a.ID)
+		}
+		return nil
+	},
+	Body: webui.Split{AlertForm, AlertDeviceTable},
+}
+
+// A form with no writable field: every accessor lacks a Store, so it only shows
+// the alert, and its Submit is what a person does about it.
+var AlertForm = webui.Form[Alert]{
+	Title: "Alert",
+	Desc:  "A Form whose fields are all read-only, with one action.",
+	Load: func(ctx context.Context) (Alert, error) {
+		args, err := webui.ArgsOf[AlertArgs](ctx)
+		if err != nil {
+			return Alert{}, err
+		}
+		a, _ := service.Alert(args.ID)
+		return a, nil
+	},
+	Fields: []webui.Accessor[Alert]{
+		webui.Group[Alert]{AlertID, Severity},
+		AlertDevice,
+		Message,
+	},
+	Submit: AcknowledgeAlert,
+}
+
+var AcknowledgeAlert = webui.Action[Alert]{
+	Label: "Acknowledge",
+	Guard: canEdit[Alert],
+	Run: func(_ context.Context, a Alert) (webui.Effect, error) {
+		service.Acknowledge(a.ID)
+		return webui.Effect{Toast: "Acknowledged " + a.ID}, nil
+	},
+}
+
+// AlertDeviceTable is the device the alert is about, as a one-row table whose row
+// opens it, narrowed to the last 15 minutes: the Link builds the destination's
+// arguments, query ones too.
+var AlertDeviceTable = webui.Table[Device]{
+	ID:    "device",
+	Title: "Device",
+	Load: func(ctx context.Context, _ webui.Query) (webui.Rows[Device], error) {
+		args, err := webui.ArgsOf[AlertArgs](ctx)
+		if err != nil {
+			return webui.Rows[Device]{}, err
+		}
+		alert, _ := service.Alert(args.ID)
+		device, ok := service.Device(alert.Device)
+		if !ok {
+			return webui.Rows[Device]{}, nil
+		}
+		return webui.Rows[Device]{Items: []Device{device}, Total: 1}, nil
+	},
+	RowClick: webui.Link[Device, DeviceArgs]{
+		Page: Details,
+		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID, Minutes: 15} },
+	},
+	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Site},
 }
 
 var Dismiss = webui.Action[Alert]{
