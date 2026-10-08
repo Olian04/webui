@@ -14,7 +14,6 @@
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
-| `test/util/mock`   | Mock HTTP mux for integration tests.                                              |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
 `pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
@@ -51,7 +50,7 @@ Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
 ## Tests
 
-`test/` must import `pkg/webui` only, not `internal/`. `test/util/*` is the exception: assertions and mocks only, imported by tests.
+`test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
 
 ---
 

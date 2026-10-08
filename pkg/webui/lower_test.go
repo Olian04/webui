@@ -36,15 +36,15 @@ func fixture() App {
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
 				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
-			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Rows[dev], error) { return Rows[dev]{}, nil }}}}},
+			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Window[dev], error) { return Window[dev]{}, nil }}}}},
 		}},
 	}
 	list := Page[listArgs]{
 		Path: "/device",
 		Nav:  Nav{Label: "Devices"},
 		Body: Table[dev]{
-			Load: func(context.Context, Query) (Rows[dev], error) {
-				return Rows[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, nil
+			Load: func(context.Context, Query) (Window[dev], error) {
+				return Window[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, nil
 			},
 			ID:       "devices",
 			PageSize: 2,

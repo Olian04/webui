@@ -87,15 +87,15 @@ var Devices = webui.Page[webui.NoArgs]{
 		// handed the window, the sort and the filters and does that work. Every
 		// other table in the demo says only what its rows are, with Rows, and
 		// leaves the rest to the library.
-		Load: func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
 			if q.Search != "" {
 				found := service.Find(q.Search, q.Limit)
-				return webui.Rows[Device]{Items: found, Total: len(found)}, nil
+				return webui.Window[Device]{Items: found, Total: len(found)}, nil
 			}
 			// A column is named by its Label. The numeric columns, Occurrences and
 			// Rate / s, arrive as bounds.
 			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
-			return webui.Rows[Device]{Items: devices, Total: total}, nil
+			return webui.Window[Device]{Items: devices, Total: total}, nil
 		},
 		RowClick: webui.Link[Device, DeviceArgs]{
 			Page: Details,

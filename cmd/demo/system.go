@@ -64,11 +64,11 @@ var Audit = webui.Page[webui.NoArgs]{
 		Title:    "Audit log",
 		Desc:     "The total is not known: Load returns a window and no count, so the pager offers Next while a page is full.",
 		PageSize: 8,
-		Load: func(_ context.Context, q webui.Query) (webui.Rows[AuditEntry], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[AuditEntry], error) {
 			// Rows.Total is left zero: unknown, not "zero rows". The table pages by
 			// "a full page may have a successor". (Sort and filters are not offered
 			// by this source, so Load ignores them.)
-			return webui.Rows[AuditEntry]{Items: service.Audit(q.Offset, q.Limit)}, nil
+			return webui.Window[AuditEntry]{Items: service.Audit(q.Offset, q.Limit)}, nil
 		},
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},

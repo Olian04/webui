@@ -88,8 +88,8 @@ func newShop() *shop {
 		Path: "/device", Nav: webui.Nav{Label: "Devices"},
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
-				return webui.Rows[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+				return webui.Window[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, nil
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},

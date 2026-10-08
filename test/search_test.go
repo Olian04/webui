@@ -100,12 +100,12 @@ func TestSearchOfALoadTableIsHandedTheTextInQuerySearch(t *testing.T) {
 
 	var seen webui.Query
 	h := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Load = func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
+		t.Load = func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
 			seen = q
 			if q.Search == "" {
-				return webui.Rows[Device]{Items: searchDevices(), Total: 3}, nil
+				return webui.Window[Device]{Items: searchDevices(), Total: 3}, nil
 			}
-			return webui.Rows[Device]{Items: searchDevices()[2:], Total: 1}, nil
+			return webui.Window[Device]{Items: searchDevices()[2:], Total: 1}, nil
 		}
 		return t
 	}, nil)

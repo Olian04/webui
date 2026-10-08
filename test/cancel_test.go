@@ -27,8 +27,8 @@ func cancelApp(redirect string) http.Handler {
 
 	rows := func(dest webui.PageRef[cancelArgs]) webui.Table[Device] {
 		return webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
-				return webui.Rows[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
 			},
 			RowClick: webui.Link[Device, cancelArgs]{
 				Page: dest,

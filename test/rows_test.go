@@ -137,7 +137,7 @@ func TestATableNeedsExactlyOneOfRowsAndLoad(t *testing.T) {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}}}
 	}
 	rows := func(context.Context) ([]Device, error) { return nil, nil }
-	load := func(context.Context, webui.Query) (webui.Rows[Device], error) { return webui.Rows[Device]{}, nil }
+	load := func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil }
 
 	var neither string
 	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {

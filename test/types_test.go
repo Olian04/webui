@@ -86,8 +86,8 @@ func TestSketchTypes(t *testing.T) {
 		Path: "/device",
 		Nav:  DevicesNav,
 		Body: webui.Table[Device]{
-			Load: func(_ context.Context, _ webui.Query) (webui.Rows[Device], error) {
-				return webui.Rows[Device]{}, nil
+			Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], error) {
+				return webui.Window[Device]{}, nil
 			},
 			RowClick: webui.Link[Device, DetailsArgs]{
 				Page: Details,

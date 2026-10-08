@@ -29,8 +29,8 @@ var shopList = webui.Page[webui.NoArgs]{
 	Path: shopListPath,
 	Nav:  webui.Nav{Label: "Shop"},
 	Body: webui.Table[Device]{
-		Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
-			return webui.Rows[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, nil
+		Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+			return webui.Window[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, nil
 		},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Page: shopDetail,
@@ -84,8 +84,8 @@ func TestLinkAndOpenAcceptAPageIDInPlaceOfAPage(t *testing.T) {
 			return nil
 		},
 		Body: webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
-				return webui.Rows[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
 			},
 			// The destination named by its ID, not by the page.
 			RowClick: webui.Link[Device, shopItemArgs]{

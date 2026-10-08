@@ -45,10 +45,10 @@ type Range struct {
 	Min, Max *float64
 }
 
-// Rows is one window of a table's rows. Total is the count across all pages;
+// Window is one window of a table's rows, as Load returns it. Total is the count across all pages;
 // when it is smaller than Offset plus len(Items) it is taken as unknown, so a
 // loader that does not count can leave it zero.
-type Rows[M any] struct {
+type Window[M any] struct {
 	Items []M
 	Total int
 }
@@ -91,7 +91,7 @@ type Table[M any] struct {
 	ID          string
 	PageSize    int
 	Rows        func(ctx context.Context) ([]M, error)
-	Load        func(ctx context.Context, q Query) (Rows[M], error)
+	Load        func(ctx context.Context, q Query) (Window[M], error)
 	Search      bool
 	Key         func(M) string
 	RowClick    RowClick[M]

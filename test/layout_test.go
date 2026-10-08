@@ -25,9 +25,9 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	table := func(i int, title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			ID: strings.ToLower(title), Title: title,
-			Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
+			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
 				loads[i].Add(1)
-				return webui.Rows[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		}

@@ -14,8 +14,8 @@ type okArgs struct {
 	Id string
 }
 
-func okRows(context.Context, webui.Query) (webui.Rows[Device], error) {
-	return webui.Rows[Device]{}, nil
+func okRows(context.Context, webui.Query) (webui.Window[Device], error) {
+	return webui.Window[Device]{}, nil
 }
 
 func idCol() webui.Accessor[Device] {
