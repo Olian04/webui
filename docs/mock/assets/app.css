@@ -1007,6 +1007,23 @@ tbody tr:last-child {
 }
 tbody tr.clickable {
   cursor: pointer;
+  position: relative;
+}
+/* A clickable row is one real link covering the whole row. The single anchor
+   stretches over every cell, so the row is one tab stop, middle-click opens it
+   in a new tab, and it works without script. Checkboxes and action buttons sit
+   above it (see td.pick, td.actions). */
+.rowlink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.rowlink:focus-visible {
+  outline: none;
+}
+.rowlink:focus-visible::after {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
 }
 tbody tr:hover {
   background: var(--hover);

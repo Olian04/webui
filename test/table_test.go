@@ -248,3 +248,14 @@ func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
 	// The page's own address, view state included, is what a refresh link holds.
 	assert.Contains(t, body, `href="/admin/device?devices.offset=10&amp;devices.sort=id" data-refresh`)
 }
+
+// A clickable row is one link stretched over the whole row by the stylesheet;
+// without these rules only the link's own text is clickable.
+func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	assert.Contains(t, css, "tbody tr.clickable {\n  cursor: pointer;\n  position: relative;")
+	assert.Contains(t, css, ".rowlink::after {\n  content: '';\n  position: absolute;\n  inset: 0;")
+}
