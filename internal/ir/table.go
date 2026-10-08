@@ -47,7 +47,7 @@ type Table struct {
 	PageSize int // rows per page; 0 means the table does not page
 
 	Columns  []Field
-	RowClick RowTarget // nil means rows are not clickable
+	RowClick *Link     // nil means rows are not clickable
 	Actions  []*Action // per row: a button in a trailing cell
 	Bulk     []*Action // over the selection: the checkbox column and action bar
 }
@@ -57,8 +57,3 @@ func (t *Table) Kind() NodeKind { return NodeTable }
 
 // Addr reports the node's position in the body tree.
 func (t *Table) Addr() Addr { return t.At }
-
-// RowTarget is what activating a row does.
-type RowTarget interface {
-	isRowTarget()
-}

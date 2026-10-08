@@ -17,6 +17,14 @@ type Request struct {
 	// Args is the current page's decoded argument struct.
 	Args any
 
+	// Address is the request's path and query as the browser sent them, or empty
+	// when the request is not for a page (the search endpoint).
+	Address string
+
+	// From is the address of the page that sent the user here, when a link the
+	// library built said so and it is an address in this app. Empty otherwise.
+	From string
+
 	// Raw is the same values by argument name, path and query merged, plus the
 	// view state the library keeps for tables and tabs ("devices.offset").
 	// Argument names cannot contain the separator, so the two never collide.

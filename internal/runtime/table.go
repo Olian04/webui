@@ -131,7 +131,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		return p.render.Table(view)
 	}
 	view.Rows, view.Total = rows, total
-	view.Hrefs = p.rowHrefs(ctx, page, n, rows)
+	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
 	return p.render.Table(view)
 }
@@ -139,14 +139,14 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 // rowHrefs resolves each row's destination through Open, so it is a real href
 // with the mount prefix. A row whose link cannot be built has none, and is
 // logged: it renders as an ordinary row rather than a dead link.
-func (p *Program) rowHrefs(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []string {
+func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) []string {
 	hrefs := make([]string, len(rows))
-	link, ok := n.RowClick.(*ir.Link)
-	if !ok {
+	link := n.RowClick
+	if link == nil {
 		return hrefs
 	}
 	for i, row := range rows {
-		href, err := p.Open(link.Dest, link.Args(ctx, row))
+		href, err := p.open(link.Dest, link.Args(ctx, row), req.Address)
 		if err != nil {
 			p.log.Error("webui: row link failed", "page", page.PathTemplate, "dest", link.Dest, "err", err)
 			continue

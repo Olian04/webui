@@ -70,13 +70,11 @@ type FieldError struct {
 	Message string
 }
 
-// ASSERT: nodes implement Node; row targets implement RowTarget
+// ASSERT: nodes implement Node
 var (
-	_ Node      = (*Stack)(nil)
-	_ Node      = (*Split)(nil)
-	_ Node      = (*Tabs)(nil)
-	_ Node      = (*Form)(nil)
-	_ Node      = (*Table)(nil)
-	_ RowTarget = (*Link)(nil)
-	_ RowTarget = (*Action)(nil)
+	_ Node = (*Stack)(nil)
+	_ Node = (*Split)(nil)
+	_ Node = (*Tabs)(nil)
+	_ Node = (*Form)(nil)
+	_ Node = (*Table)(nil)
 )

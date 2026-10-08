@@ -8,11 +8,14 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// RowClick is a row activation: a Link (GET) or an Action (POST).
+// RowClick is what a click on a row does. It is always a Link: a row is one real
+// anchor, so middle-click, open-in-new-tab and the keyboard work, and a POST
+// cannot be that. Anything that changes something is an Action on the row, in
+// Table.Actions. The interface exists only to erase Link's destination type.
 type RowClick[M any] interface {
 	isRowClick()
 	validateRow(v *bodyValidator)
-	lowerRow(l *bodyLowerer) ir.RowTarget
+	lowerRow(l *bodyLowerer) *ir.Link
 }
 
 // Link names a destination page and how to build its arguments from M. Page is
@@ -51,7 +54,7 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 	}
 }
 
-func (l Link[M, A]) lowerRow(_ *bodyLowerer) ir.RowTarget {
+func (l Link[M, A]) lowerRow(_ *bodyLowerer) *ir.Link {
 	return &ir.Link{
 		Dest: l.Page.pagePath(),
 		Args: func(ctx context.Context, row any) any { return l.Args(ctx, row.(M)) },

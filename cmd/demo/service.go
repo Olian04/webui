@@ -26,14 +26,48 @@ type Alert struct {
 	Acked                         bool
 }
 
-type Event struct{ At, Kind, Detail string }
+// Event is something a device did; Age is how many minutes ago.
+type Event struct {
+	At, Kind, Detail string
+	Age              int
+}
 
 type Settings struct {
-	Name string
-	Port int
+	Name       string
+	Port       int
+	SampleRate float64 // 0 to 1: the share of events kept
+	MaxLoad    float64 // percent: where ingest starts shedding
 }
 
 type RetentionPolicy struct{ Days int }
+
+// SiteSummary is one site rolled up from its devices.
+type SiteSummary struct {
+	Name     string
+	Devices  int
+	Degraded int
+	Rate     float64 // mean occurrences per second
+}
+
+// Health is "ok" while no device at the site is degraded.
+func (s SiteSummary) Health() string {
+	if s.Degraded > 0 {
+		return "degraded"
+	}
+	return "ok"
+}
+
+// SystemInfo is what the collector reports about itself. Nobody edits it.
+type SystemInfo struct {
+	Version  string
+	Health   string
+	Uptime   string
+	DiskUsed float64 // percent
+	Queue    int
+}
+
+// AuditEntry is something somebody did.
+type AuditEntry struct{ At, Actor, Action, Target string }
 
 // Order is what the list asks of Devices besides its filters.
 type Order struct {
@@ -48,29 +82,56 @@ type Service struct {
 	alerts    []Alert
 	settings  Settings
 	retention RetentionPolicy
+	audit     []AuditEntry // newest first
+	started   time.Time
 }
 
 var service = newService()
 
 func newService() *Service {
-	s := &Service{settings: Settings{Name: "eu-north-1", Port: 8125}, retention: RetentionPolicy{Days: 30}}
+	s := &Service{
+		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80},
+		retention: RetentionPolicy{Days: 30},
+		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
+	}
 	sites := []string{"Stockholm", "Malmö", "Göteborg"}
 	statuses := []string{"healthy", "healthy", "degraded", "quiet"}
 	for i := range 37 {
-		s.devices = append(s.devices, Device{
+		d := Device{
 			ID: fmt.Sprintf("dev_%06x", 0x27c38b+i*977), IP: fmt.Sprintf("10.0.%d.%d", i/8, 10+i),
 			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)],
 			Count: 40 + (i*53)%900, Duration: 60 + float64(i%7)*30,
-		})
+		}
+		if d.Site == "Göteborg" && d.Status == "degraded" {
+			d.Status = "healthy" // one site is fine, so the sites page has both
+		}
+		s.devices = append(s.devices, d)
 	}
 	severities := []string{"critical", "warning", "info"}
 	for i := range 11 {
 		s.alerts = append(s.alerts, Alert{
-			ID: fmt.Sprintf("alt_%03d", i), Severity: severities[i%3], Device: s.devices[i*3].ID,
+			ID: fmt.Sprintf("alt_%03d", i), Severity: severities[i%3], Device: s.devices[i*3+i%3].ID, // spread over the three sites; alt_000 is dev_27c38b
 			Message: fmt.Sprintf("Ingest lag above %ds", 5+i),
 		})
 	}
+	// A history to scroll: 43 entries, one every 37 minutes.
+	actors := []string{"ines", "oskar", "sam", "ines", "you"}
+	actions := []string{"saved settings", "acknowledged alert", "changed IP", "dismissed alert", "saved retention"}
+	for i := range 43 {
+		s.audit = append(s.audit, AuditEntry{
+			At:    time.Now().Add(-time.Duration(i+1) * 37 * time.Minute).Format("Jan 2 15:04"),
+			Actor: actors[i%len(actors)], Action: actions[(i*3)%len(actions)],
+			Target: s.devices[(i*5)%len(s.devices)].ID,
+		})
+	}
 	return s
+}
+
+// record adds to the audit trail, newest first. The caller holds no lock.
+func (s *Service) record(action, target string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.audit = slices.Insert(s.audit, 0, AuditEntry{At: time.Now().Format("Jan 2 15:04"), Actor: "you", Action: action, Target: target})
 }
 
 func (s *Service) Device(id string) (Device, bool) {
@@ -92,12 +153,13 @@ func (s *Service) IPTaken(ip, except string) bool {
 
 func (s *Service) SetIP(id, ip string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	for i := range s.devices {
 		if s.devices[i].ID == id {
 			s.devices[i].IP = ip
 		}
 	}
+	s.mu.Unlock()
+	s.record("changed IP", id)
 }
 
 // Bounds limit a number, both ends inclusive; nil is unbounded.
@@ -233,16 +295,21 @@ func sortedBy[T any](rows []T, key string, desc bool, by map[string]func(x, y T)
 	return rows
 }
 
-// Events are made up on the spot: the last few minutes of a device.
-func (s *Service) Events() []Event {
+// Events are made up on the spot: a device's last hour or so. A window, in
+// minutes, keeps only the recent ones; zero keeps them all.
+func (s *Service) Events(window int) []Event {
 	now := time.Now()
 	var events []Event
-	for i, kind := range []string{"flush", "connect", "flush", "timeout", "flush", "connect"} {
+	for i, kind := range []string{"flush", "connect", "flush", "timeout", "flush", "connect", "flush", "flush"} {
 		detail := "ok"
 		if kind == "timeout" {
 			detail = "no data for 30s"
 		}
-		events = append(events, Event{At: now.Add(-time.Duration(i) * 7 * time.Minute).Format("15:04"), Kind: kind, Detail: detail})
+		age := i * 7
+		if window > 0 && age > window {
+			continue
+		}
+		events = append(events, Event{At: now.Add(-time.Duration(age) * time.Minute).Format("15:04"), Kind: kind, Detail: detail, Age: age})
 	}
 	return events
 }
@@ -256,12 +323,92 @@ func (s *Service) OpenAlerts() []Alert {
 
 func (s *Service) Acknowledge(ids ...string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	for i := range s.alerts {
 		if slices.Contains(ids, s.alerts[i].ID) {
 			s.alerts[i].Acked = true
 		}
 	}
+	s.mu.Unlock()
+	s.record("acknowledged alert", strings.Join(ids, ", "))
+}
+
+// DeleteAlerts removes alerts for good.
+func (s *Service) DeleteAlerts(ids ...string) {
+	s.mu.Lock()
+	s.alerts = slices.DeleteFunc(s.alerts, func(a Alert) bool { return slices.Contains(ids, a.ID) })
+	s.mu.Unlock()
+	s.record("deleted alert", strings.Join(ids, ", "))
+}
+
+// AlertsAt are the open alerts of the devices at one site.
+func (s *Service) AlertsAt(site string) []Alert {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	at := map[string]bool{}
+	for _, d := range s.devices {
+		if d.Site == site {
+			at[d.ID] = true
+		}
+	}
+	return slices.DeleteFunc(slices.Clone(s.alerts), func(a Alert) bool { return a.Acked || !at[a.Device] })
+}
+
+// Sites rolls the devices up by site.
+func (s *Service) Sites() []SiteSummary {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	by := map[string]*SiteSummary{}
+	var order []string
+	for _, d := range s.devices {
+		site, ok := by[d.Site]
+		if !ok {
+			site = &SiteSummary{Name: d.Site}
+			by[d.Site], order = site, append(order, d.Site)
+		}
+		site.Devices++
+		site.Rate += d.Rate()
+		if d.Status == "degraded" {
+			site.Degraded++
+		}
+	}
+	out := make([]SiteSummary, 0, len(order))
+	for _, name := range order {
+		site := *by[name]
+		site.Rate /= float64(site.Devices)
+		out = append(out, site)
+	}
+	return out
+}
+
+func (s *Service) Site(name string) (SiteSummary, bool) {
+	for _, site := range s.Sites() {
+		if site.Name == name {
+			return site, true
+		}
+	}
+	return SiteSummary{}, false
+}
+
+// System is made up too, but it changes: the uptime is real.
+func (s *Service) System() SystemInfo {
+	up := time.Since(s.started).Round(time.Minute)
+	return SystemInfo{
+		Version: "2.4.1", Health: "healthy", DiskUsed: 71,
+		Uptime: fmt.Sprintf("%dd %dh", int(up.Hours())/24, int(up.Hours())%24), Queue: 128,
+	}
+}
+
+// Audit returns one window of the audit trail, newest first. It does not count
+// the entries it skips, so the table that shows it does not know the total.
+func (s *Service) Audit(offset, limit int) []AuditEntry {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lo := min(offset, len(s.audit))
+	hi := len(s.audit)
+	if limit > 0 {
+		hi = min(lo+limit, len(s.audit))
+	}
+	return slices.Clone(s.audit[lo:hi])
 }
 
 func (s *Service) Settings() Settings {
@@ -272,8 +419,9 @@ func (s *Service) Settings() Settings {
 
 func (s *Service) SetSettings(v Settings) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.settings = v
+	s.mu.Unlock()
+	s.record("saved settings", v.Name)
 }
 
 func (s *Service) Retention() RetentionPolicy {
@@ -284,6 +432,7 @@ func (s *Service) Retention() RetentionPolicy {
 
 func (s *Service) SetRetention(v RetentionPolicy) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.retention = v
+	s.mu.Unlock()
+	s.record("saved retention", fmt.Sprintf("%d days", v.Days))
 }

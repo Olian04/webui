@@ -78,7 +78,7 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 		p.state(w, r, http.StatusBadRequest, page, raw, render.BadRequest())
 		return nil, false
 	}
-	req := &Request{program: p, Args: decoded, Raw: raw}
+	req := &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey])}
 	*r = *r.WithContext(With(r.Context(), req))
 
 	if page.Guard != nil {
@@ -110,6 +110,7 @@ func argParser(page *ir.Page) args.ArgParser {
 		}
 	}
 	view, lists := viewKeys(page.Body)
+	parser.QueryKeys = append(parser.QueryKeys, args.FromKey)
 	parser.QueryKeys = append(parser.QueryKeys, view...)
 	parser.ListKeys = lists
 	return parser

@@ -67,7 +67,7 @@ func TestPagesThatLinkBothWaysAreStaticVars(t *testing.T) {
 
 	// Forward: a row of the list links to the detail page.
 	list := serve(h, http.MethodGet, "/admin/shop").Body.String()
-	assert.Contains(t, list, `<a class="rowlink" href="/admin/shop/a">a</a>`)
+	assert.Contains(t, list, `<a class="rowlink" href="/admin/shop/a?webui.from=%2Fadmin%2Fshop">a</a>`)
 
 	// Back: the detail page's action redirects to the list.
 	rec := post(h, "/admin/shop/a", url.Values{"_leaf": {"p"}, "f1": {"10.0.0.2"}})

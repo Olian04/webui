@@ -10,9 +10,17 @@ import (
 
 var DevicesNav = webui.Nav{Label: "Devices", Section: "Platform"}
 
-// The device id is a path argument, so each device has its own address.
+// The device id is a path argument, so each device has its own address. The query
+// arguments have no control on the page; they arrive in the address:
+//
+//   - Minutes narrows what Events shows (the alerts link here with ?minutes=15)
+//
+// This page is reached from the device list, from a site and from the alerts. It
+// does not say where Cancel goes: the library remembers which page's link the user
+// followed, sort and filters included, and Cancel and a saved device return there.
 type DeviceArgs struct {
-	ID string `webui:"id"`
+	ID      string `webui:"id"`
+	Minutes int
 }
 
 // Accessors are written once and used as a column in the list and as a field in
@@ -78,8 +86,10 @@ var Devices = webui.Page[webui.NoArgs]{
 		results := make([]webui.SearchResult, len(devices))
 		for i, d := range devices {
 			results[i] = webui.SearchResult{
-				Title:  d.ID,
-				Desc:   d.IP + " · " + d.Site,
+				Title: d.ID,
+				Desc:  d.IP + " · " + d.Site,
+				// A search is not a page, so there is no address to return to: Cancel
+				// on the device goes to the device list.
 				Target: webui.Open(ctx, Details, DeviceArgs{ID: d.ID}),
 			}
 		}
@@ -95,11 +105,7 @@ var Devices = webui.Page[webui.NoArgs]{
 		PageSize: 10,
 		Load: func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
 			// The numeric columns, Occurrences and Rate, arrive as bounds.
-			bounds := make(map[string]Bounds, len(q.Ranges))
-			for key, r := range q.Ranges {
-				bounds[key] = Bounds(r)
-			}
-			devices, total := service.Devices(q.Filters, bounds, Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
+			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
 			return webui.Rows[Device]{Items: devices, Total: total}, nil
 		},
 		RowClick: webui.Link[Device, DeviceArgs]{
@@ -121,9 +127,11 @@ var Details = webui.Page[DeviceArgs]{
 		}
 		return nil
 	},
+	// The selected tab is ?tabs.tab=raw. A Key keeps that address stable if the
+	// label is reworded; the first tab, Overview, needs no parameter.
 	Body: webui.Tabs{Panels: []webui.Tab{
 		{Label: "Overview", Body: webui.Split{DeviceForm, Events}},
-		{Label: "Raw", Body: Events},
+		{Label: "Raw events", Key: "raw", Body: Events},
 	}},
 }
 
@@ -139,16 +147,17 @@ var DeviceForm = webui.Form[Device]{
 		return d, nil
 	},
 	Fields: []webui.Accessor[Device]{
-		webui.Group[Device]{DeviceID, IP},
-		Site,
-		Rate,
+		// A Group puts its fields side by side; it is layout, with no frame.
+		webui.Group[Device]{DeviceID, webui.Placeholder[Device]{Accessor: IP, Text: "10.0.0.1"}},
+		webui.Group[Device]{Status, Site}, // a badge and a plain field: both read-only here
+		Rate,                              // a slider with no Store is a bar
 	},
 	Submit: SaveDevice,
 }
 
 var SaveDevice = webui.Action[Device]{
 	Guard: canEdit[Device],
-	Run: func(ctx context.Context, d Device) (webui.Effect, error) {
+	Run: func(_ context.Context, d Device) (webui.Effect, error) {
 		// Uniqueness needs the service, so no rule can catch it: it comes back
 		// as a rejection the user can fix, not as an error.
 		if service.IPTaken(d.IP, d.ID) {
@@ -157,20 +166,26 @@ var SaveDevice = webui.Action[Device]{
 			}}, nil
 		}
 		service.SetIP(d.ID, d.IP)
-		return webui.Effect{
-			Toast:    "Device saved",
-			Redirect: webui.Open(ctx, DevicesPath, webui.NoArgs{}), // back to the list
-		}, nil
+		// No redirect: a saved form returns to the page it was opened from, and
+		// stays where it is when it was opened directly.
+		return webui.Effect{Toast: "Device saved"}, nil
 	},
 }
 
 // Events is a table of a different model, beside the form. Split constrains
-// nothing about what its children are about.
+// nothing about what its children are about. The same table is also the Raw
+// tab: it is one var used twice, and its sort and filters are shared because the
+// panels of one Tabs may share an ID.
 var Events = webui.Table[Event]{
 	Title: "Recent events",
-	Load: func(_ context.Context, q webui.Query) (webui.Rows[Event], error) {
+	Desc:  "Opened with ?minutes=15 (as the alerts do), only the last 15 minutes are shown.",
+	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Event], error) {
+		args, err := webui.ArgsOf[DeviceArgs](ctx)
+		if err != nil {
+			return webui.Rows[Event]{}, err
+		}
 		// No Key on these accessors, so Query.Sort and Query.Filters use the Label.
-		events := filteredBy(service.Events(), q.Filters, map[string]func(e Event, values []string) bool{
+		events := filteredBy(service.Events(args.Minutes), q.Filters, map[string]func(e Event, values []string) bool{
 			EventTime.Label:   containing(func(e Event) string { return e.At }),
 			EventKind.Label:   containing(func(e Event) string { return e.Kind }),
 			EventDetail.Label: containing(func(e Event) string { return e.Detail }),
@@ -190,3 +205,12 @@ var (
 	EventKind   = webui.String[Event]{Label: "Kind", Load: func(e Event) string { return e.Kind }}
 	EventDetail = webui.String[Event]{Label: "Detail", Load: func(e Event) string { return e.Detail }}
 )
+
+// boundsOf is a table's numeric filters as the service takes them.
+func boundsOf(ranges map[string]webui.Range) map[string]Bounds {
+	bounds := make(map[string]Bounds, len(ranges))
+	for key, r := range ranges {
+		bounds[key] = Bounds(r)
+	}
+	return bounds
+}

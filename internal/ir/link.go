@@ -13,5 +13,3 @@ type Link struct {
 	// runtime encodes it through the destination's Page.Encode.
 	Args func(ctx context.Context, row any) any
 }
-
-func (*Link) isRowTarget() {}

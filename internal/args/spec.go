@@ -35,6 +35,12 @@ func RangeKeys(id, column string) (lower, upper string) {
 	return ViewKey(id, "min."+column), ViewKey(id, "max."+column)
 }
 
+// FromKey is the address parameter that remembers where the user came from, so
+// a form can return there. It is the library's, and it contains ViewSep, so it
+// is carried through the page's own links like any other view state. Its value
+// is an address, which may itself carry one: a chain of pages unwinds in order.
+const FromKey = "webui" + ViewSep + "from"
+
 // IsViewKey reports whether an address parameter is view state, not an argument.
 func IsViewKey(key string) bool { return strings.Contains(key, ViewSep) }
 

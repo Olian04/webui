@@ -188,7 +188,9 @@ A tab is navigation that happens to look like a tab.
 
 One panel. Header carries the title and description; the body carries the
 fields; the footer carries `Submit` as the primary button, right-aligned, with
-a ghost *Cancel* beside it.
+a ghost *Cancel* beside it. Cancel returns to the page the user came from, which the library remembers
+(`webui.from` in the address, set by the link that opened the form), and to the
+parent in the breadcrumb when there is none.
 
 `Bind` is invisible until something fails — see `Effect.Fields` below.
 
@@ -261,13 +263,14 @@ Selection itself is deliberately **not** an argument: it never enters the
 address bar, because it is request state, not page state. A shared link does
 not carry someone else's selection.
 
-### `Table.RowClick` / `RowTarget` / `Link`
+### `Table.RowClick` / `Link`
 
 Rows become links: pointer cursor, hover surface, and the whole row is the
 target. Because `Link` names a page and builds its arguments, the destination
 is known at compile time, which is what lets a row link be a real `href`
 instead of a click handler — and therefore what lets the whole design work with
-JavaScript switched off.
+JavaScript switched off. A row click is always a link, never a POST: whatever
+changes something is a button in the row's own cell, or on the selection.
 
 ### `Guard` → gating, in two places from one declaration
 

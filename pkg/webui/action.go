@@ -27,8 +27,6 @@ type Action[M any] struct {
 	Run   func(ctx context.Context, m M) (Effect, error)
 }
 
-func (Action[M]) isRowClick() {}
-
 // Effect is the outcome of an understood action. A nil error on Run plus
 // Fields is a validation rejection the user can fix. Redirect navigates.
 //
@@ -57,19 +55,8 @@ type FieldError[M any] struct {
 	Message string
 }
 
-// ASSERT: Action implements RowClick; Fields implements FieldErrors
-var (
-	_ RowClick[struct{}] = Action[struct{}]{}
-	_ FieldErrors        = Fields[struct{}](nil)
-)
-
-func (a Action[M]) validateRow(v *bodyValidator) {
-	validateAction(v, "RowClick", a.Label, a.Run != nil, true)
-}
-
-func (a Action[M]) lowerRow(_ *bodyLowerer) ir.RowTarget {
-	return lowerAction(a, a.Label)
-}
+// ASSERT: Fields implements FieldErrors
+var _ FieldErrors = Fields[struct{}](nil)
 
 // validateAction checks what every action needs. needLabel is false only for a
 // Form's Submit, which has a default.

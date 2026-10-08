@@ -22,6 +22,21 @@ var (
 		// A zero lower bound is a real constraint, so bounds are pointers.
 		Rules: webui.NumberRules[int]{Required: true, Min: ptr(1), Max: ptr(65535)},
 	}
+	// A Float has a Precision (decimals shown) and rules like any number. The
+	// bounds are pointers, because a zero bound is a real constraint.
+	SampleRate = webui.Float[Settings]{
+		Label: "Sample rate", Precision: 2,
+		Load:  func(s Settings) float64 { return s.SampleRate },
+		Store: func(s *Settings, v float64) { s.SampleRate = v },
+		Rules: webui.NumberRules[float64]{Required: true, Min: ptr(0.01), Max: ptr(1.0)},
+	}
+	// A Slider with a Store is a range input in a form, held to its range by the
+	// server too; without a Store it is a bar, as the System page shows.
+	MaxLoad = webui.Slider[Settings]{
+		Label: "Shed load above (%)", Min: 0, Max: 100,
+		Load:  func(s Settings) float64 { return s.MaxLoad },
+		Store: func(s *Settings, v float64) { s.MaxLoad = v },
+	}
 	Days = webui.Int[RetentionPolicy]{
 		Label: "Retention (days)",
 		Load:  func(r RetentionPolicy) int { return r.Days },
@@ -34,10 +49,14 @@ var Ingest = webui.Page[webui.NoArgs]{
 	Path: "/settings",
 	Nav:  webui.Nav{Label: "Ingest", Section: "Configuration"},
 	Body: webui.Form[Settings]{
-		Title:  "Ingest",
-		Desc:   "Every constraint below is declared as data and rendered as an HTML attribute.",
-		Load:   func(context.Context) (Settings, error) { return service.Settings(), nil },
-		Fields: []webui.Accessor[Settings]{webui.Group[Settings]{CollectorName, Port}},
+		Title: "Ingest",
+		Desc:  "Every constraint below is declared as data and rendered as an HTML attribute.",
+		Load:  func(context.Context) (Settings, error) { return service.Settings(), nil },
+		Fields: []webui.Accessor[Settings]{
+			// A Placeholder decorates an accessor; it shows in an empty input.
+			webui.Group[Settings]{webui.Placeholder[Settings]{Accessor: CollectorName, Text: "eu-north-1"}, Port},
+			webui.Group[Settings]{SampleRate, MaxLoad},
+		},
 		Submit: SaveIngest,
 	},
 }

@@ -25,5 +25,3 @@ type Action struct {
 	Run   func(ctx context.Context, subject any) (Effect, error)
 	Bulk  bool
 }
-
-func (*Action) isRowTarget() {}

@@ -141,7 +141,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.reject(w, r, page, req, n, model, values, effect.Fields, effect.Toast)
 		return
 	}
-	p.finish(w, r, effect)
+	p.finish(w, r, effect, req.From)
 }
 
 // reject re-renders the page with the rejected form carrying what the user
@@ -171,8 +171,11 @@ func plural(n int, one, many string) string {
 
 // finish ends a successful action: the toast rides a flash cookie, and the
 // browser is sent back with a 303 so a reload does not repeat the POST.
-func (p *Program) finish(w http.ResponseWriter, r *http.Request, effect ir.Effect) {
+func (p *Program) finish(w http.ResponseWriter, r *http.Request, effect ir.Effect, from string) {
 	target := r.URL.RequestURI()
+	if from != "" {
+		target = from // a saved form returns to where it was opened from
+	}
 	if effect.Redirect != "" {
 		if safeRedirect(effect.Redirect) {
 			target = effect.Redirect
@@ -260,7 +263,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
 		return
 	}
-	p.finish(w, r, effect)
+	p.finish(w, r, effect, "")
 }
 
 // refuse sends the user back with an error toast: nothing was changed.

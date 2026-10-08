@@ -89,12 +89,13 @@ var Devices = webui.Page[webui.NoArgs]{
     },
     // A Link names its destination page as a field, so Compile can check the
     // target exists. It renders a real <a href>, so middle-click and
-    // open-in-new-tab work; an Action here would render a POST instead.
+    // open-in-new-tab work. A row click is always a Link: anything that
+    // changes something is an Action on the row (Actions), or on the selection.
     RowClick: webui.Link[Device, DetailsArgs]{
       Page: Details,
-      Args: func(ctx context.Context, d Device) DetailsArgs {
-        return DetailsArgs{Id: d.Id}
-      },
+      // The library remembers this page's address, sort, filters and page
+      // included, so the details form's Cancel returns to exactly here.
+      Args: func(ctx context.Context, d Device) DetailsArgs { return DetailsArgs{Id: d.Id} },
     },
     // No Actions or BulkActions means no action buttons and no form.
     // No BulkActions means no row select checkboxes and no selection bar.
@@ -208,10 +209,23 @@ func mustLogo() image.Image {
 ## Running the demo
 
 ```
-go run ./cmd/demo            # http://localhost:8080/admin/
-go run ./cmd/demo -viewer    # guarded controls are disabled, with the reason
-go run ./cmd/demo -broken    # the failed-to-compile page
+go run ./cmd/demo                      # http://localhost:8080/admin/
+go run ./cmd/demo -viewer              # guarded controls and pages are refused, with the reason
+go run ./cmd/demo -accent '#2f9e8f'    # override the theme's accent colour
+go run ./cmd/demo -broken              # the failed-to-compile page
 ```
+
+The demo is a static config and shows the whole library; each file has its own
+corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
+
+| File | Shows |
+| --- | --- |
+| `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs (`Key`) beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
+| `sites.go` | a nested path with a parent breadcrumb, `Nav.Shadow`, two stateful tables on one page with their own `ID`s, a second page contributing search results |
+| `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` that builds a query argument, gating under `-viewer` |
+| `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
+| `system.go` | a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
+| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Tokens`, `Compile` and `MustCompile`, the compile-error page |
 
 Everything works with JavaScript switched off: every control is a real link or
 form. The one script (`enhance.js`) replaces a single panel when a link inside it
@@ -235,6 +249,23 @@ not mounted: webui: Open "/never-mounted/{id}": that page is not mounted in this
 mutated:     webui: Open "/CHANGED/{id}": that page is not mounted in this app
 no runtime:  webui: Open "/CHANGED/{id}": no compiled app in this context
 ```
+
+### Going back
+
+A form's Cancel button, and a form that saved, return to the page the user came
+from, so a form reachable from several pages needs no code to say which. The
+library does it: a `Link` (a row click) to a page that has a form adds the
+address of the page it is on, sort, filters and page included, in the reserved
+parameter `webui.from`. The parameter rides along through the form's own links,
+its re-render after a rejection and its POST, and a chain of pages unwinds one
+hop at a time (it is bounded, so the address cannot grow without end). Without
+it, Cancel goes to the parent in the breadcrumb, and a save stays where it is, so a
+form opened directly or from a bookmark behaves as it always did. An explicit
+`Effect.Redirect` wins over the origin.
+
+The address is only ever followed when it is a path in this app: a full URL,
+`//host`, another path on the host or `/_webui` is ignored, so it cannot become an
+open redirect. A search result does not set it, since a search is not a page.
 
 A `Link` names its destination as a field rather than building a `Target` in a
 closure, so the target is data. Two consequences: the page and the argument
