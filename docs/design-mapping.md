@@ -54,9 +54,10 @@ into existence, and nothing is configured twice.
 | `Table.PageSize`, `Table.ID` | The pager; the ID names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
 | `Action` | A button; its `Role` decides primary / secondary / destructive |
-| `Effect.Toast` | A toast, bottom-right (carried across the redirect by a flash cookie) |
-| `Effect.Redirect` | A navigation after the action |
-| `Effect.Fields` / `FieldError` | Invalid borders and per-field messages, with typed values preserved |
+| `Success`, `Warning` | A toast, bottom-right (carried across the redirect by a flash cookie), green or amber; the action was accepted |
+| `Failure` | A red toast over the form shown again, with what was typed kept |
+| `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |
+| `Outcome.Then` | A navigation after an accepted action |
 | leaf address (`p.0.1`) | Which panel a refresh replaces |
 | `CompileErrors` | The **Failed to compile** page, served at every address |
 
@@ -231,7 +232,7 @@ a ghost *Cancel* beside it. Cancel returns to the page the user came from, which
 (`webui.from` in the address, set by the link that opened the form), and to the
 parent in the breadcrumb when there is none.
 
-`Bind` is invisible until something fails — see `Effect.Fields` below.
+`Bind` is invisible until something fails — see `Reject` below.
 
 ### `Table` → a panel
 
@@ -323,20 +324,26 @@ changes something is a button in the row's own cell, or on the selection.
    button, so there is no second authorisation rule to keep in sync and no
    control that looks available and then fails.
 
-### `Effect`
+### `Outcome`
 
-| Field | Visual |
-|---|---|
-| `Toast` | A toast, bottom-right, semantic left border, 3.4s |
-| `Redirect` | Navigation after the toast is shown |
-| `Fields` (`[]FieldError`) | Invalid border + ring on each named field, message beneath, **and the panel re-renders with what the user typed** |
-| `Stale` | Which panels re-render; everything else holds still |
+An action says how it ended and the library draws it. Accepted outcomes redirect
+(a 303, so a reload does not repeat the POST) and carry their toast across the
+redirect; refused ones show the form again, in place, with what the user typed.
 
-`Effect.Fields` with a nil error is the design's most important rejection path:
-a save that was understood, refused, and is fixable. It looks identical to a
-browser-caught rule failure, which is correct — from the user's side it is the
-same event. The only difference is that it could not have been caught earlier,
-because it needed the service.
+| Constructor | Accepted? | Visual |
+|---|---|---|
+| `Success(msg)` | yes | A toast with a green left border, 3.4s; none when `msg` is empty |
+| `Warning(msg)` | yes | The same with an amber border: it was done, and the user should be aware of `msg` |
+| `Failure(msg)` | no | The form shown again with what was typed, and a toast with a red border saying `msg` |
+| `Reject(Field(...)...)` | no | The form shown again with what was typed, an invalid border + ring on each named field and its message beneath, and a "Not saved" toast |
+| `.Then(target)` | | Navigation after an accepted outcome; ignored by a refused one, which has nowhere to go |
+
+`Reject` is the design's most important rejection path: a save that was
+understood, refused, and is fixable. It looks identical to a browser-caught rule
+failure, which is correct — from the user's side it is the same event. The only
+difference is that it could not have been caught earlier, because it needed the
+service. `Failure` is the same event for a reason that belongs to no one field.
+There is no default toast: an action that says nothing shows nothing.
 
 ### `CompileErrors` → the compile-failure page
 
