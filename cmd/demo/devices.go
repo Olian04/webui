@@ -24,16 +24,14 @@ type DeviceArgs struct {
 // Accessors are written once and used as a column in the list and as a field in
 // the form. Without a Store an accessor is read-only.
 var (
-	// Key is what Load receives in Query.Sort when the list is sorted by this
-	// column; without one it is the Label.
+	// The Label is what a Load receives in Query.Sort and Query.Filters, and what
+	// names the column in the address: ?devices.sort=ip, ?devices.filter.status=...
 	DeviceID = webui.String[Device]{
 		Label: "ID",
-		Key:   "id",
 		Load:  func(d Device) string { return d.ID },
 	}
 	IP = webui.String[Device]{
 		Label: "IP",
-		Key:   "ip",
 		Load:  func(d Device) string { return d.IP },
 		Store: func(d *Device, v string) { d.IP = v },
 		Rules: webui.StringRules{
@@ -43,7 +41,6 @@ var (
 	}
 	Status = webui.Badge[Device]{
 		Label: "Status",
-		Key:   "status",
 		Load:  func(d Device) string { return d.Status },
 		Kinds: map[string]webui.Tone{
 			"healthy": webui.ToneOK, "degraded": webui.ToneWarning, "quiet": webui.ToneNeutral,
@@ -51,16 +48,14 @@ var (
 	}
 	Site = webui.String[Device]{
 		Label: "Site",
-		Key:   "site",
 		Load:  func(d Device) string { return d.Site },
 	}
 	Occurrences = webui.Int[Device]{
 		Label: "Occurrences",
-		Key:   "count",
 		Load:  func(d Device) int { return d.Count },
 	}
 	Rate = webui.Slider[Device]{
-		Label: "Rate / s", Key: "rate", Max: 15, Precision: 2,
+		Label: "Rate / s", Max: 15, Precision: 2,
 		Load: func(d Device) float64 { return d.Rate() },
 	}
 )
@@ -124,11 +119,11 @@ var Details = webui.Page[DeviceArgs]{
 		}
 		return nil
 	},
-	// The selected tab is ?tabs.tab=raw. A Key keeps that address stable if the
-	// label is reworded; the first tab, Overview, needs no parameter.
+	// The selected tab is ?tabs.tab=raw-events, named by its label; the first tab,
+	// Overview, needs no parameter.
 	Body: webui.Tabs{Panels: []webui.Tab{
 		{Label: "Overview", Body: webui.Split{DeviceForm, Events}},
-		{Label: "Raw events", Key: "raw", Body: Events},
+		{Label: "Raw events", Body: Events},
 	}},
 }
 

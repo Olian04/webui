@@ -3,6 +3,7 @@ package webui
 import (
 	"fmt"
 
+	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -16,20 +17,14 @@ type Split []PageBody
 
 func (Split) isPageBody() {}
 
-// Tab is one panel in Tabs. Key is the argument value that selects it and
-// defaults to Label; set it when the label may change but links must not.
+// Tab is one panel in Tabs. It is selected in the address by its label, in lower
+// case with dashes for anything else: the "Raw events" tab is "?tabs.tab=raw-events".
 type Tab struct {
-	Key   string
 	Label string
 	Body  PageBody
 }
 
-func (t Tab) key() string {
-	if t.Key != "" {
-		return t.Key
-	}
-	return t.Label
-}
+func (t Tab) key() string { return args.Slug(t.Label) }
 
 // Tabs is a labeled set of PageBody panels. The selected tab is kept in the
 // address as "<ID>.tab", so it survives a reload and can be linked to; the
@@ -77,8 +72,12 @@ func (t Tabs) validateBody(v *bodyValidator) {
 		switch {
 		case p.Label == "":
 			v.add(fmt.Sprintf("Tabs.Panels[%d] has no Label", i), "Set Label; it is the tab text.")
+		case p.key() == "":
+			v.add(fmt.Sprintf("Tabs.Panels[%d]: the label %q has no letters or digits", i, p.Label),
+				"A tab is named in the address by its label; use one with a letter or digit in it.")
 		case seen[p.key()]:
-			v.add(fmt.Sprintf("Tabs.Panels[%d]: key %q is used twice", i, p.key()), "Give each Tab a distinct Key or Label.")
+			v.add(fmt.Sprintf("Tabs.Panels[%d]: the label %q names the same tab as another in the address", i, p.Label),
+				"Reword one of them; a tab is named in the address by its label, in lower case.")
 		}
 		seen[p.key()] = true
 		if p.Body == nil {

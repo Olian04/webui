@@ -48,7 +48,7 @@ func asViewer(t *testing.T) {
 func TestEveryPageServes(t *testing.T) {
 	h := handler(t)
 	for _, path := range []string{
-		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw",
+		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/",
 	} {
@@ -79,12 +79,12 @@ func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
 
 func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/site/Stockholm?devices.sort=id&alerts.sort=Severity&alerts.desc=true").Body.String()
+	body := get(h, "/admin/site/Stockholm?devices.sort=id&alerts.sort=severity&alerts.desc=true").Body.String()
 	assert.Equal(t, strings.Count(body, `class="panel"`), 2)
 	assert.Contains(t, body, `aria-sort="ascending"`)  // devices, by its sort
 	assert.Contains(t, body, `aria-sort="descending"`) // alerts, by its own
 	assert.Contains(t, body, `name="devices.filter.id"`)
-	assert.Contains(t, body, `name="alerts.filter.Device"`)
+	assert.Contains(t, body, `name="alerts.filter.device"`)
 
 	rec := get(h, "/admin/site/Nowhere")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
@@ -100,7 +100,7 @@ func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
 	}
 	assert.Equal(t, rows("/admin/device/dev_27c38b"), 8)                         // every event
 	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15"), 3)              // the last 15 minutes
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw"), 3) // the Raw tab: the same table
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events"), 3) // the Raw tab: the same table
 }
 
 func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
@@ -119,9 +119,9 @@ func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
 	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`))                                    // it has the bell
 }
 
-func TestTabsHaveAStableKey(t *testing.T) {
-	body := get(handler(t), "/admin/device/dev_27c38b?tabs.tab=raw").Body.String()
-	assert.Contains(t, body, `<a class="tab active" href="/admin/device/dev_27c38b?tabs.tab=raw" aria-current="page">Raw events</a>`)
+func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {
+	body := get(handler(t), "/admin/device/dev_27c38b?tabs.tab=raw-events").Body.String()
+	assert.Contains(t, body, `<a class="tab active" href="/admin/device/dev_27c38b?tabs.tab=raw-events" aria-current="page">Raw events</a>`)
 }
 
 func TestAnAlertHasItsOwnPageAndItsRowsOpenIt(t *testing.T) {
@@ -301,7 +301,7 @@ func TestTheDeviceIsOpenedFromSeveralPagesAndEachRemembersItsOwn(t *testing.T) {
 	// Every page that links to a device remembers the address the user is on.
 	for _, from := range []string{
 		"/admin/device?devices.sort=ip&devices.offset=10",
-		"/admin/site/Stockholm?alerts.sort=Severity&devices.sort=id",
+		"/admin/site/Stockholm?alerts.sort=severity&devices.sort=id",
 		"/admin/alert",
 	} {
 		list := get(h, from).Body.String()
@@ -327,13 +327,13 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
-	from := "/admin/site/Malm\u00f6?alerts.sort=Severity"
+	from := "/admin/site/Malm\u00f6?alerts.sort=severity"
 	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
 	assert.Equal(t, to.Path, "/admin/site/Malmö")
-	assert.Equal(t, to.RawQuery, "alerts.sort=Severity")
+	assert.Equal(t, to.RawQuery, "alerts.sort=severity")
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")

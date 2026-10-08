@@ -66,13 +66,13 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 
 	// The strip is links; the first needs no argument, the others carry theirs.
 	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1" aria-current="page">Overview</a>`)
-	assert.Contains(t, body, `<a class="tab" href="/admin/device/d1?view.tab=Raw">Raw</a>`)
+	assert.Contains(t, body, `<a class="tab" href="/admin/device/d1?view.tab=raw">Raw</a>`)
 
-	raw := serve(h, http.MethodGet, "/admin/device/d1?view.tab=Raw").Body.String()
+	raw := serve(h, http.MethodGet, "/admin/device/d1?view.tab=raw").Body.String()
 	assert.Contains(t, raw, "Raw-row")
 	assert.False(t, strings.Contains(raw, "Overview-row"))
 	assert.Equal(t, loads[3].Load(), int32(1))
-	assert.Contains(t, raw, `<a class="tab active" href="/admin/device/d1?view.tab=Raw" aria-current="page">Raw</a>`)
+	assert.Contains(t, raw, `<a class="tab active" href="/admin/device/d1?view.tab=raw" aria-current="page">Raw</a>`)
 
 	// An unknown tab lands on the first rather than on nothing.
 	stale := serve(h, http.MethodGet, "/admin/device/d1?view.tab=Gone").Body.String()

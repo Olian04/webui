@@ -41,6 +41,26 @@ func RangeKeys(id, column string) (lower, upper string) {
 // is an address, which may itself carry one: a chain of pages unwinds in order.
 const FromKey = "webui" + ViewSep + "from"
 
+// Slug is the name a label has in an address: lower-case letters and digits,
+// each run of anything else a single dash, none at the ends. "Mean rate / s" is
+// "mean-rate-s". It is empty when the label has no letter or digit to name it by.
+func Slug(label string) string {
+	var b strings.Builder
+	dash := false
+	for _, r := range label {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			if dash && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			dash = false
+			b.WriteRune(unicode.ToLower(r))
+		} else {
+			dash = true
+		}
+	}
+	return b.String()
+}
+
 // IsViewKey reports whether an address parameter is view state, not an argument.
 func IsViewKey(key string) bool { return strings.Contains(key, ViewSep) }
 

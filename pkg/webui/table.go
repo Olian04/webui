@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
 )
 
 // Query is what the address asks of a table: a window and an order. Sort is the
-// Key (or the Label, when the accessor has no Key) of the column the table is
-// sorted by, or empty. It is always one of the table's columns.
+// Label of the column the table is sorted by, or empty. It is always one of the
+// table's columns.
 type Query struct {
 	Offset int
 	Limit  int
 	Sort   string
 	Desc   bool
 
-	// Filters are the column filters in force, by the column's Key (or Label).
+	// Filters are the column filters in force, by the column's Label.
 	// A column with a fixed set of options — a Badge, whose options are the keys
 	// of its Kinds — holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
@@ -24,7 +25,7 @@ type Query struct {
 	// filtering, as it does the sorting.
 	Filters map[string][]string
 
-	// Ranges are the bounds on the numeric columns, by the same Key (or Label).
+	// Ranges are the bounds on the numeric columns, by the same Label.
 	// A column filters by a minimum and a maximum, either of which may be left
 	// out, so a range is an inequality, not text. A bound is always a finite
 	// number; an unreadable one never arrives.
@@ -82,15 +83,24 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
 
-	// Every column is sortable, by its Key or its Label, so those must tell the
-	// columns apart: Load receives one in Query.Sort and has to know which.
-	keys := map[string]bool{}
+	// Every column is sortable and filterable, and is named for that in the
+	// address by its label, so the labels must tell the columns apart.
+	names := map[string]string{}
 	for _, c := range t.Columns {
-		if k := columnKey[M](c); k != "" {
-			if keys[k] {
-				v.add(fmt.Sprintf("Table.Columns: two columns sort by %q", k), "Give one of them a distinct Key.")
-			}
-			keys[k] = true
+		label := accessorLabel[M](c)
+		if label == "" {
+			continue // Compile said so already, or it is a Group
+		}
+		name := args.Slug(label)
+		switch other, taken := names[name]; {
+		case name == "":
+			v.add(fmt.Sprintf("Table.Columns: the label %q has no letters or digits", label),
+				"A column is named in the address by its label; use one with a letter or digit in it.")
+		case taken:
+			v.add(fmt.Sprintf("Table.Columns: the labels %q and %q name the same column in the address", other, label),
+				"Reword one of them; a column is named in the address by its label, in lower case.")
+		default:
+			names[name] = label
 		}
 	}
 	if t.PageSize < 0 {
@@ -114,11 +124,16 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 
 func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 	*l.nodes++
+	columns := lowerAccessors(t.Columns, "c")
+	labels := make(map[string]string, len(columns)) // the address's name for a column → its label
+	for _, c := range columns {
+		labels[c.Key] = c.Label
+	}
 	out := &ir.Table{
 		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize,
-		Columns: lowerAccessors(t.Columns, "c"),
+		Columns: columns,
 		Load: func(ctx context.Context, q ir.Query) ([]any, int, error) {
-			rows, err := t.Load(ctx, queryOf(q))
+			rows, err := t.Load(ctx, queryOf(q, labels))
 			if err != nil {
 				return nil, 0, err
 			}
@@ -148,14 +163,22 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 	return out
 }
 
-// queryOf is the IR's Query as the user's Load receives it. The two differ only
-// in the type of a Range, which the user sees as theirs.
-func queryOf(q ir.Query) Query {
-	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc, Filters: q.Filters}
+// queryOf is the IR's Query as the user's Load receives it. The IR names a column
+// as the address does, and the user knows it by its label, so each is renamed;
+// the two otherwise differ only in the type of a Range, which the user sees as
+// theirs.
+func queryOf(q ir.Query, labels map[string]string) Query {
+	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc}
+	if q.Filters != nil {
+		out.Filters = make(map[string][]string, len(q.Filters))
+		for name, values := range q.Filters {
+			out.Filters[labels[name]] = values
+		}
+	}
 	if q.Ranges != nil {
 		out.Ranges = make(map[string]Range, len(q.Ranges))
-		for k, r := range q.Ranges {
-			out.Ranges[k] = Range(r)
+		for name, r := range q.Ranges {
+			out.Ranges[labels[name]] = Range(r)
 		}
 	}
 	return out

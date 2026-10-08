@@ -88,7 +88,7 @@ func TestCancelGoesBackToThePageTheFormWasOpenedFrom(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp("")
-	for _, origin := range []string{"/admin/device?table.sort=ID&table.desc=true", "/admin/other"} {
+	for _, origin := range []string{"/admin/device?table.sort=id&table.desc=true", "/admin/other"} {
 		link := firstRowHref(t, h, origin)
 		assert.Equal(t, cancelHref(t, h, link), origin) // view state and all
 	}
@@ -168,9 +168,9 @@ func TestASavedFormReturnsToThePageItWasOpenedFrom(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp("")
-	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother%3Ftable.sort%3DID", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
+	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother%3Ftable.sort%3Did", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/other?table.sort=ID")
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/other?table.sort=id")
 
 	// Opened directly, it stays where it was, as it always did.
 	rec = post(h, "/admin/device/a", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})

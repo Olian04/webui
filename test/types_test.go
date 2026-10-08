@@ -102,7 +102,7 @@ func TestSketchTypes(t *testing.T) {
 			},
 			Columns: []webui.Accessor[Device]{
 				ID,
-				webui.String[Device]{Label: "IP", Key: "ip_addr", Load: func(d Device) string { return d.Ip }},
+				webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }},
 				Occurrences,
 				webui.Placeholder[Device]{Accessor: IP, Text: "10.0.0.1"},
 			},

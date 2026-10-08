@@ -40,14 +40,14 @@ func (a App) validate() CompileErrors {
 // facts is the set of things the cross-page checks need before any page is
 // validated, because they need the whole set.
 type facts struct {
-	paths         map[string]int          // Path → how many pages declare it
-	argTypes      map[string]reflect.Type // Path → argument type, for Link checks
+	paths    map[string]int          // Path → how many pages declare it
+	argTypes map[string]reflect.Type // Path → argument type, for Link checks
 }
 
 func (a App) collectFacts() *facts {
 	f := &facts{
-		paths:         map[string]int{},
-		argTypes:      map[string]reflect.Type{},
+		paths:    map[string]int{},
+		argTypes: map[string]reflect.Type{},
 	}
 	for _, p := range a.Pages {
 		if p == nil {

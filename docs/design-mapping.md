@@ -41,7 +41,7 @@ into existence, and nothing is configured twice.
 | value kind | The input type and the column's alignment |
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The input renders read-only on the hover surface |
-| accessor `Key` (else `Label`) | What a column's sort link and filter ask `Load` for; every column header is a sort link with a filter beside it |
+| accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
 | `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |

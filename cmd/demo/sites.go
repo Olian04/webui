@@ -19,27 +19,23 @@ type SiteArgs struct {
 var (
 	SiteName = webui.String[SiteSummary]{
 		Label: "Site",
-		Key:   "name",
 		Load:  func(s SiteSummary) string { return s.Name },
 	}
 	SiteDevicesCount = webui.Int[SiteSummary]{
 		Label: "Devices",
-		Key:   "devices",
 		Load:  func(s SiteSummary) int { return s.Devices },
 	}
 	SiteDegraded = webui.Int[SiteSummary]{
 		Label: "Degraded",
-		Key:   "degraded",
 		Load:  func(s SiteSummary) int { return s.Degraded },
 	}
 	SiteHealth = webui.Badge[SiteSummary]{
 		Label: "Health",
-		Key:   "health",
 		Load:  func(s SiteSummary) string { return s.Health() },
 		Kinds: map[string]webui.Tone{"ok": webui.ToneOK, "degraded": webui.ToneWarning},
 	}
 	SiteRate = webui.Slider[SiteSummary]{
-		Label: "Mean rate / s", Key: "rate", Max: 15, Precision: 2,
+		Label: "Mean rate / s", Max: 15, Precision: 2,
 		Load: func(s SiteSummary) float64 { return s.Rate },
 	}
 )
@@ -118,7 +114,7 @@ var SiteDevices = webui.Table[Device]{
 	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
 		args := webui.ArgsOf[SiteArgs](ctx)
 		// The page says which site; the user's filters narrow within it.
-		filters := map[string][]string{"site": {args.Name}}
+		filters := map[string][]string{Site.Label: {args.Name}}
 		for key, values := range q.Filters {
 			filters[key] = values
 		}

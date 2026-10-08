@@ -200,31 +200,31 @@ func (s *Service) Find(query string, limit int) []Device {
 	return found
 }
 
-// deviceKeys are the orders the list offers, by the Key its columns declare.
+// deviceKeys are the orders the list offers, by the Label of its columns.
 var deviceKeys = map[string]func(x, y Device) int{
-	"id":     func(x, y Device) int { return cmp.Compare(x.ID, y.ID) },
-	"ip":     func(x, y Device) int { return cmp.Compare(x.IP, y.IP) },
-	"status": func(x, y Device) int { return cmp.Compare(x.Status, y.Status) },
-	"site":   func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
-	"count":  func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
-	"rate":   func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
+	"ID":          func(x, y Device) int { return cmp.Compare(x.ID, y.ID) },
+	"IP":          func(x, y Device) int { return cmp.Compare(x.IP, y.IP) },
+	"Status":      func(x, y Device) int { return cmp.Compare(x.Status, y.Status) },
+	"Site":        func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
+	"Occurrences": func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
+	"Rate / s":    func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
 }
 
-// deviceFilters are the filters the list offers, by the same Key as its sorts.
+// deviceFilters are the filters the list offers, by the same Label as its sorts.
 // Status has a fixed set of options and arrives as the options chosen; the text
 // columns arrive as the text typed. The numeric columns are not here: they arrive
 // as bounds, in deviceNumbers.
 var deviceFilters = map[string]func(d Device, values []string) bool{
-	"id":     containing(func(d Device) string { return d.ID }),
-	"ip":     containing(func(d Device) string { return d.IP }),
-	"site":   containing(func(d Device) string { return d.Site }),
-	"status": oneOf(func(d Device) string { return d.Status }),
+	"ID":     containing(func(d Device) string { return d.ID }),
+	"IP":     containing(func(d Device) string { return d.IP }),
+	"Site":   containing(func(d Device) string { return d.Site }),
+	"Status": oneOf(func(d Device) string { return d.Status }),
 }
 
 // deviceNumbers are the numeric columns, which a table filters by range.
 var deviceNumbers = map[string]func(d Device) float64{
-	"count": func(d Device) float64 { return float64(d.Count) },
-	"rate":  func(d Device) float64 { return d.Rate() },
+	"Occurrences": func(d Device) float64 { return float64(d.Count) },
+	"Rate / s":    func(d Device) float64 { return d.Rate() },
 }
 
 // within keeps the rows whose number lies inside every bound in force, which is

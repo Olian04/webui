@@ -222,7 +222,7 @@ corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
 
 | File | Shows |
 | --- | --- |
-| `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs (`Key`) beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
+| `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
 | `sites.go` | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page with their own `ID`s, a second page contributing search results |
 | `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer` |
 | `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
@@ -342,7 +342,7 @@ Body: webui.Stack{ // vertical
     webui.Form[Device]{ ... },
     webui.Table[Event]{ ... },
   },
-  // The selected tab is kept in the address as ?tabs.tab=Raw, so it survives a
+  // The selected tab is kept in the address as ?tabs.tab=raw, so it survives a
   // reload and can be linked to. ID defaults to "tabs". Only the selected panel
   // is loaded.
   webui.Tabs{Panels: []webui.Tab{
@@ -361,9 +361,11 @@ number on a range: a bar when read-only — in a table, or in a form without a
 `Store` — and a range input when it has one. Both take a `Label` and a `Load`
 like the others, and `Slider` needs a `Min` and `Max`.
 
-Every accessor takes an optional `Key`: what `Load` receives in `Query.Sort` when
-a table is sorted by that column, or the `Label` when there is none. A form
-ignores it. Within one table the keys (or labels) must tell the columns apart.
+A table column is known by its `Label`: `Load` receives it in `Query.Sort`,
+`Query.Filters` and `Query.Ranges`, and the address names the column by it, in
+lower case with dashes (`?devices.sort=mean-rate-s`). There is nothing to declare
+to make a column sortable or filterable. Within one table the labels must tell the
+columns apart, which `Compile` checks; the same goes for the labels of a `Tabs`.
 
 Context-specific presentation stays off the accessor. Options are decorators,
 which are themselves accessors, so the common case stays a bare list:
@@ -472,7 +474,7 @@ is not an address on this host, is dropped and logged.
   number and a column the table does not have never arrive, and a typed filter is
   cut at 200 characters. A multi-select is repeated parameters
   (`devices.filter.status=a&devices.filter.status=b`), which is also what a form
-  of checkboxes submits; a range is `devices.min.count=300&devices.max.count=500`. The page has no row of argument controls:
+  of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. The page has no row of argument controls:
   its query arguments come from the address (a link, `Open`) and have no UI.
 - Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
   gating happens at execution rather than per-row at render. Row actions are

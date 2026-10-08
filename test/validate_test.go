@@ -123,12 +123,18 @@ func TestValidateDeclarationChecks(t *testing.T) {
 			webui.Table[Device]{Load: okRows},
 			webui.Table[Device]{Load: okRows},
 		}}, `the ID "table" is used twice`},
-		{"two columns sorting by one key", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "Other", Key: "ID", Load: func(Device) string { return "" }}},
-		}}, `two columns sort by "ID"`},
+		{"two columns with labels that differ only in case", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
+			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},
+		}}, `the labels "ID" and "id" name the same column in the address`},
 		{"two columns with one label", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), idCol()},
-		}}, `two columns sort by "ID"`},
+		}}, `the labels "ID" and "ID" name the same column in the address`},
+		{"a column label with nothing to name it by", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
+			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "—", Load: func(Device) string { return "" }}},
+		}}, `the label "—" has no letters or digits`},
+		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
+			{Label: "Raw events", Body: webui.Stack{}}, {Label: "raw  events", Body: webui.Stack{}},
+		}}}, `names the same tab as another in the address`},
 		{"same ID in one panel clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{ID: "v", Panels: []webui.Tab{
 			{Label: "A", Body: webui.Stack{
 				webui.Table[Device]{ID: "t", Load: okRows},

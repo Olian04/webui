@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/rules"
 )
@@ -19,9 +20,6 @@ type Accessor[M any] interface {
 // String projects a string field of M.
 type String[M any] struct {
 	Label string
-	// Key is what Load receives in Query.Sort when the table is sorted by this
-	// column; Label when empty. A form ignores it.
-	Key   string
 	Load  func(M) string
 	Store func(*M, string)
 	Rules StringRules
@@ -48,9 +46,6 @@ type PatternRule struct {
 // Int projects an int field of M.
 type Int[M any] struct {
 	Label string
-	// Key is what Load receives in Query.Sort when the table is sorted by this
-	// column; Label when empty. A form ignores it.
-	Key   string
 	Load  func(M) int
 	Store func(*M, int)
 	Rules NumberRules[int]
@@ -69,10 +64,7 @@ type NumberRules[T int | float64] struct {
 // Float projects a float64 field of M. Precision is the number of decimals
 // shown; zero shows the shortest exact representation.
 type Float[M any] struct {
-	Label string
-	// Key is what Load receives in Query.Sort when the table is sorted by this
-	// column; Label when empty. A form ignores it.
-	Key       string
+	Label     string
 	Load      func(M) float64
 	Store     func(*M, float64)
 	Rules     NumberRules[float64]
@@ -106,9 +98,6 @@ func (Placeholder[M]) isAccessor() {}
 // ToneNeutral, for it to be filterable.
 type Badge[M any] struct {
 	Label string
-	// Key is what Load receives in Query.Sort when the table is sorted by this
-	// column; Label when empty. A form ignores it.
-	Key   string
 	Load  func(M) string
 	Kinds map[string]Tone
 }
@@ -121,10 +110,7 @@ func (Badge[M]) isAccessor() {}
 // range. Precision is the number of decimals shown; zero shows the shortest
 // exact representation.
 type Slider[M any] struct {
-	Label string
-	// Key is what Load receives in Query.Sort when the table is sorted by this
-	// column; Label when empty. A form ignores it.
-	Key       string
+	Label     string
 	Load      func(M) float64
 	Store     func(*M, float64)
 	Min, Max  float64
@@ -277,7 +263,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
@@ -286,7 +272,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Int[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
 		}
 		if a.Store != nil {
@@ -306,7 +292,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			prec = a.Precision
 		}
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
 		if a.Store != nil {
@@ -335,7 +321,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		}
 		slices.Sort(options) // the filter lists them in a fixed order
 		return ir.Field{
-			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 	case Slider[M]:
@@ -345,7 +331,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		}
 		lo, hi := a.Min, a.Max
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
 			Rules: ir.Rules{Min: &lo, Max: &hi},
 			Get:   func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
@@ -403,34 +389,6 @@ func accessorLabel[M any](acc Accessor[M]) string {
 		return a.Label
 	case Slider[M]:
 		return a.Label
-	}
-	return ""
-}
-
-func orLabel(key, label string) string {
-	if key != "" {
-		return key
-	}
-	return label
-}
-
-// columnKey is what a column is known by: its Key, or its Label. Query.Sort and
-// Query.Filters carry it. A Group has
-// none; it is not a column.
-func columnKey[M any](acc Accessor[M]) string {
-	switch a := acc.(type) {
-	case String[M]:
-		return orLabel(a.Key, a.Label)
-	case Int[M]:
-		return orLabel(a.Key, a.Label)
-	case Float[M]:
-		return orLabel(a.Key, a.Label)
-	case Badge[M]:
-		return orLabel(a.Key, a.Label)
-	case Slider[M]:
-		return orLabel(a.Key, a.Label)
-	case Placeholder[M]:
-		return columnKey[M](a.Accessor)
 	}
 	return ""
 }
