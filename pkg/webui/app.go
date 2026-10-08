@@ -31,13 +31,33 @@ type Brand struct {
 	NoFavicon bool
 }
 
-// Theme holds visual settings. A zero Theme is the default. Light or dark is
-// the viewer's choice, not the app's: it follows their system preference, and
-// the sidebar switch overrides it for that browser. Tokens override individual design tokens by name, without the leading
-// dashes: {"blue": "#ff6600"}. Values are restricted to colour-like
-// characters so a token cannot break out of its declaration.
+// Color is a colour written as a hex string: "#3d71d9", or "#3d7" short, or
+// "#3d71d9cc" with an alpha. Compile refuses anything else, so a colour cannot
+// close the declaration it is written into.
+type Color string
+
+// Theme is what an app may restyle: the four colours that carry meaning. Each is
+// the colour as the design draws it; the library derives the rest (hover, the
+// readable text tint, the faint background and border of a badge) and tunes
+// them for light and dark, which are the viewer's choice and not the app's. A
+// field left empty keeps the design's own colour, so a zero Theme is the default.
+//
+// Surfaces and text are not themeable: they are what makes light and dark differ,
+// and a single colour cannot be right in both.
 type Theme struct {
-	Tokens map[string]string
+	// Accent is interactive: primary buttons, links, the active entry in the
+	// sidebar, the focus ring and the selected tab.
+	Accent Color
+
+	// OK is healthy, saved, loaded: a badge with ToneOK, the loaded mark.
+	OK Color
+
+	// Warning is degraded, needs a look: a badge with ToneWarning.
+	Warning Color
+
+	// Critical is failed, destructive: a badge with ToneCritical, error text, the
+	// destructive button.
+	Critical Color
 }
 
 // PageLike is Page[A] with the argument type erased so Pages can mix A.

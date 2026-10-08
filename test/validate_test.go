@@ -3,6 +3,7 @@ package webui_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
@@ -241,11 +242,26 @@ func TestCompileRejectsBadPrefix(t *testing.T) {
 	}
 }
 
-func TestValidateThemeTokens(t *testing.T) {
+func TestValidateThemeColours(t *testing.T) {
 	t.Parallel()
 
-	app := webui.App{Theme: webui.Theme{Tokens: map[string]string{"primary": "red; } body { display:none"}}}
-	errs := compileErrors(t, app)
-	assert.Equal(t, len(errs), 1)
-	assert.Contains(t, errs[0].Detail, "characters a colour does not")
+	app := webui.App{Theme: webui.Theme{
+		Accent:   "red; } body { display:none",
+		OK:       "green", // a name is not a hex colour
+		Warning:  "#ff9830",
+		Critical: "#12345", // five digits is no colour
+	}}
+	var all string
+	for _, e := range compileErrors(t, app) {
+		all += e.Error() + "\n"
+	}
+	assert.Contains(t, all, `Theme.Accent is "red; } body { display:none", which is not a hex colour`)
+	assert.Contains(t, all, `Theme.OK is "green"`)
+	assert.Contains(t, all, `Theme.Critical is "#12345"`)
+	assert.False(t, strings.Contains(all, "Theme.Warning"))
+
+	for _, ok := range []webui.Color{"#fff", "#ffff", "#3d71d9", "#3D71D9CC"} {
+		_, err := webui.App{Theme: webui.Theme{Accent: ok}}.Compile("")
+		assert.NoError(t, err)
+	}
 }

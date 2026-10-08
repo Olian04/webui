@@ -174,7 +174,10 @@ func main() {
       // The browser tab's icon is made from Logo and served by the app, so
       // there is nothing to produce or host. NoFavicon: true turns it off.
     },
-    Theme: webui.Theme{}, // Default theme
+    // A Theme is four colours, as hex: Accent, OK, Warning and Critical. The
+    // library derives hover, text and badge tints from each, for light and
+    // dark. A field left empty keeps the design's own colour.
+    Theme: webui.Theme{Accent: "#3d71d9"},
     Pages: webui.Pages{
       Devices,
       Details,
@@ -231,7 +234,7 @@ corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
 | `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer` |
 | `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
 | `system.go` | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
-| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Tokens`, `Compile` and `MustCompile`, the compile-error page |
+| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page |
 
 Everything works with JavaScript switched off: every control is a real link or
 form. The one script (`enhance.js`) replaces a single panel when a link inside it

@@ -46,15 +46,15 @@ type brokenArgs struct{ When []string }
 
 var Broken = webui.Page[brokenArgs]{Path: "/event/{id}", Body: webui.Stack{}}
 
-// themeFor overrides the accent. A Theme is a set of design tokens by name, without
-// the leading dashes; light or dark is the viewer's choice and not the app's. A
-// value that is not a colour or a length is a Compile error, so a token cannot
-// break out of its declaration.
+// themeFor overrides the accent. A Theme is four colours (Accent, OK, Warning,
+// Critical); the library derives the rest and tunes it for light and dark, which
+// are the viewer's choice and not the app's. A value that is not a hex colour is
+// a Compile error, so a colour cannot break out of its declaration.
 func themeFor(accent string) webui.Theme {
 	if accent == "" {
 		return webui.Theme{}
 	}
-	return webui.Theme{Tokens: map[string]string{"blue": accent, "blue-hover": accent, "blue-text": accent}}
+	return webui.Theme{Accent: webui.Color(accent)}
 }
 
 func main() {

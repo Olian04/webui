@@ -60,7 +60,7 @@ func (r *Renderer) Assets() (http.Handler, error) {
 		files[name] = newAsset(body, mime)
 	}
 	if r.hasCSS {
-		files["theme.css"] = newAsset(themeCSS(r.app.Theme.Tokens), "text/css; charset=utf-8")
+		files["theme.css"] = newAsset(themeCSS(r.app.Theme), "text/css; charset=utf-8")
 	}
 	if r.logo {
 		files["logo"] = newAsset(r.app.Brand.Logo, r.app.Brand.Mime)

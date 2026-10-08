@@ -139,36 +139,18 @@ func (v *bodyValidator) id(component, id string) {
 	v.ids[eff] = append(v.ids[eff], slices.Clone(v.scope))
 }
 
-// tokenValue is what a theme token may contain: colour-like characters only,
-// so a token cannot close its declaration or open another.
-func validTokenValue(s string) bool {
-	if s == "" {
-		return false
-	}
-	for _, r := range s {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-		case strings.ContainsRune(" #%.,()/_+-", r):
-		default:
-			return false
-		}
-	}
-	return true
-}
+var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)
 
 func validateTheme(t Theme) []CompileError {
 	var errs []CompileError
-	for name, value := range t.Tokens {
-		if name == "" || strings.Trim(name, "abcdefghijklmnopqrstuvwxyz0123456789-") != "" {
+	for _, f := range []struct {
+		name  string
+		value Color
+	}{{"Accent", t.Accent}, {"OK", t.OK}, {"Warning", t.Warning}, {"Critical", t.Critical}} {
+		if f.value != "" && !hexColor.MatchString(string(f.value)) {
 			errs = append(errs, CompileError{
-				Detail: fmt.Sprintf("Theme token name %q is not lower-case letters, digits and dashes", name),
-				Fix:    "Name the token as in the stylesheet without the leading dashes, such as \"primary\".",
-			})
-		}
-		if !validTokenValue(value) {
-			errs = append(errs, CompileError{
-				Detail: fmt.Sprintf("Theme token %q has the value %q, which contains characters a colour does not", name, value),
-				Fix:    "Use a colour or length such as #3d71d9 or rgb(61 113 217 / 14%).",
+				Detail: fmt.Sprintf("Theme.%s is %q, which is not a hex colour", f.name, string(f.value)),
+				Fix:    "Write it as #rgb, #rrggbb or #rrggbbaa, such as \"#3d71d9\".",
 			})
 		}
 	}

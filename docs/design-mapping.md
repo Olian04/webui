@@ -19,7 +19,7 @@ into existence, and nothing is configured twice.
 |---|---|
 | `App` | The shell: sidebar, top bar (breadcrumbs, search, refresh), content, status bar |
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
-| `Theme` | The token override block (`theme.css`) and the base mode — the only thing that differs between dark and light |
+| `Theme` | The four colours an app may restyle (`Accent`, `OK`, `Warning`, `Critical`), emitted as `theme.css` |
 | `Page` | One address, one screen |
 | `Page.Path` | The address; its segments are the breadcrumb trail |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
@@ -81,13 +81,23 @@ whole window — the single most noticeable alignment in the layout.
 
 ### `Theme`
 
-`Theme.Tokens` is the entire surface between the design and the application.
-Every colour, radius and elevation in the design document is a token; nothing
-in any component reads a literal value. Swapping dark for light is swapping the
-token block, and nothing about spacing, structure or component behaviour
-changes. An application that wants its own palette redefines tokens and gets a
-coherent result, because semantics (*healthy*, *warning*, *critical*,
-*interactive*) are named, not colours.
+`Theme` is the surface between the design and the application, and it is a
+struct of static fields, one for each thing an app may restyle: `Accent`
+(interactive: primary buttons, links, the active entry, focus), and `OK`,
+`Warning` and `Critical` (the semantics a badge or a message carries). Each is a
+hex colour, checked at `Compile`.
+
+The design underneath is still tokens, and nothing in any component reads a
+literal value, but the app does not name them. It names a colour, and the
+renderer derives what the design needs from it, per mode, with `color-mix`: for
+the accent a hover and a readable text tint, for a status colour its text tint
+and the faint background and border of a badge. Dark lightens and light deepens,
+so one colour is right in both.
+
+Surfaces and text are not themeable on purpose. They are what makes light and
+dark differ, and light or dark is the viewer's choice, not the app's; a single
+colour cannot be right in both. A field left empty keeps the design's colour, so
+a zero `Theme` serves no `theme.css` at all.
 
 ### `Page` and `PathTemplate`
 

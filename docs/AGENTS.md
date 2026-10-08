@@ -29,7 +29,7 @@ Unit tests are `*_test.go` next to the source they cover, same package. Internal
 | `docs/mock/`             | The design as static files. `node build.mjs`, then serve the folder.          |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
-`ir.Theme` token; no component reads a literal value. When the two documents and
+design token (the app's `webui.Theme` colours are the only ones it may override); no component reads a literal value. When the two documents and
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 

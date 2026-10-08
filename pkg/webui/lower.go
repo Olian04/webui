@@ -95,9 +95,5 @@ type bodyLowerer struct {
 }
 
 func lowerTheme(t Theme) ir.Theme {
-	tokens := make(map[string]string, len(t.Tokens))
-	for k, v := range t.Tokens {
-		tokens[k] = v
-	}
-	return ir.Theme{Tokens: tokens}
+	return ir.Theme{Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical)}
 }

@@ -1,7 +1,8 @@
 /* ===========================================================================
-   Design tokens. In the library overrides are ir.Theme.Tokens, emitted as theme.css; the utility CSS is prebuilt by the Tailwind standalone CLI and
-   go:embed-ed. The values below are tuned to Grafana's dark canvas, which is
-   a theme choice, not a structural one — the markup underneath is unchanged.
+   Design tokens. The app's colours (webui.Theme) override the blue, green,
+   orange and red families, emitted as theme.css after this file. The values
+   below are tuned to Grafana's dark canvas, which is a theme choice, not a
+   structural one — the markup underneath is unchanged.
    =========================================================================== */
 :root,
 [data-theme='dark'] {

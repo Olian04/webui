@@ -266,7 +266,7 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	assert.Contains(t, get(themed, "/admin/_webui/theme.css").Body.String(), "--blue: #2f9e8f;")
 	assert.Equal(t, get(h, "/admin/_webui/theme.css").Code, http.StatusNotFound) // none by default
 
-	// A token cannot break out of its declaration: that is a Compile error.
+	// A colour cannot break out of its declaration: that is a Compile error.
 	a.Theme = themeFor("red; } body { display: none")
 	_, err = a.Compile("/admin")
 	assert.Error(t, err)

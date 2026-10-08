@@ -101,14 +101,14 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/prefs.js").Code, http.StatusOK)
 }
 
-func TestThemeTokensAndLogoAreServedAndLinked(t *testing.T) {
+func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	t.Parallel()
 
 	img := image.NewRGBA(image.Rect(0, 0, 4, 4))
 	img.Set(1, 1, color.RGBA{R: 255, A: 255})
 	h := webui.App{
 		Brand: webui.Brand{Name: "Acme", Logo: img},
-		Theme: webui.Theme{Tokens: map[string]string{"blue": "#ff6600"}},
+		Theme: webui.Theme{Accent: "#ff6600"},
 	}.MustCompile("/admin")
 
 	page := serve(h, http.MethodGet, "/admin/").Body.String()

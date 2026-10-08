@@ -29,7 +29,8 @@ type Favicon struct {
 	PNG  []byte
 }
 
-// Theme is resolved visual settings. The runtime turns tokens into CSS.
+// Theme is resolved visual settings: the colours the app chose, as hex, or empty
+// for the design's own. The renderer turns them into CSS.
 type Theme struct {
-	Tokens map[string]string // overrides by name, without leading dashes
+	Accent, OK, Warning, Critical string
 }

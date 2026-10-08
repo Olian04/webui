@@ -13,7 +13,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -73,7 +72,7 @@ type navEntry struct {
 func New(app *ir.App, prefix string) *Renderer {
 	r := &Renderer{
 		app: app, prefix: prefix,
-		hasCSS: len(app.Theme.Tokens) > 0,
+		hasCSS: app.Theme != ir.Theme{},
 		logo:   len(app.Brand.Logo) > 0,
 	}
 	for _, p := range app.Pages {
@@ -200,21 +199,60 @@ func ServerError() templ.Component {
 	})
 }
 
-// themeCSS renders the token overrides. Selector specificity beats the
-// stylesheet's theme blocks, so an override applies in every mode.
-func themeCSS(tokens map[string]string) []byte {
-	names := make([]string, 0, len(tokens))
-	for k := range tokens {
-		names = append(names, k)
-	}
-	sort.Strings(names)
+// themeCSS renders the app's colours as overrides of the design's tokens, for
+// each of light and dark. A hover colour, a readable text tint and a badge's
+// faint background and border are derived from the one colour, per mode, with
+// color-mix, so the app names four colours and the design stays coherent.
+//
+// The selectors are as specific as the stylesheet's theme blocks and come after
+// them: a stored choice (data-theme) wins, then the viewer's system preference.
+func themeCSS(t ir.Theme) []byte {
 	var b strings.Builder
-	b.WriteString("html:root:root {\n")
-	for _, k := range names {
-		fmt.Fprintf(&b, "  --%s: %s;\n", k, tokens[k])
+	rule := func(selector string, decls []string) {
+		if len(decls) > 0 {
+			fmt.Fprintf(&b, "%s {\n  %s\n}\n", selector, strings.Join(decls, "\n  "))
+		}
 	}
-	b.WriteString("}\n")
+	dark, light := themeDecls(t, true), themeDecls(t, false)
+	rule("html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark']", dark)
+	rule("html:root:root[data-theme='light']", light)
+	if len(light) > 0 {
+		b.WriteString("@media (prefers-color-scheme: light) {\n")
+		fmt.Fprintf(&b, "  html:root:root:not([data-theme]) {\n    %s\n  }\n", strings.Join(light, "\n    "))
+		b.WriteString("}\n")
+	}
 	return []byte(b.String())
+}
+
+// themeDecls are the token declarations for one mode. In dark a status colour
+// is lightened to read on a dark surface; in light it is deepened to read on a
+// light one.
+func themeDecls(t ir.Theme, dark bool) []string {
+	var out []string
+	mix := func(c string, pct int, with string) string {
+		return fmt.Sprintf("color-mix(in srgb, %s %d%%, %s)", c, pct, with)
+	}
+	if c := t.Accent; c != "" {
+		if dark {
+			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 82, "white")+";", "--blue-text: "+mix(c, 62, "white")+";")
+		} else {
+			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 86, "black")+";", "--blue-text: "+mix(c, 80, "black")+";")
+		}
+	}
+	for _, s := range []struct{ name, c string }{{"green", t.OK}, {"orange", t.Warning}, {"red", t.Critical}} {
+		if s.c == "" {
+			continue
+		}
+		text := mix(s.c, 85, "black")
+		if dark {
+			text = mix(s.c, 60, "white")
+		}
+		out = append(out,
+			"--"+s.name+": "+text+";",
+			"--"+s.name+"-bg: "+mix(s.c, 14, "transparent")+";",
+			"--"+s.name+"-bd: "+mix(s.c, 30, "transparent")+";")
+	}
+	return out
 }
 
 // brand is the app's name as the sidebar shows it, "Home" when it has none, so
