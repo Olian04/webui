@@ -19,11 +19,11 @@ Apply all rules below unless user narrows scope.
 
 ### Core Go habits (this repository)
 
-- **Errors:** wrap with `fmt.Errorf("...: %w", err)` when adding context; use `errors.Is` / `errors.As`; use package-level sentinels when fit; never discard errors with `_`.
+- **Errors:** wrap with `fmt.Errorf("...: %w", err)` when adding context; use `errors.Is` / `errors.As`; add a package-level sentinel only when production code branches on it; never discard errors with `_`.
 - **`Must*` panic:** `Must*` APIs can panic by convention when failure means programmer/startup fatal error. Do not flag documented `Must*` panic used in intended abort context. Still flag undocumented panic, panic in non-`Must` API without strong reason, or unsafe `Must*` use at library boundary.
 - **Interfaces:** define where used; keep small (about 1-3 methods); accept interfaces, return concrete types when that improves coupling/testability.
 - **Concurrency:** `context.Context` first for cancel/timeout work; use `errgroup` for coordinated goroutines; use `sync.Mutex` (or fitting sync primitive) for shared mutable state instead of forcing channel pattern.
-- **Structure:** `pkg/webui` owns the declaration AST; `internal/<phase>` (`args`, `rules`, `runtime`, `render`) holds algorithms; no `util`/`helpers` junk-drawer packages; package names singular lowercase.
+- **Structure:** `pkg/webui` owns the declaration AST; `internal/<phase>` (`args`, `favicon`, `ir`, `render`, `rules`, `runtime`, `tablequery`) holds algorithms; `cmd/demo` is the only entrypoint and is not API; no `util`/`helpers` junk-drawer packages; package names singular lowercase.
 - **Test placement:** unit tests are rare `*_test.go` next to the source they cover (same package). Integration tests live under `test/`, import `pkg/` only, use the external test package (`webui_test`). Do not import `internal/` from `test/`. Do not mirror paths under `test/unit`.
 
 ### Principles and patterns (common Go practice)
@@ -35,7 +35,7 @@ Apply all rules below unless user narrows scope.
 - **Boundaries:** public types stay in `pkg/webui`; algorithms stay in `internal/`; flag leakage of internal types into the public API.
 - **Concurrency patterns:** check missing cancellation, unbounded goroutines, unjustified fire-and-forget, races, missing synchronization.
 - **Testing:** table-driven tests for pure logic; flag risky untested error paths (suggestion unless user asked for test mandate).
-- **Module boundaries:** use `internal/` when appropriate; avoid exporting symbols only for tests unless justified.
+- **Module boundaries:** use `internal/` when appropriate; code that only a test uses is unused: it belongs in `test/` or should be deleted, not kept in the library.
 
 If rule not applicable (example tiny `main` snippet), say so briefly and skip nitpicks.
 
@@ -45,10 +45,7 @@ If rule not applicable (example tiny `main` snippet), say so briefly and skip ni
 2. Run static analysis from module root (same order as lint pipeline). Run all commands below in order, capture stdout/stderr for report:
 
    ```bash
-   go vet ./...
-   go mod verify
-   go tool govulncheck ./...
-   go tool golangci-lint run ./...
+   make lint   # generate, go vet, go mod verify, govulncheck, golangci-lint
    ```
 
    - If command cannot run (missing binary, wrong directory, toolchain error), record failure and continue/stop with explicit note. Always report this to caller.
