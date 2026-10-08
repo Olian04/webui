@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// FS holds css/, js/ and fonts/. Nothing else is served.
+// FS holds css/, js/, fonts/ and the default favicon. Nothing else is served.
 //
-//go:embed css js fonts
+//go:embed css js fonts favicon.svg
 var FS embed.FS
 
 // iconNames is every Font Awesome Free solid icon name, one per line, so a name

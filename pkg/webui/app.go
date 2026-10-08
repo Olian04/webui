@@ -18,9 +18,17 @@ type App struct {
 }
 
 // Brand is the product identity shown in the chrome.
+//
+// The browser tab's icon is made from Logo: scaled to the sizes browsers ask
+// for and served by the app, so there is no file to produce and host. An app with
+// no Logo gets the library's own mark. NoFavicon turns that off.
 type Brand struct {
 	Name string
 	Logo image.Image
+
+	// NoFavicon stops the favicon being generated and served, for an app that
+	// brings its own.
+	NoFavicon bool
 }
 
 // Theme holds visual settings. A zero Theme is the default. Light or dark is

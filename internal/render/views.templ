@@ -2,6 +2,7 @@ package render
 
 import (
 	"slices"
+	"strconv"
 
 	"github.com/Olian04/webui/internal/ir"
 	t "github.com/Olian04/webui/internal/render/templates"
@@ -34,7 +35,26 @@ templ (r *Renderer) document(d Doc) {
 // theme never flashes. It is a classic script, because modules are deferred.
 templ (r *Renderer) head() {
 	<script src={ r.AssetHref("prefs.js") }></script>
+	@r.favicons()
 }
+
+// favicons links the browser tab's icon: the logo scaled to each size, with the
+// largest also the one a phone puts on its home screen, or the library's mark
+// when the app has no logo. An app that turned it off declares its own.
+templ (r *Renderer) favicons() {
+	if r.app.Brand.DefaultFavicon {
+		<link rel="icon" type="image/svg+xml" href={ r.AssetHref("favicon.svg") }/>
+	}
+	for i, f := range r.app.Brand.Favicons {
+		if i == len(r.app.Brand.Favicons)-1 {
+			<link rel="apple-touch-icon" sizes={ sizes(f.Size) } href={ r.AssetHref(faviconName(f.Size)) }/>
+		} else {
+			<link rel="icon" type="image/png" sizes={ sizes(f.Size) } href={ r.AssetHref(faviconName(f.Size)) }/>
+		}
+	}
+}
+
+func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
 templ (r *Renderer) sidebar(active string) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}) {

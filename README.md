@@ -171,6 +171,8 @@ func main() {
     Brand: webui.Brand{
       Name: "Demo",
       Logo: mustLogo(),
+      // The browser tab's icon is made from Logo and served by the app, so
+      // there is nothing to produce or host. NoFavicon: true turns it off.
     },
     Theme: webui.Theme{}, // Default theme
     Pages: webui.Pages{

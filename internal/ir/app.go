@@ -15,6 +15,18 @@ type Brand struct {
 	Name string
 	Logo []byte
 	Mime string
+
+	// Favicons are the logo scaled to the sizes a browser asks for, or none when
+	// there is no logo or the declaration turned them off. DefaultFavicon asks for
+	// the library's own mark instead, for an app that has no logo.
+	Favicons       []Favicon
+	DefaultFavicon bool
+}
+
+// Favicon is the logo scaled to a Size x Size square, as PNG.
+type Favicon struct {
+	Size int
+	PNG  []byte
 }
 
 // Theme is resolved visual settings. The runtime turns tokens into CSS.

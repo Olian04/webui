@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -64,6 +65,16 @@ func (r *Renderer) Assets() (http.Handler, error) {
 	if r.logo {
 		files["logo"] = newAsset(r.app.Brand.Logo, r.app.Brand.Mime)
 	}
+	for _, f := range r.app.Brand.Favicons {
+		files[faviconName(f.Size)] = newAsset(f.PNG, "image/png")
+	}
+	if r.app.Brand.DefaultFavicon {
+		body, err := assets.FS.ReadFile("favicon.svg")
+		if err != nil {
+			return nil, err
+		}
+		files["favicon.svg"] = newAsset(body, "image/svg+xml")
+	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		a, ok := files[req.PathValue("file")]
@@ -82,3 +93,6 @@ func (r *Renderer) Assets() (http.Handler, error) {
 		_, _ = w.Write(a.body)
 	}), nil
 }
+
+// faviconName is the asset a favicon of one size is served as.
+func faviconName(size int) string { return "favicon-" + strconv.Itoa(size) + ".png" }

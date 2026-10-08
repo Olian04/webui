@@ -69,6 +69,12 @@ into existence, and nothing is configured twice.
 palette; `ByPath` is what makes a breadcrumb parent clickable and what lets one
 page link to another without either knowing the other's address.
 
+The browser tab's icon is generated: `Brand.Logo` is scaled to 32 px (the tab)
+and 180 px (a phone's home screen), fitted inside a square and never stretched,
+and served by the app, with no file to produce or host. An app with no `Logo`
+gets the library's own mark as an SVG. `Brand.NoFavicon` turns it all off, for an
+app that declares its own.
+
 `Brand.Name` and `Brand.Logo` fill the 48px sidebar brand row. That row is
 exactly as tall as the top bar so the two horizontal rules line up across the
 whole window — the single most noticeable alignment in the layout.

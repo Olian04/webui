@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/png"
 
+	"github.com/Olian04/webui/internal/favicon"
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -50,6 +51,19 @@ func (a App) lower() (*ir.App, error) {
 			return nil, fmt.Errorf("webui: Brand.Logo does not encode as PNG: %w", err)
 		}
 		out.Brand.Logo, out.Brand.Mime = buf.Bytes(), "image/png"
+	}
+	switch {
+	case a.Brand.NoFavicon:
+	case a.Brand.Logo == nil:
+		out.Brand.DefaultFavicon = true
+	default:
+		for _, size := range []int{32, 180} { // the tab icon, and the one a phone puts on its home screen
+			data, err := favicon.PNG(a.Brand.Logo, size)
+			if err != nil {
+				return nil, fmt.Errorf("webui: Brand.Logo does not scale to a %d px favicon: %w", size, err)
+			}
+			out.Brand.Favicons = append(out.Brand.Favicons, ir.Favicon{Size: size, PNG: data})
+		}
 	}
 	for _, p := range a.Pages {
 		page := p.lowerPage(l)
