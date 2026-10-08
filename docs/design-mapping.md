@@ -42,7 +42,7 @@ existence, and nothing is configured twice.
 | value kind | The input type and the column's alignment |
 | `Group` | A bordered group inside the form |
 | no `Store` | The input renders read-only on the hover surface |
-| `Sortable` | The column header becomes a sort link |
+| accessor `Key` (else `Label`) | What a column's sort link asks `Load` for; every column header is a sort link |
 | `Placeholder` | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |

@@ -77,12 +77,14 @@ var Devices = webui.Page[DevicesArgs]{
   Nav:  DevicesNav,
   Body: webui.Table[Device]{
     Title: "Devices",
-    // A table that pages or sorts keeps that state in the address under its
-    // ID: ?devices.offset=50&devices.sort=ip&devices.desc=true. The library
-    // owns those parameters and hands Load the result as a Query; a sort key
-    // the columns did not declare is dropped before Load sees it. ID defaults
-    // to "table" and must be unique within the page, so name it when a page has
-    // more than one table that pages or sorts.
+    // Every column header is a sort link. A table keeps its sort, and its page,
+    // in the address under its ID:
+    // ?devices.offset=50&devices.sort=ip&devices.desc=true. The library owns
+    // those parameters and hands Load the result as a Query, and Load does the
+    // sorting; a sort key that is not a column is dropped before Load sees it.
+    // Query.Sort is the accessor's Key, or its Label when it has none. ID
+    // defaults to "table" and must be unique within the page, so name it when a
+    // page has more than one table.
     ID:       "devices",
     PageSize: 25, // 0 means the table does not page
     Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
@@ -102,7 +104,7 @@ var Devices = webui.Page[DevicesArgs]{
     // No Actions or BulkActions means no action buttons and no form.
     // No BulkActions means no row select checkboxes and no selection bar.
     // Either needs Key: a request names rows by identity, never by position.
-    Columns: []webui.Accessor[Device]{ID, webui.Sortable[Device]{Accessor: IP, Key: "ip"}, Occurrences, Rate},
+    Columns: []webui.Accessor[Device]{ID, IP, Occurrences, Rate},
   },
 }
 
@@ -331,12 +333,15 @@ number on a range: a bar when read-only — in a table, or in a form without a
 `Store` — and a range input when it has one. Both take a `Label` and a `Load`
 like the others, and `Slider` needs a `Min` and `Max`.
 
+Every accessor takes an optional `Key`: what `Load` receives in `Query.Sort` when
+a table is sorted by that column, or the `Label` when there is none. A form
+ignores it. Within one table the keys (or labels) must tell the columns apart.
+
 Context-specific presentation stays off the accessor. Options are decorators,
 which are themselves accessors, so the common case stays a bare list:
 
 ```go
-Columns: []webui.Accessor[Device]{ID, webui.Sortable[Device]{IP, "ip_addr"}, Occurrences},
-Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
+Fields: []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
 ```
 
 ## Open
@@ -392,8 +397,8 @@ Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
   forms keep what was typed (only their `action` is patched). After an action
   the whole page re-renders; a model-typed `Stale[Device]` is deferred.
 - Pagination and sorting: done, as library-owned view state. `Table.PageSize`
-  turns paging on, a `Sortable` column turns sorting on, and `Load` receives a
-  `Query` and returns `Rows{Items, Total}`; `Total` below what has been shown
+  turns paging on, every column is sortable, and `Load` receives a `Query` and
+  returns `Rows{Items, Total}`, doing the sorting itself; `Total` below what has been shown
   means unknown. Filtering stays an ordinary page argument that `Load` reads.
   Setting a filter returns every table to its first page.
 - Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
