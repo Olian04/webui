@@ -71,22 +71,6 @@ const DevicesPath webui.PageID[webui.NoArgs] = "/device"
 var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
-	// The global search asks every page that has a Search. Each result is a link
-	// built with Open, so it carries the mount prefix and the page's arguments.
-	Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
-		devices := service.Find(query, 8)
-		results := make([]webui.SearchResult, len(devices))
-		for i, d := range devices {
-			results[i] = webui.SearchResult{
-				Title: d.ID,
-				Desc:  d.IP + " · " + d.Site,
-				// A search is not a page, so there is no address to return to: Cancel
-				// on the device goes to the device list.
-				Target: webui.Open(ctx, Details, DeviceArgs{ID: d.ID}),
-			}
-		}
-		return results, nil
-	},
 	Body: webui.Table[Device]{
 		Title: "Devices",
 		Desc:  "One Table leaf. Sort, page and row links are all URLs.",
@@ -95,11 +79,19 @@ var Devices = webui.Page[webui.NoArgs]{
 		// and ?devices.max.<column> for the numeric ones.
 		ID:       "devices",
 		PageSize: 10,
+		// Search makes every device findable from the search box in the top bar. This
+		// table has Load, so it is handed the typed text in Query.Search; a table with
+		// Rows needs nothing else, and the library looks in every column.
+		Search: true,
 		// Load, not Rows: the source pages itself, as a database would, so it is
 		// handed the window, the sort and the filters and does that work. Every
 		// other table in the demo says only what its rows are, with Rows, and
 		// leaves the rest to the library.
 		Load: func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
+			if q.Search != "" {
+				found := service.Find(q.Search, q.Limit)
+				return webui.Rows[Device]{Items: found, Total: len(found)}, nil
+			}
 			// A column is named by its Label. The numeric columns, Occurrences and
 			// Rate / s, arrive as bounds.
 			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})

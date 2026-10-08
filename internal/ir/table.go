@@ -19,6 +19,10 @@ type Query struct {
 	// Ranges are the bounds on the numeric columns, by Key. A column is in
 	// Filters or in Ranges, never both.
 	Ranges map[string]Range
+
+	// Search is what the visitor typed in the global search, to find rows of this
+	// table by any column, ignoring case. It is empty for the table's own view.
+	Search string
 }
 
 // Range bounds a number, both ends inclusive. A nil end is unbounded.
@@ -45,6 +49,10 @@ type Table struct {
 	// "<ID>.sort", "<ID>.desc". Set whenever the table pages or sorts.
 	ID       string
 	PageSize int // rows per page; 0 means the table does not page
+
+	// Search says the table's rows are found by the global search: each is a result
+	// that leads where RowClick does. Only a table with a RowClick has it.
+	Search bool
 
 	Columns  []Field
 	RowClick *Link     // nil means rows are not clickable

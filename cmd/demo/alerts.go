@@ -35,9 +35,10 @@ var Alerts = webui.Page[webui.NoArgs]{
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
-		// Rows is all it takes: the library filters, sorts and pages them by the
-		// columns, so there is no sorting or filtering code on this page.
-		Rows: func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+		// Rows is all it takes: the library filters, sorts, pages and searches them
+		// by the columns, so there is no query code on this page.
+		Search: true,
+		Rows:   func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,

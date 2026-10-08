@@ -31,6 +31,13 @@ type Query struct {
 	// out, so a range is an inequality, not text. A bound is always a finite
 	// number; an unreadable one never arrives.
 	Ranges map[string]Range
+
+	// Search is what the visitor typed in the global search, to find rows of this
+	// table by any column, and is only ever set for that: a table has no search
+	// box of its own. Match it however the source can, case-insensitively, against
+	// whatever the columns show. It is empty for the table's own view. A table
+	// with Rows never sees it, since the library searches the rows itself.
+	Search string
 }
 
 // Range bounds a number, both ends inclusive. A nil end is unbounded.
@@ -67,6 +74,14 @@ type Rows[M any] struct {
 // the window, the sort and the filters as a Query and returns one window of rows,
 // with the total, doing all of that itself.
 //
+// Search makes the table's rows findable from the global search in the top bar.
+// A row is a result: its first column is the title, the other columns are the line
+// beneath it, and it leads where RowClick leads, so the table needs a RowClick. For
+// a table with Rows the library searches every column of every row. A table with
+// Load is handed the text in Query.Search and answers as it can. The table's page
+// is asked with no arguments, so it may not have path arguments, and its Guard runs
+// first; each result is shown only if the page it leads to would let the visitor in.
+//
 // Actions render as a button per row; BulkActions render in the selection bar
 // above a table that then has a checkbox column. Either needs Key, because a
 // request names rows by identity, never by position.
@@ -77,6 +92,7 @@ type Table[M any] struct {
 	PageSize    int
 	Rows        func(ctx context.Context) ([]M, error)
 	Load        func(ctx context.Context, q Query) (Rows[M], error)
+	Search      bool
 	Key         func(M) string
 	RowClick    RowClick[M]
 	Actions     []Action[M]
@@ -137,6 +153,18 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	if t.RowClick != nil {
 		t.RowClick.validateRow(v)
 	}
+	if t.Search {
+		if t.RowClick == nil {
+			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
+		}
+		if len(args.Placeholders(v.page)) > 0 {
+			v.add("a Table on a page with path arguments cannot have Search",
+				"Search runs without a page's arguments, so it cannot build one. Put Search on a table of a page without placeholders, such as the list, and link to this page with RowClick.")
+		}
+		if len(t.Columns) == 0 {
+			v.add("a Table has Search but no Columns", "A search result is made from the columns: set Columns.")
+		}
+	}
 }
 
 func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
@@ -147,7 +175,7 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 		labels[c.Key] = c.Label
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize,
+		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize, Search: t.Search,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}
@@ -171,7 +199,7 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 // the two otherwise differ only in the type of a Range, which the user sees as
 // theirs.
 func queryOf(q ir.Query, labels map[string]string) Query {
-	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc}
+	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc, Search: q.Search}
 	if q.Filters != nil {
 		out.Filters = make(map[string][]string, len(q.Filters))
 		for name, values := range q.Filters {

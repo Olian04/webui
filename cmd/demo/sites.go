@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -42,21 +41,6 @@ var (
 var Sites = webui.Page[webui.NoArgs]{
 	Path: "/site",
 	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot"},
-	// A second page offering Search: typing "stock" lists devices and sites,
-	// each under its page's name.
-	Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
-		var results []webui.SearchResult
-		for _, site := range service.Sites() {
-			if strings.Contains(strings.ToLower(site.Name), strings.ToLower(query)) {
-				results = append(results, webui.SearchResult{
-					Title:  site.Name,
-					Desc:   fmt.Sprintf("%d devices", site.Devices),
-					Target: webui.Open(ctx, SiteDetail, SiteArgs{Name: site.Name}),
-				})
-			}
-		}
-		return results, nil
-	},
 	Body: SitesTable,
 }
 
@@ -64,8 +48,10 @@ var Sites = webui.Page[webui.NoArgs]{
 // hold the one a page already has.
 var SitesTable = webui.Table[SiteSummary]{
 	Title: "Sites",
-	Desc:  "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
-	Rows:  func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
+	Desc:  "An unpaged table. It only says what its rows are, and the library sorts, filters and searches them.",
+	// Searchable too: typing "stock" finds the site beside the devices that match.
+	Search: true,
+	Rows:   func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
 	RowClick: webui.Link[SiteSummary, SiteArgs]{
 		Page: SiteDetail,
 		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },

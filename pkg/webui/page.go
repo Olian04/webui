@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -52,26 +51,6 @@ type Page[A any] struct {
 	Nav   Nav
 	Guard func(ctx context.Context, a A) error
 	Body  PageBody
-
-	// Search adds this page's results to the global search. It is called with
-	// what the user typed, under the page's own name, and returns at most a
-	// handful of hits, each a link built with Open. It runs without the page's
-	// arguments, so a page with path arguments cannot offer it; Guard runs first,
-	// with zero arguments, and a page whose Guard refuses contributes nothing.
-	// Each hit is then checked against the page it leads to, with its own
-	// arguments and Guard, and is dropped when that refuses: a visitor is only
-	// offered what they could open.
-	Search func(ctx context.Context, query string) ([]SearchResult, error)
-}
-
-// SearchResult is one hit in the global search: a title, a line beneath it, and
-// where it goes. Build Target with Open; a result whose Target has an error is
-// dropped and logged, and so is one that leads to a page the visitor is not
-// allowed to open, or to no page of this app.
-type SearchResult struct {
-	Title  string
-	Desc   string
-	Target Target
 }
 
 // Nav is a navbar entry. A page with an empty Label has no entry of its own, and
@@ -121,11 +100,6 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 	if f.paths[path] > 1 {
 		v.add("two pages declare this path",
 			"Give each page a distinct Path; the router would pick one and the other would be dead.")
-	}
-
-	if p.Search != nil && len(args.Placeholders(path)) > 0 {
-		v.add("a page with path arguments cannot offer Search",
-			"Search runs without a page's arguments, so it cannot build one. Offer Search from a page without placeholders, such as the list, and link to this page with Open.")
 	}
 
 	_, problems := args.Spec(typ, path)
@@ -203,21 +177,6 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	}
 	if p.Guard != nil {
 		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
-	}
-	if p.Search != nil {
-		page.Search = func(ctx context.Context, query string) ([]ir.SearchResult, error) {
-			hits, err := p.Search(ctx, query)
-			errs := []error{err}
-			out := make([]ir.SearchResult, 0, len(hits))
-			for _, h := range hits {
-				if h.Target.Err != nil {
-					errs = append(errs, fmt.Errorf("search result %q: %w", h.Title, h.Target.Err))
-					continue
-				}
-				out = append(out, ir.SearchResult{Title: h.Title, Desc: h.Desc, Href: h.Target.URL})
-			}
-			return out, errors.Join(errs...)
-		}
 	}
 	page.Body = p.Body.lowerBody(ir.Addr{}, &bodyLowerer{nodes: &l.nodes})
 	return page

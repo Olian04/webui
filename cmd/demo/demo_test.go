@@ -98,8 +98,8 @@ func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
 		body = body[strings.Index(body, "Recent events"):]
 		return strings.Count(body[:strings.Index(body, "</table>")], `<tr class="">`) // body rows; the header has none
 	}
-	assert.Equal(t, rows("/admin/device/dev_27c38b"), 8)                         // every event
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15"), 3)              // the last 15 minutes
+	assert.Equal(t, rows("/admin/device/dev_27c38b"), 8)                                // every event
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15"), 3)                     // the last 15 minutes
 	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events"), 3) // the Raw tab: the same table
 }
 
@@ -116,7 +116,7 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
 	body := get(handler(t), "/admin/alert").Body.String()
 	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention</span>`) // no icon
-	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`))                                    // it has the bell
+	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`))                                   // it has the bell
 }
 
 func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {

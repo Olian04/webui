@@ -71,7 +71,7 @@ type Renderer struct {
 	prefix string
 	nav    []navEntry
 	hasCSS bool // theme tokens present, so theme.css is linked
-	search bool // some page offers Search, so the page script has something to ask
+	search bool // some table is searchable, so the page script has something to ask
 	logo   bool
 }
 
@@ -91,7 +91,9 @@ func New(app *ir.App, prefix string) *Renderer {
 		logo:   len(app.Brand.Logo) > 0,
 	}
 	for _, p := range app.Pages {
-		r.search = r.search || p.Search != nil
+		for _, t := range ir.Tables(p.Body) {
+			r.search = r.search || t.Search
+		}
 	}
 	for _, p := range app.Pages {
 		if p.Nav.Hidden {

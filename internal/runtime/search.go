@@ -1,11 +1,14 @@
 package runtime
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/Olian04/webui/internal/ir"
 )
 
 const (
@@ -21,10 +24,11 @@ type searchHit struct {
 	Href  string `json:"href"`
 }
 
-// search answers the global search with every page's own results. Each page
-// that offers Search is asked in turn, under its own name, after its Guard has
+// search answers the global search with the rows of every table that offers
+// itself to it. A table is searched under its own name, after its page's Guard has
 // run with zero arguments — what a visitor who opened the page bare would be
-// allowed. A page that fails, or refuses, is left out, and the rest answer.
+// allowed. A page that refuses, or a table that fails, is left out, and the rest
+// answer.
 //
 // Every result is then checked against the page it leads to, with that page's own
 // arguments and Guard, so the search never offers what following it would refuse:
@@ -40,45 +44,81 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), searchTimeout)
 		defer cancel()
+		seen := map[string]bool{} // a table on two pages is one result, not two
 		for _, page := range p.App.Pages {
-			if page.Search == nil {
-				continue
-			}
-			args, err := page.Decode(map[string]string{})
-			if err != nil {
-				continue
-			}
-			ctx := With(ctx, &Request{program: p, Args: args, Raw: map[string]string{}})
-			if page.Guard != nil && page.Guard(ctx, args) != nil {
-				continue
-			}
-			results, err := page.Search(ctx, query)
-			if err != nil && ctx.Err() == nil {
-				p.log.Error("webui: search failed", "page", page.PathTemplate, "err", err)
-			}
-			group := page.Nav.Label
-			if group == "" {
-				group = page.PathTemplate
-			}
-			for i, res := range results {
-				if i == searchPerPage {
-					break
-				}
-				if !safeRedirect(res.Href) {
-					p.log.Error("webui: search result refused: not an address on this host", "page", page.PathTemplate, "href", res.Href)
-					continue
-				}
-				if !p.mayOpen(ctx, res.Href) {
-					continue // a result is only for what this visitor could open: the destination's Guard has the last word
-				}
-				hits = append(hits, searchHit{Group: group, Title: res.Title, Desc: res.Desc, Href: res.Href})
-			}
+			hits = append(hits, p.searchPage(ctx, page, query, seen)...)
 		}
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(map[string]any{"results": hits})
+}
+
+// searchPage is the hits of one page's searchable tables.
+func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, seen map[string]bool) []searchHit {
+	var tables []*ir.Table
+	for _, t := range ir.Tables(page.Body) {
+		if t.Search {
+			tables = append(tables, t)
+		}
+	}
+	if len(tables) == 0 {
+		return nil
+	}
+	args, err := page.Decode(map[string]string{})
+	if err != nil {
+		return nil
+	}
+	req := &Request{program: p, Args: args, Raw: map[string]string{}}
+	ctx = With(ctx, req)
+	if page.Guard != nil && page.Guard(ctx, args) != nil {
+		return nil
+	}
+
+	var hits []searchHit
+	for _, t := range tables {
+		group := cmp.Or(t.Title, page.Nav.Label, page.PathTemplate)
+		rows, _, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
+		if err != nil && ctx.Err() == nil {
+			p.log.Error("webui: search failed", "page", page.PathTemplate, "table", t.Title, "err", err)
+		}
+		for i, row := range rows {
+			if i == searchPerPage {
+				break
+			}
+			href, err := p.open(t.RowClick.Dest, t.RowClick.Args(ctx, row), "")
+			if err != nil {
+				p.log.Error("webui: search result dropped: its link cannot be built", "page", page.PathTemplate, "err", err)
+				continue
+			}
+			if seen[href] || !p.mayOpen(ctx, href) {
+				continue // a result is only for what this visitor could open: the destination's Guard has the last word
+			}
+			seen[href] = true
+			title, desc := rowText(t, row)
+			hits = append(hits, searchHit{Group: group, Title: title, Desc: desc, Href: href})
+		}
+	}
+	return hits
+}
+
+// rowText is a row as a search result: its first column is the title, and the
+// others, where they say something, are the line beneath it.
+func rowText(t *ir.Table, row any) (title, desc string) {
+	var rest []string
+	for i, c := range t.Columns {
+		if c.Get == nil {
+			continue
+		}
+		switch text := c.Get(row); {
+		case i == 0:
+			title = text
+		case text != "":
+			rest = append(rest, text)
+		}
+	}
+	return title, strings.Join(rest, " · ")
 }
 
 // mayOpen reports whether the visitor could open the page at href: it is a page

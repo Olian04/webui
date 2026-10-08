@@ -37,6 +37,9 @@ rows:
 				continue rows
 			}
 		}
+		if q.Search != "" && !found(cols, row, q.Search) {
+			continue
+		}
 		kept = append(kept, row)
 	}
 
@@ -70,6 +73,18 @@ func matches(c ir.Field, row any, values []string) bool {
 		return slices.Contains(values, have)
 	}
 	return strings.Contains(strings.ToLower(have), strings.ToLower(values[0]))
+}
+
+// found is whether any column of a row contains what was searched for, ignoring
+// case: the global search looks in every column the row shows.
+func found(cols []ir.Field, row any, text string) bool {
+	needle := strings.ToLower(text)
+	for _, c := range cols {
+		if c.Get != nil && strings.Contains(strings.ToLower(c.Get(row)), needle) {
+			return true
+		}
+	}
+	return false
 }
 
 // within is whether x is inside the bounds, both ends inclusive; an end that is

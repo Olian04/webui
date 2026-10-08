@@ -32,7 +32,7 @@ type Program struct {
 	// gate is probe's twin that answers one question about an address: may this
 	// visitor open it? Each page's handler on it runs the page's argument decoding
 	// and Guard, as a real request would, and reports the verdict as a status.
-	gate *http.ServeMux
+	gate  *http.ServeMux
 	allow map[string]string // probe pattern → Allow header
 
 	// cross refuses cross-origin POSTs, using Fetch metadata and Origin. A
