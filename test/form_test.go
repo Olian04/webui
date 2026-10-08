@@ -32,7 +32,7 @@ func ptr[T any](v T) *T { return &v }
 
 func formApp(form webui.Form[Device]) http.Handler {
 	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
-	details := webui.Page[detailsArgs]{Path: "/device/{id}", Nav: webui.Nav{Shadow: &list.Nav}, Body: form}
+	details := webui.Page[detailsArgs]{Path: "/device/{id}", Body: form}
 	return webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
 }
 

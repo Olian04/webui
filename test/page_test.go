@@ -19,15 +19,14 @@ type pageArgs struct {
 }
 
 // app builds the README's two-page shape with empty bodies: a list that owns
-// a nav entry and a detail page that borrows it.
+// a nav entry and a detail page below it, which has none of its own.
 func app(guard func(context.Context, pageArgs) error) (webui.App, webui.Page[pageArgs], webui.Page[webui.NoArgs]) {
-	devices := webui.Nav{Label: "Devices", Section: "Platform"}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: devices, Body: webui.Stack{}}
-	details := webui.Page[pageArgs]{Path: "/device/{id}", Nav: webui.Nav{Shadow: &devices}, Guard: guard, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices", Section: "Platform"}, Body: webui.Stack{}}
+	details := webui.Page[pageArgs]{Path: "/device/{id}", Guard: guard, Body: webui.Stack{}}
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{list, details}}, details, list
 }
 
-func TestPageRendersNavBreadcrumbAndShadow(t *testing.T) {
+func TestPageRendersNavBreadcrumbAndTheAncestorsEntry(t *testing.T) {
 	t.Parallel()
 
 	a, _, _ := app(nil)
@@ -35,7 +34,7 @@ func TestPageRendersNavBreadcrumbAndShadow(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
 
-	// The detail page has no entry; the list's lights up through Shadow.
+	// The detail page has no entry; the list's lights up, as its ancestor.
 	assert.Contains(t, body, `<div class="nav-section">Platform</div>`)
 	assert.Contains(t, body, `<a class="nav-item active" href="/admin/device"`)
 	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)

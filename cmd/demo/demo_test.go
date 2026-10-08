@@ -70,7 +70,7 @@ func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
 	for _, caption := range []string{"Platform", "Configuration", "Operations"} {
 		assert.Contains(t, body, `<div class="nav-section">`+caption+`</div>`)
 	}
-	// SiteDetail has no entry of its own; Nav.Shadow lights Sites.
+	// SiteDetail has no entry of its own; it lights Sites, its ancestor.
 	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site"`)
 	// The breadcrumb's parent is the page mounted at /site.
 	assert.Contains(t, body, `<a href="/admin/site">Sites</a>`)

@@ -22,12 +22,6 @@ import (
 //go:embed resources/logo.png
 var logoBytes []byte
 
-// An icon is the name of a Font Awesome Free solid icon, "display" for
-// fa-display, drawn with the icon font the library serves. An unknown name is a
-// compile error. An entry with none shows its label's first letter, capitalised,
-// where the sidebar is collapsed to icons.
-var DevicesNav = webui.Nav{Label: "Devices", Icon: "display"}
-
 // A page's arguments are one struct. Fields named in the Path are path
 // segments; the rest are query parameters.
 type DetailsArgs struct {
@@ -72,7 +66,11 @@ var (
 
 var Devices = webui.Page[webui.NoArgs]{
   Path: "/device",
-  Nav:  DevicesNav,
+  // An icon is the name of a Font Awesome Free solid icon, "display" for
+  // fa-display, drawn with the icon font the library serves. An unknown name is
+  // a compile error. An entry with none shows its label's first letter,
+  // capitalised, where the sidebar is collapsed to icons.
+  Nav: webui.Nav{Label: "Devices", Icon: "display"},
   Body: webui.Table[Device]{
     Title: "Devices",
     // Every column header is a sort link, and shows a filter icon on hover. A
@@ -110,12 +108,9 @@ var Devices = webui.Page[webui.NoArgs]{
 
 var Details = webui.Page[DetailsArgs]{
   Path: "/device/{id}",
-  Nav: webui.Nav{
-    // Has no Label, so no entry of its own, but lights the "Devices" entry
-    // when the page is loaded. Matched by value, so the target page's Nav must
-    // be unique among pages; Compile says so if it is not.
-    Shadow: &DevicesNav,
-  },
+  // No Nav, so no entry of its own. It lights the "Devices" entry when it is
+  // open: the library lights the entry of the nearest ancestor path that has
+  // one, here the page at "/device".
   // Guard runs before anything is loaded — so an unauthorised device is never
   // read. It gates the UI on page load and authorises the request on every
   // section fetch.
@@ -230,7 +225,7 @@ corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
 | File | Shows |
 | --- | --- |
 | `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs (`Key`) beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
-| `sites.go` | a nested path with a parent breadcrumb, `Nav.Shadow`, two stateful tables on one page with their own `ID`s, a second page contributing search results |
+| `sites.go` | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page with their own `ID`s, a second page contributing search results |
 | `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer` |
 | `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
 | `system.go` | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |

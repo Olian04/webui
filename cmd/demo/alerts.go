@@ -30,11 +30,9 @@ var (
 	}
 )
 
-var AlertsNav = webui.Nav{Label: "Alerts", Icon: "bell"}
-
 var Alerts = webui.Page[webui.NoArgs]{
 	Path: "/alert",
-	Nav:  AlertsNav,
+	Nav:  webui.Nav{Label: "Alerts", Icon: "bell"},
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
@@ -63,7 +61,7 @@ type AlertArgs struct {
 // acknowledge it, beside the device it is about.
 var AlertDetails = webui.Page[AlertArgs]{
 	Path: "/alert/{id}",
-	Nav:  webui.Nav{Shadow: &AlertsNav}, // no entry of its own: it lights Alerts
+	// No Nav: it lights Alerts, the page at "/alert".
 	Guard: func(_ context.Context, a AlertArgs) error {
 		if _, ok := service.Alert(a.ID); !ok {
 			return fmt.Errorf("there is no alert %q", a.ID)

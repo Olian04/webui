@@ -27,7 +27,7 @@ into existence, and nothing is configured twice.
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none) |
 | `Nav.Section` | The uppercase caption above a run of entries |
 | `Page.Search` | That page's group of results in the top bar's search, beneath the app's pages |
-| `Nav.Shadow` | Which *other* entry lights up while this page is open |
+| *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, top-aligned, 8px apart |
@@ -165,20 +165,23 @@ A page declared at `Path: "/"` is the landing page. The brand in the sidebar
 label of its own, since the brand is its entry. An app with no such page sends
 the root to the first entry in the navigation.
 
-### `Nav.Shadow` → borrowed highlight
+### A page with no entry → the ancestor's highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not
-leave the sidebar looking like nothing is selected. `Shadow` names the page
-whose entry should light up instead. Visually: the sidebar stays on *Devices*
-while you are on a device, and the **breadcrumb** carries the fact that you
-have gone a level deeper.
+leave the sidebar looking like nothing is selected. Nothing is declared for
+this: a page with no `Label` lights the entry of its nearest ancestor path, the
+longest proper prefix of its own that is a page with a `Label` (the root is never
+one). `/device/{id}` lights *Devices*, the page at `/device`. Visually: the
+sidebar stays on *Devices* while you are on a device, and the **breadcrumb**
+carries the fact that you have gone a level deeper. It is the same derivation
+the breadcrumb makes from the path.
 
 This is why the breadcrumb lives in the top bar rather than in the content — it
 is the sidebar's partner, not the page's heading.
 
 ### `Nav.Hidden`
 
-No entry, no shadow. The page is reachable only by link. Nothing appears.
+No entry, and no ancestor with one to borrow: the page is reachable only by link, and nothing in the sidebar lights.
 
 ---
 

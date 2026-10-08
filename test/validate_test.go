@@ -212,21 +212,18 @@ func TestArgumentNamesMayNotContainTheViewSeparator(t *testing.T) {
 	assert.Contains(t, errs[0].Detail, `contains "."`)
 }
 
-func TestValidateDuplicatePathsAndShadow(t *testing.T) {
+func TestValidateDuplicatePaths(t *testing.T) {
 	t.Parallel()
 
-	devices := webui.Nav{Label: "Devices"}
 	app := webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/a", Nav: devices, Body: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}},
 		webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Stack{}},
-		webui.Page[webui.NoArgs]{Path: "/b", Nav: webui.Nav{Shadow: &webui.Nav{Label: "Ghost"}}, Body: webui.Stack{}},
 	}}
 	var all string
 	for _, e := range compileErrors(t, app) {
 		all += e.Error() + "\n"
 	}
 	assert.Contains(t, all, "two pages declare this path")
-	assert.Contains(t, all, "Nav.Shadow points at a Nav that no page owns")
 }
 
 func TestCompileRejectsBadPrefix(t *testing.T) {

@@ -8,8 +8,6 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-var DevicesNav = webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"}
-
 // The device id is a path argument, so each device has its own address. The query
 // arguments have no control on the page; they arrive in the address:
 //
@@ -78,7 +76,7 @@ const DevicesPath webui.PageID[webui.NoArgs] = "/device"
 
 var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
-	Nav:  DevicesNav,
+	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
 	// The global search asks every page that has a Search. Each result is a link
 	// built with Open, so it carries the mount prefix and the page's arguments.
 	Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
@@ -118,8 +116,7 @@ var Devices = webui.Page[webui.NoArgs]{
 
 var Details = webui.Page[DeviceArgs]{
 	Path: "/device/{id}",
-	// No Label, so no sidebar entry of its own: it lights Devices instead.
-	Nav: webui.Nav{Shadow: &DevicesNav},
+	// No Nav, so no sidebar entry of its own: it lights Devices, the page at "/device".
 	// Guard runs before anything is loaded, so an unknown device is never read.
 	Guard: func(_ context.Context, a DeviceArgs) error {
 		if _, ok := service.Device(a.ID); !ok {

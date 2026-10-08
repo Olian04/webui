@@ -42,14 +42,12 @@ func (a App) validate() CompileErrors {
 type facts struct {
 	paths         map[string]int          // Path → how many pages declare it
 	argTypes      map[string]reflect.Type // Path → argument type, for Link checks
-	shadowTargets map[Nav]int             // Nav value → pages with it that can be shadowed
 }
 
 func (a App) collectFacts() *facts {
 	f := &facts{
 		paths:         map[string]int{},
 		argTypes:      map[string]reflect.Type{},
-		shadowTargets: map[Nav]int{},
 	}
 	for _, p := range a.Pages {
 		if p == nil {
@@ -57,9 +55,6 @@ func (a App) collectFacts() *facts {
 		}
 		f.paths[p.pagePath()]++
 		f.argTypes[p.pagePath()] = p.pageArgType()
-		if n := p.pageNav(); n.Label != "" && n.Shadow == nil {
-			f.shadowTargets[n]++
-		}
 	}
 	return f
 }

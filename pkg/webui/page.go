@@ -70,15 +70,14 @@ type SearchResult struct {
 	Target Target
 }
 
-// Nav is a navbar entry. A page with an empty Label has no entry of its own.
-// Shadow points at another page's Nav so this page highlights that entry
-// without appearing in the bar; it is matched by value, so the target page's
-// Nav must be unique among pages.
+// Nav is a navbar entry. A page with an empty Label has no entry of its own, and
+// lights the entry of its nearest ancestor: the page whose path is the longest
+// prefix of its own that has a Label. A page at "/device/{id}" borrows the
+// "Devices" entry of the page at "/device", so there is nothing to declare.
 type Nav struct {
 	Label   string
 	Icon    string // a Font Awesome Free solid icon name, "house" for fa-house; without one, the label's initial is shown when the sidebar is collapsed
 	Section string // caption above a run of entries; empty continues the run
-	Shadow  *Nav
 }
 
 // PageBody is a leaf (Table, Form) or a layout (Stack, Split, Tabs).
@@ -140,17 +139,6 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		}
 		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
 	}
-	if p.Nav.Shadow != nil {
-		switch n := f.shadowTargets[*p.Nav.Shadow]; {
-		case n == 0:
-			v.add("Nav.Shadow points at a Nav that no page owns",
-				"Point Shadow at the Nav of a page in App.Pages that has a Label and no Shadow of its own.")
-		case n > 1:
-			v.add("Nav.Shadow matches more than one page's Nav",
-				"Give the target page a Nav that differs from every other page's, for example a distinct Label.")
-		}
-	}
-
 	if p.Body == nil {
 		v.add("Body is nil", "Set Body to a Table, Form, Stack, Split or Tabs.")
 		return v.errs
@@ -205,7 +193,7 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	page := &ir.Page{
 		PathTemplate: string(p.Path),
 		Args:         specs,
-		Nav:          l.nav(p.Nav),
+		Nav:          l.nav(p.Nav, string(p.Path)),
 		Decode:       codec.Decode,
 		Encode:       codec.Encode,
 	}

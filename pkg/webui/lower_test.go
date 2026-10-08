@@ -28,11 +28,8 @@ func fixture() App {
 		Rules: StringRules{Required: true, MinLen: 7, Pattern: &PatternRule{Expr: `^\d+(\.\d+){3}$`, Message: "must be IPv4"}},
 	}
 	count := Int[dev]{Label: "Count", Load: func(d dev) int { return d.Count }, Store: func(d *dev, v int) { d.Count = v }}
-	nav := Nav{Label: "Devices"}
-
 	details := Page[detailArgs]{
 		Path: "/device/{id}",
-		Nav:  Nav{Shadow: &nav},
 		Body: Tabs{Panels: []Tab{
 			{Label: "Overview", Body: Form[dev]{
 				Load:   func(context.Context) (dev, error) { return dev{Id: "d1", Ip: "1.2.3.4"}, nil },
@@ -44,7 +41,7 @@ func fixture() App {
 	}
 	list := Page[listArgs]{
 		Path: "/device",
-		Nav:  nav,
+		Nav:  Nav{Label: "Devices"},
 		Body: Table[dev]{
 			Load: func(context.Context, Query) (Rows[dev], error) {
 				return Rows[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, nil
@@ -82,10 +79,10 @@ func TestValidateAndLowerVisitTheSameNodes(t *testing.T) {
 
 	assert.Equal(t, len(app.validate()), 0)
 
-	l := &appLowerer{shadow: map[Nav]string{}}
+	l := &appLowerer{entries: map[string]bool{}}
 	for _, p := range app.Pages {
-		if n := p.pageNav(); n.Label != "" && n.Shadow == nil {
-			l.shadow[n] = p.pagePath()
+		if p.pageNav().Label != "" {
+			l.entries[p.pagePath()] = true
 		}
 	}
 	for _, p := range app.Pages {

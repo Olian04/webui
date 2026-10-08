@@ -116,3 +116,52 @@ func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
 	assert.Contains(t, body, `<div class="js-only"><div class="side-foot"><button class="side-row side-collapse"`)
 	assert.Contains(t, body, `data-sidebar-toggle`)
 }
+
+// ancestryApp has pages at several depths, to see which entry a page lights.
+func ancestryApp() http.Handler {
+	page := func(path string, label string) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, Body: webui.Stack{}}
+	}
+	return webui.App{Pages: webui.Pages{
+		page("/", "Overview"),
+		page("/device", "Devices"),
+		page("/device/archive", ""),     // hidden, below Devices
+		page("/device/archive/old", ""), // hidden, below a hidden page: Devices still
+		page("/orphan", ""),             // hidden, with no ancestor but the root
+		page("/site", "Sites"),
+		page("/site/alerts", "Site alerts"), // below Sites, but with an entry of its own
+	}}.MustCompile("/admin")
+}
+
+func activeEntries(t *testing.T, h http.Handler, target string) []string {
+	t.Helper()
+
+	body := serve(h, http.MethodGet, target).Body.String()
+	var out []string
+	for _, part := range strings.Split(body, `<a class="nav-item active" href="`)[1:] {
+		out = append(out, part[:strings.Index(part, `"`)])
+	}
+	return out
+}
+
+func TestAPageWithNoEntryLightsItsNearestAncestorsEntry(t *testing.T) {
+	t.Parallel()
+
+	h := ancestryApp()
+	assert.DeepEqual(t, activeEntries(t, h, "/admin/device/archive"), []string{"/admin/device"})
+	assert.DeepEqual(t, activeEntries(t, h, "/admin/device/archive/old"), []string{"/admin/device"})
+	assert.DeepEqual(t, activeEntries(t, h, "/admin/device"), []string{"/admin/device"})
+}
+
+func TestTheRootIsNeverAnAncestorForTheHighlight(t *testing.T) {
+	t.Parallel()
+
+	// A labelled landing page does not light up for every hidden page below it.
+	assert.Equal(t, len(activeEntries(t, ancestryApp(), "/admin/orphan")), 0)
+}
+
+func TestAPageWithItsOwnEntryLightsOnlyThat(t *testing.T) {
+	t.Parallel()
+
+	assert.DeepEqual(t, activeEntries(t, ancestryApp(), "/admin/site/alerts"), []string{"/admin/site/alerts"})
+}

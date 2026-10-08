@@ -9,10 +9,6 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-// SitesNav is declared on its own so the site page can light it without having
-// an entry of its own: Nav.Shadow names it.
-var SitesNav = webui.Nav{Label: "Sites", Icon: "location-dot"}
-
 // The site is a path argument, so each site has its own address, and the
 // breadcrumb reads Collector › Sites › Stockholm: the parent is the page mounted
 // at /site.
@@ -50,7 +46,7 @@ var (
 
 var Sites = webui.Page[webui.NoArgs]{
 	Path: "/site",
-	Nav:  SitesNav,
+	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot"},
 	// A second page offering Search: typing "stock" lists devices and sites,
 	// each under its page's name.
 	Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
@@ -102,7 +98,7 @@ var SitesTable = webui.Table[SiteSummary]{
 
 var SiteDetail = webui.Page[SiteArgs]{
 	Path: "/site/{name}",
-	Nav:  webui.Nav{Shadow: &SitesNav}, // no entry of its own: it lights Sites
+	// No Nav: it lights Sites, the page at "/site".
 	Guard: func(_ context.Context, a SiteArgs) error {
 		if _, ok := service.Site(a.Name); !ok {
 			return fmt.Errorf("there is no site %q", a.Name)

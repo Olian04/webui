@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
+	"strings"
 
 	"github.com/Olian04/webui/internal/favicon"
 	"github.com/Olian04/webui/internal/ir"
@@ -33,10 +34,10 @@ import (
 // (page.go, form.go, table.go, layout.go, link.go, action.go), and the
 // interiors are ordinary switches (accessor.go).
 func (a App) lower() (*ir.App, error) {
-	l := &appLowerer{shadow: map[Nav]string{}}
+	l := &appLowerer{entries: map[string]bool{}}
 	for _, p := range a.Pages {
-		if n := p.pageNav(); n.Label != "" && n.Shadow == nil {
-			l.shadow[n] = p.pagePath()
+		if p.pageNav().Label != "" {
+			l.entries[p.pagePath()] = true
 		}
 	}
 
@@ -75,16 +76,25 @@ func (a App) lower() (*ir.App, error) {
 
 // appLowerer is what per-page lowering needs from the whole app.
 type appLowerer struct {
-	shadow map[Nav]string // Nav value → the path of the page that owns it
-	nodes  int            // body nodes lowered, compared with validate's count in tests
+	entries map[string]bool // the paths of the pages that have a navigation entry
+	nodes   int             // body nodes lowered, compared with validate's count in tests
 }
 
-// nav resolves a declared Nav to the IR's. Shadow is matched by value, which
-// validate proved resolves to exactly one page.
-func (l *appLowerer) nav(n Nav) ir.Nav {
+// nav resolves a declared Nav to the IR's. A page with no entry of its own
+// borrows the nearest ancestor's: the longest proper prefix of its path, by
+// segments, that is a page with an entry. The root is never an ancestor, so a
+// labelled landing page does not light for every hidden page in the app.
+func (l *appLowerer) nav(n Nav, path string) ir.Nav {
 	out := ir.Nav{Label: n.Label, Icon: n.Icon, Section: n.Section, Hidden: n.Label == ""}
-	if n.Shadow != nil {
-		out.Shadow = l.shadow[*n.Shadow]
+	if n.Label != "" {
+		return out
+	}
+	segs := strings.Split(strings.Trim(path, "/"), "/")
+	for i := len(segs) - 1; i >= 1; i-- {
+		if prefix := "/" + strings.Join(segs[:i], "/"); l.entries[prefix] {
+			out.Shadow = prefix
+			break
+		}
 	}
 	return out
 }

@@ -56,9 +56,6 @@ func TestSketchTypes(t *testing.T) {
 
 	var Details = webui.Page[DetailsArgs]{
 		Path: "/device/{id}",
-		Nav: webui.Nav{
-			Shadow: &DevicesNav,
-		},
 		Guard: func(_ context.Context, a DetailsArgs) error {
 			_ = a.Id
 			return nil
