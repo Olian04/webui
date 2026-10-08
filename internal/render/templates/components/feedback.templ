@@ -16,7 +16,7 @@ type ToastProps struct {
 }
 
 templ Toast(p ToastProps) {
-	<div class={ "toast", templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
+	<div class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
 		<div>
 			<div class="toast-title">{ p.Title }</div>
 			if p.Desc != "" {

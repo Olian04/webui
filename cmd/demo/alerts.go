@@ -90,9 +90,9 @@ var AlertForm = webui.Form[Alert]{
 var AcknowledgeAlert = webui.Action[Alert]{
 	Label: "Acknowledge",
 	Guard: canEdit[Alert],
-	Run: func(_ context.Context, a Alert) (webui.Effect, error) {
+	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
 		service.Acknowledge(a.ID)
-		return webui.Effect{Toast: "Acknowledged " + a.ID}, nil
+		return webui.Success("Acknowledged " + a.ID), nil
 	},
 }
 
@@ -120,9 +120,9 @@ var AlertDeviceTable = webui.Table[Device]{
 var Dismiss = webui.Action[Alert]{
 	Label: "Dismiss",
 	Guard: canEdit[Alert],
-	Run: func(_ context.Context, a Alert) (webui.Effect, error) {
+	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
 		service.Acknowledge(a.ID)
-		return webui.Effect{Toast: "Dismissed " + a.ID}, nil
+		return webui.Success("Dismissed " + a.ID), nil
 	},
 }
 
@@ -131,11 +131,11 @@ var Acknowledge = webui.Action[[]Alert]{
 	Label: "Acknowledge",
 	Role:  webui.RolePrimary,
 	Guard: canEdit[[]Alert],
-	Run: func(_ context.Context, alerts []Alert) (webui.Effect, error) {
+	Run: func(_ context.Context, alerts []Alert) (webui.Outcome, error) {
 		for _, a := range alerts {
 			service.Acknowledge(a.ID)
 		}
-		return webui.Effect{Toast: fmt.Sprintf("Acknowledged %d", len(alerts))}, nil
+		return webui.Success(fmt.Sprintf("Acknowledged %d", len(alerts))), nil
 	},
 }
 
@@ -145,12 +145,12 @@ var Delete = webui.Action[[]Alert]{
 	Label: "Delete",
 	Role:  webui.RoleDestructive,
 	Guard: canEdit[[]Alert],
-	Run: func(_ context.Context, alerts []Alert) (webui.Effect, error) {
+	Run: func(_ context.Context, alerts []Alert) (webui.Outcome, error) {
 		ids := make([]string, len(alerts))
 		for i, a := range alerts {
 			ids[i] = a.ID
 		}
 		service.DeleteAlerts(ids...)
-		return webui.Effect{Toast: fmt.Sprintf("Deleted %d", len(alerts))}, nil
+		return webui.Success(fmt.Sprintf("Deleted %d", len(alerts))), nil
 	},
 }

@@ -105,7 +105,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		}}, "Group in Table.Columns"},
 		{"actions need key", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol()},
-			Actions: []webui.Action[Device]{{Label: "x", Run: func(context.Context, Device) (webui.Effect, error) { return webui.Effect{}, nil }}},
+			Actions: []webui.Action[Device]{{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
 		}}, "declares actions but no Key"},
 		{"stateful table needs a unique ID", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
 			webui.Table[Device]{Load: okRows, PageSize: 10},

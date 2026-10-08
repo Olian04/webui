@@ -65,19 +65,19 @@ func newShop() *shop {
 			Fields: []webui.Accessor[Device]{formID, ip, count},
 			Submit: webui.Action[Device]{
 				Guard: func(context.Context, Device) error { return s.subGate },
-				Run: func(ctx context.Context, d Device) (webui.Effect, error) {
+				Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
 					if s.runErr != nil {
-						return webui.Effect{}, s.runErr
+						return webui.Outcome{}, s.runErr
 					}
 					if d.Ip == "10.0.4.17" {
-						return webui.Effect{Fields: webui.Fields[Device]{{Field: ip, Message: "already in use by another device"}}}, nil
+						return webui.Reject(webui.Field[Device](ip, "already in use by another device")), nil
 					}
 					s.mu.Lock()
 					s.saved = append(s.saved, d)
 					s.mu.Unlock()
-					e := webui.Effect{Toast: "Device saved!"}
+					e := webui.Success("Device saved!")
 					if s.redirect != nil {
-						e.Redirect = s.redirect(ctx)
+						e = e.Then(s.redirect(ctx))
 					}
 					return e, nil
 				},
@@ -101,16 +101,16 @@ func newShop() *shop {
 					}
 					return nil
 				},
-				Run: func(_ context.Context, d Device) (webui.Effect, error) {
+				Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 					s.mu.Lock()
 					s.deleted = append(s.deleted, d.Id)
 					s.mu.Unlock()
-					return webui.Effect{Toast: "Deleted " + d.Id}, nil
+					return webui.Success("Deleted " + d.Id), nil
 				},
 			}},
 			BulkActions: []webui.Action[[]Device]{{
 				Label: "Acknowledge",
-				Run: func(_ context.Context, ds []Device) (webui.Effect, error) {
+				Run: func(_ context.Context, ds []Device) (webui.Outcome, error) {
 					var ids []string
 					for _, d := range ds {
 						ids = append(ids, d.Id)
@@ -118,7 +118,7 @@ func newShop() *shop {
 					s.mu.Lock()
 					s.bulk = append(s.bulk, ids)
 					s.mu.Unlock()
-					return webui.Effect{Toast: "Acknowledged"}, nil
+					return webui.Success("Acknowledged"), nil
 				},
 			}},
 		},

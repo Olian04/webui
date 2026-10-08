@@ -130,10 +130,14 @@ templ toastRegion(toasts []Toast) {
 }
 
 func toastTone(x Toast) c.Tone {
-	if x.Error {
+	switch x.Tone {
+	case ToastWarning:
+		return c.ToneWarning
+	case ToastError:
 		return c.ToneCritical
+	case ToastOK:
 	}
-	return c.ToneNeutral
+	return c.ToneOK
 }
 
 // CompileFailure replaces the whole application: no sidebar, no navigation,

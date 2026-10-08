@@ -74,16 +74,16 @@ var Retention = webui.Page[webui.NoArgs]{
 
 var SaveIngest = webui.Action[Settings]{
 	Guard: canEdit[Settings],
-	Run: func(_ context.Context, s Settings) (webui.Effect, error) {
+	Run: func(_ context.Context, s Settings) (webui.Outcome, error) {
 		service.SetSettings(s)
-		return webui.Effect{Toast: "Saved"}, nil
+		return webui.Success("Saved"), nil
 	},
 }
 
 var SaveRetention = webui.Action[RetentionPolicy]{
 	Guard: canEdit[RetentionPolicy],
-	Run: func(_ context.Context, r RetentionPolicy) (webui.Effect, error) {
+	Run: func(_ context.Context, r RetentionPolicy) (webui.Outcome, error) {
 		service.SetRetention(r)
-		return webui.Effect{Toast: "Saved"}, nil
+		return webui.Success("Saved"), nil
 	},
 }

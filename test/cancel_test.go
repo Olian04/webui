@@ -40,11 +40,11 @@ func cancelApp(redirect string) http.Handler {
 	form := webui.Form[Device]{
 		Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.0.1"}, nil },
 		Fields: []webui.Accessor[Device]{formID, formIP},
-		Submit: webui.Action[Device]{Run: func(_ context.Context, d Device) (webui.Effect, error) {
+		Submit: webui.Action[Device]{Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 			if d.Ip == "10.0.0.9" {
-				return webui.Effect{Fields: webui.Fields[Device]{{Field: formIP, Message: "taken"}}}, nil
+				return webui.Reject(webui.Field[Device](formIP, "taken")), nil
 			}
-			return webui.Effect{Redirect: webui.Target{URL: redirect}}, nil
+			return webui.Outcome{}.Then(webui.Target{URL: redirect}), nil
 		}},
 	}
 	details.Body = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain

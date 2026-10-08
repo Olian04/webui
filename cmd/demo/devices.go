@@ -150,18 +150,17 @@ var DeviceForm = webui.Form[Device]{
 
 var SaveDevice = webui.Action[Device]{
 	Guard: canEdit[Device],
-	Run: func(_ context.Context, d Device) (webui.Effect, error) {
-		// Uniqueness needs the service, so no rule can catch it: it comes back
-		// as a rejection the user can fix, not as an error.
+	Run: func(_ context.Context, d Device) (webui.Outcome, error) {
+		// Uniqueness needs the service, so no rule can catch it: it comes back as a
+		// Reject, which shows the form again with what was typed and this message
+		// beside the field. Success says the device was saved.
 		if service.IPTaken(d.IP, d.ID) {
-			return webui.Effect{Fields: webui.Fields[Device]{
-				{Field: IP, Message: "already in use by another device"},
-			}}, nil
+			return webui.Reject(webui.Field[Device](IP, "already in use by another device")), nil
 		}
 		service.SetIP(d.ID, d.IP)
 		// No redirect: a saved form returns to the page it was opened from, and
 		// stays where it is when it was opened directly.
-		return webui.Effect{Toast: "Device saved"}, nil
+		return webui.Success("Device saved"), nil
 	},
 }
 

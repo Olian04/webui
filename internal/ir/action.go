@@ -22,6 +22,6 @@ type Action struct {
 	Label string
 	Role  Role
 	Guard func(ctx context.Context, subject any) error
-	Run   func(ctx context.Context, subject any) (Effect, error)
+	Run   func(ctx context.Context, subject any) (Outcome, error)
 	Bulk  bool
 }

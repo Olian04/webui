@@ -40,8 +40,19 @@ type Doc struct {
 type Toast struct {
 	Title string
 	Desc  string
-	Error bool
+	Tone  ToastTone
 }
+
+// ToastTone is what a toast says about the outcome: confirmed, to be aware of, or
+// failed. OK is the zero value.
+type ToastTone uint8
+
+// The tones.
+const (
+	ToastOK ToastTone = iota
+	ToastWarning
+	ToastError
+)
 
 // TabLink is one entry in a tab strip.
 type TabLink = c.Tab

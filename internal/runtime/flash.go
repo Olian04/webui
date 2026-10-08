@@ -26,16 +26,20 @@ func (p *Program) flashPath() string {
 	return p.Prefix
 }
 
-func (p *Program) setFlash(w http.ResponseWriter, r *http.Request, text string, isErr bool) {
+func (p *Program) setFlash(w http.ResponseWriter, r *http.Request, text string, tone render.ToastTone) {
 	if text == "" {
 		return
 	}
 	if len(text) > flashMax {
 		text = strings.ToValidUTF8(text[:flashMax], "")
 	}
-	kind := "t"
-	if isErr {
+	kind := "o"
+	switch tone {
+	case render.ToastWarning:
+		kind = "w"
+	case render.ToastError:
 		kind = "e"
+	case render.ToastOK:
 	}
 	//nolint:gosec // G124: Secure follows the request's scheme; the cookie holds one short-lived toast.
 	http.SetCookie(w, &http.Cookie{
@@ -63,5 +67,12 @@ func (p *Program) takeFlash(w http.ResponseWriter, r *http.Request) []render.Toa
 	if err != nil || len(raw) < 2 || !utf8.Valid(raw) {
 		return nil
 	}
-	return []render.Toast{{Title: string(raw[1:]), Error: raw[0] == 'e'}}
+	tone := render.ToastOK
+	switch raw[0] {
+	case 'w':
+		tone = render.ToastWarning
+	case 'e':
+		tone = render.ToastError
+	}
+	return []render.Toast{{Title: string(raw[1:]), Tone: tone}}
 }

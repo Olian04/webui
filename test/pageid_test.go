@@ -50,11 +50,8 @@ var shopDetail = webui.Page[shopItemArgs]{
 }
 
 var shopSave = webui.Action[Device]{
-	Run: func(ctx context.Context, _ Device) (webui.Effect, error) {
-		return webui.Effect{
-			Toast:    "Saved",
-			Redirect: webui.Open(ctx, shopListPath, webui.NoArgs{}), // back, by constant
-		}, nil
+	Run: func(ctx context.Context, _ Device) (webui.Outcome, error) {
+		return webui.Success("Saved").Then(webui.Open(ctx, shopListPath, webui.NoArgs{})), nil // back, by constant
 	},
 }
 

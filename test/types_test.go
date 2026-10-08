@@ -70,14 +70,9 @@ func TestSketchTypes(t *testing.T) {
 					_ = d.Id
 					return nil
 				},
-				Run: func(_ context.Context, d Device) (webui.Effect, error) {
+				Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 					_ = d
-					return webui.Effect{
-						Toast: "Device saved!",
-						Fields: webui.Fields[Device]{
-							{Field: IP, Message: "already in use by another device"},
-						},
-					}, nil
+					return webui.Reject(webui.Field[Device](IP, "already in use by another device")), nil
 				},
 			},
 			Fields: []webui.Accessor[Device]{

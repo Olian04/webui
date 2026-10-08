@@ -121,7 +121,9 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 
 	model, errs := n.Bind(base, values)
 	if len(errs) > 0 {
-		p.reject(w, r, page, req, n, model, values, errs, "")
+		p.rerender(w, r, page, req, n, model, values, errs, render.Toast{
+			Title: "Not saved", Desc: plural(len(errs), "field needs", "fields need") + " attention.", Tone: render.ToastError,
+		})
 		return
 	}
 	if n.Submit.Guard != nil {
@@ -130,24 +132,48 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 			return
 		}
 	}
-	effect, err := n.Submit.Run(ctx, model)
+	outcome, err := n.Submit.Run(ctx, model)
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("submit: %w", err))
 		return
 	}
-	if len(effect.Fields) > 0 {
+	switch outcome.Kind {
+	case ir.OutcomeFailure:
+		// Not done, and not for one field: show the form again with what was typed,
+		// as a rejection does, with the reason for the whole form in a toast.
+		p.rerender(w, r, page, req, n, model, values, nil, toastOf(outcome, "Not saved"))
+	case ir.OutcomeReject:
 		// Understood and refused, and the user can fix it: the same event, from
 		// their side, as a rule the browser caught.
-		p.reject(w, r, page, req, n, model, values, effect.Fields, effect.Toast)
-		return
+		p.rerender(w, r, page, req, n, model, values, outcome.Fields, render.Toast{
+			Title: "Not saved", Desc: plural(len(outcome.Fields), "field needs", "fields need") + " attention.", Tone: render.ToastError,
+		})
+	case ir.OutcomeSuccess, ir.OutcomeWarning:
+		p.finish(w, r, outcome, req.From)
 	}
-	p.finish(w, r, effect, req.From)
 }
 
-// reject re-renders the page with the rejected form carrying what the user
-// typed. It is not a redirect: a redirect would lose the input.
-func (p *Program) reject(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form,
-	model any, values map[string]string, errs []ir.FieldError, toast string) {
+// toastOf is an outcome's message as a toast. A failure without a message still
+// says that nothing was done, so its title is the fallback.
+func toastOf(o ir.Outcome, fallback string) render.Toast {
+	switch o.Kind {
+	case ir.OutcomeFailure:
+		if o.Message == "" {
+			return render.Toast{Title: fallback, Tone: render.ToastError}
+		}
+		return render.Toast{Title: o.Message, Tone: render.ToastError}
+	case ir.OutcomeWarning:
+		return render.Toast{Title: o.Message, Tone: render.ToastWarning}
+	case ir.OutcomeSuccess, ir.OutcomeReject:
+	}
+	return render.Toast{Title: o.Message}
+}
+
+// rerender shows the page again with the form that was submitted carrying what
+// the user typed, and the toast. It is not a redirect: a redirect would lose the
+// input. errs is empty for a failure that is not about any field.
+func (p *Program) rerender(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form,
+	model any, values map[string]string, errs []ir.FieldError, toast render.Toast) {
 	req.sub, req.subLeaf = &submission{model: model, values: values, errs: errs}, render.LeafID(n.At)
 
 	body, err := p.body(r.Context(), req, page, page.Body)
@@ -155,11 +181,7 @@ func (p *Program) reject(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, err)
 		return
 	}
-	toasts := []render.Toast{{Title: "Not saved", Desc: plural(len(errs), "field needs", "fields need") + " attention.", Error: true}}
-	if toast != "" {
-		toasts = append(toasts, render.Toast{Title: toast})
-	}
-	p.writePage(w, r, http.StatusUnprocessableEntity, page, req, body, toasts...)
+	p.writePage(w, r, http.StatusUnprocessableEntity, page, req, body, toast)
 }
 
 func plural(n int, one, many string) string {
@@ -169,21 +191,25 @@ func plural(n int, one, many string) string {
 	return strconv.Itoa(n) + " " + many
 }
 
-// finish ends a successful action: the toast rides a flash cookie, and the
+// finish ends an accepted action: the toast rides a flash cookie, and the
 // browser is sent back with a 303 so a reload does not repeat the POST.
-func (p *Program) finish(w http.ResponseWriter, r *http.Request, effect ir.Effect, from string) {
+func (p *Program) finish(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, from string) {
 	target := r.URL.RequestURI()
 	if from != "" {
 		target = from // a saved form returns to where it was opened from
 	}
-	if effect.Redirect != "" {
-		if safeRedirect(effect.Redirect) {
-			target = effect.Redirect
+	if outcome.Redirect != "" {
+		if safeRedirect(outcome.Redirect) {
+			target = outcome.Redirect
 		} else {
-			p.log.Error("webui: Effect.Redirect refused: not an address on this host", "target", effect.Redirect)
+			p.log.Error("webui: Outcome.Then refused: not an address on this host", "target", outcome.Redirect)
 		}
 	}
-	p.setFlash(w, r, effect.Toast, false)
+	tone := render.ToastOK
+	if outcome.Kind == ir.OutcomeWarning {
+		tone = render.ToastWarning
+	}
+	p.setFlash(w, r, outcome.Message, tone)
 	//nolint:gosec // G710: target is this request's own path, or passed safeRedirect above.
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
@@ -258,17 +284,29 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 			return
 		}
 	}
-	effect, err := action.Run(ctx, subject)
+	outcome, err := action.Run(ctx, subject)
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
 		return
 	}
-	p.finish(w, r, effect, "")
+	switch outcome.Kind {
+	case ir.OutcomeFailure:
+		p.refuse(w, r, outcome.Message)
+	case ir.OutcomeReject:
+		// A table action has no fields to point at, so the messages are the reason.
+		messages := make([]string, len(outcome.Fields))
+		for i, f := range outcome.Fields {
+			messages[i] = f.Message
+		}
+		p.refuse(w, r, strings.Join(messages, "; "))
+	case ir.OutcomeSuccess, ir.OutcomeWarning:
+		p.finish(w, r, outcome, "")
+	}
 }
 
 // refuse sends the user back with an error toast: nothing was changed.
 func (p *Program) refuse(w http.ResponseWriter, r *http.Request, message string) {
-	p.setFlash(w, r, message, true)
+	p.setFlash(w, r, message, render.ToastError)
 	//nolint:gosec // G710: the target is this request's own path.
 	http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
 }

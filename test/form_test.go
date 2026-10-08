@@ -45,7 +45,7 @@ func okForm() webui.Form[Device] {
 			return Device{Id: a.Id, Ip: "10.0.0.1", Count: 7}, nil
 		},
 		Fields: []webui.Accessor[Device]{webui.Group[Device]{formID, formIP}, formCount},
-		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Effect, error) { return webui.Effect{}, nil }},
+		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 	}
 }
 
@@ -156,7 +156,7 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 	t.Parallel()
 
 	f := sliderForm()
-	f.Submit = webui.Action[Device]{Run: func(context.Context, Device) (webui.Effect, error) { return webui.Effect{}, nil }}
+	f.Submit = webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}
 	h := formApp(f)
 
 	rec := post(h, "/admin/device/dev1", formValues("f1", "250"))

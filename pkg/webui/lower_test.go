@@ -34,7 +34,7 @@ func fixture() App {
 			{Label: "Overview", Body: Form[dev]{
 				Load:   func(context.Context) (dev, error) { return dev{Id: "d1", Ip: "1.2.3.4"}, nil },
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
-				Submit: Action[dev]{Run: func(context.Context, dev) (Effect, error) { return Effect{}, nil }},
+				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
 			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Rows[dev], error) { return Rows[dev]{}, nil }}}}},
 		}},
@@ -55,7 +55,7 @@ func fixture() App {
 			},
 			Columns: []Accessor[dev]{String[dev]{Label: "ID", Load: func(d dev) string { return d.Id }}, ip},
 			BulkActions: []Action[[]dev]{{Label: "Drop", Role: RoleDestructive,
-				Run: func(context.Context, []dev) (Effect, error) { return Effect{Toast: "gone"}, nil }}},
+				Run: func(context.Context, []dev) (Outcome, error) { return Success("gone"), nil }}},
 		},
 	}
 	return App{Pages: Pages{list, details}}
@@ -157,16 +157,35 @@ func TestBindStartsFromLoadedModelAndReportsEveryFailure(t *testing.T) {
 	assert.Equal(t, errs[1].Message, "Must be a whole number.")
 }
 
-func TestLowerEffectFields(t *testing.T) {
+func TestLowerOutcome(t *testing.T) {
 	t.Parallel()
 
 	ip := String[dev]{Label: "IP", Load: func(d dev) string { return d.Ip }}
-	e, err := lowerEffect[dev](Effect{Toast: "t", Fields: Fields[dev]{{Field: Placeholder[dev]{Accessor: ip, Text: "x"}, Message: "taken"}}})
+	e, err := lowerOutcome[dev](Reject(Field[dev](Placeholder[dev]{Accessor: ip, Text: "x"}, "taken")))
 	assert.NoError(t, err)
+	assert.Equal(t, e.Kind, ir.OutcomeReject)
 	assert.DeepEqual(t, e.Fields, []ir.FieldError{{Label: "IP", Message: "taken"}})
 
-	_, err = lowerEffect[dev](Effect{Fields: Fields[int]{}})
+	// Each constructor lowers to its kind and keeps its message.
+	for kind, o := range map[ir.OutcomeKind]Outcome{
+		ir.OutcomeSuccess: Success("ok"), ir.OutcomeWarning: Warning("careful"), ir.OutcomeFailure: Failure("no"),
+	} {
+		got, err := lowerOutcome[dev](o)
+		assert.NoError(t, err)
+		assert.Equal(t, got.Kind, kind)
+	}
+	zero, err := lowerOutcome[dev](Outcome{})
+	assert.NoError(t, err)
+	assert.Equal(t, zero.Kind, ir.OutcomeSuccess) // a quiet success
+
+	_, err = lowerOutcome[dev](Reject(Field[int](Int[int]{Label: "n"}, "bad")))
+	assert.Error(t, err) // a Reject about another model
+	_, err = lowerOutcome[dev](Success("x").Then(Target{Err: context.Canceled}))
 	assert.Error(t, err)
-	_, err = lowerEffect[dev](Effect{Redirect: Target{Err: context.Canceled}})
-	assert.Error(t, err)
+
+	// Then sends an accepted outcome on and leaves a refused one where it is.
+	assert.Equal(t, Success("x").Then(Target{URL: "/a"}).redirect.URL, "/a")
+	assert.Equal(t, Warning("x").Then(Target{URL: "/a"}).redirect.URL, "/a")
+	assert.Equal(t, Failure("x").Then(Target{URL: "/a"}).redirect.URL, "")
+	assert.Equal(t, Reject[dev]().Then(Target{URL: "/a"}).redirect.URL, "")
 }
