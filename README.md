@@ -119,13 +119,11 @@ var Details = webui.Page[DetailsArgs]{
   },
   Body: webui.Form[Device]{
     Title: "Configuration",
-    // One typed lookup gets the whole argument struct.
+    // One typed lookup gets the whole argument struct. It has no error to
+    // check: the wrong type, or a ctx from outside a page, is a mistake in the
+    // declaration, which the library answers with a logged 500.
     Load: func(ctx context.Context) (Device, error) {
-      a, err := webui.ArgsOf[DetailsArgs](ctx)
-      if err != nil {
-        return Device{}, err
-      }
-      return service.Load(ctx, a.Id)
+      return service.Load(ctx, webui.ArgsOf[DetailsArgs](ctx).Id)
     },
     Submit: SaveDevice,
     Fields: []webui.Accessor[Device]{
@@ -532,6 +530,11 @@ is not an address on this host, is dropped and logged.
   `Open(ctx, DevicesPath, DeviceArgs{})` do not compile. `Path: "/device"` still
   does: a literal or an untyped constant converts. `Open` and `Link.Page` take a
   page or its `PageID`; only a `string` variable can no longer be a `Path`.
+- `ArgsOf` returns one value and panics on a mistake, because the only ways it
+  can fail are a wrong type or a `ctx` from outside a page: neither is something
+  a caller can handle, and an error to check at every call site buys nothing. The
+  runtime recovers any panic in a closure into the "Something went wrong" page
+  and a log line with the stack, instead of a dropped connection.
 - `ArgsOf` keys `ctx` on an unexported type. A string key would collide with
   any other package using the same string, and `go vet` does not catch it.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an

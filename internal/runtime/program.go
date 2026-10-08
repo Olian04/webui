@@ -76,6 +76,6 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 func (p *Program) add(method, path string, h http.Handler) {
 	p.Routes = append(p.Routes, Route{
 		Method: method, Path: path, Handler: h,
-		Middleware: []func(http.Handler) http.Handler{secure},
+		Middleware: []func(http.Handler) http.Handler{secure, p.recovered},
 	})
 }

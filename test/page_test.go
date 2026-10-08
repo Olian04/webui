@@ -71,9 +71,7 @@ func TestGuardRunsBeforeAnythingAndRejectsWith403(t *testing.T) {
 
 	var seen pageArgs
 	a, _, _ := app(func(ctx context.Context, args pageArgs) error {
-		got, err := webui.ArgsOf[pageArgs](ctx)
-		assert.NoError(t, err)
-		assert.Equal(t, got, args)
+		assert.Equal(t, webui.ArgsOf[pageArgs](ctx), args)
 		seen = args
 		if args.Id == "locked" {
 			return errors.New("requires the editor role")
@@ -154,8 +152,6 @@ func TestOpenResolvesThroughTheRuntime(t *testing.T) {
 
 	none := webui.Open(context.Background(), details, pageArgs{Id: "x"})
 	assert.Equal(t, none.Err.Error(), `webui: Open "/device/{id}": no compiled app in this context`)
-	_, err := webui.ArgsOf[pageArgs](context.Background())
-	assert.Error(t, err)
 }
 
 func TestOpenEscapesAndOmitsZeroValues(t *testing.T) {

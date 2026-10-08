@@ -77,10 +77,7 @@ var AlertForm = webui.Form[Alert]{
 	Title: "Alert",
 	Desc:  "A Form whose fields are all read-only, with one action.",
 	Load: func(ctx context.Context) (Alert, error) {
-		args, err := webui.ArgsOf[AlertArgs](ctx)
-		if err != nil {
-			return Alert{}, err
-		}
+		args := webui.ArgsOf[AlertArgs](ctx)
 		a, _ := service.Alert(args.ID)
 		return a, nil
 	},
@@ -108,10 +105,7 @@ var AlertDeviceTable = webui.Table[Device]{
 	ID:    "device",
 	Title: "Device",
 	Load: func(ctx context.Context, _ webui.Query) (webui.Rows[Device], error) {
-		args, err := webui.ArgsOf[AlertArgs](ctx)
-		if err != nil {
-			return webui.Rows[Device]{}, err
-		}
+		args := webui.ArgsOf[AlertArgs](ctx)
 		alert, _ := service.Alert(args.ID)
 		device, ok := service.Device(alert.Device)
 		if !ok {

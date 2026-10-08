@@ -136,10 +136,7 @@ var DeviceForm = webui.Form[Device]{
 	Title: "Configuration",
 	Desc:  "A Form leaf. Fields whose accessor declares no Store render read-only.",
 	Load: func(ctx context.Context) (Device, error) {
-		args, err := webui.ArgsOf[DeviceArgs](ctx)
-		if err != nil {
-			return Device{}, err
-		}
+		args := webui.ArgsOf[DeviceArgs](ctx)
 		d, _ := service.Device(args.ID)
 		return d, nil
 	},
@@ -177,10 +174,7 @@ var Events = webui.Table[Event]{
 	Title: "Recent events",
 	Desc:  "Opened with ?minutes=15 (as the alerts do), only the last 15 minutes are shown.",
 	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Event], error) {
-		args, err := webui.ArgsOf[DeviceArgs](ctx)
-		if err != nil {
-			return webui.Rows[Event]{}, err
-		}
+		args := webui.ArgsOf[DeviceArgs](ctx)
 		// No Key on these accessors, so Query.Sort and Query.Filters use the Label.
 		events := filteredBy(service.Events(args.Minutes), q.Filters, map[string]func(e Event, values []string) bool{
 			EventTime.Label:   containing(func(e Event) string { return e.At }),

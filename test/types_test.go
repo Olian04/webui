@@ -62,8 +62,8 @@ func TestSketchTypes(t *testing.T) {
 		},
 		Body: webui.Form[Device]{
 			Load: func(ctx context.Context) (Device, error) {
-				_, err := webui.ArgsOf[DetailsArgs](ctx)
-				return Device{}, err
+				_ = webui.ArgsOf[DetailsArgs](ctx)
+				return Device{}, nil
 			},
 			Submit: webui.Action[Device]{
 				Guard: func(_ context.Context, d Device) error {

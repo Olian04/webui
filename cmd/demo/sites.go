@@ -116,10 +116,7 @@ var SiteDevices = webui.Table[Device]{
 	Title:    "Devices",
 	PageSize: 5,
 	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
-		args, err := webui.ArgsOf[SiteArgs](ctx)
-		if err != nil {
-			return webui.Rows[Device]{}, err
-		}
+		args := webui.ArgsOf[SiteArgs](ctx)
 		// The page says which site; the user's filters narrow within it.
 		filters := map[string][]string{"site": {args.Name}}
 		for key, values := range q.Filters {
@@ -139,10 +136,7 @@ var SiteAlerts = webui.Table[Alert]{
 	ID:    "alerts",
 	Title: "Open alerts",
 	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Alert], error) {
-		args, err := webui.ArgsOf[SiteArgs](ctx)
-		if err != nil {
-			return webui.Rows[Alert]{}, err
-		}
+		args := webui.ArgsOf[SiteArgs](ctx)
 		alerts := alertRows(service.AlertsAt(args.Name), q)
 		return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
 	},

@@ -59,7 +59,7 @@ func newShop() *shop {
 		Body: webui.Form[Device]{
 			Title: "Device",
 			Load: func(ctx context.Context) (Device, error) {
-				a, _ := webui.ArgsOf[detailsArgs](ctx)
+				a := webui.ArgsOf[detailsArgs](ctx)
 				return Device{Id: a.Id, Ip: "10.0.0.1", Count: 3}, nil
 			},
 			Fields: []webui.Accessor[Device]{formID, ip, count},

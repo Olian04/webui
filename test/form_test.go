@@ -41,8 +41,8 @@ func okForm() webui.Form[Device] {
 		Title: "Configuration",
 		Desc:  "One device.",
 		Load: func(ctx context.Context) (Device, error) {
-			a, err := webui.ArgsOf[detailsArgs](ctx)
-			return Device{Id: a.Id, Ip: "10.0.0.1", Count: 7}, err
+			a := webui.ArgsOf[detailsArgs](ctx)
+			return Device{Id: a.Id, Ip: "10.0.0.1", Count: 7}, nil
 		},
 		Fields: []webui.Accessor[Device]{webui.Group[Device]{formID, formIP}, formCount},
 		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Effect, error) { return webui.Effect{}, nil }},
