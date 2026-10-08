@@ -1,0 +1,419 @@
+package render
+
+import (
+	"github.com/Olian04/webui/internal/ir"
+	t "github.com/Olian04/webui/internal/render/templates"
+	c "github.com/Olian04/webui/internal/render/templates/components"
+)
+
+// Document is the shell around one page's content.
+func (r *Renderer) Document(d Doc) templ.Component {
+	return r.document(d)
+}
+
+templ (r *Renderer) document(d Doc) {
+	@t.Page(t.PageProps{
+		Title:       r.title(d.Title),
+		Stylesheets: r.styles(),
+		Scripts:     []string{r.AssetHref("enhance.js")},
+		Head:        r.head(),
+		Sidebar:     r.sidebar(d.Active),
+		TopBar:      r.topbar(d.Crumbs),
+		ToolBar:     d.Toolbar,
+		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
+		Toasts:      toastRegion(d.Toasts),
+	}) {
+		if d.Content != nil {
+			@d.Content
+		}
+	}
+}
+
+// head carries the one script that must run before first paint, so the stored
+// theme never flashes. It is a classic script, because modules are deferred.
+templ (r *Renderer) head() {
+	<script src={ r.AssetHref("prefs.js") }></script>
+}
+
+templ (r *Renderer) sidebar(active string) {
+	@c.Sidebar(c.SidebarProps{Brand: r.app.Brand.Name, Logo: r.logoHref(), Footer: r.sidebarFooter()}) {
+		for _, e := range r.nav {
+			if e.Section != "" {
+				@c.NavSection(e.Section)
+			}
+			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.Path == active})
+		}
+	}
+}
+
+// topbar holds the breadcrumb and, with script, the page search. The search is
+// wrapped so it is simply absent without script rather than present and inert.
+templ (r *Renderer) topbar(crumbs []c.Crumb) {
+	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
+		<div class="js-only">
+			@c.Search(c.SearchProps{Placeholder: "Search pages…", Shortcut: "⌘K"})
+		</div>
+		<div class="palette" data-palette></div>
+	}
+}
+
+// sidebarFooter holds the one session switch there is. It needs script, so it
+// is absent without it; the stored choice is a browser preference, never an
+// argument, which is why it does not touch the URL.
+templ (r *Renderer) sidebarFooter() {
+	<div class="js-only">
+		@c.SidebarFooter() {
+			@c.SidebarRow("Light theme") {
+				@c.Switch(c.SwitchProps{
+					ID: "pref-theme", Label: "Light theme", 
+					Attrs: templ.Attributes{"data-pref": "theme"},
+				})
+			}
+		}
+	</div>
+}
+
+func (r *Renderer) logoHref() string {
+	if !r.logo {
+		return ""
+	}
+	return r.AssetHref("logo")
+}
+
+templ toastRegion(toasts []Toast) {
+	@c.ToastRegion() {
+		for _, x := range toasts {
+			@c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc})
+		}
+	}
+}
+
+func toastTone(x Toast) c.Tone {
+	if x.Error {
+		return c.ToneCritical
+	}
+	return c.ToneNeutral
+}
+
+// CompileFailure replaces the whole application: no sidebar, no navigation,
+// every problem at once. It is served at every address until the app compiles.
+templ CompileFailure(problems []Problem) {
+	@t.Document(t.DocumentProps{
+		Title: "Failed to compile — webui",
+		Head:  failureHead(),
+	}) {
+		@c.CompileError(c.CompileErrorProps{Problems: problems})
+	}
+}
+
+templ toolbar(tv toolbarView) {
+	@c.ToolBar(c.ToolBarProps{}) {
+		if len(tv.Pills) == 0 {
+			@c.ToolBarMessage("This page declares no arguments.")
+		}
+		for _, p := range tv.Pills {
+			@c.Variable(c.VariableProps{Label: p.Label, ClearHref: p.ClearHref}) {
+				<form class="var-form" method="get" action={ tv.Action }>
+					for _, h := range p.Hidden {
+						<input type="hidden" name={ h.Name } value={ h.Value }/>
+					}
+					@pillControl(p)
+					<noscript><button class="btn btn-secondary btn-sm" type="submit">Set</button></noscript>
+				</form>
+			}
+		}
+		@c.ToolBarRight() {
+			if tv.ClearAll != "" {
+				@c.ToolBarButton(c.ToolBarButtonProps{Label: "Clear all", Href: tv.ClearAll})
+			}
+			@c.ToolBarButton(c.ToolBarButtonProps{Label: "Refresh", Icon: c.IconRefresh, Href: tv.Refresh, Attrs: templ.Attributes{"data-refresh": true}})
+		}
+	}
+}
+
+// pillControl is the control the argument's kind calls for. A value that
+// cannot be read back is never offered: the decoder accepts exactly these.
+templ pillControl(p pill) {
+	switch p.Kind {
+		case ir.KindBool:
+			@c.Select(c.SelectProps{
+				Name: p.Name, Value: p.Value,
+				Options: []c.Option{{Value: "", Label: "Off"}, {Value: "true", Label: "On"}},
+				Attrs:   templ.Attributes{"data-autosubmit": true, "aria-label": p.Label},
+			})
+		case ir.KindInt, ir.KindInt64, ir.KindFloat:
+			@c.Input(c.InputProps{
+				Name: p.Name, Value: p.Value, Type: "number", Rules: c.Rules{Step: numberStep(p.Kind)},
+				Attrs: templ.Attributes{"aria-label": p.Label},
+			})
+		default:
+			@c.Input(c.InputProps{Name: p.Name, Value: p.Value, Attrs: templ.Attributes{"aria-label": p.Label}})
+	}
+}
+
+// Stack arranges children in a column, 8px apart.
+templ Stack(children []templ.Component) {
+	@c.Stack(c.StackProps{}) {
+		for _, k := range children {
+			@k
+		}
+	}
+}
+
+// Split arranges children side by side, top-aligned.
+templ Split(children []templ.Component) {
+	@c.Split(c.SplitProps{}) {
+		for _, k := range children {
+			@k
+		}
+	}
+}
+
+// Table renders a loaded table leaf as one panel: header, rows, and a pager
+// footer when the table has an offset argument. A table with actions is one
+// form, so a button anywhere in it posts the selection with it.
+templ (r *Renderer) Table(v TableView) {
+	{{ cols := r.columns(v) }}
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Status: v.panelStatus(),
+		Leaf:   LeafID(v.Node.At),
+		Footer: r.tableFooter(v),
+	}) {
+		if v.Failed {
+			@c.EmptyState(c.EmptyStateProps{
+				Icon:  c.IconAlert,
+				Title: "Could not load",
+				Desc:  "The cause was logged on the server. Refresh to try again.",
+			})
+		} else if v.interactive() {
+			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Method: "post"}) {
+				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+				@r.tableContent(v, cols)
+			}
+		} else {
+			@r.tableContent(v, cols)
+		}
+	}
+}
+
+templ (r *Renderer) tableContent(v TableView, cols []columnView) {
+	if v.selectable() {
+		@c.ActionBar(c.ActionBarProps{}) {
+			for i, a := range v.Node.Bulk {
+				@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i)}) {
+					{ a.Label }
+				}
+			}
+		}
+	}
+	@c.Table(c.TableProps{Label: v.label()}) {
+		@c.TableHead() {
+			if v.selectable() {
+				@c.SelectAllColumn()
+			}
+			for _, col := range cols {
+				@c.Column(c.ColumnProps{Label: col.Field.Label, Align: col.Align, SortHref: col.SortHref, SortDir: col.SortDir})
+			}
+			if v.hasRowActions() {
+				<th class="actions"><span class="sr-only">Actions</span></th>
+			}
+		}
+		@c.TableBody() {
+			if len(v.Rows) == 0 {
+				@c.Row(c.RowProps{}) {
+					@c.Cell(c.CellProps{ColSpan: v.width()}) {
+						@c.EmptyState(c.EmptyStateProps{
+							Icon:  c.IconSearch,
+							Title: "Nothing to show",
+							Desc:  emptyHint(v),
+						})
+					}
+				}
+			}
+			for i, row := range v.Rows {
+				@r.tableRow(v, cols, i, row)
+			}
+		}
+	}
+}
+
+func emptyHint(v TableView) string {
+	if v.Q.Offset > 0 {
+		return "This page is past the end. Go back to the first page."
+	}
+	return "No rows were returned for the current arguments."
+}
+
+func (r *Renderer) tableFooter(v TableView) templ.Component {
+	if v.Failed || v.Node.PageSize == 0 {
+		return nil
+	}
+	return c.Pager(r.pager(v))
+}
+
+templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
+	@c.Row(c.RowProps{Href: v.Hrefs[i]}) {
+		if v.selectable() {
+			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select row " + v.Keys[i]})
+		}
+		for j, col := range cols {
+			@r.cell(col, row, v.Hrefs[i], j == 0)
+		}
+		if v.hasRowActions() {
+			<td class="actions">
+				for a, act := range v.Node.Actions {
+					@c.Button(c.ButtonProps{
+						Variant: variant(act.Role), Size: c.SizeSmall,
+						Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a),
+					}) {
+						{ act.Label }
+					}
+				}
+			</td>
+		}
+	}
+}
+
+// cell is one value. The row's single anchor lives in the first cell, because
+// the stylesheet stretches it over every other.
+templ (r *Renderer) cell(col columnView, row any, href string, first bool) {
+	@c.Cell(c.CellProps{Align: col.Align}) {
+		if first && href != "" {
+			@c.RowLink(href) {
+				@cellValue(col, row)
+			}
+		} else {
+			@cellValue(col, row)
+		}
+	}
+}
+
+templ cellValue(col columnView, row any) {
+	@value(col.Field, col.Field.Get(row))
+}
+
+// value is a field's value as the field says to show it: text, a badge, or a
+// bar. A table cell and a read-only form field show it the same way.
+templ value(f ir.Field, text string) {
+	switch f.Display {
+		case ir.DisplaySlider:
+			@c.Gauge(gauge(f, text))
+		case ir.DisplayBadge:
+			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
+				{ text }
+			}
+		default:
+			{ text }
+	}
+}
+
+// Form renders a loaded form leaf as one panel. The submit button and its
+// Cancel sit in the footer, inside the <form>, so they submit it.
+templ (r *Renderer) Form(v FormView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.title(),
+		Desc:   v.Node.Desc,
+		Status: v.status(),
+		Leaf:   LeafID(v.Node.At),
+	}) {
+		if v.Failed {
+			@c.EmptyState(c.EmptyStateProps{
+				Icon:  c.IconAlert,
+				Title: "Could not load",
+				Desc:  "The cause was logged on the server. Refresh to try again.",
+			})
+		} else {
+			@c.Form(c.FormProps{
+				Action: r.PageHref(v.Page, v.Path, v.Query),
+				Method: "post",
+				Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
+			}) {
+				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+				<div class="panel-body pad">
+					for _, f := range v.Node.Fields {
+						@r.formField(v, f)
+					}
+				</div>
+				if v.Node.Submit != nil {
+					<div class="panel-foot" style="justify-content:flex-end">
+						if v.CancelHref != "" {
+							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost}) {
+								Cancel
+							}
+						}
+						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Guard: v.SubmitGate}) {
+							{ v.Node.Submit.Label }
+						}
+					</div>
+				}
+			}
+		}
+	}
+}
+
+// formField is a field, or a group of them in a bordered frame. Panels never
+// nest, so a group is how a form gets its own frame inside one.
+templ (r *Renderer) formField(v FormView, f ir.Field) {
+	if len(f.Group) > 0 {
+		@c.FieldGroup(c.FieldGroupProps{}) {
+			@c.FieldRow() {
+				for _, child := range f.Group {
+					@r.input(r.fieldView(v, child))
+				}
+			}
+		}
+	} else {
+		@r.input(r.fieldView(v, f))
+	}
+}
+
+templ (r *Renderer) input(fv fieldView) {
+	@c.Field(c.FieldProps{
+		For: fv.ID, Label: fv.Field.Label, Required: fv.Rules.Required,
+		Hint: fv.Hint, Error: fv.Error,
+	}) {
+		switch {
+			case fv.Field.Display == ir.DisplaySlider && !fv.ReadOnly:
+				<div class="range">
+					<input
+						id={ fv.ID }
+						class={ "range-input", templ.KV("invalid", fv.Error != "") }
+						type="range"
+						name={ fv.Name }
+						value={ fv.Value }
+						min={ num(*fv.Rules.Min) }
+						max={ num(*fv.Rules.Max) }
+						step="any"
+						if fv.Error != "" {
+							aria-invalid="true"
+							aria-describedby={ fv.ID + "-error" }
+						}
+					/>
+					<output class="range-value" for={ fv.ID } data-range-value>{ fv.Value }</output>
+				</div>
+			case fv.Field.Display != ir.DisplayText:
+				// A badge, or a slider that cannot be changed: shown, not typed into.
+				<div class="static">
+					@value(fv.Field, fv.Value)
+				</div>
+			default:
+				@c.Input(c.InputProps{
+					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
+					Placeholder: fv.Placeholder, ReadOnly: fv.ReadOnly, Invalid: fv.Error != "",
+					Rules: fv.Rules,
+				})
+		}
+	}
+}
+
+// Tabs is the strip and the selected panel. The strip is links, because the
+// selected tab is a page argument: it is in the address, survives a reload,
+// and works without script.
+templ Tabs(label string, strip []c.Tab, content templ.Component) {
+	@c.Tabs(c.TabsProps{Tabs: strip, Label: label})
+	<div data-tabbody>
+		@content
+	</div>
+}
