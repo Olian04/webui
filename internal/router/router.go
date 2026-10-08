@@ -19,7 +19,10 @@ func New(program *runtime.Program) *Router {
 	// ServeMux keeps a routingNode tree and, on each request, picks the most specific pattern.
 	// Registration order does not decide the winner.
 	for _, route := range program.Routes {
-		pattern := route.Method + " " + route.Path
+		pattern := route.Path
+		if route.Method != "" {
+			pattern = route.Method + " " + route.Path
+		}
 		handler := route.Handler
 		for _, middleware := range route.Middleware {
 			handler = middleware(handler)
