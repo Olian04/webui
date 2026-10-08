@@ -20,6 +20,10 @@ type Field struct {
 	Get func(model any) string
 	Set func(model any, raw string) error
 
+	// Num is the value as a number, for a numeric column, which a table sorts and
+	// filters as a number and not as the text Get shows. Nil for any other kind.
+	Num func(model any) float64
+
 	Rules Rules
 
 	Key         string // the accessor's Key, else its Label: what Query.Sort carries

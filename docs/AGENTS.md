@@ -8,6 +8,7 @@
 | `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
+| `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`Table.Rows`). |
 | `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline, POST actions, flash, `Open` resolve. |
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 
@@ -92,12 +91,17 @@ var Devices = webui.Page[webui.NoArgs]{
 		Title: "Devices",
 		Desc:  "One Table leaf. Sort, page and row links are all URLs.",
 		// The table's state is ?devices.offset, ?devices.sort, ?devices.desc, a
-		// ?devices.filter.<key> per filtered column, and ?devices.min.<key> and
-		// ?devices.max.<key> for the numeric ones.
+		// ?devices.filter.<column> per filtered column, and ?devices.min.<column>
+		// and ?devices.max.<column> for the numeric ones.
 		ID:       "devices",
 		PageSize: 10,
+		// Load, not Rows: the source pages itself, as a database would, so it is
+		// handed the window, the sort and the filters and does that work. Every
+		// other table in the demo says only what its rows are, with Rows, and
+		// leaves the rest to the library.
 		Load: func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
-			// The numeric columns, Occurrences and Rate, arrive as bounds.
+			// A column is named by its Label. The numeric columns, Occurrences and
+			// Rate / s, arrive as bounds.
 			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
 			return webui.Rows[Device]{Items: devices, Total: total}, nil
 		},
@@ -168,20 +172,8 @@ var SaveDevice = webui.Action[Device]{
 var Events = webui.Table[Event]{
 	Title: "Recent events",
 	Desc:  "Opened with ?minutes=15 (as the alerts do), only the last 15 minutes are shown.",
-	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Event], error) {
-		args := webui.ArgsOf[DeviceArgs](ctx)
-		// No Key on these accessors, so Query.Sort and Query.Filters use the Label.
-		events := filteredBy(service.Events(args.Minutes), q.Filters, map[string]func(e Event, values []string) bool{
-			EventTime.Label:   containing(func(e Event) string { return e.At }),
-			EventKind.Label:   containing(func(e Event) string { return e.Kind }),
-			EventDetail.Label: containing(func(e Event) string { return e.Detail }),
-		})
-		events = sortedBy(events, q.Sort, q.Desc, map[string]func(x, y Event) int{
-			EventTime.Label:   func(x, y Event) int { return cmp.Compare(x.At, y.At) },
-			EventKind.Label:   func(x, y Event) int { return cmp.Compare(x.Kind, y.Kind) },
-			EventDetail.Label: func(x, y Event) int { return cmp.Compare(x.Detail, y.Detail) },
-		})
-		return webui.Rows[Event]{Items: events, Total: len(events)}, nil
+	Rows: func(ctx context.Context) ([]Event, error) {
+		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), nil
 	},
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }

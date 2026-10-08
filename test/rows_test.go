@@ -1,0 +1,185 @@
+package webui_test
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/Olian04/webui/pkg/webui"
+	"github.com/Olian04/webui/test/util/assert"
+)
+
+// rowsApp is a table that only says what its rows are: 25 devices, and nothing
+// about sorting, filtering or paging. The library does those from the columns.
+func rowsApp(load func(context.Context) ([]Device, error)) http.Handler {
+	if load == nil {
+		load = func(context.Context) ([]Device, error) {
+			var all []Device
+			for i := range 25 {
+				all = append(all, Device{Id: fmt.Sprintf("dev%02d", i), Ip: "10.0.0.1", Count: (i * 7) % 25, Duration: 1})
+			}
+			return all, nil
+		}
+	}
+	page := webui.Page[webui.NoArgs]{
+		Path: "/device",
+		Body: webui.Table[Device]{
+			ID:       "devices",
+			PageSize: 10,
+			Rows:     load,
+			Columns: []webui.Accessor[Device]{
+				webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }},
+				webui.Badge[Device]{
+					Label: "Status",
+					Load: func(d Device) string {
+						if d.Count%2 == 0 {
+							return "healthy"
+						}
+						return "degraded"
+					},
+					Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+				},
+				webui.Int[Device]{Label: "Occurrences", Load: func(d Device) int { return d.Count }},
+			},
+		},
+	}
+	return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+}
+
+// ids are the device ids on a page, in the order shown.
+func ids(body string) []string {
+	var out []string
+	for _, m := range regexp.MustCompile(`<td class="">(dev\d\d)</td>`).FindAllStringSubmatch(body, -1) {
+		out = append(out, m[1])
+	}
+	return out
+}
+
+func TestRowsAreSortedFilteredAndPagedByTheLibrary(t *testing.T) {
+	t.Parallel()
+
+	h := rowsApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	assert.Equal(t, len(ids(body)), 10) // paged: a Rows source never has to know
+	assert.Contains(t, body, "1–10 of 25")
+
+	second := serve(h, http.MethodGet, "/admin/device?devices.offset=20").Body.String()
+	assert.Equal(t, len(ids(second)), 5)
+	assert.Contains(t, second, "21–25 of 25")
+}
+
+func TestRowsAreSortedByTheColumnsOwnValueATextAsTextANumberAsANumber(t *testing.T) {
+	t.Parallel()
+
+	h := rowsApp(nil)
+
+	// The occurrences are (i*7) % 25: each of 0 to 24 once, in a scrambled order.
+	asc := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences").Body.String())
+	assert.Equal(t, asc[0], "dev00") // 0
+	assert.Equal(t, asc[1], "dev18") // 1 (18*7 = 126)
+	desc := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences&devices.desc=true").Body.String())
+	assert.Equal(t, desc[0], "dev07") // 24, which as text would sort before 3
+
+	byID := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.desc=true").Body.String())
+	assert.Equal(t, byID[0], "dev24")
+}
+
+func TestRowsAreFilteredByEachKindOfFilter(t *testing.T) {
+	t.Parallel()
+
+	h := rowsApp(nil)
+
+	// Text: contains, ignoring case.
+	text := ids(serve(h, http.MethodGet, "/admin/device?devices.filter.id=V1").Body.String())
+	assert.Equal(t, len(text), 10) // dev10 to dev19
+
+	// An option: a Badge's chosen values.
+	odd := serve(h, http.MethodGet, "/admin/device?devices.filter.status=degraded").Body.String()
+	for _, id := range ids(odd) {
+		n, err := strconv.Atoi(strings.TrimPrefix(id, "dev"))
+		assert.NoError(t, err)
+		assert.Equal(t, ((n*7)%25)%2, 1)
+	}
+
+	// A range: a number compared as a number, both ends inclusive.
+	ranged := serve(h, http.MethodGet, "/admin/device?devices.min.occurrences=20&devices.max.occurrences=24").Body.String()
+	assert.Contains(t, ranged, "1–5 of 5") // 20, 21, 22, 23 and 24, each held by one device
+}
+
+func TestAFilterShrinksTheTotalAndThePagesNotJustTheRows(t *testing.T) {
+	t.Parallel()
+
+	h := rowsApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device?devices.filter.id=dev0").Body.String()
+	assert.Contains(t, body, "1–10 of 10") // dev00 to dev09
+	assert.Contains(t, body, `disabled>Next</button>`)
+}
+
+func TestRowsThatFailFailThePanelNotThePage(t *testing.T) {
+	t.Parallel()
+
+	h := rowsApp(func(context.Context) ([]Device, error) { return nil, errors.New("db password is hunter2") })
+	rec := serve(h, http.MethodGet, "/admin/device")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Contains(t, rec.Body.String(), "Could not load")
+	assert.False(t, strings.Contains(rec.Body.String(), "hunter2"))
+}
+
+func TestATableNeedsExactlyOneOfRowsAndLoad(t *testing.T) {
+	t.Parallel()
+
+	page := func(table webui.Table[Device]) webui.App {
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}}}
+	}
+	rows := func(context.Context) ([]Device, error) { return nil, nil }
+	load := func(context.Context, webui.Query) (webui.Rows[Device], error) { return webui.Rows[Device]{}, nil }
+
+	var neither string
+	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {
+		neither += e.Error()
+	}
+	assert.Contains(t, neither, "a Table has neither Rows nor Load")
+
+	var both string
+	for _, e := range compileErrors(t, page(webui.Table[Device]{Rows: rows, Load: load})) {
+		both += e.Error()
+	}
+	assert.Contains(t, both, "a Table has both Rows and Load")
+
+	for _, one := range []webui.Table[Device]{{Rows: rows}, {Load: load}} {
+		_, err := page(one).Compile("")
+		assert.NoError(t, err)
+	}
+}
+
+func TestRowActionsWorkOverRows(t *testing.T) {
+	t.Parallel()
+
+	var acted []string
+	page := webui.Page[webui.NoArgs]{
+		Path: "/device",
+		Body: webui.Table[Device]{
+			Rows: func(context.Context) ([]Device, error) {
+				return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, nil
+			},
+			Key:     func(d Device) string { return d.Id },
+			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
+			Actions: []webui.Action[Device]{{
+				Label: "Go",
+				Run: func(_ context.Context, d Device) (webui.Effect, error) {
+					acted = append(acted, d.Id)
+					return webui.Effect{}, nil
+				},
+			}},
+		},
+	}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	rec := post(h, "/admin/device", map[string][]string{"_leaf": {"p"}, "_act": {"row:0:b"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.DeepEqual(t, acted, []string{"b"})
+}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 
@@ -36,10 +35,9 @@ var Alerts = webui.Page[webui.NoArgs]{
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
-		Load: func(_ context.Context, q webui.Query) (webui.Rows[Alert], error) {
-			alerts := alertRows(service.OpenAlerts(), q)
-			return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
-		},
+		// Rows is all it takes: the library filters, sorts and pages them by the
+		// columns, so there is no sorting or filtering code on this page.
+		Rows: func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
@@ -104,14 +102,13 @@ var AcknowledgeAlert = webui.Action[Alert]{
 var AlertDeviceTable = webui.Table[Device]{
 	ID:    "device",
 	Title: "Device",
-	Load: func(ctx context.Context, _ webui.Query) (webui.Rows[Device], error) {
-		args := webui.ArgsOf[AlertArgs](ctx)
-		alert, _ := service.Alert(args.ID)
+	Rows: func(ctx context.Context) ([]Device, error) {
+		alert, _ := service.Alert(webui.ArgsOf[AlertArgs](ctx).ID)
 		device, ok := service.Device(alert.Device)
 		if !ok {
-			return webui.Rows[Device]{}, nil
+			return nil, nil
 		}
-		return webui.Rows[Device]{Items: []Device{device}, Total: 1}, nil
+		return []Device{device}, nil
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -156,25 +153,4 @@ var Delete = webui.Action[[]Alert]{
 		service.DeleteAlerts(ids...)
 		return webui.Effect{Toast: fmt.Sprintf("Deleted %d", len(alerts))}, nil
 	},
-}
-
-// alertRows filters and sorts alerts as a table's Query asks. The alerts page
-// and each site's alerts share it, since they show the same columns.
-//
-// No Key on these accessors, so Query.Sort and Query.Filters use the Label.
-// Severity has a fixed set of options (its Kinds), so its filter arrives as the
-// options chosen.
-func alertRows(alerts []Alert, q webui.Query) []Alert {
-	alerts = filteredBy(alerts, q.Filters, map[string]func(a Alert, values []string) bool{
-		AlertID.Label:     containing(func(a Alert) string { return a.ID }),
-		Severity.Label:    oneOf(func(a Alert) string { return a.Severity }),
-		AlertDevice.Label: containing(func(a Alert) string { return a.Device }),
-		Message.Label:     containing(func(a Alert) string { return a.Message }),
-	})
-	return sortedBy(alerts, q.Sort, q.Desc, map[string]func(x, y Alert) int{
-		AlertID.Label:     func(x, y Alert) int { return cmp.Compare(x.ID, y.ID) },
-		Severity.Label:    func(x, y Alert) int { return cmp.Compare(x.Severity, y.Severity) },
-		AlertDevice.Label: func(x, y Alert) int { return cmp.Compare(x.Device, y.Device) },
-		Message.Label:     func(x, y Alert) int { return cmp.Compare(x.Message, y.Message) },
-	})
 }

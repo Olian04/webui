@@ -47,6 +47,7 @@ into existence, and nothing is configured twice.
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
+| `Table.Rows` or `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
 | `Table.RowClick` | Rows become links and take the pointer + hover treatment |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
@@ -238,7 +239,7 @@ One panel. Header carries the title and description; the body carries the
 table; the footer carries the range (`1–10 of 37`) and the pager, whose
 buttons are links carrying an offset argument.
 
-`Load` returning `total = -1` is a real design state: the footer shows the
+A `Load` returning `total = -1` (a `Rows` table always knows its total) is a real design state: the footer shows the
 range without a total and the *Next* button cannot be pre-disabled.
 
 ---

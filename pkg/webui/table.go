@@ -6,6 +6,7 @@ import (
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/tablequery"
 )
 
 // Query is what the address asks of a table: a window and an order. Sort is the
@@ -47,13 +48,24 @@ type Rows[M any] struct {
 
 // Table is a leaf that lists rows of M.
 //
-// Every column header is a sort link. A table keeps its sort, and its page when
-// it pages (PageSize > 0), in the address under its ID: "devices.offset",
-// "devices.sort", "devices.desc". The library owns those parameters; the page's
-// argument struct never sees them, and Load receives the result as a Query and
-// does the sorting. ID defaults to "table"; it must be unique within the page,
-// so set it when a page has more than one table. The panels of one Tabs are
-// never visible together, so they may share an ID.
+// Every column header is a sort link with a filter beside it. A table keeps its
+// sort, its filters, and its page when it pages (PageSize > 0), in the address
+// under its ID: "devices.offset", "devices.sort", "devices.desc". The library owns
+// those parameters; the page's argument struct never sees them. ID defaults to
+// "table"; it must be unique within the page, so set it when a page has more than
+// one table. The panels of one Tabs are never visible together, so they may share
+// an ID.
+//
+// Where the rows come from is one of two fields, and a Table has exactly one.
+//
+// Rows returns every row, and the library does the rest: it filters, sorts and
+// pages them by the columns' own accessors, a number as a number and text as
+// text. It is what a table over a slice, a cache or a small query wants, and it
+// is all that most tables need.
+//
+// Load is for a source that pages itself, too large to list in full. It receives
+// the window, the sort and the filters as a Query and returns one window of rows,
+// with the total, doing all of that itself.
 //
 // Actions render as a button per row; BulkActions render in the selection bar
 // above a table that then has a checkbox column. Either needs Key, because a
@@ -63,6 +75,7 @@ type Table[M any] struct {
 	Desc        string
 	ID          string
 	PageSize    int
+	Rows        func(ctx context.Context) ([]M, error)
 	Load        func(ctx context.Context, q Query) (Rows[M], error)
 	Key         func(M) string
 	RowClick    RowClick[M]
@@ -78,8 +91,12 @@ var _ PageBody = Table[struct{}]{}
 
 func (t Table[M]) validateBody(v *bodyValidator) {
 	v.nodes++
-	if t.Load == nil {
-		v.add("a Table has no Load", "Set Load to func(ctx, Query) (Rows[M], error).")
+	switch {
+	case t.Rows == nil && t.Load == nil:
+		v.add("a Table has neither Rows nor Load",
+			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page, or Load to do that yourself.")
+	case t.Rows != nil && t.Load != nil:
+		v.add("a Table has both Rows and Load", "Set one: Rows lets the library filter, sort and page, Load does it yourself.")
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
 
@@ -132,21 +149,7 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 	out := &ir.Table{
 		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize,
 		Columns: columns,
-		Load: func(ctx context.Context, q ir.Query) ([]any, int, error) {
-			rows, err := t.Load(ctx, queryOf(q, labels))
-			if err != nil {
-				return nil, 0, err
-			}
-			items := make([]any, len(rows.Items))
-			for i, r := range rows.Items {
-				items[i] = r
-			}
-			total := rows.Total
-			if total < q.Offset+len(items) {
-				total = -1
-			}
-			return items, total, nil
-		},
+		Load:    t.loader(columns, labels),
 	}
 	if t.Key != nil {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
@@ -182,4 +185,37 @@ func queryOf(q ir.Query, labels map[string]string) Query {
 		}
 	}
 	return out
+}
+
+// loader is the table's rows as the IR asks for them, by a Query.
+func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) ([]any, int, error) {
+	if t.Rows != nil {
+		return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+			all, err := t.Rows(ctx)
+			if err != nil {
+				return nil, 0, err
+			}
+			items := make([]any, len(all))
+			for i, r := range all {
+				items[i] = r
+			}
+			window, total := tablequery.Apply(items, columns, q)
+			return window, total, nil
+		}
+	}
+	return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+		rows, err := t.Load(ctx, queryOf(q, labels))
+		if err != nil {
+			return nil, 0, err
+		}
+		items := make([]any, len(rows.Items))
+		for i, r := range rows.Items {
+			items[i] = r
+		}
+		total := rows.Total
+		if total < q.Offset+len(items) {
+			total = -1
+		}
+		return items, total, nil
+	}
 }

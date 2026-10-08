@@ -274,6 +274,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		f := ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
+			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
@@ -294,6 +295,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		f := ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
+			Num: func(m any) float64 { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
@@ -334,6 +336,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
 			Rules: ir.Rules{Min: &lo, Max: &hi},
 			Get:   func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
+			Num:   func(m any) float64 { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"strings"
@@ -65,26 +64,8 @@ var Sites = webui.Page[webui.NoArgs]{
 // hold the one a page already has.
 var SitesTable = webui.Table[SiteSummary]{
 	Title: "Sites",
-	Desc:  "An unpaged table: Load returns every row, so it also does the sorting and the filtering.",
-	Load: func(_ context.Context, q webui.Query) (webui.Rows[SiteSummary], error) {
-		sites := filteredBy(service.Sites(), q.Filters, map[string]func(s SiteSummary, values []string) bool{
-			"name":   containing(func(s SiteSummary) string { return s.Name }),
-			"health": oneOf(func(s SiteSummary) string { return s.Health() }),
-		})
-		sites = within(sites, boundsOf(q.Ranges), map[string]func(SiteSummary) float64{
-			"devices":  func(s SiteSummary) float64 { return float64(s.Devices) },
-			"degraded": func(s SiteSummary) float64 { return float64(s.Degraded) },
-			"rate":     func(s SiteSummary) float64 { return s.Rate },
-		})
-		sites = sortedBy(sites, q.Sort, q.Desc, map[string]func(x, y SiteSummary) int{
-			"name":     func(x, y SiteSummary) int { return cmp.Compare(x.Name, y.Name) },
-			"devices":  func(x, y SiteSummary) int { return cmp.Compare(x.Devices, y.Devices) },
-			"degraded": func(x, y SiteSummary) int { return cmp.Compare(x.Degraded, y.Degraded) },
-			"health":   func(x, y SiteSummary) int { return cmp.Compare(x.Health(), y.Health()) },
-			"rate":     func(x, y SiteSummary) int { return cmp.Compare(x.Rate, y.Rate) },
-		})
-		return webui.Rows[SiteSummary]{Items: sites, Total: len(sites)}, nil
-	},
+	Desc:  "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
+	Rows:  func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
 	RowClick: webui.Link[SiteSummary, SiteArgs]{
 		Page: SiteDetail,
 		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
@@ -111,15 +92,10 @@ var SiteDevices = webui.Table[Device]{
 	ID:       "devices",
 	Title:    "Devices",
 	PageSize: 5,
-	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
-		args := webui.ArgsOf[SiteArgs](ctx)
+	Rows: func(ctx context.Context) ([]Device, error) {
 		// The page says which site; the user's filters narrow within it.
-		filters := map[string][]string{Site.Label: {args.Name}}
-		for key, values := range q.Filters {
-			filters[key] = values
-		}
-		devices, total := service.Devices(filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
-		return webui.Rows[Device]{Items: devices, Total: total}, nil
+		devices, _ := service.Devices(map[string][]string{Site.Label: {webui.ArgsOf[SiteArgs](ctx).Name}}, nil, Order{})
+		return devices, nil
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -131,10 +107,8 @@ var SiteDevices = webui.Table[Device]{
 var SiteAlerts = webui.Table[Alert]{
 	ID:    "alerts",
 	Title: "Open alerts",
-	Load: func(ctx context.Context, q webui.Query) (webui.Rows[Alert], error) {
-		args := webui.ArgsOf[SiteArgs](ctx)
-		alerts := alertRows(service.AlertsAt(args.Name), q)
-		return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
+	Rows: func(ctx context.Context) ([]Alert, error) {
+		return service.AlertsAt(webui.ArgsOf[SiteArgs](ctx).Name), nil
 	},
 	RowClick: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,
