@@ -1,6 +1,8 @@
 package webui_test
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -164,4 +166,64 @@ func TestAPageWithItsOwnEntryLightsOnlyThat(t *testing.T) {
 	t.Parallel()
 
 	assert.DeepEqual(t, activeEntries(t, ancestryApp(), "/admin/site/alerts"), []string{"/admin/site/alerts"})
+}
+
+// guardedNavApp has a guarded entry first in its section, and in the app.
+func guardedNavApp(allowed func(context.Context) error) http.Handler {
+	guarded := func(path, label, section string) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{
+			Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section},
+			Guard: func(ctx context.Context, _ webui.NoArgs) error { return allowed(ctx) }, Body: webui.Stack{},
+		}
+	}
+	open := func(path, label, section string) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, Body: webui.Stack{}}
+	}
+	return webui.App{Pages: webui.Pages{
+		guarded("/audit", "Audit log", "Operations"),
+		open("/system", "System", ""), // continues the Operations section
+		open("/device", "Devices", "Platform"),
+		guarded("/secret", "Secret", "Hidden section"),
+	}}.MustCompile("/admin")
+}
+
+func TestASidebarEntryTheVisitorMayNotOpenIsLeftOut(t *testing.T) {
+	t.Parallel()
+
+	refuse := guardedNavApp(func(context.Context) error { return errors.New("requires the editor role") })
+	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
+	assert.False(t, strings.Contains(body, "Audit log"))
+	assert.False(t, strings.Contains(body, "Secret"))
+	assert.Contains(t, body, "Devices")
+	assert.Contains(t, body, "System")
+
+	allow := guardedNavApp(func(context.Context) error { return nil })
+	body = serve(allow, http.MethodGet, "/admin/device").Body.String()
+	assert.Contains(t, body, "Audit log")
+	assert.Contains(t, body, "Secret")
+}
+
+func TestASectionCaptionStaysAboveWhatIsStillShownAndGoesWithAnEmptySection(t *testing.T) {
+	t.Parallel()
+
+	refuse := guardedNavApp(func(context.Context) error { return errors.New("no") })
+	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
+	// The Operations entry that carried the caption is hidden; System, which it headed, keeps it.
+	assert.Contains(t, body, `<div class="nav-section">Operations</div> <a class="nav-item" href="/admin/system"`)
+	// A section with every entry hidden has no caption.
+	assert.False(t, strings.Contains(body, "Hidden section"))
+}
+
+func TestAHiddenEntryStillAnswers403ToItsAddressAndTheRootSkipsIt(t *testing.T) {
+	t.Parallel()
+
+	refuse := guardedNavApp(func(context.Context) error { return errors.New("requires the editor role") })
+	rec := serve(refuse, http.MethodGet, "/admin/audit")
+	assert.Equal(t, rec.Code, http.StatusForbidden)
+	assert.Contains(t, rec.Body.String(), "requires the editor role")
+
+	// The root goes to the first entry the visitor can open, not to the 403.
+	root := serve(refuse, http.MethodGet, "/admin/")
+	assert.Equal(t, root.Code, http.StatusFound)
+	assert.Equal(t, root.Header().Get("Location"), "/admin/system")
 }

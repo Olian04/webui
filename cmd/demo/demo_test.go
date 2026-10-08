@@ -168,7 +168,8 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	asViewer(t)
 	h := handler(t)
 
-	// A page Guard: nothing was loaded.
+	// A page Guard: nothing was loaded, and the sidebar does not offer the page.
+	assert.False(t, strings.Contains(get(h, "/admin/device").Body.String(), "Audit log"))
 	rec := get(h, "/admin/audit")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), "requires the editor role")

@@ -24,7 +24,7 @@ into existence, and nothing is configured twice.
 | `Page.Path` | The address; its segments are the breadcrumb trail |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state |
-| `Nav.Label` | A sidebar entry (a page with no `Label` has none) |
+| `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
 | `Nav.Section` | The uppercase caption above a run of entries |
 | `Page.Search` | That page's group of results in the top bar's search, beneath the app's pages; a result appears only if the page it leads to would let the visitor in (its `Guard`) |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |

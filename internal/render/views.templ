@@ -20,7 +20,7 @@ templ (r *Renderer) document(d Doc) {
 		Stylesheets: r.styles(),
 		Scripts:     []string{r.AssetHref("enhance.js")},
 		Head:        r.head(),
-		Sidebar:     r.sidebar(d.Active),
+		Sidebar:     r.sidebar(d.Active, d.HideNav),
 		TopBar:      r.topbar(d.Crumbs, d.URL),
 		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 		Toasts:      toastRegion(d.Toasts),
@@ -56,9 +56,12 @@ templ (r *Renderer) favicons() {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-templ (r *Renderer) sidebar(active string) {
+// sidebar lists the entries the visitor may open. A section's caption appears
+// above its first entry that is shown, so a section with nothing left in it has
+// no caption either.
+templ (r *Renderer) sidebar(active string, hide map[string]bool) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}) {
-		for _, e := range r.nav {
+		for _, e := range r.shown(hide) {
 			if e.Section != "" {
 				@c.NavSection(e.Section)
 			}

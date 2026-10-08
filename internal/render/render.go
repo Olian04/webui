@@ -34,6 +34,10 @@ type Doc struct {
 	Method  string
 	URL     string // as the browser asked for it, shown in the status bar
 	Toasts  []Toast
+
+	// HideNav is the paths of the navigation entries this visitor may not open, so
+	// the sidebar and the search that reads it leave them out.
+	HideNav map[string]bool
 }
 
 // Toast is a message shown once, in the bottom-right region.
@@ -100,12 +104,24 @@ func New(app *ir.App, prefix string) *Renderer {
 	return r
 }
 
-// FirstHref is the address of the first navigable page, or "".
-func (r *Renderer) FirstHref() string {
-	if len(r.nav) == 0 {
-		return ""
+// FirstHref is the address of the first navigable page the visitor may open, or
+// "". hide is the paths of the entries they may not.
+func (r *Renderer) FirstHref(hide map[string]bool) string {
+	for _, e := range r.nav {
+		if !hide[e.Path] {
+			return e.Href
+		}
 	}
-	return r.nav[0].Href
+	return ""
+}
+
+// NavPaths is the path template of every navigation entry, in order.
+func (r *Renderer) NavPaths() []string {
+	out := make([]string, len(r.nav))
+	for i, e := range r.nav {
+		out[i] = e.Path
+	}
+	return out
 }
 
 // Href prefixes an app-relative path with the mount prefix. The root page is
@@ -282,4 +298,24 @@ func initial(label string) string {
 		return string(unicode.ToUpper(c))
 	}
 	return ""
+}
+
+// shown is the navigation entries the visitor may open. An entry that starts a
+// section but is hidden hands the section's caption to the next one shown, so
+// the run it headed is still headed.
+func (r *Renderer) shown(hide map[string]bool) []navEntry {
+	var out []navEntry
+	pending := ""
+	for _, e := range r.nav {
+		if e.Section != "" {
+			pending = e.Section
+		}
+		if hide[e.Path] {
+			continue
+		}
+		e.Section = pending
+		pending = ""
+		out = append(out, e)
+	}
+	return out
 }
