@@ -11,6 +11,7 @@ import "strconv"
 // away with it.
 type SidebarProps struct {
 	Brand  string
+	Logo   string // image address; empty draws the default mark
 	Footer templ.Component
 	Attrs  templ.Attributes
 }
@@ -18,7 +19,11 @@ type SidebarProps struct {
 templ Sidebar(p SidebarProps) {
 	<aside class="sidebar" { p.Attrs... }>
 		<div class="side-brand">
-			<div class="logo" aria-hidden="true"><span></span></div>
+			if p.Logo != "" {
+				<img class="logo-img" src={ p.Logo } alt=""/>
+			} else {
+				<div class="logo" aria-hidden="true"><span></span></div>
+			}
 			<b>{ p.Brand }</b>
 		</div>
 		<nav class="side-scroll" aria-label="Main">

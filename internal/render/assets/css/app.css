@@ -1,6 +1,5 @@
 /* ===========================================================================
-   Design tokens. In the library these are ir.Theme.Tokens, emitted as a :root
-   block; the utility CSS is prebuilt by the Tailwind standalone CLI and
+   Design tokens. In the library overrides are ir.Theme.Tokens, emitted as theme.css; the utility CSS is prebuilt by the Tailwind standalone CLI and
    go:embed-ed. The values below are tuned to Grafana's dark canvas, which is
    a theme choice, not a structural one — the markup underneath is unchanged.
    =========================================================================== */
@@ -58,6 +57,41 @@
   --red-bg: rgba(207, 14, 91, 0.1);
   --red-bd: rgba(207, 14, 91, 0.26);
   --shadow: 0 4px 12px rgb(24 26 27/0.18);
+}
+/* No explicit choice: follow the viewer's system. A stored choice (the theme
+   switch) sets data-theme and wins over this. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --canvas: #f4f5f5;
+    --panel: #ffffff;
+    --raise: #ffffff;
+    --input-bg: #ffffff;
+    --border: rgba(36, 41, 46, 0.12);
+    --border-2: rgba(36, 41, 46, 0.24);
+    --text: #24292e;
+    --text-2: #5c6269;
+    --text-3: #8e9197;
+    --hover: rgba(36, 41, 46, 0.06);
+    --active: rgba(36, 41, 46, 0.1);
+    --blue: #3d71d9;
+    --blue-hover: #3265d4;
+    --blue-text: #1f62e0;
+    --green: #1a7f4b;
+    --green-bg: rgba(26, 127, 75, 0.12);
+    --green-bd: rgba(26, 127, 75, 0.28);
+    --orange: #b5510d;
+    --orange-bg: rgba(181, 81, 13, 0.12);
+    --orange-bd: rgba(181, 81, 13, 0.28);
+    --red: #cf0e5b;
+    --red-bg: rgba(207, 14, 91, 0.1);
+    --red-bd: rgba(207, 14, 91, 0.26);
+    --shadow: 0 4px 12px rgb(24 26 27/0.18);
+  }
+  :root:not([data-theme]) .slider::before {
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0/0.25);
+  }
 }
 
 * {
@@ -153,6 +187,13 @@ svg {
   border-radius: 99px;
   background: var(--panel);
   box-shadow: 0 0 0 2px var(--panel);
+}
+.logo-img {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  object-fit: contain;
+  border-radius: 2px;
 }
 .side-brand b {
   font-size: 14px;
@@ -892,11 +933,16 @@ svg {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.gated {
+.gate {
   position: relative;
+  display: inline-flex;
 }
-.gated:hover::after {
-  content: attr(data-why);
+.gate .btn {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.gate:hover::after {
+  content: attr(data-guard);
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
@@ -1517,4 +1563,79 @@ select.input option {
   z-index: 50;
   pointer-events: none;
   box-shadow: var(--shadow);
+}
+
+/* ---------------------------- actions & script --------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+td.actions {
+  text-align: right;
+  white-space: nowrap;
+  position: relative;
+  z-index: 1; /* above the stretched row link, so the buttons stay clickable */
+}
+td.actions .btn + .btn,
+td.actions .gate + .gate,
+td.actions .btn + .gate,
+td.actions .gate + .btn {
+  margin-left: 6px;
+}
+td.pick {
+  position: relative;
+  z-index: 1;
+}
+/* "Select all" needs script; without it the box would do nothing. */
+html:not(.js) [data-pickall] {
+  visibility: hidden;
+}
+.iconbtn.gated {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.js-only {
+  display: contents;
+}
+html:not(.js) .js-only {
+  display: none;
+}
+td.actions .gate:hover::after,
+.panel-foot .gate:hover::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+}
+.range-input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--blue);
+}
+.range-input.invalid {
+  accent-color: var(--red);
+}
+.range-value {
+  min-width: 36px;
+  text-align: right;
+  font:
+    12.5px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--text-2);
+}
+.static {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
 }

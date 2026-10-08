@@ -31,13 +31,21 @@ type ButtonProps struct {
 }
 
 templ Button(p ButtonProps) {
-	if p.Href != "" && !p.Disabled {
-		<a
-			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV("gated", p.Guard != "") }
-			href={ p.Href }
-			if p.Guard != "" {
-				data-guard={ p.Guard }
+	if p.Guard != "" {
+		// A gated control is disabled with a reason, in a wrapper that carries
+		// the tooltip: opacity on the button itself would dim the tooltip too.
+		<span class="gate" data-guard={ p.Guard }>
+			@Button(ButtonProps{
+				Variant: p.Variant, Size: p.Size, Icon: p.Icon, Type: p.Type,
+				Name: p.Name, Value: p.Value, Disabled: true, Attrs: p.Attrs,
+			}) {
+				{ children... }
 			}
+		</span>
+	} else if p.Href != "" && !p.Disabled {
+		<a
+			class={ "btn", p.Variant.btn(), p.Size.btn() }
+			href={ p.Href }
 			{ p.Attrs... }
 		>
 			@Icon(IconProps{Name: p.Icon})
@@ -52,7 +60,7 @@ templ Button(p ButtonProps) {
 		</span>
 	} else {
 		<button
-			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV("gated", p.Guard != "") }
+			class={ "btn", p.Variant.btn(), p.Size.btn() }
 			if p.Type != "" {
 				type={ p.Type }
 			} else {
@@ -65,9 +73,6 @@ templ Button(p ButtonProps) {
 				value={ p.Value }
 			}
 			disabled?={ p.Disabled }
-			if p.Guard != "" {
-				data-guard={ p.Guard }
-			}
 			{ p.Attrs... }
 		>
 			@Icon(IconProps{Name: p.Icon})

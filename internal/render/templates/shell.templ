@@ -1,7 +1,8 @@
 package templates
 
-// Theme selects the token block. Nothing else about the layout, spacing or
-// component structure differs between them.
+// Theme selects a token block explicitly. Empty means the viewer's system
+// preference decides, in the stylesheet. Nothing else about the layout, spacing
+// or component structure differs between them.
 type Theme string
 
 const (
@@ -28,7 +29,9 @@ templ Document(p DocumentProps) {
 	<!DOCTYPE html>
 	<html
 		lang="en"
-		data-theme={ string(p.Theme) }
+		if p.Theme != "" {
+			data-theme={ string(p.Theme) }
+		}
 		if p.Role != "" {
 			data-role={ p.Role }
 		}

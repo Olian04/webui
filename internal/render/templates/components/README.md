@@ -109,9 +109,8 @@ when the component set is not.
 | `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `Note`, `StatusBar` |
 | `state.templ` | `StatePage`, `CompileError` |
 
-`../example/devices.templ` rebuilds the Devices page of `docs/mock` from these
-and nothing else. It renders byte-for-byte equivalent markup; run
-`go run ./cmd/demo` style glue against it to check.
+`internal/render` assembles pages from these and nothing else; `go run ./cmd/demo`
+shows the result.
 
 ---
 
