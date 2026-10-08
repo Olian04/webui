@@ -178,7 +178,9 @@ type CheckboxProps struct {
 
 templ Checkbox(p CheckboxProps) {
 	<input
-		id={ p.ID }
+		if p.ID != "" {
+			id={ p.ID }
+		}
 		class="checkbox"
 		type="checkbox"
 		if p.Name != "" {

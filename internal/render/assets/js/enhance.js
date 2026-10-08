@@ -129,7 +129,6 @@
     status('GET', href);
     var refresh = $('[data-refresh]');
     if (refresh) refresh.setAttribute('href', href);
-    syncToolbar(href);
 
     $$('[data-leaf]').forEach(function (leaf) {
       var id = leaf.getAttribute('data-leaf');
@@ -151,65 +150,8 @@
     });
   }
 
-  // The toolbar carries the rest of the address in its controls: hidden inputs
-  // so setting a filter keeps the sort, and links that clear one filter. A panel
-  // that moved changed that rest, so they are rebuilt from the new address. The
-  // library's view state is the parameters containing a dot; offsets are never
-  // carried, because a changed filter returns every table to its first page.
-  function syncToolbar(href) {
-    var url = new URL(href, location.href);
-    var carried = [];
-    url.searchParams.forEach(function (value, name) {
-      carried.push([name, value]);
-    });
-    function without(skip) {
-      var q = new URLSearchParams();
-      carried.forEach(function (kv) {
-        if (kv[0] !== skip && !/\.offset$/.test(kv[0])) q.append(kv[0], kv[1]);
-      });
-      return q;
-    }
-    $$('.toolbar .var').forEach(function (pill) {
-      var form = $('.var-form', pill);
-      var control = form && $('input:not([type="hidden"]), select', form);
-      if (!control) return;
-      $$('input[type="hidden"]', form).forEach(function (h) {
-        h.remove();
-      });
-      without(control.name).forEach(function (value, name) {
-        var h = document.createElement('input');
-        h.type = 'hidden';
-        h.name = name;
-        h.value = value;
-        form.insertBefore(h, form.firstChild);
-      });
-      var clear = $('.var-x', pill);
-      if (clear) {
-        var rest = without(control.name).toString();
-        clear.setAttribute('href', url.pathname + (rest ? '?' + rest : ''));
-      }
-    });
-    var all = $$('.toolbar .tb-right a').find(function (a) {
-      return a.textContent.trim() === 'Clear all';
-    });
-    if (all) {
-      var keep = new URLSearchParams();
-      carried.forEach(function (kv) {
-        if (kv[0].indexOf('.') !== -1 && !/\.offset$/.test(kv[0])) keep.append(kv[0], kv[1]);
-      });
-      all.setAttribute('href', url.pathname + (keep.toString() ? '?' + keep : ''));
-    }
-  }
-
   document.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-
-    var kebab = e.target.closest('[data-act="refresh-leaf"]');
-    if (kebab) {
-      e.preventDefault();
-      refreshLeaf(kebab.getAttribute('data-leaf'), location.pathname + location.search, false);
-      return;
-    }
 
     var a = e.target.closest('a[href]');
     if (!a || a.target || a.hasAttribute('download')) return;
@@ -226,6 +168,57 @@
   // the page, which is correct and needs no history bookkeeping.
   window.addEventListener('popstate', function () {
     location.reload();
+  });
+
+  /* ------------------------------ column filters --------------------------- */
+
+  // A filter is a <details>, which opens and submits on its own. Script only
+  // keeps one open at a time, closes it on a click elsewhere or on Escape, and
+  // applies a filter to its panel alone, like any other link inside it.
+  function closeFilters(except) {
+    $$('details.filter[open]').forEach(function (d) {
+      if (d !== except) d.removeAttribute('open');
+    });
+  }
+
+  document.addEventListener(
+    'toggle',
+    function (e) {
+      if (e.target.matches && e.target.matches('details.filter') && e.target.open) {
+        closeFilters(e.target);
+        var first = $('input:not([type="hidden"])', e.target);
+        if (first) first.focus();
+      }
+    },
+    true,
+  );
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('details.filter')) closeFilters(null);
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = $('details.filter[open]');
+    if (!open) return;
+    closeFilters(null);
+    var btn = $('summary', open);
+    if (btn) btn.focus();
+  });
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form.matches || !form.matches('[data-filter-form]')) return;
+    var leaf = form.closest('[data-leaf]');
+    if (!leaf) return;
+    var params = new URLSearchParams();
+    new FormData(form).forEach(function (value, name) {
+      if (typeof value === 'string' && value.trim() !== '') params.append(name, value);
+    });
+    var dest = new URL(form.getAttribute('action'), location.href);
+    var href = dest.pathname + (params.toString() ? '?' + params : '');
+    e.preventDefault();
+    refreshLeaf(leaf.getAttribute('data-leaf'), href, true);
   });
 
   /* ------------------------------- selection ------------------------------ */
@@ -256,9 +249,6 @@
     }
     if (t.matches('[data-pickall], input[name="_sel"]')) syncSelection(t.closest('form'));
 
-    // A toolbar control that cannot be typed into applies as soon as it changes.
-    if (t.matches('[data-autosubmit]') && t.form) t.form.requestSubmit();
-
     if (t.matches('[data-pref="theme"]')) {
       var theme = t.checked ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', theme);
@@ -277,66 +267,253 @@
 
   /* -------------------------------- palette ------------------------------- */
 
-  // The list is the compiled app's own navigation, read from the sidebar, so
-  // there is no index to fall out of date.
+  // The page search. Its pages are the compiled app's own navigation, read from
+  // the sidebar, so there is no index to fall out of date; pages that offer
+  // Search add their own results, fetched as the user types. It is a combobox:
+  // arrow keys move through the results, Enter follows one, Escape closes.
+  var palette = { items: [], active: -1, moved: false, remote: [], query: '', timer: null, ctl: null };
+
+  function paletteBox() {
+    return $('[data-palette]');
+  }
+  function paletteInput() {
+    return $('[data-palette-input]');
+  }
+
+  // Only a path on this site is ever put in an href.
+  function safeHref(href) {
+    return typeof href === 'string' && href.charAt(0) === '/' && href.charAt(1) !== '/' && href.charAt(1) !== '\\';
+  }
+
   function pages() {
     return $$('.side-scroll a.nav-item[href]').map(function (a) {
-      return { label: a.textContent.trim(), href: a.getAttribute('href') };
+      return { group: 'Pages', title: a.textContent.trim(), desc: '', href: a.getAttribute('href') };
     });
   }
 
-  function renderPalette(box, query) {
+  function groupsFor(query) {
     var q = query.trim().toLowerCase();
-    var hits = pages().filter(function (p) {
-      return p.label.toLowerCase().indexOf(q) !== -1;
+    var local = pages().filter(function (p) {
+      return p.title.toLowerCase().indexOf(q) !== -1;
     });
+    var groups = [];
+    function add(hit) {
+      var g = groups.find(function (x) {
+        return x.label === hit.group;
+      });
+      if (!g) groups.push((g = { label: hit.group, hits: [] }));
+      g.hits.push(hit);
+    }
+    local.forEach(add);
+    palette.remote.forEach(function (hit) {
+      if (safeHref(hit.href)) add(hit);
+    });
+    return groups;
+  }
+
+  function drawPalette() {
+    var box = paletteBox();
+    var input = paletteInput();
+    if (!box || !input) return;
+
+    var previous = palette.items[palette.active];
     box.textContent = '';
-    var label = document.createElement('div');
-    label.className = 'pal-label';
-    label.textContent = 'Pages';
-    box.appendChild(label);
-    if (!hits.length) {
+    palette.items = [];
+
+    var groups = groupsFor(palette.query);
+    groups.forEach(function (g) {
+      var label = document.createElement('div');
+      label.className = 'pal-label';
+      label.textContent = g.label;
+      box.appendChild(label);
+      g.hits.forEach(function (hit) {
+        var a = document.createElement('a');
+        a.className = 'pal-item';
+        a.id = 'palette-item-' + palette.items.length;
+        a.setAttribute('role', 'option');
+        a.href = hit.href;
+        var title = document.createElement('span');
+        title.textContent = hit.title;
+        a.appendChild(title);
+        if (hit.desc) {
+          var desc = document.createElement('span');
+          desc.className = 'mono';
+          desc.textContent = hit.desc;
+          a.appendChild(desc);
+        }
+        box.appendChild(a);
+        palette.items.push({ el: a, href: hit.href });
+      });
+    });
+    if (!palette.items.length) {
       var empty = document.createElement('div');
       empty.className = 'pal-empty';
       empty.textContent = 'Nothing matches.';
       box.appendChild(empty);
     }
-    hits.forEach(function (p) {
-      var a = document.createElement('a');
-      a.className = 'pal-item';
-      a.href = p.href;
-      a.textContent = p.label;
-      box.appendChild(a);
-    });
+
+    // Results arriving while the user is arrowing through them must not move the
+    // highlight out from under them.
+    var keep = palette.moved && previous ? palette.items.findIndex(function (i) {
+      return i.href === previous.href;
+    }) : -1;
+    setActive(keep >= 0 ? keep : palette.items.length ? 0 : -1);
+
     box.classList.add('open');
+    input.setAttribute('aria-expanded', 'true');
   }
 
-  document.addEventListener('input', function (e) {
-    if (!e.target.matches('[data-palette-input]')) return;
-    var box = $('[data-palette]');
-    if (box) renderPalette(box, e.target.value);
+  function setActive(i) {
+    var input = paletteInput();
+    palette.active = i;
+    palette.items.forEach(function (item, n) {
+      item.el.classList.toggle('active', n === i);
+      item.el.setAttribute('aria-selected', n === i ? 'true' : 'false');
+    });
+    if (i >= 0) {
+      var el = palette.items[i].el;
+      input.setAttribute('aria-activedescendant', el.id);
+      el.scrollIntoView({ block: 'nearest' });
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  function closePalette() {
+    var box = paletteBox();
+    var input = paletteInput();
+    if (box) box.classList.remove('open');
+    if (input) {
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+    }
+    palette.moved = false;
+  }
+
+  // Ask the pages that offer Search, after a pause in typing. A newer question
+  // replaces an older one, and a failure leaves just the navigation.
+  function askRemote(query) {
+    var input = paletteInput();
+    var url = input && input.getAttribute('data-search-url');
+    clearTimeout(palette.timer);
+    if (palette.ctl) palette.ctl.abort();
+    palette.remote = [];
+    if (!url || !query.trim()) return;
+    palette.timer = setTimeout(async function () {
+      var ctl = new AbortController();
+      palette.ctl = ctl;
+      try {
+        var res = await fetch(url + '?q=' + encodeURIComponent(query), {
+          headers: { Accept: 'application/json' },
+          credentials: 'same-origin',
+          signal: ctl.signal,
+        });
+        if (!res.ok) return;
+        var body = await res.json();
+        if (query !== palette.query) return;
+        palette.remote = Array.isArray(body.results) ? body.results : [];
+        drawPalette();
+      } catch (err) {
+        /* the navigation results stand */
+      }
+    }, 150);
+  }
+
+  function openPalette() {
+    var input = paletteInput();
+    if (!input) return;
+    palette.query = input.value;
+    palette.moved = false;
+    drawPalette();
+    askRemote(palette.query);
+  }
+
+  document.addEventListener('focusin', function (e) {
+    if (e.target.matches('[data-palette-input]')) openPalette();
   });
 
-  document.addEventListener('keydown', function (e) {
-    var input = $('[data-palette-input]');
-    var box = $('[data-palette]');
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k' && input) {
-      e.preventDefault();
-      input.focus();
-    }
-    if (e.key === 'Escape' && box) box.classList.remove('open');
-    if (e.key === 'Enter' && input && e.target === input && box) {
-      var first = $('.pal-item', box);
-      if (first) location.href = first.getAttribute('href');
+  document.addEventListener('input', function (e) {
+    if (e.target.matches('[data-palette-input]')) openPalette();
+  });
+
+  document.addEventListener('mouseover', function (e) {
+    var item = e.target.closest('.pal-item');
+    if (!item) return;
+    var i = palette.items.findIndex(function (x) {
+      return x.el === item;
+    });
+    if (i >= 0 && i !== palette.active) {
+      palette.moved = true;
+      setActive(i);
     }
   });
+
+  // Cmd+K or Ctrl+K, whichever the platform has; the hint shows the usual one.
+  // It is read in the capture phase so nothing in the page can swallow it, and by
+  // physical key as well as by character, so it works on layouts where K is not
+  // "k".
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+
+  function isShortcut(e) {
+    return (e.metaKey || e.ctrlKey) && ((e.key || '').toLowerCase() === 'k' || e.code === 'KeyK');
+  }
+
+  document.addEventListener(
+    'keydown',
+    function (e) {
+      var input = paletteInput();
+      if (isShortcut(e) && input) {
+        e.preventDefault();
+        input.focus();
+        input.select();
+        return;
+      }
+      handlePaletteKey(e, input);
+    },
+    true,
+  );
+
+  function handlePaletteKey(e, input) {
+    if (!input || e.target !== input) return;
+
+    var open = paletteBox().classList.contains('open');
+    var n = palette.items.length;
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'ArrowUp':
+        e.preventDefault();
+        if (!open) {
+          openPalette();
+          return;
+        }
+        if (!n) return;
+        palette.moved = true;
+        setActive(e.key === 'ArrowDown' ? (palette.active + 1) % n : (palette.active - 1 + n) % n);
+        break;
+      case 'Enter':
+        if (open && palette.active >= 0) {
+          e.preventDefault();
+          location.href = palette.items[palette.active].href;
+        }
+        break;
+      case 'Escape':
+        closePalette();
+        break;
+      case 'Tab':
+        closePalette();
+        break;
+    }
+  }
 
   document.addEventListener('click', function (e) {
-    var box = $('[data-palette]');
-    if (box && !e.target.closest('.search') && !e.target.closest('[data-palette]')) box.classList.remove('open');
+    if (!e.target.closest('.search') && !e.target.closest('[data-palette]')) closePalette();
   });
 
   /* --------------------------------- start -------------------------------- */
+
+  // The hint beside the search box says the key this platform has.
+  var hint = $('.search .kbd');
+  if (hint && !isMac) hint.textContent = 'Ctrl K';
 
   var theme = $('[data-pref="theme"]');
   if (theme) {

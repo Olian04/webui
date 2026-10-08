@@ -97,14 +97,13 @@ when the component set is not.
 | `table.templ` | `Table`, `TableHead`, `TableBody`, `Column`, `Row`, `RowLink`, `Cell`, `SelectAllColumn`, `SelectCell`, `ActionBar`, `Gauge`, `Pager`, `SkeletonRows` |
 | `badge.templ` | `Badge` |
 | **Surfaces** | |
-| `panel.templ` | `Panel`, `FieldGroup` |
+| `panel.templ` | `Panel`, `FieldGroup`, `InfoTip` |
 | **Layout** | |
 | `layout.templ` | `Stack`, `Split`, `Tabs`, `Section` |
 | `shell.templ` | `Document`, `AppShell` |
 | **Navigation** | |
 | `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarRow`, `NavSection`, `NavItem`, `NavGroup` |
 | `topbar.templ` | `TopBar`, `Breadcrumbs`, `Search`, `Avatar` |
-| `toolbar.templ` | `ToolBar`, `ToolBarRight`, `ToolBarButton`, `ToolBarMessage`, `Variable` |
 | **Feedback** | |
 | `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `Note`, `StatusBar` |
 | `state.templ` | `StatePage`, `CompileError` |

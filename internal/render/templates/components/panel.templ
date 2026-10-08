@@ -13,8 +13,8 @@ type PanelProps struct {
 	Desc   string
 	Status Tone
 
-	// Leaf is the address this panel can be refreshed at. A panel that is not
-	// independently refreshable leaves it empty.
+	// Leaf names this panel so a link inside it can replace it on its own. A
+	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
 
 	// Padded gives the body padding. A table sets it false and manages its own.
@@ -36,7 +36,7 @@ templ Panel(p PanelProps) {
 		<div class="panel-head">
 			<h2 class="panel-title">{ p.Title }</h2>
 			if p.Desc != "" {
-				@Icon(IconProps{Name: IconInfo, Class: "info", Title: p.Desc})
+				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
 			if p.Status == ToneOK {
 				@Icon(IconProps{Name: IconOK, Class: "panel-status ok", Title: "Loaded"})
@@ -44,18 +44,11 @@ templ Panel(p PanelProps) {
 			if p.Status == ToneCritical {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
 			}
-			<div class="panel-menu">
-				if p.Actions != nil {
+			if p.Actions != nil {
+				<div class="panel-menu">
 					@p.Actions
-				}
-				if p.Leaf != "" {
-					@IconButton(IconButtonProps{
-						Icon:  IconKebab,
-						Title: "Refresh this panel",
-						Attrs: templ.Attributes{"data-act": "refresh-leaf", "data-leaf": p.Leaf},
-					})
-				}
-			</div>
+				</div>
+			}
 		</div>
 		<div class={ "panel-body", templ.KV("pad", p.Padded) }>
 			{ children... }
@@ -82,4 +75,19 @@ templ FieldGroup(p FieldGroupProps) {
 		}
 		{ children... }
 	</div>
+}
+
+// InfoTipProps is a description behind an information icon. The text appears in
+// a raised popover on hover and on keyboard focus, and is the icon's accessible
+// name, so it is available to assistive technology and not only to a pointer.
+type InfoTipProps struct {
+	Text  string
+	Attrs templ.Attributes
+}
+
+templ InfoTip(p InfoTipProps) {
+	<span class="tip" tabindex="0" role="note" aria-label={ p.Text } { p.Attrs... }>
+		@Icon(IconProps{Name: IconInfo, Class: "info"})
+		<span class="tip-body" aria-hidden="true">{ p.Text }</span>
+	</span>
 }

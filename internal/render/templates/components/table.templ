@@ -50,7 +50,11 @@ type ColumnProps struct {
 	Width    string
 	SortHref string
 	SortDir  SortDir
-	Attrs    templ.Attributes
+
+	// Filter is placed after the name: whatever the column offers to narrow it.
+	// A slot, because the column only places it.
+	Filter templ.Component
+	Attrs  templ.Attributes
 }
 
 templ Column(p ColumnProps) {
@@ -64,19 +68,24 @@ templ Column(p ColumnProps) {
 		}
 		{ p.Attrs... }
 	>
-		if p.SortHref != "" {
-			<a href={ p.SortHref }>
+		<span class="th-in">
+			if p.SortHref != "" {
+				<a href={ p.SortHref }>
+					{ p.Label }
+					if p.SortDir == SortAsc {
+						@Icon(IconProps{Name: IconSortAsc, Class: "caret"})
+					}
+					if p.SortDir == SortDesc {
+						@Icon(IconProps{Name: IconSortDesc, Class: "caret"})
+					}
+				</a>
+			} else {
 				{ p.Label }
-				if p.SortDir == SortAsc {
-					@Icon(IconProps{Name: IconSortAsc, Class: "caret"})
-				}
-				if p.SortDir == SortDesc {
-					@Icon(IconProps{Name: IconSortDesc, Class: "caret"})
-				}
-			</a>
-		} else {
-			{ p.Label }
-		}
+			}
+			if p.Filter != nil {
+				@p.Filter
+			}
+		</span>
 	</th>
 }
 

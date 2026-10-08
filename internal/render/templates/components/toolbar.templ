@@ -47,7 +47,7 @@ templ Variable(p VariableProps) {
 		<span class="var-label">
 			{ p.Label }
 			if p.Desc != "" {
-				@Icon(IconProps{Name: IconInfo, Title: p.Desc})
+				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
 		</span>
 		<div class="var-ctl">
