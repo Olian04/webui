@@ -167,18 +167,19 @@ Four fixed regions. Only the content region scrolls.
 
 Fixed 240px on the left, panel surface, full height, always visible. It never
 becomes a top bar and never turns into a hamburger — below 820px it collapses
-to a 56px icon rail instead. The structure of the application is the one thing
-that should not disappear.
+to a 56px icon rail instead, and a button in its footer collapses it to the same
+rail at any width (the choice is a browser preference). The structure of the
+application is the one thing that should not disappear.
 
 Contents, top to bottom: brand mark and product name (48px, matching the top
 bar so the two align); grouped navigation; a footer pinned to the bottom.
 
-Navigation items are 32px, 13.5px, text-secondary, with a 16px icon. Groups
-carry an 11px uppercase caption above them. An item can hold a count on the
-right as a small pill. The active item takes the Active background, full-
-strength text, weight 500, and a 2px primary-coloured bar flush against the
-left edge. Expandable groups show a chevron that rotates 180° when open;
-children indent to 42px and drop their icons.
+Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
+Awesome glyph; an item with none holds the place of one, and shows its label's
+capitalised initial in the rail). Groups carry an 11px uppercase caption above
+them. The active item takes the Active background, full-strength text, weight
+500, and a 2px primary-coloured bar flush against the left edge. An item the
+visitor may not open is not drawn.
 
 ### Top bar
 
@@ -218,7 +219,8 @@ The unit of content. A bordered rectangle on the panel surface with a 32px
 header and no divider between header and body.
 
 The header carries, left to right: the title (14/500); an information icon
-holding the description as a popover; and an optional status dot. A panel has
+holding the description as a popover; and a status icon when the panel failed to
+load. A panel has
 no menu of its own: reloading is the page's Refresh in the top bar, so a panel
 changes only by following its own links, and the header stays quiet.
 
@@ -227,13 +229,6 @@ navigation or actions on the right.
 
 Panels never nest. If content inside a panel needs its own frame, it gets a
 bordered group with an 11px uppercase caption instead.
-
-### Rows
-
-Panels can be grouped under a collapsible row header: a 30px clickable line
-with a rotating chevron, a 14/500 label, and an optional count in text-
-tertiary. Collapsing hides the panels beneath it. Rows are how a long page is
-made scannable without pagination.
 
 ### Arrangements
 
@@ -341,7 +336,8 @@ condition, and a 12.5 text-tertiary line naming the way out.
 ## 11. Feedback
 
 **Toasts** stack bottom-right above the status bar: raised surface, 3px left
-border in the semantic colour, a 13.5/500 title and an optional 12.5
+border in the semantic colour (green for a confirmation, amber for something to be
+aware of, red for a failure), a 13.5/500 title and an optional 12.5
 text-secondary line, rising 6px on entry and dismissing after 3.4s.
 
 **Field errors** appear under the field in 12/critical with a 13px icon, and
@@ -349,11 +345,6 @@ the field takes the invalid border. Two kinds of rejection are shown
 identically: those the browser catches before anything is sent, and those the
 server returns afterwards. From the user's side they are the same event, so
 they look the same.
-
-**Notes** — used in this mock to explain the system — are a bordered block with
-a 3px primary left border on the panel surface, 12.5 text-secondary, with
-full-strength lead-ins. Warning-orange is used inside a note to mark something
-unresolved.
 
 ---
 
@@ -390,9 +381,9 @@ A whole-page navigation cross-fades, and the cross-fade is **entirely CSS**:
 ```css
 @view-transition { navigation: auto; }
 
-.sidebar   { view-transition-name: sidebar; }
-.topbar    { view-transition-name: topbar; }
-.content   { view-transition-name: content; }
+.sidebar   { view-transition-name: wui-sidebar; }
+.topbar    { view-transition-name: wui-topbar; }
+.content   { view-transition-name: wui-content; }
 ```
 
 The browser snapshots the old document, loads the new one, and animates each
@@ -437,5 +428,6 @@ different product.
 - Focus is a visible 2px ring, never removed.
 - Every interactive element is a real link or a real button, so keyboard
   traversal and "open in new tab" work without any extra handling.
-- Descriptions live in title attributes on the information icon, so they are
-  available to assistive technology rather than only on hover.
+- Descriptions are the information icon's accessible name and also appear in a
+  popover on hover and focus, so they are available to assistive technology and
+  not only to a pointer.
