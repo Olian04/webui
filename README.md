@@ -473,17 +473,30 @@ is not an address on this host, is dropped and logged.
   that nothing outside the leaf can read or set that state — `Guard` and
   sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
   sorted table.
-- Pages that link to each other cannot be written as static `var`s. A list whose
-  rows `Link` to a detail page, whose form action redirects back with
+- Pages that link to each other are still static `var`s, with one rule. A list
+  whose rows `Link` to a detail page, whose form action redirects back with
   `Open(ctx, List, ...)`, is a cycle Go rejects at build time:
   `initialization cycle for List`. Go counts any mention of a package-level
   variable inside an initializer, function literals included, so splitting the
-  `Link` and the `Action` into their own `var`s only lengthens the chain. Today
-  `Open` reads only `page.Path`, so one way out is a path `const` shared by the
-  page and a bare `webui.Page[A]{Path: listPath}` literal in the action. A
-  library answer would be a lightweight page reference by path, typed by `A`,
-  that `Open` and `Link` accept. Until one is chosen, the demo's save stays on
-  the page instead of returning to the list.
+  `Link` and the `Action` into their own `var`s only lengthens the chain. A
+  constant is not a variable, so a page that is linked back to declares its path
+  as a `webui.PageID[A]` constant, and the link back names the constant:
+
+  ```go
+  const DevicesPath webui.PageID[webui.NoArgs] = "/device"
+
+  var Devices = webui.Page[webui.NoArgs]{Path: DevicesPath, ...} // links forward: Page: Details
+  var SaveDevice = webui.Action[Device]{
+    Run: func(ctx context.Context, d Device) (webui.Effect, error) {
+      return webui.Effect{Redirect: webui.Open(ctx, DevicesPath, webui.NoArgs{})}, nil
+    },
+  }
+  ```
+
+  `PageID[A]` carries the argument type, so `Page[NoArgs]{Path: DetailsPath}` and
+  `Open(ctx, DevicesPath, DeviceArgs{})` do not compile. `Path: "/device"` still
+  does: a literal or an untyped constant converts. `Open` and `Link.Page` take a
+  page or its `PageID`; only a `string` variable can no longer be a `Path`.
 - `ArgsOf` keys `ctx` on an unexported type. A string key would collide with
   any other package using the same string, and `go vet` does not catch it.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an

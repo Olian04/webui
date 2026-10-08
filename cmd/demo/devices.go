@@ -61,8 +61,15 @@ var (
 
 // The list has no arguments of its own: its paging, sorting and column filters
 // are kept in the address by the table, under its ID.
+// A page that another page links back to has its path declared as a constant. The
+// list links to a device by its variable (Details), and a saved device returns to
+// the list by DevicesPath; naming the variable Devices from the save action would
+// be an initialization cycle, because Devices already reaches that action through
+// Details. A constant is not a variable, so it is not.
+const DevicesPath webui.PageID[webui.NoArgs] = "/device"
+
 var Devices = webui.Page[webui.NoArgs]{
-	Path: "/device",
+	Path: DevicesPath,
 	Nav:  DevicesNav,
 	// The global search asks every page that has a Search. Each result is a link
 	// built with Open, so it carries the mount prefix and the page's arguments.
@@ -141,7 +148,7 @@ var DeviceForm = webui.Form[Device]{
 
 var SaveDevice = webui.Action[Device]{
 	Guard: canEdit[Device],
-	Run: func(_ context.Context, d Device) (webui.Effect, error) {
+	Run: func(ctx context.Context, d Device) (webui.Effect, error) {
 		// Uniqueness needs the service, so no rule can catch it: it comes back
 		// as a rejection the user can fix, not as an error.
 		if service.IPTaken(d.IP, d.ID) {
@@ -150,10 +157,10 @@ var SaveDevice = webui.Action[Device]{
 			}}, nil
 		}
 		service.SetIP(d.ID, d.IP)
-		// Stays on the page. Returning to the list with Open(ctx, Devices, ...)
-		// would make Devices -> Details -> DeviceForm -> SaveDevice -> Devices an
-		// initialization cycle; see the README's Open section.
-		return webui.Effect{Toast: "Device saved"}, nil
+		return webui.Effect{
+			Toast:    "Device saved",
+			Redirect: webui.Open(ctx, DevicesPath, webui.NoArgs{}), // back to the list
+		}, nil
 	},
 }
 
