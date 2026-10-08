@@ -255,8 +255,9 @@ made scannable without pagination.
   stretch. Optionally weighted 1.6 : 1. Collapses to one column below 1100px.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
-  addressable: the selected tab appears in the toolbar as a page parameter and
-  in the address bar, so a tab can be linked to and survives a reload.
+  addressable: the selected tab is in the address bar, so a tab can be linked
+  to and survives a reload. It is not a toolbar parameter; the strip is the
+  control.
 
 ---
 

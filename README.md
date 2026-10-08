@@ -24,12 +24,18 @@ var logoBytes []byte
 
 var DevicesNav = webui.Nav{Label: "Devices"}
 
+// Arguments the list page reads: filters, here. Paging and sorting are not
+// among them — the table keeps those in the address itself (see ID below).
+type DevicesArgs struct {
+  Q string // -> ?q=eth
+}
+
 // A page's arguments are one struct. Fields named in the Path are path
 // segments; the rest are query parameters.
 type DetailsArgs struct {
-  Id     string // -> /device/{id}
-  Debug  bool   // -> ?debug=true
-  Offset int    // -> ?offset=50
+  Id    string // -> /device/{id}
+  Debug bool   // -> ?debug=true
+  Limit int    // -> ?limit=50
 }
 
 // An accessor is a named, typed projection of Device, optionally writable.
@@ -66,12 +72,23 @@ var (
   }
 )
 
-var Devices = webui.Page[webui.NoArgs]{
+var Devices = webui.Page[DevicesArgs]{
   Path: "/device",
   Nav:  DevicesNav,
   Body: webui.Table[Device]{
-    Load: func(ctx context.Context) ([]Device, error) {
-      return service.LoadAll(ctx)
+    Title: "Devices",
+    // A table that pages or sorts keeps that state in the address under its
+    // ID: ?devices.offset=50&devices.sort=ip&devices.desc=true. The library
+    // owns those parameters and hands Load the result as a Query; a sort key
+    // the columns did not declare is dropped before Load sees it. ID defaults
+    // to "table" and must be unique within the page, so name it when a page has
+    // more than one table that pages or sorts.
+    ID:       "devices",
+    PageSize: 25, // 0 means the table does not page
+    Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
+      // Total is the count across all pages; leave it zero when unknown and
+      // the pager falls back to "a full page may have a successor".
+      return service.Page(ctx, q.Offset, q.Limit, q.Sort, q.Desc)
     },
     // A Link names its destination page as a field, so Compile can check the
     // target exists. It renders a real <a href>, so middle-click and
@@ -82,17 +99,19 @@ var Devices = webui.Page[webui.NoArgs]{
         return DetailsArgs{Id: d.Id}
       },
     },
-    // No Actions or BulkActions means no action bar.
-    // No BulkActions means no row select checkboxes.
-    Columns: []webui.Accessor[Device]{ID, IP, Occurrences, Rate},
+    // No Actions or BulkActions means no action buttons and no form.
+    // No BulkActions means no row select checkboxes and no selection bar.
+    // Either needs Key: a request names rows by identity, never by position.
+    Columns: []webui.Accessor[Device]{ID, webui.Sortable[Device]{Accessor: IP, Key: "ip"}, Occurrences, Rate},
   },
 }
 
 var Details = webui.Page[DetailsArgs]{
   Path: "/device/{id}",
   Nav: webui.Nav{
-    // Doesn't show up in the Navbar, but shows as being on the "Devices"
-    // entry when the page is loaded. Identity is the pointer.
+    // Has no Label, so no entry of its own, but lights the "Devices" entry
+    // when the page is loaded. Matched by value, so the target page's Nav must
+    // be unique among pages; Compile says so if it is not.
     Shadow: &DevicesNav,
   },
   // Guard runs before anything is loaded — so an unauthorised device is never
@@ -102,6 +121,7 @@ var Details = webui.Page[DetailsArgs]{
     return auth.AssertDeviceAccess(ctx, a.Id)
   },
   Body: webui.Form[Device]{
+    Title: "Configuration",
     // One typed lookup gets the whole argument struct.
     Load: func(ctx context.Context) (Device, error) {
       a, err := webui.ArgsOf[DetailsArgs](ctx)
@@ -119,6 +139,7 @@ var Details = webui.Page[DetailsArgs]{
 }
 
 var SaveDevice = webui.Action[Device]{
+  Label: "Save", // the button text; a Form's Submit defaults to "Save"
   // Guard takes the action's subject. Same function on both sites: it enables
   // the UI element at render time and guards the request before Run.
   Guard: func(ctx context.Context, d Device) error {
@@ -186,6 +207,19 @@ func mustLogo() image.Image {
   return img
 }
 ```
+
+## Running the demo
+
+```
+go run ./cmd/demo            # http://localhost:8080/admin/
+go run ./cmd/demo -viewer    # guarded controls are disabled, with the reason
+go run ./cmd/demo -broken    # the failed-to-compile page
+```
+
+Everything works with JavaScript switched off: every control is a real link or
+form. The one script (`enhance.js`) replaces a single panel when a link inside it
+changes only that panel's arguments, enables the selection bar and the page
+search, and nothing else.
 
 The structs declare the app; the compiled runtime is the target of every
 runtime action; `ctx` is the gateway between them. So anything that touches the
@@ -259,9 +293,15 @@ struct copy:
 
 ```go
 next := cur
-next.Offset = 50
-return webui.Open(Details, next)   // /device/abc?debug=true&offset=50
+next.Limit = 50
+return webui.Open(ctx, Details, next)   // /device/abc?debug=true&limit=50
 ```
+
+`Open` builds an address from the page's own arguments. A table's paging and
+sort and the selected tab are view state the library keeps in the address, so an
+`Open` link lands on the defaults: first page, unsorted, first tab. A link a
+user is *on* (pager, sort header, tab, Refresh) always carries the whole
+address, so nothing it does drops another table's state.
 
 A page's `Body` is a single `PageBody`. Leaves (`Table`, `Form`) load and
 refresh; layouts only arrange, and they nest:
@@ -272,15 +312,24 @@ Body: webui.Stack{ // vertical
     webui.Form[Device]{ ... },
     webui.Table[Event]{ ... },
   },
-  webui.Tabs{
+  // The selected tab is kept in the address as ?tabs.tab=Raw, so it survives a
+  // reload and can be linked to. ID defaults to "tabs". Only the selected panel
+  // is loaded.
+  webui.Tabs{Panels: []webui.Tab{
     {Label: "Raw", Body: webui.Table[Event]{ ... }},
-  },
+  }},
 },
 ```
 
 `Stack`, `Split` and `Tabs` are the layouts. All three hold `PageBody`, so none
 of them constrains what their children are about. `Group[M]` is a different
 thing one level down: accessor composition inside a form, typed to the model.
+
+`webui.String`, `Int` and `Float` are the plain accessors. `Badge` shows a
+string as a coloured pill (`Tones` maps a value to a tone), and `Slider` shows a
+number on a range: a bar when read-only — in a table, or in a form without a
+`Store` — and a range input when it has one. Both take a `Label` and a `Load`
+like the others, and `Slider` needs a `Min` and `Max`.
 
 Context-specific presentation stays off the accessor. Options are decorators,
 which are themselves accessors, so the common case stays a bare list:
@@ -309,15 +358,24 @@ Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
   is something they cannot fix by editing the form. `Effect` stays non-generic
   by putting the model on the slice (`webui.Fields[Device]`), so bulk actions
   do not inherit a meaningless `[]FieldError[[]Device]`.
-- Pipeline: parse -> rules -> `Store` -> `Guard` -> `Run`. Parse failures
+- Pipeline: parse -> rules -> `Store` -> `Guard` -> `Run`. `Store` applies to a
+  copy of the model `Load` returned, not a zero one, so read-only fields (an ID
+  with no `Store`) are intact for `Guard` and `Run`. Parse failures
   short-circuit, so a form with both a malformed number and a duplicate value
   shows the parse error first and the duplicate only on the next submit.
+- After a successful action the browser gets a `303` and the toast rides a
+  short-lived `HttpOnly` cookie, so a reload does not repeat the POST and the
+  URL carries nothing. POSTs are checked with `http.CrossOriginProtection`
+  (Fetch metadata and `Origin`); behind a proxy that rewrites `Host`, wrap the
+  handler and allow the public origin.
 - The re-render after a rejection must echo the raw submitted input, not the
   model value, or the user's bad input disappears and the form looks like it
   reset.
 - `Pattern` is not portable: Go's RE2 rejects the lookahead and backreference
-  syntax people copy from JavaScript examples. `Validate()` must compile every
-  `Pattern` at startup, and the docs must say RE2, not "regex".
+  syntax people copy from JavaScript examples. `Compile` compiles every
+  `Pattern` at startup and the error says RE2, not "regex". The expression is
+  anchored on both sides, because an HTML `pattern` attribute must match the
+  whole value and the server has to reach the same verdict as the browser.
 - Any struct a user fills with an unkeyed literal from another package trips
   `go vet`'s composites check, so nested literals in the API must expect keyed
   fields (`{Field: IP, Message: "..."}`).
@@ -325,23 +383,22 @@ Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
   flattening would mean defining what a nested group is in a cell.
 - A nested `Table` inside a form's `Fields` stays out of scope. If it turns out
   to be wanted, it is solved then.
-- Refresh: decided. The POC reloads the whole page on any argument change;
-  leaf-initiated refresh is a later enhancement over the *same* links, so it
-  needs no user-facing API change. A control owned by a leaf refreshes that
-  leaf; a control owned by the page navigates the page. Four things must hold
-  from the start: pager/sort/filter controls are real `<a href>` carrying
-  complete URLs, the page `Guard` runs on every request, leaf addresses are
-  derived from the `Body` tree, and framework parameters never touch the URL.
-  Open within this: `Vary` on the leaf header, and cross-leaf refresh after an
-  action (whole-page reload, or model-typed staleness such as `Stale[Device]`).
-- Pagination, sorting, filtering — v1. Transport is solved: they are ordinary
-  query `Arg`s. Two independent offsets on one page means two `Arg`s, which the
-  user names; the framework namespaces nothing. Two pieces remain: `Load` needs
-  to return a total alongside the rows for "of N" and last-page detection, and
-  `Table` needs to know *which* `Arg`s drive it if the framework is to render
-  the pager itself.
+- Refresh: done. A link inside a panel that changes only that panel's arguments
+  fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
+  without script it is an ordinary navigation. The page `Guard` runs on every
+  request, leaf addresses are derived from the `Body` tree by position, and
+  framework parameters never touch the URL. `Vary: X-Webui-Leaf` is set. After
+  a leaf moves, sibling panels that embed the old address are fetched again and
+  forms keep what was typed (only their `action` is patched). After an action
+  the whole page re-renders; a model-typed `Stale[Device]` is deferred.
+- Pagination and sorting: done, as library-owned view state. `Table.PageSize`
+  turns paging on, a `Sortable` column turns sorting on, and `Load` receives a
+  `Query` and returns `Rows{Items, Total}`; `Total` below what has been shown
+  means unknown. Filtering stays an ordinary page argument that `Load` reads.
+  Setting a filter returns every table to its first page.
 - Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
-  gating happens at execution rather than per-row at render.
+  gating happens at execution rather than per-row at render. Row actions are
+  gated at render, per row, by the same `Guard` that authorises the POST.
 - Non-string path arguments: built-in decoding for integers and
   `encoding.TextUnmarshaler`, or an escape hatch for the rest.
 - Arguments are one struct per page. `Open` is compiler-checked, `Guard` is
@@ -353,12 +410,35 @@ Fields:  []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
   field cannot be distinguished from an absent one without a pointer.
 - Optionality: a zero field means absent and stays out of the URL. A field
   where zero is meaningful needs a pointer — the same trade as `Rules`.
-- Framework parameters travel as headers, never in the URL. The URL carries
-  user state, headers carry read-side transport, form bodies carry write-side
-  routing — so nothing framework-owned appears in a URL anyone might copy, and
-  the query string needs no reserved prefix. Consequence: an iframe cannot set
-  headers, so embedding a leaf later needs its own path and a standalone
-  document, rather than reusing the refresh mechanism.
+- Transport parameters travel as headers, never in the URL; *view state* is in
+  the URL, because it is what a copied address has to reproduce. The URL
+  carries the page's arguments and the view state of its tables and tabs,
+  headers carry read-side transport (`X-Webui-Leaf`), form bodies carry
+  write-side routing. View state is named `<id>.<param>` (`devices.offset`,
+  `devices.sort`, `devices.desc`, `tabs.tab`), and an argument name may not
+  contain `.`, so the two can never collide; `Compile` rejects one that does.
+  An ID is a lower-case word, unique within its page (two pages may reuse one),
+  and defaults to the component's name. Parameters for a leaf the page does not
+  have are ignored. Consequence: an iframe cannot set headers, so embedding a
+  leaf later needs its own path and a standalone document, rather than reusing
+  the refresh mechanism.
+- Why the library owns view state instead of the argument struct: the struct
+  would have to carry `Offset`, `Sort`, `Desc` and `Tab` fields for the
+  framework's benefit, and the table would name them by string. The cost is
+  that nothing outside the leaf can read or set that state — `Guard` and
+  sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
+  sorted table.
+- Pages that link to each other cannot be written as static `var`s. A list whose
+  rows `Link` to a detail page, whose form action redirects back with
+  `Open(ctx, List, ...)`, is a cycle Go rejects at build time:
+  `initialization cycle for List`. Go counts any mention of a package-level
+  variable inside an initializer, function literals included, so splitting the
+  `Link` and the `Action` into their own `var`s only lengthens the chain. Today
+  `Open` reads only `page.Path`, so one way out is a path `const` shared by the
+  page and a bare `webui.Page[A]{Path: listPath}` literal in the action. A
+  library answer would be a lightweight page reference by path, typed by `A`,
+  that `Open` and `Link` accept. Until one is chosen, the demo's save stays on
+  the page instead of returning to the list.
 - `ArgsOf` keys `ctx` on an unexported type. A string key would collide with
   any other package using the same string, and `go vet` does not catch it.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an

@@ -8,12 +8,15 @@
 | `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
-| `internal/runtime` | Compiled app in `ctx`, prefix, leaf ids, handler, `Open` resolve.                 |
-| `internal/render`  | IR → HTML.                                                                        |
+| `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline, POST actions, flash, `Open` resolve. |
+| `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
-| `test/assert`      | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
+| `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
+| `test/util/mock`   | Mock HTTP mux for integration tests.                                              |
+| `internal/router`  | Compiled `runtime.Program` routes → `http.ServeMux`.                              |
+| `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
-`pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `link`, `open`, `compile`. One package, not one package per type.
+`pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
 Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 
@@ -42,7 +45,7 @@ Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
 ## Tests
 
-`test/` must import `pkg/webui` only, not `internal/`. `test/assert` is the exception: assertions only, imported by tests.
+`test/` must import `pkg/webui` only, not `internal/`. `test/util/*` is the exception: assertions and mocks only, imported by tests.
 
 ---
 
