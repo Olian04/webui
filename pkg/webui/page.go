@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/render/assets"
 )
 
 // NoArgs is the argument type for a page with no path or query parameters.
@@ -75,6 +76,7 @@ type SearchResult struct {
 // Nav must be unique among pages.
 type Nav struct {
 	Label   string
+	Icon    string // a Font Awesome Free solid icon name, "house" for fa-house; without one, the label's initial is shown when the sidebar is collapsed
 	Section string // caption above a run of entries; empty continues the run
 	Shadow  *Nav
 }
@@ -131,6 +133,13 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		return v.errs // every later check reads A's fields
 	}
 
+	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
+		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
+		if strings.HasPrefix(p.Nav.Icon, "fa-") {
+			fix = fmt.Sprintf("Write the icon's name without the \"fa-\" prefix: %q.", strings.TrimPrefix(p.Nav.Icon, "fa-"))
+		}
+		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
+	}
 	if p.Nav.Shadow != nil {
 		switch n := f.shadowTargets[*p.Nav.Shadow]; {
 		case n == 0:

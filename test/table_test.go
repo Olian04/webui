@@ -164,7 +164,7 @@ func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Could not load")
-	assert.Contains(t, rec.Body.String(), `class="panel-status bad"`)
+	assert.Contains(t, rec.Body.String(), `panel-status bad"`)
 	assert.False(t, strings.Contains(rec.Body.String(), "hunter2")) // the cause is logged, never shown
 }
 
@@ -368,7 +368,7 @@ func TestAnActiveFilterShowsAndCanBeCleared(t *testing.T) {
 
 	// Applying one column's filter carries everything else and drops every offset;
 	// the filter being replaced is not carried.
-	id := body[strings.Index(body, `aria-label="Filter ID"><svg`):]
+	id := body[strings.Index(body, `aria-label="Filter ID"><i class="fa-solid fa-filter"`):]
 	id = id[:strings.Index(id, `<div class="filter-title">ID</div>`)]
 	assert.Contains(t, id, `name="devices.sort" value="id"`)
 	assert.Contains(t, id, `name="devices.filter.Status" value="healthy"`)
@@ -436,12 +436,12 @@ func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
 	assert.Contains(t, body, `name="devices.max.Occurrences" value="9.5"`)
 
 	// Applying another column keeps these bounds; applying this one replaces them.
-	idForm := body[strings.Index(body, `aria-label="Filter ID"><svg`):]
+	idForm := body[strings.Index(body, `aria-label="Filter ID"><i class="fa-solid fa-filter"`):]
 	idForm = idForm[:strings.Index(idForm, `<div class="filter-title">ID</div>`)]
 	assert.Contains(t, idForm, `name="devices.min.Occurrences" value="5"`)
 	assert.Contains(t, idForm, `name="devices.max.Occurrences" value="9.5"`)
 
-	own := body[strings.Index(body, `aria-label="Filter Occurrences"><svg`):]
+	own := body[strings.Index(body, `aria-label="Filter Occurrences"><i class="fa-solid fa-filter"`):]
 	own = own[:strings.Index(own, `<div class="filter-title">Occurrences</div>`)]
 	assert.False(t, strings.Contains(own, `devices.min.Occurrences`))
 	assert.False(t, strings.Contains(own, `devices.max.Occurrences`))

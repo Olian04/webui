@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/a-h/templ"
 
@@ -62,6 +63,7 @@ type Renderer struct {
 
 type navEntry struct {
 	Label   string
+	Icon    string
 	Section string
 	Path    string // path template, the identity used for Active
 	Href    string
@@ -82,7 +84,7 @@ func New(app *ir.App, prefix string) *Renderer {
 			continue
 		}
 		r.nav = append(r.nav, navEntry{
-			Label: p.Nav.Label, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate),
+			Label: p.Nav.Label, Icon: p.Nav.Icon, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate),
 		})
 	}
 	return r
@@ -130,7 +132,7 @@ func (r *Renderer) title(page string) string {
 }
 
 func (r *Renderer) styles() []string {
-	s := []string{r.AssetHref("app.css")}
+	s := []string{r.AssetHref("fontawesome.css"), r.AssetHref("app.css")}
 	if r.hasCSS {
 		s = append(s, r.AssetHref("theme.css"))
 	}
@@ -213,4 +215,22 @@ func themeCSS(tokens map[string]string) []byte {
 	}
 	b.WriteString("}\n")
 	return []byte(b.String())
+}
+
+// brand is the app's name as the sidebar shows it, "Home" when it has none, so
+// the link to the landing page always has a name.
+func (r *Renderer) brand() string {
+	if r.app.Brand.Name == "" {
+		return "Home"
+	}
+	return r.app.Brand.Name
+}
+
+// initial is the first letter of a label, capitalised: what an entry with no
+// icon shows when the sidebar is a rail.
+func initial(label string) string {
+	for _, c := range label {
+		return string(unicode.ToUpper(c))
+	}
+	return ""
 }

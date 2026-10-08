@@ -5,6 +5,7 @@ package ir
 // to that template here.
 type Nav struct {
 	Label   string
+	Icon    string // the name of one of the design's icons; empty draws the label's initial
 	Section string // caption above a run of entries; empty continues the run
 	Shadow  string
 	Hidden  bool // no entry of its own: the page has no Label

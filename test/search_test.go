@@ -173,7 +173,7 @@ func TestPanelsHaveNoRefreshButtonOfTheirOwn(t *testing.T) {
 		assert.False(t, strings.Contains(body, absent))
 	}
 	// The page's own Refresh is the one reload.
-	assert.Equal(t, strings.Count(body, `<path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/>`), 1)
+	assert.Equal(t, strings.Count(body, `fa-rotate-right`), 1)
 	assert.Contains(t, body, `data-refresh`)
 }
 

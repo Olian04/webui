@@ -68,7 +68,7 @@ type appLowerer struct {
 // nav resolves a declared Nav to the IR's. Shadow is matched by value, which
 // validate proved resolves to exactly one page.
 func (l *appLowerer) nav(n Nav) ir.Nav {
-	out := ir.Nav{Label: n.Label, Section: n.Section, Hidden: n.Label == ""}
+	out := ir.Nav{Label: n.Label, Icon: n.Icon, Section: n.Section, Hidden: n.Label == ""}
 	if n.Shadow != nil {
 		out.Shadow = l.shadow[*n.Shadow]
 	}

@@ -37,12 +37,12 @@ templ (r *Renderer) head() {
 }
 
 templ (r *Renderer) sidebar(active string) {
-	@c.Sidebar(c.SidebarProps{Brand: r.app.Brand.Name, Logo: r.logoHref(), Footer: r.sidebarFooter()}) {
+	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}) {
 		for _, e := range r.nav {
 			if e.Section != "" {
 				@c.NavSection(e.Section)
 			}
-			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.Path == active})
+			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.Path == active, Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
 		}
 	}
 }
@@ -70,6 +70,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 templ (r *Renderer) sidebarFooter() {
 	<div class="js-only">
 		@c.SidebarFooter() {
+			@c.SidebarCollapse()
 			@c.SidebarRow("Light theme") {
 				@c.Switch(c.SwitchProps{
 					ID: "pref-theme", Label: "Light theme", 

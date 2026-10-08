@@ -238,6 +238,30 @@
     });
   }
 
+  // The sidebar's collapse button narrows it to the icon rail and back. The
+  // choice is a browser preference, like the theme, so it stays out of the URL.
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-sidebar-toggle]');
+    if (!btn) return;
+    var root = document.documentElement;
+    var collapsed = root.getAttribute('data-sidebar') !== 'collapsed';
+    if (collapsed) root.setAttribute('data-sidebar', 'collapsed');
+    else root.removeAttribute('data-sidebar');
+    syncSidebarToggle();
+    try {
+      if (collapsed) localStorage.setItem('webui.sidebar', 'collapsed');
+      else localStorage.removeItem('webui.sidebar');
+    } catch (err) {}
+  });
+
+  function syncSidebarToggle() {
+    var btn = $('[data-sidebar-toggle]');
+    if (!btn) return;
+    var collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+  }
+
   document.addEventListener('change', function (e) {
     var t = e.target;
 
@@ -521,6 +545,7 @@
     var explicit = document.documentElement.getAttribute('data-theme');
     theme.checked = explicit ? explicit === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
   }
+  syncSidebarToggle();
   syncSelection(document);
   dismissToasts();
 })();
