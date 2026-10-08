@@ -53,7 +53,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Rows[Device], error
 				Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} },
 			},
 			Columns: []webui.Accessor[Device]{
-				webui.Sortable[Device]{Accessor: webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}, Key: "id"},
+				webui.String[Device]{Label: "ID", Key: "id", Load: func(d Device) string { return d.Id }},
 				webui.Badge[Device]{
 					Label: "Status",
 					Load: func(d Device) string {
@@ -188,7 +188,7 @@ func twoTables() (http.Handler, *[2]webui.Query) {
 				seen[i] = q
 				return webui.Rows[Device]{Items: []Device{{Id: "row"}}, Total: 50}, nil
 			},
-			Columns: []webui.Accessor[Device]{webui.Sortable[Device]{Accessor: formID, Key: "id"}},
+			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Key: "id", Load: func(d Device) string { return d.Id }}},
 		}
 	}
 	page := webui.Page[tableArgs]{Path: "/p", Body: webui.Split{table(0, "left"), table(1, "")}}
@@ -258,4 +258,28 @@ func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
 	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
 	assert.Contains(t, css, "tbody tr.clickable {\n  cursor: pointer;\n  position: relative;")
 	assert.Contains(t, css, ".rowlink::after {\n  content: '';\n  position: absolute;\n  inset: 0;")
+}
+
+func TestEveryColumnIsSortableAndLoadReceivesItsKeyOrLabel(t *testing.T) {
+	t.Parallel()
+
+	h, last := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+
+	// Four columns, four sort links: nothing is declared to make a column sortable.
+	assert.Equal(t, strings.Count(body, `aria-sort="none"`), 4)
+	assert.Contains(t, body, `href="/admin/device?devices.sort=id"`)          // ID declares Key "id"
+	assert.Contains(t, body, `href="/admin/device?devices.sort=Status"`)      // no Key: the Label
+	assert.Contains(t, body, `href="/admin/device?devices.sort=Occurrences"`) // numbers too
+	assert.Contains(t, body, `href="/admin/device?devices.sort=Rate"`)        // and a slider
+
+	serve(h, http.MethodGet, "/admin/device?devices.sort=Status&devices.desc=true")
+	assert.Equal(t, *last, webui.Query{Limit: 10, Sort: "Status", Desc: true})
+
+	serve(h, http.MethodGet, "/admin/device?devices.sort=id")
+	assert.Equal(t, last.Sort, "id")
+
+	// A Key replaces the Label: the Label is no longer a way in.
+	serve(h, http.MethodGet, "/admin/device?devices.sort=ID")
+	assert.Equal(t, last.Sort, "")
 }

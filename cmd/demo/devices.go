@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 
@@ -23,12 +24,16 @@ type DeviceArgs struct {
 // Accessors are written once and used as a column in the list and as a field in
 // the form. Without a Store an accessor is read-only.
 var (
+	// Key is what Load receives in Query.Sort when the list is sorted by this
+	// column; without one it is the Label.
 	DeviceID = webui.String[Device]{
 		Label: "ID",
+		Key:   "id",
 		Load:  func(d Device) string { return d.ID },
 	}
 	IP = webui.String[Device]{
 		Label: "IP",
+		Key:   "ip",
 		Load:  func(d Device) string { return d.IP },
 		Store: func(d *Device, v string) { d.IP = v },
 		Rules: webui.StringRules{
@@ -38,19 +43,22 @@ var (
 	}
 	Status = webui.Badge[Device]{
 		Label: "Status",
+		Key:   "status",
 		Load:  func(d Device) string { return d.Status },
 		Tones: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
 	}
 	Site = webui.String[Device]{
 		Label: "Site",
+		Key:   "site",
 		Load:  func(d Device) string { return d.Site },
 	}
 	Occurrences = webui.Int[Device]{
 		Label: "Occurrences",
+		Key:   "count",
 		Load:  func(d Device) int { return d.Count },
 	}
 	Rate = webui.Slider[Device]{
-		Label: "Rate / s", Max: 15, Precision: 2,
+		Label: "Rate / s", Key: "rate", Max: 15, Precision: 2,
 		Load: func(d Device) float64 { return d.Rate() },
 	}
 )
@@ -79,14 +87,7 @@ var Devices = webui.Page[DevicesArgs]{
 			Page: Details,
 			Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
 		},
-		Columns: []webui.Accessor[Device]{
-			webui.Sortable[Device]{Accessor: DeviceID, Key: "id"},
-			webui.Sortable[Device]{Accessor: IP, Key: "ip"},
-			webui.Sortable[Device]{Accessor: Status, Key: "status"},
-			Site,
-			webui.Sortable[Device]{Accessor: Occurrences, Key: "count"},
-			webui.Sortable[Device]{Accessor: Rate, Key: "rate"},
-		},
+		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Site, Occurrences, Rate},
 	},
 }
 
@@ -148,13 +149,20 @@ var SaveDevice = webui.Action[Device]{
 // nothing about what its children are about.
 var Events = webui.Table[Event]{
 	Title: "Recent events",
-	Load: func(context.Context, webui.Query) (webui.Rows[Event], error) {
-		events := service.Events()
+	Load: func(_ context.Context, q webui.Query) (webui.Rows[Event], error) {
+		// No Key on these accessors, so Query.Sort is the Label.
+		events := sortedBy(service.Events(), q.Sort, q.Desc, map[string]func(x, y Event) int{
+			EventTime.Label:   func(x, y Event) int { return cmp.Compare(x.At, y.At) },
+			EventKind.Label:   func(x, y Event) int { return cmp.Compare(x.Kind, y.Kind) },
+			EventDetail.Label: func(x, y Event) int { return cmp.Compare(x.Detail, y.Detail) },
+		})
 		return webui.Rows[Event]{Items: events, Total: len(events)}, nil
 	},
-	Columns: []webui.Accessor[Event]{
-		webui.String[Event]{Label: "Time", Load: func(e Event) string { return e.At }},
-		webui.String[Event]{Label: "Kind", Load: func(e Event) string { return e.Kind }},
-		webui.String[Event]{Label: "Detail", Load: func(e Event) string { return e.Detail }},
-	},
+	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
+
+var (
+	EventTime   = webui.String[Event]{Label: "Time", Load: func(e Event) string { return e.At }}
+	EventKind   = webui.String[Event]{Label: "Kind", Load: func(e Event) string { return e.Kind }}
+	EventDetail = webui.String[Event]{Label: "Detail", Load: func(e Event) string { return e.Detail }}
+)

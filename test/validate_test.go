@@ -118,10 +118,30 @@ func TestValidateDeclarationChecks(t *testing.T) {
 			webui.Table[Device]{ID: "devices", Load: okRows, PageSize: 10},
 			webui.Table[Device]{ID: "devices", Load: okRows, PageSize: 10},
 		}}, "Give each table and tabs its own ID"},
-		{"sortable columns count as stateful", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{webui.Sortable[Device]{Accessor: idCol(), Key: "id"}}},
-			webui.Table[Device]{Load: okRows, PageSize: 5},
+		{"every table keeps its sort, so every table claims an ID", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
+			webui.Table[Device]{Load: okRows},
+			webui.Table[Device]{Load: okRows},
 		}}, `the ID "table" is used twice`},
+		{"two columns sorting by one key", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
+			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "Other", Key: "ID", Load: func(Device) string { return "" }}},
+		}}, `two columns sort by "ID"`},
+		{"two columns with one label", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
+			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), idCol()},
+		}}, `two columns sort by "ID"`},
+		{"same ID in one panel clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{ID: "v", Panels: []webui.Tab{
+			{Label: "A", Body: webui.Stack{
+				webui.Table[Device]{ID: "t", Load: okRows},
+				webui.Table[Device]{ID: "t", Load: okRows},
+			}},
+		}}}, `the ID "t" is used twice`},
+		{"same ID in a panel and outside the tabs clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
+			webui.Table[Device]{ID: "t", Load: okRows},
+			webui.Tabs{ID: "v", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
+		}}, `the ID "t" is used twice`},
+		{"same ID in two different Tabs clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
+			webui.Tabs{ID: "v1", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
+			webui.Tabs{ID: "v2", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
+		}}, `the ID "t" is used twice`},
 		{"ID must be a plain word", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			ID: "Dev.ices", Load: okRows, PageSize: 10,
 		}}, "is not a lower-case word"},
@@ -163,6 +183,18 @@ func TestIDsOnlyNeedToBeUniquePerPage(t *testing.T) {
 		webui.Page[webui.NoArgs]{Path: "/a", Body: table},
 		webui.Page[webui.NoArgs]{Path: "/b", Body: table}, // the same default ID, on another page
 	}}
+	_, err := app.Compile("/admin")
+	assert.NoError(t, err)
+}
+
+func TestPanelsOfOneTabsMayShareAnID(t *testing.T) {
+	t.Parallel()
+
+	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}} // both are "table"
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{ID: "view", Panels: []webui.Tab{
+		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, error) { return Device{}, nil }}, shared}},
+		{Label: "Raw", Body: shared},
+	}}}}}
 	_, err := app.Compile("/admin")
 	assert.NoError(t, err)
 }

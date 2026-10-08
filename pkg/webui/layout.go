@@ -67,6 +67,8 @@ func validateChildren(v *bodyValidator, what string, children []PageBody) {
 func (t Tabs) validateBody(v *bodyValidator) {
 	v.nodes++
 	v.id("Tabs", t.ID)
+	v.tabs++
+	tabs := v.tabs
 	if len(t.Panels) == 0 {
 		v.add("Tabs has no Panels", "Declare at least one Tab.")
 	}
@@ -83,7 +85,9 @@ func (t Tabs) validateBody(v *bodyValidator) {
 			v.add(fmt.Sprintf("Tabs.Panels[%d] has no Body", i), "Set Body to a Table, Form or layout.")
 			continue
 		}
+		v.scope = append(v.scope, panel{tabs: tabs, index: i})
 		p.Body.validateBody(v)
+		v.scope = v.scope[:len(v.scope)-1]
 	}
 }
 

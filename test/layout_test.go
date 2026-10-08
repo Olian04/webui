@@ -24,7 +24,7 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	var loads [4]atomic.Int32
 	table := func(i int, title string) webui.Table[Device] {
 		return webui.Table[Device]{
-			Title: title,
+			ID: strings.ToLower(title), Title: title,
 			Load: func(context.Context, webui.Query) (webui.Rows[Device], error) {
 				loads[i].Add(1)
 				return webui.Rows[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil

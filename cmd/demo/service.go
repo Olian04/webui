@@ -114,15 +114,7 @@ func (s *Service) Devices(f DeviceFilter, o Order) ([]Device, int) {
 			(needle != "" && !strings.Contains(strings.ToLower(d.ID+" "+d.IP+" "+d.Site), needle))
 	})
 
-	if by, ok := deviceKeys[o.Sort]; ok {
-		slices.SortStableFunc(all, func(x, y Device) int {
-			c := by(x, y)
-			if o.Desc {
-				return -c
-			}
-			return c
-		})
-	}
+	all = sortedBy(all, o.Sort, o.Desc, deviceKeys)
 	lo := min(o.Offset, len(all))
 	hi := len(all)
 	if o.Limit > 0 {
@@ -131,13 +123,33 @@ func (s *Service) Devices(f DeviceFilter, o Order) ([]Device, int) {
 	return all[lo:hi], len(all)
 }
 
-// deviceKeys are the orders the list offers, by the key its columns declare.
+// deviceKeys are the orders the list offers, by the Key its columns declare.
 var deviceKeys = map[string]func(x, y Device) int{
 	"id":     func(x, y Device) int { return cmp.Compare(x.ID, y.ID) },
 	"ip":     func(x, y Device) int { return cmp.Compare(x.IP, y.IP) },
 	"status": func(x, y Device) int { return cmp.Compare(x.Status, y.Status) },
+	"site":   func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
 	"count":  func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
 	"rate":   func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
+}
+
+// sortedBy orders rows by the comparison registered for key, which is what a
+// table's Load receives in Query.Sort. A key nobody registered leaves the order
+// alone. A table whose Load ignored Query.Sort would show sort links that do
+// nothing, so every table in the demo does this.
+func sortedBy[T any](rows []T, key string, desc bool, by map[string]func(x, y T) int) []T {
+	compare, ok := by[key]
+	if !ok {
+		return rows
+	}
+	rows = slices.Clone(rows)
+	slices.SortStableFunc(rows, func(x, y T) int {
+		if desc {
+			return compare(y, x)
+		}
+		return compare(x, y)
+	})
+	return rows
 }
 
 // Events are made up on the spot: the last few minutes of a device.

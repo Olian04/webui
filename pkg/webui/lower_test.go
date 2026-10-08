@@ -56,7 +56,7 @@ func fixture() App {
 				Page: details,
 				Args: func(_ context.Context, d dev) detailArgs { return detailArgs{Id: d.Id} },
 			},
-			Columns: []Accessor[dev]{Sortable[dev]{Accessor: id, Key: "id"}, ip},
+			Columns: []Accessor[dev]{String[dev]{Label: "ID", Key: "id", Load: func(d dev) string { return d.Id }}, ip},
 			BulkActions: []Action[[]dev]{{Label: "Drop", Role: RoleDestructive,
 				Run: func(context.Context, []dev) (Effect, error) { return Effect{Toast: "gone"}, nil }}},
 		},

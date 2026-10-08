@@ -18,6 +18,9 @@ type Accessor[M any] interface {
 // String projects a string field of M.
 type String[M any] struct {
 	Label string
+	// Key is what Load receives in Query.Sort when the table is sorted by this
+	// column; Label when empty. A form ignores it.
+	Key   string
 	Load  func(M) string
 	Store func(*M, string)
 	Rules StringRules
@@ -44,6 +47,9 @@ type PatternRule struct {
 // Int projects an int field of M.
 type Int[M any] struct {
 	Label string
+	// Key is what Load receives in Query.Sort when the table is sorted by this
+	// column; Label when empty. A form ignores it.
+	Key   string
 	Load  func(M) int
 	Store func(*M, int)
 	Rules NumberRules[int]
@@ -62,7 +68,10 @@ type NumberRules[T int | float64] struct {
 // Float projects a float64 field of M. Precision is the number of decimals
 // shown; zero shows the shortest exact representation.
 type Float[M any] struct {
-	Label     string
+	Label string
+	// Key is what Load receives in Query.Sort when the table is sorted by this
+	// column; Label when empty. A form ignores it.
+	Key       string
 	Load      func(M) float64
 	Store     func(*M, float64)
 	Rules     NumberRules[float64]
@@ -76,14 +85,6 @@ func (Float[M]) isAccessor() {}
 type Group[M any] []Accessor[M]
 
 func (Group[M]) isAccessor() {}
-
-// Sortable decorates an accessor with the query key used for sorting.
-type Sortable[M any] struct {
-	Accessor Accessor[M]
-	Key      string
-}
-
-func (Sortable[M]) isAccessor() {}
 
 // Placeholder decorates an accessor with placeholder text.
 type Placeholder[M any] struct {
@@ -99,6 +100,9 @@ func (Placeholder[M]) isAccessor() {}
 // colour is never the only thing saying what state something is in.
 type Badge[M any] struct {
 	Label string
+	// Key is what Load receives in Query.Sort when the table is sorted by this
+	// column; Label when empty. A form ignores it.
+	Key   string
 	Load  func(M) string
 	Tones map[string]Tone
 }
@@ -111,7 +115,10 @@ func (Badge[M]) isAccessor() {}
 // range. Precision is the number of decimals shown; zero shows the shortest
 // exact representation.
 type Slider[M any] struct {
-	Label     string
+	Label string
+	// Key is what Load receives in Query.Sort when the table is sorted by this
+	// column; Label when empty. A form ignores it.
+	Key       string
 	Load      func(M) float64
 	Store     func(*M, float64)
 	Min, Max  float64
@@ -137,7 +144,6 @@ var (
 	_ Accessor[struct{}] = Int[struct{}]{}
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
-	_ Accessor[struct{}] = Sortable[struct{}]{}
 	_ Accessor[struct{}] = Placeholder[struct{}]{}
 	_ Accessor[struct{}] = Badge[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
@@ -218,11 +224,6 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			}
 			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen, false)
 		}
-	case Sortable[M]:
-		if a.Key == "" {
-			v.add(at+" Sortable has no Key", "Set Key to the value the Load func receives in Query.Sort.")
-		}
-		validateAccessor[M](v, a.Accessor, at, site, seen, true)
 	case Placeholder[M]:
 		validateAccessor[M](v, a.Accessor, at, site, seen, true)
 	case Badge[M]:
@@ -243,7 +244,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, Slider, Group, Sortable or Placeholder.")
+			"Use String, Int, Float, Badge, Slider, Group or Placeholder.")
 	}
 }
 
@@ -270,7 +271,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
+			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
@@ -279,7 +280,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Int[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
 		}
 		if a.Store != nil {
@@ -299,7 +300,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			prec = a.Precision
 		}
 		f := ir.Field{
-			Name: name, Label: a.Label, Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
 		if a.Store != nil {
@@ -315,10 +316,6 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
-	case Sortable[M]:
-		f := lowerAccessor[M](a.Accessor, name)
-		f.SortKey = a.Key
-		return f
 	case Placeholder[M]:
 		f := lowerAccessor[M](a.Accessor, name)
 		f.Placeholder = a.Text
@@ -329,7 +326,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			tones[k] = ir.Tone(t)
 		}
 		return ir.Field{
-			Name: name, Label: a.Label, Kind: ir.KindString, Display: ir.DisplayBadge, Tones: tones,
+			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Tones: tones,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 	case Slider[M]:
@@ -339,7 +336,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		}
 		lo, hi := a.Min, a.Max
 		f := ir.Field{
-			Name: name, Label: a.Label, Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
+			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
 			Rules: ir.Rules{Min: &lo, Max: &hi},
 			Get:   func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
@@ -391,14 +388,39 @@ func accessorLabel[M any](acc Accessor[M]) string {
 		return a.Label
 	case Float[M]:
 		return a.Label
-	case Sortable[M]:
-		return accessorLabel[M](a.Accessor)
 	case Placeholder[M]:
 		return accessorLabel[M](a.Accessor)
 	case Badge[M]:
 		return a.Label
 	case Slider[M]:
 		return a.Label
+	}
+	return ""
+}
+
+func orLabel(key, label string) string {
+	if key != "" {
+		return key
+	}
+	return label
+}
+
+// sortKey is what a column is sorted by: its Key, or its Label. A Group has
+// none; it is not a column.
+func sortKey[M any](acc Accessor[M]) string {
+	switch a := acc.(type) {
+	case String[M]:
+		return orLabel(a.Key, a.Label)
+	case Int[M]:
+		return orLabel(a.Key, a.Label)
+	case Float[M]:
+		return orLabel(a.Key, a.Label)
+	case Badge[M]:
+		return orLabel(a.Key, a.Label)
+	case Slider[M]:
+		return orLabel(a.Key, a.Label)
+	case Placeholder[M]:
+		return sortKey[M](a.Accessor)
 	}
 	return ""
 }

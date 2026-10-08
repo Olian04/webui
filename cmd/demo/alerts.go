@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 
@@ -37,12 +38,18 @@ var Alerts = webui.Page[AlertsArgs]{
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
-		Load: func(ctx context.Context, _ webui.Query) (webui.Rows[Alert], error) {
+		Load: func(ctx context.Context, q webui.Query) (webui.Rows[Alert], error) {
 			args, err := webui.ArgsOf[AlertsArgs](ctx)
 			if err != nil {
 				return webui.Rows[Alert]{}, err
 			}
-			alerts := service.OpenAlerts(args.Severity)
+			// No Key on these accessors, so Query.Sort is the Label.
+			alerts := sortedBy(service.OpenAlerts(args.Severity), q.Sort, q.Desc, map[string]func(x, y Alert) int{
+				AlertID.Label:     func(x, y Alert) int { return cmp.Compare(x.ID, y.ID) },
+				Severity.Label:    func(x, y Alert) int { return cmp.Compare(x.Severity, y.Severity) },
+				AlertDevice.Label: func(x, y Alert) int { return cmp.Compare(x.Device, y.Device) },
+				Message.Label:     func(x, y Alert) int { return cmp.Compare(x.Message, y.Message) },
+			})
 			return webui.Rows[Alert]{Items: alerts, Total: len(alerts)}, nil
 		},
 		// Actions and bulk actions name rows by Key, never by position.

@@ -22,7 +22,7 @@ type Field struct {
 
 	Rules Rules
 
-	SortKey     string // from Sortable; empty means not sortable
+	SortKey     string // the accessor's Key, else its Label: what Query.Sort carries
 	Placeholder string // from Placeholder
 
 	// Display is how the value is shown. Text is the default.
