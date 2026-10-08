@@ -95,8 +95,25 @@
   }
 }
 
+/* Rings and tints are made from the accent and the critical colour, so they follow
+   a webui.Theme and both modes instead of being the default blue and red. */
+:root {
+  --ring: color-mix(in srgb, var(--blue) 25%, transparent);
+  --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
+  --tint: color-mix(in srgb, var(--blue) 10%, transparent);
+}
+
 * {
   box-sizing: border-box;
+}
+/* Focus is a visible 2px ring, never removed. Inputs and the search box draw their
+   own, so this is for everything else that can be focused. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 1px;
 }
 html,
 body {
@@ -132,7 +149,7 @@ select {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-2);
-  border-radius: 9px;
+  border-radius: 99px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -198,7 +215,7 @@ a.side-brand:hover {
 }
 .side-brand b {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 .side-scroll {
@@ -241,7 +258,7 @@ a.side-brand:hover {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--blue-text);
+  background: var(--blue);
 }
 .nav-item .ni {
   width: 16px;
@@ -255,7 +272,7 @@ a.side-brand:hover {
   visibility: hidden;
   place-items: center;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   opacity: 1;
 }
 .side-foot {
@@ -326,6 +343,10 @@ a.side-brand:hover {
 [data-theme='light'] .slider::before {
   background: #fff;
   box-shadow: 0 1px 2px rgb(0 0 0/0.25);
+}
+.switch input:focus-visible + .slider {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 .switch input:checked + .slider {
   background: var(--blue);
@@ -404,7 +425,7 @@ a.side-brand:hover {
 /* Focus is a visible ring, never removed: it is how Cmd+K shows it worked. */
 .search:focus-within {
   border-color: var(--blue);
-  box-shadow: 0 0 0 2px rgba(61, 113, 217, 0.25);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 .search input {
   flex: 1;
@@ -474,6 +495,7 @@ a.side-brand:hover {
 }
 .pal-label {
   font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -679,6 +701,9 @@ a.side-brand:hover {
   height: 13px;
   font-size: 11px;
   flex: 0 0 13px;
+}
+.panel-status.bad {
+  color: var(--red);
 }
 .panel-body {
   padding: 0 0 0;
@@ -903,13 +928,16 @@ th.pick {
   background: #fff;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
+.actionbar strong {
+  font-weight: 500;
+}
 .actionbar {
   display: flex;
   align-items: center;
   gap: 9px;
   padding: 6px 10px;
   font-size: 12.5px;
-  background: rgba(61, 113, 217, 0.1);
+  background: var(--tint);
   border-bottom: 1px solid var(--border);
 }
 /* The selection bar exists once something is selected. :has() lets the form
@@ -1084,7 +1112,7 @@ select.input {
 }
 .input:focus {
   border-color: var(--blue);
-  box-shadow: 0 0 0 2px rgb(61 113 217/0.25);
+  box-shadow: 0 0 0 2px var(--ring);
 }
 select.input {
   appearance: none;
@@ -1114,7 +1142,7 @@ select.input option {
   border-color: var(--red);
 }
 .input.invalid:focus {
-  box-shadow: 0 0 0 2px rgb(229 72 77/0.25);
+  box-shadow: 0 0 0 2px var(--ring-bad);
 }
 .hint {
   font-size: 12px;
@@ -1268,7 +1296,7 @@ select.input option {
 }
 .compile .fix b {
   color: var(--text);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 
@@ -1540,6 +1568,11 @@ th:focus-within .filter-btn,
   font-weight: 400;
   text-align: left;
   white-space: normal;
+}
+/* A right-aligned header keeps its label flush with the numbers beneath it: the
+   filter button goes before the label, where its hidden box takes no space from it. */
+th.num .th-in {
+  flex-direction: row-reverse;
 }
 th.num .filter-pop {
   left: auto;
