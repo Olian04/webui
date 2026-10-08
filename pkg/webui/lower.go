@@ -77,7 +77,6 @@ func (a App) lower() (*ir.App, error) {
 // appLowerer is what per-page lowering needs from the whole app.
 type appLowerer struct {
 	entries map[string]bool // the paths of the pages that have a navigation entry
-	nodes   int             // body nodes lowered, compared with validate's count in tests
 }
 
 // nav resolves a declared Nav to the IR's. A page with no entry of its own
@@ -97,11 +96,6 @@ func (l *appLowerer) nav(n Nav, path string) ir.Nav {
 		}
 	}
 	return out
-}
-
-// bodyLowerer carries what lowering a page's body shares.
-type bodyLowerer struct {
-	nodes *int
 }
 
 func lowerTheme(t Theme) ir.Theme {

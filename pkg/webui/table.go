@@ -106,7 +106,6 @@ func (Table[M]) isPageBody() {}
 var _ PageBody = Table[struct{}]{}
 
 func (t Table[M]) validateBody(v *bodyValidator) {
-	v.nodes++
 	switch {
 	case t.Rows == nil && t.Load == nil:
 		v.add("a Table has neither Rows nor Load",
@@ -167,8 +166,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
-	*l.nodes++
+func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	columns := lowerAccessors(t.Columns, "c")
 	labels := make(map[string]string, len(columns)) // the address's name for a column → its label
 	for _, c := range columns {
@@ -183,7 +181,7 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
 	}
 	if t.RowClick != nil {
-		out.RowClick = t.RowClick.lowerRow(l)
+		out.RowClick = t.RowClick.lowerRow()
 	}
 	for _, a := range t.Actions {
 		out.Actions = append(out.Actions, lowerAction(a, a.Label))

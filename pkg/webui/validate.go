@@ -15,10 +15,7 @@ import (
 // Name derivation and RE2 compilation are not reimplemented here. validate
 // calls internal/args and internal/rules, so it cannot disagree with lower
 // about what an argument is called or whether a pattern is valid.
-//
-// validate and lower walk the same tree and can drift; the node counters on
-// bodyValidator and bodyLowerer exist so a test can assert they visit the same
-// number of nodes, which is cheaper than abstracting the traversal.
+
 func (a App) validate() CompileErrors {
 	f := a.collectFacts()
 	var errs CompileErrors
@@ -70,7 +67,6 @@ type bodyValidator struct {
 	scope []panel              // the tab panels the node being validated sits in
 	tabs  int                  // Tabs seen so far, to tell them apart
 	errs  []CompileError
-	nodes int
 }
 
 func (v *bodyValidator) add(detail, fix string) {

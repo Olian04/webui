@@ -11,7 +11,7 @@ type Field struct {
 	// inside a group; "c0" for a table column). It never comes from user input.
 	Name  string
 	Label string
-	Kind  ValueKind
+	Kind  ValueKind // KindString, KindInt or KindFloat: what an accessor holds
 	Group []Field // non-empty means a group; Get and Set are then nil
 
 	// Get formats the value for display and for echoing into an input. Set

@@ -85,7 +85,7 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	// right for typing and wrong for reading. A read-only field is only read.
 	if !fv.ReadOnly {
 		switch f.Kind {
-		case ir.KindInt, ir.KindInt64:
+		case ir.KindInt:
 			fv.Type, fv.Rules.Step = "number", "1"
 		case ir.KindFloat:
 			fv.Type, fv.Rules.Step = "number", "any"

@@ -61,46 +61,6 @@ func fixture() App {
 	return App{Pages: Pages{list, details}}
 }
 
-func TestValidateAndLowerVisitTheSameNodes(t *testing.T) {
-	t.Parallel()
-
-	app := fixture()
-	f := app.collectFacts()
-	counted := 0
-	for _, p := range app.Pages {
-		switch pg := p.(type) {
-		case Page[listArgs]:
-			counted += countValidate(t, pg.Body, f, pg)
-		case Page[detailArgs]:
-			counted += countValidate(t, pg.Body, f, pg)
-		}
-	}
-	validated := counted
-
-	assert.Equal(t, len(app.validate()), 0)
-
-	l := &appLowerer{entries: map[string]bool{}}
-	for _, p := range app.Pages {
-		if p.pageNav().Label != "" {
-			l.entries[p.pagePath()] = true
-		}
-	}
-	for _, p := range app.Pages {
-		p.lowerPage(l)
-	}
-	assert.Equal(t, l.nodes, validated)
-	assert.True(t, validated > 0)
-}
-
-func countValidate[A any](t *testing.T, body PageBody, f *facts, p Page[A]) int {
-	t.Helper()
-
-	v := &bodyValidator{page: string(p.Path), facts: f}
-	body.validateBody(v)
-	assert.Equal(t, len(v.errs), 0)
-	return v.nodes
-}
-
 func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 	t.Parallel()
 

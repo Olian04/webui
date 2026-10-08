@@ -7,7 +7,6 @@
 package rules
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -17,28 +16,11 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Sentinels identify which constraint failed; Violation wraps one.
-var (
-	ErrRequired      = errors.New("value is required")
-	ErrNotNumber     = errors.New("value is not a number")
-	ErrMinimumLength = errors.New("value is too short")
-	ErrMaximumLength = errors.New("value is too long")
-	ErrMinimum       = errors.New("value is too small")
-	ErrMaximum       = errors.New("value is too large")
-	ErrPattern       = errors.New("value does not match pattern")
-)
-
 // Violation is one rejected value. Message is user-facing and goes beneath the
-// field; Kind is a sentinel for errors.Is.
+// field.
 type Violation struct {
-	Kind    error
 	Message string
 }
-
-func (v *Violation) Error() string { return v.Message }
-
-// Unwrap exposes the sentinel.
-func (v *Violation) Unwrap() error { return v.Kind }
 
 // Compile builds an anchored Pattern. Go's regexp is RE2: lookahead and backreferences
 // are rejected, which the error says rather than "invalid regex".
@@ -58,23 +40,23 @@ func Compile(expr, message string) (*ir.Pattern, error) {
 func Check(r ir.Rules, kind ir.ValueKind, raw string) *Violation {
 	if strings.TrimSpace(raw) == "" {
 		if r.Required {
-			return &Violation{ErrRequired, "This field is required."}
+			return &Violation{Message: "This field is required."}
 		}
 		return nil
 	}
 	switch kind {
-	case ir.KindString, ir.KindBool:
+	case ir.KindString:
 		return checkString(r, raw)
-	case ir.KindInt, ir.KindInt64:
+	case ir.KindInt:
 		n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 		if err != nil {
-			return &Violation{ErrNotNumber, "Must be a whole number."}
+			return &Violation{Message: "Must be a whole number."}
 		}
 		return checkNumber(r, float64(n))
 	case ir.KindFloat:
 		x, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
 		if err != nil {
-			return &Violation{ErrNotNumber, "Must be a number."}
+			return &Violation{Message: "Must be a number."}
 		}
 		return checkNumber(r, x)
 	}
@@ -84,27 +66,27 @@ func Check(r ir.Rules, kind ir.ValueKind, raw string) *Violation {
 func checkString(r ir.Rules, s string) *Violation {
 	n := utf8.RuneCountInString(s)
 	if r.MinLen > 0 && n < r.MinLen {
-		return &Violation{ErrMinimumLength, fmt.Sprintf("Must be at least %d characters.", r.MinLen)}
+		return &Violation{Message: fmt.Sprintf("Must be at least %d characters.", r.MinLen)}
 	}
 	if r.MaxLen > 0 && n > r.MaxLen {
-		return &Violation{ErrMaximumLength, fmt.Sprintf("Must be at most %d characters.", r.MaxLen)}
+		return &Violation{Message: fmt.Sprintf("Must be at most %d characters.", r.MaxLen)}
 	}
 	if r.Pattern != nil && !r.Pattern.Expr.MatchString(s) {
 		msg := r.Pattern.Message
 		if msg == "" {
 			msg = "Does not match the required format."
 		}
-		return &Violation{ErrPattern, msg}
+		return &Violation{Message: msg}
 	}
 	return nil
 }
 
 func checkNumber(r ir.Rules, x float64) *Violation {
 	if r.Min != nil && x < *r.Min {
-		return &Violation{ErrMinimum, "Must be at least " + format(*r.Min) + "."}
+		return &Violation{Message: "Must be at least " + format(*r.Min) + "."}
 	}
 	if r.Max != nil && x > *r.Max {
-		return &Violation{ErrMaximum, "Must be at most " + format(*r.Max) + "."}
+		return &Violation{Message: "Must be at most " + format(*r.Max) + "."}
 	}
 	return nil
 }

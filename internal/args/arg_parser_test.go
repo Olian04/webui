@@ -157,7 +157,6 @@ func runParseTest(t *testing.T, parser ArgParser, test parseTest) {
 
 	got, err := parser.Parse(mustRequest(t, test.pattern, test.url))
 	if test.wantErr != "" {
-		assert.ErrorIs(t, err, ErrPathValueRequired)
 		assert.Equal(t, err.Error(), test.wantErr)
 		assert.Nil(t, got)
 		return

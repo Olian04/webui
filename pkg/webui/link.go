@@ -15,7 +15,7 @@ import (
 type RowClick[M any] interface {
 	isRowClick()
 	validateRow(v *bodyValidator)
-	lowerRow(l *bodyLowerer) *ir.Link
+	lowerRow() *ir.Link
 }
 
 // Link names a destination page and how to build its arguments from M. Page is
@@ -54,7 +54,7 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 	}
 }
 
-func (l Link[M, A]) lowerRow(_ *bodyLowerer) *ir.Link {
+func (l Link[M, A]) lowerRow() *ir.Link {
 	return &ir.Link{
 		Dest: l.Page.pagePath(),
 		Args: func(ctx context.Context, row any) any { return l.Args(ctx, row.(M)) },

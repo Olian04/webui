@@ -68,7 +68,7 @@ func (r *Renderer) columns(v TableView) []columnView {
 	out := make([]columnView, len(v.Node.Columns))
 	for i, f := range v.Node.Columns {
 		col := columnView{Field: f}
-		if f.Kind == ir.KindInt || f.Kind == ir.KindInt64 || f.Kind == ir.KindFloat {
+		if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
 			col.Align = c.AlignEnd
 		}
 		if f.Key != "" {
@@ -283,7 +283,7 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	id := v.Node.ID
 	fv := filterView{Label: f.Label, Action: r.PageHref(v.Page, v.Path, nil)}
 	gone := []string{} // the address parameters this filter owns
-	if f.Kind == ir.KindInt || f.Kind == ir.KindInt64 || f.Kind == ir.KindFloat {
+	if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
 		fv.Numeric = true
 		fv.MinKey, fv.MaxKey = args.RangeKeys(id, f.Key)
 		gone = append(gone, fv.MinKey, fv.MaxKey)

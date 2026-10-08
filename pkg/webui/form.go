@@ -23,7 +23,6 @@ func (Form[M]) isPageBody() {}
 var _ PageBody = Form[struct{}]{}
 
 func (f Form[M]) validateBody(v *bodyValidator) {
-	v.nodes++
 	if f.Load == nil {
 		v.add("a Form has no Load", "Set Load to func(ctx) (M, error).")
 	}
@@ -35,8 +34,7 @@ func (f Form[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (f Form[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
-	*l.nodes++
+func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 	fields := lowerAccessors(f.Fields, "f")
 	out := &ir.Form{
 		At: at, Title: f.Title, Desc: f.Desc, Fields: fields,

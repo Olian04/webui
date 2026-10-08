@@ -67,7 +67,7 @@ type Nav struct {
 type PageBody interface {
 	isPageBody()
 	validateBody(v *bodyValidator)
-	lowerBody(at ir.Addr, l *bodyLowerer) ir.Node
+	lowerBody(at ir.Addr) ir.Node
 }
 
 func (Page[A]) isPage() {}
@@ -178,6 +178,6 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	if p.Guard != nil {
 		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
 	}
-	page.Body = p.Body.lowerBody(ir.Addr{}, &bodyLowerer{nodes: &l.nodes})
+	page.Body = p.Body.lowerBody(ir.Addr{})
 	return page
 }

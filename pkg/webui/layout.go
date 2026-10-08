@@ -45,9 +45,9 @@ var (
 	_ PageBody = Tabs{}
 )
 
-func (s Stack) validateBody(v *bodyValidator) { v.nodes++; validateChildren(v, "Stack", s) }
+func (s Stack) validateBody(v *bodyValidator) { validateChildren(v, "Stack", s) }
 
-func (s Split) validateBody(v *bodyValidator) { v.nodes++; validateChildren(v, "Split", s) }
+func (s Split) validateBody(v *bodyValidator) { validateChildren(v, "Split", s) }
 
 func validateChildren(v *bodyValidator, what string, children []PageBody) {
 	for i, c := range children {
@@ -60,7 +60,6 @@ func validateChildren(v *bodyValidator, what string, children []PageBody) {
 }
 
 func (t Tabs) validateBody(v *bodyValidator) {
-	v.nodes++
 	v.id("Tabs", t.ID)
 	v.tabs++
 	tabs := v.tabs
@@ -90,29 +89,26 @@ func (t Tabs) validateBody(v *bodyValidator) {
 	}
 }
 
-func (s Stack) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
-	*l.nodes++
-	return &ir.Stack{At: at, Children: lowerChildren(at, l, s)}
+func (s Stack) lowerBody(at ir.Addr) ir.Node {
+	return &ir.Stack{At: at, Children: lowerChildren(at, s)}
 }
 
-func (s Split) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
-	*l.nodes++
-	return &ir.Split{At: at, Children: lowerChildren(at, l, s)}
+func (s Split) lowerBody(at ir.Addr) ir.Node {
+	return &ir.Split{At: at, Children: lowerChildren(at, s)}
 }
 
-func (t Tabs) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
-	*l.nodes++
+func (t Tabs) lowerBody(at ir.Addr) ir.Node {
 	out := &ir.Tabs{At: at, ID: effectiveID(t.ID, "tabs")}
 	for i, p := range t.Panels {
-		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Body: p.Body.lowerBody(childAddr(at, i), l)})
+		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Body: p.Body.lowerBody(childAddr(at, i))})
 	}
 	return out
 }
 
-func lowerChildren(at ir.Addr, l *bodyLowerer, children []PageBody) []ir.Node {
+func lowerChildren(at ir.Addr, children []PageBody) []ir.Node {
 	out := make([]ir.Node, len(children))
 	for i, c := range children {
-		out[i] = c.lowerBody(childAddr(at, i), l)
+		out[i] = c.lowerBody(childAddr(at, i))
 	}
 	return out
 }

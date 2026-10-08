@@ -84,7 +84,7 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 // numeric reports whether a column holds numbers, which a table filters by
 // range, not by text: "5" is not a way to ask for more than 5.
 func numeric(col ir.Field) bool {
-	return col.Kind == ir.KindInt || col.Kind == ir.KindInt64 || col.Kind == ir.KindFloat
+	return col.Kind == ir.KindInt || col.Kind == ir.KindFloat
 }
 
 // rangesOf reads the bounds on the numeric columns. A bound that is not a

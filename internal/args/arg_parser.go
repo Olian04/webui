@@ -8,8 +8,6 @@ import (
 	"strings"
 )
 
-var ErrPathValueRequired = errors.New("path value is required")
-
 // ListSep joins the values of a parameter that may repeat ("a=1&a=2") into one
 // string, so a request's arguments stay a map of strings. It is a control
 // character: it cannot be typed into a field, so no value contains it. Href
@@ -36,7 +34,7 @@ func (a *ArgParser) Parse(r *http.Request) (map[string]string, error) {
 		if value != "" {
 			args[key] = value
 		} else {
-			errs = append(errs, fmt.Errorf("%w: %q", ErrPathValueRequired, key))
+			errs = append(errs, fmt.Errorf("path value is required: %q", key))
 		}
 	}
 

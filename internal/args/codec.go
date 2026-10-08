@@ -11,22 +11,6 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// ErrEmptyPathArg matches (errors.Is) the error Encode returns when a path
-// argument is the zero value: a path segment cannot be absent, and reflection
-// cannot catch this at startup.
-var ErrEmptyPathArg = errors.New("path argument is empty")
-
-// EmptyPathArgError names the empty argument.
-type EmptyPathArgError struct{ Name string }
-
-func (e EmptyPathArgError) Error() string { return fmt.Sprintf("path argument %q is empty", e.Name) }
-
-// Is reports whether target is ErrEmptyPathArg.
-func (e EmptyPathArgError) Is(target error) bool { return target == ErrEmptyPathArg }
-
-// ErrInvalidArg is wrapped by Decode when a raw value does not parse.
-var ErrInvalidArg = errors.New("invalid argument")
-
 // Codec converts between the raw string values of a request and the page's
 // argument struct. Everything reflective is resolved in NewCodec, so Decode
 // and Encode do no type discovery per request.
@@ -67,7 +51,7 @@ func (c *Codec) Decode(raw map[string]string) (any, error) {
 			continue
 		}
 		if err := setValue(v.Field(f.index), f.spec.Kind, s); err != nil {
-			errs = append(errs, fmt.Errorf("%w: %q: %w", ErrInvalidArg, f.spec.Name, err))
+			errs = append(errs, fmt.Errorf("invalid argument %q: %w", f.spec.Name, err))
 		}
 	}
 	if len(errs) > 0 {
@@ -89,7 +73,7 @@ func (c *Codec) Encode(args any) (path, query map[string]string, err error) {
 		fv := v.Field(f.index)
 		if fv.IsZero() {
 			if f.spec.InPath {
-				return nil, nil, EmptyPathArgError{Name: f.spec.Name}
+				return nil, nil, fmt.Errorf("path argument %q is empty", f.spec.Name)
 			}
 			continue
 		}
