@@ -8,6 +8,7 @@ package templates
 // vocabularies meet.
 type PageProps struct {
 	Title       string
+	Early       templ.Component
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
@@ -21,6 +22,7 @@ type PageProps struct {
 templ Page(p PageProps) {
 	@Document(DocumentProps{
 		Title:       p.Title,
+		Early:       p.Early,
 		Stylesheets: p.Stylesheets,
 		Scripts:     p.Scripts,
 		Head:        p.Head,

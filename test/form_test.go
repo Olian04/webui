@@ -78,8 +78,8 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.False(t, strings.Contains(body, "group-legend"))
 
 	// Submit is the primary button; Cancel goes to the parent in the breadcrumb.
-	assert.Contains(t, body, `class="btn btn-primary " type="submit">Save</button>`)
-	assert.Contains(t, body, `class="btn btn-ghost " href="/admin/device">Cancel</a>`)
+	assert.Contains(t, body, `class="btn btn-primary btn-sm" type="submit">Save</button>`)
+	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Cancel</a>`)
 }
 
 func TestFormSubmitIsGatedByTheSameGuardThatAuthorisesIt(t *testing.T) {
@@ -90,7 +90,7 @@ func TestFormSubmitIsGatedByTheSameGuardThatAuthorisesIt(t *testing.T) {
 	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
 
 	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role">`)
-	assert.Contains(t, body, `class="btn btn-primary " type="submit" disabled>Save</button>`)
+	assert.Contains(t, body, `class="btn btn-primary btn-sm" type="submit" disabled>Save</button>`)
 }
 
 func TestFormWithoutSubmitIsReadOnly(t *testing.T) {
@@ -176,5 +176,5 @@ func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
 	h := formApp(okForm())
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/dev1").Body.String(), `<div class="panel-body pad">`)
 	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
-	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 12px 14px;")
+	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 10px 14px;")
 }

@@ -12,7 +12,7 @@ type Field struct {
 	Name  string
 	Label string
 	Kind  ValueKind // KindString, KindInt or KindFloat: what an accessor holds
-	Group []Field // non-empty means a group; Get and Set are then nil
+	Group []Field   // non-empty means a group; Get and Set are then nil
 
 	// Get formats the value for display and for echoing into an input. Set
 	// parses and assigns to a *model, and is nil for a read-only accessor,

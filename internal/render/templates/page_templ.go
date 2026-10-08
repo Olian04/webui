@@ -18,6 +18,7 @@ import templruntime "github.com/a-h/templ/runtime"
 // vocabularies meet.
 type PageProps struct {
 	Title       string
+	Early       templ.Component
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
@@ -92,6 +93,7 @@ func Page(p PageProps) templ.Component {
 		})
 		templ_7745c5c3_Err = Document(DocumentProps{
 			Title:       p.Title,
+			Early:       p.Early,
 			Stylesheets: p.Stylesheets,
 			Scripts:     p.Scripts,
 			Head:        p.Head,

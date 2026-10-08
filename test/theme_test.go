@@ -32,7 +32,7 @@ func TestTheAccentDrivesTheWholeBlueFamilyInBothModes(t *testing.T) {
 	css := themeCSS(t, webui.Theme{Accent: "#2f9e8f"})
 	// Dark, the default: hover and text are lightened.
 	assert.Contains(t, css, "html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark'] {")
-	assert.Contains(t, css, "--blue-hover: color-mix(in srgb, #2f9e8f 82%, white);")
+	assert.Contains(t, css, "--blue-hover: color-mix(in srgb, #2f9e8f 88%, black);")
 	assert.Contains(t, css, "--blue-text: color-mix(in srgb, #2f9e8f 62%, white);")
 	// Light, chosen or by the system: deepened.
 	assert.Contains(t, css, "html:root:root[data-theme='light'] {")
@@ -51,6 +51,8 @@ func TestAStatusColourDerivesItsTextBackgroundAndBorder(t *testing.T) {
 	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 60%, white);") // dark
 	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 85%, black);") // light
 	assert.Contains(t, css, "--red-bg: color-mix(in srgb, #cc2244 14%, transparent);")
+	assert.Contains(t, css, "--red-solid: #cc2244;")                                           // the button's fill, as given
+	assert.Contains(t, css, "--red-solid-hover: color-mix(in srgb, #cc2244 88%, black);")
 	assert.Contains(t, css, "--red-bd: color-mix(in srgb, #cc2244 30%, transparent);")
 	assert.Contains(t, css, "--green-bg:")
 	assert.False(t, strings.Contains(css, "--orange")) // Warning was not set

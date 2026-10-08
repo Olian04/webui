@@ -1,8 +1,12 @@
 package templates
 
 // DocumentProps is the whole page.
+//
+// Early is rendered before the stylesheets: what the browser should know before it
+// has any, so the first thing it paints is not its default white.
 type DocumentProps struct {
 	Title       string
+	Early       templ.Component
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
@@ -14,6 +18,9 @@ templ Document(p DocumentProps) {
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+			if p.Early != nil {
+				@p.Early
+			}
 			<title>{ p.Title }</title>
 			for _, href := range p.Stylesheets {
 				<link rel="stylesheet" href={ href }/>

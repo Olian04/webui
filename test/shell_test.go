@@ -112,9 +112,9 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	}.MustCompile("/admin")
 
 	page := serve(h, http.MethodGet, "/admin/").Body.String()
-	// The app does not choose light or dark: the page carries no data-theme, and
-	// the stylesheet follows the viewer's system until they pick one.
-	assert.False(t, strings.Contains(page, "data-theme"))
+	// The app does not choose light or dark: the document carries no data-theme
+	// attribute, and the stylesheet follows the viewer's system until they pick one.
+	assert.Contains(t, page, `<html lang="en">`)
 	assert.Contains(t, page, `/admin/_webui/theme.css`)
 	assert.Contains(t, page, `/admin/_webui/logo`)
 

@@ -262,8 +262,10 @@ func themeDecls(t ir.Theme, dark bool) []string {
 		return fmt.Sprintf("color-mix(in srgb, %s %d%%, %s)", c, pct, with)
 	}
 	if c := t.Accent; c != "" {
+		// The hover is deeper in both modes: a lighter fill under a white label
+		// loses the contrast it needs.
 		if dark {
-			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 82, "white")+";", "--blue-text: "+mix(c, 62, "white")+";")
+			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 88, "black")+";", "--blue-text: "+mix(c, 62, "white")+";")
 		} else {
 			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 86, "black")+";", "--blue-text: "+mix(c, 80, "black")+";")
 		}
@@ -280,6 +282,11 @@ func themeDecls(t ir.Theme, dark bool) []string {
 			"--"+s.name+": "+text+";",
 			"--"+s.name+"-bg: "+mix(s.c, 14, "transparent")+";",
 			"--"+s.name+"-bd: "+mix(s.c, 30, "transparent")+";")
+		if s.name == "red" {
+			// The colour as given is the fill of a destructive button, which carries a
+			// white label; the text tint above is for text on the page.
+			out = append(out, "--red-solid: "+s.c+";", "--red-solid-hover: "+mix(s.c, 88, "black")+";")
+		}
 	}
 	return out
 }
@@ -321,3 +328,9 @@ func (r *Renderer) shown(hide map[string]bool) []navEntry {
 	}
 	return out
 }
+
+// earlyCSS is the canvas colour of each theme, inline, ahead of the stylesheet. The
+// values are the stylesheet's --canvas tokens; a test keeps the two equal.
+const earlyCSS = `html{background:#111217;color-scheme:dark}` +
+	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
+	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`

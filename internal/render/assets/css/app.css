@@ -15,11 +15,11 @@
   --border-2: rgba(204, 204, 220, 0.22);
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
-  --text-3: rgba(204, 204, 220, 0.4);
+  --text-3: rgba(204, 204, 220, 0.45);
   --hover: rgba(204, 204, 220, 0.07);
   --active: rgba(204, 204, 220, 0.11);
   --blue: #3d71d9;
-  --blue-hover: #5183e4;
+  --blue-hover: #3a6bd3;
   --blue-text: #6e9fff;
   --green: #6ccf8e;
   --green-bg: rgba(108, 207, 142, 0.14);
@@ -27,9 +27,11 @@
   --orange: #ff9830;
   --orange-bg: rgba(255, 152, 48, 0.14);
   --orange-bd: rgba(255, 152, 48, 0.3);
-  --red: #e5484d;
-  --red-bg: rgba(229, 72, 77, 0.14);
-  --red-bd: rgba(229, 72, 77, 0.32);
+  --red: #f2686c;
+  --red-bg: rgba(242, 104, 108, 0.14);
+  --red-bd: rgba(242, 104, 108, 0.3);
+  --red-solid: #d03a3f;
+  --red-solid-hover: #bd3237;
   --shadow: 0 4px 12px rgb(0 0 0/0.55);
 }
 [data-theme='light'] {
@@ -42,21 +44,23 @@
   --border-2: rgba(36, 41, 46, 0.24);
   --text: #24292e;
   --text-2: #5c6269;
-  --text-3: #8e9197;
+  --text-3: #85888e;
   --hover: rgba(36, 41, 46, 0.06);
   --active: rgba(36, 41, 46, 0.1);
   --blue: #3d71d9;
   --blue-hover: #3265d4;
   --blue-text: #1f62e0;
-  --green: #1a7f4b;
-  --green-bg: rgba(26, 127, 75, 0.12);
-  --green-bd: rgba(26, 127, 75, 0.28);
-  --orange: #b5510d;
-  --orange-bg: rgba(181, 81, 13, 0.12);
-  --orange-bd: rgba(181, 81, 13, 0.28);
-  --red: #cf0e5b;
-  --red-bg: rgba(207, 14, 91, 0.1);
-  --red-bd: rgba(207, 14, 91, 0.26);
+  --green: #177244;
+  --green-bg: rgba(23, 114, 68, 0.12);
+  --green-bd: rgba(23, 114, 68, 0.28);
+  --orange: #a74a0b;
+  --orange-bg: rgba(167, 74, 11, 0.12);
+  --orange-bd: rgba(167, 74, 11, 0.28);
+  --red: #c20d54;
+  --red-bg: rgba(194, 13, 84, 0.12);
+  --red-bd: rgba(194, 13, 84, 0.28);
+  --red-solid: #c20d54;
+  --red-solid-hover: #a60b49;
   --shadow: 0 4px 12px rgb(24 26 27/0.18);
 }
 /* No explicit choice: follow the viewer's system. A stored choice (the theme
@@ -72,21 +76,23 @@
     --border-2: rgba(36, 41, 46, 0.24);
     --text: #24292e;
     --text-2: #5c6269;
-    --text-3: #8e9197;
+    --text-3: #85888e;
     --hover: rgba(36, 41, 46, 0.06);
     --active: rgba(36, 41, 46, 0.1);
     --blue: #3d71d9;
     --blue-hover: #3265d4;
     --blue-text: #1f62e0;
-    --green: #1a7f4b;
-    --green-bg: rgba(26, 127, 75, 0.12);
-    --green-bd: rgba(26, 127, 75, 0.28);
-    --orange: #b5510d;
-    --orange-bg: rgba(181, 81, 13, 0.12);
-    --orange-bd: rgba(181, 81, 13, 0.28);
-    --red: #cf0e5b;
-    --red-bg: rgba(207, 14, 91, 0.1);
-    --red-bd: rgba(207, 14, 91, 0.26);
+    --green: #177244;
+    --green-bg: rgba(23, 114, 68, 0.12);
+    --green-bd: rgba(23, 114, 68, 0.28);
+    --orange: #a74a0b;
+    --orange-bg: rgba(167, 74, 11, 0.12);
+    --orange-bd: rgba(167, 74, 11, 0.28);
+    --red: #c20d54;
+    --red-bg: rgba(194, 13, 84, 0.12);
+    --red-bd: rgba(194, 13, 84, 0.28);
+    --red-solid: #c20d54;
+    --red-solid-hover: #a60b49;
     --shadow: 0 4px 12px rgb(24 26 27/0.18);
   }
   :root:not([data-theme]) .slider::before {
@@ -156,9 +162,11 @@ select {
 }
 
 /* ------------------------------ shell ------------------------------------ */
+/* The shell is exactly the window, and only the content region scrolls: that is what
+   keeps a table's sticky header under the top bar, and the sidebar and top bar still. */
 .app {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
   align-items: stretch;
 }
 
@@ -228,8 +236,8 @@ a.side-brand:hover {
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-3);
-  padding: 14px 14px 5px;
+  color: var(--text-2);
+  padding: 14px 12px 5px;
 }
 .nav-item {
   display: flex;
@@ -498,7 +506,7 @@ a.side-brand:hover {
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
   padding: 7px 9px 4px;
 }
 .pal-item {
@@ -524,18 +532,19 @@ a.side-brand:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .pal-empty {
   padding: 12px 9px;
   font-size: 12.5px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 
 /* ------------------------------ content ---------------------------------- */
 .scroll {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 8px 12px 46px;
 }
@@ -655,7 +664,7 @@ a.side-brand:hover {
   width: 13px;
   height: 13px;
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
   flex: 0 0 13px;
 }
 /* A description: an information icon with a popover. It opens on hover and on
@@ -711,7 +720,7 @@ a.side-brand:hover {
 }
 /* A form's fields sit inside the panel body, inset from its edge. */
 .panel-body.pad {
-  padding: 4px 12px 14px;
+  padding: 4px 10px 14px;
 }
 .panel-foot {
   display: flex;
@@ -770,12 +779,13 @@ a.side-brand:hover {
   color: var(--text);
 }
 .btn-danger {
-  background: var(--red);
+  background: var(--red-solid);
   color: #fff;
-  border-color: var(--red);
+  border-color: var(--red-solid);
 }
 .btn-danger:hover {
-  filter: brightness(1.1);
+  background: var(--red-solid-hover);
+  border-color: var(--red-solid-hover);
 }
 .btn-sm {
   height: 28px;
@@ -827,7 +837,9 @@ thead th {
   color: var(--text-2);
   height: 30px;
   padding: 0 10px;
-  background: var(--hover);
+  /* Opaque, so rows scrolling under it do not show through: the hover tint over the panel. */
+  background-color: var(--panel);
+  background-image: linear-gradient(var(--hover), var(--hover));
   white-space: nowrap;
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -984,7 +996,7 @@ html:not(.js) .actionbar .dim {
 }
 .empty-desc {
   font-size: 12.5px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .skel-row td {
   height: 34px;
@@ -1078,6 +1090,18 @@ html:not(.js) .actionbar .dim {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+  margin-bottom: 14px;
+}
+.field-row:last-child {
+  margin-bottom: 0;
+}
+/* The row owns the space beneath it: its fields do not each add their own, which
+   left the right-hand one with none. */
+.field-row .field {
+  margin-bottom: 0;
+}
+.panel-foot.end {
+  justify-content: flex-end;
 }
 @media (max-width: 760px) {
   .field-row {
@@ -1150,7 +1174,7 @@ select.input option {
 }
 .hint {
   font-size: 12px;
-  color: var(--text-3);
+  color: var(--text-2);
   margin-top: 5px;
 }
 .hint code {
@@ -1275,7 +1299,7 @@ select.input option {
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-3);
+  color: var(--text-2);
   margin-bottom: 5px;
 }
 .compile pre {
@@ -1323,7 +1347,7 @@ select.input option {
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .method {
   border: 1px solid var(--border-2);
@@ -1587,7 +1611,7 @@ th.num .filter-pop {
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .filter-options {
   display: flex;

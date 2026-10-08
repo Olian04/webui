@@ -75,7 +75,7 @@ func cancelHref(t *testing.T, h http.Handler, target string) string {
 	t.Helper()
 
 	body := serve(h, http.MethodGet, target).Body.String()
-	const marker = `<a class="btn btn-ghost " href="`
+	const marker = `<a class="btn btn-ghost btn-sm" href="`
 	i := strings.Index(body, marker)
 	if i < 0 {
 		return "" // no Cancel button

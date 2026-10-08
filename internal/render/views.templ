@@ -17,6 +17,7 @@ func (r *Renderer) Document(d Doc) templ.Component {
 templ (r *Renderer) document(d Doc) {
 	@t.Page(t.PageProps{
 		Title:       r.title(d.Title),
+		Early:       r.early(),
 		Stylesheets: r.styles(),
 		Scripts:     []string{r.AssetHref("enhance.js")},
 		Head:        r.head(),
@@ -29,6 +30,16 @@ templ (r *Renderer) document(d Doc) {
 			@d.Content
 		}
 	}
+}
+
+// early tells the browser the page's background before it has the stylesheet, so
+// the first paint of a navigation is the dark or light canvas and not its default
+// white, which flashed in dark mode. The colour scheme follows the system, as the
+// stylesheet does, and a stored choice (the theme switch) is the attribute that
+// prefs.js sets before first paint.
+templ (r *Renderer) early() {
+	<meta name="color-scheme" content="dark light"/>
+	@templ.Raw("<style>" + earlyCSS + "</style>")
 }
 
 // head carries the one script that must run before first paint, so the stored
@@ -340,13 +351,13 @@ templ (r *Renderer) Form(v FormView) {
 					}
 				</div>
 				if v.Node.Submit != nil {
-					<div class="panel-foot" style="justify-content:flex-end">
+					<div class="panel-foot end">
 						if v.CancelHref != "" {
-							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost}) {
+							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
 								Cancel
 							}
 						}
-						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Guard: v.SubmitGate}) {
+						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Size: c.SizeSmall, Guard: v.SubmitGate}) {
 							{ v.Node.Submit.Label }
 						}
 					</div>

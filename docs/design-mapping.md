@@ -92,8 +92,9 @@ hex colour, checked at `Compile`.
 The design underneath is still tokens, and nothing in any component reads a
 literal value, but the app does not name them. It names a colour, and the
 renderer derives what the design needs from it, per mode, with `color-mix`: for
-the accent a hover and a readable text tint, for a status colour its text tint
-and the faint background and border of a badge. Dark lightens and light deepens,
+the accent a hover (deeper, so a white label keeps its contrast) and a readable
+text tint, for a status colour its text tint and the faint background and border of
+a badge, and for `Critical` also the solid fill of a destructive button. Dark lightens and light deepens,
 so one colour is right in both.
 
 Surfaces and text are not themeable on purpose. They are what makes light and

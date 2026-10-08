@@ -79,7 +79,7 @@ over any surface.
 |---|---|---|---|
 | Text | `rgb(204,204,220)` | `#24292e` | Values, headings, active items |
 | Text secondary | 65% of Text | `#5c6269` | Labels, descriptions, inactive nav |
-| Text tertiary | 40% of Text | `#8e9197` | Hints, placeholders, section captions |
+| Text tertiary | 45% of Text | `#85888e` | Decoration only: placeholders, separators, the shortcut hint, icons. 3:1, never text a reader needs |
 | Border | 11% of Text | `rgba(36,41,46,.12)` | Panel edges, table rules |
 | Border strong | 22% of Text | `rgba(36,41,46,.24)` | Input edges, secondary buttons |
 | Hover | 7% of Text | `rgba(36,41,46,.06)` | Row and item hover, table headers |
@@ -94,9 +94,10 @@ border, so a badge can be built from one token family.
 |---|---|---|---|
 | **Primary / interactive** | `#3d71d9` | `#3d71d9` | Primary buttons, selection, focus ring |
 | **Link / sorted** | `#6e9fff` | `#1f62e0` | Sorted column, inline emphasis, gauges |
-| **Healthy** | `#6ccf8e` | `#1a7f4b` | Loaded, acknowledged, ok |
-| **Warning** | `#ff9830` | `#b5510d` | Degraded, open, active tab underline |
-| **Critical** | `#e5484d` | `#cf0e5b` | Rejections, failures, destructive actions |
+| **Healthy** | `#6ccf8e` | `#177244` | Loaded, acknowledged, ok |
+| **Warning** | `#ff9830` | `#a74a0b` | Degraded, open, active tab underline |
+| **Critical** | `#f2686c` | `#c20d54` | Rejections and failures, as text, borders and dots |
+| **Critical, solid** | `#d03a3f` | `#c20d54` | The fill of a destructive button, which carries a white label |
 
 The active tab underline is warning-orange rather than primary-blue. This is
 deliberate: blue means *you can act on this*, orange means *you are here*.
@@ -114,8 +115,8 @@ Inter, falling back to the system UI stack. One family; no display face.
 | Control label, button | 13.5 | 500 | Text |
 | Table cell | 13 | 400 | Text |
 | Table header, field label, secondary | 12.5 | 500 | Text secondary |
-| Hint, description | 12 | 400 | Text tertiary |
-| Section caption | 11 | 500, uppercase, `.05em` | Text tertiary |
+| Hint, description | 12 | 400 | Text secondary |
+| Section caption | 11 | 500, uppercase, `.05em` | Text secondary |
 
 Identifiers, addresses, timestamps and payloads use a monospace face at 12–12.5
 in Text secondary. Anything the user might copy is monospace. Numeric columns
@@ -421,9 +422,11 @@ different product.
 
 ## 15. Accessibility
 
-- Text-secondary on panel and text on canvas both clear 4.5:1 in both themes;
-  text-tertiary is used only for supporting text that is never the sole carrier
-  of meaning.
+- Every text colour a reader needs clears 4.5:1 on its surface in both themes:
+  text, text-secondary, the semantic text colours, a badge's text on its own tint, and
+  a white label on the primary and destructive fills, including on hover. Text
+  tertiary clears 3:1 and is for decoration only. A test computes these from the
+  stylesheet's tokens, so a palette edit that slips under fails.
 - Status is never colour alone — every badge carries its word.
 - Focus is a visible 2px ring, never removed.
 - Every interactive element is a real link or a real button, so keyboard
