@@ -7,9 +7,9 @@ of it:
 > declaration has exactly one visual consequence.**
 
 If a panel has a checkbox column, it is because the table declares bulk
-operations — not because someone chose to put one there. If a page has no
-toolbar, it is because it declares no arguments. Nothing is styled into
-existence, and nothing is configured twice.
+operations — not because someone chose to put one there. If a column has no
+filter icon, it is because it declares nothing to filter by. Nothing is styled
+into existence, and nothing is configured twice.
 
 ---
 
@@ -17,17 +17,16 @@ existence, and nothing is configured twice.
 
 | Type | Becomes |
 |---|---|
-| `App` | The shell: sidebar, top bar, toolbar, content, status bar |
+| `App` | The shell: sidebar, top bar (breadcrumbs, search, refresh), content, status bar |
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
 | `Theme` | The token override block (`theme.css`) and the base mode — the only thing that differs between dark and light |
 | `Page` | One address, one screen |
 | `Page.Path` | The address; its segments are the breadcrumb trail |
-| `Page` argument struct `A` | The toolbar — one parameter pill per query field |
-| field kind (`string`, `bool`, `int`, `float64`) | Which control the pill holds (text, on/off select, number) |
-| path field vs query field | Whether the value appears in the breadcrumb or in the toolbar |
+| `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none) |
 | `Nav.Section` | The uppercase caption above a run of entries |
+| `Page.Search` | That page's group of results in the top bar's search, beneath the app's pages |
 | `Nav.Shadow` | Which *other* entry lights up while this page is open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
@@ -35,20 +34,21 @@ existence, and nothing is configured twice.
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
-| `Form.Title` / `Table.Title`, `Desc` | The panel header text and its information tooltip |
+| `Form.Title` / `Table.Title`, `Desc` | The panel header text, and an information icon whose popover shows the description on hover and on focus |
 | accessor (`String`, `Int`, `Float`) in a `Form` | A labelled input |
 | accessor in a `Table` | A column |
 | `Label` | The input label / column header |
 | value kind | The input type and the column's alignment |
-| `Group` | A bordered group inside the form |
+| `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The input renders read-only on the hover surface |
-| accessor `Key` (else `Label`) | What a column's sort link asks `Load` for; every column header is a sort link |
+| accessor `Key` (else `Label`) | What a column's sort link and filter ask `Load` for; every column header is a sort link with a filter beside it |
+| `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
 | `Table.RowClick` | Rows become links and take the pointer + hover treatment |
-| `Table.BulkActions` | The checkbox column and the selection action bar |
+| `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
 | `Table.PageSize`, `Table.ID` | The pager; the ID names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
@@ -96,40 +96,28 @@ compile step can prove a link's destination exists.
 
 ---
 
-## Arguments and the toolbar
+## Arguments
 
-### `Args` / `ArgSpec` → the toolbar
+### The argument struct
 
-This is the highest-leverage mapping in the design.
+A page's argument struct is what its address means. A **path** argument is
+identity, so it appears in the **breadcrumb** (`Collector › Devices ›
+dev_27c38b`). A **query** argument has no control of its own: it arrives in the
+address — from a link, from `Open` — and the page's loaders read it. What a
+user filters by hand, they filter in a table's column headers, which is
+library-owned view state and not a page argument.
 
-A page's argument struct **is** the toolbar. Each `ArgSpec` becomes one pill:
-`ArgSpec.Name` is the label, `ArgSpec.Kind` chooses the control, and the
-current value fills it. Setting a value is a navigation; clearing it is the
-small `×` in the pill.
-
-The consequences fall out for free:
+The consequences:
 
 - The state of the screen is in the address bar, so it survives reload, back,
   bookmarking and sharing.
-- There is no separate "filter UI" to design per page, and no way for a page
-  to have a filter that isn't in its address.
-- A page with an empty `Args` renders *"This page declares no arguments"* — the
-  absence is legible rather than silently missing.
-
-`ArgSpec.InPath` decides where the value shows: a path argument is identity, so
-it appears in the **breadcrumb** (`Collector › Devices › dev_27c38b`); a query
-argument is a view setting, so it appears in the **toolbar**. Same struct, two
-placements, decided by one boolean.
-
-`ArgSpec.Kind` chooses the control — an enumerable kind becomes a select, a
-string a text field, a bool a toggle, a number a numeric field — and also
-decides what the compile step will reject, which is why the toolbar can never
-render a control that the decoder cannot read back.
+- There is no row of page parameters to design per page.
+- The page's argument struct stays what it says: the things the page is *about*.
 
 ### `Decode`
 
-Invisible, but it is the reason the toolbar can be trusted: the values in the
-pills are the values the page will receive, parsed once at compile time rather
+Invisible, but it is the reason an address can be trusted: the values in the
+address are the values the page will receive, parsed once at compile time rather
 than re-derived per request.
 
 ---
@@ -189,7 +177,7 @@ do that work.
 The tab strip. The crucial design consequence is that the selection is address
 state, not component state: it is in the address bar (`tabs.tab=Raw`), survives
 a reload, and can be linked to. It is view state the library keeps, not a page
-argument, so it does not appear in the toolbar — the strip itself is the control.
+argument, so it has no other control — the strip itself is the control.
 A tab is navigation that happens to look like a tab.
 
 ---
@@ -228,7 +216,7 @@ declaration:
 | `Set` absent | **Read-only** — hover surface, text-secondary, weak border | (no effect; a column is always read-only) |
 | `Rules` | Validation attributes + the hint line | Ignored |
 | `SortKey` | Ignored | Header becomes a sort link; the sorted one takes the link colour and a caret |
-| `Group` | A bordered group with an uppercase caption | Ignored |
+| `Group` | Fields side by side, with no frame | Ignored |
 | `Placeholder` | The placeholder | Ignored |
 
 The "ignored" cells matter as much as the others. A field declared once and
@@ -355,7 +343,8 @@ Three absences that are choices, not gaps:
   feature bolted on rather than generated by the existing ideas. The `Field`
   render hint above exists so that the pressure for one has somewhere cheaper
   to go.
-- **No per-panel menu beyond refresh.** The hover-revealed `⋮` in the panel
-  header does exactly one thing, because refreshing the leaf at an `Addr` is
-  the only per-panel operation that exists. Adding a second item to that menu
-  would mean inventing a panel-level concept that the body tree does not have.
+- **No per-panel menu.** A panel's header carries a title, a description and a
+  status. Reloading is the page's Refresh, so a panel is replaced only by
+  following its own sort, pager or row links, which are the only per-panel
+  operations that exist. A panel-level menu would mean inventing a concept the
+  body tree does not have.

@@ -24,12 +24,6 @@ var logoBytes []byte
 
 var DevicesNav = webui.Nav{Label: "Devices"}
 
-// Arguments the list page reads: filters, here. Paging and sorting are not
-// among them — the table keeps those in the address itself (see ID below).
-type DevicesArgs struct {
-  Q string // -> ?q=eth
-}
-
 // A page's arguments are one struct. Fields named in the Path are path
 // segments; the rest are query parameters.
 type DetailsArgs struct {
@@ -72,25 +66,26 @@ var (
   }
 )
 
-var Devices = webui.Page[DevicesArgs]{
+var Devices = webui.Page[webui.NoArgs]{
   Path: "/device",
   Nav:  DevicesNav,
   Body: webui.Table[Device]{
     Title: "Devices",
-    // Every column header is a sort link. A table keeps its sort, and its page,
-    // in the address under its ID:
-    // ?devices.offset=50&devices.sort=ip&devices.desc=true. The library owns
-    // those parameters and hands Load the result as a Query, and Load does the
-    // sorting; a sort key that is not a column is dropped before Load sees it.
-    // Query.Sort is the accessor's Key, or its Label when it has none. ID
-    // defaults to "table" and must be unique within the page, so name it when a
-    // page has more than one table.
+    // Every column header is a sort link, and shows a filter icon on hover. A
+    // table keeps its sort, its filters and its page in the address under its
+    // ID: ?devices.offset=50&devices.sort=ip&devices.filter.status=healthy. The
+    // library owns those parameters and hands Load the result as a Query, and
+    // Load does the sorting and the filtering. Query.Sort and Query.Filters are
+    // keyed by the accessor's Key, or its Label when it has none, and anything
+    // that is not a column is dropped before Load sees it. ID defaults to
+    // "table" and must be unique within the page, so name it when a page has
+    // more than one table.
     ID:       "devices",
     PageSize: 25, // 0 means the table does not page
     Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
       // Total is the count across all pages; leave it zero when unknown and
       // the pager falls back to "a full page may have a successor".
-      return service.Page(ctx, q.Offset, q.Limit, q.Sort, q.Desc)
+      return service.Page(ctx, q)
     },
     // A Link names its destination page as a field, so Compile can check the
     // target exists. It renders a real <a href>, so middle-click and
@@ -328,7 +323,7 @@ of them constrains what their children are about. `Group[M]` is a different
 thing one level down: accessor composition inside a form, typed to the model.
 
 `webui.String`, `Int` and `Float` are the plain accessors. `Badge` shows a
-string as a coloured pill (`Tones` maps a value to a tone), and `Slider` shows a
+string as a coloured pill (`Kinds` lists the values it can hold, each with its tone), and `Slider` shows a
 number on a range: a bar when read-only — in a table, or in a form without a
 `Store` — and a range input when it has one. Both take a `Label` and a `Load`
 like the others, and `Slider` needs a `Min` and `Max`.
@@ -343,6 +338,37 @@ which are themselves accessors, so the common case stays a bare list:
 ```go
 Fields: []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
 ```
+
+The search box in the top bar lists the app's pages and is a keyboard
+combobox: type, move with the arrow keys, Enter follows the highlighted result,
+Escape closes it. A page adds its own results with `Search`, which receives what
+was typed and returns links built with `Open`:
+
+```go
+var Devices = webui.Page[webui.NoArgs]{
+  Path: "/device",
+  Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
+    devices, err := service.Find(ctx, query, 8)
+    results := make([]webui.SearchResult, len(devices))
+    for i, d := range devices {
+      results[i] = webui.SearchResult{
+        Title:  d.Id,
+        Desc:   d.Ip,
+        Target: webui.Open(ctx, Details, DetailsArgs{Id: d.Id}),
+      }
+    }
+    return results, err
+  },
+  ...
+}
+```
+
+Results are grouped under the page's `Nav.Label`, at most eight from each page.
+`Search` runs without the page's arguments, so the page's `Guard` runs first with
+zero arguments and a page it refuses contributes nothing, and a page with path
+arguments cannot offer `Search` at all — list the things from a page without
+placeholders and `Open` the detail page. A result whose `Target` failed, or that
+is not an address on this host, is dropped and logged.
 
 ## Open
 
@@ -399,8 +425,22 @@ Fields: []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
 - Pagination and sorting: done, as library-owned view state. `Table.PageSize`
   turns paging on, every column is sortable, and `Load` receives a `Query` and
   returns `Rows{Items, Total}`, doing the sorting itself; `Total` below what has been shown
-  means unknown. Filtering stays an ordinary page argument that `Load` reads.
-  Setting a filter returns every table to its first page.
+  means unknown. Setting a filter returns every table to its first page.
+- Column filtering: done, as library-owned view state, like sorting. Hovering a
+  header shows a filter icon; it opens a form that is a plain GET, so it works
+  without script. A column with a fixed set of options — a `Badge`, whose options
+  are the keys of its `Kinds` — gets a multi-select of exactly those, a numeric
+  column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
+  column a text input. `Load` receives them in `Query.Filters` (the options
+  chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,
+  inclusive, either end optional), keyed like `Query.Sort`. A number is compared
+  as a number, never as text: "5" is not a way to ask for more than 5. A chosen
+  option that is not an option, an empty text, a bound that is not a finite
+  number and a column the table does not have never arrive, and a typed filter is
+  cut at 200 characters. A multi-select is repeated parameters
+  (`devices.filter.status=a&devices.filter.status=b`), which is also what a form
+  of checkboxes submits; a range is `devices.min.count=300&devices.max.count=500`. The page has no row of argument controls:
+  its query arguments come from the address (a link, `Open`) and have no UI.
 - Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
   gating happens at execution rather than per-row at render. Row actions are
   gated at render, per row, by the same `Guard` that authorises the POST.

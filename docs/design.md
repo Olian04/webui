@@ -15,7 +15,7 @@ Rows are 34px, not 52px. Padding is measured in 8s, not 16s and 24s. The
 reward for tightness is that more of the answer is on screen at once.
 
 **The chrome is quiet; the data is loud.** Everything structural — the
-sidebar, the panel frames, the toolbar, the labels — sits at 65% or 40% text
+sidebar, the panel frames, the labels — sits at 65% or 40% text
 opacity. Full-strength foreground is reserved for values. Colour is reserved
 for meaning: a status, a severity, a rejection. Nothing is coloured for
 decoration.
@@ -30,9 +30,9 @@ consequences: controls look like navigation, not like widgets, and the address
 bar is always the truth about what is on screen.
 
 **Absence is configuration.** A table with no bulk operations has no
-checkbox column at all — not a disabled one. A page with no parameters says so
-rather than showing an empty toolbar. Nothing is greyed out except things you
-could do if you were someone else.
+checkbox column at all — not a disabled one. A column that cannot be filtered
+has no filter icon. Nothing is greyed out except things you could do if you were
+someone else.
 
 **Square, not soft.** 2px radius everywhere. Shadows only on things that float
 (menus, toasts). No gradients, no glass, no decorative borders. The visual
@@ -137,13 +137,11 @@ Everything is a multiple of 2, and the working gutter is 8.
 | Corner radius | 2 (everything, without exception) |
 | Sidebar | 240 (56 when collapsed) |
 | Top bar | 48 |
-| Toolbar | 44 min, wraps |
 | Status bar | 26 |
 | Panel header | 32 |
 | Nav item | 32 |
 | Control (button, input, select) | 32 |
 | Small control | 28 |
-| Toolbar control | 30 |
 | Table header row | 30 |
 | Table body row | 34 |
 
@@ -151,14 +149,12 @@ Everything is a multiple of 2, and the working gutter is 8.
 
 ## 7. The shell
 
-Five fixed regions. Only the content region scrolls.
+Four fixed regions. Only the content region scrolls.
 
 ```
 ┌────────────┬──────────────────────────────────────────────┐
-│            │  top bar: breadcrumbs · search · account     │
+│            │  top bar: breadcrumbs · search · refresh     │
 │  sidebar   ├──────────────────────────────────────────────┤
-│            │  toolbar: page parameters · refresh          │
-│            ├──────────────────────────────────────────────┤
 │            │                                              │
 │            │  content (scrolls)                           │
 │            │                                              │
@@ -188,28 +184,20 @@ children indent to 42px and drop their icons.
 
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
-at text-tertiary. On the right: a 290px search field, an icon button, and a
-26px circular avatar.
+at text-tertiary. On the right: a 290px search field, then the page's *Refresh*
+icon button.
 
 The breadcrumb is where location is expressed when the sidebar cannot show it
 — for example on a detail page that intentionally has no navigation entry of
 its own.
 
-### Toolbar
+### Refresh
 
-The parameters of the current page, rendered as controls, on the canvas
-surface directly below the top bar. Each is a two-part pill 30px tall: a label
-segment on the panel surface carrying the parameter name and an information
-icon, joined seamlessly to a control segment on the input surface holding the
-value and, when set, a small `×` to clear it.
-
-These are the values that appear in the address bar. Changing one is a
-navigation. When a page has no parameters the bar says so in italic
-text-tertiary rather than rendering an empty strip.
-
-On the right, a *Refresh* split button. There is no time-range picker and no
-auto-refresh interval: this is a control plane, not a dashboard — it refreshes
-on demand, it does not poll.
+An icon button beside the search. It reloads the page at the address it is on,
+state in the address and all. There is no time-range picker and no auto-refresh
+interval: this is a control plane, not a dashboard — it refreshes on demand, it
+does not poll. There is no row of page parameters: what a table shows is
+filtered in its column headers (§10).
 
 ### Content
 
@@ -230,10 +218,9 @@ The unit of content. A bordered rectangle on the panel surface with a 32px
 header and no divider between header and body.
 
 The header carries, left to right: the title (14/500); an information icon
-holding the description as a tooltip; an optional status dot; and, pushed
-right, a menu group that is **invisible until the panel is hovered**. This is
-what keeps a dense grid of panels calm — the affordances exist but do not
-compete with the data until you go looking for them.
+holding the description as a popover; and an optional status dot. A panel has
+no menu of its own: reloading is the page's Refresh in the top bar, so a panel
+changes only by following its own links, and the header stays quiet.
 
 A panel may have a footer separated by a 1px rule: pagination on the left,
 navigation or actions on the right.
@@ -256,8 +243,7 @@ made scannable without pagination.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked
-  to and survives a reload. It is not a toolbar parameter; the strip is the
-  control.
+  to and survives a reload. The strip is the control.
 
 ---
 
@@ -301,7 +287,12 @@ permissions and never silently fails when pressed.
 The densest surface in the system, and the most common.
 
 Header row: 30px, hover surface, 12.5/500 text-secondary, 1px bottom rule,
-sticky. Sortable headers are links; the sorted one takes the link colour and a
+sticky. Every header is a sort link, with a filter icon beside the name that
+appears on hover or focus and stays, in the link colour, once the column is
+filtered. It opens a raised popover on a form: a multi-select of checkboxes for
+a column with a fixed set of options, a minimum and a maximum for a numeric one,
+a text input for any other, and Apply
+(and Clear, when a filter is set). The sorted header takes the link colour and a
 small caret showing direction.
 
 Body rows: 34px, 1px rule between (none after the last), hover surface on
@@ -401,7 +392,6 @@ A whole-page navigation cross-fades, and the cross-fade is **entirely CSS**:
 
 .sidebar   { view-transition-name: sidebar; }
 .topbar    { view-transition-name: topbar; }
-.toolbar   { view-transition-name: toolbar; }
 .content   { view-transition-name: content; }
 ```
 
