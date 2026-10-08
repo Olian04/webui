@@ -25,6 +25,16 @@ const ViewSep = "."
 // ViewKey is the address parameter for one piece of a leaf's view state.
 func ViewKey(id, param string) string { return id + ViewSep + param }
 
+// FilterKey is the address parameter for the filter on one column of a table:
+// "devices.filter.status". The column is named by its sort key.
+func FilterKey(id, column string) string { return ViewKey(id, "filter."+column) }
+
+// RangeKeys are the address parameters for the bounds of a numeric column's
+// filter: "devices.min.count" and "devices.max.count".
+func RangeKeys(id, column string) (lower, upper string) {
+	return ViewKey(id, "min."+column), ViewKey(id, "max."+column)
+}
+
 // IsViewKey reports whether an address parameter is view state, not an argument.
 func IsViewKey(key string) bool { return strings.Contains(key, ViewSep) }
 

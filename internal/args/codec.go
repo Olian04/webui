@@ -161,7 +161,14 @@ func Href(template string, path, query map[string]string) string {
 	}
 	q := url.Values{}
 	for k, v := range query {
-		q.Set(k, v)
+		for _, part := range strings.Split(v, ListSep) {
+			if part != "" {
+				q.Add(k, part) // a list is repeated parameters
+			}
+		}
+	}
+	if len(q) == 0 {
+		return out
 	}
 	return out + "?" + q.Encode() // Encode sorts by key: stable hrefs
 }
