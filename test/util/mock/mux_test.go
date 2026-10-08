@@ -12,9 +12,9 @@ func TestMux(t *testing.T) {
 	t.Parallel()
 
 	mux := NewMux()
-	mux.Handle("/admin", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/admin", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello, World!"))
+		_, _ = w.Write([]byte("Hello, World!"))
 	}))
 
 	response := mux.Serve(&http.Request{

@@ -1,4 +1,4 @@
-package webui
+package webui_test
 
 import (
 	"image"
