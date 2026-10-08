@@ -28,7 +28,7 @@ import (
 //	Form[M] / Table[M] in Body M unrelated to A -> method on PageBody
 //	Link[M, A] in RowClick[M]  A unknown      -> method on RowClick[M]
 //	Accessor[M] inside Form[M] M known        -> type switch
-//	Fields[M] inside Action[M] M known        -> type switch
+//	Reject[M] inside Outcome   M known        -> type switch
 //
 // So the leaves of the lowering are methods that live beside their types
 // (page.go, form.go, table.go, layout.go, link.go, action.go), and the

@@ -2,9 +2,6 @@
 
 # Trees this library owns. A missing path fails the whole target.
 SOURCE_CODE ?= ./cmd/... ./internal/... ./pkg/... ./test/...
-REV := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
-BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-BUILD_OUTPUT_DIR := ./dist
 
 help: ## Show available make targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "%-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)

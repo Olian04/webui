@@ -49,7 +49,7 @@ type Theme struct {
 	// sidebar, the focus ring and the selected tab.
 	Accent Color
 
-	// OK is healthy, saved, loaded: a badge with ToneOK, the loaded mark.
+	// OK is healthy, saved: a badge with ToneOK, and the toast of a Success.
 	OK Color
 
 	// Warning is degraded, needs a look: a badge with ToneWarning.
@@ -60,7 +60,7 @@ type Theme struct {
 	Critical Color
 }
 
-// PageLike is Page[A] with the argument type erased so Pages can mix A.
+// pageLike is Page[A] with the argument type erased so Pages can mix A.
 type pageLike interface {
 	isPage()
 	pagePath() string

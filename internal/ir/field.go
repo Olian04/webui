@@ -7,8 +7,8 @@ import (
 // Field is one accessor, lowered. The same Field can render as a table cell
 // or a form input. Decorators from the declaration are flattened into it.
 type Field struct {
-	// Name is the stable form-control name, derived from position ("f1",
-	// "f1_0" inside a group). It never comes from user input.
+	// Name is the stable form-control name, derived from position ("f0", "f0_1"
+	// inside a group; "c0" for a table column). It never comes from user input.
 	Name  string
 	Label string
 	Kind  ValueKind
@@ -26,7 +26,7 @@ type Field struct {
 
 	Rules Rules
 
-	Key         string // the accessor's Key, else its Label: what Query.Sort carries
+	Key         string // the label as the address names it, lower-cased with dashes: what Query.Sort carries
 	Placeholder string // from Placeholder
 
 	// Options is the fixed set of values a column can hold, when it has one: a

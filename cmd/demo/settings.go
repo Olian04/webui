@@ -75,15 +75,26 @@ var Retention = webui.Page[webui.NoArgs]{
 var SaveIngest = webui.Action[Settings]{
 	Guard: canEdit[Settings],
 	Run: func(_ context.Context, s Settings) (webui.Outcome, error) {
+		// A reason that belongs to the whole form, not to one field: Failure shows
+		// the form again with what was typed kept, and says why in an error toast.
+		if s.SampleRate > 0.9 && s.MaxLoad < 50 {
+			return webui.Failure("Keeping nearly every event while shedding at a low load would drop most of them"), nil
+		}
 		service.SetSettings(s)
+		// Accepted, but worth knowing: Warning is a Success with something to be aware of.
+		if s.MaxLoad < 20 {
+			return webui.Warning("Saved, but ingest will start shedding at a very low load"), nil
+		}
 		return webui.Success("Saved"), nil
 	},
 }
 
 var SaveRetention = webui.Action[RetentionPolicy]{
 	Guard: canEdit[RetentionPolicy],
-	Run: func(_ context.Context, r RetentionPolicy) (webui.Outcome, error) {
+	Run: func(ctx context.Context, r RetentionPolicy) (webui.Outcome, error) {
 		service.SetRetention(r)
-		return webui.Success("Saved"), nil
+		// Then says where to go next, in place of staying on the form: the system
+		// page, to see what the policy cost. The toast is shown there.
+		return webui.Success("Saved").Then(webui.Open(ctx, System, webui.NoArgs{})), nil
 	},
 }

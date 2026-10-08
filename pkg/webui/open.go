@@ -7,8 +7,10 @@ import (
 	"github.com/Olian04/webui/internal/runtime"
 )
 
-// Target is a resolved href. Err is set when Open cannot produce a URL
-// (no runtime, unmounted page, empty path argument). The link renders disabled.
+// Target is a resolved href. Err is set when Open cannot produce a URL (no
+// runtime, unmounted page, empty path argument), and what was given it is then
+// reported rather than shown: a row link that cannot be built is a plain row, and
+// Outcome.Then with one is an error.
 type Target struct {
 	URL string
 	Err error

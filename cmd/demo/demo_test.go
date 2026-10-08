@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -341,4 +342,54 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
+}
+
+func flashOf(rec *httptest.ResponseRecorder) string {
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "webui_flash" {
+			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)
+			return string(raw)
+		}
+	}
+	return ""
+}
+
+func ingest(sample, load string) url.Values {
+	return url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {sample}, "f1_1": {load}}
+}
+
+func TestIngestShowsEveryKindOfOutcome(t *testing.T) {
+	h := handler(t)
+
+	// Failure: not accepted, so the form is shown again with what was typed, and the reason.
+	rec := post(h, "/admin/settings", ingest("0.95", "40"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), `value="0.95"`)
+	assert.Contains(t, rec.Body.String(), "would drop most of them")
+
+	// Warning: accepted, with something to be aware of.
+	rec = post(h, "/admin/settings", ingest("0.5", "10"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, flashOf(rec), "wSaved, but ingest will start shedding")
+
+	// Success: accepted, and confirmed.
+	rec = post(h, "/admin/settings", ingest("0.5", "60"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "oSaved")
+}
+
+func TestSavingRetentionGoesOnToTheSystemPage(t *testing.T) {
+	rec := post(handler(t), "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/system") // Then, in place of staying on the form
+	assert.Equal(t, flashOf(rec), "oSaved")
+}
+
+func TestAcknowledgingACriticalAlertWarns(t *testing.T) {
+	h := handler(t)
+	// alt_003 is critical, alt_005 is info, and alt_007 a warning.
+	rec := post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"bulk:0"}, "_sel": {"alt_003", "alt_005"}})
+	assert.Equal(t, flashOf(rec), "wAcknowledged 2, including 1 critical")
+	rec = post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"bulk:0"}, "_sel": {"alt_007"}}) // a warning
+	assert.Equal(t, flashOf(rec), "oAcknowledged 1")
 }

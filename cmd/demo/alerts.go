@@ -133,8 +133,15 @@ var Acknowledge = webui.Action[[]Alert]{
 	Role:  webui.RolePrimary,
 	Guard: canEdit[[]Alert],
 	Run: func(_ context.Context, alerts []Alert) (webui.Outcome, error) {
+		critical := 0
 		for _, a := range alerts {
 			service.Acknowledge(a.ID)
+			if a.Severity == "critical" {
+				critical++
+			}
+		}
+		if critical > 0 {
+			return webui.Warning(fmt.Sprintf("Acknowledged %d, including %d critical", len(alerts), critical)), nil
 		}
 		return webui.Success(fmt.Sprintf("Acknowledged %d", len(alerts))), nil
 	},

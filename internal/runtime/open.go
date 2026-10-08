@@ -11,9 +11,9 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// ErrNotMounted is returned by Open for a page that is not in this program, or
+// errNotMounted is returned by Open for a page that is not in this program, or
 // whose declaration no longer matches what was compiled.
-var ErrNotMounted = errors.New("that page is not mounted in this app")
+var errNotMounted = errors.New("that page is not mounted in this app")
 
 // Open resolves a page through the program, not through the declaration, so
 // the href includes the mount prefix and a page that was never mounted, or was
@@ -36,7 +36,7 @@ func (p *Program) Open(pathTemplate string, argv any) (string, error) {
 func (p *Program) open(pathTemplate string, argv any, from string) (string, error) {
 	page := p.App.ByPath[pathTemplate]
 	if page == nil {
-		return "", ErrNotMounted
+		return "", errNotMounted
 	}
 	path, query, err := page.Encode(argv)
 	if err != nil {

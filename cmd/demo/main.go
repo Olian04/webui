@@ -6,9 +6,10 @@
 // its own corner of the library:
 //
 //	devices.go   a table (paging, sorting, filters, search, row links), a form
-//	             with tabs, a path and a query argument, a rejection, a redirect
+//	             with tabs, a path and a query argument, a rejection
 //	sites.go     a nested path, two stateful tables on one page, more search
-//	alerts.go    row and bulk actions, a destructive role, links with arguments
+//	alerts.go    row and bulk actions, a destructive role, links with arguments,
+//	             every kind of outcome (success, warning, failure, then)
 //	settings.go  forms: rules, Float, Slider, Placeholder
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //
@@ -30,7 +31,7 @@ import (
 
 var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
-	// -accent flag overrides one token (see themeFor).
+	// -accent flag overrides the accent colour (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
 	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
 }
