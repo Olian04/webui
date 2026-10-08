@@ -15,10 +15,39 @@ import (
 // NoArgs is the argument type for a page with no path or query parameters.
 type NoArgs struct{}
 
+// PageID is a page's path, tied to its argument type. Declare one as a constant
+// when two pages link to each other:
+//
+//	const DevicesPath webui.PageID[webui.NoArgs] = "/device"
+//
+// and use it as the page's Path and, from the other page, in Open or Link. A
+// constant is not a package-level variable, so naming it does not make the pages
+// depend on each other: referring back by the page variable would be an
+// initialization cycle, which Go rejects at build time. A page and its ID agree
+// on A, or it does not compile.
+type PageID[A any] string
+
+func (id PageID[A]) pagePath() string { return string(id) }
+
+func (PageID[A]) accepts(A) {}
+
+// PageRef is what Open and Link take to name a destination: a Page, or just its
+// PageID. Both carry the argument type, so the arguments given for a page are
+// checked against it. Only this package implements it.
+type PageRef[A any] interface {
+	pagePath() string
+	accepts(A)
+}
+
+func (Page[A]) accepts(A) {}
+
 // Page is a route. A is the argument struct: path fields match {placeholders},
 // the rest are query parameters.
 type Page[A any] struct {
-	Path  string
+	// Path is the page's address, such as "/device/{id}". It is typed by A, so a
+	// PageID declared for one page's arguments cannot be given to another; a
+	// string literal or an untyped constant converts without ceremony.
+	Path  PageID[A]
 	Nav   Nav
 	Guard func(ctx context.Context, a A) error
 	Body  PageBody
@@ -59,7 +88,7 @@ type PageBody interface {
 
 func (Page[A]) isPage() {}
 
-func (p Page[A]) pagePath() string { return p.Path }
+func (p Page[A]) pagePath() string { return string(p.Path) }
 
 func (p Page[A]) pageNav() Nav { return p.Nav }
 
@@ -75,25 +104,26 @@ var (
 
 func (p Page[A]) validatePage(f *facts) []CompileError {
 	typ := reflect.TypeFor[A]()
-	v := &bodyValidator{page: p.Path, args: typeName(typ), facts: f}
+	path := string(p.Path)
+	v := &bodyValidator{page: path, args: typeName(typ), facts: f}
 
-	if errs := validatePath(p.Path); len(errs) > 0 {
+	if errs := validatePath(path); len(errs) > 0 {
 		for _, e := range errs {
 			v.add(e.Detail, e.Fix)
 		}
 		return v.errs
 	}
-	if f.paths[p.Path] > 1 {
+	if f.paths[path] > 1 {
 		v.add("two pages declare this path",
 			"Give each page a distinct Path; the router would pick one and the other would be dead.")
 	}
 
-	if p.Search != nil && len(args.Placeholders(p.Path)) > 0 {
+	if p.Search != nil && len(args.Placeholders(path)) > 0 {
 		v.add("a page with path arguments cannot offer Search",
 			"Search runs without a page's arguments, so it cannot build one. Offer Search from a page without placeholders, such as the list, and link to this page with Open.")
 	}
 
-	_, problems := args.Spec(typ, p.Path)
+	_, problems := args.Spec(typ, path)
 	for _, pr := range problems {
 		v.add(pr.Detail, pr.Fix)
 	}
@@ -160,11 +190,11 @@ func typeName(t reflect.Type) string {
 
 func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	typ := reflect.TypeFor[A]()
-	specs, _ := args.Spec(typ, p.Path)
+	specs, _ := args.Spec(typ, string(p.Path))
 	codec := args.NewCodec(typ, specs)
 
 	page := &ir.Page{
-		PathTemplate: p.Path,
+		PathTemplate: string(p.Path),
 		Args:         specs,
 		Nav:          l.nav(p.Nav),
 		Decode:       codec.Decode,

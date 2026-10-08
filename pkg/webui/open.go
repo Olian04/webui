@@ -15,19 +15,20 @@ type Target struct {
 }
 
 // Open resolves page+args through the compiled runtime, including the mount
-// prefix. Page carries no behaviour; the wrong A fails at compile time.
+// prefix. page is a Page or its PageID; the wrong A fails at compile time.
 //
 // It resolves through the runtime rather than the declaration, so a page that
 // was never mounted — or whose declaration was mutated after Compile — is
 // reported instead of silently producing a dead link.
-func Open[A any](ctx context.Context, page Page[A], args A) Target {
+func Open[A any](ctx context.Context, page PageRef[A], args A) Target {
+	path := page.pagePath()
 	req := runtime.From(ctx)
 	if req == nil {
-		return Target{Err: fmt.Errorf("webui: Open %q: no compiled app in this context", page.Path)}
+		return Target{Err: fmt.Errorf("webui: Open %q: no compiled app in this context", path)}
 	}
-	url, err := req.Open(page.Path, args)
+	url, err := req.Open(path, args)
 	if err != nil {
-		return Target{Err: fmt.Errorf("webui: Open %q: %w", page.Path, err)}
+		return Target{Err: fmt.Errorf("webui: Open %q: %w", path, err)}
 	}
 	return Target{URL: url}
 }

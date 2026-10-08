@@ -98,7 +98,7 @@ func TestValidateAndLowerVisitTheSameNodes(t *testing.T) {
 func countValidate[A any](t *testing.T, body PageBody, f *facts, p Page[A]) int {
 	t.Helper()
 
-	v := &bodyValidator{page: p.Path, facts: f}
+	v := &bodyValidator{page: string(p.Path), facts: f}
 	body.validateBody(v)
 	assert.Equal(t, len(v.errs), 0)
 	return v.nodes
