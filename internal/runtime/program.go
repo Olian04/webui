@@ -20,7 +20,11 @@ import (
 type Program struct {
 	Prefix string
 	App    *ir.App
-	Routes []Route
+
+	// mux is every route of the app, each wrapped in the headers and the panic
+	// recovery. ServeMux keeps a tree of patterns and picks the most specific one for
+	// a request, so registration order does not decide the winner.
+	mux *http.ServeMux
 
 	render *render.Renderer
 	log    *slog.Logger
@@ -40,19 +44,11 @@ type Program struct {
 	cross *http.CrossOriginProtection
 }
 
-// Route is one pattern registered on the mux.
-type Route struct {
-	Path       string
-	Method     string // Page = GET, Action = POST; empty matches any method
-	Middleware []func(http.Handler) http.Handler
-	Handler    http.Handler
-}
-
-// NewProgram derives the route table from a compiled app.
+// NewProgram derives the routes from a compiled app.
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p := &Program{
 		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+		mux: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	assets, err := p.render.Assets()
@@ -78,9 +74,14 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	return p, nil
 }
 
+// Handler is the whole app, for the mount prefix it was built with.
+func (p *Program) Handler() http.Handler { return p.mux }
+
+// add registers a route. An empty method matches any, which only the catch-all uses.
 func (p *Program) add(method, path string, h http.Handler) {
-	p.Routes = append(p.Routes, Route{
-		Method: method, Path: path, Handler: h,
-		Middleware: []func(http.Handler) http.Handler{secure, p.recovered},
-	})
+	pattern := path
+	if method != "" {
+		pattern = method + " " + path
+	}
+	p.mux.Handle(pattern, secure(p.recovered(h)))
 }

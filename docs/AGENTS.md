@@ -14,7 +14,6 @@
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
 | `test/util/mock`   | Mock HTTP mux for integration tests.                                              |
-| `internal/router`  | Compiled `runtime.Program` routes → `http.ServeMux`.                              |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
 `pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.

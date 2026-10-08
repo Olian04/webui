@@ -2,7 +2,7 @@
 // runtime that serves it.
 //
 // The level is what the app means, not how it is served. Paths are templates,
-// not routes: internal/router derives matching from them. That keeps every
+// not routes: internal/runtime derives matching from them. That keeps every
 // serving decision downstream, so the declaration layer never grows an opinion
 // about HTTP.
 //

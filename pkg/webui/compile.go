@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/render"
-	"github.com/Olian04/webui/internal/router"
 	"github.com/Olian04/webui/internal/runtime"
 )
 
@@ -41,7 +40,7 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 		errs = CompileErrors{{Detail: err.Error()}}
 		return failure(errs), errs
 	}
-	return router.New(program).Mux, nil
+	return program.Handler(), nil
 }
 
 func failure(errs CompileErrors) http.Handler {
