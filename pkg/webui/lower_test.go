@@ -183,9 +183,8 @@ func TestLowerOutcome(t *testing.T) {
 	_, err = lowerOutcome[dev](Success("x").Then(Target{Err: context.Canceled}))
 	assert.Error(t, err)
 
-	// Then sends an accepted outcome on and leaves a refused one where it is.
-	assert.Equal(t, Success("x").Then(Target{URL: "/a"}).redirect.URL, "/a")
-	assert.Equal(t, Warning("x").Then(Target{URL: "/a"}).redirect.URL, "/a")
-	assert.Equal(t, Failure("x").Then(Target{URL: "/a"}).redirect.URL, "")
-	assert.Equal(t, Reject[dev]().Then(Target{URL: "/a"}).redirect.URL, "")
+	// Then says where to go for every kind.
+	for _, o := range []Outcome{Success("x"), Warning("x"), Failure("x"), Reject[dev]()} {
+		assert.Equal(t, o.Then(Target{URL: "/a"}).redirect.URL, "/a")
+	}
 }

@@ -16,12 +16,16 @@ import (
 // An Outcome is either accepted or not.
 //
 //   - Success and Warning are accepted. The action was submitted and done, and the
-//     user is sent back to where they were (or on, with Then). They differ only in
-//     the message: a Warning says something the user should be aware of.
+//     user is sent back to where they were. They differ only in the message: a
+//     Warning says something the user should be aware of.
 //   - Failure and Reject are not accepted. Nothing was done, and the form is shown
 //     again with what the user typed kept, so they can fix it and submit again.
 //     They differ in what they say: a Failure says it for the whole form, and a
 //     Reject says it for particular fields.
+//
+// Those are the defaults, for when the outcome says nothing about where to go.
+// Then says where, for any of the four: the user is taken there instead, with the
+// message in a toast.
 //
 // Run's error return is for something nobody can fix by editing the form, such as
 // a database being down: it is logged and the user sees only that something went
@@ -71,7 +75,8 @@ func Warning(message string) Outcome {
 // the limit was reached, the change conflicts with another. Nothing was done. The
 // form is shown again with what the user typed kept, and message is shown in an
 // error toast. For a table's row or bulk action, which has no form to show again,
-// the page is shown again with the error toast.
+// the page is shown again with the error toast. With Then, the user is taken
+// there instead, and the form is not shown again.
 //
 // A Failure and a Reject are both not accepted, and both keep what was typed. A
 // Failure is about the whole form; a Reject is about particular fields.
@@ -91,7 +96,8 @@ func Failure(message string) Outcome {
 // Reject is about particular fields; a Failure is about the whole form. A field
 // that the form does not show is a mistake in the declaration and is reported as
 // an error. Reject is for forms: a table action has no fields, so there it is shown
-// as a Failure with the messages joined.
+// as a Failure with the messages joined, and so is a Reject with Then, which leaves
+// the form for a page that has no fields to show them on.
 //
 //	return webui.Reject(
 //	    webui.Field[Device](IP, "already in use by another device"),
@@ -114,16 +120,17 @@ func Field[M any](field Accessor[M], message string) FieldError[M] {
 	return FieldError[M]{Field: field, Message: message}
 }
 
-// Then sends the user on after an accepted outcome, to a page built with Open, in
-// place of leaving them where they were. It applies to Success and Warning: a
-// Failure or a Reject shows the form again, so there is nowhere to send them, and
-// Then leaves those unchanged.
+// Then says where the user goes next: a page built with Open. It applies to every
+// outcome, and replaces what that outcome would otherwise do. A Success or Warning
+// takes the user there in place of leaving them where they were, and a Failure or
+// Reject takes them there in place of showing the form again, so what they typed
+// is not kept, and the message is shown there as a toast. Without Then, each does
+// its default.
 //
 //	return webui.Success("Device deleted").Then(webui.Open(ctx, DevicesPath, webui.NoArgs{})), nil
+//	return webui.Failure("This device was deleted by someone else").Then(webui.Open(ctx, DevicesPath, webui.NoArgs{})), nil
 func (o Outcome) Then(to Target) Outcome {
-	if o.kind == kindSuccess || o.kind == kindWarning {
-		o.redirect = to
-	}
+	o.redirect = to
 	return o
 }
 

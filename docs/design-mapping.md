@@ -336,7 +336,7 @@ redirect; refused ones show the form again, in place, with what the user typed.
 | `Warning(msg)` | yes | The same with an amber border: it was done, and the user should be aware of `msg` |
 | `Failure(msg)` | no | The form shown again with what was typed, and a toast with a red border saying `msg` |
 | `Reject(Field(...)...)` | no | The form shown again with what was typed, an invalid border + ring on each named field and its message beneath, and a "Not saved" toast |
-| `.Then(target)` | | Navigation after an accepted outcome; ignored by a refused one, which has nowhere to go |
+| `.Then(target)` | any | Navigation, whatever the outcome: the user goes there instead of what it would have done, with its message as a toast there. A refused outcome that is told where to go does not show the form again, so what was typed is not kept |
 
 `Reject` is the design's most important rejection path: a save that was
 understood, refused, and is fixable. It looks identical to a browser-caught rule

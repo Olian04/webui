@@ -32,7 +32,14 @@ func outcomeApp() http.Handler {
 		case "10.0.0.6":
 			return webui.Success("Gone").Then(webui.Target{URL: "/admin/elsewhere"}), nil
 		case "10.0.0.7":
-			return webui.Failure("no").Then(webui.Target{URL: "/admin/elsewhere"}), nil // nowhere to send them
+			return webui.Failure("no").Then(webui.Target{URL: "/admin/elsewhere"}), nil
+		case "10.0.0.8":
+			return webui.Reject(
+				webui.Field[Device](formIP, "taken"),
+				webui.Field[Device](formCount, "too many"),
+			).Then(webui.Target{URL: "/admin/elsewhere"}), nil
+		case "10.0.0.9":
+			return webui.Success("x").Then(webui.Target{URL: "https://evil.example/"}), nil
 		}
 		return webui.Success("Saved"), nil
 	}
@@ -107,16 +114,46 @@ func TestRejectShowsTheFormAgainWithWhatWasTypedAndAMessageBesideEachField(t *te
 	assert.Contains(t, body, "2 fields need attention.")
 }
 
-func TestThenSendsAnAcceptedOutcomeOnAndIgnoresARefusedOne(t *testing.T) {
+func TestThenTakesTheUserThereWhateverTheOutcome(t *testing.T) {
 	t.Parallel()
 
-	code, location, _, _ := submitIP(outcomeApp(), "10.0.0.6")
+	// Accepted, and told where: there, with the message as a toast.
+	code, location, flash, _ := submitIP(outcomeApp(), "10.0.0.6")
 	assert.Equal(t, code, http.StatusSeeOther)
 	assert.Equal(t, location, "/admin/elsewhere")
+	assert.Equal(t, flash, "oGone")
 
-	code, location, _, _ = submitIP(outcomeApp(), "10.0.0.7")
-	assert.Equal(t, code, http.StatusUnprocessableEntity) // shown again, not redirected
-	assert.Equal(t, location, "")
+	// Not accepted, and told where: there too, instead of showing the form again,
+	// with the failure as an error toast.
+	code, location, flash, _ = submitIP(outcomeApp(), "10.0.0.7")
+	assert.Equal(t, code, http.StatusSeeOther)
+	assert.Equal(t, location, "/admin/elsewhere")
+	assert.Equal(t, flash, "eno")
+
+	// A rejection leaves the form for a page with no fields: its messages are the toast.
+	code, location, flash, _ = submitIP(outcomeApp(), "10.0.0.8")
+	assert.Equal(t, code, http.StatusSeeOther)
+	assert.Equal(t, location, "/admin/elsewhere")
+	assert.Equal(t, flash, "etaken; too many")
+}
+
+func TestWithoutThenEachOutcomeDoesItsDefault(t *testing.T) {
+	t.Parallel()
+
+	code, location, _, _ := submitIP(outcomeApp(), "10.0.0.1") // Success: back where it was
+	assert.Equal(t, code, http.StatusSeeOther)
+	assert.Equal(t, location, "/admin/device/a")
+	code, _, _, _ = submitIP(outcomeApp(), "10.0.0.3") // Failure: the form again
+	assert.Equal(t, code, http.StatusUnprocessableEntity)
+}
+
+func TestThenNeverLeavesTheApp(t *testing.T) {
+	t.Parallel()
+
+	// An address outside the app is refused and the outcome does its default.
+	code, location, _, _ := submitIP(outcomeApp(), "10.0.0.9")
+	assert.Equal(t, code, http.StatusSeeOther)
+	assert.Equal(t, location, "/admin/device/a")
 }
 
 func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing.T) {

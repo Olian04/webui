@@ -137,6 +137,10 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("submit: %w", err))
 		return
 	}
+	if to := p.then(outcome); to != "" {
+		p.leave(w, r, outcome, to) // told where to go, which replaces whatever it would have done
+		return
+	}
 	switch outcome.Kind {
 	case ir.OutcomeFailure:
 		// Not done, and not for one field: show the form again with what was typed,
@@ -191,27 +195,71 @@ func plural(n int, one, many string) string {
 	return strconv.Itoa(n) + " " + many
 }
 
-// finish ends an accepted action: the toast rides a flash cookie, and the
-// browser is sent back with a 303 so a reload does not repeat the POST.
+// finish ends an accepted action that said nowhere to go: back to where the form
+// was opened from, or where it is. The toast rides a flash cookie, and the
+// browser is sent with a 303 so a reload does not repeat the POST.
 func (p *Program) finish(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, from string) {
 	target := r.URL.RequestURI()
 	if from != "" {
 		target = from // a saved form returns to where it was opened from
 	}
-	if outcome.Redirect != "" {
-		if safeRedirect(outcome.Redirect) {
-			target = outcome.Redirect
-		} else {
-			p.log.Error("webui: Outcome.Then refused: not an address on this host", "target", outcome.Redirect)
-		}
-	}
-	tone := render.ToastOK
-	if outcome.Kind == ir.OutcomeWarning {
-		tone = render.ToastWarning
-	}
-	p.setFlash(w, r, outcome.Message, tone)
-	//nolint:gosec // G710: target is this request's own path, or passed safeRedirect above.
+	p.leave(w, r, outcome, target)
+}
+
+// leave sends the user to target with the outcome's message as a toast on the
+// page they arrive at. It is how an accepted action ends, and how any outcome that
+// was told where to go does.
+func (p *Program) leave(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, target string) {
+	p.setFlash(w, r, outcomeText(outcome), outcomeTone(outcome))
+	//nolint:gosec // G710: target is this request's own path, or passed safeRedirect.
 	http.Redirect(w, r, target, http.StatusSeeOther)
+}
+
+// then is where the outcome says to go, when that is an address in this app. One
+// that is not is refused and logged, and the outcome does what it would have.
+func (p *Program) then(outcome ir.Outcome) string {
+	if outcome.Redirect == "" {
+		return ""
+	}
+	if !safeRedirect(outcome.Redirect) {
+		p.log.Error("webui: Outcome.Then refused: not an address on this host", "target", outcome.Redirect)
+		return ""
+	}
+	return outcome.Redirect
+}
+
+// outcomeText is what an outcome tells the user once it has left the form: its
+// message, or for a rejection the messages of its fields, since there are no
+// fields on the page it arrives at. A refusal always says something.
+func outcomeText(o ir.Outcome) string {
+	switch o.Kind {
+	case ir.OutcomeReject:
+		messages := make([]string, 0, len(o.Fields))
+		for _, f := range o.Fields {
+			messages = append(messages, f.Message)
+		}
+		if len(messages) == 0 {
+			return "Not saved"
+		}
+		return strings.Join(messages, "; ")
+	case ir.OutcomeFailure:
+		if o.Message == "" {
+			return "Not saved"
+		}
+	case ir.OutcomeSuccess, ir.OutcomeWarning:
+	}
+	return o.Message
+}
+
+func outcomeTone(o ir.Outcome) render.ToastTone {
+	switch o.Kind {
+	case ir.OutcomeWarning:
+		return render.ToastWarning
+	case ir.OutcomeFailure, ir.OutcomeReject:
+		return render.ToastError
+	case ir.OutcomeSuccess:
+	}
+	return render.ToastOK
 }
 
 // safeRedirect accepts only a path on this host. Open produces these; a
@@ -289,16 +337,14 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
 		return
 	}
+	if to := p.then(outcome); to != "" {
+		p.leave(w, r, outcome, to)
+		return
+	}
 	switch outcome.Kind {
-	case ir.OutcomeFailure:
-		p.refuse(w, r, outcome.Message)
-	case ir.OutcomeReject:
+	case ir.OutcomeFailure, ir.OutcomeReject:
 		// A table action has no fields to point at, so the messages are the reason.
-		messages := make([]string, len(outcome.Fields))
-		for i, f := range outcome.Fields {
-			messages[i] = f.Message
-		}
-		p.refuse(w, r, strings.Join(messages, "; "))
+		p.refuse(w, r, outcomeText(outcome))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
 		p.finish(w, r, outcome, "")
 	}
