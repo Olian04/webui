@@ -709,6 +709,10 @@ a.side-brand:hover {
   padding: 0 0 0;
   min-width: 0;
 }
+/* A form's fields sit inside the panel body, inset from its edge. */
+.panel-body.pad {
+  padding: 4px 12px 14px;
+}
 .panel-foot {
   display: flex;
   align-items: center;

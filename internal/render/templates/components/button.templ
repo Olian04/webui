@@ -87,17 +87,16 @@ type IconButtonProps struct {
 	Icon  IconName
 	Title string
 	Href  string
-	Guard string
 	Attrs templ.Attributes
 }
 
 templ IconButton(p IconButtonProps) {
 	if p.Href != "" {
-		<a class={ "iconbtn", templ.KV("gated", p.Guard != "") } href={ p.Href } title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
+		<a class="iconbtn" href={ p.Href } title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
 			@Icon(IconProps{Name: p.Icon})
 		</a>
 	} else {
-		<button class={ "iconbtn", templ.KV("gated", p.Guard != "") } type="button" title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
+		<button class="iconbtn" type="button" title={ p.Title } aria-label={ p.Title } { p.Attrs... }>
 			@Icon(IconProps{Name: p.Icon})
 		</button>
 	}

@@ -109,14 +109,13 @@ func ariaSort(d SortDir) string {
 // a cell — but the invariant is: Row.Href and RowLink.Href are the same
 // address, and there is never more than one RowLink in a row.
 type RowProps struct {
-	Href     string
-	Selected bool
-	Attrs    templ.Attributes
+	Href  string
+	Attrs templ.Attributes
 }
 
 templ Row(p RowProps) {
 	<tr
-		class={ templ.KV("clickable", p.Href != ""), templ.KV("selected", p.Selected) }
+		class={ templ.KV("clickable", p.Href != "") }
 		{ p.Attrs... }
 	>
 		{ children... }

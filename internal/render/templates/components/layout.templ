@@ -17,14 +17,12 @@ templ Stack(p StackProps) {
 }
 
 // SplitProps is two columns, top-aligned so unequal heights do not stretch.
-// Weighted makes the first column 1.6 times the second.
 type SplitProps struct {
-	Weighted bool
-	Attrs    templ.Attributes
+	Attrs templ.Attributes
 }
 
 templ Split(p SplitProps) {
-	<div class={ "split", templ.KV("w64", p.Weighted) } { p.Attrs... }>
+	<div class="split" { p.Attrs... }>
 		{ children... }
 	</div>
 }

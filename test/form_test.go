@@ -167,3 +167,14 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 
 	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f1", "40")).Code, http.StatusSeeOther)
 }
+
+// A form's fields are inset from the panel's edge: its markup says so, and the
+// stylesheet has the rule, so the two cannot drift apart unnoticed.
+func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
+	t.Parallel()
+
+	h := formApp(okForm())
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/dev1").Body.String(), `<div class="panel-body pad">`)
+	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 12px 14px;")
+}

@@ -84,7 +84,6 @@ type NavItemProps struct {
 	Href   string
 	Icon   IconName
 	Letter string // the label's initial, drawn where the sidebar is a rail, for an entry with no Icon
-	Count  string
 	Active bool
 	Attrs  templ.Attributes
 }
@@ -105,8 +104,5 @@ templ NavItem(p NavItemProps) {
 			<span class="ni ni-letter" aria-hidden="true">{ p.Letter }</span>
 		}
 		<span>{ p.Label }</span>
-		if p.Count != "" {
-			<span class="nav-count">{ p.Count }</span>
-		}
 	</a>
 }
