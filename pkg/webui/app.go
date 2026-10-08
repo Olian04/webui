@@ -1,6 +1,3 @@
-// Package webui is the public library surface for this module.
-//
-// Declaration types live here. Compile lowers them to the internal runtime.
 package webui
 
 import (
@@ -12,8 +9,13 @@ import (
 
 // App is the declaration of an admin UI. Compile produces the runtime handler.
 type App struct {
+	// Brand is the name and logo shown in the chrome.
 	Brand Brand
+
+	// Theme restyles the app's colours.
 	Theme Theme
+
+	// Pages are the pages to serve. Each page that another links to must be here.
 	Pages Pages
 }
 
@@ -23,7 +25,12 @@ type App struct {
 // for and served by the app, so there is no file to produce and host. An app with
 // no Logo gets the library's own mark. NoFavicon turns that off.
 type Brand struct {
+	// Name is the product's name, shown in the sidebar and as the first
+	// breadcrumb, and in the tab title.
 	Name string
+
+	// Logo is shown in the sidebar and scaled into the browser's favicon. Any
+	// [image.Image] will do.
 	Logo image.Image
 
 	// NoFavicon stops the favicon being generated and served, for an app that
@@ -70,5 +77,6 @@ type pageLike interface {
 	lowerPage(l *appLowerer) *ir.Page
 }
 
-// Pages is the mount list. Page[A] differs per A, so this is an interface slice.
+// Pages is the list of pages in an [App]. A [Page] differs by its argument type,
+// so the elements are an interface that only [Page] implements.
 type Pages []pageLike

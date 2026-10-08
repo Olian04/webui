@@ -13,10 +13,18 @@ import (
 // Label of the column the table is sorted by, or empty. It is always one of the
 // table's columns.
 type Query struct {
+	// Offset is how many rows to skip: the start of the page.
 	Offset int
-	Limit  int
-	Sort   string
-	Desc   bool
+
+	// Limit is how many rows the page shows, or zero for all of them.
+	Limit int
+
+	// Sort is the Label of the column to sort by, or empty for the source's own
+	// order.
+	Sort string
+
+	// Desc sorts descending.
+	Desc bool
 
 	// Filters are the column filters in force, by the column's Label.
 	// A column with a fixed set of options — a Badge, whose options are the keys
@@ -42,62 +50,90 @@ type Query struct {
 
 // Range bounds a number, both ends inclusive. A nil end is unbounded.
 type Range struct {
-	Min, Max *float64
+	// Min is the lower bound, or nil for none.
+	Min *float64
+	// Max is the upper bound, or nil for none.
+	Max *float64
 }
 
 // Window is one window of a table's rows, as Load returns it. Total is the count across all pages;
 // when it is smaller than Offset plus len(Items) it is taken as unknown, so a
 // loader that does not count can leave it zero.
 type Window[M any] struct {
+	// Items are the rows of this window.
 	Items []M
+
+	// Total is how many rows match across all pages. Leave it zero when the source
+	// does not count.
 	Total int
 }
 
-// Table is a leaf that lists rows of M.
+// Table is a leaf that lists rows of a model M.
 //
 // Every column header is a sort link with a filter beside it. A table keeps its
 // sort, its filters, and its page when it pages (PageSize > 0), in the address
 // under its ID: "devices.offset", "devices.sort", "devices.desc". The library owns
-// those parameters; the page's argument struct never sees them. ID defaults to
-// "table"; it must be unique within the page, so set it when a page has more than
-// one table. The panels of one Tabs are never visible together, so they may share
-// an ID.
+// those parameters; the page's argument struct never sees them. The panels of one
+// [Tabs] are never visible together, so they may share an ID.
 //
-// Where the rows come from is one of two fields, and a Table has exactly one.
-//
-// Rows returns every row, and the library does the rest: it filters, sorts and
-// pages them by the columns' own accessors, a number as a number and text as
-// text. It is what a table over a slice, a cache or a small query wants, and it
-// is all that most tables need.
-//
-// Load is for a source that pages itself, too large to list in full. It receives
-// the window, the sort and the filters as a Query and returns one window of rows,
-// with the total, doing all of that itself.
-//
-// Search makes the table's rows findable from the global search in the top bar.
-// A row is a result: its first column is the title, the other text columns are the line
-// beneath it, and it leads where RowClick leads, so the table needs a RowClick. For
-// a table with Rows the library searches every column of every row. A table with
-// Load is handed the text in Query.Search and answers as it can. The table's page
-// is asked with no arguments, so it may not have path arguments, and its Guard runs
-// first; each result is shown only if the page it leads to would let the visitor in.
-//
-// Actions render as a button per row; BulkActions render in the selection bar
-// above a table that then has a checkbox column. Either needs Key, because a
-// request names rows by identity, never by position.
+// A Table has exactly one of Rows and Load, which [App.Compile] checks.
 type Table[M any] struct {
-	Title       string
-	Desc        string
-	ID          string
-	PageSize    int
-	Rows        func(ctx context.Context) ([]M, error)
-	Load        func(ctx context.Context, q Query) (Window[M], error)
-	Search      bool
-	Key         func(M) string
-	RowClick    RowClick[M]
-	Actions     []Action[M]
+	// Title is the panel's heading.
+	Title string
+
+	// Desc is a description, shown in a popover from an information icon beside
+	// the title.
+	Desc string
+
+	// ID names the table's view state in the address. It defaults to "table", is a
+	// lower-case word, and must be unique within the page, so set it when a page has
+	// more than one table.
+	ID string
+
+	// PageSize is how many rows a page shows. Zero means the table does not page.
+	PageSize int
+
+	// Rows returns every row, and the library does the rest: it filters, sorts and
+	// pages them by the columns' own accessors, a number as a number and text as
+	// text. It is what a table over a slice, a cache or a small query wants, and it
+	// is all that most tables need. Set Rows or Load, not both.
+	Rows func(ctx context.Context) ([]M, error)
+
+	// Load is for a source that pages itself, too large to list in full. It
+	// receives the window, the sort and the filters as a [Query], and returns one
+	// [Window] of rows, doing all of that itself. Set Rows or Load, not both.
+	Load func(ctx context.Context, q Query) (Window[M], error)
+
+	// Search makes the table's rows findable from the search box in the top bar.
+	// A row is a result: its first column is the title and the other text columns
+	// the line beneath it, and it leads where RowClick leads, so the table needs a
+	// RowClick. A table with Rows is searched across every column by the library; a
+	// table with Load is handed the text in [Query.Search]. The table's page is asked
+	// with no arguments, so it may not have path arguments, and its Guard runs
+	// first. Each result is shown only if the page it leads to would let the visitor
+	// in.
+	Search bool
+
+	// Key identifies a row, such as by its ID. It is required when the table has
+	// Actions or BulkActions, because a request names rows by identity, never by
+	// position.
+	Key func(M) string
+
+	// RowClick makes each row a link: a [Link] to another page. It is always a
+	// real anchor, so middle-click, open-in-new-tab and the keyboard work.
+	// Anything that changes something is an Action instead.
+	RowClick RowClick[M]
+
+	// Actions render as a button per row.
+	Actions []Action[M]
+
+	// BulkActions render in a selection bar above the table, which then has a
+	// checkbox column. Their subject is the selected rows.
 	BulkActions []Action[[]M]
-	Columns     []Accessor[M]
+
+	// Columns are the table's columns, in order. A column is known by its Label,
+	// which the address and a [Query] use to name it, so labels must differ.
+	Columns []Accessor[M]
 }
 
 func (Table[M]) isPageBody() {}

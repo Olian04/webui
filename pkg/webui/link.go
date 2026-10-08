@@ -20,10 +20,15 @@ type RowClick[M any] interface {
 
 // Link names a destination page and how to build its arguments from M. Page is
 // the page itself or its PageID; naming a PageID is how a page links back to one
-// that links to it. The page and argument type must agree; the compiler checks
-// that.
+// that links to it. The page and the argument type must agree, which the compiler
+// checks, and [App.Compile] checks that the page is mounted. When the destination
+// has a form, the library remembers the page the user came from, so the form's
+// Cancel returns there.
 type Link[M, A any] struct {
+	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]
+
+	// Args builds the destination's arguments from a row.
 	Args func(ctx context.Context, m M) A
 }
 

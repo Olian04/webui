@@ -5,15 +5,22 @@ import (
 	"strings"
 )
 
-// CompileError is one declaration problem. Page is the path, empty for a
-// problem with the app itself; Args is the
-// argument type name. Both always appear in Error: they are the only
-// coordinates available at run time.
+// CompileError is one problem in a declaration. Go cannot recover the file and line
+// of a struct literal at run time, so a problem is located by the page's path and
+// its argument type, and both always appear in Error.
 type CompileError struct {
-	Page   string
-	Args   string
+	// Page is the path of the page the problem is on, or empty for a problem with
+	// the app itself.
+	Page string
+
+	// Args is the name of the page's argument type.
+	Args string
+
+	// Detail says what is wrong.
 	Detail string
-	Fix    string
+
+	// Fix says what to do about it.
+	Fix string
 }
 
 // where is the coordinates of the problem: the page's path and argument type.
@@ -30,6 +37,7 @@ func (e CompileError) where() string {
 	return b.String()
 }
 
+// Error is the problem and where it is, then its fix on a line of its own.
 func (e CompileError) Error() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%s: %s", e.where(), e.Detail)
@@ -42,6 +50,7 @@ func (e CompileError) Error() string {
 // CompileErrors is every problem found in one Compile. Error joins them.
 type CompileErrors []CompileError
 
+// Error is every problem, one after another.
 func (e CompileErrors) Error() string {
 	if len(e) == 0 {
 		return ""

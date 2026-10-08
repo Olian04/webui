@@ -19,9 +19,18 @@ type Accessor[M any] interface {
 
 // String projects a string field of M.
 type String[M any] struct {
+	// Label is the column header and the input's label. In a table it also names the
+	// column in the address and in a [Query].
 	Label string
-	Load  func(M) string
+
+	// Load reads the value from the model.
+	Load func(M) string
+
+	// Store writes the submitted value to the model. Without it the field is
+	// read-only.
 	Store func(*M, string)
+
+	// Rules are checked in the browser and again on the server.
 	Rules StringRules
 }
 
@@ -31,23 +40,43 @@ func (String[M]) isAccessor() {}
 // Scalar zero means "no constraint". Pattern is a pointer because the
 // expression needs a user-facing message.
 type StringRules struct {
+	// Required refuses an empty value.
 	Required bool
-	MinLen   int
-	MaxLen   int
-	Pattern  *PatternRule
+
+	// MinLen is the fewest characters, or zero for no minimum.
+	MinLen int
+
+	// MaxLen is the most characters, or zero for no maximum.
+	MaxLen int
+
+	// Pattern is a regular expression the whole value must match.
+	Pattern *PatternRule
 }
 
 // PatternRule is an RE2 expression plus the message shown when it fails.
 type PatternRule struct {
-	Expr    string
+	// Expr is the expression, in RE2 syntax, so without lookahead or backreferences.
+	// It must match the whole value.
+	Expr string
+
+	// Message is shown beneath the field when the value does not match.
 	Message string
 }
 
 // Int projects an int field of M.
 type Int[M any] struct {
+	// Label is the column header and the input's label. In a table it also names the
+	// column in the address and in a [Query].
 	Label string
-	Load  func(M) int
+
+	// Load reads the value from the model.
+	Load func(M) int
+
+	// Store writes the submitted value to the model. Without it the field is
+	// read-only.
 	Store func(*M, int)
+
+	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[int]
 }
 
@@ -56,18 +85,35 @@ func (Int[M]) isAccessor() {}
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
 type NumberRules[T int | float64] struct {
+	// Required refuses an empty value.
 	Required bool
-	Min      *T
-	Max      *T
+
+	// Min is the smallest allowed value, or nil for none.
+	Min *T
+
+	// Max is the largest allowed value, or nil for none.
+	Max *T
 }
 
 // Float projects a float64 field of M. Precision is the number of decimals
 // shown; zero shows the shortest exact representation.
 type Float[M any] struct {
-	Label     string
-	Load      func(M) float64
-	Store     func(*M, float64)
-	Rules     NumberRules[float64]
+	// Label is the column header and the input's label. In a table it also names the
+	// column in the address and in a [Query].
+	Label string
+
+	// Load reads the value from the model.
+	Load func(M) float64
+
+	// Store writes the submitted value to the model. Without it the field is
+	// read-only.
+	Store func(*M, float64)
+
+	// Rules are checked in the browser and again on the server.
+	Rules NumberRules[float64]
+
+	// Precision is the number of decimals shown. Zero shows the shortest exact
+	// representation.
 	Precision int
 }
 
@@ -81,8 +127,11 @@ func (Group[M]) isAccessor() {}
 
 // Placeholder decorates an accessor with placeholder text.
 type Placeholder[M any] struct {
+	// Accessor is the accessor decorated.
 	Accessor Accessor[M]
-	Text     string
+
+	// Text is shown in the input while it is empty.
+	Text string
 }
 
 func (Placeholder[M]) isAccessor() {}
@@ -97,8 +146,14 @@ func (Placeholder[M]) isAccessor() {}
 // multi-select of exactly those values. List a neutral value too, as
 // ToneNeutral, for it to be filterable.
 type Badge[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
 	Label string
-	Load  func(M) string
+
+	// Load reads the value from the model.
+	Load func(M) string
+
+	// Kinds is every value the field can hold, each with the [Tone] it is drawn in.
 	Kinds map[string]Tone
 }
 
@@ -110,10 +165,25 @@ func (Badge[M]) isAccessor() {}
 // range. Precision is the number of decimals shown; zero shows the shortest
 // exact representation.
 type Slider[M any] struct {
-	Label     string
-	Load      func(M) float64
-	Store     func(*M, float64)
-	Min, Max  float64
+	// Label is the column header and the input's label. In a table it also names the
+	// column in the address and in a [Query].
+	Label string
+
+	// Load reads the value from the model.
+	Load func(M) float64
+
+	// Store writes the submitted value to the model. Without it the slider is a
+	// bar, and read-only.
+	Store func(*M, float64)
+
+	// Min is the value at the start of the range.
+	Min float64
+
+	// Max is the value at the end of the range, and must be greater than Min.
+	Max float64
+
+	// Precision is the number of decimals shown. Zero shows the shortest exact
+	// representation.
 	Precision int
 }
 
@@ -124,9 +194,16 @@ type Tone string
 
 // The tones. There are four because the design has a colour for each.
 const (
-	ToneNeutral  Tone = ""
-	ToneOK       Tone = "ok"
-	ToneWarning  Tone = "warn"
+	// ToneNeutral is a value with no particular meaning, in grey.
+	ToneNeutral Tone = ""
+
+	// ToneOK is healthy or done, in green.
+	ToneOK Tone = "ok"
+
+	// ToneWarning is degraded or needing a look, in amber.
+	ToneWarning Tone = "warn"
+
+	// ToneCritical is failed or urgent, in red.
 	ToneCritical Tone = "bad"
 )
 

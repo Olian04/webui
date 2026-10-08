@@ -7,13 +7,28 @@ import (
 	"github.com/Olian04/webui/internal/rules"
 )
 
-// Form is a leaf that loads one M and submits through Action. A Form whose
-// Submit has no Run is read-only: it has no submit button.
+// Form is a leaf that loads one model M, shows it as fields, and submits it through
+// an [Action]. A Form whose Submit has no Run is read-only: it has no submit
+// button. After a submit that was accepted the user returns to the page they came
+// from; one that was not shows the form again with what they typed.
 type Form[M any] struct {
-	Title  string
-	Desc   string
-	Load   func(ctx context.Context) (M, error)
+	// Title is the panel's heading.
+	Title string
+
+	// Desc is a description, shown in a popover from an information icon beside
+	// the title.
+	Desc string
+
+	// Load returns the model the form shows. On submit it is loaded again, and the
+	// submitted values are applied to it, so a field with no Store keeps its value.
+	Load func(ctx context.Context) (M, error)
+
+	// Submit is what the form's button does. Without a Run the form is read-only.
+	// Its Label defaults to "Save".
 	Submit Action[M]
+
+	// Fields are the form's inputs, in order. An accessor with a Store is an
+	// input, and without one a read-only value. A [Group] puts fields side by side.
 	Fields []Accessor[M]
 }
 

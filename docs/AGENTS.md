@@ -18,7 +18,7 @@
 
 `pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
-Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
+The runnable `Example` functions in `pkg/webui` are the documentation's tests, and are what pkg.go.dev shows. Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 
 ## Design
 
@@ -26,6 +26,7 @@ Unit tests are `*_test.go` next to the source they cover, same package. Internal
 | ------------------------ | ----------------------------------------------------------------------------- |
 | `docs/design.md`         | The visual language: tokens, metrics, components, states.                     |
 | `docs/design-mapping.md` | Which declared type produces which design element, and where the two disagree. |
+| `docs/design-decisions.md` | Why the API is shaped as it is, and what each decision costs. |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
 design token (the app's `webui.Theme` colours are the only ones it may override); no component reads a literal value. When the two documents and

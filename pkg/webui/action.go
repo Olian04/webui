@@ -12,8 +12,14 @@ type Role uint8
 
 // The roles.
 const (
+	// RoleSecondary is an ordinary button.
 	RoleSecondary Role = iota
+
+	// RolePrimary is the one action the page wants done, in the accent colour. A
+	// form's Submit is primary by default.
 	RolePrimary
+
+	// RoleDestructive is an action that cannot be taken back, in the critical colour.
 	RoleDestructive
 )
 
@@ -22,10 +28,22 @@ const (
 // ended with an Outcome (Success, Warning, Failure or Reject), or an error for
 // something the user cannot fix.
 type Action[M any] struct {
+	// Label is the button's text. A form's Submit may leave it empty.
 	Label string
-	Role  Role
+
+	// Role is the button's style.
+	Role Role
+
+	// Guard decides whether the visitor may do this. It receives the action's
+	// subject, and the same check disables the button, with its reason shown, and
+	// authorises the request, so there is no control that looks available and then
+	// fails. A bulk action's subject is the selection.
 	Guard func(ctx context.Context, m M) error
-	Run   func(ctx context.Context, m M) (Outcome, error)
+
+	// Run does it, and says how it ended with an [Outcome]. An error is for
+	// something the user cannot fix by editing the form: it is logged, and the user
+	// sees that something went wrong.
+	Run func(ctx context.Context, m M) (Outcome, error)
 }
 
 // validateAction checks what every action needs. needLabel is false only for a

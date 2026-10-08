@@ -12,7 +12,10 @@ import (
 // reported rather than shown: a row link that cannot be built is a plain row, and
 // Outcome.Then with one is an error.
 type Target struct {
+	// URL is the address, including the mount prefix.
 	URL string
+
+	// Err says why there is no URL.
 	Err error
 }
 

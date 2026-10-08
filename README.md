@@ -1,575 +1,206 @@
 # webui
 
-Declarative admin panels and control planes. No HTML, CSS or JavaScript — only Go.
+[![Go Reference](https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg)](https://pkg.go.dev/github.com/Olian04/webui/pkg/webui)
 
-## WIP
+Declarative admin panels and control planes for Go. You describe the pages, and
+webui serves them: no HTML, CSS or JavaScript to write.
+
+- **Declare, don't build.** Pages, tables, forms and actions are Go values, written
+  as a static configuration you can read top to bottom.
+- **Checked when you compile.** Types tie a link to the page it opens and an
+  argument to its path, and `Compile` reports every other mistake at startup, each
+  with how to fix it.
+- **Works without JavaScript.** Every control is a real link or form. A small script
+  only makes it quicker.
+- **Safe by default.** Guards decide what a visitor sees and does, cross-site posts
+  are refused, and the sidebar and search leave out what a visitor could not open.
+
+# Using webui
+
+## Install
+
+```sh
+go get github.com/Olian04/webui@latest
+```
+
+webui needs Go 1.27 or later. Import the one package it exports:
+
+```go
+import "github.com/Olian04/webui/pkg/webui"
+```
+
+## A first page
+
+A page with a table of devices, served at `/admin/device`:
 
 ```go
 package main
 
 import (
-  "bytes"
-  "context"
-  _ "embed"
-  "image"
-  "image/png"
-  "log"
-  "net/http"
+	"context"
+	"log"
+	"net/http"
 
-  "github.com/Olian04/webui/pkg/webui"
+	"github.com/Olian04/webui/pkg/webui"
 )
 
-//go:embed resources/logo.png
-var logoBytes []byte
+type Device struct{ ID, IP string }
 
-// A page's arguments are one struct. Fields named in the Path are path
-// segments; the rest are query parameters.
-type DetailsArgs struct {
-  Id    string // -> /device/{id}
-  Debug bool   // -> ?debug=true
-  Limit int    // -> ?limit=50
-}
-
-// An accessor is a named, typed projection of Device, optionally writable.
-// A table renders one as a cell, a form renders one as an input, so the same
-// value is listed in both — the getter is written once, not twice.
+// An accessor is written once, and is a column in a table and an input in a form.
 var (
-  ID = webui.String[Device]{
-    Label: "ID",
-    Load:  func(d Device) string { return d.Id },
-    // No Store == read-only
-  }
-  IP = webui.String[Device]{
-    Label: "IP",
-    Load:  func(d Device) string { return d.Ip },
-    Store: func(d *Device, val string) { d.Ip = val },
-    // Rules are data, so they render as HTML constraint attributes on the
-    // client and re-run on the server before Submit.
-    Rules: webui.StringRules{
-      Required: true,
-      MinLen:   7,
-      Pattern: &webui.PatternRule{
-        Expr:    `^\d{1,3}(\.\d{1,3}){3}$`,
-        Message: "must be a valid IPv4 address",
-      },
-    },
-  }
-  Occurrences = webui.Int[Device]{
-    Label: "Occurrences",
-    Load:  func(d Device) int { return d.Count },
-  }
-  Rate = webui.Float[Device]{
-    Label: "Rate",
-    Load:  func(d Device) float64 { return float64(d.Count) / d.Duration },
-  }
+	ID = webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.ID }}
+	IP = webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.IP }}
 )
 
 var Devices = webui.Page[webui.NoArgs]{
-  Path: "/device",
-  // An icon is the name of a Font Awesome Free solid icon, "display" for
-  // fa-display, drawn with the icon font the library serves. An unknown name is
-  // a compile error. An entry with none shows its label's first letter,
-  // capitalised, where the sidebar is collapsed to icons.
-  Nav: webui.Nav{Label: "Devices", Icon: "display"},
-  Body: webui.Table[Device]{
-    Title: "Devices",
-    // Every column header is a sort link, and shows a filter icon on hover. A
-    // table keeps its sort, its filters and its page in the address under its
-    // ID: ?devices.offset=50&devices.sort=ip&devices.filter.status=healthy. The
-    // library owns those parameters and hands Load the result as a Query, and
-    // Load does the sorting and the filtering. Query.Sort and Query.Filters are
-    // keyed by the accessor's Key, or its Label when it has none, and anything
-    // that is not a column is dropped before Load sees it. ID defaults to
-    // "table" and must be unique within the page, so name it when a page has
-    // more than one table.
-    ID:       "devices",
-    PageSize: 25, // 0 means the table does not page
-    Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
-      // Total is the count across all pages; leave it zero when unknown and
-      // the pager falls back to "a full page may have a successor".
-      return service.Page(ctx, q)
-    },
-    // A Link names its destination page as a field, so Compile can check the
-    // target exists. It renders a real <a href>, so middle-click and
-    // open-in-new-tab work. A row click is always a Link: anything that
-    // changes something is an Action on the row (Actions), or on the selection.
-    RowClick: webui.Link[Device, DetailsArgs]{
-      Page: Details,
-      // The library remembers this page's address, sort, filters and page
-      // included, so the details form's Cancel returns to exactly here.
-      Args: func(ctx context.Context, d Device) DetailsArgs { return DetailsArgs{Id: d.Id} },
-    },
-    // No Actions or BulkActions means no action buttons and no form.
-    // No BulkActions means no row select checkboxes and no selection bar.
-    // Either needs Key: a request names rows by identity, never by position.
-    Columns: []webui.Accessor[Device]{ID, IP, Occurrences, Rate},
-  },
-}
-
-var Details = webui.Page[DetailsArgs]{
-  Path: "/device/{id}",
-  // No Nav, so no entry of its own. It lights the "Devices" entry when it is
-  // open: the library lights the entry of the nearest ancestor path that has
-  // one, here the page at "/device".
-  // Guard runs before anything is loaded — so an unauthorised device is never
-  // read. It gates the UI on page load and authorises the request on every
-  // section fetch.
-  Guard: func(ctx context.Context, a DetailsArgs) error {
-    return auth.AssertDeviceAccess(ctx, a.Id)
-  },
-  Body: webui.Form[Device]{
-    Title: "Configuration",
-    // One typed lookup gets the whole argument struct. It has no error to
-    // check: the wrong type, or a ctx from outside a page, is a mistake in the
-    // declaration, which the library answers with a logged 500.
-    Load: func(ctx context.Context) (Device, error) {
-      return service.Load(ctx, webui.ArgsOf[DetailsArgs](ctx).Id)
-    },
-    Submit: SaveDevice,
-    Fields: []webui.Accessor[Device]{
-      webui.Group[Device]{ID, IP},
-      Rate,
-    },
-  },
-}
-
-var SaveDevice = webui.Action[Device]{
-  Label: "Save", // the button text; a Form's Submit defaults to "Save"
-  // Guard takes the action's subject. Same function on both sites: it enables
-  // the UI element at render time and guards the request before Run.
-  Guard: func(ctx context.Context, d Device) error {
-    return auth.AssertCanEdit(ctx, d.Id)
-  },
-  Run: func(ctx context.Context, d Device) (webui.Effect, error) {
-    if taken, err := service.IpTaken(ctx, d.Ip); err != nil {
-      // Something the user cannot fix by editing the form.
-      return webui.Effect{}, err
-    } else if taken {
-      // Understood and rejected: re-render with the error on the field.
-      return webui.Effect{Fields: webui.Fields[Device]{
-        {Field: IP, Message: "already in use by another device"},
-      }}, nil
-    }
-    if err := service.Put(ctx, d.Id, d); err != nil {
-      return webui.Effect{}, err
-    }
-    // Submit succeeded. Zero Effect would mean "stay here and re-render";
-    // Redirect carries a Target when the action should navigate.
-    return webui.Effect{Toast: "Device saved!"}, nil
-  },
+	Path: "/device",
+	Nav:  webui.Nav{Label: "Devices", Icon: "display"},
+	Body: webui.Table[Device]{
+		Title: "Devices",
+		// Rows is every row. The library sorts, filters and pages them.
+		Rows: func(context.Context) ([]Device, error) {
+			return []Device{{"dev_1", "10.0.0.1"}, {"dev_2", "10.0.0.2"}}, nil
+		},
+		Columns: []webui.Accessor[Device]{ID, IP},
+	},
 }
 
 func main() {
-  app := webui.App{
-    Brand: webui.Brand{
-      Name: "Demo",
-      Logo: mustLogo(),
-      // The browser tab's icon is made from Logo and served by the app, so
-      // there is nothing to produce or host. NoFavicon: true turns it off.
-    },
-    // A Theme is four colours, as hex: Accent, OK, Warning and Critical. The
-    // library derives hover, text and badge tints from each, for light and
-    // dark. A field left empty keeps the design's own colour.
-    Theme: webui.Theme{Accent: "#3d71d9"},
-    Pages: webui.Pages{
-      Devices,
-      Details,
-    },
-  }
+	app := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{Devices}}
 
-  // Compile validates the app and prepares it: path matchers, argument
-  // decoders, compiled patterns, leaf addresses. Nothing reflects per request.
-  // The handler is never nil — on failure it serves the error at every path
-  // under the prefix, so a broken app is diagnosable in the browser.
-  // MustCompile is the fail-fast variant.
-  handler, err := app.Compile("/admin")
-  if err != nil {
-    log.Println("webui:", err)
-  }
-
-  mux := http.NewServeMux()
-  // The handler receives the full request path and strips the prefix itself.
-  mux.Handle("/admin/", authMiddleware(handler))
-
-  // Your own routes coexist; the library owns exactly its own subtree.
-  mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-  })
-
-  log.Fatal(http.ListenAndServe(":8080", mux))
-}
-
-func mustLogo() image.Image {
-  img, err := png.Decode(bytes.NewReader(logoBytes))
-  if err != nil {
-    panic(err)
-  }
-  return img
+	// Compile checks the declaration and returns an http.Handler.
+	http.Handle("/admin/", app.MustCompile("/admin"))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 
-## Running the demo
+Run it and open <http://localhost:8080/admin/device>. You get a sidebar, a
+breadcrumb, and a table whose columns all sort and filter, with the state kept in the
+address so a copied link reproduces the view. Add a `Form` for an editable page, a
+`Link` to open a row, and a `Guard` to say who may see it.
 
+webui does not authenticate. Mount the handler behind your own login.
+
+## Try the full demo
+
+The repository has a larger demo, an imaginary telemetry collector, that shows the
+library end to end:
+
+```sh
+git clone https://github.com/Olian04/webui && cd webui
+go run ./cmd/demo                    # http://localhost:8080/admin/
+go run ./cmd/demo -viewer            # guarded controls and pages are refused, with the reason
+go run ./cmd/demo -accent '#2f9e8f'  # override the theme's accent colour
+go run ./cmd/demo -broken            # the failed-to-compile page
 ```
-go run ./cmd/demo                      # http://localhost:8080/admin/
-go run ./cmd/demo -viewer              # guarded controls and pages are refused, with the reason
-go run ./cmd/demo -accent '#2f9e8f'    # override the theme's accent colour
-go run ./cmd/demo -broken              # the failed-to-compile page
-```
 
-The demo is a static config and shows the whole library; each file has its own
-corner of it, and `cmd/demo/demo_test.go` is the list of what it shows.
+## Documentation
 
-| File | Shows |
+The full documentation is on pkg.go.dev, with runnable examples:
+
+**<https://pkg.go.dev/github.com/Olian04/webui/pkg/webui>**
+
+It covers pages and their arguments, layouts, tables (paging, sorting, filters and
+search), forms and validation, outcomes (success, warning, failure, rejection and
+where to go next), links between pages, theming, errors, and security.
+
+---
+
+# Developing webui
+
+This half is for people changing the library.
+
+## Layout
+
+| Path | Role |
 | --- | --- |
-| `devices.go` | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Effect.Fields` |
-| `sites.go` | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page with their own `ID`s, a second page contributing search results |
-| `alerts.go` | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer` |
-| `settings.go` | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider` |
-| `system.go` | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
-| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page |
+| `pkg/webui` | The public API: the declaration types, and `Compile`, which validates them and lowers them to the runtime. Its package documentation and examples are what pkg.go.dev shows. |
+| `internal/ir` | The handoff between the declaration and the runtime. Plain data and closures with the types erased: no transport, no generics. |
+| `internal/args` | Encoding and decoding a page's path and query arguments, from the struct's fields and `webui` tags. |
+| `internal/rules` | RE2 compilation and the server-side check of a field's constraints. |
+| `internal/tablequery` | Filtering, sorting, paging and searching rows held in memory, for `Table.Rows`. |
+| `internal/runtime` | The compiled app: routes, the request pipeline, actions, flash, search, and `Open`. |
+| `internal/render` | The IR and loaded data as HTML, and the assets. `templates/components` is the component library. |
+| `internal/favicon` | Scales `Brand.Logo` into the favicon. |
+| `test` | Integration tests, which import `pkg/webui` only. |
+| `cmd/demo` | The runnable demo. It is not part of the API. |
 
-Everything works with JavaScript switched off: every control is a real link or
-form. The one script (`enhance.js`) replaces a single panel when a link inside it
-changes only that panel's arguments, enables the selection bar and the page
-search, and nothing else.
+Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and
+`test` never imports `internal`. [`docs/AGENTS.md`](docs/AGENTS.md) is the full set of
+conventions, and is the source of truth when advice conflicts.
 
-The structs declare the app; the compiled runtime is the target of every
-runtime action; `ctx` is the gateway between them. So anything that touches the
-runtime takes `ctx`, and anything that is a pure function of the model does not
-— which is why an accessor's `Load` and `Store` stay `ctx`-free while `Open`,
-the loaders, and every `Guard` take it.
+A declaration becomes a page in four steps. `pkg/webui` validates it, collecting every
+problem, and lowers it, which is the one place type parameters are erased, into
+`internal/ir`. `internal/runtime` turns that into routes and a request pipeline
+(decode the arguments, run the page's Guard, load, render; for a POST: parse, rules,
+bind, Guard, Run). `internal/render` renders the result with
+[templ](https://templ.guide) components and serves the stylesheet, scripts and icon
+font.
 
-`webui.Open` resolves the page through the runtime rather than reading the
-declaration, so it returns a real href including the mount prefix, and a page
-that was never mounted — or whose declaration was mutated after `Compile` — is
-reported instead of silently producing a dead link:
+## Working on it
 
-```
-mounted:     /admin/device/abc?debug=true
-not mounted: webui: Open "/never-mounted/{id}": that page is not mounted in this app
-mutated:     webui: Open "/CHANGED/{id}": that page is not mounted in this app
-no runtime:  webui: Open "/CHANGED/{id}": no compiled app in this context
-```
-
-### Going back
-
-A form's Cancel button, and a form that saved, return to the page the user came
-from, so a form reachable from several pages needs no code to say which. The
-library does it: a `Link` (a row click) to a page that has a form adds the
-address of the page it is on, sort, filters and page included, in the reserved
-parameter `webui.from`. The parameter rides along through the form's own links,
-its re-render after a rejection and its POST, and a chain of pages unwinds one
-hop at a time (it is bounded, so the address cannot grow without end). Without
-it, Cancel goes to the parent in the breadcrumb, and a save stays where it is, so a
-form opened directly or from a bookmark behaves as it always did. An explicit
-`Effect.Redirect` wins over the origin.
-
-The address is only ever followed when it is a path in this app: a full URL,
-`//host`, another path on the host or `/_webui` is ignored, so it cannot become an
-open redirect. A search result does not set it, since a search is not a page.
-
-A `Link` names its destination as a field rather than building a `Target` in a
-closure, so the target is data. Two consequences: the page and the argument
-struct must agree, checked by the compiler —
-
-```
-cannot use Details (variable of struct type Page[DetailsArgs]) as Page[OrphanArgs] value
+```sh
+make help       # the targets
+make generate   # regenerate the *_templ.go files from the .templ sources
+make test       # generate, then go test -race -shuffle=on
+make lint       # generate, vet, verify modules, govulncheck, golangci-lint
+make run        # build and run the demo
 ```
 
-— and `Compile` walks the `Body` tree and checks every target is mounted,
-however deeply nested:
+The generated `*_templ.go` files are committed, so the module builds for anyone who
+imports it. Run `make generate` after editing a `.templ` file; CI fails if they are
+out of date. The icon font and its class list are generated from a Font Awesome Free
+download by `internal/render/assets/fontawesome_gen.go`; see
+[`docs/AGENTS.md`](docs/AGENTS.md).
 
-```
-page "/broken": a link targets "/never-mounted/{id}", which is not mounted in this app
-  Fix: Add that page to App.Pages, or point the link at a page that is already
-       there.
-```
+## Tests
 
-`Compile` validates the app and prepares it — path matchers, argument decoders,
-compiled patterns, leaf addresses — so nothing reflects per request. The handler
-is never nil: a failed compile still serves, rendering the failure at every path
-under the prefix.
+Tests for the public API are integration tests in `test`: they compile an app and
+make requests to it, and import `pkg/webui` only. Unit tests for an internal package
+sit beside the code in the same package. The runnable examples in `pkg/webui` are
+tests too, so the documentation on pkg.go.dev cannot drift from the code.
 
-Failures are collected rather than reported one at a time, and each is
-structured — which page, which argument type, what went wrong, and what to do
-about it:
+Code that only a test uses does not belong in the library. If nothing reachable from
+the public API needs it, it is deleted, or moved into the tests.
 
-```
-page "/device/{id}": the path declares {id} but DetailsArgs has no field for it
-  Fix: Add a field named Id to DetailsArgs, or change the placeholder to match
-       an existing field.
-page "/org/{id}": two fields both map to the argument "id"
-  Fix: Rename one field, or give it a distinct name with a `webui:"..."` tag.
-page "/event/{id}": field When has unsupported type []string
-  Fix: Arguments must be string, bool, int, int64 or float64 — a URL carries
-       one value per name.
-```
+## Documentation
 
-The same set renders as an HTML page, served at every path under the prefix
-until the app compiles.
+| Where | What |
+| --- | --- |
+| `pkg/webui/doc.go`, and every exported identifier | The documentation for users, which pkg.go.dev renders. Write it as complete sentences that start with the name, and put runnable examples in `example_*_test.go`. |
+| [`docs/design-decisions.md`](docs/design-decisions.md) | Why the library is shaped as it is, and what each decision costs. Read it before changing the API. |
+| [`docs/design.md`](docs/design.md) | The visual language: tokens, metrics, components and states. |
+| [`docs/design-mapping.md`](docs/design-mapping.md) | Which declared type produces which design element, and where the two disagree. |
+| [`docs/AGENTS.md`](docs/AGENTS.md) | Layout, dependency direction and Go conventions, for people and tools. |
 
-`MustCompile` is the fail-fast variant, mirroring `regexp` and `template`.
+## The demo
 
-A zero path field is the one case reflection cannot catch at startup, so
-`Open` reports it:
+The demo is a static configuration that shows the whole library; each file has its
+own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
 
-```
-empty path arg: webui: Open "/device/{id}": path argument "id" is empty
-```
+| File                    | Shows                                                                                                                                                                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `devices.go`            | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Reject`, a `Failure`, a `Warning` and `Then`     |
+| `sites.go`              | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page with their own `ID`s, a second page contributing search results                                                                                                                                           |
+| `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer`                                                                           |
+| `settings.go`           | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider`                                                                                                                                                                                                                                  |
+| `system.go`             | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
+| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page                                                                                                                                                                                                                          |
 
-"The current URL with one argument changed" needs no primitive — it is a
-struct copy:
+## Conventions
 
-```go
-next := cur
-next.Limit = 50
-return webui.Open(ctx, Details, next)   // /device/abc?debug=true&limit=50
-```
+- **Commits** are [Conventional Commits](https://www.conventionalcommits.org) with a
+  capital after the colon (`feat(webui): Add ...`), and `!` for a breaking change.
+  Work happens on a branch, not on `main`.
+- **Changing the public API** is a decision, not a side effect. Prefer behaviour the
+  library infers or owns over a hook the user implements, prefer what the compiler
+  can check over what `Compile` has to, and keep the surface small.
+- **Everything works without JavaScript.** The script adds speed and conveniences
+  and nothing else; a feature that needs it is not finished.
 
-`Open` builds an address from the page's own arguments. A table's paging and
-sort and the selected tab are view state the library keeps in the address, so an
-`Open` link lands on the defaults: first page, unsorted, first tab. A link a
-user is *on* (pager, sort header, tab, Refresh) always carries the whole
-address, so nothing it does drops another table's state.
+## Releasing
 
-A page's `Body` is a single `PageBody`. Leaves (`Table`, `Form`) load and
-refresh; layouts only arrange, and they nest:
-
-```go
-Body: webui.Stack{ // vertical
-  webui.Split{ // side by side, across models
-    webui.Form[Device]{ ... },
-    webui.Table[Event]{ ... },
-  },
-  // The selected tab is kept in the address as ?tabs.tab=raw, so it survives a
-  // reload and can be linked to. ID defaults to "tabs". Only the selected panel
-  // is loaded.
-  webui.Tabs{Panels: []webui.Tab{
-    {Label: "Raw", Body: webui.Table[Event]{ ... }},
-  }},
-},
-```
-
-`Stack`, `Split` and `Tabs` are the layouts. All three hold `PageBody`, so none
-of them constrains what their children are about. `Group[M]` is a different
-thing one level down: accessor composition inside a form, typed to the model.
-
-`webui.String`, `Int` and `Float` are the plain accessors. `Badge` shows a
-string as a coloured pill (`Kinds` lists the values it can hold, each with its tone), and `Slider` shows a
-number on a range: a bar when read-only — in a table, or in a form without a
-`Store` — and a range input when it has one. Both take a `Label` and a `Load`
-like the others, and `Slider` needs a `Min` and `Max`.
-
-A table column is known by its `Label`: `Load` receives it in `Query.Sort`,
-`Query.Filters` and `Query.Ranges`, and the address names the column by it, in
-lower case with dashes (`?devices.sort=mean-rate-s`). There is nothing to declare
-to make a column sortable or filterable. Within one table the labels must tell the
-columns apart, which `Compile` checks; the same goes for the labels of a `Tabs`.
-
-Context-specific presentation stays off the accessor. Options are decorators,
-which are themselves accessors, so the common case stays a bare list:
-
-```go
-Fields: []webui.Accessor[Device]{webui.Placeholder[Device]{IP, "10.0.0.1"}},
-```
-
-The search box in the top bar lists the app's pages and is a keyboard
-combobox: type, move with the arrow keys, Enter follows the highlighted result,
-Escape closes it. A page adds its own results with `Search`, which receives what
-was typed and returns links built with `Open`:
-
-```go
-var Devices = webui.Page[webui.NoArgs]{
-  Path: "/device",
-  Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
-    devices, err := service.Find(ctx, query, 8)
-    results := make([]webui.SearchResult, len(devices))
-    for i, d := range devices {
-      results[i] = webui.SearchResult{
-        Title:  d.Id,
-        Desc:   d.Ip,
-        Target: webui.Open(ctx, Details, DetailsArgs{Id: d.Id}),
-      }
-    }
-    return results, err
-  },
-  ...
-}
-```
-
-Results are grouped under the page's `Nav.Label`, at most eight from each page.
-`Search` runs without the page's arguments, so the page's `Guard` runs first with
-zero arguments and a page it refuses contributes nothing, and a page with path
-arguments cannot offer `Search` at all — list the things from a page without
-placeholders and `Open` the detail page. A result whose `Target` failed, or that
-is not an address on this host, is dropped and logged.
-
-## Open
-
-- Validation is declarative. `Rules` is a per-value-type struct of data, not
-  closures, so the same set renders as HTML constraint attributes (`required`,
-  `minlength`, `pattern`, `min`, `max`) and re-runs on the server before
-  `Submit`. A rule is a plain scalar when its zero value already means "no
-  constraint" and its message is derivable (`MinLen`); a struct pointer when
-  either fails — `Pattern` because a regex explains nothing to a user, `Min`
-  because a zero bound is a real constraint and Go will not let you write `&0`.
-  The set is closed: a rule the framework does not define cannot be added
-  without writing client code, so anything beyond it goes in `Run`.
-- `Store` is pure assignment with no error return, and no `ctx`. The ordering
-  problem came from `Store` seeing `*M`; rules see only their own value, so
-  inter-field dependencies are not expressible and need no ordering.
-- Field errors ride on `Effect`, with a nil error. A validation rejection is a
-  submission that was understood and refused and the user can fix; an `error`
-  is something they cannot fix by editing the form. `Effect` stays non-generic
-  by putting the model on the slice (`webui.Fields[Device]`), so bulk actions
-  do not inherit a meaningless `[]FieldError[[]Device]`.
-- Pipeline: parse -> rules -> `Store` -> `Guard` -> `Run`. `Store` applies to a
-  copy of the model `Load` returned, not a zero one, so read-only fields (an ID
-  with no `Store`) are intact for `Guard` and `Run`. Parse failures
-  short-circuit, so a form with both a malformed number and a duplicate value
-  shows the parse error first and the duplicate only on the next submit.
-- After a successful action the browser gets a `303` and the toast rides a
-  short-lived `HttpOnly` cookie, so a reload does not repeat the POST and the
-  URL carries nothing. POSTs are checked with `http.CrossOriginProtection`
-  (Fetch metadata and `Origin`); behind a proxy that rewrites `Host`, wrap the
-  handler and allow the public origin.
-- The re-render after a rejection must echo the raw submitted input, not the
-  model value, or the user's bad input disappears and the form looks like it
-  reset.
-- `Pattern` is not portable: Go's RE2 rejects the lookahead and backreference
-  syntax people copy from JavaScript examples. `Compile` compiles every
-  `Pattern` at startup and the error says RE2, not "regex". The expression is
-  anchored on both sides, because an HTML `pattern` attribute must match the
-  whole value and the server has to reach the same verdict as the browser.
-- Any struct a user fills with an unkeyed literal from another package trips
-  `go vet`'s composites check, so nested literals in the API must expect keyed
-  fields (`{Field: IP, Message: "..."}`).
-- `Group` listed as a column is rejected by `Validate` rather than flattened —
-  flattening would mean defining what a nested group is in a cell.
-- A nested `Table` inside a form's `Fields` stays out of scope. If it turns out
-  to be wanted, it is solved then.
-- Refresh: done. A link inside a panel that changes only that panel's arguments
-  fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
-  without script it is an ordinary navigation. The page `Guard` runs on every
-  request, leaf addresses are derived from the `Body` tree by position, and
-  framework parameters never touch the URL. `Vary: X-Webui-Leaf` is set. After
-  a leaf moves, sibling panels that embed the old address are fetched again and
-  forms keep what was typed (only their `action` is patched). After an action
-  the whole page re-renders; a model-typed `Stale[Device]` is deferred.
-- Pagination and sorting: done, as library-owned view state. `Table.PageSize`
-  turns paging on, every column is sortable, and `Load` receives a `Query` and
-  returns `Rows{Items, Total}`, doing the sorting itself; `Total` below what has been shown
-  means unknown. Setting a filter returns every table to its first page.
-- Column filtering: done, as library-owned view state, like sorting. Hovering a
-  header shows a filter icon; it opens a form that is a plain GET, so it works
-  without script. A column with a fixed set of options — a `Badge`, whose options
-  are the keys of its `Kinds` — gets a multi-select of exactly those, a numeric
-  column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
-  column a text input. `Load` receives them in `Query.Filters` (the options
-  chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,
-  inclusive, either end optional), keyed like `Query.Sort`. A number is compared
-  as a number, never as text: "5" is not a way to ask for more than 5. A chosen
-  option that is not an option, an empty text, a bound that is not a finite
-  number and a column the table does not have never arrive, and a typed filter is
-  cut at 200 characters. A multi-select is repeated parameters
-  (`devices.filter.status=a&devices.filter.status=b`), which is also what a form
-  of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. The page has no row of argument controls:
-  its query arguments come from the address (a link, `Open`) and have no UI.
-- Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
-  gating happens at execution rather than per-row at render. Row actions are
-  gated at render, per row, by the same `Guard` that authorises the POST.
-- Non-string path arguments: built-in decoding for integers and
-  `encoding.TextUnmarshaler`, or an escape hatch for the rest.
-- Arguments are one struct per page. `Open` is compiler-checked, `Guard` is
-  typed, and five concepts (`Arg`, `Args`, `Binding`, `Set`, `Get`) collapse
-  into a struct literal. Cost: reflection enters the user-facing path for
-  encode/decode, with `Validate()` in front of it so failures land at startup;
-  `Pages` goes back to an interface slice since `Page[A]` differs per `A`;
-  cross-page reuse becomes struct embedding rather than shared vars; and a zero
-  field cannot be distinguished from an absent one without a pointer.
-- Optionality: a zero field means absent and stays out of the URL. A field
-  where zero is meaningful needs a pointer — the same trade as `Rules`.
-- Transport parameters travel as headers, never in the URL; *view state* is in
-  the URL, because it is what a copied address has to reproduce. The URL
-  carries the page's arguments and the view state of its tables and tabs,
-  headers carry read-side transport (`X-Webui-Leaf`), form bodies carry
-  write-side routing. View state is named `<id>.<param>` (`devices.offset`,
-  `devices.sort`, `devices.desc`, `tabs.tab`), and an argument name may not
-  contain `.`, so the two can never collide; `Compile` rejects one that does.
-  An ID is a lower-case word, unique within its page (two pages may reuse one),
-  and defaults to the component's name. Parameters for a leaf the page does not
-  have are ignored. Consequence: an iframe cannot set headers, so embedding a
-  leaf later needs its own path and a standalone document, rather than reusing
-  the refresh mechanism.
-- Why the library owns view state instead of the argument struct: the struct
-  would have to carry `Offset`, `Sort`, `Desc` and `Tab` fields for the
-  framework's benefit, and the table would name them by string. The cost is
-  that nothing outside the leaf can read or set that state — `Guard` and
-  sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
-  sorted table.
-- Pages that link to each other are still static `var`s, with one rule. A list
-  whose rows `Link` to a detail page, whose form action redirects back with
-  `Open(ctx, List, ...)`, is a cycle Go rejects at build time:
-  `initialization cycle for List`. Go counts any mention of a package-level
-  variable inside an initializer, function literals included, so splitting the
-  `Link` and the `Action` into their own `var`s only lengthens the chain. A
-  constant is not a variable, so a page that is linked back to declares its path
-  as a `webui.PageID[A]` constant, and the link back names the constant:
-
-  ```go
-  const DevicesPath webui.PageID[webui.NoArgs] = "/device"
-
-  var Devices = webui.Page[webui.NoArgs]{Path: DevicesPath, ...} // links forward: Page: Details
-  var SaveDevice = webui.Action[Device]{
-    Run: func(ctx context.Context, d Device) (webui.Effect, error) {
-      return webui.Effect{Redirect: webui.Open(ctx, DevicesPath, webui.NoArgs{})}, nil
-    },
-  }
-  ```
-
-  `PageID[A]` carries the argument type, so `Page[NoArgs]{Path: DetailsPath}` and
-  `Open(ctx, DevicesPath, DeviceArgs{})` do not compile. `Path: "/device"` still
-  does: a literal or an untyped constant converts. `Open` and `Link.Page` take a
-  page or its `PageID`; only a `string` variable can no longer be a `Path`.
-- `ArgsOf` returns one value and panics on a mistake, because the only ways it
-  can fail are a wrong type or a `ctx` from outside a page: neither is something
-  a caller can handle, and an error to check at every call site buys nothing. The
-  runtime recovers any panic in a closure into the "Something went wrong" page
-  and a log line with the stack, instead of a dropped connection.
-- `ArgsOf` keys `ctx` on an unexported type. A string key would collide with
-  any other package using the same string, and `go vet` does not catch it.
-- `Open` can fail at render time (a zero path argument), so `Target` carries an
-  `Err`. Such a link renders disabled and is logged rather than panicking.
-- `Open` is `webui.Open(ctx, page, args)`, not a method, so `Page` carries no
-  behaviour at all. Type inference still gives a compile error on the wrong
-  argument struct: `type OtherArgs does not match inferred type DetailsArgs`.
-  Resolving through the runtime means `Target.URL` includes the mount prefix,
-  so it is a real href and the renderer no longer prepends anything; and an
-  unmounted page is caught at render rather than producing a dead link.
-  `Link` declares its destination page and an `Args` function instead of
-  building the `Target` itself, which moves target checking from render time to
-  `Compile`. `Open` remains for programmatic navigation, such as
-  `Effect.Redirect`.
-- `Compile(prefix)` replaces `Validate()` and `HttpHandler()`. It is the one
-  place the mount prefix is stated. `Open` resolves the prefix
-  through the runtime, so `Target.URL` is absolute. The compiled
-  form is a separate value, so mutating `App` afterwards has no effect — which
-  is the intent.
-- `Compile` returns a handler even on failure, serving the error at every path
-  under the prefix. The guarantee is therefore not "no handler without a
-  passing check" but "no *silently* broken handler". `MustCompile` panics, for
-  callers who want the process to refuse to start.
-- The compile error page shows type and field names. Fine behind the auth
-  middleware an admin panel normally sits behind; worth a conscious decision
-  before anyone mounts the prefix publicly.
-- `CompileError` carries `Page`, `Args`, `Detail` and `Fix`. Go cannot recover
-  the file and line of a struct literal at run time, so a page is identified by
-  its `Path` and its argument type name — both must therefore always appear in
-  the message, since they are the only coordinates available.
-- `Compile` collects every problem instead of stopping at the first. The errors
-  are structured rather than parsed from a compiler, so there is no reason to
-  report one at a time.
-- Argument names come from the lower-cased field name, overridable with a
-  `webui:"..."` tag. `Validate` rejects duplicates, unsupported field types, and
-  path placeholders with no matching field.
+Releases are cut from the **Release** workflow (Actions, *Run workflow*), which asks
+for a version (`X.Y.Z`, or `X.Y.Z-N` for the Nth prerelease before it), tags the
+commit, and publishes the release with GoReleaser. Nothing is built: webui is a
+library, and consumers fetch the tag with `go get`.

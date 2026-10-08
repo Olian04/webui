@@ -12,7 +12,8 @@ import (
 	"github.com/Olian04/webui/internal/render/assets"
 )
 
-// NoArgs is the argument type for a page with no path or query parameters.
+// NoArgs is the argument type of a page with no path or query parameters, as in
+// Page[NoArgs].
 type NoArgs struct{}
 
 // PageID is a page's path, tied to its argument type. Declare one as a constant
@@ -47,10 +48,19 @@ type Page[A any] struct {
 	// Path is the page's address, such as "/device/{id}". It is typed by A, so a
 	// PageID declared for one page's arguments cannot be given to another; a
 	// string literal or an untyped constant converts without ceremony.
-	Path  PageID[A]
-	Nav   Nav
+	Path PageID[A]
+
+	// Nav is the page's entry in the sidebar. A page with no Label has no entry.
+	Nav Nav
+
+	// Guard decides whether the visitor may open the page. It runs before anything
+	// is loaded, on every request to the page, with the decoded arguments. A
+	// non-nil error answers 403, and its text is shown as the reason. The pages a
+	// Guard refuses are also left out of the sidebar and the search.
 	Guard func(ctx context.Context, a A) error
-	Body  PageBody
+
+	// Body is what the page shows: a [Table], a [Form], or a layout of them.
+	Body PageBody
 }
 
 // Nav is a navbar entry. A page with an empty Label has no entry of its own, and
@@ -58,12 +68,22 @@ type Page[A any] struct {
 // prefix of its own that has a Label. A page at "/device/{id}" borrows the
 // "Devices" entry of the page at "/device", so there is nothing to declare.
 type Nav struct {
-	Label   string
-	Icon    string // a Font Awesome Free solid icon name, "house" for fa-house; without one, the label's initial is shown when the sidebar is collapsed
-	Section string // caption above a run of entries; empty continues the run
+	// Label is the entry's text. A page with no Label has no entry of its own.
+	Label string
+
+	// Icon is the name of a Font Awesome Free solid icon, "house" for fa-house,
+	// drawn beside the label. An unknown name is a compile error. Without one, the
+	// label's first letter, capitalised, is shown where the sidebar is collapsed to
+	// icons.
+	Icon string
+
+	// Section is a caption above this entry and the entries that follow it. Leave
+	// it empty to continue the previous entry's section.
+	Section string
 }
 
-// PageBody is a leaf (Table, Form) or a layout (Stack, Split, Tabs).
+// PageBody is what a page shows: a leaf, [Table] or [Form], or a layout of them,
+// [Stack], [Split] or [Tabs]. Only this package implements it.
 type PageBody interface {
 	isPageBody()
 	validateBody(v *bodyValidator)

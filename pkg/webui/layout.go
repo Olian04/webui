@@ -7,12 +7,14 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Stack lays out children vertically. Children may be any PageBody.
+// Stack lays out bodies vertically, in a column of panels. Its children may be any
+// [PageBody], including other layouts.
 type Stack []PageBody
 
 func (Stack) isPageBody() {}
 
-// Split lays out children side by side. Children may be any PageBody.
+// Split lays out bodies side by side, across the width of the page. It collapses to
+// a column on a narrow screen. Its children may be any [PageBody].
 type Split []PageBody
 
 func (Split) isPageBody() {}
@@ -20,19 +22,25 @@ func (Split) isPageBody() {}
 // Tab is one panel in Tabs. It is selected in the address by its label, in lower
 // case with dashes for anything else: the "Raw events" tab is "?tabs.tab=raw-events".
 type Tab struct {
+	// Label is the text of the tab, and what names it in the address.
 	Label string
-	Body  PageBody
+
+	// Body is what the tab shows, loaded only while the tab is selected.
+	Body PageBody
 }
 
 func (t Tab) key() string { return args.Slug(t.Label) }
 
-// Tabs is a labeled set of PageBody panels. The selected tab is kept in the
-// address as "<ID>.tab", so it survives a reload and can be linked to; the
-// library owns that parameter. ID defaults to "tabs" and must be unique within
-// the page. Only the selected panel is loaded. An empty or unknown value selects the first
-// tab.
+// Tabs is a labelled set of bodies, one shown at a time. The selected tab is kept
+// in the address as "<ID>.tab", so it survives a reload and can be linked to; the
+// library owns that parameter. Only the selected panel is loaded, and an empty or
+// unknown value selects the first.
 type Tabs struct {
-	ID     string
+	// ID names the tabs' state in the address. It defaults to "tabs", and must be
+	// unique within the page.
+	ID string
+
+	// Panels are the tabs, in order.
 	Panels []Tab
 }
 
