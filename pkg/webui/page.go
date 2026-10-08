@@ -1,6 +1,14 @@
 package webui
 
-import "context"
+import (
+	"context"
+	"reflect"
+	"regexp"
+	"strings"
+
+	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/ir"
+)
 
 // NoArgs is the argument type for a page with no path or query parameters.
 type NoArgs struct{}
@@ -14,19 +22,134 @@ type Page[A any] struct {
 	Body  PageBody
 }
 
-func (Page[A]) isPage() {}
-
-// Nav is a navbar entry. Shadow points at another Nav's identity (the pointer)
-// so this page highlights that entry without appearing in the bar.
+// Nav is a navbar entry. A page with an empty Label has no entry of its own.
+// Shadow points at another page's Nav so this page highlights that entry
+// without appearing in the bar; it is matched by value, so the target page's
+// Nav must be unique among pages.
 type Nav struct {
-	Label  string
-	Shadow *Nav
+	Label   string
+	Section string // caption above a run of entries; empty continues the run
+	Shadow  *Nav
 }
 
 // PageBody is a leaf (Table, Form) or a layout (Stack, Split, Tabs).
 type PageBody interface {
 	isPageBody()
+	validateBody(v *bodyValidator)
+	lowerBody(at ir.Addr, l *bodyLowerer) ir.Node
 }
 
-// ASSERT: Page implements PageDecl
+func (Page[A]) isPage() {}
+
+func (p Page[A]) pagePath() string { return p.Path }
+
+func (p Page[A]) pageNav() Nav { return p.Nav }
+
+func (p Page[A]) pageArgType() reflect.Type { return reflect.TypeFor[A]() }
+
+// ASSERT: Page implements pageLike
 var _ pageLike = Page[struct{}]{}
+
+var (
+	placeholderName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	reservedPrefix  = "/_webui"
+)
+
+func (p Page[A]) validatePage(f *facts) []CompileError {
+	typ := reflect.TypeFor[A]()
+	v := &bodyValidator{page: p.Path, args: typeName(typ), facts: f}
+
+	if errs := validatePath(p.Path); len(errs) > 0 {
+		for _, e := range errs {
+			v.add(e.Detail, e.Fix)
+		}
+		return v.errs
+	}
+	if f.paths[p.Path] > 1 {
+		v.add("two pages declare this path",
+			"Give each page a distinct Path; the router would pick one and the other would be dead.")
+	}
+
+	_, problems := args.Spec(typ, p.Path)
+	for _, pr := range problems {
+		v.add(pr.Detail, pr.Fix)
+	}
+	if typ.Kind() != reflect.Struct {
+		return v.errs // every later check reads A's fields
+	}
+
+	if p.Nav.Shadow != nil {
+		switch n := f.shadowTargets[*p.Nav.Shadow]; {
+		case n == 0:
+			v.add("Nav.Shadow points at a Nav that no page owns",
+				"Point Shadow at the Nav of a page in App.Pages that has a Label and no Shadow of its own.")
+		case n > 1:
+			v.add("Nav.Shadow matches more than one page's Nav",
+				"Give the target page a Nav that differs from every other page's, for example a distinct Label.")
+		}
+	}
+
+	if p.Body == nil {
+		v.add("Body is nil", "Set Body to a Table, Form, Stack, Split or Tabs.")
+		return v.errs
+	}
+	p.Body.validateBody(v)
+	return v.errs
+}
+
+func validatePath(path string) []CompileError {
+	bad := func(detail, fix string) []CompileError { return []CompileError{{Detail: detail, Fix: fix}} }
+	if path == "" || path[0] != '/' {
+		return bad("Path must start with \"/\"", "Write the path as \"/device\" or \"/device/{id}\".")
+	}
+	if strings.ContainsAny(path, "?#") {
+		return bad("Path must not contain a query or fragment",
+			"Declare query parameters as fields on the argument struct.")
+	}
+	if path == reservedPrefix || strings.HasPrefix(path, reservedPrefix+"/") {
+		return bad("Path is under the reserved prefix "+reservedPrefix,
+			"Choose another path; "+reservedPrefix+" serves the framework's own assets.")
+	}
+	if path == "/" {
+		return nil
+	}
+	for _, seg := range strings.Split(path[1:], "/") {
+		switch {
+		case seg == "":
+			return bad("Path has an empty segment", "Remove the doubled or trailing slash.")
+		case strings.ContainsAny(seg, "{}"):
+			if len(seg) < 3 || seg[0] != '{' || seg[len(seg)-1] != '}' ||
+				!placeholderName.MatchString(seg[1:len(seg)-1]) {
+				return bad("Path segment "+seg+" is not a valid placeholder",
+					"A placeholder is a whole segment of the form {name}.")
+			}
+		}
+	}
+	return nil
+}
+
+func typeName(t reflect.Type) string {
+	if n := t.Name(); n != "" {
+		return n
+	}
+	return t.String()
+}
+
+func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
+	typ := reflect.TypeFor[A]()
+	specs, _ := args.Spec(typ, p.Path)
+	codec := args.NewCodec(typ, specs)
+
+	page := &ir.Page{
+		PathTemplate: p.Path,
+		Args:         specs,
+		Nav:          l.nav(p.Nav),
+		Decode:       codec.Decode,
+		Encode:       codec.Encode,
+	}
+	if p.Guard != nil {
+		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
+	}
+	page.Body = p.Body.lowerBody(ir.Addr{}, &bodyLowerer{nodes: &l.nodes})
+	return page
+}
