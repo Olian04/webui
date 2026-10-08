@@ -26,7 +26,7 @@ into existence, and nothing is configured twice.
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none) |
 | `Nav.Section` | The uppercase caption above a run of entries |
-| `Page.Search` | That page's group of results in the top bar's search, beneath the app's pages |
+| `Page.Search` | That page's group of results in the top bar's search, beneath the app's pages; a result appears only if the page it leads to would let the visitor in (its `Guard`) |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
