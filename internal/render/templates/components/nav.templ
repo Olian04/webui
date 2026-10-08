@@ -1,6 +1,5 @@
 package components
 
-import "strconv"
 
 // The sidebar is the one piece of structure that never disappears. It does not
 // become a top bar and it does not become a menu button; below 820px it
@@ -110,32 +109,4 @@ templ NavItem(p NavItemProps) {
 			<span class="nav-count">{ p.Count }</span>
 		}
 	</a>
-}
-
-// NavGroupProps is an expandable parent. Its children are NavItems.
-type NavGroupProps struct {
-	ID    string
-	Label string
-	Icon  IconName
-	Open  bool
-	Attrs templ.Attributes
-}
-
-templ NavGroup(p NavGroupProps) {
-	<div
-		class={ "nav-item", templ.KV("open", p.Open) }
-		data-group={ p.ID }
-		role="button"
-		tabindex="0"
-		aria-expanded={ strconv.FormatBool(p.Open) }
-		aria-controls={ p.ID }
-		{ p.Attrs... }
-	>
-		@Icon(IconProps{Name: p.Icon, Class: "ni"})
-		<span>{ p.Label }</span>
-		@Icon(IconProps{Name: IconChevron, Class: "chev"})
-	</div>
-	<div id={ p.ID } class={ "nav-sub", templ.KV("open", p.Open) } data-sub={ p.ID }>
-		{ children... }
-	</div>
 }

@@ -104,7 +104,9 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 }
 
 // rowText is a row as a search result: its first column is the title, and the
-// others, where they say something, are the line beneath it.
+// other text columns, where they say something, are the line beneath it. A number
+// is left out of the line, since without its column's label it says nothing, but it
+// is still searched.
 func rowText(t *ir.Table, row any) (title, desc string) {
 	var rest []string
 	for i, c := range t.Columns {
@@ -114,7 +116,7 @@ func rowText(t *ir.Table, row any) (title, desc string) {
 		switch text := c.Get(row); {
 		case i == 0:
 			title = text
-		case text != "":
+		case text != "" && c.Num == nil:
 			rest = append(rest, text)
 		}
 	}

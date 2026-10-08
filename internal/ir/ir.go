@@ -25,24 +25,11 @@ package ir
 // Node is a leaf or a layout. Leaves load and refresh independently; layouts
 // only arrange, and never load, guard, or refresh.
 type Node interface {
-	Kind() NodeKind
 	// Addr is the node's position in the body tree, assigned while lowering.
 	// A section-refresh request names this, and it is stable for the life of
 	// one compiled app.
 	Addr() Addr
 }
-
-// NodeKind tags a Node for diagnostics and exhaustive switching.
-type NodeKind uint8
-
-// The node kinds. Layouts first, then leaves.
-const (
-	NodeStack NodeKind = iota
-	NodeSplit
-	NodeTabs
-	NodeForm
-	NodeTable
-)
 
 // Addr is a path of child indices from the page body, such as [0 1].
 type Addr []int

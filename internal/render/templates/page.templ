@@ -8,15 +8,12 @@ package templates
 // vocabularies meet.
 type PageProps struct {
 	Title       string
-	Theme       Theme
-	Role        string
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
 
 	Sidebar templ.Component
 	TopBar  templ.Component
-	ToolBar templ.Component
 	Status  templ.Component
 	Toasts  templ.Component
 }
@@ -24,8 +21,6 @@ type PageProps struct {
 templ Page(p PageProps) {
 	@Document(DocumentProps{
 		Title:       p.Title,
-		Theme:       p.Theme,
-		Role:        p.Role,
 		Stylesheets: p.Stylesheets,
 		Scripts:     p.Scripts,
 		Head:        p.Head,
@@ -33,7 +28,6 @@ templ Page(p PageProps) {
 		@AppShell(AppShellProps{
 			Sidebar: p.Sidebar,
 			TopBar:  p.TopBar,
-			ToolBar: p.ToolBar,
 			Status:  p.Status,
 			Toasts:  p.Toasts,
 		}) {

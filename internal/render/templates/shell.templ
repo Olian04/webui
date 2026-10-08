@@ -1,42 +1,16 @@
 package templates
 
-// Theme selects a token block explicitly. Empty means the viewer's system
-// preference decides, in the stylesheet. Nothing else about the layout, spacing
-// or component structure differs between them.
-type Theme string
-
-const (
-	ThemeDark  Theme = "dark"
-	ThemeLight Theme = "light"
-)
-
 // DocumentProps is the whole page.
-//
-// Role is a document-level attribute rather than a prop on every control: the
-// stylesheet dims and explains gated controls from one place, so a viewer-only
-// render does not have to thread a permission through every component.
 type DocumentProps struct {
 	Title       string
-	Theme       Theme
-	Role        string
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
-	Attrs       templ.Attributes
 }
 
 templ Document(p DocumentProps) {
 	<!DOCTYPE html>
-	<html
-		lang="en"
-		if p.Theme != "" {
-			data-theme={ string(p.Theme) }
-		}
-		if p.Role != "" {
-			data-role={ p.Role }
-		}
-		{ p.Attrs... }
-	>
+	<html lang="en">
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
@@ -57,13 +31,12 @@ templ Document(p DocumentProps) {
 	</html>
 }
 
-// AppShellProps is the five fixed regions. Only the content region scrolls,
+// AppShellProps is the four fixed regions. Only the content region scrolls,
 // and each region is a slot because the shell has no opinion about what goes
 // in them — it owns the geometry and the view-transition names, nothing else.
 type AppShellProps struct {
 	Sidebar templ.Component
 	TopBar  templ.Component
-	ToolBar templ.Component
 	Status  templ.Component
 	Toasts  templ.Component
 	Attrs   templ.Attributes
@@ -77,9 +50,6 @@ templ AppShell(p AppShellProps) {
 		<div class="main">
 			if p.TopBar != nil {
 				@p.TopBar
-			}
-			if p.ToolBar != nil {
-				@p.ToolBar
 			}
 			<main class="scroll">
 				{ children... }

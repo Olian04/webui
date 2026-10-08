@@ -85,7 +85,7 @@ func TestSearchFindsRowsByAnyColumnAndShowsFirstColumnAsTheTitle(t *testing.T) {
 	assert.Equal(t, len(got.Results), 1)
 	assert.Equal(t, got.Results[0].Group, "Devices") // the table's own name
 	assert.Equal(t, got.Results[0].Title, "dev-eth 0")
-	assert.Equal(t, got.Results[0].Desc, "10.0.0.1 · 4")
+	assert.Equal(t, got.Results[0].Desc, "10.0.0.1") // the numbers are searched, but not shown without their label
 	assert.Equal(t, got.Results[0].Href, "/admin/device/dev-eth%200") // the mount prefix, escaped
 
 	// Not only the first column: an address, and a number.

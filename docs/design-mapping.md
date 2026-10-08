@@ -26,7 +26,7 @@ into existence, and nothing is configured twice.
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
 | `Nav.Section` | The uppercase caption above a run of entries |
-| `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the others the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
+| `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the other text columns the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |

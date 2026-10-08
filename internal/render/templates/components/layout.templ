@@ -1,6 +1,5 @@
 package components
 
-import "strconv"
 
 // Layouts arrange and nothing else. They never load, never guard, and never
 // constrain what their children are about — a form for one model beside a
@@ -57,36 +56,5 @@ templ Tabs(p TabsProps) {
 			>{ t.Label }</a>
 		}
 	</nav>
-}
-
-// SectionProps is a collapsible row of panels: the mechanism that makes a long
-// page scannable without pagination.
-type SectionProps struct {
-	ID        string
-	Label     string
-	Count     string
-	Collapsed bool
-	Attrs     templ.Attributes
-}
-
-templ Section(p SectionProps) {
-	<div
-		class={ "rowhead", templ.KV("closed", p.Collapsed) }
-		data-row={ p.ID }
-		role="button"
-		tabindex="0"
-		aria-expanded={ strconv.FormatBool(!p.Collapsed) }
-		aria-controls={ p.ID }
-		{ p.Attrs... }
-	>
-		@Icon(IconProps{Name: IconChevron})
-		{ p.Label }
-		if p.Count != "" {
-			<span class="cnt">{ p.Count }</span>
-		}
-	</div>
-	<div id={ p.ID } class={ "rowbody", templ.KV("closed", p.Collapsed) } data-rowbody={ p.ID }>
-		{ children... }
-	</div>
 }
 

@@ -66,7 +66,7 @@ func lowerBulk[M any](a Action[[]M]) *ir.Action {
 		}
 		return out
 	}
-	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role), Bulk: true}
+	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role)}
 	if a.Guard != nil {
 		out.Guard = func(ctx context.Context, s any) error { return a.Guard(ctx, rows(s)) }
 	}

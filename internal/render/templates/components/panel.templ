@@ -5,9 +5,8 @@ package components
 // untitled boxes tells the reader nothing. Desc is carried by the information
 // icon rather than printed, so the header stays one line tall.
 //
-// Actions and Footer are slots. They are slots rather than props because what
-// goes in them is markup the panel has no opinion about: make the common
-// configurable, make the uncommon composable.
+// Footer is a slot rather than a prop because what goes in it is markup the panel
+// has no opinion about: make the common configurable, make the uncommon composable.
 type PanelProps struct {
 	Title  string
 	Desc   string
@@ -17,12 +16,8 @@ type PanelProps struct {
 	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
 
-	// Padded gives the body padding. A table sets it false and manages its own.
-	Padded bool
-
-	Actions templ.Component
-	Footer  templ.Component
-	Attrs   templ.Attributes
+	Footer templ.Component
+	Attrs  templ.Attributes
 }
 
 templ Panel(p PanelProps) {
@@ -38,19 +33,11 @@ templ Panel(p PanelProps) {
 			if p.Desc != "" {
 				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
-			if p.Status == ToneOK {
-				@Icon(IconProps{Name: IconOK, Class: "panel-status ok", Title: "Loaded"})
-			}
 			if p.Status == ToneCritical {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
 			}
-			if p.Actions != nil {
-				<div class="panel-menu">
-					@p.Actions
-				</div>
-			}
 		</div>
-		<div class={ "panel-body", templ.KV("pad", p.Padded) }>
+		<div class="panel-body">
 			{ children... }
 		</div>
 		if p.Footer != nil {
@@ -58,22 +45,6 @@ templ Panel(p PanelProps) {
 				@p.Footer
 			</div>
 		}
-	</div>
-}
-
-// FieldGroupProps is a bordered group inside a panel body. Panels never nest;
-// this is what content uses when it needs its own frame.
-type FieldGroupProps struct {
-	Legend string
-	Attrs  templ.Attributes
-}
-
-templ FieldGroup(p FieldGroupProps) {
-	<div class="group" { p.Attrs... }>
-		if p.Legend != "" {
-			<div class="group-legend">{ p.Legend }</div>
-		}
-		{ children... }
 	</div>
 }
 

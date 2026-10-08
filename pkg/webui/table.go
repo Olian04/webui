@@ -75,7 +75,7 @@ type Rows[M any] struct {
 // with the total, doing all of that itself.
 //
 // Search makes the table's rows findable from the global search in the top bar.
-// A row is a result: its first column is the title, the other columns are the line
+// A row is a result: its first column is the title, the other text columns are the line
 // beneath it, and it leads where RowClick leads, so the table needs a RowClick. For
 // a table with Rows the library searches every column of every row. A table with
 // Load is handed the text in Query.Search and answers as it can. The table's page

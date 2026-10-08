@@ -47,18 +47,6 @@ templ EmptyState(p EmptyStateProps) {
 	</div>
 }
 
-// NoteProps is an explanatory block beside content.
-type NoteProps struct {
-	Tone  Tone
-	Attrs templ.Attributes
-}
-
-templ Note(p NoteProps) {
-	<div class="note" { p.Attrs... }>
-		{ children... }
-	</div>
-}
-
 // StatusBarProps is the honesty bar: the request behind what is on screen. If
 // the screen changed, this says what changed and how much of it.
 type StatusBarProps struct {

@@ -278,21 +278,3 @@ templ Pager(p PagerProps) {
 		}
 	</div>
 }
-
-// SkeletonRows stands in for a table body while that one panel reloads. It says
-// "this panel is reloading"; a whole-page cross-fade says "the page moved".
-// They are different claims and must never be substituted for each other.
-templ SkeletonRows(columns int, rows int) {
-	for range rows {
-		<tr class="skel-row" aria-hidden="true">
-			for i := range columns {
-				<td><span class="skel" style={ skelWidth(i) }></span></td>
-			}
-		</tr>
-	}
-}
-
-func skelWidth(i int) string {
-	widths := [...]int{70, 55, 40, 35, 50, 60}
-	return fmt.Sprintf("width:%d%%", widths[i%len(widths)])
-}

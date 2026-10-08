@@ -121,7 +121,6 @@ func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 	assert.Equal(t, table.PageSize, 2)
 	assert.Equal(t, table.RowClick.Dest, "/device/{id}")
 	assert.Equal(t, table.Columns[0].Key, "id")
-	assert.True(t, table.Bulk[0].Bulk)
 	assert.Equal(t, table.Bulk[0].Role, ir.RoleDestructive)
 }
 

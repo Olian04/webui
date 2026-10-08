@@ -27,8 +27,5 @@ type Form struct {
 	Bind func(base any, values map[string]string) (model any, errs []FieldError)
 }
 
-// Kind reports the node kind.
-func (f *Form) Kind() NodeKind { return NodeForm }
-
 // Addr reports the node's position in the body tree.
 func (f *Form) Addr() Addr { return f.At }

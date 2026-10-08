@@ -126,13 +126,6 @@ select {
   font: inherit;
   color: inherit;
 }
-svg {
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 ::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -264,39 +257,6 @@ a.side-brand:hover {
   font-size: 13px;
   font-weight: 600;
   opacity: 1;
-}
-.nav-item .chev {
-  width: 13px;
-  height: 13px;
-  font-size: 11px;
-  margin-left: auto;
-  opacity: 0.6;
-  transition: transform 0.12s;
-}
-.nav-item.open .chev {
-  transform: rotate(180deg);
-}
-.nav-count {
-  margin-left: auto;
-  font-size: 11px;
-  color: var(--text-3);
-  font-variant-numeric: tabular-nums;
-  background: var(--hover);
-  border-radius: 9px;
-  padding: 1px 6px;
-}
-.nav-item.active .nav-count {
-  color: var(--text-2);
-}
-.nav-sub {
-  display: none;
-}
-.nav-sub.open {
-  display: block;
-}
-.nav-sub .nav-item {
-  padding-left: 42px;
-  font-size: 13px;
 }
 .side-foot {
   border-top: 1px solid var(--border);
@@ -457,7 +417,6 @@ a.side-brand:hover {
 .search input::placeholder {
   color: var(--text-3);
 }
-.search svg,
 .search .fa-solid {
   width: 14px;
   height: 14px;
@@ -490,22 +449,10 @@ a.side-brand:hover {
   background: var(--hover);
   color: var(--text);
 }
-.iconbtn svg,
 .iconbtn .fa-solid {
   width: 16px;
   height: 16px;
   font-size: 14px;
-}
-.avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 99px;
-  background: var(--blue);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 11px;
-  font-weight: 600;
 }
 
 /* command palette */
@@ -563,153 +510,6 @@ a.side-brand:hover {
   color: var(--text-3);
 }
 
-/* toolbar: page arguments as variable pickers (Grafana's variable bar) */
-.toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 7px 12px;
-  background: var(--canvas);
-  border-bottom: 1px solid var(--border);
-  position: sticky;
-  top: 48px;
-  z-index: 25;
-  min-height: 44px;
-}
-.var {
-  display: flex;
-  align-items: stretch;
-  height: 30px;
-}
-.var-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 0 9px;
-  font-size: 12.5px;
-  color: var(--text-2);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-right: 0;
-  border-radius: 2px 0 0 2px;
-  white-space: nowrap;
-}
-.var-label svg,
-.var-label .fa-solid {
-  width: 12px;
-  height: 12px;
-  font-size: 11px;
-  opacity: 0.6;
-}
-.var-ctl {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 8px;
-  min-width: 96px;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
-  border-radius: 0 2px 2px 0;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-}
-.var-ctl:hover {
-  border-color: var(--border-2);
-}
-.var-ctl select {
-  background: none;
-  border: 0;
-  outline: none;
-  font-size: 13px;
-  cursor: pointer;
-  flex: 1;
-  min-width: 0;
-  appearance: none;
-  padding-right: 14px;
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position:
-    calc(100% - 6px) 13px,
-    calc(100% - 2px) 13px;
-  background-size:
-    4px 4px,
-    4px 4px;
-  background-repeat: no-repeat;
-}
-.var-ctl select option {
-  background: var(--panel);
-  color: var(--text);
-}
-.var-ctl input {
-  background: none;
-  border: 0;
-  outline: none;
-  font-size: 13px;
-  width: 150px;
-}
-.var-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: var(--hover);
-  border-radius: 2px;
-  padding: 1px 4px 1px 6px;
-  font-size: 12.5px;
-}
-.var-x {
-  color: var(--text-3);
-  cursor: pointer;
-  font-size: 13px;
-  line-height: 1;
-}
-.var-x:hover {
-  color: var(--text);
-}
-.tb-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.tb-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 10px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  font-size: 13px;
-  color: var(--text);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.tb-btn:hover {
-  background: var(--hover);
-}
-.tb-btn svg,
-.tb-btn .fa-solid {
-  width: 14px;
-  height: 14px;
-  font-size: 12px;
-}
-.tb-btn.split-l {
-  border-radius: 2px 0 0 2px;
-  border-right: 0;
-}
-.tb-btn.split-r {
-  border-radius: 0 2px 2px 0;
-  padding: 0 6px;
-}
-.noargs {
-  font-size: 12.5px;
-  color: var(--text-3);
-  font-style: italic;
-}
 
 /* ------------------------------ content ---------------------------------- */
 .scroll {
@@ -735,9 +535,6 @@ a.side-brand:hover {
 .topbar {
   view-transition-name: wui-topbar;
 }
-.toolbar {
-  view-transition-name: wui-toolbar;
-}
 .scroll {
   view-transition-name: wui-content;
 }
@@ -762,45 +559,6 @@ a.side-brand:hover {
   }
 }
 
-/* Grafana's collapsible row. In webui this is a Stack — which has no Label
-   field today; see the note on the Devices page. */
-.rowhead {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 30px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  cursor: pointer;
-  user-select: none;
-  margin: 6px 0 2px;
-}
-.rowhead svg,
-.rowhead .fa-solid {
-  width: 13px;
-  height: 13px;
-  font-size: 11px;
-  transition: transform 0.12s;
-  color: var(--text-2);
-}
-.rowhead.closed svg,
-.rowhead.closed .fa-solid {
-  transform: rotate(-90deg);
-}
-.rowhead .cnt {
-  font-size: 12px;
-  color: var(--text-3);
-  font-weight: 400;
-}
-.rowbody {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.rowbody.closed {
-  display: none;
-}
 
 /* layouts */
 .stack {
@@ -818,9 +576,6 @@ a.side-brand:hover {
   .split {
     grid-template-columns: 1fr;
   }
-}
-.split.w64 {
-  grid-template-columns: 1.6fr 1fr;
 }
 
 /* tabs — links carrying an argument */
@@ -925,37 +680,9 @@ a.side-brand:hover {
   font-size: 11px;
   flex: 0 0 13px;
 }
-.panel-status.ok {
-  color: var(--green);
-}
-.panel-menu {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.12s;
-}
-.panel:hover .panel-menu,
-.panel-menu:focus-within {
-  opacity: 1;
-}
-.panel-menu .iconbtn {
-  width: 24px;
-  height: 24px;
-}
-.panel-menu .iconbtn svg,
-.panel-menu .iconbtn .fa-solid {
-  width: 14px;
-  height: 14px;
-  font-size: 12px;
-}
 .panel-body {
   padding: 0 0 0;
   min-width: 0;
-}
-.panel-body.pad {
-  padding: 4px 12px 14px;
 }
 .panel-foot {
   display: flex;
@@ -985,7 +712,6 @@ a.side-brand:hover {
     background-color 0.11s,
     border-color 0.11s;
 }
-.btn svg,
 .btn .fa-solid {
   width: 14px;
   height: 14px;
@@ -1131,9 +857,6 @@ tbody tr.clickable {
 tbody tr:hover {
   background: var(--hover);
 }
-tbody tr.selected {
-  background: rgba(61, 113, 217, 0.13);
-}
 tbody td {
   padding: 0 10px;
   height: 34px;
@@ -1215,7 +938,6 @@ html:not(.js) .actionbar .dim {
   padding: 44px 16px;
   text-align: center;
 }
-.empty svg,
 .empty .fa-solid {
   width: 28px;
   height: 28px;
@@ -1399,8 +1121,7 @@ select.input option {
   color: var(--text-3);
   margin-top: 5px;
 }
-.hint code,
-.note code {
+.hint code {
   font:
     11.5px ui-monospace,
     SFMono-Regular,
@@ -1416,26 +1137,11 @@ select.input option {
   color: var(--red);
   margin-top: 5px;
 }
-.err svg,
 .err .fa-solid {
   width: 13px;
   height: 13px;
   font-size: 11px;
   flex: 0 0 13px;
-}
-.group {
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  padding: 12px;
-  margin-bottom: 14px;
-}
-.group-legend {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  margin-bottom: 11px;
 }
 
 /* ------------------------------ toast ------------------------------------ */
@@ -1496,7 +1202,6 @@ select.input option {
   margin: 72px auto;
   text-align: center;
 }
-.state-page svg,
 .state-page .fa-solid {
   width: 34px;
   height: 34px;
@@ -1566,30 +1271,6 @@ select.input option {
   font-weight: 600;
 }
 
-/* ------------------------------ note strip ------------------------------- */
-.note {
-  margin-top: 10px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--blue);
-  border-radius: 2px;
-  padding: 11px 13px;
-  font-size: 12.5px;
-  color: var(--text-2);
-  background: var(--panel);
-}
-.note b {
-  color: var(--text);
-  font-weight: 500;
-}
-.note p {
-  margin: 0 0 5px;
-}
-.note p:last-child {
-  margin: 0;
-}
-.note .flag {
-  color: var(--orange);
-}
 
 /* ------------------------------ status bar ------------------------------- */
 .statusbar {
@@ -1660,8 +1341,6 @@ html[data-sidebar='collapsed'] .sidebar {
 html[data-sidebar='collapsed'] .side-brand b,
 html[data-sidebar='collapsed'] .nav-section,
 html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
-html[data-sidebar='collapsed'] .nav-count,
-html[data-sidebar='collapsed'] .nav-item .chev,
 html[data-sidebar='collapsed'] .side-row > span {
   display: none;
 }
@@ -1675,9 +1354,6 @@ html[data-sidebar='collapsed'] .nav-item {
 }
 html[data-sidebar='collapsed'] .nav-item .ni-letter {
   visibility: visible;
-}
-html[data-sidebar='collapsed'] .nav-sub {
-  display: none !important;
 }
 html[data-sidebar='collapsed'] .side-foot {
   padding-inline: 0;
@@ -1700,8 +1376,6 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
   .side-brand b,
   .nav-section,
   .nav-item span:not(.ni-letter),
-  .nav-count,
-  .nav-item .chev,
   .side-row > span {
     display: none;
   }
@@ -1716,9 +1390,6 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
   .nav-item .ni-letter {
     visibility: visible;
   }
-  .nav-sub {
-    display: none !important;
-  }
   .side-foot {
     padding-inline: 0;
   }
@@ -1728,38 +1399,8 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
   .search {
     display: none;
   }
-  .split.w64 {
-    grid-template-columns: 1fr;
-  }
 }
 
-/* ---------------------------------------------------------------------------
-   Role gating is a document state, not a rendering decision. The server would
-   emit `disabled`; here one attribute on <html> drives it so that every page
-   is a static file.
-   --------------------------------------------------------------------------- */
-[data-role='viewer'] [data-guard] {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-[data-role='viewer'] [data-guard]:hover::after {
-  content: attr(data-guard);
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--raise);
-  color: var(--text);
-  border: 1px solid var(--border-2);
-  font-size: 12px;
-  font-weight: 400;
-  padding: 5px 8px;
-  border-radius: 2px;
-  white-space: nowrap;
-  z-index: 50;
-  pointer-events: none;
-  box-shadow: var(--shadow);
-}
 
 /* ---------------------------- actions & script --------------------------- */
 .sr-only {
@@ -1789,10 +1430,6 @@ td.pick {
 /* "Select all" needs script; without it the box would do nothing. */
 html:not(.js) [data-pickall] {
   visibility: hidden;
-}
-.iconbtn.gated {
-  opacity: 0.45;
-  cursor: not-allowed;
 }
 .js-only {
   display: contents;
@@ -1863,7 +1500,6 @@ td.actions .gate:hover::after,
 .filter-btn::-webkit-details-marker {
   display: none;
 }
-.filter-btn svg,
 .filter-btn .fa-solid {
   width: 12px;
   height: 12px;

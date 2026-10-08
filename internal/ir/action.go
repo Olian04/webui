@@ -23,5 +23,4 @@ type Action struct {
 	Role  Role
 	Guard func(ctx context.Context, subject any) error
 	Run   func(ctx context.Context, subject any) (Outcome, error)
-	Bulk  bool
 }
