@@ -28,6 +28,11 @@ type Program struct {
 	// probe matches a path against the page patterns regardless of method, so
 	// the catch-all can tell "no such page" (404) from "wrong method" (405).
 	probe *http.ServeMux
+
+	// gate is probe's twin that answers one question about an address: may this
+	// visitor open it? Each page's handler on it runs the page's argument decoding
+	// and Guard, as a real request would, and reports the verdict as a status.
+	gate *http.ServeMux
 	allow map[string]string // probe pattern → Allow header
 
 	// cross refuses cross-origin POSTs, using Fetch metadata and Origin. A
@@ -47,7 +52,7 @@ type Route struct {
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p := &Program{
 		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		probe: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+		probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	assets, err := p.render.Assets()

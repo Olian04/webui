@@ -32,11 +32,40 @@ func (p *Program) addPage(page *ir.Page) {
 	for _, pattern := range patterns {
 		p.add(http.MethodGet, pattern, h)
 		p.probe.Handle(pattern, h)
+		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
 			p.add(http.MethodPost, pattern, p.postHandler(page, leaves))
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
+	}
+}
+
+// gateHandler answers whether the visitor may open a page at the address it is
+// asked about: 204 when they may, 400 when the address does not decode, 403 when
+// the page's Guard refuses. It is the front of pageHandler, run alone, so the
+// answer is the one a real request would get.
+func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
+	parser := argParser(page)
+	return func(w http.ResponseWriter, r *http.Request) {
+		raw, err := parser.Parse(r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		decoded, err := page.Decode(raw)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if page.Guard != nil {
+			ctx := With(r.Context(), &Request{program: p, Args: decoded, Raw: raw})
+			if page.Guard(ctx, decoded) != nil {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

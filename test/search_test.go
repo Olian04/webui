@@ -186,3 +186,73 @@ func TestSearchBoxHasAVisibleFocusRing(t *testing.T) {
 	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
 	assert.Contains(t, css, ".search:focus-within {\n  border-color: var(--blue);\n  box-shadow: 0 0 0 2px")
 }
+
+// guardedSearchApp finds three devices; the detail page's Guard decides which of
+// them this visitor may open.
+func guardedSearchApp(allowed func(id string) error) http.Handler {
+	var details webui.Page[detailsArgs]
+	details.Path = "/device/{id}"
+	details.Guard = func(_ context.Context, a detailsArgs) error { return allowed(a.Id) }
+	details.Body = webui.Stack{}
+	list := webui.Page[webui.NoArgs]{
+		Path: "/device", Body: webui.Stack{},
+		Search: func(ctx context.Context, _ string) ([]webui.SearchResult, error) {
+			var out []webui.SearchResult
+			for _, id := range []string{"a", "secret", "b"} {
+				out = append(out, webui.SearchResult{Title: id, Target: webui.Open(ctx, details, detailsArgs{Id: id})})
+			}
+			return out, nil
+		},
+	}
+	return webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+}
+
+func TestSearchOffersOnlyWhatTheVisitorCouldOpen(t *testing.T) {
+	t.Parallel()
+
+	h := guardedSearchApp(func(id string) error {
+		if id == "secret" {
+			return errors.New("requires the admin role")
+		}
+		return nil
+	})
+	got := search(t, h, "x")
+	var titles []string
+	for _, r := range got.Results {
+		titles = append(titles, r.Title)
+	}
+	assert.DeepEqual(t, titles, []string{"a", "b"}) // the one the destination refuses is not a hit
+
+	// And nothing of it leaks: not in the body, not in the title, not in the href.
+	body := serve(h, http.MethodGet, "/admin/_webui/search?q=x").Body.String()
+	assert.False(t, strings.Contains(body, "secret"))
+	assert.False(t, strings.Contains(body, "admin role"))
+}
+
+func TestSearchChecksTheGuardWithTheResultsOwnArguments(t *testing.T) {
+	t.Parallel()
+
+	seen := map[string]bool{}
+	h := guardedSearchApp(func(id string) error { seen[id] = true; return nil })
+	search(t, h, "x")
+	assert.True(t, seen["a"] && seen["secret"] && seen["b"]) // each result, by its own id
+}
+
+func TestSearchDropsAResultThatLeadsNowhere(t *testing.T) {
+	t.Parallel()
+
+	list := webui.Page[webui.NoArgs]{
+		Path: "/device", Body: webui.Stack{},
+		Search: func(context.Context, string) ([]webui.SearchResult, error) {
+			return []webui.SearchResult{
+				{Title: "good", Target: webui.Target{URL: "/admin/device"}},
+				{Title: "unmounted", Target: webui.Target{URL: "/admin/nowhere"}},
+				{Title: "internal", Target: webui.Target{URL: "/admin/_webui/logo"}},
+			}, nil
+		},
+	}
+	h := webui.App{Pages: webui.Pages{list}}.MustCompile("/admin")
+	got := search(t, h, "x")
+	assert.Equal(t, len(got.Results), 1)
+	assert.Equal(t, got.Results[0].Title, "good")
+}
