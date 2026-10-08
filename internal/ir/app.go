@@ -19,5 +19,5 @@ type Brand struct {
 
 // Theme is resolved visual settings. The runtime turns tokens into CSS.
 type Theme struct {
-	Tokens map[string]string
+	Tokens map[string]string // overrides by name, without leading dashes
 }
