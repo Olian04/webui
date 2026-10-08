@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -95,16 +96,21 @@ type Placeholder[M any] struct {
 func (Placeholder[M]) isAccessor() {}
 
 // Badge projects a string field of M as a badge: the value in a coloured pill.
-// It is read-only, in a table and in a form. Tones maps a value to its tone;
-// a value not in the map is neutral. The badge always carries its word, so the
-// colour is never the only thing saying what state something is in.
+// It is read-only, in a table and in a form. Kinds is the set of values the
+// field can hold, each with the tone it is drawn in; a value outside it is drawn
+// neutral. The badge always carries its word, so the colour is never the only
+// thing saying what state something is in.
+//
+// Because Kinds is the whole set, a table filters a Badge column with a
+// multi-select of exactly those values. List a neutral value too, as
+// ToneNeutral, for it to be filterable.
 type Badge[M any] struct {
 	Label string
 	// Key is what Load receives in Query.Sort when the table is sorted by this
 	// column; Label when empty. A form ignores it.
 	Key   string
 	Load  func(M) string
-	Tones map[string]Tone
+	Kinds map[string]Tone
 }
 
 func (Badge[M]) isAccessor() {}
@@ -271,7 +277,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
+			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
@@ -280,7 +286,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Int[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
 		}
 		if a.Store != nil {
@@ -300,7 +306,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			prec = a.Precision
 		}
 		f := ir.Field{
-			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
 		if a.Store != nil {
@@ -321,12 +327,15 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		f.Placeholder = a.Text
 		return f
 	case Badge[M]:
-		tones := make(map[string]ir.Tone, len(a.Tones))
-		for k, t := range a.Tones {
-			tones[k] = ir.Tone(t)
+		kinds := make(map[string]ir.Tone, len(a.Kinds))
+		var options []string
+		for k, t := range a.Kinds {
+			kinds[k] = ir.Tone(t)
+			options = append(options, k)
 		}
+		slices.Sort(options) // the filter lists them in a fixed order
 		return ir.Field{
-			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Tones: tones,
+			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 	case Slider[M]:
@@ -336,7 +345,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		}
 		lo, hi := a.Min, a.Max
 		f := ir.Field{
-			Name: name, Label: a.Label, SortKey: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
+			Name: name, Label: a.Label, Key: orLabel(a.Key, a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
 			Rules: ir.Rules{Min: &lo, Max: &hi},
 			Get:   func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 		}
@@ -405,9 +414,10 @@ func orLabel(key, label string) string {
 	return label
 }
 
-// sortKey is what a column is sorted by: its Key, or its Label. A Group has
+// columnKey is what a column is known by: its Key, or its Label. Query.Sort and
+// Query.Filters carry it. A Group has
 // none; it is not a column.
-func sortKey[M any](acc Accessor[M]) string {
+func columnKey[M any](acc Accessor[M]) string {
 	switch a := acc.(type) {
 	case String[M]:
 		return orLabel(a.Key, a.Label)
@@ -420,7 +430,7 @@ func sortKey[M any](acc Accessor[M]) string {
 	case Slider[M]:
 		return orLabel(a.Key, a.Label)
 	case Placeholder[M]:
-		return sortKey[M](a.Accessor)
+		return columnKey[M](a.Accessor)
 	}
 	return ""
 }

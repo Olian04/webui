@@ -1,6 +1,8 @@
 package render
 
 import (
+	"slices"
+
 	"github.com/Olian04/webui/internal/ir"
 	t "github.com/Olian04/webui/internal/render/templates"
 	c "github.com/Olian04/webui/internal/render/templates/components"
@@ -18,8 +20,7 @@ templ (r *Renderer) document(d Doc) {
 		Scripts:     []string{r.AssetHref("enhance.js")},
 		Head:        r.head(),
 		Sidebar:     r.sidebar(d.Active),
-		TopBar:      r.topbar(d.Crumbs),
-		ToolBar:     d.Toolbar,
+		TopBar:      r.topbar(d.Crumbs, d.URL),
 		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 		Toasts:      toastRegion(d.Toasts),
 	}) {
@@ -46,14 +47,20 @@ templ (r *Renderer) sidebar(active string) {
 	}
 }
 
-// topbar holds the breadcrumb and, with script, the page search. The search is
-// wrapped so it is simply absent without script rather than present and inert.
-templ (r *Renderer) topbar(crumbs []c.Crumb) {
+// topbar holds the breadcrumb and, on the right, the page search and Refresh.
+// The search is wrapped so it is simply absent without script rather than
+// present and inert. Refresh is a link to the address the browser is on, so it
+// reloads the page, state in the address and all, with or without script.
+templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
 		<div class="js-only">
-			@c.Search(c.SearchProps{Placeholder: "Search pages…", Shortcut: "⌘K"})
+			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Attrs: r.searchAttrs()})
 		</div>
-		<div class="palette" data-palette></div>
+		@c.IconButton(c.IconButtonProps{
+			Icon: c.IconRefresh, Title: "Refresh", Href: here,
+			Attrs: templ.Attributes{"data-refresh": true},
+		})
+		<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
 	}
 }
 
@@ -71,6 +78,19 @@ templ (r *Renderer) sidebarFooter() {
 			}
 		}
 	</div>
+}
+
+// searchAttrs describes the search box to the page script: a listbox it fills,
+// and, when some page offers Search, where to ask for those results.
+func (r *Renderer) searchAttrs() templ.Attributes {
+	attrs := templ.Attributes{
+		"role": "combobox", "aria-expanded": "false", "aria-controls": "palette",
+		"aria-autocomplete": "list",
+	}
+	if r.search {
+		attrs["data-search-url"] = r.AssetHref("search")
+	}
+	return attrs
 }
 
 func (r *Renderer) logoHref() string {
@@ -106,51 +126,6 @@ templ CompileFailure(problems []Problem) {
 	}
 }
 
-templ toolbar(tv toolbarView) {
-	@c.ToolBar(c.ToolBarProps{}) {
-		if len(tv.Pills) == 0 {
-			@c.ToolBarMessage("This page declares no arguments.")
-		}
-		for _, p := range tv.Pills {
-			@c.Variable(c.VariableProps{Label: p.Label, ClearHref: p.ClearHref}) {
-				<form class="var-form" method="get" action={ tv.Action }>
-					for _, h := range p.Hidden {
-						<input type="hidden" name={ h.Name } value={ h.Value }/>
-					}
-					@pillControl(p)
-					<noscript><button class="btn btn-secondary btn-sm" type="submit">Set</button></noscript>
-				</form>
-			}
-		}
-		@c.ToolBarRight() {
-			if tv.ClearAll != "" {
-				@c.ToolBarButton(c.ToolBarButtonProps{Label: "Clear all", Href: tv.ClearAll})
-			}
-			@c.ToolBarButton(c.ToolBarButtonProps{Label: "Refresh", Icon: c.IconRefresh, Href: tv.Refresh, Attrs: templ.Attributes{"data-refresh": true}})
-		}
-	}
-}
-
-// pillControl is the control the argument's kind calls for. A value that
-// cannot be read back is never offered: the decoder accepts exactly these.
-templ pillControl(p pill) {
-	switch p.Kind {
-		case ir.KindBool:
-			@c.Select(c.SelectProps{
-				Name: p.Name, Value: p.Value,
-				Options: []c.Option{{Value: "", Label: "Off"}, {Value: "true", Label: "On"}},
-				Attrs:   templ.Attributes{"data-autosubmit": true, "aria-label": p.Label},
-			})
-		case ir.KindInt, ir.KindInt64, ir.KindFloat:
-			@c.Input(c.InputProps{
-				Name: p.Name, Value: p.Value, Type: "number", Rules: c.Rules{Step: numberStep(p.Kind)},
-				Attrs: templ.Attributes{"aria-label": p.Label},
-			})
-		default:
-			@c.Input(c.InputProps{Name: p.Name, Value: p.Value, Attrs: templ.Attributes{"aria-label": p.Label}})
-	}
-}
-
 // Stack arranges children in a column, 8px apart.
 templ Stack(children []templ.Component) {
 	@c.Stack(c.StackProps{}) {
@@ -178,8 +153,8 @@ templ (r *Renderer) Table(v TableView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Status: v.panelStatus(),
-		Leaf:   LeafID(v.Node.At),
-		Footer: r.tableFooter(v),
+		Leaf:    LeafID(v.Node.At),
+		Footer:  r.tableFooter(v),
 	}) {
 		if v.Failed {
 			@c.EmptyState(c.EmptyStateProps{
@@ -214,7 +189,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 				@c.SelectAllColumn()
 			}
 			for _, col := range cols {
-				@c.Column(c.ColumnProps{Label: col.Field.Label, Align: col.Align, SortHref: col.SortHref, SortDir: col.SortDir})
+				@c.Column(c.ColumnProps{Label: col.Field.Label, Align: col.Align, SortHref: col.SortHref, SortDir: col.SortDir, Filter: col.Filter})
 			}
 			if v.hasRowActions() {
 				<th class="actions"><span class="sr-only">Actions</span></th>
@@ -315,8 +290,8 @@ templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.title(),
 		Desc:   v.Node.Desc,
-		Status: v.status(),
-		Leaf:   LeafID(v.Node.At),
+		Status:  v.status(),
+		Leaf:    LeafID(v.Node.At),
 	}) {
 		if v.Failed {
 			@c.EmptyState(c.EmptyStateProps{
@@ -353,15 +328,13 @@ templ (r *Renderer) Form(v FormView) {
 	}
 }
 
-// formField is a field, or a group of them in a bordered frame. Panels never
-// nest, so a group is how a form gets its own frame inside one.
+// formField is a field, or a group of them side by side. A group is layout and
+// nothing else: it has no frame, because a panel never nests another container.
 templ (r *Renderer) formField(v FormView, f ir.Field) {
 	if len(f.Group) > 0 {
-		@c.FieldGroup(c.FieldGroupProps{}) {
-			@c.FieldRow() {
-				for _, child := range f.Group {
-					@r.input(r.fieldView(v, child))
-				}
+		@c.FieldRow() {
+			for _, child := range f.Group {
+				@r.input(r.fieldView(v, child))
 			}
 		}
 	} else {
@@ -416,4 +389,65 @@ templ Tabs(label string, strip []c.Tab, content templ.Component) {
 	<div data-tabbody>
 		@content
 	</div>
+}
+
+// filterMenu is a column's filter: an icon beside the name that appears when the
+// header is hovered or focused, and stays once a filter is set. It is a plain
+// <details> holding a GET form, so it opens, submits and clears without script.
+// A column with a fixed set of options offers a multi-select of exactly those, a
+// numeric column a minimum and a maximum, and any other takes text.
+templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
+	{{ fv := r.filter(v, f) }}
+	<details class={ "filter", templ.KV("on", fv.On) }>
+		<summary class="filter-btn" title={ "Filter " + fv.Label } aria-label={ "Filter " + fv.Label }>
+			@c.Icon(c.IconProps{Name: c.IconFilter})
+		</summary>
+		<form class="filter-pop" method="get" action={ fv.Action } data-filter-form>
+			for _, h := range fv.Carry {
+				<input type="hidden" name={ h.Name } value={ h.Value }/>
+			}
+			<div class="filter-title">{ fv.Label }</div>
+			if fv.Numeric {
+				<div class="filter-range">
+					<label>
+						<span>Min</span>
+						<input class="input" type="number" step="any" name={ fv.MinKey } value={ fv.Min } aria-label={ "Minimum " + fv.Label }/>
+					</label>
+					<label>
+						<span>Max</span>
+						<input class="input" type="number" step="any" name={ fv.MaxKey } value={ fv.Max } aria-label={ "Maximum " + fv.Label }/>
+					</label>
+				</div>
+			} else if fv.Options != nil {
+				<div class="filter-options">
+					for _, opt := range fv.Options {
+						<label class="filter-opt">
+							@c.Checkbox(c.CheckboxProps{Name: fv.Key, Value: opt, Checked: slices.Contains(fv.Chosen, opt)})
+							<span>{ opt }</span>
+						</label>
+					}
+				</div>
+			} else {
+				<input
+					class="input"
+					type="search"
+					name={ fv.Key }
+					value={ fv.text() }
+					placeholder="Contains…"
+					maxlength="200"
+					aria-label={ "Filter " + fv.Label }
+				/>
+			}
+			<div class="filter-actions">
+				if fv.Clear != "" {
+					@c.Button(c.ButtonProps{Href: fv.Clear, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+						Clear
+					}
+				}
+				@c.Button(c.ButtonProps{Variant: c.VariantPrimary, Size: c.SizeSmall}) {
+					Apply
+				}
+			</div>
+		</form>
+	</details>
 }

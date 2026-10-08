@@ -8,10 +8,6 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-type AlertsArgs struct {
-	Severity string
-}
-
 var (
 	AlertID = webui.String[Alert]{
 		Label: "ID",
@@ -20,7 +16,9 @@ var (
 	Severity = webui.Badge[Alert]{
 		Label: "Severity",
 		Load:  func(a Alert) string { return a.Severity },
-		Tones: map[string]webui.Tone{"critical": webui.ToneCritical, "warning": webui.ToneWarning},
+		Kinds: map[string]webui.Tone{
+			"critical": webui.ToneCritical, "warning": webui.ToneWarning, "info": webui.ToneNeutral,
+		},
 	}
 	AlertDevice = webui.String[Alert]{
 		Label: "Device",
@@ -32,19 +30,23 @@ var (
 	}
 )
 
-var Alerts = webui.Page[AlertsArgs]{
+var Alerts = webui.Page[webui.NoArgs]{
 	Path: "/alert",
 	Nav:  webui.Nav{Label: "Alerts"},
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
-		Load: func(ctx context.Context, q webui.Query) (webui.Rows[Alert], error) {
-			args, err := webui.ArgsOf[AlertsArgs](ctx)
-			if err != nil {
-				return webui.Rows[Alert]{}, err
-			}
-			// No Key on these accessors, so Query.Sort is the Label.
-			alerts := sortedBy(service.OpenAlerts(args.Severity), q.Sort, q.Desc, map[string]func(x, y Alert) int{
+		Load: func(_ context.Context, q webui.Query) (webui.Rows[Alert], error) {
+			// No Key on these accessors, so Query.Sort and Query.Filters use the
+			// Label. Severity has a fixed set of options (its Kinds), so its filter
+			// arrives as the options chosen.
+			alerts := filteredBy(service.OpenAlerts(), q.Filters, map[string]func(a Alert, values []string) bool{
+				AlertID.Label:     containing(func(a Alert) string { return a.ID }),
+				Severity.Label:    oneOf(func(a Alert) string { return a.Severity }),
+				AlertDevice.Label: containing(func(a Alert) string { return a.Device }),
+				Message.Label:     containing(func(a Alert) string { return a.Message }),
+			})
+			alerts = sortedBy(alerts, q.Sort, q.Desc, map[string]func(x, y Alert) int{
 				AlertID.Label:     func(x, y Alert) int { return cmp.Compare(x.ID, y.ID) },
 				Severity.Label:    func(x, y Alert) int { return cmp.Compare(x.Severity, y.Severity) },
 				AlertDevice.Label: func(x, y Alert) int { return cmp.Compare(x.Device, y.Device) },

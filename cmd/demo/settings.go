@@ -8,9 +8,6 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 
-// A page with no arguments says so in its toolbar, rather than showing an empty
-// strip.
-
 var (
 	CollectorName = webui.String[Settings]{
 		Label: "Collector name",

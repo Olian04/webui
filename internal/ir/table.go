@@ -8,8 +8,22 @@ import (
 type Query struct {
 	Offset int
 	Limit  int
-	Sort   string // a declared SortKey; empty means the loader's order
+	Sort   string // a column's Key; empty means the loader's order
 	Desc   bool
+
+	// Filters are the column filters in force, by the column's Key. A
+	// column with fixed options holds the chosen options; any other holds the
+	// one text typed. Empty and unknown ones are already gone.
+	Filters map[string][]string
+
+	// Ranges are the bounds on the numeric columns, by Key. A column is in
+	// Filters or in Ranges, never both.
+	Ranges map[string]Range
+}
+
+// Range bounds a number, both ends inclusive. A nil end is unbounded.
+type Range struct {
+	Min, Max *float64
 }
 
 // Table is a leaf listing rows.

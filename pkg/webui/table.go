@@ -15,6 +15,25 @@ type Query struct {
 	Limit  int
 	Sort   string
 	Desc   bool
+
+	// Filters are the column filters in force, by the column's Key (or Label).
+	// A column with a fixed set of options — a Badge, whose options are the keys
+	// of its Kinds — holds the options chosen, always among that set. Any other
+	// column holds the one text typed, trimmed and never empty. Numeric columns
+	// (Int, Float and Slider) are not here but in Ranges. Load does the
+	// filtering, as it does the sorting.
+	Filters map[string][]string
+
+	// Ranges are the bounds on the numeric columns, by the same Key (or Label).
+	// A column filters by a minimum and a maximum, either of which may be left
+	// out, so a range is an inequality, not text. A bound is always a finite
+	// number; an unreadable one never arrives.
+	Ranges map[string]Range
+}
+
+// Range bounds a number, both ends inclusive. A nil end is unbounded.
+type Range struct {
+	Min, Max *float64
 }
 
 // Rows is one window of a table's rows. Total is the count across all pages;
@@ -67,7 +86,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	// columns apart: Load receives one in Query.Sort and has to know which.
 	keys := map[string]bool{}
 	for _, c := range t.Columns {
-		if k := sortKey[M](c); k != "" {
+		if k := columnKey[M](c); k != "" {
 			if keys[k] {
 				v.add(fmt.Sprintf("Table.Columns: two columns sort by %q", k), "Give one of them a distinct Key.")
 			}
@@ -99,7 +118,7 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize,
 		Columns: lowerAccessors(t.Columns, "c"),
 		Load: func(ctx context.Context, q ir.Query) ([]any, int, error) {
-			rows, err := t.Load(ctx, Query(q))
+			rows, err := t.Load(ctx, queryOf(q))
 			if err != nil {
 				return nil, 0, err
 			}
@@ -125,6 +144,19 @@ func (t Table[M]) lowerBody(at ir.Addr, l *bodyLowerer) ir.Node {
 	}
 	for _, a := range t.BulkActions {
 		out.Bulk = append(out.Bulk, lowerBulk(a))
+	}
+	return out
+}
+
+// queryOf is the IR's Query as the user's Load receives it. The two differ only
+// in the type of a Range, which the user sees as theirs.
+func queryOf(q ir.Query) Query {
+	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc, Filters: q.Filters}
+	if q.Ranges != nil {
+		out.Ranges = make(map[string]Range, len(q.Ranges))
+		for k, r := range q.Ranges {
+			out.Ranges[k] = Range(r)
+		}
 	}
 	return out
 }

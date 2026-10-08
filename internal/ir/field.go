@@ -22,12 +22,17 @@ type Field struct {
 
 	Rules Rules
 
-	SortKey     string // the accessor's Key, else its Label: what Query.Sort carries
+	Key         string // the accessor's Key, else its Label: what Query.Sort carries
 	Placeholder string // from Placeholder
+
+	// Options is the fixed set of values a column can hold, when it has one: a
+	// table's filter offers exactly these, as a multi-select. Nil means free
+	// text, which a table's filter takes as typed.
+	Options []string
 
 	// Display is how the value is shown. Text is the default.
 	Display Display
-	Tones   map[string]Tone // DisplayBadge: value → tone; a missing value is neutral
+	Kinds   map[string]Tone // DisplayBadge: the values it can hold, each with its tone
 	Min     float64         // DisplaySlider: the range, also in Rules for a writable one
 	Max     float64
 }

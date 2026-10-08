@@ -21,6 +21,11 @@ type Page struct {
 	// zero fields omitted. Open uses it to build hrefs.
 	Encode func(args any) (path map[string]string, query map[string]string, err error)
 
+	// Search answers the global search with this page's own results, or is nil
+	// when the page offers none. It runs without arguments, which is why a page
+	// that offers it has no path arguments.
+	Search func(ctx context.Context, query string) ([]SearchResult, error)
+
 	// Guard receives the decoded arguments. Runs before anything loads, on
 	// every request to this page including section fetches.
 	Guard func(ctx context.Context, args any) error
@@ -45,3 +50,11 @@ const (
 	KindFloat
 	KindInt64
 )
+
+// SearchResult is one hit in the global search. Href is resolved, prefix
+// included, by the time it gets here.
+type SearchResult struct {
+	Title string
+	Desc  string
+	Href  string
+}

@@ -62,7 +62,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Rows[Device], error
 						}
 						return "degraded"
 					},
-					Tones: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+					Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
 				},
 				webui.Int[Device]{Label: "Occurrences", Load: func(d Device) int { return d.Count }},
 				webui.Slider[Device]{Label: "Rate", Max: 4, Precision: 2, Load: func(d Device) float64 { return float64(d.Count) / 3 }},
@@ -99,7 +99,7 @@ func TestTablePagerLinksAndRange(t *testing.T) {
 	first := serve(h, http.MethodGet, "/admin/device?q=x").Body.String()
 	assert.Contains(t, first, "1–10 of 25")
 	assert.Contains(t, first, `href="/admin/device?devices.offset=10&amp;q=x"`) // keeps the filter
-	assert.Equal(t, *last, webui.Query{Offset: 0, Limit: 10})
+	assert.DeepEqual(t, *last, webui.Query{Offset: 0, Limit: 10})
 
 	mid := serve(h, http.MethodGet, "/admin/device?devices.offset=10").Body.String()
 	assert.Contains(t, mid, "11–20 of 25")
@@ -121,7 +121,7 @@ func TestTableSortLinksCycleAndKeepWindowOut(t *testing.T) {
 	assert.Contains(t, unsorted, `href="/admin/device?devices.sort=id"`) // sorting resets to the first page
 
 	asc := serve(h, http.MethodGet, "/admin/device?devices.sort=id").Body.String()
-	assert.Equal(t, *last, webui.Query{Limit: 10, Sort: "id"})
+	assert.DeepEqual(t, *last, webui.Query{Limit: 10, Sort: "id"})
 	assert.Contains(t, asc, `aria-sort="ascending"`)
 	assert.Contains(t, asc, `href="/admin/device?devices.desc=true&amp;devices.sort=id"`)
 
@@ -136,7 +136,7 @@ func TestTableDropsUndeclaredSortKeys(t *testing.T) {
 
 	h, last := tableApp(nil)
 	serve(h, http.MethodGet, "/admin/device?devices.sort=password%3B+drop&devices.desc=true")
-	assert.Equal(t, *last, webui.Query{Limit: 10})
+	assert.DeepEqual(t, *last, webui.Query{Limit: 10})
 }
 
 func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
@@ -201,8 +201,8 @@ func TestTwoTablesKeepIndependentStateUnderTheirOwnIDs(t *testing.T) {
 	h, seen := twoTables()
 	body := serve(h, http.MethodGet, "/p?left.offset=10&table.offset=15&table.sort=id&table.desc=true&q=x").Body.String()
 
-	assert.Equal(t, seen[0], webui.Query{Offset: 10, Limit: 5})
-	assert.Equal(t, seen[1], webui.Query{Offset: 15, Limit: 5, Sort: "id", Desc: true})
+	assert.DeepEqual(t, seen[0], webui.Query{Offset: 10, Limit: 5})
+	assert.DeepEqual(t, seen[1], webui.Query{Offset: 15, Limit: 5, Sort: "id", Desc: true})
 
 	// Each table's links change only its own state and carry the other's along.
 	assert.Contains(t, body, `href="/p?left.offset=15&amp;q=x&amp;table.desc=true&amp;table.offset=15&amp;table.sort=id">Next`)
@@ -218,26 +218,9 @@ func TestViewStateForALeafThePageDoesNotHaveIsIgnored(t *testing.T) {
 
 	h, seen := twoTables()
 	body := serve(h, http.MethodGet, "/p?ghost.offset=5&left.offset=abc&table.offset=-4").Body.String()
-	assert.Equal(t, seen[0], webui.Query{Limit: 5})                  // unreadable: the first page
-	assert.Equal(t, seen[1], webui.Query{Limit: 5})                  // negative: the first page
+	assert.DeepEqual(t, seen[0], webui.Query{Limit: 5})              // unreadable: the first page
+	assert.DeepEqual(t, seen[1], webui.Query{Limit: 5})              // negative: the first page
 	assert.False(t, strings.Contains(body, `ghost`+"."+`offset=5"`)) // never carried into a link or form
-}
-
-func TestToolbarCarriesViewStateButResetsPagingAndKeepsSortOnClearAll(t *testing.T) {
-	t.Parallel()
-
-	h, _ := twoTables()
-	body := serve(h, http.MethodGet, "/p?q=x&left.offset=10&left.sort=id&table.offset=5").Body.String()
-
-	// Setting the filter keeps sort, and drops every offset: the old one may not exist.
-	assert.Contains(t, body, `<input type="hidden" name="left.sort" value="id">`)
-	assert.False(t, strings.Contains(body, `name="left.offset"`))
-	assert.False(t, strings.Contains(body, `name="table.offset"`))
-
-	// Clear all removes the filter and paging, but not how the page is sorted.
-	assert.Contains(t, body, `<a class="tb-btn " href="/p?left.sort=id">Clear all</a>`)
-	// Clear one filter is the same address with that argument gone.
-	assert.Contains(t, body, `href="/p?left.sort=id"`)
 }
 
 func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
@@ -246,7 +229,8 @@ func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
 	h, _ := tableApp(nil)
 	body := serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.offset=10").Body.String()
 	// The page's own address, view state included, is what a refresh link holds.
-	assert.Contains(t, body, `href="/admin/device?devices.offset=10&amp;devices.sort=id" data-refresh`)
+	// Refresh reloads the address the browser is on, exactly as it has it.
+	assert.Contains(t, body, `href="/admin/device?devices.sort=id&amp;devices.offset=10" title="Refresh"`)
 }
 
 // A clickable row is one link stretched over the whole row by the stylesheet;
@@ -274,7 +258,7 @@ func TestEveryColumnIsSortableAndLoadReceivesItsKeyOrLabel(t *testing.T) {
 	assert.Contains(t, body, `href="/admin/device?devices.sort=Rate"`)        // and a slider
 
 	serve(h, http.MethodGet, "/admin/device?devices.sort=Status&devices.desc=true")
-	assert.Equal(t, *last, webui.Query{Limit: 10, Sort: "Status", Desc: true})
+	assert.DeepEqual(t, *last, webui.Query{Limit: 10, Sort: "Status", Desc: true})
 
 	serve(h, http.MethodGet, "/admin/device?devices.sort=id")
 	assert.Equal(t, last.Sort, "id")
@@ -282,4 +266,188 @@ func TestEveryColumnIsSortableAndLoadReceivesItsKeyOrLabel(t *testing.T) {
 	// A Key replaces the Label: the Label is no longer a way in.
 	serve(h, http.MethodGet, "/admin/device?devices.sort=ID")
 	assert.Equal(t, last.Sort, "")
+}
+
+// With a bulk action the form hides the selection bar until a row is checked.
+// :has() lets the form know without script; the bar stays where it is
+// unsupported, and the server refuses an empty selection either way.
+func TestSelectionBarIsHiddenUntilARowIsSelected(t *testing.T) {
+	t.Parallel()
+
+	css := serve(newShop().h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	assert.Contains(t, css, "@supports selector(:has(*)) {\n  form:not(:has(input[name='_sel']:checked)) .actionbar {\n    display: none;")
+	assert.Contains(t, css, "html:not(.js) .actionbar [data-selcount]") // no live count without script
+}
+
+func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+
+	// One filter per column, in the header, none active.
+	assert.Equal(t, strings.Count(body, `<details class="filter">`), 4)
+	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 0)
+	assert.Contains(t, body, `aria-label="Filter Status"`)
+
+	// The Badge's Kinds are the options: a multi-select of exactly those, in order.
+	status := body[strings.Index(body, `<div class="filter-title">Status</div>`):]
+	status = status[:strings.Index(status, `</form>`)]
+	assert.Equal(t, strings.Count(status, `type="checkbox"`), 2)
+	assert.True(t, strings.Index(status, `value="degraded"`) < strings.Index(status, `value="healthy"`))
+	assert.False(t, strings.Contains(status, `type="search"`))
+
+	// A text column takes text; the two numeric ones, Occurrences and Rate, take a
+	// minimum and a maximum instead, never text.
+	assert.Equal(t, strings.Count(body, `type="search"`), 1)
+	assert.Contains(t, body, `placeholder="Contains…"`)
+	assert.Equal(t, strings.Count(body, `type="number" step="any"`), 4)
+	assert.Contains(t, body, `name="devices.min.Occurrences"`)
+	assert.Contains(t, body, `name="devices.max.Occurrences"`)
+	assert.Contains(t, body, `name="devices.min.Rate"`)
+	assert.False(t, strings.Contains(body, `name="devices.filter.Occurrences"`))
+	assert.False(t, strings.Contains(body, `name="devices.filter.Rate"`))
+
+	// The form is a plain GET back to the page, so it works without script.
+	assert.Contains(t, body, `<form class="filter-pop" method="get" action="/admin/device" data-filter-form>`)
+}
+
+func TestFiltersAreKeyedByTheAccessorsKeyElseItsLabel(t *testing.T) {
+	t.Parallel()
+
+	h, last := tableApp(nil)
+
+	// ID declares Key "id"; Status and Occurrences have none, so their Label is the key.
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	assert.Contains(t, body, `name="devices.filter.id"`)
+	assert.Contains(t, body, `name="devices.filter.Status"`)
+	assert.Contains(t, body, `name="devices.min.Occurrences"`)          // numeric: bounds, keyed by Label
+	assert.False(t, strings.Contains(body, `name="devices.filter.ID"`)) // the Label is no way in once there is a Key
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.id=dev01&devices.filter.Status=healthy")
+	assert.DeepEqual(t, last.Filters, map[string][]string{"id": {"dev01"}, "Status": {"healthy"}})
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.ID=dev01")
+	assert.True(t, last.Filters == nil)
+}
+
+func TestLoadReceivesOnlyFiltersThatMakeSense(t *testing.T) {
+	t.Parallel()
+
+	h, last := tableApp(nil)
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.Status=healthy&devices.filter.Status=degraded&devices.filter.Status=healthy")
+	assert.DeepEqual(t, last.Filters, map[string][]string{"Status": {"healthy", "degraded"}}) // in order, once each
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.Status=bogus&devices.filter.Status=healthy")
+	assert.DeepEqual(t, last.Filters, map[string][]string{"Status": {"healthy"}}) // not an option: dropped
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.Status=bogus")
+	assert.True(t, last.Filters == nil)
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.id=%20%20dev01%20&devices.filter.Status=")
+	assert.DeepEqual(t, last.Filters, map[string][]string{"id": {"dev01"}}) // trimmed; empty is no filter
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.id="+strings.Repeat("x", 500))
+	assert.Equal(t, len(last.Filters["id"][0]), 200) // typed by a person: bounded
+
+	serve(h, http.MethodGet, "/admin/device?devices.filter.nope=1")
+	assert.True(t, last.Filters == nil) // a column the table does not have
+}
+
+func TestAnActiveFilterShowsAndCanBeCleared(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device?devices.offset=10&devices.sort=id&devices.filter.id=dev0&devices.filter.Status=healthy").Body.String()
+
+	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 2)
+	assert.Contains(t, body, `value="dev0"`) // the text, as typed
+	assert.Contains(t, body, `type="checkbox" name="devices.filter.Status" value="healthy" checked>`)
+	assert.False(t, strings.Contains(body, `value="degraded" checked`))
+
+	// Applying one column's filter carries everything else and drops every offset;
+	// the filter being replaced is not carried.
+	id := body[strings.Index(body, `aria-label="Filter ID"><svg`):]
+	id = id[:strings.Index(id, `<div class="filter-title">ID</div>`)]
+	assert.Contains(t, id, `name="devices.sort" value="id"`)
+	assert.Contains(t, id, `name="devices.filter.Status" value="healthy"`)
+	assert.False(t, strings.Contains(id, `devices.offset`))
+	assert.False(t, strings.Contains(id, `name="devices.filter.id"`))
+
+	// Clear removes that filter, and the offset, and keeps the rest.
+	assert.Contains(t, body, `href="/admin/device?devices.filter.Status=healthy&amp;devices.sort=id">`)
+}
+
+func TestSortAndPagerLinksKeepFiltersAsRepeatedParameters(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device?devices.filter.Status=healthy&devices.filter.Status=degraded").Body.String()
+	assert.Contains(t, body, `href="/admin/device?devices.filter.Status=healthy&amp;devices.filter.Status=degraded&amp;devices.sort=id"`)
+	assert.Contains(t, body, `href="/admin/device?devices.filter.Status=healthy&amp;devices.filter.Status=degraded&amp;devices.offset=10"`)
+}
+
+func TestFilterIconAppearsOnHoverAndStaysWhenActive(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	assert.Contains(t, css, ".filter-btn {\n  list-style: none;")
+	assert.Contains(t, css, "  opacity: 0;\n  transition: opacity 0.12s;\n}\n.filter-btn::-webkit-details-marker")
+	assert.Contains(t, css, "th:hover .filter-btn,\nth:focus-within .filter-btn,\n.filter[open] .filter-btn,\n.filter.on .filter-btn {\n  opacity: 1;")
+}
+
+func TestNumericColumnsFilterByRangeNotText(t *testing.T) {
+	t.Parallel()
+
+	h, last := tableApp(nil)
+	f := func(v float64) *float64 { return &v }
+
+	// Either bound, both, or neither; the key is the Label, as these have no Key.
+	serve(h, http.MethodGet, "/admin/device?devices.min.Occurrences=5")
+	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Min: f(5)}})
+	assert.True(t, last.Filters == nil)
+
+	serve(h, http.MethodGet, "/admin/device?devices.max.Occurrences=10.5&devices.min.Rate=-2")
+	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Max: f(10.5)}, "Rate": {Min: f(-2)}})
+
+	serve(h, http.MethodGet, "/admin/device?devices.min.Occurrences=5&devices.max.Occurrences=5")
+	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Min: f(5), Max: f(5)}}) // equal bounds: exactly 5
+
+	// A bound that is not a finite number never arrives; neither does text for a number column.
+	for _, bad := range []string{"abc", "NaN", "Inf", "-Inf", "1e999", ""} {
+		serve(h, http.MethodGet, "/admin/device?devices.min.Occurrences="+bad+"&devices.max.Rate="+bad)
+		assert.True(t, last.Ranges == nil)
+	}
+	serve(h, http.MethodGet, "/admin/device?devices.filter.Occurrences=5&devices.filter.Rate=5")
+	assert.True(t, last.Filters == nil)
+	assert.True(t, last.Ranges == nil)
+}
+
+func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device?devices.min.Occurrences=5&devices.max.Occurrences=9.5&devices.sort=id&devices.offset=10").Body.String()
+
+	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 1)
+	assert.Contains(t, body, `name="devices.min.Occurrences" value="5"`)
+	assert.Contains(t, body, `name="devices.max.Occurrences" value="9.5"`)
+
+	// Applying another column keeps these bounds; applying this one replaces them.
+	idForm := body[strings.Index(body, `aria-label="Filter ID"><svg`):]
+	idForm = idForm[:strings.Index(idForm, `<div class="filter-title">ID</div>`)]
+	assert.Contains(t, idForm, `name="devices.min.Occurrences" value="5"`)
+	assert.Contains(t, idForm, `name="devices.max.Occurrences" value="9.5"`)
+
+	own := body[strings.Index(body, `aria-label="Filter Occurrences"><svg`):]
+	own = own[:strings.Index(own, `<div class="filter-title">Occurrences</div>`)]
+	assert.False(t, strings.Contains(own, `devices.min.Occurrences`))
+	assert.False(t, strings.Contains(own, `devices.max.Occurrences`))
+	assert.False(t, strings.Contains(own, `devices.offset`))
+	assert.Contains(t, own, `name="devices.sort" value="id"`)
+
+	// Clear drops both bounds and the offset, and keeps the sort.
+	assert.Contains(t, body, `href="/admin/device?devices.sort=id">Clear`)
 }

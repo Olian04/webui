@@ -35,9 +35,7 @@ type Settings struct {
 
 type RetentionPolicy struct{ Days int }
 
-// DeviceFilter and Order are what the list asks of Devices.
-type DeviceFilter struct{ Site, Status, Q string }
-
+// Order is what the list asks of Devices besides its filters.
 type Order struct {
 	Offset, Limit int
 	Sort          string
@@ -102,18 +100,18 @@ func (s *Service) SetIP(id, ip string) {
 	}
 }
 
-// Devices returns one page of the devices matching f, and how many match.
-func (s *Service) Devices(f DeviceFilter, o Order) ([]Device, int) {
+// Bounds limit a number, both ends inclusive; nil is unbounded.
+type Bounds struct{ Min, Max *float64 }
+
+// Devices returns one page of the devices passing the filters and the bounds,
+// and how many pass.
+func (s *Service) Devices(filters map[string][]string, bounds map[string]Bounds, o Order) ([]Device, int) {
 	s.mu.Lock()
 	all := slices.Clone(s.devices)
 	s.mu.Unlock()
 
-	needle := strings.ToLower(f.Q)
-	all = slices.DeleteFunc(all, func(d Device) bool {
-		return (f.Site != "" && d.Site != f.Site) || (f.Status != "" && d.Status != f.Status) ||
-			(needle != "" && !strings.Contains(strings.ToLower(d.ID+" "+d.IP+" "+d.Site), needle))
-	})
-
+	all = filteredBy(all, filters, deviceFilters)
+	all = within(all, bounds, deviceNumbers)
 	all = sortedBy(all, o.Sort, o.Desc, deviceKeys)
 	lo := min(o.Offset, len(all))
 	hi := len(all)
@@ -121,6 +119,23 @@ func (s *Service) Devices(f DeviceFilter, o Order) ([]Device, int) {
 		hi = min(lo+o.Limit, len(all))
 	}
 	return all[lo:hi], len(all)
+}
+
+// Find is the global search: devices whose id, address or site contains query.
+func (s *Service) Find(query string, limit int) []Device {
+	needle := strings.ToLower(query)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var found []Device
+	for _, d := range s.devices {
+		if strings.Contains(strings.ToLower(d.ID+" "+d.IP+" "+d.Site), needle) {
+			found = append(found, d)
+			if len(found) == limit {
+				break
+			}
+		}
+	}
+	return found
 }
 
 // deviceKeys are the orders the list offers, by the Key its columns declare.
@@ -131,6 +146,72 @@ var deviceKeys = map[string]func(x, y Device) int{
 	"site":   func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
 	"count":  func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
 	"rate":   func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
+}
+
+// deviceFilters are the filters the list offers, by the same Key as its sorts.
+// Status has a fixed set of options and arrives as the options chosen; the text
+// columns arrive as the text typed. The numeric columns are not here: they arrive
+// as bounds, in deviceNumbers.
+var deviceFilters = map[string]func(d Device, values []string) bool{
+	"id":     containing(func(d Device) string { return d.ID }),
+	"ip":     containing(func(d Device) string { return d.IP }),
+	"site":   containing(func(d Device) string { return d.Site }),
+	"status": oneOf(func(d Device) string { return d.Status }),
+}
+
+// deviceNumbers are the numeric columns, which a table filters by range.
+var deviceNumbers = map[string]func(d Device) float64{
+	"count": func(d Device) float64 { return float64(d.Count) },
+	"rate":  func(d Device) float64 { return d.Rate() },
+}
+
+// within keeps the rows whose number lies inside every bound in force, which is
+// what a table's Load receives in Query.Ranges.
+func within[T any](rows []T, bounds map[string]Bounds, value map[string]func(T) float64) []T {
+	if len(bounds) == 0 {
+		return rows
+	}
+	return slices.DeleteFunc(slices.Clone(rows), func(row T) bool {
+		for key, b := range bounds {
+			get, ok := value[key]
+			if !ok {
+				continue
+			}
+			if x := get(row); (b.Min != nil && x < *b.Min) || (b.Max != nil && x > *b.Max) {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+// containing matches rows whose text contains what was typed, ignoring case.
+func containing[T any](text func(T) string) func(T, []string) bool {
+	return func(row T, values []string) bool {
+		return strings.Contains(strings.ToLower(text(row)), strings.ToLower(values[0]))
+	}
+}
+
+// oneOf matches rows whose value is any of the options chosen.
+func oneOf[T any](value func(T) string) func(T, []string) bool {
+	return func(row T, values []string) bool { return slices.Contains(values, value(row)) }
+}
+
+// filteredBy keeps the rows that pass every filter in force, which is what a
+// table's Load receives in Query.Filters. A filter nobody registered a match for
+// keeps everything, like a sort key nobody registered.
+func filteredBy[T any](rows []T, filters map[string][]string, by map[string]func(row T, values []string) bool) []T {
+	if len(filters) == 0 {
+		return rows
+	}
+	return slices.DeleteFunc(slices.Clone(rows), func(row T) bool {
+		for key, values := range filters {
+			if match, ok := by[key]; ok && !match(row, values) {
+				return true
+			}
+		}
+		return false
+	})
 }
 
 // sortedBy orders rows by the comparison registered for key, which is what a
@@ -166,13 +247,11 @@ func (s *Service) Events() []Event {
 	return events
 }
 
-// OpenAlerts are the alerts nobody has acknowledged, of one severity or all.
-func (s *Service) OpenAlerts(severity string) []Alert {
+// OpenAlerts are the alerts nobody has acknowledged.
+func (s *Service) OpenAlerts() []Alert {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return slices.DeleteFunc(slices.Clone(s.alerts), func(a Alert) bool {
-		return a.Acked || (severity != "" && a.Severity != severity)
-	})
+	return slices.DeleteFunc(slices.Clone(s.alerts), func(a Alert) bool { return a.Acked })
 }
 
 func (s *Service) Acknowledge(ids ...string) {

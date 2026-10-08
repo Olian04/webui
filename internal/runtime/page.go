@@ -109,7 +109,9 @@ func argParser(page *ir.Page) args.ArgParser {
 			parser.QueryKeys = append(parser.QueryKeys, a.Name)
 		}
 	}
-	parser.QueryKeys = append(parser.QueryKeys, viewKeys(page.Body)...)
+	view, lists := viewKeys(page.Body)
+	parser.QueryKeys = append(parser.QueryKeys, view...)
+	parser.ListKeys = lists
 	return parser
 }
 
@@ -148,16 +150,17 @@ func viewNodes(n ir.Node) map[string]ir.Node {
 
 func sortable(n *ir.Table) bool {
 	for _, col := range n.Columns {
-		if col.SortKey != "" {
+		if col.Key != "" {
 			return true
 		}
 	}
 	return false
 }
 
-// viewKeys lists the address parameters the body's leaves keep state in.
-func viewKeys(n ir.Node) []string {
-	var keys []string
+// viewKeys lists the address parameters the body's leaves keep state in, and
+// which of them may repeat: a multi-select filter is one parameter per chosen
+// option.
+func viewKeys(n ir.Node) (keys, lists []string) {
 	for id, node := range viewNodes(n) {
 		switch node := node.(type) {
 		case *ir.Tabs:
@@ -169,9 +172,24 @@ func viewKeys(n ir.Node) []string {
 			if sortable(node) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
 			}
+			for _, col := range node.Columns {
+				if col.Key == "" {
+					continue
+				}
+				if numeric(col) {
+					lo, hi := args.RangeKeys(id, col.Key)
+					keys = append(keys, lo, hi)
+					continue
+				}
+				key := args.FilterKey(id, col.Key)
+				keys = append(keys, key)
+				if col.Options != nil {
+					lists = append(lists, key)
+				}
+			}
 		}
 	}
-	return keys
+	return keys, lists
 }
 
 // body loads and builds the page's content. Layouts only arrange; leaves are
@@ -213,16 +231,15 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 
 // pageDoc is the shell fields every response for a page shares.
 func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
-	pathVals, queryVals := map[string]string{}, map[string]string{}
+	pathVals := map[string]string{}
 	if req != nil {
-		pathVals, queryVals = req.encode(page)
+		pathVals, _ = req.encode(page)
 	}
 	crumbs := p.render.Crumbs(page, pathVals)
 	return render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
 		Active:  p.render.Active(page),
-		Toolbar: p.render.Toolbar(page, pathVals, queryVals),
 		Content: content,
 	}
 }
@@ -243,11 +260,7 @@ func (p *Program) state(w http.ResponseWriter, r *http.Request, status int, page
 			req = &Request{program: p, Args: decoded, Raw: raw}
 		}
 	}
-	doc := p.pageDoc(page, req, content)
-	if req == nil {
-		doc.Toolbar = nil // arguments did not decode; no value to show a pill for
-	}
-	p.write(w, r, status, doc)
+	p.write(w, r, status, p.pageDoc(page, req, content))
 }
 
 // fail is a load or render failure: the cause is logged and never shown.

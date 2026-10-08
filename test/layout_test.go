@@ -79,15 +79,6 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 	assert.Contains(t, stale, "Overview-row")
 }
 
-func TestTabStateIsNotAToolbarPill(t *testing.T) {
-	t.Parallel()
-
-	h, _ := layoutApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	assert.Equal(t, strings.Count(body, `class="var"`), 1) // Q only
-	assert.False(t, strings.Contains(body, `aria-label="Tab"`))
-}
-
 func TestLayoutsGiveLeavesPositionalIDs(t *testing.T) {
 	t.Parallel()
 

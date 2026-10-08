@@ -48,28 +48,23 @@ func TestPageRendersNavBreadcrumbAndShadow(t *testing.T) {
 	assert.Contains(t, body, `<span class="url" data-url>/admin/device/abc</span>`)
 }
 
-func TestToolbarIsTheQueryArguments(t *testing.T) {
+func TestThereIsNoArgumentsRowAndRefreshLivesInTheTopBar(t *testing.T) {
 	t.Parallel()
 
 	a, _, _ := app(nil)
 	h := a.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/device/abc?debug=true&q=x&n=5").Body.String()
 
-	// One pill per query argument; the path argument lives in the breadcrumb.
-	assert.Equal(t, strings.Count(body, `class="var"`), 3)
-	assert.False(t, strings.Contains(body, `aria-label="Id"`))
-	assert.Contains(t, body, `name="n" type="number" value="5" step="1"`)
-	assert.Contains(t, body, `<option value="true" selected>On</option>`)
-	// Clearing one keeps the others; clear-all drops them; refresh keeps all.
-	assert.Contains(t, body, `href="/admin/device/abc?n=5&amp;q=x" aria-label="Clear Debug"`)
-	assert.Contains(t, body, `<a class="tb-btn " href="/admin/device/abc">Clear all</a>`)
-	assert.Contains(t, body, `href="/admin/device/abc?debug=true&amp;n=5&amp;q=x"`)
+	// Page arguments are read from the address and have no controls of their own.
+	for _, absent := range []string{`data-toolbar`, `class="toolbar"`, `class="var"`, "Clear all", "declares no arguments"} {
+		assert.False(t, strings.Contains(body, absent))
+	}
 
-	// Nothing set: no clear controls, and a page without arguments says so.
-	plain := serve(h, http.MethodGet, "/admin/device/abc").Body.String()
-	assert.False(t, strings.Contains(plain, "Clear all"))
-	none := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, none, "This page declares no arguments.")
+	// Refresh sits in the top bar, a link to the address the browser is on.
+	top := body[strings.Index(body, `<header class="topbar">`):strings.Index(body, "</header>")]
+	assert.Contains(t, top, `class="iconbtn" href="/admin/device/abc?debug=true&amp;q=x&amp;n=5" title="Refresh" aria-label="Refresh" data-refresh`)
+	assert.Contains(t, top, `data-palette-input`) // next to the global search
+	assert.Equal(t, strings.Count(body, "data-refresh"), 1)
 }
 
 func TestGuardRunsBeforeAnythingAndRejectsWith403(t *testing.T) {

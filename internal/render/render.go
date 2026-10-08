@@ -30,7 +30,6 @@ type Doc struct {
 	Title   string
 	Crumbs  []Crumb
 	Active  string // path template of the nav entry to light, or ""
-	Toolbar templ.Component
 	Content templ.Component
 	Method  string
 	URL     string // as the browser asked for it, shown in the status bar
@@ -57,6 +56,7 @@ type Renderer struct {
 	prefix string
 	nav    []navEntry
 	hasCSS bool // theme tokens present, so theme.css is linked
+	search bool // some page offers Search, so the page script has something to ask
 	logo   bool
 }
 
@@ -73,6 +73,9 @@ func New(app *ir.App, prefix string) *Renderer {
 		app: app, prefix: prefix,
 		hasCSS: len(app.Theme.Tokens) > 0,
 		logo:   len(app.Brand.Logo) > 0,
+	}
+	for _, p := range app.Pages {
+		r.search = r.search || p.Search != nil
 	}
 	for _, p := range app.Pages {
 		if p.Nav.Hidden {
@@ -183,7 +186,7 @@ func Forbidden(reason string) templ.Component {
 func BadRequest() templ.Component {
 	return c.StatePage(c.StatePageProps{
 		Icon: c.IconAlert, Title: "That address is not valid",
-		Desc: "One of the arguments in it could not be read. Clear the arguments in the toolbar and try again.",
+		Desc: "One of the arguments in it could not be read. Remove the arguments from the address and try again.",
 	})
 }
 

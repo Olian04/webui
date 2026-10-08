@@ -55,6 +55,7 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		return nil, err
 	}
 	p.add(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
+	p.add(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
 
 	for _, page := range app.Pages {
 		p.addPage(page)

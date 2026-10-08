@@ -10,12 +10,6 @@ import (
 
 var DevicesNav = webui.Nav{Label: "Devices", Section: "Platform"}
 
-// The list page's arguments are its filters. Paging and sorting are not here:
-// the table keeps those in the address under its ID.
-type DevicesArgs struct {
-	Site, Status, Q string
-}
-
 // The device id is a path argument, so each device has its own address.
 type DeviceArgs struct {
 	ID string `webui:"id"`
@@ -45,7 +39,9 @@ var (
 		Label: "Status",
 		Key:   "status",
 		Load:  func(d Device) string { return d.Status },
-		Tones: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+		Kinds: map[string]webui.Tone{
+			"healthy": webui.ToneOK, "degraded": webui.ToneWarning, "quiet": webui.ToneNeutral,
+		},
 	}
 	Site = webui.String[Device]{
 		Label: "Site",
@@ -63,24 +59,40 @@ var (
 	}
 )
 
-var Devices = webui.Page[DevicesArgs]{
+// The list has no arguments of its own: its paging, sorting and column filters
+// are kept in the address by the table, under its ID.
+var Devices = webui.Page[webui.NoArgs]{
 	Path: "/device",
 	Nav:  DevicesNav,
+	// The global search asks every page that has a Search. Each result is a link
+	// built with Open, so it carries the mount prefix and the page's arguments.
+	Search: func(ctx context.Context, query string) ([]webui.SearchResult, error) {
+		devices := service.Find(query, 8)
+		results := make([]webui.SearchResult, len(devices))
+		for i, d := range devices {
+			results[i] = webui.SearchResult{
+				Title:  d.ID,
+				Desc:   d.IP + " · " + d.Site,
+				Target: webui.Open(ctx, Details, DeviceArgs{ID: d.ID}),
+			}
+		}
+		return results, nil
+	},
 	Body: webui.Table[Device]{
 		Title: "Devices",
 		Desc:  "One Table leaf. Sort, page and row links are all URLs.",
-		// The table's state is ?devices.offset, ?devices.sort and ?devices.desc.
+		// The table's state is ?devices.offset, ?devices.sort, ?devices.desc, a
+		// ?devices.filter.<key> per filtered column, and ?devices.min.<key> and
+		// ?devices.max.<key> for the numeric ones.
 		ID:       "devices",
 		PageSize: 10,
-		Load: func(ctx context.Context, q webui.Query) (webui.Rows[Device], error) {
-			args, err := webui.ArgsOf[DevicesArgs](ctx)
-			if err != nil {
-				return webui.Rows[Device]{}, err
+		Load: func(_ context.Context, q webui.Query) (webui.Rows[Device], error) {
+			// The numeric columns, Occurrences and Rate, arrive as bounds.
+			bounds := make(map[string]Bounds, len(q.Ranges))
+			for key, r := range q.Ranges {
+				bounds[key] = Bounds(r)
 			}
-			devices, total := service.Devices(
-				DeviceFilter(args), // the page's arguments are the filter
-				Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc},
-			)
+			devices, total := service.Devices(q.Filters, bounds, Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
 			return webui.Rows[Device]{Items: devices, Total: total}, nil
 		},
 		RowClick: webui.Link[Device, DeviceArgs]{
@@ -150,8 +162,13 @@ var SaveDevice = webui.Action[Device]{
 var Events = webui.Table[Event]{
 	Title: "Recent events",
 	Load: func(_ context.Context, q webui.Query) (webui.Rows[Event], error) {
-		// No Key on these accessors, so Query.Sort is the Label.
-		events := sortedBy(service.Events(), q.Sort, q.Desc, map[string]func(x, y Event) int{
+		// No Key on these accessors, so Query.Sort and Query.Filters use the Label.
+		events := filteredBy(service.Events(), q.Filters, map[string]func(e Event, values []string) bool{
+			EventTime.Label:   containing(func(e Event) string { return e.At }),
+			EventKind.Label:   containing(func(e Event) string { return e.Kind }),
+			EventDetail.Label: containing(func(e Event) string { return e.Detail }),
+		})
+		events = sortedBy(events, q.Sort, q.Desc, map[string]func(x, y Event) int{
 			EventTime.Label:   func(x, y Event) int { return cmp.Compare(x.At, y.At) },
 			EventKind.Label:   func(x, y Event) int { return cmp.Compare(x.Kind, y.Kind) },
 			EventDetail.Label: func(x, y Event) int { return cmp.Compare(x.Detail, y.Detail) },

@@ -2,8 +2,12 @@ package render
 
 import (
 	"fmt"
+	"slices"
+	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -54,6 +58,7 @@ type columnView struct {
 	Align    c.Align
 	SortHref string
 	SortDir  c.SortDir
+	Filter   templ.Component
 }
 
 // columns resolves the header: alignment from the value kind, and the sort
@@ -66,8 +71,9 @@ func (r *Renderer) columns(v TableView) []columnView {
 		if f.Kind == ir.KindInt || f.Kind == ir.KindInt64 || f.Kind == ir.KindFloat {
 			col.Align = c.AlignEnd
 		}
-		if f.SortKey != "" {
-			col.SortHref, col.SortDir = r.sortLink(v, f.SortKey)
+		if f.Key != "" {
+			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
+			col.Filter = r.filterMenu(v, f)
 		}
 		out[i] = col
 	}
@@ -154,7 +160,7 @@ func gauge(f ir.Field, text string) c.GaugeProps {
 }
 
 func badgeTone(f ir.Field, value string) c.Tone {
-	switch f.Tones[value] {
+	switch f.Kinds[value] {
 	case ir.ToneOK:
 		return c.ToneOK
 	case ir.ToneWarning:
@@ -224,4 +230,99 @@ func (v TableView) gate(row, action int) string {
 		return v.Gates[row][action]
 	}
 	return ""
+}
+
+type carried struct{ Name, Value string }
+
+// carry is the rest of the address as hidden form fields, so applying one
+// column's filter keeps everything else: the page's arguments, every sort, every
+// other filter. The keys in skip are the filter being replaced, and offsets are
+// left out, because a changed filter returns every table to its first page: the
+// old offset may no longer exist.
+func carry(query map[string]string, skip ...string) []carried {
+	keys := make([]string, 0, len(query))
+	for k := range query {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var out []carried
+	for _, k := range keys {
+		if slices.Contains(skip, k) || strings.HasSuffix(k, args.ViewSep+"offset") {
+			continue
+		}
+		for _, part := range strings.Split(query[k], args.ListSep) {
+			if part != "" {
+				out = append(out, carried{k, part})
+			}
+		}
+	}
+	return out
+}
+
+// filterView is one column's filter, resolved. A column with fixed Options is a
+// multi-select, a numeric column a minimum and a maximum, any other a text box.
+type filterView struct {
+	Label   string
+	Key     string // the address parameter of a text or multi-select filter
+	Chosen  []string
+	Options []string
+
+	Numeric bool
+	MinKey  string
+	MaxKey  string
+	Min     string
+	Max     string
+
+	Action string
+	Carry  []carried
+	Clear  string // the address without this filter, "" when none is set
+	On     bool
+}
+
+func (r *Renderer) filter(v TableView, f ir.Field) filterView {
+	id := v.Node.ID
+	fv := filterView{Label: f.Label, Action: r.PageHref(v.Page, v.Path, nil)}
+	gone := []string{} // the address parameters this filter owns
+	if f.Kind == ir.KindInt || f.Kind == ir.KindInt64 || f.Kind == ir.KindFloat {
+		fv.Numeric = true
+		fv.MinKey, fv.MaxKey = args.RangeKeys(id, f.Key)
+		gone = append(gone, fv.MinKey, fv.MaxKey)
+		if rng, ok := v.Q.Ranges[f.Key]; ok {
+			fv.Min, fv.Max = formatBound(rng.Min), formatBound(rng.Max)
+		}
+		fv.On = fv.Min != "" || fv.Max != ""
+	} else {
+		fv.Key = args.FilterKey(id, f.Key)
+		gone = append(gone, fv.Key)
+		fv.Chosen, fv.Options = v.Q.Filters[f.Key], f.Options
+		fv.On = len(fv.Chosen) > 0
+	}
+	fv.Carry = carry(v.Query, gone...)
+	if fv.On {
+		rest := cloneQuery(v.Query)
+		for _, k := range gone {
+			delete(rest, k)
+		}
+		for k := range rest {
+			if strings.HasSuffix(k, args.ViewSep+"offset") {
+				delete(rest, k)
+			}
+		}
+		fv.Clear = r.PageHref(v.Page, v.Path, rest)
+	}
+	return fv
+}
+
+func formatBound(x *float64) string {
+	if x == nil {
+		return ""
+	}
+	return strconv.FormatFloat(*x, 'f', -1, 64)
+}
+
+func (f filterView) text() string {
+	if len(f.Chosen) == 0 {
+		return ""
+	}
+	return f.Chosen[0]
 }

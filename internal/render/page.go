@@ -1,10 +1,7 @@
 package render
 
 import (
-	"sort"
 	"strings"
-
-	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -89,90 +86,4 @@ func Title(crumbs []Crumb) string {
 		return ""
 	}
 	return crumbs[len(crumbs)-1].Label
-}
-
-type pill struct {
-	Label     string
-	Name      string
-	Kind      ir.ValueKind
-	Value     string
-	ClearHref string
-	Hidden    []hidden
-}
-
-type hidden struct{ Name, Value string }
-
-type toolbarView struct {
-	Action   string
-	Pills    []pill
-	ClearAll string
-	Refresh  string
-}
-
-// isOffset reports whether an address parameter is a table's offset. Setting
-// any argument returns every table to its first page: the old offset may no
-// longer exist.
-func isOffset(key string) bool { return strings.HasSuffix(key, args.ViewSep+"offset") }
-
-// Toolbar renders a page's arguments as controls. Path arguments are identity
-// and live in the breadcrumb. What is left is the page's view settings, one
-// pill each. query is everything in the address after the path: the page's
-// arguments and the view state the library keeps for tables and tabs, which
-// is carried along but never shown as a pill.
-func (r *Renderer) Toolbar(page *ir.Page, path, query map[string]string) templ.Component {
-	tv := toolbarView{
-		Action:  r.PageHref(page, path, nil),
-		Refresh: r.PageHref(page, path, query),
-	}
-	set := false
-	for _, a := range page.Args {
-		if a.InPath {
-			continue
-		}
-		p := pill{Label: a.Field, Name: a.Name, Kind: a.Kind, Value: query[a.Name]}
-		set = set || p.Value != ""
-
-		// Setting one argument keeps everything else in the address.
-		rest := map[string]string{}
-		for k, v := range query {
-			if k != a.Name && !isOffset(k) {
-				rest[k] = v
-			}
-		}
-		for _, k := range sortedKeys(rest) {
-			p.Hidden = append(p.Hidden, hidden{k, rest[k]})
-		}
-		if p.Value != "" {
-			p.ClearHref = r.PageHref(page, path, rest)
-		}
-		tv.Pills = append(tv.Pills, p)
-	}
-	if set {
-		// Clear all resets the filters, and the paging that depended on them.
-		// Sort and tab are how the page is viewed, not filters, so they stay.
-		keep := map[string]string{}
-		for k, v := range query {
-			if args.IsViewKey(k) && !isOffset(k) {
-				keep[k] = v
-			}
-		}
-		tv.ClearAll = r.PageHref(page, path, keep)
-	}
-	return toolbar(tv)
-}
-
-func sortedKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
-func numberStep(k ir.ValueKind) string {
-	if k == ir.KindFloat {
-		return "any"
-	}
-	return "1"
 }

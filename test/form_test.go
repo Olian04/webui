@@ -72,9 +72,10 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.Contains(t, body, `name="f1" type="number" value="7" min="0" max="100" step="1"`)
 	assert.Contains(t, body, ">0–100</div>")
 
-	// The group is a bordered frame, its fields side by side.
-	assert.Contains(t, body, `class="group"`)
+	// A group is layout: its fields side by side, with no frame of its own.
 	assert.Contains(t, body, `class="field-row"`)
+	assert.False(t, strings.Contains(body, `class="group"`))
+	assert.False(t, strings.Contains(body, "group-legend"))
 
 	// Submit is the primary button; Cancel goes to the parent in the breadcrumb.
 	assert.Contains(t, body, `class="btn btn-primary " type="submit">Save</button>`)
@@ -117,7 +118,7 @@ var (
 	formStatus = webui.Badge[Device]{
 		Label: "Status",
 		Load:  func(d Device) string { return map[bool]string{true: "healthy", false: "degraded"}[d.Count > 5] },
-		Tones: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+		Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
 	}
 	formLoad = webui.Slider[Device]{
 		Label: "Load", Min: 0, Max: 100, Precision: 1,
