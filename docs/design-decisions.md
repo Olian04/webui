@@ -134,8 +134,9 @@ design element.
 
 ## Tables, filters and view state
 
-- Pagination and sorting are library-owned view state. `Table.PageSize`
-  turns paging on and every column is sortable and filterable. A table says where
+- Pagination and sorting are library-owned view state. A table always pages, 25
+  rows a page unless `Table.PageSize` says, since one that listed every row would
+  grow without bound, and every column is sortable and filterable. A table says where
   its rows come from with one of two fields. `Rows` returns every row and the
   library filters, sorts and pages them from the columns' own accessors, a number
   as a number and text as text, so a table over a slice has no query code at all.

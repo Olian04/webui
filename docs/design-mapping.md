@@ -52,7 +52,7 @@ into existence, and nothing is configured twice.
 | `Table.RowClick` | Rows become links and take the pointer + hover treatment |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
-| `Table.PageSize`, `Table.ID` | The pager; the ID names the table's sort and offset in the address |
+| `Table.PageSize`, `Table.ID` | The pager, 25 rows a page unless said; the ID names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
 | `Action` | A button; its `Role` decides primary / secondary / destructive |
 | `Success`, `Warning` | A toast, bottom-right (carried across the redirect by a flash cookie), green or amber; the action was accepted |

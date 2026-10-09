@@ -455,3 +455,28 @@ func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
 	// Clear drops both bounds and the offset, and keeps the sort.
 	assert.Contains(t, body, `href="/admin/device?devices.sort=id">Clear`)
 }
+
+func TestATableWithNoPageSizePagesBy25(t *testing.T) {
+	t.Parallel()
+
+	var asked int
+	page := webui.Page[webui.NoArgs]{Path: "/device", Body: webui.Table[Device]{
+		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+			asked = q.Limit
+			var all []Device
+			for i := range 60 {
+				all = append(all, Device{Id: fmt.Sprintf("dev%02d", i)})
+			}
+			end := min(q.Offset+q.Limit, len(all))
+			return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, nil
+		},
+		Columns: []webui.Accessor[Device]{formID},
+	}}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+
+	assert.Equal(t, asked, 25)
+	assert.Contains(t, body, "1–25 of 60")
+	assert.Contains(t, body, "dev24")
+	assert.False(t, strings.Contains(body, "dev25")) // on the next page
+}

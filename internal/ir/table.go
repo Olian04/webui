@@ -48,7 +48,7 @@ type Table struct {
 	// ID names this table's view state in the address: "<ID>.offset",
 	// "<ID>.sort", "<ID>.desc". Set whenever the table pages or sorts.
 	ID       string
-	PageSize int // rows per page; 0 means the table does not page
+	PageSize int // rows per page, always positive: the declaration defaults it
 
 	// Search says the table's rows are found by the global search: each is a result
 	// that leads where RowClick does. Only a table with a RowClick has it.

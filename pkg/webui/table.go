@@ -16,7 +16,7 @@ type Query struct {
 	// Offset is how many rows to skip: the start of the page.
 	Offset int
 
-	// Limit is how many rows the page shows, or zero for all of them.
+	// Limit is how many rows the page shows: the table's PageSize.
 	Limit int
 
 	// Sort is the Label of the column to sort by, or empty for the source's own
@@ -71,7 +71,7 @@ type Window[M any] struct {
 // Table is a leaf that lists rows of a model M.
 //
 // Every column header is a sort link with a filter beside it. A table keeps its
-// sort, its filters, and its page when it pages (PageSize > 0), in the address
+// sort, its filters, and its page, in the address
 // under its ID: "devices.offset", "devices.sort", "devices.desc". The library owns
 // those parameters; the page's argument struct never sees them. The panels of one
 // [Tabs] are never visible together, so they may share an ID.
@@ -90,7 +90,8 @@ type Table[M any] struct {
 	// more than one table.
 	ID string
 
-	// PageSize is how many rows a page shows. Zero means the table does not page.
+	// PageSize is how many rows a page shows. Leave it zero for 25: a table always
+	// pages, since one that listed every row would grow without bound.
 	PageSize int
 
 	// Rows returns every row, and the library does the rest: it filters, sorts and
@@ -172,7 +173,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		}
 	}
 	if t.PageSize < 0 {
-		v.add("Table.PageSize is negative", "Use 0 for a table that does not page.")
+		v.add("Table.PageSize is negative", "Use a number of rows, or leave it zero for the default of 25.")
 	}
 	v.id("Table", t.ID) // every table keeps its sort in the address
 
@@ -202,6 +203,17 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 }
 
+// defaultPageSize is how many rows a page shows when the table does not say.
+const defaultPageSize = 25
+
+// pageSizeOf is the rows a page shows: what the table asked for, or the default.
+func pageSizeOf(size int) int {
+	if size == 0 {
+		return defaultPageSize
+	}
+	return size
+}
+
 func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	columns := lowerAccessors(t.Columns, "c")
 	labels := make(map[string]string, len(columns)) // the address's name for a column → its label
@@ -209,7 +221,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		labels[c.Key] = c.Label
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: t.PageSize, Search: t.Search,
+		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: pageSizeOf(t.PageSize), Search: t.Search,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}

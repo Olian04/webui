@@ -167,9 +167,7 @@ func viewNodes(n ir.Node) map[string]ir.Node {
 				walk(t.Body)
 			}
 		case *ir.Table:
-			if n.PageSize > 0 || sortable(n) {
-				out[n.ID] = n
-			}
+			out[n.ID] = n
 		}
 	}
 	if n != nil {
@@ -196,9 +194,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 		case *ir.Tabs:
 			keys = append(keys, args.ViewKey(id, "tab"))
 		case *ir.Table:
-			if node.PageSize > 0 {
-				keys = append(keys, args.ViewKey(id, "offset"))
-			}
+			keys = append(keys, args.ViewKey(id, "offset"))
 			if sortable(node) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
 			}

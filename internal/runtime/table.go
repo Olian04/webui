@@ -19,11 +19,9 @@ import (
 // loader sort by something it never offered.
 func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	var q ir.Query
-	if n.PageSize > 0 {
-		q.Limit = n.PageSize
-		if off, err := strconv.Atoi(raw[args.ViewKey(n.ID, "offset")]); err == nil && off > 0 {
-			q.Offset = off
-		}
+	q.Limit = n.PageSize
+	if off, err := strconv.Atoi(raw[args.ViewKey(n.ID, "offset")]); err == nil && off > 0 {
+		q.Offset = off
 	}
 	q.Filters = filtersOf(n, raw)
 	q.Ranges = rangesOf(n, raw)

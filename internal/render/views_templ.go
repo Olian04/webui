@@ -1065,7 +1065,7 @@ func emptyHint(v TableView) string {
 }
 
 func (r *Renderer) tableFooter(v TableView) templ.Component {
-	if v.Failed || v.Node.PageSize == 0 {
+	if v.Failed {
 		return nil
 	}
 	return c.Pager(r.pager(v))
