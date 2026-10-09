@@ -255,6 +255,9 @@ own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
 ### Releasing
 
 Releases are cut from the **Release** workflow (Actions, *Run workflow*), which asks
-for a version (`X.Y.Z`, or `X.Y.Z-N` for the Nth prerelease before it), tags the
-commit, and publishes the release with GoReleaser. Nothing is built: webui is a
+for a version, tags the commit, and publishes the release with GoReleaser. The
+version is the tag, so it has to be one that Go accepts as a module version: `vX.Y.Z`,
+or `vX.Y.Z-N` for the Nth prerelease before it, with the `v` and no leading zeros
+(`v1.0.0-4`, not `1.0.0-4`). The workflow refuses anything else, and a major version
+of 2 or more until the module path ends in `/v2` and so on. Nothing is built: webui is a
 library, and consumers fetch the tag with `go get`.

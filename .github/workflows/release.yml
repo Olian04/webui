@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version: X.Y or X.Y.Z (release) or X.Y-Z / X.Y.Z-Z (prerelease; Z = increment, e.g. 0.1.0-3). Optional leading v."
+        description: "Go module version: vX.Y.Z (release) or vX.Y.Z-N (prerelease; N = increment, e.g. v0.1.0-3). The v is required."
         required: true
         type: string
       prerelease:
-        description: "Mark this release as a prerelease (version must be X.Y-Z or X.Y.Z-Z)"
+        description: "Mark this release as a prerelease (version must be vX.Y.Z-N)"
         required: false
         default: true
         type: boolean
@@ -29,35 +29,62 @@ jobs:
 
       - name: Check version format and extract
         id: version
+        env:
+          # Through the environment, not interpolated into the script: an input is text a
+          # person typed, and must not be read as shell.
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
         run: |
-          VERSION="${{ inputs.version }}"
-          PRERELEASE="${{ inputs.prerelease }}"
-          if [ "$PRERELEASE" = "true" ]; then
-            if ! echo "$VERSION" | grep -qE '^v?[0-9]+\.[0-9]+(\.[0-9]+)?-[0-9]+$'; then
-              echo "::error::Prerelease version must match X.Y-Z or X.Y.Z-Z (optional leading v), e.g. 1.0-3 or v0.1.0-1. Got: $VERSION"
-              exit 1
-            fi
-          else
-            if ! echo "$VERSION" | grep -qE '^v?[0-9]+\.[0-9]+(\.[0-9]+)?$'; then
-              echo "::error::Release version must match X.Y or X.Y.Z (optional leading v), e.g. 1.0 or v0.1.0. Got: $VERSION"
-              exit 1
-            fi
+          VERSION="$INPUT_VERSION"
+          PRERELEASE="$INPUT_PRERELEASE"
+
+          # The tag is the Go module version, and `go get` only knows a canonical semantic
+          # version with its "v": vX.Y.Z, or vX.Y.Z-N. A tag without the "v" (1.0.0-4), without
+          # a patch (v1.0), or with a leading zero (v1.0.0-04) is not a version to Go, which
+          # skips it: the release would exist on GitHub and not be installable.
+          NUM='(0|[1-9][0-9]*)'
+          if ! [[ "$VERSION" =~ ^v${NUM}\.${NUM}\.${NUM}(-${NUM})?$ ]]; then
+            echo "::error::'$VERSION' is not a Go module version. Use vX.Y.Z for a release or vX.Y.Z-N for a prerelease (N counts the prereleases before X.Y.Z), with the leading v and no leading zeros, e.g. v1.0.0 or v1.0.0-4."
+            exit 1
           fi
+          MAJOR="${BASH_REMATCH[1]}"
+          INCREMENT="${BASH_REMATCH[5]}"
+
+          if [ "$PRERELEASE" = "true" ] && [ -z "$INCREMENT" ]; then
+            echo "::error::A prerelease must be vX.Y.Z-N, e.g. v0.1.0-3. Got: $VERSION"
+            exit 1
+          fi
+          if [ "$PRERELEASE" != "true" ] && [ -n "$INCREMENT" ]; then
+            echo "::error::'$VERSION' has a prerelease part, so tick 'prerelease', or give a release as vX.Y.Z."
+            exit 1
+          fi
+
+          # Go reads the major version from the module's path: v2 and up are only fetchable
+          # from a module whose path ends in /v2 and so on, and v0 and v1 from one that does not.
+          MODULE="$(awk '$1 == "module" { print $2; exit }' go.mod)"
+          if [[ "$MODULE" =~ /v([0-9]+)$ ]]; then
+            if [ "$MAJOR" != "${BASH_REMATCH[1]}" ]; then
+              echo "::error::The module is $MODULE, so its versions are v${BASH_REMATCH[1]}.x.y. Got: $VERSION"
+              exit 1
+            fi
+          elif [ "$MAJOR" -ge 2 ]; then
+            echo "::error::$VERSION is major version $MAJOR, which Go only fetches from a module whose path ends in /v$MAJOR, and this one is $MODULE. Change the module path first, or release a v0 or v1."
+            exit 1
+          fi
+
+          git fetch --prune --tags origin
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag '$VERSION' already exists."
+            exit 1
+          fi
+
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [ "$PRERELEASE" = "true" ]; then
             BASE_VERSION="${VERSION%-*}"
-            INCREMENT="${VERSION##*-}"
-            NO_V="${BASE_VERSION#v}"
-            git fetch --prune --tags origin
-            for tag in "$NO_V" "v$NO_V"; do
-              if [ "$tag" = "v" ]; then
-                continue
-              fi
-              if git rev-parse -q --verify "refs/tags/$tag" >/dev/null 2>&1; then
-                echo "::error::Tag '$tag' already exists on the remote. Prerelease '$VERSION' is for work toward stable **$NO_V**; that version must not be tagged or released yet (increment $INCREMENT is the Nth prerelease *before* $NO_V)."
-                exit 1
-              fi
-            done
+            if git rev-parse -q --verify "refs/tags/$BASE_VERSION" >/dev/null 2>&1; then
+              echo "::error::Tag '$BASE_VERSION' already exists. Prerelease '$VERSION' is for work toward stable $BASE_VERSION; that version must not be tagged or released yet (increment $INCREMENT is the Nth prerelease *before* $BASE_VERSION)."
+              exit 1
+            fi
             echo "release_name=Prerelease increment ${INCREMENT} of upcoming release ${BASE_VERSION}" >> "$GITHUB_OUTPUT"
             echo "release_body=**This is a prerelease** — draft increment ${INCREMENT} of the upcoming ${BASE_VERSION} build. Subject to change before the final release." >> "$GITHUB_OUTPUT"
           else
