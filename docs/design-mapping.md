@@ -7,9 +7,9 @@ of it:
 > declaration has exactly one visual consequence.**
 
 If a panel has a checkbox column, it is because the table declares bulk
-operations — not because someone chose to put one there. If a page has no
-toolbar, it is because it declares no arguments. Nothing is styled into
-existence, and nothing is configured twice.
+operations — not because someone chose to put one there. If a column has no
+filter icon, it is because it declares nothing to filter by. Nothing is styled
+into existence, and nothing is configured twice.
 
 ---
 
@@ -17,44 +17,50 @@ existence, and nothing is configured twice.
 
 | Type | Becomes |
 |---|---|
-| `App` | The shell: sidebar, top bar, toolbar, content, status bar |
+| `App` | The shell: sidebar, top bar (breadcrumbs, search, refresh), content, status bar |
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
-| `Theme` | The token `:root` block — the only thing that differs between dark and light |
+| `Theme` | The four colours an app may restyle (`Accent`, `OK`, `Warning`, `Critical`), emitted as `theme.css` |
 | `Page` | One address, one screen |
-| `Page.PathTemplate` | The address; its segments are the breadcrumb trail |
-| `Page.Args` / `ArgSpec` | The toolbar — one parameter pill per argument |
-| `ArgSpec.Kind` | Which control the pill holds (select, text, number, toggle) |
-| `ArgSpec.InPath` | Whether the value appears in the breadcrumb or in the toolbar |
-| `Page.Guard` | The **Not permitted** full-page state, and the gating of every control |
-| `Page.Nav` | A sidebar entry |
-| `Nav.Label` | The entry's text |
-| `Nav.Shadow` | Which *other* entry lights up while this page is open |
-| `Nav.Hidden` | No entry at all |
-| `Page.Body` → `Node` | The arrangement of panels inside the content region |
+| `Page.Path` | The address; its segments are the breadcrumb trail |
+| `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
+| `Page.Guard` | The **Not permitted** full-page state |
+| `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
+| `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
+| `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the other text columns the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
+| `App.Menu` | The button in the top bar, beside Refresh, and the popover list of the app's own links behind it. A `MenuItem` is a `Nav` entry (label, icon, section caption) with an `ExternalURL`, used as written (the menu groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
+| *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
+| `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, top-aligned, 8px apart |
-| `Tabs` / `Tab.Label` | The tab strip; the selection is a page argument |
+| `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
-| `Field` (in a `Form`) | A labelled input |
-| `Field` (in a `Table`) | A column |
-| `Field.Label` | The input label / column header |
-| `Field.Kind` | The input type and the column's alignment |
-| `Field.Group` | A bordered group inside the form with an uppercase caption |
-| `Field.Set` (absent) | The input renders read-only on the hover surface |
-| `Field.SortKey` | The column header becomes a sort link |
-| `Field.Placeholder` | The input's placeholder |
-| `Field.Rules` | HTML validation attributes on the input, and the hint beneath it |
+| `Form.Title` / `Table.Title`, `Desc` | The panel header text, and an information icon whose popover shows the description on hover and on focus |
+| accessor (`String`, `Int`, `Float`) in a `Form` | A labelled input |
+| accessor in a `Table` | A column |
+| `Label` | The input label / column header |
+| value kind | The input type and the column's alignment |
+| `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
+| no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
+| accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
+| `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
+| `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
+| `Rules` | HTML validation attributes on the input, and the hint beneath it |
+| `Badge` | A badge in a status column, or beside its label in a form; always read-only |
+| `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
+| `Table.Rows` or `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
 | `Table.RowClick` | Rows become links and take the pointer + hover treatment |
-| `Table.Bulk` | The checkbox column and the selection action bar |
+| `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
+| `Table.Actions` | A button per row in a trailing cell |
+| `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
-| `Action` | A button; its role decides primary / secondary / destructive |
-| `Effect.Toast` | A toast, bottom-right |
-| `Effect.Redirect` | A navigation after the toast |
-| `Effect.Fields` / `FieldError` | Invalid borders and per-field messages, with typed values preserved |
-| `Effect.Stale` | Which panels re-render after the action |
-| `Addr` | Which panel a refresh replaces |
-| `CompileErrors` | The **Failed to compile** page, served at every address |
+| `Action` | A button; its `Role` decides primary / secondary / destructive |
+| `Success`, `Warning` | A toast, bottom-right (carried across the redirect by a flash cookie), green or amber; the action was accepted |
+| `Failure` | A red toast over the form shown again, with what was typed kept |
+| `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |
+| `Outcome.Then` | A navigation after an accepted action |
+| leaf address (`p.0.1`) | Which panel a refresh replaces |
+| `CompileError` | The **Failed to compile** page, served at every address |
 
 ---
 
@@ -66,19 +72,36 @@ existence, and nothing is configured twice.
 palette; `ByPath` is what makes a breadcrumb parent clickable and what lets one
 page link to another without either knowing the other's address.
 
+The browser tab's icon is generated: `Brand.Logo` is scaled to 32 px (the tab)
+and 180 px (a phone's home screen), fitted inside a square and never stretched,
+and served by the app, with no file to produce or host. An app with no `Logo`
+gets the library's own mark as an SVG. `Brand.NoFavicon` turns it all off, for an
+app that declares its own.
+
 `Brand.Name` and `Brand.Logo` fill the 48px sidebar brand row. That row is
 exactly as tall as the top bar so the two horizontal rules line up across the
 whole window — the single most noticeable alignment in the layout.
 
 ### `Theme`
 
-`Theme.Tokens` is the entire surface between the design and the application.
-Every colour, radius and elevation in the design document is a token; nothing
-in any component reads a literal value. Swapping dark for light is swapping the
-token block, and nothing about spacing, structure or component behaviour
-changes. An application that wants its own palette redefines tokens and gets a
-coherent result, because semantics (*healthy*, *warning*, *critical*,
-*interactive*) are named, not colours.
+`Theme` is the surface between the design and the application, and it is a
+struct of static fields, one for each thing an app may restyle: `Accent`
+(interactive: primary buttons, links, the active entry, focus), and `OK`,
+`Warning` and `Critical` (the semantics a badge or a message carries). Each is a
+hex colour, checked at `Compile`.
+
+The design underneath is still tokens, and nothing in any component reads a
+literal value, but the app does not name them. It names a colour, and the
+renderer derives what the design needs from it, per mode, with `color-mix`: for
+the accent a hover (deeper, so a white label keeps its contrast) and a readable
+text tint, for a status colour its text tint and the faint background and border of
+a badge, and for `Critical` also the solid fill of a destructive button. Dark lightens and light deepens,
+so one colour is right in both.
+
+Surfaces and text are not themeable on purpose. They are what makes light and
+dark differ, and light or dark is the viewer's choice, not the app's; a single
+colour cannot be right in both. A field left empty keeps the design's colour, so
+a zero `Theme` serves no `theme.css` at all.
 
 ### `Page` and `PathTemplate`
 
@@ -93,40 +116,28 @@ compile step can prove a link's destination exists.
 
 ---
 
-## Arguments and the toolbar
+## Arguments
 
-### `Args` / `ArgSpec` → the toolbar
+### The argument struct
 
-This is the highest-leverage mapping in the design.
+A page's argument struct is what its address means. A **path** argument is
+identity, so it appears in the **breadcrumb** (`Collector › Devices ›
+dev_27c38b`). A **query** argument has no control of its own: it arrives in the
+address — from a link, from `Open` — and the page's loaders read it. What a
+user filters by hand, they filter in a table's column headers, which is
+library-owned view state and not a page argument.
 
-A page's argument struct **is** the toolbar. Each `ArgSpec` becomes one pill:
-`ArgSpec.Name` is the label, `ArgSpec.Kind` chooses the control, and the
-current value fills it. Setting a value is a navigation; clearing it is the
-small `×` in the pill.
-
-The consequences fall out for free:
+The consequences:
 
 - The state of the screen is in the address bar, so it survives reload, back,
   bookmarking and sharing.
-- There is no separate "filter UI" to design per page, and no way for a page
-  to have a filter that isn't in its address.
-- A page with an empty `Args` renders *"This page declares no arguments"* — the
-  absence is legible rather than silently missing.
-
-`ArgSpec.InPath` decides where the value shows: a path argument is identity, so
-it appears in the **breadcrumb** (`Collector › Devices › dev_27c38b`); a query
-argument is a view setting, so it appears in the **toolbar**. Same struct, two
-placements, decided by one boolean.
-
-`ArgSpec.Kind` chooses the control — an enumerable kind becomes a select, a
-string a text field, a bool a toggle, a number a numeric field — and also
-decides what the compile step will reject, which is why the toolbar can never
-render a control that the decoder cannot read back.
+- There is no row of page parameters to design per page.
+- The page's argument struct stays what it says: the things the page is *about*.
 
 ### `Decode`
 
-Invisible, but it is the reason the toolbar can be trusted: the values in the
-pills are the values the page will receive, parsed once at compile time rather
+Invisible, but it is the reason an address can be trusted: the values in the
+address are the values the page will receive, parsed once at compile time rather
 than re-derived per request.
 
 ---
@@ -139,20 +150,43 @@ Straightforward: one page, one 32px entry, with the active treatment (Active
 background, full-strength text, 2px primary bar at the left edge) when it is
 the current page.
 
-### `Nav.Shadow` → borrowed highlight
+`Nav.Icon` is the name of a Font Awesome Free solid icon, `"house"` for
+`fa-house`, drawn at the left of the entry. The renderer uses it as a class
+(`<i class="fa-solid fa-house">`) and serves the icon font itself, so the
+content security policy stays `'self'` and nothing is fetched from a CDN. A
+name that is not in the free solid set (or is written `fa-house`) is a compile
+error, so a typo cannot draw nothing. Every icon the library draws for itself
+(info, alert, filter, sort carets, refresh) is a Font Awesome icon too. The sidebar can be collapsed to a 56px rail of icons, by the
+button in its footer (the choice is a browser preference, so it stays out of
+the address) and always below 820px. An entry with no icon holds the place of one
+in the full sidebar, so labels line up, and shows its label's first letter,
+capitalised, in the rail.
+
+### The landing page
+
+A page declared at `Path: "/"` is the landing page. The brand in the sidebar
+(logo and name) and the first breadcrumb link to it. It usually has no `Nav`
+label of its own, since the brand is its entry. An app with no such page sends
+the root to the first entry in the navigation.
+
+### A page with no entry → the ancestor's highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not
-leave the sidebar looking like nothing is selected. `Shadow` names the page
-whose entry should light up instead. Visually: the sidebar stays on *Devices*
-while you are on a device, and the **breadcrumb** carries the fact that you
-have gone a level deeper.
+leave the sidebar looking like nothing is selected. Nothing is declared for
+this: a page with no `Label` lights the entry of its nearest ancestor path, the
+longest proper prefix of its own that is a page with a `Label` (the root is never
+one). `/device/{id}` lights *Devices*, the page at `/device`. Visually: the
+sidebar stays on *Devices* while you are on a device, and the **breadcrumb**
+carries the fact that you have gone a level deeper. It is the same derivation
+the breadcrumb makes from the path.
 
 This is why the breadcrumb lives in the top bar rather than in the content — it
 is the sidebar's partner, not the page's heading.
 
-### `Nav.Hidden`
+### A page with no entry and no ancestor with one
 
-No entry, no shadow. The page is reachable only by link. Nothing appears.
+The page is reachable only by link, and nothing in the sidebar lights. There is
+nothing to declare for it: it is a page with no `Label`.
 
 ---
 
@@ -183,9 +217,10 @@ do that work.
 
 ### `Tabs` and `Tab.Label`
 
-The tab strip. The crucial design consequence is that the selection is a page
-argument, not component state: the active tab appears in the toolbar as a
-parameter, is in the address bar, survives a reload, and can be linked to.
+The tab strip. The crucial design consequence is that the selection is address
+state, not component state: it is in the address bar (`tabs.tab=raw`), survives
+a reload, and can be linked to. It is view state the library keeps, not a page
+argument, so it has no other control — the strip itself is the control.
 A tab is navigation that happens to look like a tab.
 
 ---
@@ -196,9 +231,15 @@ A tab is navigation that happens to look like a tab.
 
 One panel. Header carries the title and description; the body carries the
 fields; the footer carries `Submit` as the primary button, right-aligned, with
-a ghost *Cancel* beside it.
+a ghost *Cancel* beside it. Cancel returns to the page the user came from, which the library remembers
+(`webui.from` in the address, set by the link that opened the form), and to the
+parent in the breadcrumb when there is none. When the `Submit` action's `Guard` refuses the
+visitor there is nothing to save or cancel, so the footer holds a ghost *Back* to the same
+address instead, and no footer at all when there is nowhere to go back to. Every field is then
+read-only, as are the fields of a form with no `Submit`: a field is editable only where it has a
+`Store` and the visitor may submit.
 
-`Bind` is invisible until something fails — see `Effect.Fields` below.
+`Bind` is invisible until something fails — see `Reject` below.
 
 ### `Table` → a panel
 
@@ -206,25 +247,26 @@ One panel. Header carries the title and description; the body carries the
 table; the footer carries the range (`1–10 of 37`) and the pager, whose
 buttons are links carrying an offset argument.
 
-`Load` returning `total = -1` is a real design state: the footer shows the
-range without a total and the *Next* button cannot be pre-disabled.
+A `Load` that returns a `Total` smaller than what it has shown (a `Rows` table always
+knows its total) means the total is unknown, which is a real design state: the footer
+shows the range without a total and the *Next* button cannot be pre-disabled.
 
 ---
 
-## `Field` — one type, two renderings
+## Accessors — one type, two renderings
 
-`Field` appears in both leaves and renders differently in each, from the same
-declaration:
+An accessor (`String`, `Int`, `Float`, `Badge`, `Slider`) appears in both leaves and
+renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
 |---|---|---|
 | `Label` | Field label, 12.5/500 | Column header, 12.5/500 |
-| `Kind` | Input type | Cell alignment and formatting (numeric → right, tabular figures) |
-| `Get` | The value shown | The cell value |
-| `Set` absent | **Read-only** — hover surface, text-secondary, weak border | (no effect; a column is always read-only) |
+| value kind | Input type | Cell alignment and formatting (numeric → right, tabular figures) |
+| `Load` | The value shown | The cell value |
+| `Store` absent | **Read-only** — shown as output, not as a disabled input | (no effect; a column is always read-only) |
 | `Rules` | Validation attributes + the hint line | Ignored |
-| `SortKey` | Ignored | Header becomes a sort link; the sorted one takes the link colour and a caret |
-| `Group` | A bordered group with an uppercase caption | Ignored |
+| `Label` | (the label) | Header is a sort link and has a filter beside it; the sorted one takes the link colour and a caret |
+| `Group` | Fields side by side, with no frame | Ignored |
 | `Placeholder` | The placeholder | Ignored |
 
 The "ignored" cells matter as much as the others. A field declared once and
@@ -236,17 +278,23 @@ reusable rather than forcing two near-identical declarations.
 
 Each rule has exactly one visual form:
 
-| Rule | Input attribute | Hint |
+| Rule | Input attribute | Shown as |
 |---|---|---|
 | Required | `required` | `*` beside the label, in critical |
-| `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters" |
-| `Min` / `Max` (`*Bound`) | `min` / `max` | "1–65535" |
-| `Pattern` | `pattern` | The pattern's own message |
+| `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
+| `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
+| `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
+
+Nothing is printed beneath a control while its value is good. Beside the label of an
+editable field with any rule other than *Required* there is an information icon whose
+popover lists the rules: the length, the bounds, and the pattern's message. It opens on
+hover and on focus, like a panel's description, so it works without a pointer or script.
 
 The browser refuses before anything is sent; the server re-runs the same set
 after. The user sees one behaviour. `Pattern` carries a message because a
-regular expression cannot explain itself — that message *is* the hint text, and
-it is the reason `Pattern` is a struct while `MinLen` is a bare integer.
+regular expression cannot explain itself — that message is the error shown when
+a value is refused, and the reason `Pattern` is a struct while `MinLen` is a bare
+integer.
 
 ---
 
@@ -255,10 +303,10 @@ it is the reason `Pattern` is a struct while `MinLen` is a bare integer.
 ### `Action` → a button
 
 `Form.Submit` renders as the primary button in the panel footer.
-`Table.Bulk` renders in the selection action bar. Destructive actions take the
+`Table.BulkActions` render in the selection action bar. Destructive actions take the
 critical role.
 
-### `Table.Bulk` → checkboxes that only exist when declared
+### `Table.BulkActions` → checkboxes that only exist when declared
 
 Declaring bulk operations adds the 34px checkbox column and, once anything is
 selected, the action bar: a 10% primary strip carrying the count, the
@@ -269,13 +317,14 @@ Selection itself is deliberately **not** an argument: it never enters the
 address bar, because it is request state, not page state. A shared link does
 not carry someone else's selection.
 
-### `Table.RowClick` / `RowTarget` / `Link`
+### `Table.RowClick` / `Link`
 
 Rows become links: pointer cursor, hover surface, and the whole row is the
 target. Because `Link` names a page and builds its arguments, the destination
 is known at compile time, which is what lets a row link be a real `href`
 instead of a click handler — and therefore what lets the whole design work with
-JavaScript switched off.
+JavaScript switched off. A row click is always a link, never a POST: whatever
+changes something is a button in the row's own cell, or on the selection.
 
 ### `Guard` → gating, in two places from one declaration
 
@@ -287,24 +336,32 @@ JavaScript switched off.
 2. **On a control** — the *gated* treatment: 45% opacity plus a tooltip giving
    the reason. The same check that would reject the request also disables the
    button, so there is no second authorisation rule to keep in sync and no
-   control that looks available and then fails.
+   control that looks available and then fails. A form's *Submit* is the one
+   exception: refused, it is not drawn, because a form that cannot be saved
+   is shown read-only (see `Form`).
 
-### `Effect`
+### `Outcome`
 
-| Field | Visual |
-|---|---|
-| `Toast` | A toast, bottom-right, semantic left border, 3.4s |
-| `Redirect` | Navigation after the toast is shown |
-| `Fields` (`[]FieldError`) | Invalid border + ring on each named field, message beneath, **and the panel re-renders with what the user typed** |
-| `Stale` | Which panels re-render; everything else holds still |
+An action says how it ended and the library draws it. Accepted outcomes redirect
+(a 303, so a reload does not repeat the POST) and carry their toast across the
+redirect; refused ones show the form again, in place, with what the user typed.
 
-`Effect.Fields` with a nil error is the design's most important rejection path:
-a save that was understood, refused, and is fixable. It looks identical to a
-browser-caught rule failure, which is correct — from the user's side it is the
-same event. The only difference is that it could not have been caught earlier,
-because it needed the service.
+| Constructor | Accepted? | Visual |
+|---|---|---|
+| `Success(msg)` | yes | A toast with a green left border, 3.4s; none when `msg` is empty |
+| `Warning(msg)` | yes | The same with an amber border: it was done, and the user should be aware of `msg` |
+| `Failure(msg)` | no | The form shown again with what was typed, and a toast with a red border saying `msg` |
+| `Reject(Field(...)...)` | no | The form shown again with what was typed, an invalid border + ring on each named field and its message beneath, and a "Not saved" toast |
+| `.Then(target)` | any | Navigation, whatever the outcome: the user goes there instead of what it would have done, with its message as a toast there. A refused outcome that is told where to go does not show the form again, so what was typed is not kept |
 
-### `CompileErrors` → the compile-failure page
+`Reject` is the design's most important rejection path: a save that was
+understood, refused, and is fixable. It looks identical to a browser-caught rule
+failure, which is correct — from the user's side it is the same event. The only
+difference is that it could not have been caught earlier, because it needed the
+service. `Failure` is the same event for a reason that belongs to no one field.
+There is no default toast: an action that says nothing shows nothing.
+
+### `CompileError` → the compile-failure page
 
 Served at every address under the mount until the application compiles. Because
 the errors are structured rather than scraped from a compiler, every problem is
@@ -314,56 +371,27 @@ time.
 
 ---
 
-## What the design needs that the types do not have
+## What the design needed that the types did not have
 
-Four things in the mock are not expressible today. Three are real decisions; one
-is small.
+Four things in the original design mock were not expressible. Three are now closed;
+one is deferred on purpose.
 
-### 1. Panel titles and descriptions — `Form` and `Table` have no `Title`
-
-This is the significant one. The entire visual grammar is *titled panels*: a
-`Split` of two leaves is two unlabelled boxes without it, and the information
-icon carrying a description has nothing to carry. Every panel title in the mock
-is invented.
-
-A `Title string` and `Desc string` on both leaves would close it. Worth
-weighing: it adds a presentational field to two structural types, which is the
-first place the declaration starts describing appearance rather than meaning.
-The counter-argument is that a panel's title is part of what the panel *is*, not
-how it looks — it is the name of the thing being shown, and the alternative is
-that the runtime invents one.
-
-### 2. Collapsible rows — `Stack` has no `Label`
-
-Grafana's row header is the mechanism that makes a long page scannable without
-pagination. A `Stack` is the natural home for it: `Label string` plus a
-default-collapsed flag. This is additive and low-risk, but it does give `Stack`
-a visual identity it currently lacks — today a `Stack` is pure arrangement.
-
-### 3. Sidebar grouping — `Nav` has no section or parent
-
-`Nav` has `Label`, `Shadow` and `Hidden`. The sidebar is therefore flat. The
-*Configuration → Settings → Ingest / Retention* grouping in the mock is
-invented. Options, roughly in order of cost:
-
-- `Nav.Section string` — a flat caption above a run of entries. Cheapest;
-  matches the uppercase captions in the design; no nesting.
-- `Nav.Parent` — real two-level nesting, with the expand/collapse behaviour.
-  More expressive, but introduces a tree that the compile step now has to
-  validate (no cycles, no orphans, no parent that is itself a page with a
-  shadow).
-
-The design only needs the first. The second is worth wanting only if the
-application will plausibly exceed a screenful of entries.
-
-### 4. Inline bars in table cells — `Field` has no render hint
-
-The bar in the Rate column is a display mode, not a new kind of node: the cell
-is still one field value. A small `Render` enum on `Field` (`Plain`, `Badge`,
-`Bar`, `Mono`) covers it, and it is worth deciding *now* — because it is the
-pressure-release valve for every future request for visual richness in a table,
-and the alternative is a third leaf kind for charts. A render hint keeps
-`Form`, `Table` as the only two leaves.
+1. **Panel titles and descriptions — closed.** `Form` and `Table` carry `Title`
+   and `Desc`. A panel's title is part of what the panel *is* — the name of the
+   thing being shown — and the alternative was that the runtime invents one.
+2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
+   a `Label` without becoming a struct. A long page is scannable with `Tabs`
+   until that is wanted.
+3. **Sidebar grouping — closed, flat.** `Nav.Section` is a caption above a group
+   of entries, named by each entry that belongs to it. Nesting (`Nav.Parent`) would need the compile step to validate a
+   tree and is not worth it until an app exceeds a screenful of entries.
+4. **Badges and inline bars — closed.** `Badge` and `Slider` are accessors
+   alongside `String`, `Int` and `Float`, not a display mode bolted on top: a
+   status is a badge, and a quantity is a slider — read-only it is the progress
+   bar, with a `Store` it is the control. They are the pressure-release valve
+   for visual richness in a table, so `Form` and `Table` stay the only two
+   leaves. Monospace identifiers are not covered: no accessor says "show this in
+   the monospace face".
 
 ---
 
@@ -377,10 +405,10 @@ Three absences that are choices, not gaps:
   chrome.
 - **No chart or statistic leaf.** Two leaves — one that shows a model, one that
   shows a list of models — cover admin panels. A third would be the first
-  feature bolted on rather than generated by the existing ideas. The `Field`
-  render hint above exists so that the pressure for one has somewhere cheaper
-  to go.
-- **No per-panel menu beyond refresh.** The hover-revealed `⋮` in the panel
-  header does exactly one thing, because refreshing the leaf at an `Addr` is
-  the only per-panel operation that exists. Adding a second item to that menu
-  would mean inventing a panel-level concept that the body tree does not have.
+  feature bolted on rather than generated by the existing ideas. `Badge` and
+  `Slider` exist so that the pressure for one has somewhere cheaper to go.
+- **No per-panel menu.** A panel's header carries a title, a description and a
+  status. Reloading is the page's Refresh, so a panel is replaced only by
+  following its own sort, pager or row links, which are the only per-panel
+  operations that exist. A panel-level menu would mean inventing a concept the
+  body tree does not have.

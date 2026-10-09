@@ -1,6 +1,5 @@
 package components
 
-import "strconv"
 
 // The sidebar is the one piece of structure that never disappears. It does not
 // become a top bar and it does not become a menu button; below 820px it
@@ -11,16 +10,23 @@ import "strconv"
 // away with it.
 type SidebarProps struct {
 	Brand  string
+	Logo   string // image address; empty draws the default mark
+	Home   string // where the brand goes: the landing page. Empty makes it plain text
 	Footer templ.Component
 	Attrs  templ.Attributes
 }
 
 templ Sidebar(p SidebarProps) {
 	<aside class="sidebar" { p.Attrs... }>
-		<div class="side-brand">
-			<div class="logo" aria-hidden="true"><span></span></div>
-			<b>{ p.Brand }</b>
-		</div>
+		if p.Home != "" {
+			<a class="side-brand" href={ p.Home } title={ p.Brand }>
+				@brandMark(p)
+			</a>
+		} else {
+			<div class="side-brand">
+				@brandMark(p)
+			</div>
+		}
 		<nav class="side-scroll" aria-label="Main">
 			{ children... }
 		</nav>
@@ -30,12 +36,31 @@ templ Sidebar(p SidebarProps) {
 	</aside>
 }
 
+templ brandMark(p SidebarProps) {
+	if p.Logo != "" {
+		<img class="logo-img" src={ p.Logo } alt=""/>
+	} else {
+		<div class="logo" aria-hidden="true"><span></span></div>
+	}
+	<b>{ p.Brand }</b>
+}
+
 // SidebarFooter holds session-level switches. It is separated from the nav
 // because nothing in it navigates.
 templ SidebarFooter() {
 	<div class="side-foot">
 		{ children... }
 	</div>
+}
+
+// SidebarCollapse is the control that narrows the sidebar to its icon rail and
+// widens it again. It needs script, and its state is a browser preference, so it
+// lives in the footer with the other session switches.
+templ SidebarCollapse() {
+	<button class="side-row side-collapse" type="button" data-sidebar-toggle aria-expanded="true" title="Collapse sidebar">
+		<span>Collapse</span>
+		@Icon(IconProps{Name: IconChevron, Class: "side-collapse-icon"})
+	</button>
 }
 
 // SidebarRow is one labelled control in the footer.
@@ -58,7 +83,7 @@ type NavItemProps struct {
 	Label  string
 	Href   string
 	Icon   IconName
-	Count  string
+	Letter string // the label's initial, drawn where the sidebar is a rail, for an entry with no Icon
 	Active bool
 	Attrs  templ.Attributes
 }
@@ -67,43 +92,17 @@ templ NavItem(p NavItemProps) {
 	<a
 		class={ "nav-item", templ.KV("active", p.Active) }
 		href={ p.Href }
+		title={ p.Label }
 		if p.Active {
 			aria-current="page"
 		}
 		{ p.Attrs... }
 	>
-		@Icon(IconProps{Name: p.Icon, Class: "ni"})
-		<span>{ p.Label }</span>
-		if p.Count != "" {
-			<span class="nav-count">{ p.Count }</span>
+		if p.Icon != IconNone {
+			@Icon(IconProps{Name: p.Icon, Class: "ni"})
+		} else if p.Letter != "" {
+			<span class="ni ni-letter" aria-hidden="true">{ p.Letter }</span>
 		}
-	</a>
-}
-
-// NavGroupProps is an expandable parent. Its children are NavItems.
-type NavGroupProps struct {
-	ID    string
-	Label string
-	Icon  IconName
-	Open  bool
-	Attrs templ.Attributes
-}
-
-templ NavGroup(p NavGroupProps) {
-	<div
-		class={ "nav-item", templ.KV("open", p.Open) }
-		data-group={ p.ID }
-		role="button"
-		tabindex="0"
-		aria-expanded={ strconv.FormatBool(p.Open) }
-		aria-controls={ p.ID }
-		{ p.Attrs... }
-	>
-		@Icon(IconProps{Name: p.Icon, Class: "ni"})
 		<span>{ p.Label }</span>
-		@Icon(IconProps{Name: IconChevron, Class: "chev"})
-	</div>
-	<div id={ p.ID } class={ "nav-sub", templ.KV("open", p.Open) } data-sub={ p.ID }>
-		{ children... }
-	</div>
+	</a>
 }

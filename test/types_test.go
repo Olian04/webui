@@ -56,31 +56,23 @@ func TestSketchTypes(t *testing.T) {
 
 	var Details = webui.Page[DetailsArgs]{
 		Path: "/device/{id}",
-		Nav: webui.Nav{
-			Shadow: &DevicesNav,
-		},
 		Guard: func(_ context.Context, a DetailsArgs) error {
 			_ = a.Id
 			return nil
 		},
 		Body: webui.Form[Device]{
 			Load: func(ctx context.Context) (Device, error) {
-				_, err := webui.ArgsOf[DetailsArgs](ctx)
-				return Device{}, err
+				_ = webui.ArgsOf[DetailsArgs](ctx)
+				return Device{}, nil
 			},
 			Submit: webui.Action[Device]{
 				Guard: func(_ context.Context, d Device) error {
 					_ = d.Id
 					return nil
 				},
-				Run: func(_ context.Context, d Device) (webui.Effect, error) {
+				Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 					_ = d
-					return webui.Effect{
-						Toast: "Device saved!",
-						Fields: webui.Fields[Device]{
-							{Field: IP, Message: "already in use by another device"},
-						},
-					}, nil
+					return webui.Reject(webui.Field[Device](IP, "already in use by another device")), nil
 				},
 			},
 			Fields: []webui.Accessor[Device]{
@@ -94,8 +86,8 @@ func TestSketchTypes(t *testing.T) {
 		Path: "/device",
 		Nav:  DevicesNav,
 		Body: webui.Table[Device]{
-			Load: func(_ context.Context) ([]Device, error) {
-				return nil, nil
+			Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], error) {
+				return webui.Window[Device]{}, nil
 			},
 			RowClick: webui.Link[Device, DetailsArgs]{
 				Page: Details,
@@ -105,9 +97,9 @@ func TestSketchTypes(t *testing.T) {
 			},
 			Columns: []webui.Accessor[Device]{
 				ID,
-				webui.Sortable[Device]{Accessor: IP, Key: "ip_addr"},
+				webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }},
 				Occurrences,
-				webui.Placeholder[Device]{Accessor: IP, Text: "10.0.0.1"},
+				IP,
 			},
 		},
 	}
@@ -118,7 +110,7 @@ func TestSketchTypes(t *testing.T) {
 			webui.Table[Device]{},
 		},
 		webui.Tabs{
-			{Label: "Raw", Body: webui.Table[Device]{}},
+			Panels: []webui.Tab{{Label: "Raw", Body: webui.Table[Device]{}}},
 		},
 	}
 

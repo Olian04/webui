@@ -2,39 +2,36 @@
 // it decides what goes where, and the components decide how it looks.
 package templates
 
-import c "github.com/Olian04/webui/internal/render/templates/components"
-
 // PageProps is one rendered screen. Every field is a region of the shell; the
 // body is { children... }. Nothing here is IR — internal/render maps ir.App and
 // ir.Page onto this and onto component props, which is the only place the two
 // vocabularies meet.
 type PageProps struct {
 	Title       string
-	Theme       Theme
-	Role        string
+	Early       templ.Component
 	Stylesheets []string
 	Scripts     []string
+	Head        templ.Component
 
 	Sidebar templ.Component
 	TopBar  templ.Component
-	ToolBar templ.Component
 	Status  templ.Component
+	Toasts  templ.Component
 }
 
 templ Page(p PageProps) {
 	@Document(DocumentProps{
 		Title:       p.Title,
-		Theme:       p.Theme,
-		Role:        p.Role,
+		Early:       p.Early,
 		Stylesheets: p.Stylesheets,
 		Scripts:     p.Scripts,
+		Head:        p.Head,
 	}) {
 		@AppShell(AppShellProps{
 			Sidebar: p.Sidebar,
 			TopBar:  p.TopBar,
-			ToolBar: p.ToolBar,
 			Status:  p.Status,
-			Toasts:  c.ToastRegion(),
+			Toasts:  p.Toasts,
 		}) {
 			{ children... }
 		}

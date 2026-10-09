@@ -12,17 +12,29 @@ type ToastProps struct {
 	Tone  Tone
 	Title string
 	Desc  string
+
+	// Name is what makes the toast's dismiss control its own radio group: two toasts
+	// with the same Name would be one group, and choosing one would bring the other
+	// back. It must differ between the toasts of a page.
+	Name  string
 	Attrs templ.Attributes
 }
 
+// Toast is a message, with a button to dismiss it that works without script: the
+// button is a label for a visually hidden radio, and the stylesheet hides the toast
+// whose radio is chosen. It is focusable by keyboard, where Space chooses it.
 templ Toast(p ToastProps) {
-	<div class={ "toast", templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
-		<div>
+	<div class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
+		<div class="toast-text">
 			<div class="toast-title">{ p.Title }</div>
 			if p.Desc != "" {
 				<div class="toast-desc">{ p.Desc }</div>
 			}
 		</div>
+		<label class="toast-close" title="Dismiss">
+			<input class="sr-only" type="radio" name={ p.Name } aria-label="Dismiss"/>
+			@Icon(IconProps{Name: IconClose})
+		</label>
 	</div>
 }
 
@@ -43,18 +55,6 @@ templ EmptyState(p EmptyStateProps) {
 		if p.Desc != "" {
 			<div class="empty-desc">{ p.Desc }</div>
 		}
-		{ children... }
-	</div>
-}
-
-// NoteProps is an explanatory block beside content.
-type NoteProps struct {
-	Tone  Tone
-	Attrs templ.Attributes
-}
-
-templ Note(p NoteProps) {
-	<div class="note" { p.Attrs... }>
 		{ children... }
 	</div>
 }

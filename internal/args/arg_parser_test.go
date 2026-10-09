@@ -157,11 +157,23 @@ func runParseTest(t *testing.T, parser ArgParser, test parseTest) {
 
 	got, err := parser.Parse(mustRequest(t, test.pattern, test.url))
 	if test.wantErr != "" {
-		assert.ErrorIs(t, err, ErrPathValueRequired)
 		assert.Equal(t, err.Error(), test.wantErr)
 		assert.Nil(t, got)
 		return
 	}
 	assert.NoError(t, err)
 	assert.DeepEqual(t, got, test.want)
+}
+
+func TestParseListKeysKeepEveryValueAndOthersTheFirst(t *testing.T) {
+	t.Parallel()
+
+	parser := ArgParser{QueryKeys: []string{"s", "q"}, ListKeys: []string{"s"}}
+	got, err := parser.Parse(mustRequest(t, "/x", "/x?s=a&s=&s=b%2Cc&q=1&q=2"))
+	assert.NoError(t, err)
+	assert.DeepEqual(t, got, map[string]string{"s": "a" + ListSep + "b,c", "q": "1"})
+
+	got, err = parser.Parse(mustRequest(t, "/x", "/x?s="))
+	assert.NoError(t, err)
+	assert.DeepEqual(t, got, map[string]string{}) // an empty list is no filter
 }

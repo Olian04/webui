@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
 
     steps:
       - name: Checkout code
@@ -73,17 +72,14 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      - name: Record build timestamp and release intro
+      - name: Record the release intro
         run: |
-          echo "APP_BUILD_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
           echo "RELEASE_NAME=${{ steps.version.outputs.release_name }}" >> "$GITHUB_ENV"
           {
             echo "RELEASE_BODY<<EOF"
             echo "${{ steps.version.outputs.release_body }}"
             echo "EOF"
           } >> "$GITHUB_ENV"
-
-
 
       - name: Create and push release tag
         run: |
@@ -92,9 +88,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$VERSION" -m "Release $VERSION" "${GITHUB_SHA}"
           git push origin "refs/tags/$VERSION"
-
-      - name: Install Syft
-        run: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Run GoReleaser
         id: goreleaser
@@ -105,7 +98,6 @@ jobs:
           args: release --clean --verbose --config goreleaser/.goreleaser.yaml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APP_BUILD_TIME: ${{ env.APP_BUILD_TIME }}
           RELEASE_NAME: ${{ env.RELEASE_NAME }}
           RELEASE_BODY: ${{ env.RELEASE_BODY }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}

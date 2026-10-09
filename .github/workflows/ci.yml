@@ -22,6 +22,17 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
+      - name: Generate
+        run: make generate
+
+      - name: Generated code is committed and up to date
+        run: |
+          if [ -n "$(git status --porcelain -- '*_templ.go')" ]; then
+            git status --short -- '*_templ.go'
+            echo "Run make generate and commit the *_templ.go files." >&2
+            exit 1
+          fi
+
       - name: Build
         run: go build ./...
 

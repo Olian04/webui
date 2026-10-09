@@ -1,10 +1,7 @@
-.PHONY: format lint test help
+.PHONY: format lint test help generate build run
 
 # Trees this library owns. A missing path fails the whole target.
-SOURCE_CODE ?= ./internal/... ./pkg/... ./test/...
-REV := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)
-BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
-BUILD_OUTPUT_DIR := ./dist
+SOURCE_CODE ?= ./cmd/... ./internal/... ./pkg/... ./test/...
 
 help: ## Show available make targets
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "%-24s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -13,20 +10,20 @@ format: ## Run go fmt and gofmt
 	go fmt ./...
 	gofmt -w .
 
-lint: ## Run go vet, module verify, vuln scan, golangci
+lint: generate ## Run go vet, module verify, vuln scan, golangci
 	go vet ./...
 	go mod verify
 	go tool govulncheck $(SOURCE_CODE)
 	go tool golangci-lint run $(SOURCE_CODE)
 
-test: ## Run tests
+test: generate ## Run tests
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)
 
 generate: ## Generate the application
 	go tool templ generate ./...
 
 build: generate ## Build the application
-	go build -o webui ./cmd/webui/main.go
+	go build -o webui ./cmd/demo
 
 run: build ## Run the application
 	./webui

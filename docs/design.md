@@ -15,7 +15,7 @@ Rows are 34px, not 52px. Padding is measured in 8s, not 16s and 24s. The
 reward for tightness is that more of the answer is on screen at once.
 
 **The chrome is quiet; the data is loud.** Everything structural — the
-sidebar, the panel frames, the toolbar, the labels — sits at 65% or 40% text
+sidebar, the panel frames, the labels — sits at 65% or 40% text
 opacity. Full-strength foreground is reserved for values. Colour is reserved
 for meaning: a status, a severity, a rejection. Nothing is coloured for
 decoration.
@@ -30,9 +30,9 @@ consequences: controls look like navigation, not like widgets, and the address
 bar is always the truth about what is on screen.
 
 **Absence is configuration.** A table with no bulk operations has no
-checkbox column at all — not a disabled one. A page with no parameters says so
-rather than showing an empty toolbar. Nothing is greyed out except things you
-could do if you were someone else.
+checkbox column at all — not a disabled one. A column that cannot be filtered
+has no filter icon. Nothing is greyed out except things you could do if you were
+someone else.
 
 **Square, not soft.** 2px radius everywhere. Shadows only on things that float
 (menus, toasts). No gradients, no glass, no decorative borders. The visual
@@ -79,7 +79,7 @@ over any surface.
 |---|---|---|---|
 | Text | `rgb(204,204,220)` | `#24292e` | Values, headings, active items |
 | Text secondary | 65% of Text | `#5c6269` | Labels, descriptions, inactive nav |
-| Text tertiary | 40% of Text | `#8e9197` | Hints, placeholders, section captions |
+| Text tertiary | 45% of Text | `#85888e` | Decoration only: placeholders, separators, the shortcut hint, icons. 3:1, never text a reader needs |
 | Border | 11% of Text | `rgba(36,41,46,.12)` | Panel edges, table rules |
 | Border strong | 22% of Text | `rgba(36,41,46,.24)` | Input edges, secondary buttons |
 | Hover | 7% of Text | `rgba(36,41,46,.06)` | Row and item hover, table headers |
@@ -94,9 +94,10 @@ border, so a badge can be built from one token family.
 |---|---|---|---|
 | **Primary / interactive** | `#3d71d9` | `#3d71d9` | Primary buttons, selection, focus ring |
 | **Link / sorted** | `#6e9fff` | `#1f62e0` | Sorted column, inline emphasis, gauges |
-| **Healthy** | `#6ccf8e` | `#1a7f4b` | Loaded, acknowledged, ok |
-| **Warning** | `#ff9830` | `#b5510d` | Degraded, open, active tab underline |
-| **Critical** | `#e5484d` | `#cf0e5b` | Rejections, failures, destructive actions |
+| **Healthy** | `#6ccf8e` | `#177244` | Loaded, acknowledged, ok |
+| **Warning** | `#ff9830` | `#a74a0b` | Degraded, open, active tab underline |
+| **Critical** | `#f2686c` | `#c20d54` | Rejections and failures, as text, borders and dots |
+| **Critical, solid** | `#d03a3f` | `#c20d54` | The fill of a destructive button, which carries a white label |
 
 The active tab underline is warning-orange rather than primary-blue. This is
 deliberate: blue means *you can act on this*, orange means *you are here*.
@@ -113,9 +114,10 @@ Inter, falling back to the system UI stack. One family; no display face.
 | Body / breadcrumb | 14 | 400 | Text |
 | Control label, button | 13.5 | 500 | Text |
 | Table cell | 13 | 400 | Text |
-| Table header, field label, secondary | 12.5 | 500 | Text secondary |
-| Hint, description | 12 | 400 | Text tertiary |
-| Section caption | 11 | 500, uppercase, `.05em` | Text tertiary |
+| Table header, secondary | 12.5 | 500 | Text secondary |
+| Field label | 12 | 400 | Text secondary |
+| Description | 12 | 400 | Text secondary |
+| Section caption | 11 | 500, uppercase, `.05em` | Text secondary |
 
 Identifiers, addresses, timestamps and payloads use a monospace face at 12–12.5
 in Text secondary. Anything the user might copy is monospace. Numeric columns
@@ -137,13 +139,11 @@ Everything is a multiple of 2, and the working gutter is 8.
 | Corner radius | 2 (everything, without exception) |
 | Sidebar | 240 (56 when collapsed) |
 | Top bar | 48 |
-| Toolbar | 44 min, wraps |
 | Status bar | 26 |
 | Panel header | 32 |
 | Nav item | 32 |
 | Control (button, input, select) | 32 |
 | Small control | 28 |
-| Toolbar control | 30 |
 | Table header row | 30 |
 | Table body row | 34 |
 
@@ -151,14 +151,12 @@ Everything is a multiple of 2, and the working gutter is 8.
 
 ## 7. The shell
 
-Five fixed regions. Only the content region scrolls.
+Four fixed regions. Only the content region scrolls.
 
 ```
 ┌────────────┬──────────────────────────────────────────────┐
-│            │  top bar: breadcrumbs · search · account     │
+│            │  top bar: breadcrumbs · search · refresh     │
 │  sidebar   ├──────────────────────────────────────────────┤
-│            │  toolbar: page parameters · refresh          │
-│            ├──────────────────────────────────────────────┤
 │            │                                              │
 │            │  content (scrolls)                           │
 │            │                                              │
@@ -171,45 +169,41 @@ Five fixed regions. Only the content region scrolls.
 
 Fixed 240px on the left, panel surface, full height, always visible. It never
 becomes a top bar and never turns into a hamburger — below 820px it collapses
-to a 56px icon rail instead. The structure of the application is the one thing
-that should not disappear.
+to a 56px icon rail instead, and a button in its footer collapses it to the same
+rail at any width (the choice is a browser preference). The structure of the
+application is the one thing that should not disappear.
 
 Contents, top to bottom: brand mark and product name (48px, matching the top
 bar so the two align); grouped navigation; a footer pinned to the bottom.
 
-Navigation items are 32px, 13.5px, text-secondary, with a 16px icon. Groups
-carry an 11px uppercase caption above them. An item can hold a count on the
-right as a small pill. The active item takes the Active background, full-
-strength text, weight 500, and a 2px primary-coloured bar flush against the
-left edge. Expandable groups show a chevron that rotates 180° when open;
-children indent to 42px and drop their icons.
+Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
+Awesome glyph; an item with none holds the place of one, and shows its label's
+capitalised initial in the rail). Groups carry an 11px uppercase caption above
+them. The active item takes the Active background, full-strength text, weight
+500, and a 2px primary-coloured bar flush against the left edge. An item the
+visitor may not open is not drawn.
 
 ### Top bar
 
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
-at text-tertiary. On the right: a 290px search field, an icon button, and a
-26px circular avatar.
+at text-tertiary. On the right: a 290px search field, then the page's *Refresh*
+icon button, then, when the app declares a menu, a button that opens a popover list
+of its own links: a raised surface right-aligned beneath the button, 32px items with
+a 16px icon and an 11px uppercase caption above a section, closed by a click elsewhere
+or Escape.
 
 The breadcrumb is where location is expressed when the sidebar cannot show it
 — for example on a detail page that intentionally has no navigation entry of
 its own.
 
-### Toolbar
+### Refresh
 
-The parameters of the current page, rendered as controls, on the canvas
-surface directly below the top bar. Each is a two-part pill 30px tall: a label
-segment on the panel surface carrying the parameter name and an information
-icon, joined seamlessly to a control segment on the input surface holding the
-value and, when set, a small `×` to clear it.
-
-These are the values that appear in the address bar. Changing one is a
-navigation. When a page has no parameters the bar says so in italic
-text-tertiary rather than rendering an empty strip.
-
-On the right, a *Refresh* split button. There is no time-range picker and no
-auto-refresh interval: this is a control plane, not a dashboard — it refreshes
-on demand, it does not poll.
+An icon button beside the search. It reloads the page at the address it is on,
+state in the address and all. There is no time-range picker and no auto-refresh
+interval: this is a control plane, not a dashboard — it refreshes on demand, it
+does not poll. There is no row of page parameters: what a table shows is
+filtered in its column headers (§10).
 
 ### Content
 
@@ -230,23 +224,16 @@ The unit of content. A bordered rectangle on the panel surface with a 32px
 header and no divider between header and body.
 
 The header carries, left to right: the title (14/500); an information icon
-holding the description as a tooltip; an optional status dot; and, pushed
-right, a menu group that is **invisible until the panel is hovered**. This is
-what keeps a dense grid of panels calm — the affordances exist but do not
-compete with the data until you go looking for them.
+holding the description as a popover; and a status icon when the panel failed to
+load. A panel has
+no menu of its own: reloading is the page's Refresh in the top bar, so a panel
+changes only by following its own links, and the header stays quiet.
 
 A panel may have a footer separated by a 1px rule: pagination on the left,
 navigation or actions on the right.
 
 Panels never nest. If content inside a panel needs its own frame, it gets a
 bordered group with an 11px uppercase caption instead.
-
-### Rows
-
-Panels can be grouped under a collapsible row header: a 30px clickable line
-with a rotating chevron, a 14/500 label, and an optional count in text-
-tertiary. Collapsing hides the panels beneath it. Rows are how a long page is
-made scannable without pagination.
 
 ### Arrangements
 
@@ -255,8 +242,8 @@ made scannable without pagination.
   stretch. Optionally weighted 1.6 : 1. Collapses to one column below 1100px.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
-  addressable: the selected tab appears in the toolbar as a page parameter and
-  in the address bar, so a tab can be linked to and survives a reload.
+  addressable: the selected tab is in the address bar, so a tab can be linked
+  to and survives a reload. The strip is the control.
 
 ---
 
@@ -291,7 +278,10 @@ saved data.
 **Disabled vs. gated.** Disabled is 45% opacity with no explanation. *Gated* —
 a control you are not permitted to use — is also 45%, but reveals a raised
 tooltip on hover saying why. A control is never silently removed because of
-permissions and never silently fails when pressed.
+permissions and never silently fails when pressed. The exception is a form's
+Save: a form the visitor may not submit is shown as read-only output, with a Back
+button in place of Save and Cancel, since a form of inputs that cannot be sent
+would only invite typing.
 
 ---
 
@@ -300,7 +290,12 @@ permissions and never silently fails when pressed.
 The densest surface in the system, and the most common.
 
 Header row: 30px, hover surface, 12.5/500 text-secondary, 1px bottom rule,
-sticky. Sortable headers are links; the sorted one takes the link colour and a
+sticky. Every header is a sort link, with a filter icon beside the name that
+appears on hover or focus and stays, in the link colour, once the column is
+filtered. It opens a raised popover on a form: a multi-select of checkboxes for
+a column with a fixed set of options, a minimum and a maximum for a numeric one,
+a text input for any other, and Apply
+(and Clear, when a filter is set). The sorted header takes the link colour and a
 small caret showing direction.
 
 Body rows: 34px, 1px rule between (none after the last), hover surface on
@@ -349,19 +344,19 @@ condition, and a 12.5 text-tertiary line naming the way out.
 ## 11. Feedback
 
 **Toasts** stack bottom-right above the status bar: raised surface, 3px left
-border in the semantic colour, a 13.5/500 title and an optional 12.5
-text-secondary line, rising 6px on entry and dismissing after 3.4s.
+border in the semantic colour (green for a confirmation, amber for something to be
+aware of, red for a failure), a 13.5/500 title and an optional 12.5
+text-secondary line, rising 6px on entry and dismissing after 3.4s. The timer holds
+while a toast is hovered or has focus. A close button (×) at the right dismisses it at
+once; it is a label for a visually hidden radio, and the stylesheet hides the toast
+whose radio is chosen, so it works with scripting disabled, where a toast otherwise
+stays until the next page.
 
 **Field errors** appear under the field in 12/critical with a 13px icon, and
 the field takes the invalid border. Two kinds of rejection are shown
 identically: those the browser catches before anything is sent, and those the
 server returns afterwards. From the user's side they are the same event, so
 they look the same.
-
-**Notes** — used in this mock to explain the system — are a bordered block with
-a 3px primary left border on the panel surface, 12.5 text-secondary, with
-full-strength lead-ins. Warning-orange is used inside a note to mark something
-unresolved.
 
 ---
 
@@ -398,10 +393,9 @@ A whole-page navigation cross-fades, and the cross-fade is **entirely CSS**:
 ```css
 @view-transition { navigation: auto; }
 
-.sidebar   { view-transition-name: sidebar; }
-.topbar    { view-transition-name: topbar; }
-.toolbar   { view-transition-name: toolbar; }
-.content   { view-transition-name: content; }
+.sidebar   { view-transition-name: wui-sidebar; }
+.topbar    { view-transition-name: wui-topbar; }
+.content   { view-transition-name: wui-content; }
 ```
 
 The browser snapshots the old document, loads the new one, and animates each
@@ -439,12 +433,15 @@ different product.
 
 ## 15. Accessibility
 
-- Text-secondary on panel and text on canvas both clear 4.5:1 in both themes;
-  text-tertiary is used only for supporting text that is never the sole carrier
-  of meaning.
+- Every text colour a reader needs clears 4.5:1 on its surface in both themes:
+  text, text-secondary, the semantic text colours, a badge's text on its own tint, and
+  a white label on the primary and destructive fills, including on hover. Text
+  tertiary clears 3:1 and is for decoration only. A test computes these from the
+  stylesheet's tokens, so a palette edit that slips under fails.
 - Status is never colour alone — every badge carries its word.
 - Focus is a visible 2px ring, never removed.
 - Every interactive element is a real link or a real button, so keyboard
   traversal and "open in new tab" work without any extra handling.
-- Descriptions live in title attributes on the information icon, so they are
-  available to assistive technology rather than only on hover.
+- Descriptions are the information icon's accessible name and also appear in a
+  popover on hover and focus, so they are available to assistive technology and
+  not only to a pointer.

@@ -1,7 +1,7 @@
 # GoReleaser: https://goreleaser.com/
 # Run from repo root. Locally: goreleaser check --config goreleaser/.goreleaser.yaml
 #
-# CI sets: APP_BUILD_TIME, RELEASE_NAME, RELEASE_BODY, REGISTRY_IMAGE, PUSH_LATEST, GORELEASER_CURRENT_TAG
+# The release workflow sets: RELEASE_NAME, RELEASE_BODY, GORELEASER_CURRENT_TAG
 version: 2
 
 project_name: webui

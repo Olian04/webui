@@ -26,31 +26,41 @@ func num(f *float64) string {
 	return strconv.FormatFloat(*f, 'f', -1, 64)
 }
 
-// FieldProps is the label, hint and error that wrap a control. The control
-// itself is { children... }: a field has no opinion about whether it holds an
-// input, a select or something this package has not met yet.
-//
-// Error and Hint occupy the same line. An error replaces the hint, because the
-// reader needs the problem, not the rule they just broke.
+// FieldProps is the label and error that wrap a control. The control itself is
+// { children... }: a field has no opinion about whether it holds an input, a
+// select or something this package has not met yet.
 type FieldProps struct {
 	// For must match the control's id, or the label is decorative.
 	For      string
 	Label    string
 	Required bool
-	Hint     string
 	Error    string
-	Attrs    templ.Attributes
+
+	// Rules is every constraint on the value other than Required, in words, behind an
+	// information icon beside the label, so it is there while the value is good and
+	// takes no room beneath the control.
+	Rules []string
+
+	// Static is a field that shows a value and offers no control: the label sits
+	// closer to the value, which has a height of its own.
+	Static bool
+	Attrs  templ.Attributes
 }
 
 templ Field(p FieldProps) {
-	<div class="field" { p.Attrs... }>
+	<div class={ "field", templ.KV("field-static", p.Static) } { p.Attrs... }>
 		if p.Label != "" {
-			<label class="lbl" for={ p.For }>
-				{ p.Label }
-				if p.Required {
-					<span class="req" aria-hidden="true">*</span>
+			<div class="lbl-row">
+				<label class="lbl" for={ p.For }>
+					{ p.Label }
+					if p.Required {
+						<span class="req" aria-hidden="true">*</span>
+					}
+				</label>
+				if len(p.Rules) > 0 {
+					@InfoTip(InfoTipProps{Text: "Rules:", Lines: p.Rules})
 				}
-			</label>
+			</div>
 		}
 		{ children... }
 		if p.Error != "" {
@@ -58,8 +68,6 @@ templ Field(p FieldProps) {
 				@Icon(IconProps{Name: IconAlert})
 				{ p.Error }
 			</div>
-		} else if p.Hint != "" {
-			<div class="hint" id={ p.For + "-hint" }>{ p.Hint }</div>
 		}
 	</div>
 }
@@ -73,9 +81,6 @@ templ FieldRow() {
 }
 
 // InputProps is a text-like control.
-// ReadOnly is what a field whose accessor declares no way to store a value
-// renders as. It is visibly not a hole you can type into, rather than being
-// hidden: the value is still worth reading.
 type InputProps struct {
 	ID          string
 	Name        string
@@ -83,7 +88,6 @@ type InputProps struct {
 	Type        string
 	Placeholder string
 	Mono        bool
-	ReadOnly    bool
 	Invalid     bool
 	Rules       Rules
 	Attrs       templ.Attributes
@@ -91,7 +95,9 @@ type InputProps struct {
 
 templ Input(p InputProps) {
 	<input
-		id={ p.ID }
+		if p.ID != "" {
+			id={ p.ID }
+		}
 		class={ "input", templ.KV("mono", p.Mono), templ.KV("invalid", p.Invalid) }
 		if p.Name != "" {
 			name={ p.Name }
@@ -105,7 +111,6 @@ templ Input(p InputProps) {
 		if p.Placeholder != "" {
 			placeholder={ p.Placeholder }
 		}
-		readonly?={ p.ReadOnly }
 		required?={ p.Rules.Required }
 		if p.Rules.MinLen > 0 {
 			minlength={ strconv.Itoa(p.Rules.MinLen) }
@@ -133,36 +138,6 @@ templ Input(p InputProps) {
 	/>
 }
 
-// Option is one choice in a Select. An Option with an empty Value is the
-// "unset" entry — the one that removes the argument from the URL.
-type Option struct {
-	Value string
-	Label string
-}
-
-type SelectProps struct {
-	ID      string
-	Name    string
-	Value   string
-	Options []Option
-	Attrs   templ.Attributes
-}
-
-templ Select(p SelectProps) {
-	<select
-		id={ p.ID }
-		class="input"
-		if p.Name != "" {
-			name={ p.Name }
-		}
-		{ p.Attrs... }
-	>
-		for _, o := range p.Options {
-			<option value={ o.Value } selected?={ o.Value == p.Value }>{ o.Label }</option>
-		}
-	</select>
-}
-
 type CheckboxProps struct {
 	ID      string
 	Name    string
@@ -174,7 +149,9 @@ type CheckboxProps struct {
 
 templ Checkbox(p CheckboxProps) {
 	<input
-		id={ p.ID }
+		if p.ID != "" {
+			id={ p.ID }
+		}
 		class="checkbox"
 		type="checkbox"
 		if p.Name != "" {

@@ -60,6 +60,36 @@ templ Search(p SearchProps) {
 	</div>
 }
 
-templ Avatar(initials string, name string) {
-	<div class="avatar" title={ name } aria-label={ name } role="img">{ initials }</div>
+// MenuEntry is one link in an AppMenu. Section is a caption above this entry, which
+// is the first of its group; the entries after it are in the group until another
+// entry has a caption of its own.
+type MenuEntry struct {
+	Label   string
+	Href    string
+	Icon    IconName
+	Section string
+}
+
+// AppMenu is the button in the top bar and the list of the app's own links behind
+// it. It is a <details>, so it opens and closes without script; script only closes it
+// on a click elsewhere or on Escape.
+templ AppMenu(items []MenuEntry) {
+	<details class="menu">
+		<summary class="iconbtn" title="Menu" aria-label="Menu">
+			@Icon(IconProps{Name: IconGear})
+		</summary>
+		<div class="menu-pop">
+			for _, it := range items {
+				if it.Section != "" {
+					<div class="menu-section">{ it.Section }</div>
+				}
+				<a class="menu-item" href={ it.Href }>
+					if it.Icon != IconNone {
+						@Icon(IconProps{Name: it.Icon, Class: "menu-icon"})
+					}
+					<span>{ it.Label }</span>
+				</a>
+			}
+		</div>
+	</details>
 }

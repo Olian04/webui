@@ -1,28 +1,25 @@
 package components
 
+import "strings"
+
 // PanelProps is the unit of content: a bordered region with a 32px header.
 // Title and Desc are what make a grid of panels readable — a Split of two
 // untitled boxes tells the reader nothing. Desc is carried by the information
 // icon rather than printed, so the header stays one line tall.
 //
-// Actions and Footer are slots. They are slots rather than props because what
-// goes in them is markup the panel has no opinion about: make the common
-// configurable, make the uncommon composable.
+// Footer is a slot rather than a prop because what goes in it is markup the panel
+// has no opinion about: make the common configurable, make the uncommon composable.
 type PanelProps struct {
 	Title  string
 	Desc   string
 	Status Tone
 
-	// Leaf is the address this panel can be refreshed at. A panel that is not
-	// independently refreshable leaves it empty.
+	// Leaf names this panel so a link inside it can replace it on its own. A
+	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
 
-	// Padded gives the body padding. A table sets it false and manages its own.
-	Padded bool
-
-	Actions templ.Component
-	Footer  templ.Component
-	Attrs   templ.Attributes
+	Footer templ.Component
+	Attrs  templ.Attributes
 }
 
 templ Panel(p PanelProps) {
@@ -36,28 +33,13 @@ templ Panel(p PanelProps) {
 		<div class="panel-head">
 			<h2 class="panel-title">{ p.Title }</h2>
 			if p.Desc != "" {
-				@Icon(IconProps{Name: IconInfo, Class: "info", Title: p.Desc})
-			}
-			if p.Status == ToneOK {
-				@Icon(IconProps{Name: IconOK, Class: "panel-status ok", Title: "Loaded"})
+				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
 			if p.Status == ToneCritical {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
 			}
-			<div class="panel-menu">
-				if p.Actions != nil {
-					@p.Actions
-				}
-				if p.Leaf != "" {
-					@IconButton(IconButtonProps{
-						Icon:  IconKebab,
-						Title: "Refresh this panel",
-						Attrs: templ.Attributes{"data-act": "refresh-leaf", "data-leaf": p.Leaf},
-					})
-				}
-			</div>
 		</div>
-		<div class={ "panel-body", templ.KV("pad", p.Padded) }>
+		<div class="panel-body">
 			{ children... }
 		</div>
 		if p.Footer != nil {
@@ -68,18 +50,37 @@ templ Panel(p PanelProps) {
 	</div>
 }
 
-// FieldGroupProps is a bordered group inside a panel body. Panels never nest;
-// this is what content uses when it needs its own frame.
-type FieldGroupProps struct {
-	Legend string
-	Attrs  templ.Attributes
+// InfoTipProps is a description behind an information icon. The text appears in
+// a raised popover on hover and on keyboard focus, and is the icon's accessible
+// name, so it is available to assistive technology and not only to a pointer.
+//
+// Lines is a list in the popover in place of Text, each an item; the icon's
+// accessible name is the lines, after Text if there is one.
+type InfoTipProps struct {
+	Text  string
+	Lines []string
+	Attrs templ.Attributes
 }
 
-templ FieldGroup(p FieldGroupProps) {
-	<div class="group" { p.Attrs... }>
-		if p.Legend != "" {
-			<div class="group-legend">{ p.Legend }</div>
-		}
-		{ children... }
-	</div>
+func (p InfoTipProps) name() string {
+	if len(p.Lines) == 0 {
+		return p.Text
+	}
+	return strings.TrimSpace(p.Text + " " + strings.Join(p.Lines, "; "))
+}
+
+templ InfoTip(p InfoTipProps) {
+	<span class="tip" tabindex="0" role="note" aria-label={ p.name() } { p.Attrs... }>
+		@Icon(IconProps{Name: IconInfo, Class: "info"})
+		<span class="tip-body" aria-hidden="true">
+			if len(p.Lines) == 0 {
+				{ p.Text }
+			} else {
+				<span class="tip-title">{ p.Text }</span>
+				for _, line := range p.Lines {
+					<span class="tip-item">{ line }</span>
+				}
+			}
+		</span>
+	</span>
 }
