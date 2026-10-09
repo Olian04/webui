@@ -564,8 +564,8 @@ func toastRegion(toasts []Toast) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			for _, x := range toasts {
-				templ_7745c5c3_Err = c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc}).Render(ctx, templ_7745c5c3_Buffer)
+			for i, x := range toasts {
+				templ_7745c5c3_Err = c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc, Name: "toast-" + strconv.Itoa(i)}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -342,7 +342,11 @@ condition, and a 12.5 text-tertiary line naming the way out.
 **Toasts** stack bottom-right above the status bar: raised surface, 3px left
 border in the semantic colour (green for a confirmation, amber for something to be
 aware of, red for a failure), a 13.5/500 title and an optional 12.5
-text-secondary line, rising 6px on entry and dismissing after 3.4s.
+text-secondary line, rising 6px on entry and dismissing after 3.4s. The timer holds
+while a toast is hovered or has focus. A close button (×) at the right dismisses it at
+once; it is a label for a visually hidden radio, and the stylesheet hides the toast
+whose radio is chosen, so it works with scripting disabled, where a toast otherwise
+stays until the next page.
 
 **Field errors** appear under the field in 12/critical with a 13px icon, and
 the field takes the invalid border. Two kinds of rejection are shown

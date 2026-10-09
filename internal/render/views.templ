@@ -141,8 +141,8 @@ func (r *Renderer) logoHref() string {
 
 templ toastRegion(toasts []Toast) {
 	@c.ToastRegion() {
-		for _, x := range toasts {
-			@c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc})
+		for i, x := range toasts {
+			@c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc, Name: "toast-" + strconv.Itoa(i)})
 		}
 	}
 }

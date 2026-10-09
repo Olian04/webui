@@ -201,3 +201,17 @@ func TestAWarningToastIsDrawnAsAWarning(t *testing.T) {
 	assert.Contains(t, get("oFine"), `class="toast"`)
 	assert.Contains(t, get("eBad"), `class="toast err"`)
 }
+
+func TestAToastCanBeDismissedWithoutScript(t *testing.T) {
+	t.Parallel()
+
+	h := outcomeApp()
+	_, _, _, body := submitIP(h, "10.0.0.3")
+	// The button is a label for a hidden radio, in a group of its own.
+	assert.Contains(t, body, `<label class="toast-close" title="Dismiss"><input class="sr-only" type="radio" name="toast-0" aria-label="Dismiss">`)
+
+	// The stylesheet hides the toast whose radio is chosen: the markup and the rule
+	// are one mechanism, so a change to either has to keep both.
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".toast:has(.toast-close input:checked) {\n  display: none;")
+}

@@ -40,14 +40,41 @@
 
   // Toasts the server rendered (a saved form, a rejected one) dismiss
   // themselves; without script they stay until the next page, which is fine.
+  // The time left is kept while one is hovered or has focus, so a message being
+  // read, or about to be dismissed with the button, does not vanish under the
+  // pointer. The button works without script (see .toast-close).
+  var TOAST_MS = 3400;
+
   function dismissToasts() {
     $$('.toast').forEach(function (el) {
-      setTimeout(function () {
+      var left = TOAST_MS;
+      var since = 0;
+      var timer = 0;
+      function run() {
+        since = Date.now();
+        timer = setTimeout(leave, left);
+      }
+      function hold() {
+        if (!timer) return;
+        clearTimeout(timer);
+        timer = 0;
+        left -= Date.now() - since;
+      }
+      function leave() {
         el.classList.add('out');
         setTimeout(function () {
           el.remove();
         }, 220);
-      }, 3400);
+      }
+      el.addEventListener('mouseenter', hold);
+      el.addEventListener('focusin', hold);
+      el.addEventListener('mouseleave', function () {
+        if (!timer && !el.matches(':focus-within')) run();
+      });
+      el.addEventListener('focusout', function () {
+        if (!timer && !el.matches(':hover')) run();
+      });
+      run();
     });
   }
 
