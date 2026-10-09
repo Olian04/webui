@@ -1167,10 +1167,10 @@ label.lbl {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   margin-bottom: 5px;
-  color: var(--text);
+  color: var(--text-2);
 }
 .req {
   color: var(--red);
@@ -1607,8 +1607,9 @@ td.actions .gate:hover::after,
     monospace;
   color: var(--text-2);
 }
-/* A value shown and not offered for editing: text, a badge or a bar, in no box. The
-   label is quieter and the value larger, so they read as a label and its value. */
+/* A value shown and not offered for editing: text, a badge or a bar, in no box. Its
+   label is the quiet one every field has, and the value is larger, so they read as a
+   label and its value. */
 .static {
   display: flex;
   align-items: center;
@@ -1617,10 +1618,7 @@ td.actions .gate:hover::after,
   overflow-wrap: anywhere;
 }
 .field-static label.lbl {
-  font-size: 12px;
-  font-weight: 400;
-  margin-bottom: 1px;
-  color: var(--text-2);
+  margin-bottom: 1px; /* the value has its own height */
 }
 
 /* ------------------------------ column filters --------------------------- */

@@ -48,8 +48,8 @@ type FieldProps struct {
 	Hint     string
 	Error    string
 
-	// Static is a field that shows a value and offers no control: the label is
-	// quieter and the value larger, so the two read as a label and its value.
+	// Static is a field that shows a value and offers no control: the label sits
+	// closer to the value, which has a height of its own.
 	Static bool
 	Attrs  templ.Attributes
 }
