@@ -214,4 +214,9 @@ func TestAToastCanBeDismissedWithoutScript(t *testing.T) {
 	// are one mechanism, so a change to either has to keep both.
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".toast:has(.toast-close input:checked) {\n  display: none;")
+
+	// A browser that cannot do :has() would show a button that does nothing, so the
+	// button is shown only where the rule above works.
+	assert.Contains(t, css, "display: none; /* until the browser can act on the radio, below */")
+	assert.Contains(t, css, "@supports selector(:has(*)) {\n  .toast-close {\n    display: grid;")
 }

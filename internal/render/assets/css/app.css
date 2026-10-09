@@ -1308,7 +1308,7 @@ select.input option {
    the toast whose radio is chosen is gone. */
 .toast-close {
   flex: none;
-  display: grid;
+  display: none; /* until the browser can act on the radio, below */
   place-items: center;
   width: 22px;
   height: 22px;
@@ -1316,6 +1316,11 @@ select.input option {
   border-radius: 2px;
   color: var(--text-2);
   cursor: pointer;
+}
+@supports selector(:has(*)) {
+  .toast-close {
+    display: grid;
+  }
 }
 .toast-close:hover {
   background: var(--hover);

@@ -92,6 +92,11 @@ func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.
 	assert.False(t, strings.Contains(body, ">Save</button>"))
 	assert.False(t, strings.Contains(body, ">Cancel</a>"))
 	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Back</a>`)
+
+	// And nothing in it can be changed: every field is read-only, and none is submitted.
+	assert.False(t, strings.Contains(body, `name="f`))
+	assert.Contains(t, body, "readonly")
+	assert.False(t, strings.Contains(body, "must be a valid"))
 }
 
 func TestAFormTheVisitorMayNotSubmitAndCannotLeaveHasNoFooter(t *testing.T) {
@@ -113,6 +118,7 @@ func TestFormWithoutSubmitIsReadOnly(t *testing.T) {
 	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
 	assert.False(t, strings.Contains(body, `type="submit"`))
 	assert.False(t, strings.Contains(body, "panel-foot"))
+	assert.False(t, strings.Contains(body, `name="f`)) // nothing to submit, so nothing to edit
 }
 
 func TestFormLoadFailureFailsThePanel(t *testing.T) {

@@ -193,6 +193,7 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	assert.False(t, strings.Contains(device, ">Save</button>"))
 	assert.False(t, strings.Contains(device, ">Cancel</a>"))
 	assert.Contains(t, device, `href="/admin/device">Back</a>`)
+	assert.False(t, strings.Contains(device, `name="f0_1"`)) // the IP is shown, not offered for editing
 }
 
 func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {

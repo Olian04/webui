@@ -62,17 +62,25 @@ type fieldView struct {
 	Rules       c.Rules
 }
 
+// editable is whether the visitor can change a field: it has a Store, and the
+// form can be submitted by them. A form with no Submit, or whose Submit is refused
+// to the visitor, is only read.
+func (v FormView) editable(f ir.Field) bool {
+	return f.Set != nil && v.Node.Submit != nil && v.SubmitGate == ""
+}
+
 func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
+	editable := v.editable(f)
 	fv := fieldView{
 		ID:          fieldID(v.Node.At, f.Name),
 		Name:        f.Name,
 		Field:       f,
 		Error:       v.Errors[f.Label],
-		Hint:        hint(f),
+		Hint:        hint(f, editable),
 		Placeholder: f.Placeholder,
-		ReadOnly:    f.Set == nil,
+		ReadOnly:    !editable,
 		Type:        "text",
-		Rules:       htmlRules(f),
+		Rules:       htmlRules(f, editable),
 	}
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
@@ -103,8 +111,8 @@ func fieldID(at ir.Addr, name string) string {
 // htmlRules is the one place ir.Rules becomes HTML constraint attributes. A
 // read-only field carries none: it is never submitted, so a rule on it could
 // only block the form.
-func htmlRules(f ir.Field) c.Rules {
-	if f.Set == nil {
+func htmlRules(f ir.Field, editable bool) c.Rules {
+	if !editable {
 		return c.Rules{}
 	}
 	out := c.Rules{Required: f.Rules.Required, MinLen: f.Rules.MinLen, MaxLen: f.Rules.MaxLen, Min: f.Rules.Min, Max: f.Rules.Max}
@@ -116,10 +124,10 @@ func htmlRules(f ir.Field) c.Rules {
 
 // hint is the line beneath an input that states the rule. A pattern speaks in
 // its own words, because a regular expression cannot explain itself.
-func hint(f ir.Field) string {
+func hint(f ir.Field, editable bool) string {
 	r := f.Rules
 	switch {
-	case f.Set == nil:
+	case !editable:
 		return ""
 	case r.Pattern != nil && r.Pattern.Message != "":
 		return r.Pattern.Message

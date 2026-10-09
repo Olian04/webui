@@ -23,7 +23,9 @@ type Form[M any] struct {
 	// submitted values are applied to it, so a field with no Store keeps its value.
 	Load func(ctx context.Context) (M, error)
 
-	// Submit is what the form's button does. Without a Run the form is read-only.
+	// Submit is what the form's button does. Without a Run the form is read-only, and
+	// so it is for a visitor its Guard refuses: every field is shown but not editable,
+	// and a Back button replaces Save and Cancel.
 	// Its Label defaults to "Save".
 	Submit Action[M]
 
