@@ -100,8 +100,12 @@ type Table[M any] struct {
 	// as numbers and text as text.
 	//
 	// Use Rows when the rows are all at hand or cheap to list in full, such as a
-	// slice, a cache or a small query. It is all that most tables need. Set Rows or
-	// Load, not both.
+	// slice in memory or a small query. It is all that most tables need.
+	//
+	// Rows is called on every request that needs the table's rows: each page load,
+	// sort, filter, page change, row action, and search. The library keeps nothing
+	// between requests, so if listing is costly, cache inside Rows, or use Load.
+	// Set Rows or Load, not both.
 	Rows func(ctx context.Context) ([]M, error)
 
 	// Load returns one page of rows, and does the filtering, sorting and paging

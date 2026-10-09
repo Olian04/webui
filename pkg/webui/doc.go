@@ -86,8 +86,9 @@
 //
 //   - Rows returns every row, and the library filters, sorts and pages them from the
 //     columns, comparing numbers as numbers and text as text. Use it when the rows
-//     are all at hand or cheap to list in full, such as a slice, a cache or a small
-//     query. It is all most tables need.
+//     are all at hand or cheap to list in full, such as a slice in memory or a small
+//     query. It is all most tables need. It is called on every request that needs
+//     the rows, and nothing is kept between them.
 //   - Load returns one page of rows and does the filtering, sorting and paging
 //     itself. It is handed a [Query], with the window, sort and filters in force,
 //     and returns a [Window]. Use it when the source can do that work better than
