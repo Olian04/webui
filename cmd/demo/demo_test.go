@@ -57,7 +57,7 @@ func TestEveryPageServes(t *testing.T) {
 	for _, path := range []string{
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
-		"/admin/system", "/admin/audit", "/admin/config", "/admin/",
+		"/admin/system", "/admin/audit", "/admin/config", "/admin/handbook", "/admin/",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -484,4 +484,14 @@ func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) 
 	assert.Contains(t, body, `<pre class="code-view"`)
 	assert.False(t, strings.Contains(body, "<textarea"))
 	assert.Equal(t, post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}}).Code, http.StatusForbidden)
+}
+
+func TestTheHandbookIsMarkdownSetAsMarkupThatCannotRunAnything(t *testing.T) {
+	body := get(handler(t), "/admin/handbook").Body.String()
+	assert.Contains(t, body, `<article class="md"`)
+	assert.Contains(t, body, "<h1>Collector handbook</h1>")
+	assert.Contains(t, body, "<table>")
+	assert.Contains(t, body, `<code class="language-bash">`)
+	assert.Contains(t, body, `rel="noopener noreferrer"`)
+	assert.False(t, strings.Contains(body, "<script>alert"))
 }

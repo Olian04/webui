@@ -8,7 +8,10 @@ tool (
 	golang.org/x/vuln/cmd/govulncheck
 )
 
-require github.com/a-h/templ v0.3.1020
+require (
+	github.com/a-h/templ v0.3.1020
+	github.com/yuin/goldmark v1.8.6
+)
 
 require (
 	4d63.com/gocheckcompilerdirectives v1.4.0 // indirect

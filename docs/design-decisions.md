@@ -278,6 +278,32 @@ design element.
   unified diff that the server makes. The script mounts Monaco over them and keeps
   the `textarea` as the editor has it, so the form posts as it always did.
 
+## Markdown
+
+- `Markdown` is a leaf that reads one text of a model, with an accessor as `Diff` has
+  one, and has no Store: editing a text is an `Editor`'s job. It is rendered on the
+  server, by goldmark (CommonMark and GitHub's extensions), so it needs no script and
+  its markup is the same on every request.
+- The text is data, not markup the application wrote, so it is held to what any
+  other text of the model is. Raw HTML is never rendered, which is goldmark's default
+  and is not switched off. A link goes only to an http or https address or a mailto,
+  since a relative address would be read against whatever page the text happens to be
+  on; anything else keeps its words and loses its link. Links open in a tab of their
+  own with `noopener`.
+- An image is a link to the picture, named by its alt text. The content security
+  policy refuses a picture from another site, so drawing one would only show a broken
+  icon, and a picture is how a text makes the visitor's browser fetch from a server of
+  the text's choosing. The policy is not loosened for markdown.
+- Code blocks are plain text in a block. When one names a language, the page links the
+  editor that is already embedded and the glue colours the block by its tokenizers; a
+  page whose markdown has no such block never links the editor. Colouring is
+  enhancement: without script, or for a language the editor does not know, the block
+  stays plain. No language service is ever offered, since the text cannot be edited.
+- goldmark is the library's second runtime dependency after templ. Writing a markdown
+  parser would have meant owning its edge cases, and its escaping, in a place where a
+  mistake is a cross-site script. It is pure Go, and was already in the module graph
+  through the linter, so it adds nothing transitive.
+
 ## Compiling and errors
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one

@@ -197,7 +197,66 @@ function mountDiff(el) {
   };
 }
 
+// A fence names its language as people write it, "js" or "yml", and Monaco knows it by
+// its id, which is not always that: it is found by id, by alias and by file extension.
+const languages = new Map();
+function languageOf(name) {
+  if (!languages.size) {
+    for (const l of monaco.languages.getLanguages()) {
+      for (const key of [l.id, ...(l.aliases || []), ...(l.extensions || []).map((e) => e.replace(/^\./, ''))]) {
+        if (!languages.has(key.toLowerCase())) languages.set(key.toLowerCase(), l.id);
+      }
+    }
+  }
+  return languages.get(name.toLowerCase());
+}
+
+// The code blocks of markdown are plain text until the highlighters are here, and stay
+// that for a language Monaco does not know.
+const blocks = new Map(); // code element → its text and language
+
+// Colouring a text asks for a language's tokenizer, but a language with a service, JSON for
+// one, sets its own up when a model is made in it, so one is made, once, and let go.
+const asked = new Set();
+function ask(id) {
+  if (asked.has(id)) return;
+  asked.add(id);
+  monaco.editor.createModel('', id).dispose();
+}
+
+function paint(el) {
+  const { text, id } = blocks.get(el);
+  ask(id);
+  monaco.editor
+    .colorize(text, id, { tabSize: 2 })
+    .then((html) => {
+      if (el.isConnected && el.innerHTML !== html) el.innerHTML = html;
+    })
+    .catch(() => {
+      // It stays as it was.
+    });
+}
+
+// A language whose tokenizer is registered after it was asked for, as JSON's is, would
+// be left uncoloured, so each block is painted again a little later. A block that came
+// out the same is left alone.
+const REPAINT = [300, 1200, 3000];
+
+function colorize(root = document) {
+  for (const el of blocks.keys()) if (!el.isConnected) blocks.delete(el);
+  root.querySelectorAll('.md pre > code[class*="language-"]').forEach((el) => {
+    if (blocks.has(el) || el.dataset.colorized) return;
+    el.dataset.colorized = '1';
+    const id = languageOf((/language-(\S+)/.exec(el.className) || [])[1] || '');
+    if (!id || id === 'plaintext') return;
+    blocks.set(el, { text: el.textContent.replace(/\n$/, ''), id });
+    paint(el);
+    for (const ms of REPAINT) setTimeout(() => blocks.has(el) && paint(el), ms);
+  });
+}
+
 function scan(root = document) {
+  colorize(root);
   root.querySelectorAll('[data-code-editor], [data-code-diff]').forEach((el) => {
     if (mounted.has(el)) return;
     mounted.set(el, el.hasAttribute('data-code-diff') ? mountDiff(el) : mountEditor(el));

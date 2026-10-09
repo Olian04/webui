@@ -65,8 +65,8 @@
 //
 // # Layouts
 //
-// A page's Body is a single [PageBody]. [Table], [Form], [Editor] and [Diff] are
-// leaves; they load their own data and refresh on their own. [Stack], [Split] and [Tabs] arrange
+// A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
+// [Markdown] are leaves; they load their own data and refresh on their own. [Stack], [Split] and [Tabs] arrange
 // other bodies and nest:
 //
 //	Body: webui.Stack{
@@ -163,6 +163,21 @@
 // service goes only to an editor that can be edited, by the visitor who is shown it:
 // a viewer, a visitor whose Submit Guard refuses them, and every [Diff] are
 // highlighted only, so no service is sent for text that cannot change.
+//
+// # Markdown
+//
+// A [Markdown] shows one text of a model set as markdown: CommonMark with GitHub's
+// tables, task lists, strikethrough and bare links. It is for text the application
+// has, such as a runbook or release notes, and it only reads.
+//
+//	webui.Markdown[Handbook]{Title: "Runbook", Load: loadHandbook, Content: HandbookText}
+//
+// The text is trusted no further than any other text of the model. Raw HTML in it is
+// never rendered, a link goes only to an http or https address or a mailto (and opens
+// in a tab of its own), and an image is not drawn but is a link to the picture, since
+// the page would refuse a picture from elsewhere. It needs no script. A fenced code
+// block that names a language is coloured by the editor, which the page then loads, as
+// for an [Editor] but never with a language service.
 //
 // # Outcomes
 //
