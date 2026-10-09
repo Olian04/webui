@@ -2,18 +2,19 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg)](https://pkg.go.dev/github.com/Olian04/webui/pkg/webui)
 
-Declarative admin panels and control planes for Go. You describe the pages, and
-webui serves them: no HTML, CSS or JavaScript to write.
+Build admin panels in pure Go. Declare your pages and webui serves a fast,
+server-rendered UI, with **no HTML, CSS or JavaScript to write**.
 
-- **Declare, don't build.** Pages, tables, forms and actions are Go values, written
-  as a static configuration you can read top to bottom.
-- **Checked when you compile.** Types tie a link to the page it opens and an
-  argument to its path, and `Compile` reports every other mistake at startup, each
-  with how to fix it.
-- **Works without JavaScript.** Every control is a real link or form. A small script
-  only makes it quicker.
-- **Safe by default.** Guards decide what a visitor sees and does, cross-site posts
-  are refused, and the sidebar and search leave out what a visitor could not open.
+- **Zero frontend.** Pages, tables, forms and actions are plain Go values.
+- **Type-safe.** The compiler ties each link to its page and each argument to its
+  path, and `Compile` catches the rest at startup, with a fix for each.
+- **Batteries included.** Sorting, filtering, pagination, search, validation, toasts
+  and dark mode, with no setup.
+- **Works without JavaScript.** Every control is a real link or form, and a tiny
+  script only makes it snappier.
+- **Secure by default.** CSRF protection and a strict content security policy out of
+  the box, plus guards per page and per action. A visitor never sees nav entries or
+  search results they can't open.
 
 # Using webui
 
