@@ -21,9 +21,16 @@ import (
 func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	if n.Feed {
 		// A feed has a cursor and nothing else to ask: no offset, sort or filters.
-		q := ir.Query{Limit: n.PageSize}
+		q := ir.Query{Limit: n.PageSize, Start: 1}
 		if after := raw[args.ViewKey(n.ID, "after")]; after != "" && len(after) <= maxCursor {
 			q.After = after
+			// Past the first page, which row it starts at and the way back are what the
+			// address says; without them they are not known.
+			q.Start = 0
+			if row, err := strconv.Atoi(raw[args.RowKey(n.ID)]); err == nil && row > 0 {
+				q.Start = row
+			}
+			q.Back = args.DecodeTrail(raw[args.BackKey(n.ID)])
 		}
 		return q
 	}

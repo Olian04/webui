@@ -295,17 +295,27 @@ templ Pager(p PagerProps) {
 // since a cursor is not a position, only where to go next and the way back to the
 // start. An empty href is a disabled button.
 type CursorPagerProps struct {
-	Rows      int
+	Rows int
+
+	// Start is the number of the first row on the page, from 1, or 0 when it is not
+	// known: the footer then says how many rows there are and not which.
+	Start int
+
 	FirstHref string
+	PrevHref  string
 	NextHref  string
 	Attrs     templ.Attributes
 }
 
 func (p CursorPagerProps) info() string {
-	switch p.Rows {
-	case 0:
+	switch {
+	case p.Rows == 0:
 		return "No results"
-	case 1:
+	case p.Start > 0 && p.Rows == 1:
+		return fmt.Sprintf("Showing row %d", p.Start)
+	case p.Start > 0:
+		return fmt.Sprintf("Showing rows %d–%d", p.Start, p.Start+p.Rows-1)
+	case p.Rows == 1:
 		return "1 row"
 	}
 	return fmt.Sprintf("%d rows", p.Rows)
@@ -320,6 +330,13 @@ templ CursorPager(p CursorPagerProps) {
 			Disabled: p.FirstHref == "",
 		}) {
 			First page
+		}
+		@Button(ButtonProps{
+			Href:     p.PrevHref,
+			Size:     SizeSmall,
+			Disabled: p.PrevHref == "",
+		}) {
+			Previous
 		}
 		@Button(ButtonProps{
 			Href:     p.NextHref,

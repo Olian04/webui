@@ -1046,17 +1046,27 @@ func Pager(p PagerProps) templ.Component {
 // since a cursor is not a position, only where to go next and the way back to the
 // start. An empty href is a disabled button.
 type CursorPagerProps struct {
-	Rows      int
+	Rows int
+
+	// Start is the number of the first row on the page, from 1, or 0 when it is not
+	// known: the footer then says how many rows there are and not which.
+	Start int
+
 	FirstHref string
+	PrevHref  string
 	NextHref  string
 	Attrs     templ.Attributes
 }
 
 func (p CursorPagerProps) info() string {
-	switch p.Rows {
-	case 0:
+	switch {
+	case p.Rows == 0:
 		return "No results"
-	case 1:
+	case p.Start > 0 && p.Rows == 1:
+		return fmt.Sprintf("Showing row %d", p.Start)
+	case p.Start > 0:
+		return fmt.Sprintf("Showing rows %d–%d", p.Start, p.Start+p.Rows-1)
+	case p.Rows == 1:
 		return "1 row"
 	}
 	return fmt.Sprintf("%d rows", p.Rows)
@@ -1090,7 +1100,7 @@ func CursorPager(p CursorPagerProps) templ.Component {
 		var templ_7745c5c3_Var40 string
 		templ_7745c5c3_Var40, templ_7745c5c3_Err = templ.JoinStringErrs(p.info())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/table.templ`, Line: 315, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/table.templ`, Line: 325, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var40))
 		if templ_7745c5c3_Err != nil {
@@ -1138,7 +1148,33 @@ func CursorPager(p CursorPagerProps) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "Next")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 62, "Previous")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			return nil
+		})
+		templ_7745c5c3_Err = Button(ButtonProps{
+			Href:     p.PrevHref,
+			Size:     SizeSmall,
+			Disabled: p.PrevHref == "",
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Var43 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+			templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+			if !templ_7745c5c3_IsBuffer {
+				defer func() {
+					templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+					if templ_7745c5c3_Err == nil {
+						templ_7745c5c3_Err = templ_7745c5c3_BufErr
+					}
+				}()
+			}
+			ctx = templ.InitializeContext(ctx)
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "Next")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1148,11 +1184,11 @@ func CursorPager(p CursorPagerProps) templ.Component {
 			Href:     p.NextHref,
 			Size:     SizeSmall,
 			Disabled: p.NextHref == "",
-		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var42), templ_7745c5c3_Buffer)
+		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var43), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 64, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -245,8 +245,8 @@ func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 func TestAFeedPagesByACursorWithNoSortOrFilters(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/audit").Body.String()
-	assert.Contains(t, body, "8 rows") // no range and no total: a cursor is not a position
-	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8">Next`)
+	assert.Contains(t, body, "Showing rows 1–8") // no total, but which rows
+	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8&amp;audit-log.back=1%3A&amp;audit-log.row=9">Next`)
 	assert.Contains(t, body, `disabled>First page</button>`)
 	assert.False(t, strings.Contains(body, "aria-sort")) // the source decides the order
 	assert.False(t, strings.Contains(body, `class="filter`))

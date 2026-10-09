@@ -138,9 +138,16 @@ type Table[M any] struct {
 	// Use Feed when the source pages by cursor, and Load when it pages by offset and
 	// can sort and filter on request. A cursor continues one sequence, so there is
 	// nothing for the library to reorder or filter: a feed table has no sort links and
-	// no filters, and its pager is Next and First page, since a cursor has no place in a
-	// count. The cursor is kept in the address, so it must be short enough to be one. A
-	// feed cannot be searched. Set exactly one of Rows, Load and Feed.
+	// no filters, and its pager is First page, Previous and Next, with "Showing rows
+	// 10032–10054" for a count, since a cursor has no place in a total.
+	//
+	// The address holds the cursor, the number of the page's first row, and the pages
+	// before it, which is all that Previous and the row numbers are made from: nothing
+	// is kept on the server, and the source is handed only the cursor and the size.
+	// So cursors must be short enough to be in an address, and Previous goes back as
+	// far as the address can remember, which is further for short cursors; the oldest
+	// pages are forgotten first, and First page is always there. A feed cannot be
+	// searched. Set exactly one of Rows, Load and Feed.
 	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
 
 	// Search makes the table's rows findable from the search box in the top bar.

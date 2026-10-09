@@ -143,26 +143,43 @@ func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 	return prev, next
 }
 
-// feedLinks are the addresses of a feed's first page and of the one after this: the
-// cursor is a parameter of the address, and the first page has none.
-func (r *Renderer) feedLinks(v TableView) (first, next string) {
-	key := args.ViewKey(v.Node.ID, "after")
-	at := func(cursor string) string {
+// feedLinks are the addresses of a feed's first page, of the one before this, and of
+// the one after. The cursor is a parameter of the address, with the number of the
+// page's first row and the pages before it, so the first page has none of them.
+func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
+	id := v.Node.ID
+	after, row, back := args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)
+	// at is this table's address at a page, with the pages before it.
+	at := func(m ir.Mark, trail []ir.Mark) string {
 		query := cloneQuery(v.Query)
-		if cursor == "" {
-			delete(query, key)
-		} else {
-			query[key] = cursor
+		delete(query, after)
+		delete(query, row)
+		delete(query, back)
+		if m.After != "" {
+			query[after] = m.After
+			if m.Start > 0 {
+				query[row] = strconv.Itoa(m.Start)
+			}
+			if len(trail) > 0 {
+				query[back] = args.EncodeTrail(trail)
+			}
 		}
 		return r.PageHref(v.Page, v.Path, query)
 	}
 	if v.Q.After != "" {
-		first = at("")
+		first = at(ir.Mark{}, nil)
+	}
+	if n := len(v.Q.Back); n > 0 {
+		prev = at(v.Q.Back[n-1], v.Q.Back[:n-1])
 	}
 	if v.Next != "" {
-		next = at(v.Next)
+		start := 0
+		if v.Q.Start > 0 {
+			start = v.Q.Start + len(v.Rows)
+		}
+		next = at(ir.Mark{Start: start, After: v.Next}, args.PushMark(v.Q.Back, ir.Mark{Start: v.Q.Start, After: v.Q.After}))
 	}
-	return first, next
+	return first, prev, next
 }
 
 func (r *Renderer) pager(v TableView) c.PagerProps {

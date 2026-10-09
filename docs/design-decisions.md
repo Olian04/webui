@@ -145,7 +145,10 @@ design element.
   means unknown. `Feed` is for a source that pages by a cursor: the rows come in the
   source's order, and it is handed the cursor and a page size and returns the rows and
   the next cursor. A cursor continues one sequence, so there is nothing for the library
-  to reorder or filter: the table has no sort links or filters, only Next and First page. It is a source of
+  to reorder or filter: the table has no sort links or filters, only First page, Previous and Next, and
+  says which rows it shows. The address carries the cursor, the first row's number and the pages
+  before, so nothing is kept on the server; Previous goes back as far as the address
+  remembers (a bounded number of characters, the oldest forgotten first). It is a source of
   its own, not a mode of `Query`, so a table can never carry both a cursor and an
   offset. Exactly one of the three is set, which `Compile` checks. Setting a filter
   returns every table to its first page.
