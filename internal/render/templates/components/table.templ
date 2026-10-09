@@ -290,3 +290,43 @@ templ Pager(p PagerProps) {
 		}
 	</div>
 }
+
+// CursorPagerProps is the footer of a table paged by a cursor: no range and no total,
+// since a cursor is not a position, only where to go next and the way back to the
+// start. An empty href is a disabled button.
+type CursorPagerProps struct {
+	Rows      int
+	FirstHref string
+	NextHref  string
+	Attrs     templ.Attributes
+}
+
+func (p CursorPagerProps) info() string {
+	switch p.Rows {
+	case 0:
+		return "No results"
+	case 1:
+		return "1 row"
+	}
+	return fmt.Sprintf("%d rows", p.Rows)
+}
+
+templ CursorPager(p CursorPagerProps) {
+	<div class="pager-info">{ p.info() }</div>
+	<div class="pager">
+		@Button(ButtonProps{
+			Href:     p.FirstHref,
+			Size:     SizeSmall,
+			Disabled: p.FirstHref == "",
+		}) {
+			First page
+		}
+		@Button(ButtonProps{
+			Href:     p.NextHref,
+			Size:     SizeSmall,
+			Disabled: p.NextHref == "",
+		}) {
+			Next
+		}
+	</div>
+}

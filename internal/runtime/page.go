@@ -195,6 +195,10 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 		case *ir.Tabs:
 			keys = append(keys, args.ViewKey(id, "tab"))
 		case *ir.Table:
+			if node.Feed {
+				keys = append(keys, args.ViewKey(id, "after"))
+				continue
+			}
 			keys = append(keys, args.ViewKey(id, "offset"))
 			if sortable(node) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))

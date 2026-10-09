@@ -74,8 +74,9 @@ type Window[M any] struct {
 // Table is a leaf that lists rows of a model M, one row to a line.
 //
 // Every column header sorts the table and has a filter beside it. Where the rows
-// come from is Rows or Load, one of the two: Rows suits data that is easy to list
-// in full, and Load suits data that is better paged by its source.
+// come from is Rows, Load or Feed, one of the three: Rows suits a small set, Load a
+// large set that can be ordered and filtered by its source, and Feed a large set
+// that cannot, which is paged by a cursor and so has no sort links or filters.
 //
 // A table keeps its sort, filters and page in the address, so a copied link shows
 // the same view. Each of those parameters starts with the table's name, which is
@@ -105,7 +106,7 @@ type Table[M any] struct {
 	// Use Rows when the rows are all at hand or cheap to list in full, such as a
 	// slice in memory or a small query. It is all that most tables need.
 	//
-	// If Rows or Load returns an error the panel says "Could not load", the cause is
+	// If Rows, Load or Feed returns an error the panel says "Could not load", the cause is
 	// logged and the rest of the page stands. The error's text is not shown to the
 	// visitor, since it may name things they should not see. Return no rows, not an
 	// error, for a table that is empty.
@@ -113,7 +114,7 @@ type Table[M any] struct {
 	// Rows is called on every request that needs the table's rows: each page load,
 	// sort, filter, page change, row action, and search. The library keeps nothing
 	// between requests, so if listing is costly, cache inside Rows, or use Load.
-	// Set Rows or Load, not both.
+	// Set exactly one of Rows, Load and Feed.
 	Rows func(ctx context.Context) ([]M, error)
 
 	// Load returns one page of rows, and does the filtering, sorting and paging
@@ -121,9 +122,22 @@ type Table[M any] struct {
 	// returns a [Window] with the rows and, if it can count them, the total.
 	//
 	// Use Load when the source can do that work better than the library, or is too
-	// large to list in full, such as a database table or a remote API. Set Rows or
-	// Load, not both.
+	// large to list in full, such as a database table or a remote API. Set exactly one of
+	// Rows, Load and Feed.
 	Load func(ctx context.Context, q Query) (Window[M], error)
+
+	// Feed is for a source that hands out its rows a page at a time by a cursor, and
+	// cannot sort or filter them for you, such as an object store's listing or a
+	// feed of events. It is handed the cursor of the page asked for, "" for the first,
+	// and how many rows a page holds, and returns them with the cursor of the page
+	// after, "" when there is none.
+	//
+	// Use Feed for a large set that has no order of your choosing, and Load for a large
+	// set that does. A feed table has no sort links and no filters, since the source
+	// decides the order, and its pager is Next and First page, since a cursor has no
+	// place in a count. The cursor is kept in the address, so it must be short enough
+	// to be one. A feed cannot be searched. Set exactly one of Rows, Load and Feed.
+	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
 
 	// Search makes the table's rows findable from the search box in the top bar.
 	// Each row is a result: its first column is the title, the other text columns
@@ -173,12 +187,19 @@ func (Table[M]) isPageBody() {}
 var _ PageBody = Table[struct{}]{}
 
 func (t Table[M]) validateBody(v *bodyValidator) {
+	sources := 0
+	for _, set := range []bool{t.Rows != nil, t.Load != nil, t.Feed != nil} {
+		if set {
+			sources++
+		}
+	}
 	switch {
-	case t.Rows == nil && t.Load == nil:
-		v.add("a Table has neither Rows nor Load",
-			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page, or Load to do that yourself.")
-	case t.Rows != nil && t.Load != nil:
-		v.add("a Table has both Rows and Load", "Set one: Rows lets the library filter, sort and page, Load does it yourself.")
+	case sources == 0:
+		v.add("a Table has none of Rows, Load and Feed",
+			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
+	case sources > 1:
+		v.add("a Table has more than one of Rows, Load and Feed",
+			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor with no sort or filters.")
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
 
@@ -229,6 +250,9 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		if t.RowClick == nil {
 			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
 		}
+		if t.Feed != nil {
+			v.add("a Table has Search but its rows come from Feed", "A feed has no way to be asked for rows matching text: use Rows or Load, or remove Search.")
+		}
 		if clickRuns {
 			v.add("a Table has Search but its RowClick is an Action", "A search result is a link to a row's page: make RowClick a Link, or remove Search.")
 		}
@@ -263,7 +287,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		}
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search,
+		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search, Feed: t.Feed != nil,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}
@@ -317,6 +341,19 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			}
 			window, total := tablequery.Apply(items, columns, q)
 			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
+		}
+	}
+	if t.Feed != nil {
+		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
+			rows, next, err := t.Feed(ctx, q.After, q.Limit)
+			if err != nil {
+				return ir.Window{}, err
+			}
+			items := make([]any, len(rows))
+			for i, r := range rows {
+				items[i] = r
+			}
+			return ir.Window{Rows: items, Total: -1, Next: next}, nil
 		}
 	}
 	return func(ctx context.Context, q ir.Query) (ir.Window, error) {

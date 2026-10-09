@@ -19,6 +19,14 @@ import (
 // the table did not declare is dropped, so a hand-edited address cannot make a
 // loader sort by something it never offered.
 func queryOf(n *ir.Table, raw map[string]string) ir.Query {
+	if n.Feed {
+		// A feed has a cursor and nothing else to ask: no offset, sort or filters.
+		q := ir.Query{Limit: n.PageSize}
+		if after := raw[args.ViewKey(n.ID, "after")]; after != "" && len(after) <= maxCursor {
+			q.After = after
+		}
+		return q
+	}
 	var q ir.Query
 	q.Limit = n.PageSize
 	if off, err := strconv.Atoi(raw[args.ViewKey(n.ID, "offset")]); err == nil && off > 0 {
@@ -37,6 +45,11 @@ func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	}
 	return q
 }
+
+// maxCursor bounds a feed's cursor in the address. It is whatever the source made it,
+// and comes back from the address, which is the visitor's to edit, so it is kept
+// short; a longer one is a first page, as is one the source does not know.
+const maxCursor = 2048
 
 // maxFilterChars bounds a typed filter: it is typed by a person.
 const maxFilterChars = 200
@@ -158,6 +171,11 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	}
 	rows := window.Rows
 	view.Rows, view.Total, view.Options = rows, window.Total, window.Options
+	if len(window.Next) > maxCursor {
+		p.log.Error("webui: a feed's cursor is too long for the address, so there is no next page", "page", page.PathTemplate, "length", len(window.Next))
+	} else {
+		view.Next = window.Next
+	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
 	view.ClickGates = clickGates(ctx, n, rows)

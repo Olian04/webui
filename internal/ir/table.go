@@ -8,6 +8,7 @@ import (
 type Query struct {
 	Offset int
 	Limit  int
+	After  string // a feed's cursor: where the page starts, "" for the first
 	Sort   string // a column's Key; empty means the loader's order
 	Desc   bool
 
@@ -36,6 +37,10 @@ type Window struct {
 	Rows  []any
 	Total int // -1 when unknown
 
+	// Next is, for a feed, the cursor of the page after this one, "" when this is the
+	// last.
+	Next string
+
 	// Options is, for each OpenSet column by Key, the values the rows hold, sorted.
 	// It is over every row, not only this window or what the filters keep, so a
 	// filter never offers fewer choices for having been used.
@@ -61,6 +66,11 @@ type Table struct {
 	// "<ID>.sort", "<ID>.desc". Set whenever the table pages or sorts.
 	ID       string
 	PageSize int // rows per page, always positive: the declaration defaults it
+
+	// Feed says the rows come from a source that hands them out a page at a time by a
+	// cursor, with no way to sort or filter them: the table has no sort links and no
+	// filters, and its pager is Next and First page.
+	Feed bool
 
 	// Search says the table's rows are found by the global search: each is a result
 	// that leads where RowClick does. Only a table with a RowClick has it.

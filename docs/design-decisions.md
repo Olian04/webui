@@ -137,13 +137,17 @@ design element.
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
   grow without bound, and every column is sortable and filterable. A table says where
-  its rows come from with one of two fields. `Rows` returns every row and the
+  its rows come from with one of three fields. `Rows` returns every row and the
   library filters, sorts and pages them from the columns' own accessors, a number
   as a number and text as text, so a table over a slice has no query code at all.
   `Load` is for a source that pages itself: it receives a `Query` and returns
   `Window{Items, Total}`, doing the work itself; `Total` below what has been shown
-  means unknown. Exactly one of the two is set, which `Compile` checks. Setting a
-  filter returns every table to its first page.
+  means unknown. `Feed` is for a large set with no order of its own, paged by a cursor:
+  it is handed the cursor and a page size and returns the rows and the next cursor, and
+  the table has no sort links or filters, only Next and First page. It is a source of
+  its own, not a mode of `Query`, so a table can never carry both a cursor and an
+  offset. Exactly one of the three is set, which `Compile` checks. Setting a filter
+  returns every table to its first page.
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
   without script. A column with a fixed set of options — a `Badge`, whose options

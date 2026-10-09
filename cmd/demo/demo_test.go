@@ -242,12 +242,19 @@ func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	assert.Contains(t, body, `class="gauge-fill"`) // a Slider with no Store is a bar
 }
 
-func TestAnUnknownTotalPagesByFullPages(t *testing.T) {
+func TestAFeedPagesByACursorWithNoSortOrFilters(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/audit").Body.String()
-	assert.Contains(t, body, "1–8") // a range with no "of N"
-	assert.False(t, strings.Contains(body, " of "))
-	assert.Contains(t, body, `href="/admin/audit?audit-log.offset=8"`)
+	assert.Contains(t, body, "8 rows") // no range and no total: a cursor is not a position
+	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8">Next`)
+	assert.Contains(t, body, `disabled>First page</button>`)
+	assert.False(t, strings.Contains(body, "aria-sort")) // the source decides the order
+	assert.False(t, strings.Contains(body, `class="filter`))
+
+	// The cursor comes back, and the last page has no Next.
+	last := get(h, "/admin/audit?audit-log.after=40").Body.String()
+	assert.Contains(t, last, `href="/admin/audit">First page`)
+	assert.Contains(t, last, `disabled>Next</button>`)
 
 	// Actions are recorded: the newest entry is the one just made.
 	post(h, "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})

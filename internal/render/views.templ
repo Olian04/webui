@@ -268,6 +268,10 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	if v.Failed {
 		return nil
 	}
+	if v.Node.Feed {
+		first, next := r.feedLinks(v)
+		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), FirstHref: first, NextHref: next})
+	}
 	return c.Pager(r.pager(v))
 }
 

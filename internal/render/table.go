@@ -45,6 +45,9 @@ type TableView struct {
 	// Hrefs is each row's destination, "" for a row that has none.
 	Hrefs []string
 
+	// Next is, for a feed, the cursor of the page after this one, "" for none.
+	Next string
+
 	// Options is, for each open-set column by Key, the values its rows hold.
 	Options map[string][]string
 
@@ -79,7 +82,7 @@ func (r *Renderer) columns(v TableView) []columnView {
 		if (f.Kind == ir.KindInt || f.Kind == ir.KindFloat) && f.Display != ir.DisplayTime {
 			col.Align = c.AlignEnd
 		}
-		if f.Key != "" {
+		if f.Key != "" && !v.Node.Feed { // a feed's source decides the order, and has no filters
 			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
 			col.Filter = r.filterMenu(v, f)
 		}
@@ -138,6 +141,28 @@ func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 		next = at(v.Q.Offset + size)
 	}
 	return prev, next
+}
+
+// feedLinks are the addresses of a feed's first page and of the one after this: the
+// cursor is a parameter of the address, and the first page has none.
+func (r *Renderer) feedLinks(v TableView) (first, next string) {
+	key := args.ViewKey(v.Node.ID, "after")
+	at := func(cursor string) string {
+		query := cloneQuery(v.Query)
+		if cursor == "" {
+			delete(query, key)
+		} else {
+			query[key] = cursor
+		}
+		return r.PageHref(v.Page, v.Path, query)
+	}
+	if v.Q.After != "" {
+		first = at("")
+	}
+	if v.Next != "" {
+		next = at(v.Next)
+	}
+	return first, next
 }
 
 func (r *Renderer) pager(v TableView) c.PagerProps {

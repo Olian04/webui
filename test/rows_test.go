@@ -143,13 +143,13 @@ func TestATableNeedsExactlyOneOfRowsAndLoad(t *testing.T) {
 	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {
 		neither += e.Error()
 	}
-	assert.Contains(t, neither, "a Table has neither Rows nor Load")
+	assert.Contains(t, neither, "a Table has none of Rows, Load and Feed")
 
 	var both string
 	for _, e := range compileErrors(t, page(webui.Table[Device]{Rows: rows, Load: load})) {
 		both += e.Error()
 	}
-	assert.Contains(t, both, "a Table has both Rows and Load")
+	assert.Contains(t, both, "a Table has more than one of Rows, Load and Feed")
 
 	for _, one := range []webui.Table[Device]{{Rows: rows}, {Load: load}} {
 		_, err := page(one).Compile("")

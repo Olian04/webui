@@ -83,7 +83,7 @@
 // are the accessors; without a Store an accessor is read-only, and a Badge never has one.
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
-// A table says where its rows come from with exactly one of two fields:
+// A table says where its rows come from with exactly one of three fields:
 //
 //   - Rows returns every row, and the library filters, sorts and pages them from the
 //     columns, comparing numbers as numbers and text as text. Use it when the rows
@@ -95,6 +95,13 @@
 //     and returns a [Window]. Use it when the source can do that work better than
 //     the library, or is too large to list in full, such as a database table or a
 //     remote API.
+//   - Feed is for a large set that has no order of your choosing, paged by a cursor,
+//     such as an object store's listing. It is handed the cursor of the page asked for
+//     and returns the rows with the cursor of the next, and the table has no sort links
+//     or filters, only Next and First page.
+//
+// In short: Rows for small sets, Load for large sets that can be ordered and filtered,
+// Feed for large sets that cannot.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Badge]. A table keeps
