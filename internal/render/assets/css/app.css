@@ -1510,7 +1510,8 @@ select.input option {
 /* Text set as markdown. It is markup from outside the design, so each element is given the
    look of its counterpart in the app, from the same tokens: the panel's 14px body text and
    its 10px inset, the table's rules and header, the form's checkbox, the editor's code.
-   Nothing is heavier than 500, and the structure is drawn by space more than by lines. */
+   Headings and labels are no heavier than 500, and the structure is drawn by space more than by
+   lines. */
 .md {
   color: var(--text);
   font-size: 14px;
@@ -1552,12 +1553,22 @@ select.input option {
   text-transform: uppercase;
   color: var(--text-2);
 }
-.md strong,
-.md th {
-  font-weight: 500;
+/* Emphasis has to be seen in running text, where 500 is too close to 400 to tell apart: strong
+   is 600, the one place outside a full-page error that the app uses it, and emphasis is a
+   slant with a little more weight. */
+.md strong {
+  font-weight: 600;
 }
 .md em {
   font-style: italic;
+  font-weight: 500;
+}
+.md strong em,
+.md em strong {
+  font-weight: 600;
+}
+.md th {
+  font-weight: 500;
 }
 .md del {
   color: var(--text-2);

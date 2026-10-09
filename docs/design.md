@@ -124,7 +124,9 @@ in Text secondary. Anything the user might copy is monospace. Numeric columns
 use tabular figures and right alignment.
 
 Nothing is bold. 500 is the heaviest weight in the system; 600 appears only in
-full-page error headings.
+full-page error headings. The exception is the strong emphasis of a
+`Markdown` leaf, which is 600: in running text 500 cannot be told from 400, and a
+reader must be able to see what the author stressed.
 
 ---
 
