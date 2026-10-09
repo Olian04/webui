@@ -37,6 +37,7 @@ var (
 			Required: true, MinLen: 7, MaxLen: 15,
 			Pattern: &webui.PatternRule{Expr: `\d{1,3}(\.\d{1,3}){3}`, Message: "must be a valid IPv4 address"},
 		},
+		Placeholder: "10.0.0.1",
 	}
 	Status = webui.Badge[Device]{
 		Label: "Status",
@@ -133,7 +134,7 @@ var DeviceForm = webui.Form[Device]{
 	},
 	Fields: []webui.Accessor[Device]{
 		// A Group puts its fields side by side; it is layout, with no frame.
-		webui.Group[Device]{DeviceID, webui.Placeholder[Device]{Accessor: IP, Text: "10.0.0.1"}},
+		webui.Group[Device]{DeviceID, IP},
 		webui.Group[Device]{Status, Site}, // a badge and a plain field: both read-only here
 		Rate,                              // a slider with no Store is a bar
 	},

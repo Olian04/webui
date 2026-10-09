@@ -14,6 +14,8 @@ var (
 		Load:  func(s Settings) string { return s.Name },
 		Store: func(s *Settings, v string) { s.Name = v },
 		Rules: webui.StringRules{Required: true, MinLen: 3, MaxLen: 32},
+		// Shown in the input while it is empty.
+		Placeholder: "eu-north-1",
 	}
 	Port = webui.Int[Settings]{
 		Label: "Port",
@@ -53,8 +55,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 		Desc:  "Every constraint below is declared as data and rendered as an HTML attribute.",
 		Load:  func(context.Context) (Settings, error) { return service.Settings(), nil },
 		Fields: []webui.Accessor[Settings]{
-			// A Placeholder decorates an accessor; it shows in an empty input.
-			webui.Group[Settings]{webui.Placeholder[Settings]{Accessor: CollectorName, Text: "eu-north-1"}, Port},
+			webui.Group[Settings]{CollectorName, Port},
 			webui.Group[Settings]{SampleRate, MaxLoad},
 		},
 		Submit: SaveIngest,

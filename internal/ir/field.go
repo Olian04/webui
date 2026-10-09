@@ -27,7 +27,7 @@ type Field struct {
 	Rules Rules
 
 	Key         string // the label as the address names it, lower-cased with dashes: what Query.Sort carries
-	Placeholder string // from Placeholder
+	Placeholder string // from the accessor
 
 	// Options is the fixed set of values a column can hold, when it has one: a
 	// table's filter offers exactly these, as a multi-select. Nil means free

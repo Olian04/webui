@@ -120,7 +120,7 @@ func TestLowerOutcome(t *testing.T) {
 	t.Parallel()
 
 	ip := String[dev]{Label: "IP", Load: func(d dev) string { return d.Ip }}
-	e, err := lowerOutcome[dev](Reject(Field[dev](Placeholder[dev]{Accessor: ip, Text: "x"}, "taken")))
+	e, err := lowerOutcome[dev](Reject(Field[dev](ip, "taken")))
 	assert.NoError(t, err)
 	assert.Equal(t, e.Kind, ir.OutcomeReject)
 	assert.DeepEqual(t, e.Fields, []ir.FieldError{{Label: "IP", Message: "taken"}})

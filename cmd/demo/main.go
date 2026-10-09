@@ -10,7 +10,7 @@
 //	sites.go     a nested path, two stateful tables on one page, more search
 //	alerts.go    row and bulk actions, a destructive role, links with arguments,
 //	             every kind of outcome (success, warning, failure, then)
-//	settings.go  forms: rules, Float, Slider, Placeholder
+//	settings.go  forms: rules, Float, Slider, a placeholder
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context

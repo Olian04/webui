@@ -135,6 +135,24 @@ func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testin
 	assert.Equal(t, strings.Count(body, `field-static`), 1)
 }
 
+func TestAPlaceholderIsShownInAnEmptyInputOfAnyKind(t *testing.T) {
+	t.Parallel()
+
+	f := webui.Form[Device]{
+		Load: func(context.Context) (Device, error) { return Device{}, nil },
+		Fields: []webui.Accessor[Device]{
+			webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }, Store: func(d *Device, v string) { d.Ip = v }, Placeholder: "10.0.0.1"},
+			webui.Int[Device]{Label: "Count", Load: func(d Device) int { return d.Count }, Store: func(d *Device, v int) { d.Count = v }, Placeholder: "how many"},
+			webui.Float[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }, Store: func(*Device, float64) {}, Placeholder: "per second"},
+		},
+		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }},
+	}
+	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+	for _, p := range []string{"10.0.0.1", "how many", "per second"} {
+		assert.Contains(t, body, `placeholder="`+p+`"`)
+	}
+}
+
 func TestFormWithoutSubmitIsReadOnly(t *testing.T) {
 	t.Parallel()
 

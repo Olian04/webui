@@ -32,6 +32,9 @@ type String[M any] struct {
 
 	// Rules are checked in the browser and again on the server.
 	Rules StringRules
+
+	// Placeholder is shown in the input while it is empty.
+	Placeholder string
 }
 
 func (String[M]) isAccessor() {}
@@ -80,6 +83,9 @@ type Int[M any] struct {
 
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[int]
+
+	// Placeholder is shown in the input while it is empty.
+	Placeholder string
 }
 
 func (Int[M]) isAccessor() {}
@@ -114,6 +120,9 @@ type Float[M any] struct {
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[float64]
 
+	// Placeholder is shown in the input while it is empty.
+	Placeholder string
+
 	// Precision is the number of decimals shown. Zero shows the shortest exact
 	// representation.
 	Precision int
@@ -126,17 +135,6 @@ func (Float[M]) isAccessor() {}
 type Group[M any] []Accessor[M]
 
 func (Group[M]) isAccessor() {}
-
-// Placeholder decorates an accessor with placeholder text.
-type Placeholder[M any] struct {
-	// Accessor is the accessor decorated.
-	Accessor Accessor[M]
-
-	// Text is shown in the input while it is empty.
-	Text string
-}
-
-func (Placeholder[M]) isAccessor() {}
 
 // Badge projects a string field of M as a badge: the value in a coloured pill.
 // It is read-only, in a table and in a form. Kinds is the set of values the
@@ -215,7 +213,6 @@ var (
 	_ Accessor[struct{}] = Int[struct{}]{}
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
-	_ Accessor[struct{}] = Placeholder[struct{}]{}
 	_ Accessor[struct{}] = Badge[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
 )
@@ -232,11 +229,11 @@ type accessorSite struct {
 
 func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accessorSite, seen map[string]bool) {
 	for i, acc := range accs {
-		validateAccessor[M](v, acc, fmt.Sprintf("%s[%d]", site.where, i), site, seen, false)
+		validateAccessor[M](v, acc, fmt.Sprintf("%s[%d]", site.where, i), site, seen)
 	}
 }
 
-func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool, decorated bool) {
+func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
 	label := func(l string) {
 		switch {
 		case l == "":
@@ -281,22 +278,17 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 	case Group[M]:
-		switch {
-		case !site.allowGroup:
+		if !site.allowGroup {
 			v.add(at+" is a Group in "+site.where,
 				"Groups compose form fields; a nested group has no meaning in a table cell. List the accessors directly.")
-		case decorated:
-			v.add(at+" decorates a Group", "Decorate the accessors inside the Group instead.")
 		}
 		for i, child := range a {
 			if _, nested := child.(Group[M]); nested {
 				v.add(fmt.Sprintf("%s[%d] nests a Group in a Group", at, i), "Flatten it; groups are one level deep.")
 				continue
 			}
-			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen, false)
+			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen)
 		}
-	case Placeholder[M]:
-		validateAccessor[M](v, a.Accessor, at, site, seen, true)
 	case Badge[M]:
 		label(a.Label)
 		if a.Load == nil {
@@ -315,7 +307,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, Slider, Group or Placeholder.")
+			"Use String, Int, Float, Badge, Slider or Group.")
 	}
 }
 
@@ -335,14 +327,13 @@ func lowerAccessors[M any](accs []Accessor[M], prefix string) []ir.Field {
 	return out
 }
 
-// lowerAccessor is the one place Store becomes Set. Decorators flatten into
-// the inner field; they have no runtime existence. validate has run, so a nil
+// lowerAccessor is the one place Store becomes Set. validate has run, so a nil
 // Load or an unknown accessor cannot reach here.
 func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules), Placeholder: a.Placeholder,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 		if a.Store != nil {
@@ -351,7 +342,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Int[M]:
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules), Placeholder: a.Placeholder,
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
 			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
 		}
@@ -372,7 +363,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			prec = a.Precision
 		}
 		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules),
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules), Placeholder: a.Placeholder,
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 			Num: func(m any) float64 { return a.Load(m.(M)) },
 		}
@@ -389,10 +380,6 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
-	case Placeholder[M]:
-		f := lowerAccessor[M](a.Accessor, name)
-		f.Placeholder = a.Text
-		return f
 	case Badge[M]:
 		kinds := make(map[string]ir.Tone, len(a.Kinds))
 		var options []string
@@ -455,8 +442,8 @@ func lowerNumberRules[T int | float64](r NumberRules[T]) ir.Rules {
 	return out
 }
 
-// accessorLabel resolves an accessor to its label through decorators, for
-// FieldError. A Group has no label of its own.
+// accessorLabel resolves an accessor to its label, for FieldError. A Group has no
+// label of its own.
 func accessorLabel[M any](acc Accessor[M]) string {
 	switch a := acc.(type) {
 	case String[M]:
@@ -465,8 +452,6 @@ func accessorLabel[M any](acc Accessor[M]) string {
 		return a.Label
 	case Float[M]:
 		return a.Label
-	case Placeholder[M]:
-		return accessorLabel[M](a.Accessor)
 	case Badge[M]:
 		return a.Label
 	case Slider[M]:

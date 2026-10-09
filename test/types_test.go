@@ -99,7 +99,7 @@ func TestSketchTypes(t *testing.T) {
 				ID,
 				webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }},
 				Occurrences,
-				webui.Placeholder[Device]{Accessor: IP, Text: "10.0.0.1"},
+				IP,
 			},
 		},
 	}
