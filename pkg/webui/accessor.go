@@ -137,14 +137,21 @@ type Group[M any] []Accessor[M]
 func (Group[M]) isAccessor() {}
 
 // Badge projects a string field of M as a badge: the value in a coloured pill.
-// It is read-only, in a table and in a form. Kinds is the set of values the
-// field can hold, each with the tone it is drawn in; a value outside it is drawn
-// neutral. The badge always carries its word, so the colour is never the only
-// thing saying what state something is in.
+// It is read-only, in a table and in a form. Kinds gives the tone of each value it
+// knows; any other value is drawn neutral. The badge always carries its word, so the
+// colour is never the only thing saying what state something is in.
 //
-// Because Kinds is the whole set, a table filters a Badge column with a
-// multi-select of exactly those values. List a neutral value too, as
-// ToneNeutral, for it to be filterable.
+// A badge does not need to know every value it can hold. How a table filters the
+// column depends on where its rows come from:
+//
+//   - With Rows, the library holds every row, so the filter is a multi-select of the
+//     values the rows hold, whether or not Kinds names them. A field with an open set
+//     of values, such as a storage class, can leave Kinds empty, or name only the
+//     values worth a colour.
+//   - With Load, the source does the filtering, so the library can only offer what it
+//     is told: Kinds is then the whole set, a multi-select of exactly those values.
+//     List a neutral value too, as ToneNeutral, for it to be filterable. With no Kinds
+//     the column's filter is text.
 type Badge[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
@@ -153,7 +160,8 @@ type Badge[M any] struct {
 	// Load reads the value from the model.
 	Load func(M) string
 
-	// Kinds is every value the field can hold, each with the [Tone] it is drawn in.
+	// Kinds gives the [Tone] each known value is drawn in. See Badge for what it
+	// means to a table's filter.
 	Kinds map[string]Tone
 }
 

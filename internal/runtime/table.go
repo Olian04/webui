@@ -56,17 +56,28 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 			continue
 		}
 		var kept []string
-		if col.Options != nil {
+		switch {
+		case col.OpenSet:
+			// The values are whatever the rows hold, which the library filters, so any
+			// value is safe to keep: one that no row has matches none.
+			for _, v := range strings.Split(value, args.ListSep) {
+				if v != "" && !slices.Contains(kept, v) {
+					kept = append(kept, v)
+				}
+			}
+		case col.Options != nil:
 			for _, v := range strings.Split(value, args.ListSep) {
 				if slices.Contains(col.Options, v) && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}
 			}
-		} else if text := strings.TrimSpace(value); text != "" {
-			if runes := []rune(text); len(runes) > maxFilterChars {
-				text = string(runes[:maxFilterChars])
+		default:
+			if text := strings.TrimSpace(value); text != "" {
+				if runes := []rune(text); len(runes) > maxFilterChars {
+					text = string(runes[:maxFilterChars])
+				}
+				kept = []string{text}
 			}
-			kept = []string{text}
 		}
 		if len(kept) == 0 {
 			continue
@@ -120,7 +131,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
-	rows, total, err := n.Load(ctx, view.Q)
+	window, err := n.Load(ctx, view.Q)
 	if err != nil {
 		if ctx.Err() == nil {
 			p.log.Error("webui: table load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
@@ -128,7 +139,8 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.Failed = true
 		return p.render.Table(view)
 	}
-	view.Rows, view.Total = rows, total
+	rows := window.Rows
+	view.Rows, view.Total, view.Options = rows, window.Total, window.Options
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
 	view.ClickGates = clickGates(ctx, n, rows)

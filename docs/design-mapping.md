@@ -43,7 +43,7 @@ into existence, and nothing is configured twice.
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
-| `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
+| `Badge.Kinds` | The tone of each known value. In a `Rows` table a badge column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Kinds`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |

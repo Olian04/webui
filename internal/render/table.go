@@ -44,6 +44,9 @@ type TableView struct {
 	// Hrefs is each row's destination, "" for a row that has none.
 	Hrefs []string
 
+	// Options is, for each open-set column by Key, the values its rows hold.
+	Options map[string][]string
+
 	// ClickGates is, for a table whose RowClick is an Action, the reason each row
 	// may not be clicked by this viewer, "" when it may.
 	ClickGates []string
@@ -317,6 +320,17 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 		fv.Key = args.FilterKey(id, f.Key)
 		gone = append(gone, fv.Key)
 		fv.Chosen, fv.Options = v.Q.Filters[f.Key], f.Options
+		if f.OpenSet {
+			// The values the rows hold, and any chosen one the rows no longer do, so it
+			// can still be unticked.
+			fv.Options = []string{}
+			fv.Options = append(fv.Options, v.Options[f.Key]...)
+			for _, c := range fv.Chosen {
+				if !slices.Contains(fv.Options, c) {
+					fv.Options = append(fv.Options, c)
+				}
+			}
+		}
 		fv.On = len(fv.Chosen) > 0
 	}
 	fv.Carry = carry(v.Query, gone...)

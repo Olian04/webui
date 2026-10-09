@@ -276,7 +276,8 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		return
 	}
 
-	rows, _, err := n.Load(ctx, queryOf(n, req.Raw))
+	window, err := n.Load(ctx, queryOf(n, req.Raw))
+	rows := window.Rows
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table load: %w", err))
 		return

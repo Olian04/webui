@@ -183,3 +183,59 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.DeepEqual(t, acted, []string{"b"})
 }
+
+// storageTable is a table of objects with a storage class, which nobody declares: the
+// classes are whatever the rows hold.
+func storageTable(rows bool) http.Handler {
+	items := []Device{{Id: "a", Ip: "STANDARD"}, {Id: "b", Ip: "glacier"}, {Id: "c", Ip: "STANDARD"}, {Id: "d", Ip: "GLACIER"}}
+	class := webui.Badge[Device]{Label: "Class", Load: func(d Device) string { return d.Ip }} // no Kinds
+	tbl := webui.Table[Device]{
+		Title:   "Objects",
+		Columns: []webui.Accessor[Device]{formID, class},
+	}
+	if rows {
+		tbl.Rows = func(context.Context) ([]Device, error) { return items, nil }
+	} else {
+		tbl.Load = func(context.Context, webui.Query) (webui.Window[Device], error) {
+			return webui.Window[Device]{Items: items, Total: len(items)}, nil
+		}
+	}
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/o", Body: tbl}}}.MustCompile("")
+}
+
+// classBoxes is the checkbox of each choice in the Class filter.
+var classBoxes = regexp.MustCompile(`class="checkbox" type="checkbox" name="objects\.filter\.class" value="([^"]*)"`)
+
+func TestABadgeOfARowsTableFiltersByTheValuesItsRowsHold(t *testing.T) {
+	t.Parallel()
+
+	h := storageTable(true)
+	body := serve(h, http.MethodGet, "/o").Body.String()
+
+	// A choice for each value present, in order without regard to case, each once.
+	opts := classBoxes.FindAllStringSubmatch(body, -1)
+	var got []string
+	for _, m := range opts {
+		got = append(got, m[1])
+	}
+	assert.DeepEqual(t, got, []string{"GLACIER", "glacier", "STANDARD"})
+
+	// Choosing one keeps its rows; the choices do not shrink for it.
+	chosen := serve(h, http.MethodGet, "/o?objects.filter.class=STANDARD").Body.String()
+	assert.Contains(t, chosen, ">a<")
+	assert.Contains(t, chosen, ">c<")
+	assert.False(t, strings.Contains(chosen, ">b<"))
+	assert.Equal(t, len(classBoxes.FindAllString(chosen, -1)), 3)
+
+	// A value no row has is no hazard, and matches nothing.
+	none := serve(h, http.MethodGet, "/o?objects.filter.class=NOPE").Body.String()
+	assert.False(t, strings.Contains(none, ">a<"))
+}
+
+func TestABadgeOfALoadTableWithNoKindsStaysATextFilter(t *testing.T) {
+	t.Parallel()
+
+	body := serve(storageTable(false), http.MethodGet, "/o").Body.String()
+	assert.Contains(t, body, `placeholder="Contains…"`)
+	assert.Equal(t, len(classBoxes.FindAllString(body, -1)), 0) // no checkboxes
+}

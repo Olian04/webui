@@ -34,6 +34,12 @@ type Field struct {
 	// text, which a table's filter takes as typed.
 	Options []string
 
+	// OpenSet says the column's values are not declared but are whatever its rows
+	// hold, for a table whose rows the library holds in full: its filter is a
+	// multi-select of the values present, whatever they are, and matches the rows
+	// holding any of those chosen.
+	OpenSet bool
+
 	// Display is how the value is shown. Text is the default.
 	Display Display
 	Kinds   map[string]Tone // DisplayBadge: the values it can hold, each with its tone

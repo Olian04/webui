@@ -87,7 +87,8 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, here *hereReque
 	var hits []searchHit
 	for _, t := range tables {
 		group := cmp.Or(t.Title, page.Nav.Label, page.PathTemplate)
-		rows, _, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
+		window, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
+		rows := window.Rows
 		if err != nil && ctx.Err() == nil {
 			p.log.Error("webui: search failed", "page", page.PathTemplate, "table", t.Title, "err", err)
 		}

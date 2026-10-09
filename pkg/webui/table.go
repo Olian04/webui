@@ -241,6 +241,13 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	for _, c := range columns {
 		labels[c.Key] = c.Label
 	}
+	if t.Rows != nil {
+		// The library holds every row, so a badge's choices are the values the rows
+		// have, whether or not its Kinds name them.
+		for i := range columns {
+			columns[i].OpenSet = columns[i].Display == ir.DisplayBadge
+		}
+	}
 	out := &ir.Table{
 		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search,
 		Columns: columns,
@@ -283,25 +290,25 @@ func queryOf(q ir.Query, labels map[string]string) Query {
 }
 
 // loader is the table's rows as the IR asks for them, by a Query.
-func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) ([]any, int, error) {
+func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) (ir.Window, error) {
 	if t.Rows != nil {
-		return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 			all, err := t.Rows(ctx)
 			if err != nil {
-				return nil, 0, err
+				return ir.Window{}, err
 			}
 			items := make([]any, len(all))
 			for i, r := range all {
 				items[i] = r
 			}
 			window, total := tablequery.Apply(items, columns, q)
-			return window, total, nil
+			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
 		}
 	}
-	return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+	return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 		rows, err := t.Load(ctx, queryOf(q, labels))
 		if err != nil {
-			return nil, 0, err
+			return ir.Window{}, err
 		}
 		items := make([]any, len(rows.Items))
 		for i, r := range rows.Items {
@@ -311,6 +318,6 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		if total < q.Offset+len(items) {
 			total = -1
 		}
-		return items, total, nil
+		return ir.Window{Rows: items, Total: total}, nil
 	}
 }

@@ -30,6 +30,18 @@ type Range struct {
 	Min, Max *float64
 }
 
+// Window is what a table's Load returns: the rows asked for, how many there are in
+// all, and the values of its open-set columns.
+type Window struct {
+	Rows  []any
+	Total int // -1 when unknown
+
+	// Options is, for each OpenSet column by Key, the values the rows hold, sorted.
+	// It is over every row, not only this window or what the filters keep, so a
+	// filter never offers fewer choices for having been used.
+	Options map[string][]string
+}
+
 // Table is a leaf listing rows.
 type Table struct {
 	At Addr
@@ -37,9 +49,9 @@ type Table struct {
 	Title string
 	Desc  string
 
-	// Load returns the rows and the total matching count. Total is -1 when the
-	// loader does not know it, which disables "of N" and last-page detection.
-	Load func(ctx context.Context, q Query) (rows []any, total int, err error)
+	// Load returns one window of the rows. Total is -1 when the loader does not
+	// know it, which disables "of N" and last-page detection.
+	Load func(ctx context.Context, q Query) (Window, error)
 
 	// Key identifies a row for selection and row actions; nil when the table
 	// declares neither.
