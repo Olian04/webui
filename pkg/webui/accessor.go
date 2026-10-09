@@ -59,7 +59,9 @@ type PatternRule struct {
 	// It must match the whole value.
 	Expr string
 
-	// Message is shown beneath the field when the value does not match.
+	// Message is shown beneath the field when the value does not match. It says
+	// what is wrong with the value, such as "must be a valid IPv4 address", and
+	// only then: it is not shown beside a value that is accepted.
 	Message string
 }
 

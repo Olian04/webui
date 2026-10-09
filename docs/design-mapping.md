@@ -283,12 +283,14 @@ Each rule has exactly one visual form:
 | Required | `required` | `*` beside the label, in critical |
 | `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters" |
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535" |
-| `Pattern` | `pattern` | The pattern's own message |
+| `Pattern` | `pattern` | None; the pattern's message is the error beneath a refused value |
 
 The browser refuses before anything is sent; the server re-runs the same set
 after. The user sees one behaviour. `Pattern` carries a message because a
-regular expression cannot explain itself — that message *is* the hint text, and
-it is the reason `Pattern` is a struct while `MinLen` is a bare integer.
+regular expression cannot explain itself — that message is the error shown when
+a value is refused, and the reason `Pattern` is a struct while `MinLen` is a bare
+integer. It is not a standing hint: worded as a complaint, it would sit beneath a
+good value.
 
 ---
 

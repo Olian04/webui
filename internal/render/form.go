@@ -122,15 +122,15 @@ func htmlRules(f ir.Field, editable bool) c.Rules {
 	return out
 }
 
-// hint is the line beneath an input that states the rule. A pattern speaks in
-// its own words, because a regular expression cannot explain itself.
+// hint is the line beneath an input that states the rule, in the library's words:
+// a length or a bound. A pattern has none, because a regular expression cannot
+// explain itself and its message says what was wrong with a value, which would
+// read as a complaint beneath a good one: it is shown when the value is refused.
 func hint(f ir.Field, editable bool) string {
 	r := f.Rules
 	switch {
 	case !editable:
 		return ""
-	case r.Pattern != nil && r.Pattern.Message != "":
-		return r.Pattern.Message
 	case r.MinLen > 0 && r.MaxLen > 0:
 		return fmt.Sprintf("%d–%d characters", r.MinLen, r.MaxLen)
 	case r.MinLen > 0:
