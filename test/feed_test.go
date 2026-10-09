@@ -238,3 +238,32 @@ func TestATableTakesExactlyOneSourceAndAFeedCannotBeSearched(t *testing.T) {
 	searched := webui.Table[Device]{Feed: feed, Search: true, RowClick: webui.Link[Device, detailsArgs]{Page: details, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }}}
 	assert.Contains(t, problems(searched), "rows come from Feed")
 }
+
+func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
+	t.Parallel()
+
+	// Each page of the way back costs its text and the parameter name carrying it, so
+	// hundreds of short cursors are as long an address as a few long ones. The trail is
+	// bounded by the address and not by the text alone.
+	tbl := webui.Table[Device]{
+		Title:    "Objects",
+		PageSize: 1,
+		Feed: func(_ context.Context, after string, _ int) ([]Device, string, error) {
+			n, _ := strconv.Atoi(after)
+			return []Device{{Id: "x"}}, strconv.Itoa(n + 1), nil // there is always another
+		},
+		Columns: []webui.Accessor[Device]{formID},
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+
+	at := "/f"
+	longest := 0
+	for range 800 {
+		at = pagerHref(serve(h, http.MethodGet, at).Body.String(), "Next")
+		longest = max(longest, len(at))
+	}
+	assert.True(t, longest < 3500) // far below what a browser or a server refuses
+	body := serve(h, http.MethodGet, at).Body.String()
+	assert.True(t, pagerHref(body, "Previous") != "") // and it still goes back
+	assert.Contains(t, body, "Showing row 801")       // the number does not depend on the trail
+}

@@ -177,7 +177,7 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 		if v.Q.Start > 0 {
 			start = v.Q.Start + len(v.Rows)
 		}
-		next = at(ir.Mark{Start: start, After: v.Next}, args.PushMark(v.Q.Back, ir.Mark{Start: v.Q.Start, After: v.Q.After}))
+		next = at(ir.Mark{Start: start, After: v.Next}, args.PushMark(id, v.Q.Back, ir.Mark{Start: v.Q.Start, After: v.Q.After}))
 	}
 	return first, prev, next
 }

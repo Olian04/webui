@@ -1,6 +1,7 @@
 package args
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -19,8 +20,10 @@ func RowKey(id string) string { return ViewKey(id, "row") }
 // for each.
 func BackKey(id string) string { return ViewKey(id, "back") }
 
-// MaxTrail bounds what the address remembers of the way back, in characters. A
-// cursor is whatever the source made it and may be long, so the oldest pages are
+// MaxTrail bounds what the address remembers of the way back, in characters of the
+// address itself: each page costs its escaped text and the parameter name that
+// carries it ("&objects.back="), so many short pages cost as much as a few long ones.
+// A cursor is whatever the source made it and may be long, so the oldest pages are
 // forgotten first: Previous goes back as far as this holds, and First page is always
 // there.
 const MaxTrail = 3000
@@ -41,20 +44,20 @@ func DecodeMark(s string) (ir.Mark, bool) {
 // DecodeTrail reads the pages out of the values of the back parameter, which the
 // parser joins with ListSep. What is not a page, or does not fit, is dropped, the
 // oldest first.
-func DecodeTrail(joined string) []ir.Mark {
+func DecodeTrail(id, joined string) []ir.Mark {
 	var out []ir.Mark
 	for _, part := range strings.Split(joined, ListSep) {
 		if m, ok := DecodeMark(part); ok {
 			out = append(out, m)
 		}
 	}
-	return fit(out)
+	return fit(id, out)
 }
 
 // PushMark adds the page being left to the pages before it, and forgets the oldest
 // while they are too long for the address.
-func PushMark(trail []ir.Mark, m ir.Mark) []ir.Mark {
-	return fit(append(append([]ir.Mark(nil), trail...), m))
+func PushMark(id string, trail []ir.Mark, m ir.Mark) []ir.Mark {
+	return fit(id, append(append([]ir.Mark(nil), trail...), m))
 }
 
 // EncodeTrail is the value of the back parameter for these pages.
@@ -66,13 +69,19 @@ func EncodeTrail(trail []ir.Mark) string {
 	return strings.Join(parts, ListSep)
 }
 
-func fit(trail []ir.Mark) []ir.Mark {
+// cost is what a page adds to the address of a table: its escaped text, and the "&",
+// the parameter's name and the "=" around it.
+func cost(id string, m ir.Mark) int {
+	return len(url.QueryEscape(EncodeMark(m))) + len(BackKey(id)) + 2
+}
+
+func fit(id string, trail []ir.Mark) []ir.Mark {
 	size := 0
 	for _, m := range trail {
-		size += len(EncodeMark(m)) + 1
+		size += cost(id, m)
 	}
 	for len(trail) > 0 && size > MaxTrail {
-		size -= len(EncodeMark(trail[0])) + 1
+		size -= cost(id, trail[0])
 		trail = trail[1:]
 	}
 	return trail
