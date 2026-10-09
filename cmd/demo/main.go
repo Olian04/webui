@@ -45,7 +45,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Handbooks, Audit},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
 }
 
 var (

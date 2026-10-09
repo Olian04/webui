@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"embed"
+	"fmt"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -9,76 +11,51 @@ import (
 // Handbook is a text the application has, which is shown as it is written.
 type Handbook struct{ Text string }
 
+//go:embed handbook/*.md
+var handbookFiles embed.FS
+
 // A Markdown shows one text of a model, set as markdown, and only reads: its accessor has no
-// Store. Raw HTML in it is never rendered, a link goes only to an http or https address or a
-// mailto, and an image is a link to the picture, so a text from outside is safe to show.
-// A fenced block that names a language is coloured by the editor the page then loads;
-// without script it is plain text in a block.
+// Store. Raw HTML in it is never rendered, a link goes only to an http or https address, a
+// mailto, or a path in the application, and an image is a link to the picture, so a text from
+// outside is safe to show. A link such as [Config](/config) is an address in the application
+// whatever it is mounted at: it is given the mount's prefix, and opens in the same tab. A
+// fenced block that names a language is coloured by the editor the page then loads; without
+// script it is plain text in a block.
+//
+// The texts are files that are embedded, one per page, and link to each other and to the
+// pages of the demo.
 var (
 	HandbookText = webui.String[Handbook]{
-		Label: "Collector handbook",
+		Label: "Handbook",
 		Load:  func(h Handbook) string { return h.Text },
 	}
 
-	Handbooks = webui.Page[webui.NoArgs]{
-		Path: "/handbook",
-		Nav:  webui.Nav{Label: "Runbook", Icon: "book-open", Section: "Operations"},
+	HandbookRunbook = handbookPage("/handbook", "Runbook", "book-open", "runbook.md",
+		"A Markdown: text set as markdown, read only. Raw HTML is never rendered, and a link to a path in the application stays in it.")
+	HandbookIncidents = handbookPage("/handbook/incidents", "Incidents", "triangle-exclamation", "incidents.md",
+		"Links to the alerts, the devices and the config, each at an address in the application.")
+	HandbookSinks = handbookPage("/handbook/sinks", "Sinks", "plug", "sinks.md",
+		"A link may carry a query, as /device/dev_27c38b?minutes=15 does, and goes where it says.")
+	HandbookGlossary = handbookPage("/handbook/glossary", "Glossary", "spell-check", "glossary.md",
+		"A link outside the application opens in a tab of its own, and an unsafe one is not a link.")
+)
+
+// handbookPage is a page of the handbook: the text of a file, in a Markdown.
+func handbookPage(path webui.PageID[webui.NoArgs], label, icon, file, desc string) webui.Page[webui.NoArgs] {
+	return webui.Page[webui.NoArgs]{
+		Path: path,
+		Nav:  webui.Nav{Label: label, Icon: icon, Section: "Handbook"},
 		Body: webui.Markdown[Handbook]{
-			Title:   "Handbook",
-			Desc:    "A Markdown: text set as markdown, read only. Raw HTML is never rendered.",
-			Load:    func(context.Context) (Handbook, error) { return Handbook{Text: handbookSource}, nil },
+			Title: "Handbook",
+			Desc:  desc,
+			Load: func(context.Context) (Handbook, error) {
+				text, err := handbookFiles.ReadFile("handbook/" + file)
+				if err != nil {
+					return Handbook{}, fmt.Errorf("handbook: %w", err)
+				}
+				return Handbook{Text: string(text)}, nil
+			},
 			Content: HandbookText,
 		},
 	}
-)
-
-const handbookSource = "# Collector handbook\n" +
-	"\n" +
-	"What to do when the collector **misbehaves**. Anything not covered here goes to the\n" +
-	"[on-call channel](https://example.com/oncall).\n" +
-	"\n" +
-	"## Is it down?\n" +
-	"\n" +
-	"1. Open **System** and read the health badge.\n" +
-	"2. Check the queue depth. Above 5 000 the sinks are not keeping up.\n" +
-	"3. Look at the **Audit log** for a change in the last hour:\n" +
-	"   - a configuration saved by someone else\n" +
-	"   - a sink that was restarted without a reason\n" +
-	"\n" +
-	"| Health | Meaning | First step |\n" +
-	"| --- | --- | --- |\n" +
-	"| `healthy` | Everything is flowing | none |\n" +
-	"| `degraded` | A sink is slow or refusing | restart the sink |\n" +
-	"| `down` | Nothing is being collected | page the on-call |\n" +
-	"\n" +
-	"## Restarting a sink\n" +
-	"\n" +
-	"```bash\n" +
-	"systemctl restart collector-sink@file\n" +
-	"journalctl -u collector-sink@file --since '5 min ago'\n" +
-	"```\n" +
-	"\n" +
-	"The configuration it reads is on the **Config** page:\n" +
-	"\n" +
-	"```json\n" +
-	"{ \"sample\": 0.25, \"sinks\": [{ \"kind\": \"stdout\" }] }\n" +
-	"```\n" +
-	"\n" +
-	"### Who to call\n" +
-	"\n" +
-	"Start with the person on call, and go on to the owner of the site only when the queue\n" +
-	"is still growing after *ten minutes*.\n" +
-	"\n" +
-	"#### Contacts\n" +
-	"\n" +
-	"Numbers are kept in `/etc/collector/oncall.yml` on every host.\n" +
-	"\n" +
-	"## Checklist\n" +
-	"\n" +
-	"- [x] Page acknowledged\n" +
-	"- [ ] Cause found\n" +
-	"- [ ] ~~Rollback~~ not needed\n" +
-	"\n" +
-	"> Do not edit the configuration during an incident without telling the channel.\n" +
-	"\n" +
-	"<script>alert('raw HTML is never rendered')</script>\n"
+}
