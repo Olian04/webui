@@ -130,7 +130,7 @@ func TestEveryNameTheSkillGivesTheLibraryExists(t *testing.T) {
 	}
 
 	// The names it hands to go doc: a type, or a field or method of one.
-	cmd := regexp.MustCompile("go doc (?:-all )?github.com/Olian04/webui/pkg/webui(?: ([A-Z][A-Za-z0-9]*)(?:\\.([A-Z][A-Za-z0-9]*))?)?")
+	cmd := regexp.MustCompile(`go doc (?:-all )?github.com/Olian04/webui/pkg/webui(?: ([A-Z][A-Za-z0-9]*)(?:\.([A-Z][A-Za-z0-9]*))?)?`)
 	for _, m := range cmd.FindAllStringSubmatch(text, -1) {
 		typ, name := m[1], m[2]
 		if typ != "" && !api.top[typ] {
