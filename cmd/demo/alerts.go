@@ -31,7 +31,7 @@ var (
 
 var Alerts = webui.Page[webui.NoArgs]{
 	Path: "/alert",
-	Nav:  webui.Nav{Label: "Alerts", Icon: "bell"},
+	Nav:  webui.Nav{Label: "Alerts", Icon: "bell", Section: "Platform"},
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",

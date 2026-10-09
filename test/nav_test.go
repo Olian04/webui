@@ -182,7 +182,7 @@ func guardedNavApp(allowed func(context.Context) error) http.Handler {
 	}
 	return webui.App{Pages: webui.Pages{
 		guarded("/audit", "Audit log", "Operations"),
-		open("/system", "System", ""), // continues the Operations section
+		open("/system", "System", "Operations"),
 		open("/device", "Devices", "Platform"),
 		guarded("/secret", "Secret", "Hidden section"),
 	}}.MustCompile("/admin")
@@ -209,7 +209,7 @@ func TestASectionCaptionStaysAboveWhatIsStillShownAndGoesWithAnEmptySection(t *t
 
 	refuse := guardedNavApp(func(context.Context) error { return errors.New("no") })
 	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
-	// The Operations entry that carried the caption is hidden; System, which it headed, keeps it.
+	// Audit log, first in Operations, is hidden; the caption goes to System, the first one shown.
 	assert.Contains(t, body, `<div class="nav-section">Operations</div> <a class="nav-item" href="/admin/system"`)
 	// A section with every entry hidden has no caption.
 	assert.False(t, strings.Contains(body, "Hidden section"))
@@ -227,4 +227,36 @@ func TestAHiddenEntryStillAnswers403ToItsAddressAndTheRootSkipsIt(t *testing.T) 
 	root := serve(refuse, http.MethodGet, "/admin/")
 	assert.Equal(t, root.Code, http.StatusFound)
 	assert.Equal(t, root.Header().Get("Location"), "/admin/system")
+}
+
+func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
+	t.Parallel()
+
+	page := func(path, label, section string) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, Body: webui.Stack{}}
+	}
+	// Given out of order: sections interleaved, and entries with no Section among them.
+	h := webui.App{Pages: webui.Pages{
+		page("/device", "Devices", "Platform"),
+		page("/retention", "Retention", "Configuration"),
+		page("/home", "Home", ""),
+		page("/site", "Sites", "Platform"),
+		page("/ingest", "Ingest", "Configuration"),
+		page("/about", "About", ""),
+	}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+
+	assert.Equal(t, strings.Count(body, `class="nav-section"`), 2) // one caption for each section
+	at := func(s string) int { return strings.Index(body, s) }
+	// No Section: first, in the order given, under no caption.
+	assert.True(t, at(">Home</span>") < at(">About</span>"))
+	assert.True(t, at(">About</span>") < at(">Platform<"))
+	// Sections in the order first named, entries in the order given.
+	assert.True(t, at(">Platform<") < at(">Devices</span>"))
+	assert.True(t, at(">Devices</span>") < at(">Sites</span>"))
+	assert.True(t, at(">Sites</span>") < at(">Configuration<"))
+	assert.True(t, at(">Retention</span>") < at(">Ingest</span>"))
+
+	// And the root goes to the first entry the sidebar lists.
+	assert.Equal(t, serve(h, http.MethodGet, "/admin/").Header().Get("Location"), "/admin/home")
 }

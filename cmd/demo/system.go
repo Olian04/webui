@@ -57,7 +57,7 @@ var (
 // a viewer the page is the "Not permitted" state, and the log was never read.
 var Audit = webui.Page[webui.NoArgs]{
 	Path:  "/audit",
-	Nav:   webui.Nav{Label: "Audit log", Icon: "list"},
+	Nav:   webui.Nav{Label: "Audit log", Icon: "list", Section: "Operations"},
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
 		ID:       "audit",

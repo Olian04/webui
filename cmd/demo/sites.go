@@ -40,7 +40,7 @@ var (
 
 var Sites = webui.Page[webui.NoArgs]{
 	Path: "/site",
-	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot"},
+	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot", Section: "Platform"},
 	Body: SitesTable,
 }
 

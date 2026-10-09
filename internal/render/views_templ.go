@@ -281,9 +281,9 @@ func (r *Renderer) favicons() templ.Component {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-// sidebar lists the entries the visitor may open. A section's caption appears
-// above its first entry that is shown, so a section with nothing left in it has
-// no caption either.
+// sidebar lists the entries the visitor may open, grouped by section. A section's
+// caption appears above its first entry that is shown, so a section with nothing
+// left in it has no caption either.
 func (r *Renderer) sidebar(active string, hide map[string]bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

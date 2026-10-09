@@ -16,7 +16,7 @@ type App struct {
 type MenuItem struct {
 	Label   string
 	Icon    string
-	Section string // caption above a run of entries; empty continues the run
+	Section string // the group the entry is listed under, captioned; empty is ungrouped, listed first
 	URL     string
 }
 

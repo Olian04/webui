@@ -117,10 +117,8 @@ func New(app *ir.App, prefix string) *Renderer {
 // FirstHref is the address of the first navigable page the visitor may open, or
 // "". hide is the paths of the entries they may not.
 func (r *Renderer) FirstHref(hide map[string]bool) string {
-	for _, e := range r.nav {
-		if !hide[e.Path] {
-			return e.Href
-		}
+	if shown := r.shown(hide); len(shown) > 0 {
+		return shown[0].Href // the first the sidebar lists, which sections reorder
 	}
 	return ""
 }
@@ -326,24 +324,55 @@ func initial(label string) string {
 	return ""
 }
 
-// shown is the navigation entries the visitor may open. An entry that starts a
-// section but is hidden hands the section's caption to the next one shown, so
-// the run it headed is still headed.
+// shown is the navigation entries the visitor may open, in the order the sidebar
+// lists them, which is grouped by Section and not by position: the entries with no
+// Section come first, then each section in the order it is first named, each with
+// its entries in the order given and its caption on the first of them. A section
+// with nothing left in it has no caption either.
 func (r *Renderer) shown(hide map[string]bool) []navEntry {
-	var out []navEntry
-	pending := ""
+	var open []navEntry
 	for _, e := range r.nav {
-		if e.Section != "" {
-			pending = e.Section
+		if !hide[e.Path] {
+			open = append(open, e)
 		}
-		if hide[e.Path] {
-			continue
+	}
+	var out []navEntry
+	for _, g := range bySection(open, func(e navEntry) string { return e.Section }) {
+		for i, e := range g.items {
+			e.Section = ""
+			if i == 0 {
+				e.Section = g.section
+			}
+			out = append(out, e)
 		}
-		e.Section = pending
-		pending = ""
-		out = append(out, e)
 	}
 	return out
+}
+
+// group is the entries of one section, in the order they were given.
+type group[T any] struct {
+	section string
+	items   []T
+}
+
+// bySection groups entries by the section each names: the ones that name none
+// first, then each section in the order it is first named. An entry belongs to a
+// section only by naming it, wherever it stands in the list.
+func bySection[T any](items []T, section func(T) string) []group[T] {
+	index := map[string]int{}
+	groups := []group[T]{{}}
+	index[""] = 0
+	for _, it := range items {
+		s := section(it)
+		i, ok := index[s]
+		if !ok {
+			i = len(groups)
+			index[s] = i
+			groups = append(groups, group[T]{section: s})
+		}
+		groups[i].items = append(groups[i].items, it)
+	}
+	return groups
 }
 
 // earlyCSS is the canvas colour of each theme, inline, ahead of the stylesheet. The
@@ -352,25 +381,16 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
 
-// menuEntries is the menu as the component draws it. It is grouped by Section, not
-// by position: the entries with no Section come first, then each section in the
-// order it is first named, each with its entries in the order given, and its
-// caption above the first of them.
+// menuEntries is the menu as the component draws it, grouped by Section like the
+// sidebar: the entries with no Section first, then each section in the order it is
+// first named, each with its caption above the first of its entries.
 func (r *Renderer) menuEntries() []c.MenuEntry {
-	groups := map[string][]ir.MenuItem{}
-	var sections []string
-	for _, e := range r.menu {
-		if _, seen := groups[e.Section]; !seen && e.Section != "" {
-			sections = append(sections, e.Section)
-		}
-		groups[e.Section] = append(groups[e.Section], e)
-	}
 	out := make([]c.MenuEntry, 0, len(r.menu))
-	for _, section := range append([]string{""}, sections...) {
-		for i, e := range groups[section] {
+	for _, g := range bySection(r.menu, func(e ir.MenuItem) string { return e.Section }) {
+		for i, e := range g.items {
 			entry := c.MenuEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon)}
 			if i == 0 {
-				entry.Section = section
+				entry.Section = g.section
 			}
 			out = append(out, entry)
 		}

@@ -67,9 +67,9 @@ templ (r *Renderer) favicons() {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-// sidebar lists the entries the visitor may open. A section's caption appears
-// above its first entry that is shown, so a section with nothing left in it has
-// no caption either.
+// sidebar lists the entries the visitor may open, grouped by section. A section's
+// caption appears above its first entry that is shown, so a section with nothing
+// left in it has no caption either.
 templ (r *Renderer) sidebar(active string, hide map[string]bool) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}) {
 		for _, e := range r.shown(hide) {

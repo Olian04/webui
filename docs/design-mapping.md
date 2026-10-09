@@ -25,7 +25,7 @@ into existence, and nothing is configured twice.
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
-| `Nav.Section` | The uppercase caption above a run of entries |
+| `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
 | `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the other text columns the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
 | `App.Menu` | The button in the top bar, beside Refresh, and the popover list of the app's own links behind it. A `MenuItem` is a `Nav` entry (label, icon, section caption) with an `ExternalURL`, used as written (the menu groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
@@ -372,8 +372,8 @@ one is deferred on purpose.
 2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
    a `Label` without becoming a struct. A long page is scannable with `Tabs`
    until that is wanted.
-3. **Sidebar grouping — closed, flat.** `Nav.Section` is a caption above a run
-   of entries. Nesting (`Nav.Parent`) would need the compile step to validate a
+3. **Sidebar grouping — closed, flat.** `Nav.Section` is a caption above a group
+   of entries, named by each entry that belongs to it. Nesting (`Nav.Parent`) would need the compile step to validate a
    tree and is not worth it until an app exceeds a screenful of entries.
 4. **Badges and inline bars — closed.** `Badge` and `Slider` are accessors
    alongside `String`, `Int` and `Float`, not a display mode bolted on top: a

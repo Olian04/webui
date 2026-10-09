@@ -77,8 +77,11 @@ type Nav struct {
 	// icons.
 	Icon string
 
-	// Section is a caption above this entry and the entries that follow it. Leave
-	// it empty to continue the previous entry's section.
+	// Section is the caption of the group this entry is listed in. The list is
+	// grouped by Section and not by position: the entries with no Section come
+	// first, then each section in the order it is first named, with its entries in
+	// the order the pages are given. An entry belongs to a section only by saying
+	// so.
 	Section string
 }
 

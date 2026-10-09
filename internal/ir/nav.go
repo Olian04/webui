@@ -6,7 +6,7 @@ package ir
 type Nav struct {
 	Label   string
 	Icon    string // a Font Awesome Free solid icon name; empty draws the label's initial
-	Section string // caption above a run of entries; empty continues the run
+	Section string // the group the entry is listed under, captioned; empty is ungrouped, listed first
 	Shadow  string
 	Hidden  bool // no entry of its own: the page has no Label
 }
