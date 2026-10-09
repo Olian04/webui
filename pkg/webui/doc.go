@@ -182,9 +182,10 @@
 // The library sets no authentication: mount the handler behind your own. A [Page]'s
 // Guard and an [Action]'s Guard decide what a visitor may see and do, and the same
 // check that disables a control also authorises the request. Navigation entries and
-// search results a visitor could not open are left out. POST requests are protected against cross-site request forgery (CSRF), checked
-// with [net/http.CrossOriginProtection], responses carry a content security policy,
-// and nothing the visitor controls is trusted as a redirect target. The compile-error
+// search results a visitor could not open are left out. POST requests are
+// protected against cross-site request forgery (CSRF) with
+// [net/http.CrossOriginProtection], responses carry a content security policy, and
+// nothing the visitor controls is trusted as a redirect target. The compile-error
 // page shows type and field names, so mount an app that may fail to compile behind
 // the same authentication.
 package webui
