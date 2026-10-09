@@ -50,7 +50,7 @@ func TestAStatusColourDerivesItsTextBackgroundAndBorder(t *testing.T) {
 	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 60%, white);") // dark
 	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 85%, black);") // light
 	assert.Contains(t, css, "--red-bg: color-mix(in srgb, #cc2244 14%, transparent);")
-	assert.Contains(t, css, "--red-solid: #cc2244;")                                           // the button's fill, as given
+	assert.Contains(t, css, "--red-solid: #cc2244;") // the button's fill, as given
 	assert.Contains(t, css, "--red-solid-hover: color-mix(in srgb, #cc2244 88%, black);")
 	assert.Contains(t, css, "--red-bd: color-mix(in srgb, #cc2244 30%, transparent);")
 	assert.Contains(t, css, "--green-bg:")

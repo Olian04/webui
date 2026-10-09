@@ -48,7 +48,7 @@ func cancelApp(redirect string) http.Handler {
 		}},
 	}
 	details.Body = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain
-	notes.Body = webui.Stack{} // a page with no form has nothing to cancel out of
+	notes.Body = webui.Stack{}                      // a page with no form has nothing to cancel out of
 
 	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: rows(details)}
 	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, Body: rows(details)}
