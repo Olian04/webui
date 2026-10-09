@@ -352,12 +352,28 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
 
-// menuEntries is the menu as the component draws it: a section's caption is above
-// the first entry of its run.
+// menuEntries is the menu as the component draws it. It is grouped by Section, not
+// by position: the entries with no Section come first, then each section in the
+// order it is first named, each with its entries in the order given, and its
+// caption above the first of them.
 func (r *Renderer) menuEntries() []c.MenuEntry {
-	out := make([]c.MenuEntry, len(r.menu))
-	for i, e := range r.menu {
-		out[i] = c.MenuEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon), Section: e.Section}
+	groups := map[string][]ir.MenuItem{}
+	var sections []string
+	for _, e := range r.menu {
+		if _, seen := groups[e.Section]; !seen && e.Section != "" {
+			sections = append(sections, e.Section)
+		}
+		groups[e.Section] = append(groups[e.Section], e)
+	}
+	out := make([]c.MenuEntry, 0, len(r.menu))
+	for _, section := range append([]string{""}, sections...) {
+		for i, e := range groups[section] {
+			entry := c.MenuEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon)}
+			if i == 0 {
+				entry.Section = section
+			}
+			out = append(out, entry)
+		}
 	}
 	return out
 }

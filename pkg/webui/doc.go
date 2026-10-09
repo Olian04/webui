@@ -166,7 +166,7 @@
 // favicon, unless NoFavicon is set. [App.Menu] is the app's own links, behind a
 // button beside Refresh in the top bar: places outside the app, such as signing out
 // or the documentation. A [MenuItem] is a [Nav] entry with an ExternalURL, used as
-// written. [Theme] restyles the four colours that carry
+// written; its Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry
 // meaning (accent, ok, warning and critical) and the library derives the rest for
 // light and dark, which follow the viewer's system. A [Nav] Icon is the name of a Font
 // Awesome Free solid icon, "house" for fa-house, served by the app itself.

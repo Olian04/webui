@@ -10,7 +10,7 @@ import (
 )
 
 func item(label, url string) webui.MenuItem {
-	return webui.MenuItem{Nav: webui.Nav{Label: label}, ExternalURL: url}
+	return webui.MenuItem{Label: label, ExternalURL: url}
 }
 
 func menuApp(items ...webui.MenuItem) http.Handler {
@@ -45,17 +45,26 @@ func TestTheMenuButtonOpensTheAppsOwnLinksAsWritten(t *testing.T) {
 	assert.True(t, strings.Index(body, "data-refresh") < strings.Index(body, `aria-label="Menu"`))
 }
 
-func TestAMenuItemsSectionCaptionsItAndTheEntriesAfterIt(t *testing.T) {
+func TestTheMenuIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	t.Parallel()
 
-	help, bug, out := item("Docs", "https://example.com/help"), item("Report", "https://example.com/bugs"), item("Log out", "/logout")
-	help.Section, out.Section = "Help", "Account"
-	body := serve(menuApp(help, bug, out), http.MethodGet, "/admin/device").Body.String()
+	docs, bug, out, about, status := item("Docs", "https://example.com/help"), item("Report", "https://example.com/bugs"),
+		item("Log out", "/logout"), item("About", "https://example.com/about"), item("Status", "https://example.com/status")
+	docs.Section, bug.Section, out.Section = "Help", "Help", "Account"
+	// Given out of order: an entry with no Section between sections, and a section
+	// that is named again after another.
+	body := serve(menuApp(docs, about, out, bug, status), http.MethodGet, "/admin/device").Body.String()
 
-	assert.Equal(t, strings.Count(body, `class="menu-section"`), 2)
-	assert.True(t, strings.Index(body, ">Help<") < strings.Index(body, "<span>Docs</span>"))
-	assert.True(t, strings.Index(body, "<span>Report</span>") < strings.Index(body, ">Account<")) // Report continues Help
-	assert.True(t, strings.Index(body, ">Account<") < strings.Index(body, "<span>Log out</span>"))
+	assert.Equal(t, strings.Count(body, `class="menu-section"`), 2) // one caption for each section
+	at := func(s string) int { return strings.Index(body, s) }
+	// No Section: first, in the order given, and with no caption above them.
+	assert.True(t, at("<span>About</span>") < at("<span>Status</span>"))
+	assert.True(t, at("<span>Status</span>") < at(">Help<"))
+	// Sections in the order first named, each with its entries in the order given.
+	assert.True(t, at(">Help<") < at("<span>Docs</span>"))
+	assert.True(t, at("<span>Docs</span>") < at("<span>Report</span>"))
+	assert.True(t, at("<span>Report</span>") < at(">Account<"))
+	assert.True(t, at(">Account<") < at("<span>Log out</span>"))
 }
 
 func TestAMenuItemMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) {

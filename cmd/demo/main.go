@@ -38,9 +38,9 @@ var app = webui.App{
 	// MenuItem is a Nav entry (a Label, an Icon and a Section) with an ExternalURL,
 	// used as written.
 	Menu: []webui.MenuItem{
-		{Nav: webui.Nav{Label: "Documentation", Icon: "book", Section: "Help"}, ExternalURL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
-		{Nav: webui.Nav{Label: "Report a problem", Icon: "bug"}, ExternalURL: "https://github.com/Olian04/webui/issues"},
-		{Nav: webui.Nav{Label: "Log out", Icon: "right-from-bracket", Section: "Account"}, ExternalURL: "/logout"},
+		{Label: "Documentation", Icon: "book", Section: "Help", ExternalURL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
+		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
+		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/logout"},
 	},
 	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
 }

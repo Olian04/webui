@@ -26,8 +26,13 @@ type App struct {
 }
 
 // MenuItem is a link in [App.Menu]. It is a [Nav] entry, with the Label that is its
-// text, the Icon beside it, and the Section that captions it and the entries after
-// it, and with an address outside the app.
+// text, the Icon beside it, and the Section that captions it, and with an address
+// outside the app.
+//
+// Unlike the sidebar, the menu is grouped by Section and not by position: the
+// entries with no Section come first, and each Section follows, in the order it is
+// first named, with its entries in the order they were given. An entry belongs to
+// a section only by saying so.
 type MenuItem struct {
 	Nav
 
