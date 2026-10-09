@@ -827,6 +827,19 @@ a.side-brand:hover {
 .split:has(.panel.grows) > * {
   min-height: 0;
 }
+/* Stacked into one column, the panes are no longer side by side to share a row, so the
+   split keeps its own height and the page scrolls to reach them, as it would any
+   stack of panels. */
+@media (max-width: 1100px) {
+  .split:has(.panel.grows) {
+    flex: 0 0 auto;
+    min-height: auto;
+    grid-template-rows: none;
+  }
+  .split:has(.panel.grows) > * {
+    min-height: auto;
+  }
+}
 /* A form's fields sit inside the panel body, inset from its edge. */
 .panel-body.pad {
   padding: 4px 10px 14px;

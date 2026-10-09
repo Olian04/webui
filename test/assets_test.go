@@ -201,6 +201,8 @@ func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.
 		".panel.grows {\n  flex: 0 1 auto;\n  min-height: 0;\n  overflow: hidden;\n}",
 		".panel.grows > .panel-body {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow: auto;\n}",
 		".stack:has(.panel.grows)",
+		// Stacked into one column, a split gives up its single row and keeps its height.
+		"@media (max-width: 1100px) {\n  .split:has(.panel.grows) {\n    flex: 0 0 auto;\n    min-height: auto;\n    grid-template-rows: none;",
 	} {
 		assert.Contains(t, css, rule)
 	}
