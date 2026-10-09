@@ -71,10 +71,11 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	// The line beneath the input is the length; the pattern's message is not there while
 	// the value is good, but is in the popover beside the label, with every other rule.
 	assert.Contains(t, body, `<div class="hint" id="p-f0_1-hint">7–15 characters</div>`)
-	for _, rule := range []string{"Required", "7–15 characters", "must be a valid IPv4 address"} {
+	for _, rule := range []string{"7–15 characters", "must be a valid IPv4 address"} {
 		assert.Contains(t, body, `<span class="tip-item">`+rule+`</span>`)
 	}
-	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 2) // the popover, and its accessible name
+	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 2)           // the popover, and its accessible name
+	assert.False(t, strings.Contains(body, `<span class="tip-item">Required</span>`)) // the asterisk says it
 
 	// A number is a number input with its bounds; zero is a real bound.
 	assert.Contains(t, body, `name="f1" type="number" value="7" min="0" max="100" step="1"`)

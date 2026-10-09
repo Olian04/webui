@@ -40,9 +40,9 @@ type FieldProps struct {
 	Hint     string
 	Error    string
 
-	// Rules is every constraint on the value, in words, behind an information icon
-	// beside the label: more than the one line of Hint, and the same while the
-	// value is good.
+	// Rules is every constraint on the value other than Required, in words, behind an
+	// information icon beside the label: more than the one line of Hint, and shown
+	// while the value is good.
 	Rules []string
 
 	// Static is a field that shows a value and offers no control: the label sits

@@ -286,8 +286,8 @@ Each rule has exactly one visual form:
 | `Pattern` | `pattern` | None; the pattern's message is the error beneath a refused value |
 
 Beside the label of an editable field with any rule there is an information icon whose
-popover lists every rule: *Required*, the length, the bounds, and the pattern's message,
-which is the one place a pattern speaks while the value is good. It opens on hover and on
+popover lists every rule but *Required*, which the asterisk says: the length, the
+bounds, and the pattern's message, which is the one place a pattern speaks while the value is good. It opens on hover and on
 focus, like a panel's description, so it works without a pointer or script.
 
 The browser refuses before anything is sent; the server re-runs the same set

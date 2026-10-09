@@ -140,15 +140,13 @@ func hint(f ir.Field, editable bool) string {
 
 // ruleLines is every constraint on an editable field, in words: what the
 // information icon beside its label lists. Unlike the hint it includes a pattern,
-// by its message, which says what a matching value is.
+// by its message, which says what a matching value is. Required is not among them:
+// the asterisk beside the label says it.
 func ruleLines(f ir.Field, editable bool) []string {
 	if !editable {
 		return nil
 	}
 	var out []string
-	if f.Rules.Required {
-		out = append(out, "Required")
-	}
 	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules)} {
 		if s != "" {
 			out = append(out, s)
