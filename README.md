@@ -30,9 +30,9 @@ webui needs Go 1.27 or later. Import the one package it exports:
 import "github.com/Olian04/webui/pkg/webui"
 ```
 
-## A first page
+## Quick start
 
-A page with a table of devices, served at `/admin/device`:
+A page with a table of devices:
 
 ```go
 package main
@@ -75,10 +75,17 @@ func main() {
 }
 ```
 
-Run it and open <http://localhost:8080/admin/device>. You get a sidebar, a
-breadcrumb, and a table whose columns all sort and filter, with the state kept in the
-address so a copied link reproduces the view. Add a `Form` for an editable page, a
-`Link` to open a row, and a `Guard` to say who may see it.
+Run it and open <http://localhost:8080/admin/device>:
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/first-page-dark.png">
+  <img alt="The devices page: a sidebar with a Devices entry, a breadcrumb, a search box, and a table with ID and IP columns." src="docs/images/first-page-light.png">
+</picture>
+
+That is a sidebar, a breadcrumb, search, and a table whose columns all sort and
+filter, with the state kept in the address so a copied link reproduces the view. Add a
+`Form` for an editable page, a `Link` to open a row, and a `Guard` to say who may see
+it.
 
 webui does not authenticate. Mount the handler behind your own login.
 
