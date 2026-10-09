@@ -114,13 +114,13 @@ func New(app *ir.App, prefix string) *Renderer {
 	return r
 }
 
-// FirstHref is the address of the first navigable page the visitor may open, or
-// "". hide is the paths of the entries they may not.
-func (r *Renderer) FirstHref(hide map[string]bool) string {
+// FirstEntry is the address and name of the first navigation entry the visitor may
+// open, or "". hide is the paths of the entries they may not.
+func (r *Renderer) FirstEntry(hide map[string]bool) (href, name string) {
 	if shown := r.shown(hide); len(shown) > 0 {
-		return shown[0].Href // the first the sidebar lists, which sections reorder
+		return shown[0].Href, shown[0].Label // the first the sidebar lists, which sections reorder
 	}
-	return ""
+	return "", ""
 }
 
 // NavPaths is the path template of every navigation entry, in order, so the runtime
@@ -214,6 +214,15 @@ func NoPages() templ.Component {
 	return c.EmptyState(c.EmptyStateProps{
 		Icon: c.IconGear, Title: "No pages declared",
 		Desc: "Add a page to App.Pages and it appears here.",
+	})
+}
+
+// NoStart is the content of the root of an app that has pages, but none at "/" and
+// none in the navigation that the visitor may open, so the brand has nowhere to lead.
+func NoStart() templ.Component {
+	return c.EmptyState(c.EmptyStateProps{
+		Icon: c.IconInfo, Title: "Nothing to open from here",
+		Desc: "This app has no page at \"/\" and no navigation entry you may open. Declare a page at \"/\", or give a page a Nav entry.",
 	})
 }
 

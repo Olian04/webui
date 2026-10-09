@@ -1,21 +1,52 @@
 package runtime
 
 import (
+	"cmp"
 	"context"
 	"net/http"
 
+	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/render"
 )
 
-// root serves the prefix itself when no page claims "/": the first page in the
-// navigation, or an empty shell when the app declares none.
+// root serves the prefix itself when no page claims "/". The brand and the first
+// breadcrumb lead here, so it does not leave the visitor at a dead end: it sends them
+// to the first page it can find that needs no arguments, with a warning that there is
+// no page at "/", so that whoever declared the app sees the gap. The page is the first
+// navigation entry the visitor may open, and failing that the first page declared
+// whose path has no arguments and whose guard lets them in. With none, a page says so,
+// or that the app declares no pages at all.
 func (p *Program) root(w http.ResponseWriter, r *http.Request) {
-	if href := p.render.FirstHref(p.hiddenNav(r.Context())); href != "" {
+	if href, name := p.startPage(r.Context()); href != "" {
+		p.setFlash(w, r, "This app has no page at \"/\", so you were sent to "+name+". Declare a page at \"/\" to choose where it starts.", render.ToastWarning)
 		w.Header().Set("Cache-Control", "no-store")
 		http.Redirect(w, r, href, http.StatusFound)
 		return
 	}
+	if len(p.App.Pages) > 0 {
+		p.write(w, r, http.StatusOK, render.Doc{Content: render.NoStart()})
+		return
+	}
 	p.write(w, r, http.StatusOK, render.Doc{Content: render.NoPages()})
+}
+
+// startPage is where an app with no page at "/" starts, and what to call it: the first
+// navigation entry the visitor may open, else the first page whose path has no
+// arguments and whose guard allows them.
+func (p *Program) startPage(ctx context.Context) (href, name string) {
+	if href, name := p.render.FirstEntry(p.hiddenNav(ctx)); href != "" {
+		return href, name
+	}
+	for _, page := range p.App.Pages {
+		if len(args.Placeholders(page.PathTemplate)) > 0 {
+			continue // it has no address until its arguments are filled in
+		}
+		href := p.Prefix + args.Href(page.PathTemplate, nil, nil)
+		if p.mayOpen(ctx, href) {
+			return href, cmp.Or(page.Nav.Label, page.PathTemplate)
+		}
+	}
+	return "", ""
 }
 
 // notFound is the 404 inside the shell, so the way back is on screen.

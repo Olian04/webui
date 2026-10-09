@@ -18,13 +18,19 @@ type PanelProps struct {
 	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
 
+	// Grows is a panel whose body is the one thing on the page that scrolls, when the
+	// page is not tall enough for it: it takes the height there is, its head and foot
+	// stay put, and its body scrolls inside it. A panel that does not grow is its full
+	// height, and the page scrolls to reach it.
+	Grows bool
+
 	Footer templ.Component
 	Attrs  templ.Attributes
 }
 
 templ Panel(p PanelProps) {
 	<div
-		class="panel"
+		class={ "panel", templ.KV("grows", p.Grows) }
 		if p.Leaf != "" {
 			data-leaf={ p.Leaf }
 		}

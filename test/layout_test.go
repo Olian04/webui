@@ -102,7 +102,7 @@ func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
-	assert.True(t, strings.HasPrefix(body, `<div class="panel" data-leaf="p.0.1">`))
+	assert.True(t, strings.HasPrefix(body, `<div class="panel grows" data-leaf="p.0.1">`))
 	assert.False(t, strings.Contains(body, "<html"))
 	assert.Contains(t, body, "Events-row")
 	assert.Contains(t, rec.Header().Get("Vary"), "X-Webui-Leaf")
@@ -144,4 +144,14 @@ func TestLeafRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), "not for you")
 	assert.Equal(t, loads[1].Load(), int32(0))
+}
+
+func TestOnlyATablePanelGrowsToTheHeightThereIsAndAFormKeepsItsOwn(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
+	// The table's panel is the one that scrolls inside itself; the form's is not.
+	assert.Contains(t, body, `<div class="panel grows" data-leaf="p.0.1">`)
+	assert.Contains(t, body, `<div class="panel" data-leaf="p.0.0">`)
 }

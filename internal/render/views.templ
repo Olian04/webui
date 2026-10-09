@@ -197,6 +197,7 @@ templ (r *Renderer) Table(v TableView) {
 		Desc:   v.Node.Desc,
 		Status: v.panelStatus(),
 		Leaf:    LeafID(v.Node.At),
+		Grows:   true,
 		Footer:  r.tableFooter(v),
 	}) {
 		if v.Failed {
@@ -269,8 +270,8 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 		return nil
 	}
 	if v.Node.Feed {
-		first, next := r.feedLinks(v)
-		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), FirstHref: first, NextHref: next})
+		first, prev, next := r.feedLinks(v)
+		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next})
 	}
 	return c.Pager(r.pager(v))
 }

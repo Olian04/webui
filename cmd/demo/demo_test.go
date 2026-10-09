@@ -87,7 +87,7 @@ func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
 func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm?devices.sort=id&open-alerts.sort=severity&open-alerts.desc=true").Body.String()
-	assert.Equal(t, strings.Count(body, `class="panel"`), 2)
+	assert.Equal(t, strings.Count(body, `class="panel grows"`), 2)
 	assert.Contains(t, body, `aria-sort="ascending"`)  // devices, by its sort
 	assert.Contains(t, body, `aria-sort="descending"`) // alerts, by its own
 	assert.Contains(t, body, `name="devices.filter.id"`)
@@ -245,8 +245,8 @@ func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 func TestAFeedPagesByACursorWithNoSortOrFilters(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/audit").Body.String()
-	assert.Contains(t, body, "8 rows") // no range and no total: a cursor is not a position
-	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8">Next`)
+	assert.Contains(t, body, "Showing rows 1–8") // no total, but which rows
+	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8&amp;audit-log.back=1%3A&amp;audit-log.row=9">Next`)
 	assert.Contains(t, body, `disabled>First page</button>`)
 	assert.False(t, strings.Contains(body, "aria-sort")) // the source decides the order
 	assert.False(t, strings.Contains(body, `class="filter`))

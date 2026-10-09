@@ -59,7 +59,9 @@
 //
 // A page whose path is "/" is the landing page: the brand in the sidebar and the
 // first breadcrumb link to it. Without one, the root goes to the first entry in the
-// navigation.
+// navigation the visitor may open, or failing that the first page whose path has no
+// arguments, and shows a warning that the app has no page at "/". Declare one to
+// choose where the app starts.
 //
 // # Layouts
 //
@@ -98,8 +100,8 @@
 //   - Feed is for a source that pages by a cursor, such as an object store's listing.
 //     The rows come in the order the source gives them. Feed is handed the cursor of
 //     the page asked for and returns the rows with the cursor of the next. A cursor
-//     continues one sequence, so the table has no sort links or filters, only Next and
-//     First page.
+//     continues one sequence, so the table has no sort links or filters, only First
+//     page, Previous and Next, and says which rows it shows.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Badge]. A table keeps

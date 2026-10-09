@@ -211,17 +211,61 @@
     });
   }
 
+  // A filter's form opens beneath its header, inside a table body that scrolls, which
+  // would clip it. While it is open, script pins it to the window at that spot, and
+  // lets it go when the body scrolls. Without script it stays where it is.
+  function pin(d) {
+    var pop = $('.filter-pop', d);
+    var btn = $('summary', d);
+    if (!pop || !btn) return;
+    var at = btn.getBoundingClientRect();
+    pop.classList.add('pinned');
+    pop.style.top = at.bottom + 6 + 'px';
+    var width = pop.offsetWidth;
+    var left = d.closest('th.num') ? at.right - width : at.left;
+    pop.style.left = Math.max(8, Math.min(left, window.innerWidth - width - 8)) + 'px';
+  }
+
+  function unpin(d) {
+    var pop = $('.filter-pop', d);
+    if (!pop) return;
+    pop.classList.remove('pinned');
+    pop.style.top = pop.style.left = '';
+  }
+
   document.addEventListener(
     'toggle',
     function (e) {
-      if (e.target.matches && e.target.matches(POPOVERS) && e.target.open) {
+      if (!e.target.matches || !e.target.matches(POPOVERS)) return;
+      if (e.target.open) {
         closeFilters(e.target);
+        if (e.target.matches('details.filter')) pin(e.target);
         var first = $('input:not([type="hidden"])', e.target);
         if (first) first.focus();
+      } else if (e.target.matches('details.filter')) {
+        unpin(e.target);
       }
     },
     true,
   );
+
+  // The pinned form follows its header, which moves when a pane that holds it scrolls
+  // or the window is resized. It stays open: a scroll somewhere else, such as the
+  // sidebar, does not touch it, and a resize may be the keyboard of a phone opening.
+  function repin() {
+    $$('details.filter[open]').forEach(pin);
+  }
+
+  document.addEventListener(
+    'scroll',
+    function (e) {
+      var open = $('details.filter[open]');
+      if (open && e.target.contains && e.target.contains(open)) repin();
+    },
+    true,
+  );
+
+  window.addEventListener('resize', repin);
 
   document.addEventListener('click', function (e) {
     if (!e.target.closest(POPOVERS)) closeFilters(null);

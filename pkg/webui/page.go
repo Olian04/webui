@@ -139,6 +139,10 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		return v.errs // every later check reads A's fields
 	}
 
+	if p.Nav.Label != "" && len(args.Placeholders(path)) > 0 {
+		v.add(fmt.Sprintf("the page has the navigation entry %q but its path has arguments", p.Nav.Label),
+			"A sidebar entry is a link with one address, and a path with {arguments} has none until they are filled in. Remove Nav, or link to the page from another page's table with a Link.")
+	}
 	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
 		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
 		if strings.HasPrefix(p.Nav.Icon, "fa-") {

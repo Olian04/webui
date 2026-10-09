@@ -9,8 +9,15 @@ type Query struct {
 	Offset int
 	Limit  int
 	After  string // a feed's cursor: where the page starts, "" for the first
-	Sort   string // a column's Key; empty means the loader's order
-	Desc   bool
+
+	// Start is, for a feed, the number of the first row of the page, counting from 1,
+	// or 0 when the address does not say. Back is the pages the visitor came through,
+	// oldest first, as far as the address remembers. A feed's source is handed neither;
+	// they are what lets the table say which rows it shows and go back.
+	Start int
+	Back  []Mark
+	Sort  string // a column's Key; empty means the loader's order
+	Desc  bool
 
 	// Filters are the column filters in force, by the column's Key. A
 	// column with fixed options holds the chosen options; any other holds the
@@ -24,6 +31,13 @@ type Query struct {
 	// Search is what the visitor typed in the global search, to find rows of this
 	// table by any column, ignoring case. It is empty for the table's own view.
 	Search string
+}
+
+// Mark is a page of a feed the visitor has been through: where it started, and the
+// cursor that opens it ("" for the first page).
+type Mark struct {
+	Start int
+	After string
 }
 
 // Range bounds a number, both ends inclusive. A nil end is unbounded.

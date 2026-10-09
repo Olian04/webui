@@ -209,6 +209,16 @@ filtered in its column headers (§10).
 
 8/12 padding, scrolls independently, bottom padding clears the status bar.
 
+A table panel is no taller than the window less the shell around it (the top bar and
+the content region's padding), and no shorter than 16rem unless its rows are fewer.
+When its rows do not fit, the panel's head and foot (the title and the pager) stay in
+place and only its body scrolls, with the header row sticky at its top, so a long
+table does not push the page. A panel with few rows is as short as they are. It is a
+height limit on the panel and nothing more: the layouts around it are untouched, and
+the content region scrolls as usual to reach a form above a table, or a second table.
+A filter's form is pinned to the window while it is open, so the scrolling body cannot
+clip it.
+
 ### Status bar
 
 26px, fixed to the bottom, monospace 11.5. Shows the method and address of the

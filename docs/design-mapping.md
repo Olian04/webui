@@ -50,7 +50,7 @@ into existence, and nothing is configured twice.
 | `URL` | A link, only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
 | `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs. With a `Store` a form shows the native date and time picker (`datetime-local`, to the second, in UTC) and says "Date and time in UTC" in the field's rules popover |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
-| `Table.Rows`, `Table.Load` or `Table.Feed` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself; `Feed` is handed a cursor by a source that pages by cursor, in its own order, which a cursor continues and the library cannot reorder or filter, so its columns are plain headers and its footer is *First page* and *Next* |
+| `Table.Rows`, `Table.Load` or `Table.Feed` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself; `Feed` is handed a cursor by a source that pages by cursor, in its own order, which a cursor continues and the library cannot reorder or filter, so its columns are plain headers and its footer is "Showing rows 10032–10054" with *First page*, *Previous* and *Next* |
 | `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
@@ -169,7 +169,11 @@ capitalised, in the rail.
 A page declared at `Path: "/"` is the landing page. The brand in the sidebar
 (logo and name) and the first breadcrumb link to it. It usually has no `Nav`
 label of its own, since the brand is its entry. An app with no such page sends
-the root to the first entry in the navigation.
+the root to the first entry in the navigation that the visitor may open, or
+failing that to the first page whose path has no arguments and whose guard lets
+them in, with a warning toast: *This app has no page at "/", so you were sent to
+…* It is for whoever declared the app, who sees the gap each time the brand is
+used; declaring a page at "/" ends it. With nowhere to send them, a page says so.
 
 ### A page with no entry → the ancestor's highlight
 

@@ -81,7 +81,7 @@ var Audit = webui.Page[webui.NoArgs]{
 
 // The landing page is the page at "/". It has no Nav of its own: the brand in
 // the sidebar and the first breadcrumb both lead here. Without such a page the
-// root goes to the first entry in the navigation.
+// root goes to the first page it can find that needs no arguments, with a warning.
 var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	Body: webui.Stack{SystemStatus, SitesTable},
