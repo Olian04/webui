@@ -35,11 +35,11 @@ func withCookie(h http.Handler, method, target, cookie string, form url.Values) 
 func TestWithoutASessionTheAppSendsYouToChooseOne(t *testing.T) {
 	rec := withCookie(site(t), http.MethodGet, "/admin/device", "", nil)
 	assert.Equal(t, rec.Code, http.StatusFound)
-	assert.Equal(t, rec.Header().Get("Location"), "/logout")
+	assert.Equal(t, rec.Header().Get("Location"), "/login")
 }
 
-func TestLogoutEndsTheSessionAndOffersABrowserBothKindsOfUser(t *testing.T) {
-	rec := withCookie(site(t), http.MethodGet, "/logout", sign(Editor), nil)
+func TestLoginPageEndsTheSessionAndOffersABrowserBothKindsOfUser(t *testing.T) {
+	rec := withCookie(site(t), http.MethodGet, "/login", sign(Editor), nil)
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Continue as a viewer")
 	assert.Contains(t, rec.Body.String(), "Continue as an editor")
@@ -77,8 +77,8 @@ func TestASessionThatIsNotOursIsNotASession(t *testing.T) {
 		"not hex":                           "editor.zz",
 	} {
 		rec := withCookie(h, http.MethodGet, "/admin/device", forged, nil)
-		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/logout" {
-			t.Errorf("%s: got %d to %q, want a redirect to /logout", name, rec.Code, rec.Header().Get("Location"))
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/login" {
+			t.Errorf("%s: got %d to %q, want a redirect to /login", name, rec.Code, rec.Header().Get("Location"))
 		}
 	}
 }
@@ -96,7 +96,14 @@ func TestLoginRefusesARoleThatIsNeitherAndACrossSitePost(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusForbidden) // another site cannot sign you in
 }
 
+func TestTheLoginPageFollowsTheThemeTheAppStoresForTheVisitor(t *testing.T) {
+	body := withCookie(site(t), http.MethodGet, "/login", "", nil).Body.String()
+	assert.Contains(t, body, `localStorage.getItem('webui.theme')`) // the key the app's prefs.js writes
+	assert.Contains(t, body, `:root[data-theme=light]{`)
+	assert.Contains(t, body, `:root:not([data-theme])`) // no choice: the system's
+}
+
 func TestTheAppsMenuLogsOutByLinkingToTheChooser(t *testing.T) {
 	body := get(handler(t), "/admin/device").Body.String()
-	assert.Contains(t, body, `<a class="menu-item" href="/logout">`)
+	assert.Contains(t, body, `<a class="menu-item" href="/login">`)
 }

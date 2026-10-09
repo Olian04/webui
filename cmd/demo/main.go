@@ -13,7 +13,7 @@
 //	settings.go  forms: rules, Float, Slider, Placeholder
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
-//	             /logout, and the Guards read the role from the request's context
+//	             /login, and the Guards read the role from the request's context
 //
 //	go run ./cmd/demo                        # http://localhost:8080/admin/
 //	go run ./cmd/demo -accent '#2f9e8f'      # override the theme's accent colour
@@ -40,7 +40,7 @@ var app = webui.App{
 	Menu: []webui.MenuItem{
 		{Label: "Documentation", Icon: "book", Section: "Help", ExternalURL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
-		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/logout"},
+		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/login"},
 	},
 	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
 }
@@ -94,7 +94,7 @@ func main() {
 func routes(app http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/admin/", authenticated(app))
-	mux.HandleFunc("GET /logout", logout) // the app's menu links here: "Log out"
+	mux.HandleFunc("GET /login", loginPage) // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)

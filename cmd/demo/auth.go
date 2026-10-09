@@ -12,7 +12,7 @@ import (
 )
 
 // The demo's authentication, small but real. A visitor with no session is sent to
-// /logout, which asks who they want to be: a viewer, who may look, or an editor, who
+// /login, which asks who they want to be: a viewer, who may look, or an editor, who
 // may change things. The choice is a signed cookie, so it cannot be forged, and the
 // middleware puts the role in the request's context, where the app's Guards read it.
 //
@@ -90,12 +90,13 @@ func authenticated(next http.Handler) http.Handler {
 				return
 			}
 		}
-		http.Redirect(w, r, "/logout", http.StatusFound)
+		http.Redirect(w, r, "/login", http.StatusFound)
 	})
 }
 
-// logout ends the session and asks who to continue as.
-func logout(w http.ResponseWriter, _ *http.Request) {
+// loginPage ends the session, if there is one, and asks who to continue as. The app's
+// "Log out" links here.
+func loginPage(w http.ResponseWriter, _ *http.Request) {
 	//nolint:gosec // G124: clearing the cookie; Secure follows the request's scheme, as at login.
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -118,17 +119,23 @@ func login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
 }
 
+// The page follows the theme the visitor chose in the app: the app keeps it in
+// localStorage under "webui.theme", which this page shares because it is on the same
+// origin. Without a choice it follows the system, as the app does.
 const chooser = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark light"><title>Collector — choose who to continue as</title>
+<script>try{var t=localStorage.getItem('webui.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
-body{margin:0;min-height:100vh;display:grid;place-items:center;font:14px/1.5 system-ui,sans-serif;background:#111217;color:#ccccdc}
-main{width:min(420px,calc(100vw - 32px));background:#181b1f;border:1px solid rgba(204,204,220,.11);border-radius:2px;padding:20px}
-h1{font-size:17px;font-weight:500;margin:0 0 4px}p{margin:0 0 16px;color:rgba(204,204,220,.65)}
-form{margin:0 0 8px}
-.note{margin:16px 0 0;padding:10px 12px;font-size:12.5px;border:1px solid rgba(61,113,217,.45);background:rgba(61,113,217,.12);border-radius:2px;color:rgba(204,204,220,.8)}.note b{font-weight:500}button{width:100%;text-align:left;font:inherit;color:inherit;background:#22252b;border:1px solid rgba(204,204,220,.22);border-radius:2px;padding:10px 12px;cursor:pointer}
-button:hover{border-color:#3d71d9}button b{display:block;font-weight:500}button span{color:rgba(204,204,220,.65);font-size:12.5px}
-@media (prefers-color-scheme:light){body{background:#f4f5f5;color:#24292e}main{background:#fff;border-color:rgba(36,41,46,.12)}p,button span,.note{color:#5c6269}.note{background:#eef3fc;border-color:rgba(61,113,217,.35)}button{background:#fff;border-color:rgba(36,41,46,.24)}}
+:root{color-scheme:dark;--bg:#111217;--panel:#181b1f;--text:#ccccdc;--muted:rgba(204,204,220,.65);--line:rgba(204,204,220,.11);--btn:#22252b;--btn-line:rgba(204,204,220,.22);--note:rgba(61,113,217,.12);--note-line:rgba(61,113,217,.45)}
+@media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--bg:#f4f5f5;--panel:#fff;--text:#24292e;--muted:#5c6269;--line:rgba(36,41,46,.12);--btn:#fff;--btn-line:rgba(36,41,46,.24);--note:#eef3fc}}
+:root[data-theme=light]{color-scheme:light;--bg:#f4f5f5;--panel:#fff;--text:#24292e;--muted:#5c6269;--line:rgba(36,41,46,.12);--btn:#fff;--btn-line:rgba(36,41,46,.24);--note:#eef3fc}
+body{margin:0;min-height:100vh;display:grid;place-items:center;font:14px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--text)}
+main{width:min(420px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:20px}
+h1{font-size:17px;font-weight:500;margin:0 0 4px}p{margin:0 0 16px;color:var(--muted)}
+form{margin:0 0 8px}button{width:100%;text-align:left;font:inherit;color:inherit;background:var(--btn);border:1px solid var(--btn-line);border-radius:2px;padding:10px 12px;cursor:pointer}
+button:hover{border-color:#3d71d9}button b{display:block;font-weight:500}button span{color:var(--muted);font-size:12.5px}
+.note{margin:16px 0 0;padding:10px 12px;font-size:12.5px;border:1px solid var(--note-line);background:var(--note);border-radius:2px}.note b{font-weight:500}
 </style></head><body><main>
 <h1>Collector</h1><p>You are signed out. Choose who to continue as.</p>
 <form method="post" action="/login"><input type="hidden" name="role" value="viewer"><button><b>Continue as a viewer</b><span>Can look at everything, and change nothing: guarded controls are disabled, with the reason.</span></button></form>
