@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -75,7 +76,7 @@ func (r *Renderer) columns(v TableView) []columnView {
 	out := make([]columnView, len(v.Node.Columns))
 	for i, f := range v.Node.Columns {
 		col := columnView{Field: f}
-		if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
+		if (f.Kind == ir.KindInt || f.Kind == ir.KindFloat) && f.Display != ir.DisplayTime {
 			col.Align = c.AlignEnd
 		}
 		if f.Key != "" {
@@ -206,6 +207,19 @@ func (v TableView) clicks(i int) bool {
 
 func (v TableView) selectable() bool { return len(v.Node.Bulk) > 0 }
 
+// momentAttr is a moment as shown, "2026-10-09 11:27" or a date alone, as the
+// datetime attribute of a <time> element reads it.
+// It is empty for text that is not a moment, which is then shown as it is.
+func momentAttr(text string) string {
+	if _, err := time.Parse("2006-01-02 15:04", text); err == nil {
+		return text[:10] + "T" + text[11:] + ":00Z"
+	}
+	if _, err := time.Parse("2006-01-02", text); err == nil {
+		return text
+	}
+	return ""
+}
+
 func (v TableView) rowClickValue(i int) string {
 	if i < len(v.Keys) {
 		return RowClickValue(v.Keys[i])
@@ -293,6 +307,7 @@ type filterView struct {
 	Options []string
 
 	Numeric bool
+	Moment  bool // the bounds are moments in UTC: date and time inputs
 	MinKey  string
 	MaxKey  string
 	Min     string
@@ -308,12 +323,13 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	id := v.Node.ID
 	fv := filterView{Label: f.Label, Action: r.PageHref(v.Page, v.Path, nil)}
 	gone := []string{} // the address parameters this filter owns
-	if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
+	if f.Ranged() {
 		fv.Numeric = true
+		fv.Moment = f.Display == ir.DisplayTime
 		fv.MinKey, fv.MaxKey = args.RangeKeys(id, f.Key)
 		gone = append(gone, fv.MinKey, fv.MaxKey)
 		if rng, ok := v.Q.Ranges[f.Key]; ok {
-			fv.Min, fv.Max = formatBound(rng.Min), formatBound(rng.Max)
+			fv.Min, fv.Max = formatBound(rng.Min, fv.Moment), formatBound(rng.Max, fv.Moment)
 		}
 		fv.On = fv.Min != "" || fv.Max != ""
 	} else {
@@ -349,9 +365,14 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	return fv
 }
 
-func formatBound(x *float64) string {
+// formatBound is a bound as the filter's input holds it: a number, or for a moment
+// the date and time input's "2026-10-09T11:27", in UTC.
+func formatBound(x *float64, moment bool) string {
 	if x == nil {
 		return ""
+	}
+	if moment {
+		return time.Unix(int64(*x), 0).UTC().Format("2006-01-02T15:04")
 	}
 	return strconv.FormatFloat(*x, 'f', -1, 64)
 }

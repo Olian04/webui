@@ -47,6 +47,7 @@ into existence, and nothing is configured twice.
 | `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |
+| `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element; always read-only. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
 | `Table.Rows` or `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
 | `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
@@ -255,7 +256,7 @@ shows the range without a total and the *Next* button cannot be pre-disabled.
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Int`, `Float`, `Badge`, `Slider`) appears in both leaves and
+An accessor (`String`, `Int`, `Float`, `Badge`, `Datetime`, `Timestamp`, `Slider`) appears in both leaves and
 renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |

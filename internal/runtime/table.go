@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -92,9 +93,7 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 
 // numeric reports whether a column holds numbers, which a table filters by
 // range, not by text: "5" is not a way to ask for more than 5.
-func numeric(col ir.Field) bool {
-	return col.Kind == ir.KindInt || col.Kind == ir.KindFloat
-}
+func numeric(col ir.Field) bool { return col.Ranged() }
 
 // rangesOf reads the bounds on the numeric columns. A bound that is not a
 // finite number is dropped, so a loader never compares against NaN or infinity.
@@ -105,7 +104,11 @@ func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 			continue
 		}
 		loKey, hiKey := args.RangeKeys(n.ID, col.Key)
-		r := ir.Range{Min: bound(raw[loKey]), Max: bound(raw[hiKey])}
+		read := bound
+		if col.Display == ir.DisplayTime {
+			read = momentBound
+		}
+		r := ir.Range{Min: read(raw[loKey]), Max: read(raw[hiKey])}
 		if r.Min == nil && r.Max == nil {
 			continue
 		}
@@ -115,6 +118,20 @@ func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 		out[col.Key] = r
 	}
 	return out
+}
+
+// momentBound reads a bound on a moment, as the filter's date and time inputs write
+// it, in UTC: "2026-10-09T11:27", with or without seconds, or a date alone. Unix
+// seconds are taken as they are, so an address built by hand can carry them.
+func momentBound(s string) *float64 {
+	s = strings.TrimSpace(s)
+	for _, layout := range []string{"2006-01-02T15:04", "2006-01-02T15:04:05", "2006-01-02"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			x := float64(t.Unix())
+			return &x
+		}
+	}
+	return bound(s)
 }
 
 func bound(s string) *float64 {

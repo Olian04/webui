@@ -30,14 +30,17 @@ type Query struct {
 	// A column with a fixed set of options — a Badge, whose options are the keys
 	// of its Kinds — holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
-	// (Int, Float and Slider) are not here but in Ranges. Load does the
-	// filtering, as it does the sorting.
+	// (Int, Float and Slider) and moments (Datetime and Timestamp) are not here but
+	// in Ranges. Load does the filtering, as it does the sorting.
 	Filters map[string][]string
 
-	// Ranges are the bounds on the numeric columns, by the same Label.
-	// A column filters by a minimum and a maximum, either of which may be left
-	// out, so a range is an inequality, not text. A bound is always a finite
-	// number; an unreadable one never arrives.
+	// Ranges are the bounds on the numeric columns and the moments, by the same
+	// Label. A column filters by a minimum and a maximum, either of which may be left
+	// out, so a range is an inequality, not text. A bound is always a finite number;
+	// an unreadable one never arrives. The bounds of a Datetime or a Timestamp are
+	// Unix seconds, whatever the column holds, and the Datetime's own value, an ISO
+	// 8601 string, is for the source to read the same way.
+	// Sort is by the same number, so moments order as moments and not as text.
 	Ranges map[string]Range
 
 	// Search is what the visitor typed in the global search, to find rows of this

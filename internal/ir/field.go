@@ -55,7 +55,14 @@ const (
 	DisplayText Display = iota
 	DisplayBadge
 	DisplaySlider // a bar when read-only, a range input when writable
+	DisplayTime   // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
 )
+
+// Ranged is whether a table filters the column by a minimum and a maximum, as it
+// does a number, and sorts it by Num: a numeric column, or a moment.
+func (f Field) Ranged() bool {
+	return f.Kind == KindInt || f.Kind == KindFloat || f.Display == DisplayTime
+}
 
 // Tone is the semantic meaning of a badge.
 type Tone string

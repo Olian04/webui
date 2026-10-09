@@ -422,3 +422,21 @@ func TestAcknowledgingACriticalAlertWarns(t *testing.T) {
 	rec = post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"bulk:0"}, "_sel": {"alt_007"}}) // a warning
 	assert.Equal(t, flashOf(rec), "oAcknowledged 1")
 }
+
+func TestMomentsAreShownInUTCAndFilteredAsMoments(t *testing.T) {
+	h := handler(t)
+
+	// The first alert was raised at the seed's "now".
+	body := get(h, "/admin/alert").Body.String()
+	assert.Contains(t, body, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+
+	// An end narrows the alerts to those raised by then: they are 53 minutes apart,
+	// counting back from the first, so by 08:00 there are seven.
+	narrow := get(h, "/admin/alert?alerts.max.raised=2026-10-09T08:00").Body.String()
+	assert.False(t, strings.Contains(narrow, ">alt_000<"))
+	assert.Contains(t, narrow, ">alt_010<")
+
+	// A Timestamp reads the same on a device.
+	device := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.Contains(t, device, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+}

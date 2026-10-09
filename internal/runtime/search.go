@@ -125,7 +125,7 @@ func rowText(t *ir.Table, row any) (title, desc string) {
 		switch text := c.Get(row); {
 		case i == 0:
 			title = text
-		case text != "" && c.Num == nil:
+		case text != "" && (c.Num == nil || c.Display == ir.DisplayTime):
 			rest = append(rest, text)
 		}
 	}

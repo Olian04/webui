@@ -54,6 +54,11 @@ var (
 		Label: "Occurrences",
 		Load:  func(d Device) int { return d.Count },
 	}
+	// A Timestamp is a moment held as Unix seconds; it reads as a Datetime does.
+	LastSeen = webui.Timestamp[Device]{
+		Label: "Last seen",
+		Load:  func(d Device) int { return d.LastSeen },
+	}
 	Rate = webui.Slider[Device]{
 		Label: "Rate / s", Max: 15, Precision: 2,
 		Load: func(d Device) float64 { return d.Rate() },
@@ -137,6 +142,7 @@ var DeviceForm = webui.Form[Device]{
 		webui.Group[Device]{DeviceID, IP},
 		webui.Group[Device]{Status, Site}, // a badge and a plain field: both read-only here
 		Rate,                              // a slider with no Store is a bar
+		LastSeen,
 	},
 	Submit: SaveDevice,
 }

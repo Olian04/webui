@@ -326,6 +326,12 @@ templ value(f ir.Field, text string) {
 			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
 				{ text }
 			}
+		case ir.DisplayTime:
+			if momentAttr(text) != "" {
+				<time datetime={ momentAttr(text) }>{ text }</time>
+			} else {
+				{ text }
+			}
 		default:
 			{ text }
 	}
@@ -428,7 +434,7 @@ templ (r *Renderer) input(fv fieldView) {
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					if fv.Value == "" && fv.Field.Display == ir.DisplayText {
+					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
@@ -471,7 +477,19 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 				<input type="hidden" name={ h.Name } value={ h.Value }/>
 			}
 			<div class="filter-title">{ fv.Label }</div>
-			if fv.Numeric {
+			if fv.Numeric && fv.Moment {
+				<div class="filter-range moment">
+					<label>
+						<span>From</span>
+						<input class="input" type="datetime-local" name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
+					</label>
+					<label>
+						<span>To</span>
+						<input class="input" type="datetime-local" name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
+					</label>
+					<span class="filter-note">UTC</span>
+				</div>
+			} else if fv.Numeric {
 				<div class="filter-range">
 					<label>
 						<span>Min</span>

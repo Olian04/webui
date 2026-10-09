@@ -167,6 +167,38 @@ type Badge[M any] struct {
 
 func (Badge[M]) isAccessor() {}
 
+// Datetime projects a string field of M that holds an ISO 8601 moment, such as
+// "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is read-only, in a
+// table and in a form. It is shown in UTC as "2026-10-09 11:27" (a date alone as
+// "2026-10-09"), and a table sorts and filters it as a moment and not as the text:
+// the filter takes a start and an end, in UTC. A value with no zone is taken as UTC,
+// and one that is not a moment at all is shown as written and sorts first.
+type Datetime[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the ISO 8601 string from the model. An empty string is no value.
+	Load func(M) string
+}
+
+func (Datetime[M]) isAccessor() {}
+
+// Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
+// and time. It is read-only, in a table and in a form, and is shown, sorted and
+// filtered as [Datetime] is. Zero is "not set" and shows as nothing. For a time in
+// milliseconds, divide it in Load.
+type Timestamp[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the Unix time, in seconds, from the model.
+	Load func(M) int
+}
+
+func (Timestamp[M]) isAccessor() {}
+
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
 // Store a form shows a range input, and the server rejects a value outside the
@@ -222,6 +254,8 @@ var (
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
 	_ Accessor[struct{}] = Badge[struct{}]{}
+	_ Accessor[struct{}] = Datetime[struct{}]{}
+	_ Accessor[struct{}] = Timestamp[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
 )
 
@@ -302,6 +336,16 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Load == nil {
 			v.add(at+" has no Load", "Set Load to func(M) string.")
 		}
+	case Datetime[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) string, returning an ISO 8601 moment.")
+		}
+	case Timestamp[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) int, returning a Unix time in seconds.")
+		}
 	case Slider[M]:
 		label(a.Label)
 		if a.Load == nil {
@@ -315,7 +359,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, Slider or Group.")
+			"Use String, Int, Float, Badge, Datetime, Timestamp, Slider or Group.")
 	}
 }
 
@@ -400,6 +444,18 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
+	case Datetime[M]:
+		return ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
+			Get: func(m any) string { return datetimeText(a.Load(m.(M))) },
+			Num: func(m any) float64 { return datetimeNum(a.Load(m.(M))) },
+		}
+	case Timestamp[M]:
+		return ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Display: ir.DisplayTime,
+			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
+			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
+		}
 	case Slider[M]:
 		prec := -1
 		if a.Precision > 0 {
@@ -461,6 +517,10 @@ func accessorLabel[M any](acc Accessor[M]) string {
 	case Float[M]:
 		return a.Label
 	case Badge[M]:
+		return a.Label
+	case Datetime[M]:
+		return a.Label
+	case Timestamp[M]:
 		return a.Label
 	case Slider[M]:
 		return a.Label
