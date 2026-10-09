@@ -34,6 +34,16 @@ type Field struct {
 	// text, which a table's filter takes as typed.
 	Options []string
 
+	// Link is the address of a DisplayLink field, "" when the value is not one that
+	// may be a link, which is then shown as plain text.
+	Link func(model any) string
+
+	// OpenSet says the column's values are not declared but are whatever its rows
+	// hold, for a table whose rows the library holds in full: its filter is a
+	// multi-select of the values present, whatever they are, and matches the rows
+	// holding any of those chosen.
+	OpenSet bool
+
 	// Display is how the value is shown. Text is the default.
 	Display Display
 	Kinds   map[string]Tone // DisplayBadge: the values it can hold, each with its tone
@@ -49,7 +59,15 @@ const (
 	DisplayText Display = iota
 	DisplayBadge
 	DisplaySlider // a bar when read-only, a range input when writable
+	DisplayLink   // a link: Get is the text it shows, and Link its address
+	DisplayTime   // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
 )
+
+// Ranged is whether a table filters the column by a minimum and a maximum, as it
+// does a number, and sorts it by Num: a numeric column, or a moment.
+func (f Field) Ranged() bool {
+	return f.Kind == KindInt || f.Kind == KindFloat || f.Display == DisplayTime
+}
 
 // Tone is the semantic meaning of a badge.
 type Tone string

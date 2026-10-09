@@ -1,0 +1,28 @@
+{
+  "name": "olian04",
+  "description": "Skills for building with Olian04's libraries",
+  "owner": {
+    "name": "Olian04",
+    "url": "https://github.com/Olian04"
+  },
+  "plugins": [
+    {
+      "name": "webui",
+      "displayName": "webui",
+      "description": "Teaches an agent to build admin panels and internal tools in Go with the webui library, reading the documentation for the version in use.",
+      "source": {
+        "source": "git-subdir",
+        "url": "Olian04/webui",
+        "path": "skills/webui"
+      },
+      "author": {
+        "name": "Olian04",
+        "url": "https://github.com/Olian04"
+      },
+      "homepage": "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui",
+      "repository": "https://github.com/Olian04/webui",
+      "license": "MIT",
+      "keywords": ["go", "golang", "admin", "dashboard", "ui", "webui"]
+    }
+  ]
+}

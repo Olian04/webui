@@ -8,9 +8,14 @@ import (
 )
 
 // Form is a leaf that loads one model M, shows it as fields, and submits it through
-// an [Action]. A Form whose Submit has no Run is read-only: it has no submit
-// button. After a submit that was accepted the user returns to the page they came
+// an [Action]. After a submit that was accepted the user returns to the page they came
 // from; one that was not shows the form again with what they typed.
+//
+// A Form with no Submit is the library's detail view: a panel of labelled values,
+// each quiet label over its value, with no inputs and no buttons. Use it to show one
+// thing, such as an object's properties; its fields can be any accessor, including a
+// [Badge], a [Datetime] and a [Timestamp], and a [Link] or an [Action] elsewhere on the
+// page leads on from it.
 type Form[M any] struct {
 	// Title is the panel's heading.
 	Title string
@@ -21,6 +26,10 @@ type Form[M any] struct {
 
 	// Load returns the model the form shows. On submit it is loaded again, and the
 	// submitted values are applied to it, so a field with no Store keeps its value.
+	//
+	// If Load returns an error the panel says "Could not load", the cause is logged
+	// and the rest of the page stands. The error's text is not shown to the visitor,
+	// since it may name things they should not see.
 	Load func(ctx context.Context) (M, error)
 
 	// Submit is what the form's button does. Without a Run the form is read-only, and

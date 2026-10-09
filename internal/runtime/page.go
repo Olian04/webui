@@ -33,6 +33,7 @@ func (p *Program) addPage(page *ir.Page) {
 		p.add(http.MethodGet, pattern, h)
 		p.probe.Handle(pattern, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
+		p.where.Handle(pattern, whereHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
 			p.add(http.MethodPost, pattern, p.postHandler(page, leaves))
@@ -194,6 +195,10 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 		case *ir.Tabs:
 			keys = append(keys, args.ViewKey(id, "tab"))
 		case *ir.Table:
+			if node.Feed {
+				keys = append(keys, args.ViewKey(id, "after"))
+				continue
+			}
 			keys = append(keys, args.ViewKey(id, "offset"))
 			if sortable(node) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
@@ -209,7 +214,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 				}
 				key := args.FilterKey(id, col.Key)
 				keys = append(keys, key)
-				if col.Options != nil {
+				if col.Options != nil || col.OpenSet {
 					lists = append(lists, key)
 				}
 			}

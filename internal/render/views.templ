@@ -268,16 +268,20 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	if v.Failed {
 		return nil
 	}
+	if v.Node.Feed {
+		first, next := r.feedLinks(v)
+		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), FirstHref: first, NextHref: next})
+	}
 	return c.Pager(r.pager(v))
 }
 
 templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
-	@c.Row(c.RowProps{Href: v.Hrefs[i]}) {
+	@c.Row(c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}) {
 		if v.selectable() {
 			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select row " + v.Keys[i]})
 		}
 		for j, col := range cols {
-			@r.cell(col, row, v.Hrefs[i], j == 0)
+			@r.cell(col, row, v.Hrefs[i], v.clicks(i), v.rowClickValue(i), j == 0)
 		}
 		if v.hasRowActions() {
 			<td class="actions">
@@ -296,10 +300,14 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
 
 // cell is one value. The row's single anchor lives in the first cell, because
 // the stylesheet stretches it over every other.
-templ (r *Renderer) cell(col columnView, row any, href string, first bool) {
+templ (r *Renderer) cell(col columnView, row any, href string, button bool, value string, first bool) {
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
 			@c.RowLink(href) {
+				@cellValue(col, row)
+			}
+		} else if first && button {
+			@c.RowButton("_act", value) {
 				@cellValue(col, row)
 			}
 		} else {
@@ -309,17 +317,33 @@ templ (r *Renderer) cell(col columnView, row any, href string, first bool) {
 }
 
 templ cellValue(col columnView, row any) {
-	@value(col.Field, col.Field.Get(row))
+	@value(col.Field, col.Field.Get(row), linkOf(col.Field, row))
 }
 
 // value is a field's value as the field says to show it: text, a badge, or a
 // bar. A table cell and a read-only form field show it the same way.
-templ value(f ir.Field, text string) {
+templ value(f ir.Field, text string, href string) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
 		case ir.DisplayBadge:
 			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
+				{ text }
+			}
+		case ir.DisplayLink:
+			if href != "" {
+				<a class="ext" href={ href } target="_blank" rel="noopener noreferrer">
+					{ text }
+					@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
+					<span class="sr-only">(opens in a new tab)</span>
+				</a>
+			} else {
+				{ text }
+			}
+		case ir.DisplayTime:
+			if momentAttr(text) != "" {
+				<time datetime={ momentAttr(text) }>{ text }</time>
+			} else {
 				{ text }
 			}
 		default:
@@ -424,11 +448,11 @@ templ (r *Renderer) input(fv fieldView) {
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					if fv.Value == "" && fv.Field.Display == ir.DisplayText {
+					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
-						@value(fv.Field, fv.Value)
+						@value(fv.Field, fv.Value, fv.Href)
 					}
 				</div>
 			default:
@@ -467,7 +491,19 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 				<input type="hidden" name={ h.Name } value={ h.Value }/>
 			}
 			<div class="filter-title">{ fv.Label }</div>
-			if fv.Numeric {
+			if fv.Numeric && fv.Moment {
+				<div class="filter-range moment">
+					<label>
+						<span>From</span>
+						<input class="input" type="datetime-local" name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
+					</label>
+					<label>
+						<span>To</span>
+						<input class="input" type="datetime-local" name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
+					</label>
+					<span class="filter-note">UTC</span>
+				</div>
+			} else if fv.Numeric {
 				<div class="filter-range">
 					<label>
 						<span>Min</span>

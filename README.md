@@ -112,6 +112,43 @@ It covers pages and their arguments, layouts, tables (paging, sorting, filters a
 search), forms and validation, outcomes (success, warning, failure, rejection and
 where to go next), links between pages, theming, errors, and security.
 
+## Building with an AI agent
+
+The repository ships a skill that teaches a coding agent to build with webui: the
+mental model, the order to work in, how to handle authentication, and when the library
+cannot do something. It names almost none of the API. It tells the agent to read the
+documentation for the version your `go.mod` pins (`go doc` reads it from the module
+cache), so it does not go stale when the library changes.
+
+It is in the open [Agent Skills](https://agentskills.io) format, so it works in Claude
+Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
+
+**Claude Code**, as a plugin:
+
+```text
+/plugin marketplace add Olian04/webui
+/plugin install webui@olian04
+```
+
+**Any agent**, with the [`skills`](https://github.com/vercel-labs/skills) CLI, which
+installs it for the agents it finds on your machine:
+
+```sh
+npx skills add Olian04/webui
+```
+
+**By hand**, copying it from the module cache so it matches your version, into the
+folder your agent reads skills from (`.claude/skills` for Claude Code,
+`.cursor/skills` for Cursor, or `.agents/skills`, which several agents read):
+
+```sh
+mkdir -p .agents/skills
+cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui" .agents/skills/
+chmod -R u+w .agents/skills/webui
+```
+
+Or read it at [`skills/webui/SKILL.md`](skills/webui/SKILL.md).
+
 ---
 
 ## Developing webui
@@ -131,6 +168,8 @@ This half is for people changing the library.
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
+| `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace, which installs only `skills/webui` and not the source around it, and a Cursor plugin, which takes the repository root. |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 
 Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and
@@ -188,11 +227,11 @@ own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
 
 | File                    | Shows                                                                                                                                                                                                                                                                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `devices.go`            | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Reject`, a `Failure`, a `Warning` and `Then` |
+| `devices.go`            | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a `Timestamp`, a rejection with `Reject`, a `Failure`, a `Warning` and `Then` |
 | `sites.go`              | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page, each named in the address by its title, a second page contributing search results                                                                                                                                                  |
-| `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating by role (sign in as a viewer to see it)                                                                             |
+| `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, a `URL` link and a `Datetime` column (UTC, sorted and filtered as a moment), gating by role (sign in as a viewer to see it)                                                                             |
 | `settings.go`           | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider`                                                                                                                                                                                                                                                            |
-| `system.go`             | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total                           |
+| `system.go`             | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a `Feed` table, paged by a cursor                           |
 | `auth.go`               | the surrounding authentication: a signed session cookie chosen at `/login` (a viewer or an editor), read by the Guards from the request's context                                                                                                                                                                                    |
 | `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page                                                                                                                                                                                                                                                    |
 

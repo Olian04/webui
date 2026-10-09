@@ -54,7 +54,7 @@ func actionable(leaves map[string]ir.Node) bool {
 				return true
 			}
 		case *ir.Table:
-			if len(n.Actions)+len(n.Bulk) > 0 {
+			if len(n.Actions)+len(n.Bulk) > 0 || n.RowAction != nil {
 				return true
 			}
 		}
@@ -267,6 +267,8 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 	switch {
 	case ok && kind == "row" && index < len(n.Actions):
 		action = n.Actions[index]
+	case ok && kind == "click" && n.RowAction != nil:
+		action, kind = n.RowAction, "row" // a click on a row is the action on that row
 	case ok && kind == "bulk" && index < len(n.Bulk):
 		action = n.Bulk[index]
 	default:
@@ -274,7 +276,8 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		return
 	}
 
-	rows, _, err := n.Load(ctx, queryOf(n, req.Raw))
+	window, err := n.Load(ctx, queryOf(n, req.Raw))
+	rows := window.Rows
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table load: %w", err))
 		return
@@ -361,6 +364,8 @@ func parseAct(s string) (kind string, index int, key string, ok bool) {
 		return "bulk", index, "", true
 	case parts[0] == "row" && len(parts) == 3:
 		return "row", index, parts[2], true
+	case parts[0] == "click" && len(parts) == 3:
+		return "click", index, parts[2], true
 	}
 	return "", 0, "", false
 }

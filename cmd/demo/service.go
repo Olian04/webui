@@ -16,13 +16,19 @@ type Device struct {
 	ID, IP, Status, Site string
 	Count                int
 	Duration             float64
+	LastSeen             int // Unix seconds
 }
+
+// epoch is "now" for the seed data, fixed so the demo and its tests read the same
+// every time: the moments the data was made at count back from here.
+var epoch = time.Date(2026, 10, 9, 11, 30, 0, 0, time.UTC)
 
 // Rate is occurrences per second.
 func (d Device) Rate() float64 { return float64(d.Count) / d.Duration }
 
 type Alert struct {
 	ID, Severity, Device, Message string
+	Raised                        string // an ISO 8601 moment
 	Acked                         bool
 }
 
@@ -37,6 +43,7 @@ type Settings struct {
 	Port       int
 	SampleRate float64 // 0 to 1: the share of events kept
 	MaxLoad    float64 // percent: where ingest starts shedding
+	Maintain   int     // Unix seconds: when the next maintenance window starts
 }
 
 type RetentionPolicy struct{ Days int }
@@ -90,7 +97,7 @@ var service = newService()
 
 func newService() *Service {
 	s := &Service{
-		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80},
+		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
 	}
@@ -101,6 +108,7 @@ func newService() *Service {
 			ID: fmt.Sprintf("dev_%06x", 0x27c38b+i*977), IP: fmt.Sprintf("10.0.%d.%d", i/8, 10+i),
 			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)],
 			Count: 40 + (i*53)%900, Duration: 60 + float64(i%7)*30,
+			LastSeen: int(epoch.Add(-time.Duration(i*17) * time.Minute).Unix()),
 		}
 		if d.Site == "Göteborg" && d.Status == "degraded" {
 			d.Status = "healthy" // one site is fine, so the sites page has both
@@ -112,6 +120,7 @@ func newService() *Service {
 		s.alerts = append(s.alerts, Alert{
 			ID: fmt.Sprintf("alt_%03d", i), Severity: severities[i%3], Device: s.devices[i*3+i%3].ID, // spread over the three sites; alt_000 is dev_27c38b
 			Message: fmt.Sprintf("Ingest lag above %ds", 5+i),
+			Raised:  epoch.Add(-time.Duration(i*53) * time.Minute).Format(time.RFC3339),
 		})
 	}
 	// A history to scroll: 43 entries, one every 37 minutes.

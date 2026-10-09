@@ -79,10 +79,11 @@
 //
 // A [Table] is a list of rows of a model M, with columns that are [Accessor] values.
 // The same accessor is a column in a table and an input in a form, so it is written
-// once. [String], [Int], [Float], [Badge] and [Slider] are the accessors; without a
-// Store an accessor is read-only.
+// once. [String], [Int], [Float], [Badge], [URL], [Datetime], [Timestamp] and [Slider]
+// are the accessors; without a Store an accessor is read-only, and a Badge never has one.
+// A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
-// A table says where its rows come from with exactly one of two fields:
+// A table says where its rows come from with exactly one of three fields:
 //
 //   - Rows returns every row, and the library filters, sorts and pages them from the
 //     columns, comparing numbers as numbers and text as text. Use it when the rows
@@ -94,6 +95,11 @@
 //     and returns a [Window]. Use it when the source can do that work better than
 //     the library, or is too large to list in full, such as a database table or a
 //     remote API.
+//   - Feed is for a source that pages by a cursor, such as an object store's listing.
+//     The rows come in the order the source gives them. Feed is handed the cursor of
+//     the page asked for and returns the rows with the cursor of the next. A cursor
+//     continues one sequence, so the table has no sort links or filters, only Next and
+//     First page.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Badge]. A table keeps
@@ -109,15 +115,18 @@
 //	}
 //
 // A link names its destination page, so the compiler checks that the arguments fit it
-// and [App.Compile] checks that the page is mounted. Actions and BulkActions add a
-// button per row, and checkboxes with an action bar, over a table with a Key.
+// and [App.Compile] checks that the page is mounted. When the destination depends on
+// the row, such as a folder or an object, RowClick is an [Action] instead: its Run is
+// handed the row and chooses where to go with [Outcome.Then]. Actions and BulkActions
+// add a button per row, and checkboxes with an action bar, over a table with a Key.
 //
 // # Forms and actions
 //
 // A [Form] loads one model and shows its Fields. An accessor with a Store is an input,
 // and its Rules (required, length, pattern, bounds) are rendered as HTML constraint
 // attributes and checked again on the server before the action runs. Submit is an
-// [Action], and its Run says how it ended.
+// [Action], and its Run says how it ended. A Form with no Submit is the detail view:
+// a panel of labelled values to read, with nothing to edit.
 //
 // # Outcomes
 //

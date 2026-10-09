@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -44,6 +45,16 @@ type TableView struct {
 	// Hrefs is each row's destination, "" for a row that has none.
 	Hrefs []string
 
+	// Next is, for a feed, the cursor of the page after this one, "" for none.
+	Next string
+
+	// Options is, for each open-set column by Key, the values its rows hold.
+	Options map[string][]string
+
+	// ClickGates is, for a table whose RowClick is an Action, the reason each row
+	// may not be clicked by this viewer, "" when it may.
+	ClickGates []string
+
 	// Keys is each row's identity, and Gates the reason each row's action is
 	// refused to this viewer, by row then action ("" when allowed). Both are
 	// empty for a table with no actions.
@@ -68,10 +79,10 @@ func (r *Renderer) columns(v TableView) []columnView {
 	out := make([]columnView, len(v.Node.Columns))
 	for i, f := range v.Node.Columns {
 		col := columnView{Field: f}
-		if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
+		if (f.Kind == ir.KindInt || f.Kind == ir.KindFloat) && f.Display != ir.DisplayTime {
 			col.Align = c.AlignEnd
 		}
-		if f.Key != "" {
+		if f.Key != "" && !v.Node.Feed { // a feed's source decides the order, and has no filters
 			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
 			col.Filter = r.filterMenu(v, f)
 		}
@@ -132,6 +143,28 @@ func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 	return prev, next
 }
 
+// feedLinks are the addresses of a feed's first page and of the one after this: the
+// cursor is a parameter of the address, and the first page has none.
+func (r *Renderer) feedLinks(v TableView) (first, next string) {
+	key := args.ViewKey(v.Node.ID, "after")
+	at := func(cursor string) string {
+		query := cloneQuery(v.Query)
+		if cursor == "" {
+			delete(query, key)
+		} else {
+			query[key] = cursor
+		}
+		return r.PageHref(v.Page, v.Path, query)
+	}
+	if v.Q.After != "" {
+		first = at("")
+	}
+	if v.Next != "" {
+		next = at(v.Next)
+	}
+	return first, next
+}
+
 func (r *Renderer) pager(v TableView) c.PagerProps {
 	prev, next := r.pagerLinks(v)
 	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next}
@@ -188,9 +221,45 @@ func (v TableView) panelStatus() c.Tone {
 // interactive reports whether the table posts: it has row actions or bulk
 // actions. A table that declares neither has no form, no checkbox column and
 // no bar — absence is the configuration.
-func (v TableView) interactive() bool { return len(v.Node.Actions)+len(v.Node.Bulk) > 0 }
+func (v TableView) interactive() bool {
+	return len(v.Node.Actions)+len(v.Node.Bulk) > 0 || v.Node.RowAction != nil
+}
+
+// clicks is whether row i runs the table's RowAction when clicked.
+func (v TableView) clicks(i int) bool {
+	return v.Node.RowAction != nil && i < len(v.Keys) && (i >= len(v.ClickGates) || v.ClickGates[i] == "")
+}
 
 func (v TableView) selectable() bool { return len(v.Node.Bulk) > 0 }
+
+// linkOf is the address a DisplayLink field has for a row, "" for any other field or
+// a value that may not be a link.
+func linkOf(f ir.Field, row any) string {
+	if f.Link == nil {
+		return ""
+	}
+	return f.Link(row)
+}
+
+// momentAttr is a moment as shown, "2026-10-09 11:27" or a date alone, as the
+// datetime attribute of a <time> element reads it.
+// It is empty for text that is not a moment, which is then shown as it is.
+func momentAttr(text string) string {
+	if _, err := time.Parse("2006-01-02 15:04", text); err == nil {
+		return text[:10] + "T" + text[11:] + ":00Z"
+	}
+	if _, err := time.Parse("2006-01-02", text); err == nil {
+		return text
+	}
+	return ""
+}
+
+func (v TableView) rowClickValue(i int) string {
+	if i < len(v.Keys) {
+		return RowClickValue(v.Keys[i])
+	}
+	return ""
+}
 
 func (v TableView) hasRowActions() bool { return len(v.Node.Actions) > 0 }
 
@@ -221,6 +290,10 @@ func variant(role ir.Role) c.Variant {
 // RowActionValue and BulkActionValue are what an action button submits as
 // "_act". The runtime parses them back; they are defined once, here.
 func RowActionValue(action int, key string) string { return fmt.Sprintf("row:%d:%s", action, key) }
+
+// RowClickValue is the "_act" value of the button that covers a row whose click is
+// an Action.
+func RowClickValue(key string) string { return "click:0:" + key }
 
 // BulkActionValue is the "_act" value of a bulk action button.
 func BulkActionValue(action int) string { return fmt.Sprintf("bulk:%d", action) }
@@ -268,6 +341,7 @@ type filterView struct {
 	Options []string
 
 	Numeric bool
+	Moment  bool // the bounds are moments in UTC: date and time inputs
 	MinKey  string
 	MaxKey  string
 	Min     string
@@ -283,18 +357,30 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	id := v.Node.ID
 	fv := filterView{Label: f.Label, Action: r.PageHref(v.Page, v.Path, nil)}
 	gone := []string{} // the address parameters this filter owns
-	if f.Kind == ir.KindInt || f.Kind == ir.KindFloat {
+	if f.Ranged() {
 		fv.Numeric = true
+		fv.Moment = f.Display == ir.DisplayTime
 		fv.MinKey, fv.MaxKey = args.RangeKeys(id, f.Key)
 		gone = append(gone, fv.MinKey, fv.MaxKey)
 		if rng, ok := v.Q.Ranges[f.Key]; ok {
-			fv.Min, fv.Max = formatBound(rng.Min), formatBound(rng.Max)
+			fv.Min, fv.Max = formatBound(rng.Min, fv.Moment), formatBound(rng.Max, fv.Moment)
 		}
 		fv.On = fv.Min != "" || fv.Max != ""
 	} else {
 		fv.Key = args.FilterKey(id, f.Key)
 		gone = append(gone, fv.Key)
 		fv.Chosen, fv.Options = v.Q.Filters[f.Key], f.Options
+		if f.OpenSet {
+			// The values the rows hold, and any chosen one the rows no longer do, so it
+			// can still be unticked.
+			fv.Options = []string{}
+			fv.Options = append(fv.Options, v.Options[f.Key]...)
+			for _, c := range fv.Chosen {
+				if !slices.Contains(fv.Options, c) {
+					fv.Options = append(fv.Options, c)
+				}
+			}
+		}
 		fv.On = len(fv.Chosen) > 0
 	}
 	fv.Carry = carry(v.Query, gone...)
@@ -313,9 +399,14 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	return fv
 }
 
-func formatBound(x *float64) string {
+// formatBound is a bound as the filter's input holds it: a number, or for a moment
+// the date and time input's "2026-10-09T11:27", in UTC.
+func formatBound(x *float64, moment bool) string {
 	if x == nil {
 		return ""
+	}
+	if moment {
+		return time.Unix(int64(*x), 0).UTC().Format("2006-01-02T15:04")
 	}
 	return strconv.FormatFloat(*x, 'f', -1, 64)
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,9 +27,11 @@ type searchHit struct {
 
 // search answers the global search with the rows of every table that offers
 // itself to it. A table is searched under its own name, after its page's Guard has
-// run with zero arguments — what a visitor who opened the page bare would be
-// allowed. A page that refuses, or a table that fails, is left out, and the rest
-// answer.
+// run with no arguments, which is what a visitor who opened the page bare would be
+// allowed. A page that needs arguments, such as one in a path, is searched only
+// while the visitor is on it, with the arguments in the address they are on: the
+// search then covers the thing they are looking at. A page that refuses, or a
+// table that fails, is left out, and the rest answer.
 //
 // Every result is then checked against the page it leads to, with that page's own
 // arguments and Guard, so the search never offers what following it would refuse:
@@ -44,9 +47,10 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), searchTimeout)
 		defer cancel()
+		here := p.here(r)
 		seen := map[string]bool{} // a table on two pages is one result, not two
 		for _, page := range p.App.Pages {
-			hits = append(hits, p.searchPage(ctx, page, query, seen)...)
+			hits = append(hits, p.searchPage(ctx, page, here, query, seen)...)
 		}
 	}
 
@@ -56,7 +60,7 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 }
 
 // searchPage is the hits of one page's searchable tables.
-func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, seen map[string]bool) []searchHit {
+func (p *Program) searchPage(ctx context.Context, page *ir.Page, here *hereRequest, query string, seen map[string]bool) []searchHit {
 	var tables []*ir.Table
 	for _, t := range ir.Tables(page.Body) {
 		if t.Search {
@@ -66,11 +70,23 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 	if len(tables) == 0 {
 		return nil
 	}
-	args, err := page.Decode(map[string]string{})
+	raw := map[string]string{}
+	if here != nil && here.page == page {
+		raw = here.raw // the page the visitor is on: its arguments are known
+	}
+	// A path argument that is not there is not a zero to search with: decoding would
+	// take it for one, and the table would be asked for another tenant's rows. Without
+	// the arguments the page is not searched.
+	for _, a := range page.Args {
+		if a.InPath && raw[a.Name] == "" {
+			return nil
+		}
+	}
+	args, err := page.Decode(raw)
 	if err != nil {
 		return nil
 	}
-	req := &Request{program: p, Args: args, Raw: map[string]string{}}
+	req := &Request{program: p, Args: args, Raw: raw}
 	ctx = With(ctx, req)
 	if page.Guard != nil && page.Guard(ctx, args) != nil {
 		return nil
@@ -79,7 +95,8 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 	var hits []searchHit
 	for _, t := range tables {
 		group := cmp.Or(t.Title, page.Nav.Label, page.PathTemplate)
-		rows, _, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
+		window, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
+		rows := window.Rows
 		if err != nil && ctx.Err() == nil {
 			p.log.Error("webui: search failed", "page", page.PathTemplate, "table", t.Title, "err", err)
 		}
@@ -116,7 +133,7 @@ func rowText(t *ir.Table, row any) (title, desc string) {
 		switch text := c.Get(row); {
 		case i == 0:
 			title = text
-		case text != "" && c.Num == nil:
+		case text != "" && (c.Num == nil || c.Display == ir.DisplayTime):
 			rest = append(rest, text)
 		}
 	}
@@ -158,4 +175,50 @@ func (w *verdictWriter) WriteHeader(code int) {
 func (w *verdictWriter) Write(b []byte) (int, error) {
 	w.WriteHeader(http.StatusOK)
 	return len(b), nil
+}
+
+// hereRequest is the page an address is, and the arguments it carries.
+type hereRequest struct {
+	page *ir.Page
+	raw  map[string]string
+}
+
+type hereKey struct{}
+
+// whereHandler records which page the address is for, and what it says, in the
+// hereRequest the caller put in the request's context.
+func whereHandler(page *ir.Page) http.HandlerFunc {
+	parser := argParser(page)
+	return func(_ http.ResponseWriter, r *http.Request) {
+		res, ok := r.Context().Value(hereKey{}).(*hereRequest)
+		if !ok {
+			return
+		}
+		if raw, err := parser.Parse(r); err == nil {
+			res.page, res.raw = page, raw
+		}
+	}
+}
+
+// here is the page the visitor is on, from the address the search was asked from
+// (the Referer; the library's responses name the same origin as the policy, so a
+// browser sends it whole). It is only the answer to "which page, with which
+// arguments", and is checked as everything else is: the page's own Guard runs
+// before any of its tables is searched. An address from elsewhere, or none, is no page.
+func (p *Program) here(r *http.Request) *hereRequest {
+	ref, err := url.Parse(r.Referer())
+	if err != nil || ref.Host != r.Host {
+		return nil
+	}
+	res := &hereRequest{}
+	//nolint:gosec // G704: the request is routed into this app's own mux and is never sent anywhere.
+	req, err := http.NewRequestWithContext(context.WithValue(r.Context(), hereKey{}, res), http.MethodGet, ref.RequestURI(), http.NoBody)
+	if err != nil {
+		return nil
+	}
+	p.where.ServeHTTP(&verdictWriter{}, req)
+	if res.page == nil {
+		return nil
+	}
+	return res
 }

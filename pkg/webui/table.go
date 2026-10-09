@@ -30,14 +30,17 @@ type Query struct {
 	// A column with a fixed set of options — a Badge, whose options are the keys
 	// of its Kinds — holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
-	// (Int, Float and Slider) are not here but in Ranges. Load does the
-	// filtering, as it does the sorting.
+	// (Int, Float and Slider) and moments (Datetime and Timestamp) are not here but
+	// in Ranges. Load does the filtering, as it does the sorting.
 	Filters map[string][]string
 
-	// Ranges are the bounds on the numeric columns, by the same Label.
-	// A column filters by a minimum and a maximum, either of which may be left
-	// out, so a range is an inequality, not text. A bound is always a finite
-	// number; an unreadable one never arrives.
+	// Ranges are the bounds on the numeric columns and the moments, by the same
+	// Label. A column filters by a minimum and a maximum, either of which may be left
+	// out, so a range is an inequality, not text. A bound is always a finite number;
+	// an unreadable one never arrives. The bounds of a Datetime or a Timestamp are
+	// Unix seconds, whatever the column holds, and the Datetime's own value, an ISO
+	// 8601 string, is for the source to read the same way.
+	// Sort is by the same number, so moments order as moments and not as text.
 	Ranges map[string]Range
 
 	// Search is what the visitor typed in the global search, to find rows of this
@@ -71,8 +74,11 @@ type Window[M any] struct {
 // Table is a leaf that lists rows of a model M, one row to a line.
 //
 // Every column header sorts the table and has a filter beside it. Where the rows
-// come from is Rows or Load, one of the two: Rows suits data that is easy to list
-// in full, and Load suits data that is better paged by its source.
+// come from is Rows, Load or Feed, one of the three. Rows suits a set small enough to
+// list in full. Load and Feed suit a set too large for that, which the source pages:
+// Load when it pages by offset and can sort and filter on request, and Feed when it
+// pages by a cursor, which continues one sequence and so cannot be sorted or filtered
+// by the library.
 //
 // A table keeps its sort, filters and page in the address, so a copied link shows
 // the same view. Each of those parameters starts with the table's name, which is
@@ -102,10 +108,15 @@ type Table[M any] struct {
 	// Use Rows when the rows are all at hand or cheap to list in full, such as a
 	// slice in memory or a small query. It is all that most tables need.
 	//
+	// If Rows, Load or Feed returns an error the panel says "Could not load", the cause is
+	// logged and the rest of the page stands. The error's text is not shown to the
+	// visitor, since it may name things they should not see. Return no rows, not an
+	// error, for a table that is empty.
+	//
 	// Rows is called on every request that needs the table's rows: each page load,
 	// sort, filter, page change, row action, and search. The library keeps nothing
 	// between requests, so if listing is costly, cache inside Rows, or use Load.
-	// Set Rows or Load, not both.
+	// Set exactly one of Rows, Load and Feed.
 	Rows func(ctx context.Context) ([]M, error)
 
 	// Load returns one page of rows, and does the filtering, sorting and paging
@@ -113,9 +124,24 @@ type Table[M any] struct {
 	// returns a [Window] with the rows and, if it can count them, the total.
 	//
 	// Use Load when the source can do that work better than the library, or is too
-	// large to list in full, such as a database table or a remote API. Set Rows or
-	// Load, not both.
+	// large to list in full, such as a database table or a remote API. Set exactly one of
+	// Rows, Load and Feed.
 	Load func(ctx context.Context, q Query) (Window[M], error)
+
+	// Feed is for a source that pages by a cursor, also called a continuation token,
+	// such as an object store's listing or a feed of events. The rows come in the order
+	// the source gives them, and each page continues where the last ended. Feed is
+	// handed the cursor of the page asked for, "" for the first, and how many rows a
+	// page holds, and returns them with the cursor of the page after, "" when there is
+	// none.
+	//
+	// Use Feed when the source pages by cursor, and Load when it pages by offset and
+	// can sort and filter on request. A cursor continues one sequence, so there is
+	// nothing for the library to reorder or filter: a feed table has no sort links and
+	// no filters, and its pager is Next and First page, since a cursor has no place in a
+	// count. The cursor is kept in the address, so it must be short enough to be one. A
+	// feed cannot be searched. Set exactly one of Rows, Load and Feed.
+	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
 
 	// Search makes the table's rows findable from the search box in the top bar.
 	// Each row is a result: its first column is the title, the other text columns
@@ -123,9 +149,12 @@ type Table[M any] struct {
 	// table needs a RowClick. With Rows the library searches every column itself;
 	// with Load the typed text arrives in [Query.Search].
 	//
-	// The table's page is asked for with no arguments, so it must not have path
-	// arguments, and its Guard runs first. A result is shown only if the page it
-	// leads to would let the visitor in.
+	// The table's page is asked for with no arguments, and its Guard runs first. A
+	// page with path arguments, such as "/bucket/{name}", has none to be asked with,
+	// so its table is searched only while the visitor is on that page, with the
+	// arguments in the address they are on: the search then covers what they are
+	// looking at. A result is shown only if the page it leads to would let the
+	// visitor in.
 	Search bool
 
 	// Key identifies a row, such as by its ID. It is required when the table has
@@ -133,9 +162,15 @@ type Table[M any] struct {
 	// position.
 	Key func(M) string
 
-	// RowClick makes each row a link: a [Link] to another page. It is always a
-	// real anchor, so middle-click, open-in-new-tab and the keyboard work.
-	// Anything that changes something is an Action instead.
+	// RowClick makes each row clickable: a [Link] to another page, or an [Action]
+	// for what a link cannot do.
+	//
+	// A Link is a real anchor, so middle-click, open-in-new-tab and the keyboard
+	// work, and the table can be searched. It suits a row that always leads to the
+	// same kind of page. An Action is handed the row and may decide where to go from
+	// it, with [Outcome.Then], such as to a folder page or an object page, or change
+	// something. It is a POST, so it cannot be opened in a new tab, it needs Key, and
+	// a table with one cannot be searched. A row its Guard refuses does nothing.
 	RowClick RowClick[M]
 
 	// Actions render as a button per row.
@@ -156,12 +191,19 @@ func (Table[M]) isPageBody() {}
 var _ PageBody = Table[struct{}]{}
 
 func (t Table[M]) validateBody(v *bodyValidator) {
+	sources := 0
+	for _, set := range []bool{t.Rows != nil, t.Load != nil, t.Feed != nil} {
+		if set {
+			sources++
+		}
+	}
 	switch {
-	case t.Rows == nil && t.Load == nil:
-		v.add("a Table has neither Rows nor Load",
-			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page, or Load to do that yourself.")
-	case t.Rows != nil && t.Load != nil:
-		v.add("a Table has both Rows and Load", "Set one: Rows lets the library filter, sort and page, Load does it yourself.")
+	case sources == 0:
+		v.add("a Table has none of Rows, Load and Feed",
+			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
+	case sources > 1:
+		v.add("a Table has more than one of Rows, Load and Feed",
+			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor with no sort or filters.")
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
 
@@ -189,7 +231,8 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		v.add("Table.PageSize is negative", "Use a number of rows, or leave it zero for the default of 25.")
 	}
 
-	if (len(t.Actions)+len(t.BulkActions)) > 0 && t.Key == nil {
+	_, clickRuns := t.RowClick.(Action[M])
+	if (len(t.Actions)+len(t.BulkActions) > 0 || clickRuns) && t.Key == nil {
 		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
 	}
 	for i, a := range t.Actions {
@@ -200,14 +243,22 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 	if t.RowClick != nil {
 		t.RowClick.validateRow(v)
+		if len(t.Columns) > 0 {
+			if _, isLink := t.Columns[0].(URL[M]); isLink {
+				v.add("a Table's first column is a URL, but its RowClick is there",
+					"The row's own link or button covers the first column, and a link cannot hold a link: put the URL in another column.")
+			}
+		}
 	}
 	if t.Search {
 		if t.RowClick == nil {
 			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
 		}
-		if len(args.Placeholders(v.page)) > 0 {
-			v.add("a Table on a page with path arguments cannot have Search",
-				"Search runs without a page's arguments, so it cannot build one. Put Search on a table of a page without placeholders, such as the list, and link to this page with RowClick.")
+		if t.Feed != nil {
+			v.add("a Table has Search but its rows come from Feed", "A feed has no way to be asked for rows matching text: use Rows or Load, or remove Search.")
+		}
+		if clickRuns {
+			v.add("a Table has Search but its RowClick is an Action", "A search result is a link to a row's page: make RowClick a Link, or remove Search.")
 		}
 		if len(t.Columns) == 0 {
 			v.add("a Table has Search but no Columns", "A search result is made from the columns: set Columns.")
@@ -232,8 +283,15 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	for _, c := range columns {
 		labels[c.Key] = c.Label
 	}
+	if t.Rows != nil {
+		// The library holds every row, so a badge's choices are the values the rows
+		// have, whether or not its Kinds name them.
+		for i := range columns {
+			columns[i].OpenSet = columns[i].Display == ir.DisplayBadge
+		}
+	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search,
+		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search, Feed: t.Feed != nil,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}
@@ -241,7 +299,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
 	}
 	if t.RowClick != nil {
-		out.RowClick = t.RowClick.lowerRow()
+		out.RowClick, out.RowAction = t.RowClick.lowerRow()
 	}
 	for _, a := range t.Actions {
 		out.Actions = append(out.Actions, lowerAction(a, a.Label))
@@ -274,25 +332,38 @@ func queryOf(q ir.Query, labels map[string]string) Query {
 }
 
 // loader is the table's rows as the IR asks for them, by a Query.
-func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) ([]any, int, error) {
+func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) (ir.Window, error) {
 	if t.Rows != nil {
-		return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 			all, err := t.Rows(ctx)
 			if err != nil {
-				return nil, 0, err
+				return ir.Window{}, err
 			}
 			items := make([]any, len(all))
 			for i, r := range all {
 				items[i] = r
 			}
 			window, total := tablequery.Apply(items, columns, q)
-			return window, total, nil
+			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
 		}
 	}
-	return func(ctx context.Context, q ir.Query) ([]any, int, error) {
+	if t.Feed != nil {
+		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
+			rows, next, err := t.Feed(ctx, q.After, q.Limit)
+			if err != nil {
+				return ir.Window{}, err
+			}
+			items := make([]any, len(rows))
+			for i, r := range rows {
+				items[i] = r
+			}
+			return ir.Window{Rows: items, Total: -1, Next: next}, nil
+		}
+	}
+	return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 		rows, err := t.Load(ctx, queryOf(q, labels))
 		if err != nil {
-			return nil, 0, err
+			return ir.Window{}, err
 		}
 		items := make([]any, len(rows.Items))
 		for i, r := range rows.Items {
@@ -302,6 +373,6 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		if total < q.Offset+len(items) {
 			total = -1
 		}
-		return items, total, nil
+		return ir.Window{Rows: items, Total: total}, nil
 	}
 }

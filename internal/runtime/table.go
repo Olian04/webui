@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -18,6 +19,14 @@ import (
 // the table did not declare is dropped, so a hand-edited address cannot make a
 // loader sort by something it never offered.
 func queryOf(n *ir.Table, raw map[string]string) ir.Query {
+	if n.Feed {
+		// A feed has a cursor and nothing else to ask: no offset, sort or filters.
+		q := ir.Query{Limit: n.PageSize}
+		if after := raw[args.ViewKey(n.ID, "after")]; after != "" && len(after) <= maxCursor {
+			q.After = after
+		}
+		return q
+	}
 	var q ir.Query
 	q.Limit = n.PageSize
 	if off, err := strconv.Atoi(raw[args.ViewKey(n.ID, "offset")]); err == nil && off > 0 {
@@ -36,6 +45,11 @@ func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	}
 	return q
 }
+
+// maxCursor bounds a feed's cursor in the address. It is whatever the source made it,
+// and comes back from the address, which is the visitor's to edit, so it is kept
+// short; a longer one is a first page, as is one the source does not know.
+const maxCursor = 2048
 
 // maxFilterChars bounds a typed filter: it is typed by a person.
 const maxFilterChars = 200
@@ -56,17 +70,28 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 			continue
 		}
 		var kept []string
-		if col.Options != nil {
+		switch {
+		case col.OpenSet:
+			// The values are whatever the rows hold, which the library filters, so any
+			// value is safe to keep: one that no row has matches none.
+			for _, v := range strings.Split(value, args.ListSep) {
+				if v != "" && !slices.Contains(kept, v) {
+					kept = append(kept, v)
+				}
+			}
+		case col.Options != nil:
 			for _, v := range strings.Split(value, args.ListSep) {
 				if slices.Contains(col.Options, v) && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}
 			}
-		} else if text := strings.TrimSpace(value); text != "" {
-			if runes := []rune(text); len(runes) > maxFilterChars {
-				text = string(runes[:maxFilterChars])
+		default:
+			if text := strings.TrimSpace(value); text != "" {
+				if runes := []rune(text); len(runes) > maxFilterChars {
+					text = string(runes[:maxFilterChars])
+				}
+				kept = []string{text}
 			}
-			kept = []string{text}
 		}
 		if len(kept) == 0 {
 			continue
@@ -81,9 +106,7 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 
 // numeric reports whether a column holds numbers, which a table filters by
 // range, not by text: "5" is not a way to ask for more than 5.
-func numeric(col ir.Field) bool {
-	return col.Kind == ir.KindInt || col.Kind == ir.KindFloat
-}
+func numeric(col ir.Field) bool { return col.Ranged() }
 
 // rangesOf reads the bounds on the numeric columns. A bound that is not a
 // finite number is dropped, so a loader never compares against NaN or infinity.
@@ -94,7 +117,11 @@ func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 			continue
 		}
 		loKey, hiKey := args.RangeKeys(n.ID, col.Key)
-		r := ir.Range{Min: bound(raw[loKey]), Max: bound(raw[hiKey])}
+		read := bound
+		if col.Display == ir.DisplayTime {
+			read = momentBound
+		}
+		r := ir.Range{Min: read(raw[loKey]), Max: read(raw[hiKey])}
 		if r.Min == nil && r.Max == nil {
 			continue
 		}
@@ -104,6 +131,20 @@ func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 		out[col.Key] = r
 	}
 	return out
+}
+
+// momentBound reads a bound on a moment, as the filter's date and time inputs write
+// it, in UTC: "2026-10-09T11:27", with or without seconds, or a date alone. Unix
+// seconds are taken as they are, so an address built by hand can carry them.
+func momentBound(s string) *float64 {
+	s = strings.TrimSpace(s)
+	for _, layout := range []string{"2006-01-02T15:04", "2006-01-02T15:04:05", "2006-01-02"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			x := float64(t.Unix())
+			return &x
+		}
+	}
+	return bound(s)
 }
 
 func bound(s string) *float64 {
@@ -120,7 +161,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
-	rows, total, err := n.Load(ctx, view.Q)
+	window, err := n.Load(ctx, view.Q)
 	if err != nil {
 		if ctx.Err() == nil {
 			p.log.Error("webui: table load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
@@ -128,9 +169,16 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.Failed = true
 		return p.render.Table(view)
 	}
-	view.Rows, view.Total = rows, total
+	rows := window.Rows
+	view.Rows, view.Total, view.Options = rows, window.Total, window.Options
+	if len(window.Next) > maxCursor {
+		p.log.Error("webui: a feed's cursor is too long for the address, so there is no next page", "page", page.PathTemplate, "length", len(window.Next))
+	} else {
+		view.Next = window.Next
+	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
+	view.ClickGates = clickGates(ctx, n, rows)
 	return p.render.Table(view)
 }
 
@@ -152,6 +200,22 @@ func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *
 		hrefs[i] = href
 	}
 	return hrefs
+}
+
+// clickGates is, for a table whose RowClick is an Action, why each row may not be
+// clicked by this viewer: the Action's Guard, run on the row, as it will be on the
+// POST. A row it refuses is shown but does nothing.
+func clickGates(ctx context.Context, n *ir.Table, rows []any) []string {
+	if n.RowAction == nil || n.RowAction.Guard == nil {
+		return nil
+	}
+	gates := make([]string, len(rows))
+	for i, row := range rows {
+		if err := n.RowAction.Guard(ctx, row); err != nil {
+			gates[i] = err.Error()
+		}
+	}
+	return gates
 }
 
 // rowKeysAndGates names each row and says which of its actions this viewer may

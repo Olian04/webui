@@ -10,6 +10,7 @@ package tablequery
 
 import (
 	"cmp"
+	"math"
 	"slices"
 	"strings"
 
@@ -34,6 +35,12 @@ rows:
 		}
 		for name, r := range q.Ranges {
 			if c, ok := byName[name]; ok && c.Num != nil && !within(c.Num(row), r) {
+				continue rows
+			}
+			// A moment that is not set, or is not a moment, is before every start and
+			// after no end by its number, so a filter that sets only an end would keep it.
+			// It has no time to be within, so any range drops it.
+			if c, ok := byName[name]; ok && c.Display == ir.DisplayTime && math.IsInf(c.Num(row), 0) {
 				continue rows
 			}
 		}
@@ -61,6 +68,36 @@ rows:
 	return kept[lo:hi], total
 }
 
+// Options are the values the rows hold in each of the open-set columns, by Key,
+// sorted without regard to case. Every row counts, whatever the filters.
+func Options(rows []any, cols []ir.Field) map[string][]string {
+	var out map[string][]string
+	for _, c := range cols {
+		if !c.OpenSet || c.Get == nil {
+			continue
+		}
+		seen := map[string]bool{}
+		values := []string{}
+		for _, row := range rows {
+			if v := c.Get(row); v != "" && !seen[v] {
+				seen[v] = true
+				values = append(values, v)
+			}
+		}
+		slices.SortFunc(values, func(a, b string) int {
+			if n := cmp.Compare(strings.ToLower(a), strings.ToLower(b)); n != 0 {
+				return n
+			}
+			return cmp.Compare(a, b)
+		})
+		if out == nil {
+			out = map[string][]string{}
+		}
+		out[c.Key] = values
+	}
+	return out
+}
+
 // matches is whether a row passes one column's filter: a column with a fixed set
 // of options keeps the rows holding any of the options chosen, and any other the
 // rows whose text contains what was typed, ignoring case.
@@ -69,7 +106,7 @@ func matches(c ir.Field, row any, values []string) bool {
 		return true
 	}
 	have := c.Get(row)
-	if c.Options != nil {
+	if c.Options != nil || c.OpenSet {
 		return slices.Contains(values, have)
 	}
 	return strings.Contains(strings.ToLower(have), strings.ToLower(values[0]))

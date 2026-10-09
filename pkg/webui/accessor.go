@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -137,14 +138,21 @@ type Group[M any] []Accessor[M]
 func (Group[M]) isAccessor() {}
 
 // Badge projects a string field of M as a badge: the value in a coloured pill.
-// It is read-only, in a table and in a form. Kinds is the set of values the
-// field can hold, each with the tone it is drawn in; a value outside it is drawn
-// neutral. The badge always carries its word, so the colour is never the only
-// thing saying what state something is in.
+// It is read-only, in a table and in a form. Kinds gives the tone of each value it
+// knows; any other value is drawn neutral. The badge always carries its word, so the
+// colour is never the only thing saying what state something is in.
 //
-// Because Kinds is the whole set, a table filters a Badge column with a
-// multi-select of exactly those values. List a neutral value too, as
-// ToneNeutral, for it to be filterable.
+// A badge does not need to know every value it can hold. How a table filters the
+// column depends on where its rows come from:
+//
+//   - With Rows, the library holds every row, so the filter is a multi-select of the
+//     values the rows hold, whether or not Kinds names them. A field with an open set
+//     of values, such as a storage class, can leave Kinds empty, or name only the
+//     values worth a colour.
+//   - With Load, the source does the filtering, so the library can only offer what it
+//     is told: Kinds is then the whole set, a multi-select of exactly those values.
+//     List a neutral value too, as ToneNeutral, for it to be filterable. With no Kinds
+//     the column's filter is text.
 type Badge[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
@@ -153,11 +161,80 @@ type Badge[M any] struct {
 	// Load reads the value from the model.
 	Load func(M) string
 
-	// Kinds is every value the field can hold, each with the [Tone] it is drawn in.
+	// Kinds gives the [Tone] each known value is drawn in. See Badge for what it
+	// means to a table's filter.
 	Kinds map[string]Tone
 }
 
 func (Badge[M]) isAccessor() {}
+
+// URL projects a string field of M as a link, which the page declares by using it:
+// no other accessor ever makes a link of its value. It is read-only, in a table and
+// in a form. The link opens in a new tab, with rel="noopener noreferrer", and is
+// marked with an arrow, and screen readers are told it opens a new tab.
+//
+// The address may be a path on this site, or an http, https or mailto address. A
+// value that is none of these, such as a script address, is shown as plain text and
+// is never a link, so data in a model cannot make one. The first column of a table
+// with a RowClick cannot be a URL, since the row's own link is there.
+type URL[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the address from the model. An empty string is no link.
+	Load func(M) string
+
+	// Text is what the link says, the same on every row, such as "Download". Leave
+	// it empty to show the address itself.
+	Text string
+}
+
+func (URL[M]) isAccessor() {}
+
+// Datetime projects a string field of M that holds an ISO 8601 moment, such as
+// "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
+// "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and filters it
+// as a moment and not as the text: the filter takes a start and an end, in UTC. A
+// value with no zone is taken as UTC, and one that is not a moment at all is shown as
+// written and sorts first.
+//
+// Without Store it is read-only. With Store a form shows a date and time picker, in
+// UTC, and Store is handed the choice as RFC 3339 in UTC, "2026-10-09T11:27:00Z", or
+// an empty string when the picker is cleared.
+type Datetime[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the ISO 8601 string from the model. An empty string is no value.
+	Load func(M) string
+
+	// Store writes the chosen moment to the model, as RFC 3339 in UTC. Without it the
+	// field is read-only.
+	Store func(*M, string)
+}
+
+func (Datetime[M]) isAccessor() {}
+
+// Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
+// and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
+// Zero is "not set": it shows as nothing, and clearing the picker stores it. For a
+// time in milliseconds, divide it in Load and multiply it in Store.
+type Timestamp[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the Unix time, in seconds, from the model.
+	Load func(M) int
+
+	// Store writes the chosen moment to the model, as Unix seconds. Without it the
+	// field is read-only.
+	Store func(*M, int)
+}
+
+func (Timestamp[M]) isAccessor() {}
 
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
@@ -214,6 +291,9 @@ var (
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
 	_ Accessor[struct{}] = Badge[struct{}]{}
+	_ Accessor[struct{}] = URL[struct{}]{}
+	_ Accessor[struct{}] = Datetime[struct{}]{}
+	_ Accessor[struct{}] = Timestamp[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
 )
 
@@ -294,6 +374,21 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Load == nil {
 			v.add(at+" has no Load", "Set Load to func(M) string.")
 		}
+	case URL[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) string, returning the address.")
+		}
+	case Datetime[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) string, returning an ISO 8601 moment.")
+		}
+	case Timestamp[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) int, returning a Unix time in seconds.")
+		}
 	case Slider[M]:
 		label(a.Label)
 		if a.Load == nil {
@@ -307,7 +402,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, Slider or Group.")
+			"Use String, Int, Float, Badge, URL, Datetime, Timestamp, Slider or Group.")
 	}
 }
 
@@ -392,6 +487,64 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
+	case URL[M]:
+		return ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayLink,
+			Get: func(m any) string {
+				if a.Text != "" && a.Load(m.(M)) != "" {
+					return a.Text
+				}
+				return a.Load(m.(M))
+			},
+			Link: func(m any) string {
+				if u := a.Load(m.(M)); validURL(u) {
+					return u
+				}
+				return ""
+			},
+		}
+	case Datetime[M]:
+		f := ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
+			Get: func(m any) string { return datetimeText(a.Load(m.(M))) },
+			Num: func(m any) float64 { return datetimeNum(a.Load(m.(M))) },
+		}
+		if a.Store != nil {
+			f.Set = func(m any, raw string) error {
+				t, blank, err := pickedMoment(raw)
+				if err != nil {
+					return err
+				}
+				if blank {
+					a.Store(m.(*M), "")
+					return nil
+				}
+				a.Store(m.(*M), t.Format(time.RFC3339))
+				return nil
+			}
+		}
+		return f
+	case Timestamp[M]:
+		f := ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
+			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
+			Num: func(m any) float64 { return timestampNum(a.Load(m.(M))) },
+		}
+		if a.Store != nil {
+			f.Set = func(m any, raw string) error {
+				t, blank, err := pickedMoment(raw)
+				if err != nil {
+					return err
+				}
+				if blank {
+					a.Store(m.(*M), 0)
+					return nil
+				}
+				a.Store(m.(*M), int(t.Unix()))
+				return nil
+			}
+		}
+		return f
 	case Slider[M]:
 		prec := -1
 		if a.Precision > 0 {
@@ -453,6 +606,12 @@ func accessorLabel[M any](acc Accessor[M]) string {
 	case Float[M]:
 		return a.Label
 	case Badge[M]:
+		return a.Label
+	case URL[M]:
+		return a.Label
+	case Datetime[M]:
+		return a.Label
+	case Timestamp[M]:
 		return a.Label
 	case Slider[M]:
 		return a.Label

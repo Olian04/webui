@@ -89,10 +89,10 @@ func TestLowerTableLoadNormalisesTotal(t *testing.T) {
 
 	out, _ := fixture().lower()
 	table := out.ByPath["/device"].Body.(*ir.Table)
-	rows, total, err := table.Load(context.Background(), ir.Query{})
+	window, err := table.Load(context.Background(), ir.Query{})
 	assert.NoError(t, err)
-	assert.Equal(t, len(rows), 2)
-	assert.Equal(t, total, -1) // Rows.Total left zero: unknown, not "zero rows"
+	assert.Equal(t, len(window.Rows), 2)
+	assert.Equal(t, window.Total, -1) // Rows.Total left zero: unknown, not "zero rows"
 }
 
 func TestBindStartsFromLoadedModelAndReportsEveryFailure(t *testing.T) {

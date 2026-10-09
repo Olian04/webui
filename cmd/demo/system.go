@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -61,13 +62,18 @@ var Audit = webui.Page[webui.NoArgs]{
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
 		Title:    "Audit log",
-		Desc:     "The total is not known: Load returns a window and no count, so the pager offers Next while a page is full.",
+		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so the table offers no sorting or filters.",
 		PageSize: 8,
-		Load: func(_ context.Context, q webui.Query) (webui.Window[AuditEntry], error) {
-			// Rows.Total is left zero: unknown, not "zero rows". The table pages by
-			// "a full page may have a successor". (Sort and filters are not offered
-			// by this source, so Load ignores them.)
-			return webui.Window[AuditEntry]{Items: service.Audit(q.Offset, q.Limit)}, nil
+		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, error) {
+			// The cursor is where the page starts. It is whatever the source likes, so long
+			// as it can read it back; here, an index. Asking for one row more than a page is
+			// how this source knows there is a next one.
+			start, _ := strconv.Atoi(after)
+			rows := service.Audit(start, limit+1)
+			if len(rows) <= limit {
+				return rows, "", nil
+			}
+			return rows[:limit], strconv.Itoa(start + limit), nil
 		},
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},

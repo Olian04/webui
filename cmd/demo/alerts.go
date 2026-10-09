@@ -27,6 +27,20 @@ var (
 		Label: "Message",
 		Load:  func(a Alert) string { return a.Message },
 	}
+	// A URL is a link, because the page says so: no other accessor makes a link of its
+	// value. It opens in a new tab, and only a path, http, https or mailto address is
+	// ever one.
+	Runbook = webui.URL[Alert]{
+		Label: "Runbook",
+		Text:  "Open the runbook",
+		Load:  func(a Alert) string { return "https://example.com/runbooks/" + a.Severity },
+	}
+	// A Datetime is a moment held as an ISO 8601 string. It is shown in UTC, and the
+	// table sorts and filters it as a moment, with a start and an end.
+	Raised = webui.Datetime[Alert]{
+		Label: "Raised",
+		Load:  func(a Alert) string { return a.Raised },
+	}
 )
 
 var Alerts = webui.Page[webui.NoArgs]{
@@ -46,7 +60,7 @@ var Alerts = webui.Page[webui.NoArgs]{
 		},
 		// Actions and bulk actions name rows by Key, never by position.
 		Key:         func(a Alert) string { return a.ID },
-		Columns:     []webui.Accessor[Alert]{AlertID, Severity, AlertDevice, Message},
+		Columns:     []webui.Accessor[Alert]{AlertID, Severity, AlertDevice, Message, Raised},
 		Actions:     []webui.Action[Alert]{Dismiss},
 		BulkActions: []webui.Action[[]Alert]{Acknowledge, Delete},
 	},
@@ -84,6 +98,8 @@ var AlertForm = webui.Form[Alert]{
 		webui.Group[Alert]{AlertID, Severity},
 		AlertDevice,
 		Message,
+		Raised,
+		Runbook,
 	},
 	Submit: AcknowledgeAlert,
 }

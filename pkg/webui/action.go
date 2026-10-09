@@ -99,3 +99,13 @@ func lowerBulk[M any](a Action[[]M]) *ir.Action {
 	}
 	return out
 }
+
+func (Action[M]) isRowClick() {}
+
+// validateRow checks an Action used as a table's RowClick: it has a Run, and no
+// Label is needed, since the row is what is clicked.
+func (a Action[M]) validateRow(v *bodyValidator) {
+	validateAction(v, "Table.RowClick", a.Label, a.Run != nil, false)
+}
+
+func (a Action[M]) lowerRow() (*ir.Link, *ir.Action) { return nil, lowerAction(a, a.Label) }

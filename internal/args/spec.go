@@ -104,15 +104,42 @@ func KindOf(t reflect.Type) (kind ir.ValueKind, ok bool) {
 	}
 }
 
+// restMark follows the name in a placeholder that takes the rest of the path,
+// "{key...}", as it does in a [net/http.ServeMux] pattern.
+const restMark = "..."
+
+// Placeholder reads one path segment. name is what it is called, and rest is true
+// for "{name...}", which takes every segment from there on and so may only be the
+// last. ok is false for a segment that is not a placeholder.
+func Placeholder(seg string) (name string, rest, ok bool) {
+	if len(seg) < 3 || seg[0] != '{' || seg[len(seg)-1] != '}' {
+		return "", false, false
+	}
+	name = seg[1 : len(seg)-1]
+	if cut, found := strings.CutSuffix(name, restMark); found && cut != "" {
+		return cut, true, true
+	}
+	return name, false, true
+}
+
 // Placeholders lists the {name} segments of a path template, in order.
 func Placeholders(template string) []string {
 	var names []string
 	for _, seg := range strings.Split(template, "/") {
-		if len(seg) > 2 && seg[0] == '{' && seg[len(seg)-1] == '}' {
-			names = append(names, seg[1:len(seg)-1])
+		if name, _, ok := Placeholder(seg); ok {
+			names = append(names, name)
 		}
 	}
 	return names
+}
+
+// RestPlaceholder is the name of the template's {name...} segment, or "".
+func RestPlaceholder(template string) string {
+	segs := strings.Split(template, "/")
+	if name, rest, ok := Placeholder(segs[len(segs)-1]); ok && rest {
+		return name
+	}
+	return ""
 }
 
 // Spec resolves an argument struct against a path template. Every problem is
@@ -168,6 +195,16 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		specs = append(specs, ir.ArgSpec{Name: name, Field: f.Name, Kind: kind, InPath: inPath[name]})
 	}
 
+	if rest := RestPlaceholder(template); rest != "" {
+		for _, s := range specs {
+			if s.Name == rest && s.Kind != ir.KindString {
+				problems = append(problems, Problem{
+					Detail: fmt.Sprintf("the path takes the rest of the address as {%s...}, but %s is not a string", rest, s.Field),
+					Fix:    "Make the field a string: it holds the remaining segments joined by \"/\".",
+				})
+			}
+		}
+	}
 	for _, name := range Placeholders(template) {
 		if _, ok := owner[name]; ok {
 			continue

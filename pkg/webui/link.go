@@ -8,14 +8,18 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// RowClick is what a click on a row does. It is always a Link: a row is one real
-// anchor, so middle-click, open-in-new-tab and the keyboard work, and a POST
-// cannot be that. Anything that changes something is an Action on the row, in
-// Table.Actions. The interface exists only to erase Link's destination type.
+// RowClick is what a click on a row does: a [Link] or an [Action].
+//
+// A Link is for the simple case, a row that leads to a page. It is one real anchor,
+// so middle-click, open-in-new-tab and the keyboard work, and the table can be
+// searched. An Action is for the rest: its Run is handed the row and may look at it
+// to decide where to go, with Outcome.Then, or change something. It is a POST, so
+// the row cannot be opened in a new tab, and it needs the table's Key. The
+// interface exists to take either.
 type RowClick[M any] interface {
 	isRowClick()
 	validateRow(v *bodyValidator)
-	lowerRow() *ir.Link
+	lowerRow() (*ir.Link, *ir.Action)
 }
 
 // Link names a destination page and how to build its arguments from M. Page is
@@ -34,8 +38,11 @@ type Link[M, A any] struct {
 
 func (Link[M, A]) isRowClick() {}
 
-// ASSERT: Link implements RowClick
-var _ RowClick[struct{}] = Link[struct{}, struct{}]{}
+// ASSERT: Link and Action implement RowClick
+var (
+	_ RowClick[struct{}] = Link[struct{}, struct{}]{}
+	_ RowClick[struct{}] = Action[struct{}]{}
+)
 
 func (l Link[M, A]) validateRow(v *bodyValidator) {
 	if l.Args == nil {
@@ -59,9 +66,9 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 	}
 }
 
-func (l Link[M, A]) lowerRow() *ir.Link {
+func (l Link[M, A]) lowerRow() (*ir.Link, *ir.Action) {
 	return &ir.Link{
 		Dest: l.Page.pagePath(),
 		Args: func(ctx context.Context, row any) any { return l.Args(ctx, row.(M)) },
-	}
+	}, nil
 }

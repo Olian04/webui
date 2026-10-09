@@ -43,13 +43,15 @@ into existence, and nothing is configured twice.
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
-| `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
+| `Badge.Kinds` | The tone of each known value. In a `Rows` table a badge column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Kinds`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |
+| `URL` | A link, only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
+| `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs. With a `Store` a form shows the native date and time picker (`datetime-local`, to the second, in UTC) and says "Date and time in UTC" in the field's rules popover |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
-| `Table.Rows` or `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
-| `Table.RowClick` | Rows become links and take the pointer + hover treatment |
+| `Table.Rows`, `Table.Load` or `Table.Feed` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself; `Feed` is handed a cursor by a source that pages by cursor, in its own order, which a cursor continues and the library cannot reorder or filter, so its columns are plain headers and its footer is *First page* and *Next* |
+| `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
 | `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
@@ -255,7 +257,7 @@ shows the range without a total and the *Next* button cannot be pre-disabled.
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Int`, `Float`, `Badge`, `Slider`) appears in both leaves and
+An accessor (`String`, `Int`, `Float`, `Badge`, `URL`, `Datetime`, `Timestamp`, `Slider`) appears in both leaves and
 renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
@@ -317,14 +319,20 @@ Selection itself is deliberately **not** an argument: it never enters the
 address bar, because it is request state, not page state. A shared link does
 not carry someone else's selection.
 
-### `Table.RowClick` / `Link`
+### `Table.RowClick` / `Link` / `Action`
 
-Rows become links: pointer cursor, hover surface, and the whole row is the
-target. Because `Link` names a page and builds its arguments, the destination
-is known at compile time, which is what lets a row link be a real `href`
-instead of a click handler — and therefore what lets the whole design work with
-JavaScript switched off. A row click is always a link, never a POST: whatever
-changes something is a button in the row's own cell, or on the selection.
+Rows become clickable: pointer cursor, hover surface, and the whole row is the
+target. A `Link` is the simple case. Because it names a page and builds its
+arguments, the destination is known at compile time, which is what lets a row
+link be a real `href` instead of a click handler, so middle-click and
+open-in-new-tab work, the table can be searched, and the whole design works with
+JavaScript switched off.
+
+An `Action` is for what a link cannot say: where to go depends on the row, or the
+click changes something. The row is one button, stretched over the cell as the
+anchor is, inside the table's form, so it too works without script. It is a POST,
+so it cannot be opened in a new tab; it needs the table's `Key`; a table with one
+cannot be searched; and a row its `Guard` refuses is shown but does nothing.
 
 ### `Guard` → gating, in two places from one declaration
 

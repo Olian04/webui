@@ -1,6 +1,7 @@
 package render
 
 import (
+	"maps"
 	"strings"
 
 	"github.com/Olian04/webui/internal/args"
@@ -28,7 +29,9 @@ func (r *Renderer) Active(page *ir.Page) string {
 // Crumbs is the breadcrumb trail, derived from the path template's segments.
 // A parent is a link when a page is mounted at that prefix of the path and
 // every argument it needs is already in this path; a placeholder shows the
-// value it took.
+// value it took. A {name...} placeholder, which takes the rest of the path, is a
+// crumb for each of its segments, each linking to this page at that prefix, so a
+// nested folder reads as the folders on the way to it.
 func (r *Renderer) Crumbs(page *ir.Page, path map[string]string) []Crumb {
 	crumbs := []Crumb{r.Home()}
 	if page.PathTemplate == "/" {
@@ -43,7 +46,10 @@ func (r *Renderer) Crumbs(page *ir.Page, path map[string]string) []Crumb {
 	for i, seg := range segs {
 		prefix := "/" + strings.Join(segs[:i+1], "/")
 		crumb := Crumb{Label: humanise(seg)}
-		if name, ok := placeholder(seg); ok {
+		if name, rest, ok := args.Placeholder(seg); ok && rest {
+			crumbs = append(crumbs, restCrumbs(r, page, name, path)...)
+			continue
+		} else if ok {
 			crumb.Label = path[name]
 		} else if parent := r.app.ByPath[prefix]; parent != nil && parent.Nav.Label != "" {
 			crumb.Label = parent.Nav.Label
@@ -56,11 +62,20 @@ func (r *Renderer) Crumbs(page *ir.Page, path map[string]string) []Crumb {
 	return crumbs
 }
 
-func placeholder(seg string) (string, bool) {
-	if len(seg) > 2 && seg[0] == '{' && seg[len(seg)-1] == '}' {
-		return seg[1 : len(seg)-1], true
+// restCrumbs are the crumbs for a {name...} placeholder: one for each segment of the
+// value, all but the last a link to this page with the value cut off there.
+func restCrumbs(r *Renderer, page *ir.Page, name string, path map[string]string) []Crumb {
+	parts := strings.Split(path[name], "/")
+	crumbs := make([]Crumb, len(parts))
+	for i, part := range parts {
+		crumbs[i] = Crumb{Label: part}
+		if i < len(parts)-1 {
+			upto := maps.Clone(path)
+			upto[name] = strings.Join(parts[:i+1], "/")
+			crumbs[i].Href = r.prefix + args.Href(page.PathTemplate, upto, nil)
+		}
 	}
-	return "", false
+	return crumbs
 }
 
 func hasAll(template string, path map[string]string) bool {

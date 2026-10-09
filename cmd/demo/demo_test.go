@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -241,12 +242,19 @@ func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	assert.Contains(t, body, `class="gauge-fill"`) // a Slider with no Store is a bar
 }
 
-func TestAnUnknownTotalPagesByFullPages(t *testing.T) {
+func TestAFeedPagesByACursorWithNoSortOrFilters(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/audit").Body.String()
-	assert.Contains(t, body, "1–8") // a range with no "of N"
-	assert.False(t, strings.Contains(body, " of "))
-	assert.Contains(t, body, `href="/admin/audit?audit-log.offset=8"`)
+	assert.Contains(t, body, "8 rows") // no range and no total: a cursor is not a position
+	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8">Next`)
+	assert.Contains(t, body, `disabled>First page</button>`)
+	assert.False(t, strings.Contains(body, "aria-sort")) // the source decides the order
+	assert.False(t, strings.Contains(body, `class="filter`))
+
+	// The cursor comes back, and the last page has no Next.
+	last := get(h, "/admin/audit?audit-log.after=40").Body.String()
+	assert.Contains(t, last, `href="/admin/audit">First page`)
+	assert.Contains(t, last, `disabled>Next</button>`)
 
 	// Actions are recorded: the newest entry is the one just made.
 	post(h, "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})
@@ -421,4 +429,38 @@ func TestAcknowledgingACriticalAlertWarns(t *testing.T) {
 	assert.Equal(t, flashOf(rec), "wAcknowledged 2, including 1 critical")
 	rec = post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"bulk:0"}, "_sel": {"alt_007"}}) // a warning
 	assert.Equal(t, flashOf(rec), "oAcknowledged 1")
+}
+
+func TestMomentsAreShownInUTCAndFilteredAsMoments(t *testing.T) {
+	h := handler(t)
+
+	// The first alert was raised at the seed's "now".
+	body := get(h, "/admin/alert").Body.String()
+	assert.Contains(t, body, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+
+	// An end narrows the alerts to those raised by then: they are 53 minutes apart,
+	// counting back from the first, so by 08:00 there are seven.
+	narrow := get(h, "/admin/alert?alerts.max.raised=2026-10-09T08:00").Body.String()
+	assert.False(t, strings.Contains(narrow, ">alt_000<"))
+	assert.Contains(t, narrow, ">alt_010<")
+
+	// A Timestamp reads the same on a device.
+	device := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.Contains(t, device, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+}
+
+func TestATimestampWithAStoreIsADateAndTimePicker(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `type="datetime-local" value="2026-10-10T23:30:00" step="1"`) // 36 hours after the seed's now
+
+	// Saved from the picker, in UTC, as Unix seconds.
+	post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.25"}, "f1_1": {"80"}, "f2": {"2026-11-01T02:00"}})
+	assert.Equal(t, service.Settings().Maintain, int(time.Date(2026, 11, 1, 2, 0, 0, 0, time.UTC).Unix()))
+}
+
+func TestAURLColumnIsTheOnlyWayAValueBecomesALink(t *testing.T) {
+	body := get(handler(t), "/admin/alert/alt_000").Body.String()
+	assert.Contains(t, body, `<a class="ext" href="https://example.com/runbooks/critical" target="_blank" rel="noopener noreferrer">`)
+	assert.Contains(t, body, "Open the runbook")
 }
