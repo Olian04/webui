@@ -260,3 +260,28 @@ func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	// And the root goes to the first entry the sidebar lists.
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/").Header().Get("Location"), "/admin/home")
 }
+
+func TestAPageWithPathArgumentsCannotHaveANavEntryBecauseItHasNoAddress(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	page := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, Body: webui.Stack{}}
+	errs := compileErrors(t, webui.App{Pages: webui.Pages{page}})
+	assert.Contains(t, errs[0].Detail, `navigation entry "Device" but its path has arguments`)
+}
+
+func TestTheBrandOfAnAppWithNoPageAtTheRootAndNoEntryToOpenSaysSoInsteadOfLeadingNowhere(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	page := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}} // no Nav, and none at "/"
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{page}}.MustCompile("/admin")
+
+	for _, at := range []string{"/admin", "/admin/"} {
+		rec := serve(h, http.MethodGet, at)
+		assert.Equal(t, rec.Code, http.StatusOK)
+		assert.Contains(t, rec.Body.String(), "Nothing to open from here")
+	}
+	// The brand leads there, and it is not a 404.
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a class="side-brand" href="/admin/"`)
+}

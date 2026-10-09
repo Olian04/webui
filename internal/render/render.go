@@ -217,6 +217,15 @@ func NoPages() templ.Component {
 	})
 }
 
+// NoStart is the content of the root of an app that has pages, but none at "/" and
+// none in the navigation that the visitor may open, so the brand has nowhere to lead.
+func NoStart() templ.Component {
+	return c.EmptyState(c.EmptyStateProps{
+		Icon: c.IconInfo, Title: "Nothing to open from here",
+		Desc: "This app has no page at \"/\" and no navigation entry you may open. Declare a page at \"/\", or give a page a Nav entry.",
+	})
+}
+
 // Forbidden is the content of a guard rejection. The wording matters: the check
 // ran before anything was loaded, so nothing was read.
 func Forbidden(reason string) templ.Component {

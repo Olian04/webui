@@ -8,11 +8,16 @@ import (
 )
 
 // root serves the prefix itself when no page claims "/": the first page in the
-// navigation, or an empty shell when the app declares none.
+// navigation the visitor may open, and otherwise a page saying there is none, or that
+// the app declares no pages at all.
 func (p *Program) root(w http.ResponseWriter, r *http.Request) {
 	if href := p.render.FirstHref(p.hiddenNav(r.Context())); href != "" {
 		w.Header().Set("Cache-Control", "no-store")
 		http.Redirect(w, r, href, http.StatusFound)
+		return
+	}
+	if len(p.App.Pages) > 0 {
+		p.write(w, r, http.StatusOK, render.Doc{Content: render.NoStart()})
 		return
 	}
 	p.write(w, r, http.StatusOK, render.Doc{Content: render.NoPages()})
