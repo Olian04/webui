@@ -30,7 +30,7 @@ func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 			if row, err := strconv.Atoi(raw[args.RowKey(n.ID)]); err == nil && row > 0 {
 				q.Start = row
 			}
-			q.Back = args.DecodeTrail(raw[args.BackKey(n.ID)])
+			q.Back = args.DecodeTrail(n.ID, raw[args.BackKey(n.ID)])
 		}
 		return q
 	}
