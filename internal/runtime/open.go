@@ -75,7 +75,7 @@ func bounded(from string) string {
 // Cancel or a redirect may take the user to: an address in the query is
 // whatever the sender made it, so it is never followed anywhere else.
 func (p *Program) local(address string) string {
-	if !safeRedirect(address) || len(address) > maxFrom*2 {
+	if !safeRedirect(address) || len(address) > maxFrom*2 || !resolvesAsWritten(address) {
 		return ""
 	}
 	inApp := address == p.Prefix || strings.HasPrefix(address, p.Prefix+"/") || strings.HasPrefix(address, p.Prefix+"?")
@@ -83,6 +83,27 @@ func (p *Program) local(address string) string {
 		return ""
 	}
 	return address
+}
+
+// resolvesAsWritten reports whether a browser will read an address as it is
+// written. A dot segment ("/admin/../other") is resolved before the request is
+// made, so an address that starts inside the app can end outside it; a backslash is
+// read as a slash; and a control character is dropped. Each would let an address
+// pass the prefix test and still leave, so none is allowed. A segment is judged
+// after decoding, since "%2e%2e" is a dot segment too.
+func resolvesAsWritten(address string) bool {
+	for _, r := range address {
+		if r < ' ' || r == 0x7f || r == '\\' {
+			return false
+		}
+	}
+	u, err := url.Parse(address)
+	if err != nil {
+		return false
+	}
+	return !slices.ContainsFunc(strings.Split(u.Path, "/"), func(segment string) bool {
+		return segment == "." || segment == ".."
+	})
 }
 
 // hasForm reports whether a page body has a form anywhere in it.

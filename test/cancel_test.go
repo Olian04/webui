@@ -130,6 +130,8 @@ func TestCancelNeverGoesToAnAddressThatIsNotInTheApp(t *testing.T) {
 	for _, evil := range []string{
 		"https://evil.example/", "//evil.example/", `/\evil.example`, "javascript:alert(1)", "evil.example/x",
 		"/logout", "/administrator", "/admin/_webui/logo",
+		// Inside the prefix as written, outside it once the browser resolves it.
+		"/admin/../other", "/admin/%2e%2e/other", "/admin/./x", `/admin/..\other`, "/admin/x/../_webui/logo", "/admin/a\tb",
 	} {
 		got := cancelHref(t, h, "/admin/device/a?webui.from="+url.QueryEscape(evil))
 		assert.Equal(t, got, "/admin/device") // refused: the breadcrumb stands
