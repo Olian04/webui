@@ -2,8 +2,10 @@ package webui_test
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -284,4 +286,66 @@ func TestTheBrandOfAnAppWithNoPageAtTheRootAndNoEntryToOpenSaysSoInsteadOfLeadin
 	}
 	// The brand leads there, and it is not a 404.
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a class="side-brand" href="/admin/"`)
+}
+
+// flashOfRoot is the toast a response left for the next page: its tone and its text.
+func flashOfRoot(rec *httptest.ResponseRecorder) string {
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == "webui_flash" {
+			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)
+			return string(raw)
+		}
+	}
+	return ""
+}
+
+func TestTheRootOfAnAppWithNoPageThereSendsYouToTheFirstEntryWithAWarning(t *testing.T) {
+	t.Parallel()
+
+	rec := serve(navApp(), http.MethodGet, "/admin/")
+	assert.Equal(t, rec.Code, http.StatusFound)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device")
+	assert.Equal(t, flashOfRoot(rec), `wThis app has no page at "/", so you were sent to Devices. Declare a page at "/" to choose where it starts.`)
+
+	// The next page shows it, as a warning toast.
+	next := httptest.NewRequest(http.MethodGet, "/admin/device", nil)
+	next.AddCookie(rec.Result().Cookies()[0])
+	out := httptest.NewRecorder()
+	navApp().ServeHTTP(out, next)
+	assert.Contains(t, out.Body.String(), `class="toast warn"`)
+	assert.Contains(t, out.Body.String(), "This app has no page at")
+}
+
+func TestWithNoEntryTheRootSendsYouToTheFirstPageThatNeedsNoArgumentsAndYouMayOpen(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, Body: webui.Stack{}}
+	byID := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}} // needs an argument: not a start
+	open := webui.Page[webui.NoArgs]{Path: "/overview", Body: webui.Stack{}}
+	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
+
+	rec := serve(h, http.MethodGet, "/admin/")
+	assert.Equal(t, rec.Code, http.StatusFound)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/overview") // not the one with arguments, not the one it may not open
+	assert.Contains(t, flashOfRoot(rec), "so you were sent to /overview.")
+}
+
+func TestARootThatHasAPageIsServedWithNoRedirectAndNoWarning(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.MustCompile("/admin")
+	rec := serve(h, http.MethodGet, "/admin/")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Equal(t, flashOfRoot(rec), "")
+}
+
+func TestTheRootHasNoWarningToGiveWhenThereIsNowhereToSendYou(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	h := webui.App{Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}}}.MustCompile("/admin")
+	rec := serve(h, http.MethodGet, "/admin/")
+	assert.Equal(t, rec.Code, http.StatusOK) // the page that says so
+	assert.Equal(t, flashOfRoot(rec), "")
 }

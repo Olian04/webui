@@ -169,7 +169,11 @@ capitalised, in the rail.
 A page declared at `Path: "/"` is the landing page. The brand in the sidebar
 (logo and name) and the first breadcrumb link to it. It usually has no `Nav`
 label of its own, since the brand is its entry. An app with no such page sends
-the root to the first entry in the navigation.
+the root to the first entry in the navigation that the visitor may open, or
+failing that to the first page whose path has no arguments and whose guard lets
+them in, with a warning toast: *This app has no page at "/", so you were sent to
+…* It is for whoever declared the app, who sees the gap each time the brand is
+used; declaring a page at "/" ends it. With nowhere to send them, a page says so.
 
 ### A page with no entry → the ancestor's highlight
 

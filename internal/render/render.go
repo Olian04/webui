@@ -114,13 +114,13 @@ func New(app *ir.App, prefix string) *Renderer {
 	return r
 }
 
-// FirstHref is the address of the first navigable page the visitor may open, or
-// "". hide is the paths of the entries they may not.
-func (r *Renderer) FirstHref(hide map[string]bool) string {
+// FirstEntry is the address and name of the first navigation entry the visitor may
+// open, or "". hide is the paths of the entries they may not.
+func (r *Renderer) FirstEntry(hide map[string]bool) (href, name string) {
 	if shown := r.shown(hide); len(shown) > 0 {
-		return shown[0].Href // the first the sidebar lists, which sections reorder
+		return shown[0].Href, shown[0].Label // the first the sidebar lists, which sections reorder
 	}
-	return ""
+	return "", ""
 }
 
 // NavPaths is the path template of every navigation entry, in order, so the runtime

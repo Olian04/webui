@@ -59,7 +59,9 @@
 //
 // A page whose path is "/" is the landing page: the brand in the sidebar and the
 // first breadcrumb link to it. Without one, the root goes to the first entry in the
-// navigation.
+// navigation the visitor may open, or failing that the first page whose path has no
+// arguments, and shows a warning that the app has no page at "/". Declare one to
+// choose where the app starts.
 //
 // # Layouts
 //
