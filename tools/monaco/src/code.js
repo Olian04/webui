@@ -133,6 +133,8 @@ const OPTIONS = {
   overviewRulerBorder: false,
   padding: { top: 8, bottom: 8 },
   tabSize: 2,
+  // An editor that has nothing to scroll leaves the wheel to the page, instead of holding it.
+  scrollbar: { alwaysConsumeMouseWheel: false },
 };
 
 const mounted = new Map(); // element → what lets its editor go
