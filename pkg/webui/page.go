@@ -48,6 +48,12 @@ type Page[A any] struct {
 	// Path is the page's address, such as "/device/{id}". It is typed by A, so a
 	// PageID declared for one page's arguments cannot be given to another; a
 	// string literal or an untyped constant converts without ceremony.
+	//
+	// The last segment may be {name...}, which takes the rest of the address: for
+	// "/bucket/{name}/{key...}" the key of "/bucket/photos/2026/summer" is
+	// "2026/summer". Its field must be a string. Each segment of the value is a
+	// breadcrumb that links to the page at that depth, so a nested folder reads as the
+	// folders on the way to it.
 	Path PageID[A]
 
 	// Nav is the page's entry in the sidebar. A page with no Label has no entry.
@@ -164,15 +170,20 @@ func validatePath(path string) []CompileError {
 	if path == "/" {
 		return nil
 	}
-	for _, seg := range strings.Split(path[1:], "/") {
+	segs := strings.Split(path[1:], "/")
+	for i, seg := range segs {
 		switch {
 		case seg == "":
 			return bad("Path has an empty segment", "Remove the doubled or trailing slash.")
 		case strings.ContainsAny(seg, "{}"):
-			if len(seg) < 3 || seg[0] != '{' || seg[len(seg)-1] != '}' ||
-				!placeholderName.MatchString(seg[1:len(seg)-1]) {
+			name, rest, ok := args.Placeholder(seg)
+			if !ok || !placeholderName.MatchString(name) {
 				return bad("Path segment "+seg+" is not a valid placeholder",
-					"A placeholder is a whole segment of the form {name}.")
+					"A placeholder is a whole segment of the form {name}, or {name...} for the rest of the path.")
+			}
+			if rest && i != len(segs)-1 {
+				return bad("Path segment "+seg+" takes the rest of the path but is not the last",
+					"Only the last segment may be {name...}; it matches every segment from there on.")
 			}
 		}
 	}

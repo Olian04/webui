@@ -135,8 +135,16 @@ func formatValue(fv reflect.Value, kind ir.ValueKind) string {
 func Href(template string, path, query map[string]string) string {
 	segs := strings.Split(template, "/")
 	for i, seg := range segs {
-		if len(seg) > 2 && seg[0] == '{' && seg[len(seg)-1] == '}' {
-			segs[i] = url.PathEscape(path[seg[1:len(seg)-1]])
+		name, rest, ok := Placeholder(seg)
+		switch {
+		case ok && rest:
+			parts := strings.Split(path[name], "/") // the slashes are the path's, the rest is escaped
+			for j, part := range parts {
+				parts[j] = url.PathEscape(part)
+			}
+			segs[i] = strings.Join(parts, "/")
+		case ok:
+			segs[i] = url.PathEscape(path[name])
 		}
 	}
 	out := strings.Join(segs, "/")
