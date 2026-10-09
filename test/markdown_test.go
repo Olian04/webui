@@ -109,3 +109,21 @@ func TestAMarkdownIsOnlyEverRead(t *testing.T) {
 	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load, Content: store}), "a Markdown has a Store")
 	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load}), "Markdown.Content")
 }
+
+func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) {
+	t.Parallel()
+
+	text := handbook{Text: "[here](/e) and [there](/device/d1?minutes=5) and [out](//evil.example/x) and [odd](/\\evil.example)"}
+	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Markdown[handbook]{
+		Title: "Handbook", Content: handbookText,
+		Load: func(context.Context) (handbook, error) { return text, nil },
+	}}
+	for prefix, want := range map[string]string{"/admin": "/admin", "/a/b": "/a/b", "": ""} {
+		h := webui.App{Pages: webui.Pages{page}}.MustCompile(prefix)
+		body := serve(h, http.MethodGet, prefix+"/e").Body.String()
+		assert.Contains(t, body, `<a href="`+want+`/e">here</a>`) // the same tab: no target
+		assert.Contains(t, body, `<a href="`+want+`/device/d1?minutes=5">there</a>`)
+		assert.False(t, strings.Contains(body, "evil.example\"")) // another host is never a link
+		assert.False(t, strings.Contains(body, `href="//`))
+	}
+}

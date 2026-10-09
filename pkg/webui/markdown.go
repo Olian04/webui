@@ -12,8 +12,10 @@ import (
 // runbook, release notes or a README, and it only reads: the accessor has no Store.
 //
 // The text is not trusted any more than any other text of the model. Raw HTML in it is
-// never rendered, a link goes only to an http or https address or a mailto and is
-// otherwise left as its text, and a link opens in a tab of its own. An image is not
+// never rendered, a link goes only to an http or https address, a mailto, or a path in the
+// application and is otherwise left as its text. A path, such as /device/dev_1, is an
+// address in the application whatever it is mounted at, so it is given the prefix of
+// [App.Compile] and opens in the same tab; any other link opens in a tab of its own. An image is not
 // drawn, since the page would refuse a picture from elsewhere and a picture is a way
 // for a text to make the visitor's browser fetch from it: it is a link to the
 // picture, named by its alt text.

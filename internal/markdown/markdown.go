@@ -3,7 +3,9 @@
 // than any other text of the model.
 //
 // Raw HTML in the source is never rendered. A link goes only to an http or https
-// address or a mailto, and anything else is left as its text. An image is not drawn,
+// address, a mailto, or a path in the application, and anything else is left as its text.
+// A path, such as /device/dev_1, is an address in the application whatever it is mounted
+// at, so it is given the mount's prefix and opens in the same tab. An image is not drawn,
 // since the page's policy would refuse one from elsewhere and a picture is a way for
 // a text to make the visitor's browser fetch from it: it is a link to the picture,
 // named by its alt text.
@@ -33,7 +35,10 @@ type Result struct {
 	Highlight bool
 }
 
-var highlightKey = parser.NewContextKey()
+var (
+	highlightKey = parser.NewContextKey()
+	prefixKey    = parser.NewContextKey()
+)
 
 var converter = sync.OnceValue(func() goldmark.Markdown {
 	return goldmark.New(
@@ -42,11 +47,13 @@ var converter = sync.OnceValue(func() goldmark.Markdown {
 	)
 })
 
-// Render renders markdown. A text that cannot be rendered is shown as it is, so the
-// reader still has it.
-func Render(source string) Result {
+// Render renders markdown. A link to a path in the application is given prefix, the
+// address the application is mounted at, which is empty or "/admin" and the like. A text
+// that cannot be rendered is shown as it is, so the reader still has it.
+func Render(source, prefix string) Result {
 	var buf bytes.Buffer
 	pc := parser.NewContext()
+	pc.Set(prefixKey, prefix)
 	if err := converter().Convert([]byte(source), &buf, parser.WithContext(pc)); err != nil {
 		return Result{HTML: "<pre>" + string(util.EscapeHTML([]byte(source))) + "</pre>"}
 	}
@@ -62,6 +69,7 @@ type transformer struct{}
 
 func (transformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
+	prefix, _ := pc.Get(prefixKey).(string)
 	var images, links, autos []ast.Node
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -98,11 +106,15 @@ func (transformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Co
 	}
 	for _, n := range links {
 		link := n.(*ast.Link)
-		if !allowed(string(link.Destination)) {
+		dest := string(link.Destination)
+		switch {
+		case local(dest):
+			link.Destination = []byte(prefix + dest)
+		case allowed(dest):
+			external(link, dest)
+		default:
 			unwrap(link)
-			continue
 		}
-		external(link, string(link.Destination))
 	}
 	for _, n := range autos {
 		auto := n.(*ast.AutoLink)
@@ -130,6 +142,20 @@ func allowed(dest string) bool {
 		return true
 	}
 	return false
+}
+
+// local reports whether dest is a path in the application: it starts with a slash, and
+// not two, since "//host" is another site, nor a backslash, which a browser reads as a
+// slash. It has no scheme or host, and nothing a browser would strip or split on.
+func local(dest string) bool {
+	if len(dest) == 0 || dest[0] != '/' || strings.ContainsAny(dest, "\\ \t\r\n\x00") {
+		return false
+	}
+	if len(dest) > 1 && dest[1] == '/' {
+		return false
+	}
+	u, err := url.Parse(dest)
+	return err == nil && u.Scheme == "" && u.Host == "" && u.Opaque == ""
 }
 
 // external makes a link to another site open in a tab of its own, which cannot reach

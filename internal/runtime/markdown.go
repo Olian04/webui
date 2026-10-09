@@ -20,7 +20,7 @@ func (p *Program) markdown(ctx context.Context, req *Request, page *ir.Page, n *
 		}
 		return p.render.Markdown(render.MarkdownView{Node: n, Failed: true})
 	}
-	view := render.NewMarkdownView(n, n.Content.Get(model))
+	view := p.render.MarkdownView(n, n.Content.Get(model))
 	if view.Result.Highlight {
 		req.code.Add("")
 	}

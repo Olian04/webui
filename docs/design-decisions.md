@@ -286,10 +286,17 @@ design element.
   its markup is the same on every request.
 - The text is data, not markup the application wrote, so it is held to what any
   other text of the model is. Raw HTML is never rendered, which is goldmark's default
-  and is not switched off. A link goes only to an http or https address or a mailto,
-  since a relative address would be read against whatever page the text happens to be
-  on; anything else keeps its words and loses its link. Links open in a tab of their
-  own with `noopener`.
+  and is not switched off. A link goes only to an http or https address, a mailto, or
+  a path in the application; anything else keeps its words and loses its link. Links
+  to other sites open in a tab of their own with `noopener`.
+- A path in a link, `/device/dev_1`, is an address in the application, and the text
+  cannot know where the application is mounted, so the renderer puts `Compile`'s
+  prefix in front of it and leaves it in the same tab. This is the only kind of
+  relative link there is: `device`, `../x` and `#section` would be read against
+  whatever page the text happens to be on, so they are not links. A path is not
+  checked against the pages, since the text is only known when it is loaded; one that
+  is no page is the application's own not-found page. `//host` and `/\host` are
+  other sites to a browser, and are refused.
 - An image is a link to the picture, named by its alt text. The content security
   policy refuses a picture from another site, so drawing one would only show a broken
   icon, and a picture is how a text makes the visitor's browser fetch from a server of

@@ -173,9 +173,16 @@
 //	webui.Markdown[Handbook]{Title: "Runbook", Load: loadHandbook, Content: HandbookText}
 //
 // The text is trusted no further than any other text of the model. Raw HTML in it is
-// never rendered, a link goes only to an http or https address or a mailto (and opens
-// in a tab of its own), and an image is not drawn but is a link to the picture, since
-// the page would refuse a picture from elsewhere. It needs no script. A fenced code
+// never rendered, a link goes only to an http or https address (which opens in a tab of
+// its own), a mailto, or a path in the application, and an image is not drawn but is a
+// link to the picture, since the page would refuse a picture from elsewhere.
+//
+// A link that is a path, such as [Config](/config) or [a device](/device/dev_1?minutes=15),
+// is an address in the application whatever it is mounted at: Compile's prefix is put in
+// front of it, and it opens in the same tab. It is not checked, since the text is not known
+// until it is loaded, and a path that is no page is the application's own not-found page.
+// An address with two slashes or a backslash is another site, and is not a link.
+// It needs no script. A fenced code
 // block that names a language is coloured by the editor, which the page then loads, as
 // for an [Editor] but never with a language service.
 //

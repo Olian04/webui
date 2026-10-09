@@ -1590,18 +1590,18 @@ select.input option {
 }
 /* A task list has the app's checkbox in place of a bullet. */
 .md li:has(> input[type='checkbox']) {
+  position: relative;
   list-style: none;
   margin-left: -20px;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  padding-left: 25px;
 }
 .md input[type='checkbox'] {
-  flex: none;
+  position: absolute;
+  left: 2px;
+  top: 0.4em;
   margin: 0;
   opacity: 0.85;
   cursor: default;
-  align-self: center;
 }
 .md blockquote {
   padding: 2px 0 2px 12px;
