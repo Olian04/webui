@@ -39,11 +39,15 @@ type FieldProps struct {
 	Required bool
 	Hint     string
 	Error    string
-	Attrs    templ.Attributes
+
+	// Static is a field that shows a value and offers no control: the label is
+	// quieter and the value larger, so the two read as a label and its value.
+	Static bool
+	Attrs  templ.Attributes
 }
 
 templ Field(p FieldProps) {
-	<div class="field" { p.Attrs... }>
+	<div class={ "field", templ.KV("field-static", p.Static) } { p.Attrs... }>
 		if p.Label != "" {
 			<label class="lbl" for={ p.For }>
 				{ p.Label }

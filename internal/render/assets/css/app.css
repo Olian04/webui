@@ -1607,12 +1607,20 @@ td.actions .gate:hover::after,
     monospace;
   color: var(--text-2);
 }
-/* A value shown and not offered for editing: text, a badge or a bar, in no box. */
+/* A value shown and not offered for editing: text, a badge or a bar, in no box. The
+   label is quieter and the value larger, so they read as a label and its value. */
 .static {
   display: flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 28px;
+  font-size: 14.5px;
   overflow-wrap: anywhere;
+}
+.field-static label.lbl {
+  font-size: 12px;
+  font-weight: 400;
+  margin-bottom: 1px;
+  color: var(--text-2);
 }
 
 /* ------------------------------ column filters --------------------------- */

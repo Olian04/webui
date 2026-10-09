@@ -113,6 +113,21 @@ func TestAFormTheVisitorMayNotSubmitAndCannotLeaveHasNoFooter(t *testing.T) {
 	assert.False(t, strings.Contains(body, ">Save</button>"))
 }
 
+func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testing.T) {
+	t.Parallel()
+
+	f := okForm()
+	f.Load = func(context.Context) (Device, error) { return Device{Ip: "10.0.0.1"}, nil } // an empty ID
+	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+
+	// The ID has no Store: its field is the quiet kind, and says it is empty.
+	assert.Contains(t, body, `<div class="field field-static">`)
+	assert.Contains(t, body, `<div class="static"><span class="dim" aria-hidden="true">—</span> <span class="sr-only">empty</span></div>`)
+	// The IP, which can be edited, is an input in an ordinary field.
+	assert.Contains(t, body, `name="f0_1"`)
+	assert.Equal(t, strings.Count(body, `field-static`), 1)
+}
+
 func TestFormWithoutSubmitIsReadOnly(t *testing.T) {
 	t.Parallel()
 

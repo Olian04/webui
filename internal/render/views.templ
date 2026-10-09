@@ -399,7 +399,7 @@ templ (r *Renderer) formField(v FormView, f ir.Field) {
 templ (r *Renderer) input(fv fieldView) {
 	@c.Field(c.FieldProps{
 		For: fv.ID, Label: fv.Field.Label, Required: fv.Rules.Required,
-		Hint: fv.Hint, Error: fv.Error,
+		Hint: fv.Hint, Error: fv.Error, Static: fv.ReadOnly,
 	}) {
 		switch {
 			case fv.Field.Display == ir.DisplaySlider && !fv.ReadOnly:
@@ -420,11 +420,16 @@ templ (r *Renderer) input(fv fieldView) {
 					/>
 					<output class="range-value" for={ fv.ID } data-range-value>{ fv.Value }</output>
 				</div>
-			case fv.ReadOnly || fv.Field.Display != ir.DisplayText:
-				// A value that cannot be changed, or a badge or a bar: shown as output, in
-				// the form's own text, and not as an input that is refused.
+			case fv.ReadOnly:
+				// A value that cannot be changed, a badge and a bar among them: shown as
+				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					@value(fv.Field, fv.Value)
+					if fv.Value == "" && fv.Field.Display == ir.DisplayText {
+						<span class="dim" aria-hidden="true">—</span>
+						<span class="sr-only">empty</span>
+					} else {
+						@value(fv.Field, fv.Value)
+					}
 				</div>
 			default:
 				@c.Input(c.InputProps{
