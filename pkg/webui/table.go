@@ -105,6 +105,11 @@ type Table[M any] struct {
 	// Use Rows when the rows are all at hand or cheap to list in full, such as a
 	// slice in memory or a small query. It is all that most tables need.
 	//
+	// If Rows or Load returns an error the panel says "Could not load", the cause is
+	// logged and the rest of the page stands. The error's text is not shown to the
+	// visitor, since it may name things they should not see. Return no rows, not an
+	// error, for a table that is empty.
+	//
 	// Rows is called on every request that needs the table's rows: each page load,
 	// sort, filter, page change, row action, and search. The library keeps nothing
 	// between requests, so if listing is costly, cache inside Rows, or use Load.

@@ -120,7 +120,8 @@
 // A [Form] loads one model and shows its Fields. An accessor with a Store is an input,
 // and its Rules (required, length, pattern, bounds) are rendered as HTML constraint
 // attributes and checked again on the server before the action runs. Submit is an
-// [Action], and its Run says how it ended.
+// [Action], and its Run says how it ended. A Form with no Submit is the detail view:
+// a panel of labelled values to read, with nothing to edit.
 //
 // # Outcomes
 //
