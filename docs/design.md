@@ -209,6 +209,14 @@ filtered in its column headers (§10).
 
 8/12 padding, scrolls independently, bottom padding clears the status bar.
 
+A table panel takes the height the content region has and no more. When its rows do
+not fit, the panel's head and foot (the title and the pager) stay in place and only its
+body scrolls, with the header row sticky at its top; the page itself does not scroll
+for it. A panel with few rows is as short as they are. Any other panel keeps its full
+height, and the region scrolls to reach it, as does a page where a form sits above a
+table that cannot fit. A filter's form is pinned to the window while it is open, so the
+scrolling body cannot clip it. Where `:has()` is unknown the page scrolls as a whole.
+
 ### Status bar
 
 26px, fixed to the bottom, monospace 11.5. Shows the method and address of the

@@ -197,6 +197,7 @@ templ (r *Renderer) Table(v TableView) {
 		Desc:   v.Node.Desc,
 		Status: v.panelStatus(),
 		Leaf:    LeafID(v.Node.At),
+		Grows:   true,
 		Footer:  r.tableFooter(v),
 	}) {
 		if v.Failed {

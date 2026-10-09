@@ -87,7 +87,7 @@ func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
 func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm?devices.sort=id&open-alerts.sort=severity&open-alerts.desc=true").Body.String()
-	assert.Equal(t, strings.Count(body, `class="panel"`), 2)
+	assert.Equal(t, strings.Count(body, `class="panel grows"`), 2)
 	assert.Contains(t, body, `aria-sort="ascending"`)  // devices, by its sort
 	assert.Contains(t, body, `aria-sort="descending"`) // alerts, by its own
 	assert.Contains(t, body, `name="devices.filter.id"`)

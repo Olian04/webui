@@ -211,17 +211,56 @@
     });
   }
 
+  // A filter's form opens beneath its header, inside a table body that scrolls, which
+  // would clip it. While it is open, script pins it to the window at that spot, and
+  // lets it go when the body scrolls. Without script it stays where it is.
+  function pin(d) {
+    var pop = $('.filter-pop', d);
+    var btn = $('summary', d);
+    if (!pop || !btn) return;
+    var at = btn.getBoundingClientRect();
+    pop.classList.add('pinned');
+    pop.style.top = at.bottom + 6 + 'px';
+    var width = pop.offsetWidth;
+    var left = d.closest('th.num') ? at.right - width : at.left;
+    pop.style.left = Math.max(8, Math.min(left, window.innerWidth - width - 8)) + 'px';
+  }
+
+  function unpin(d) {
+    var pop = $('.filter-pop', d);
+    if (!pop) return;
+    pop.classList.remove('pinned');
+    pop.style.top = pop.style.left = '';
+  }
+
   document.addEventListener(
     'toggle',
     function (e) {
-      if (e.target.matches && e.target.matches(POPOVERS) && e.target.open) {
+      if (!e.target.matches || !e.target.matches(POPOVERS)) return;
+      if (e.target.open) {
         closeFilters(e.target);
+        if (e.target.matches('details.filter')) pin(e.target);
         var first = $('input:not([type="hidden"])', e.target);
         if (first) first.focus();
+      } else if (e.target.matches('details.filter')) {
+        unpin(e.target);
       }
     },
     true,
   );
+
+  document.addEventListener(
+    'scroll',
+    function (e) {
+      if (e.target.closest && e.target.closest('.filter-pop')) return;
+      closeFilters(null);
+    },
+    true,
+  );
+
+  window.addEventListener('resize', function () {
+    closeFilters(null);
+  });
 
   document.addEventListener('click', function (e) {
     if (!e.target.closest(POPOVERS)) closeFilters(null);

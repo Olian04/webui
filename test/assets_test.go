@@ -189,3 +189,19 @@ func TestAnErrorPageIsCompressedAndARedirectIsNot(t *testing.T) {
 	assert.Equal(t, root.Code, http.StatusFound)
 	assert.Equal(t, root.Header().Get("Content-Encoding"), "")
 }
+
+func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.T) {
+	t.Parallel()
+
+	h := cancelApp(false)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	// The markup says which panel grows; the stylesheet gives it the height there is,
+	// keeps its head and foot in place, and scrolls only its body.
+	for _, rule := range []string{
+		".panel.grows {\n  flex: 0 1 auto;\n  min-height: 0;\n  overflow: hidden;\n}",
+		".panel.grows > .panel-body {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow: auto;\n}",
+		".stack:has(.panel.grows)",
+	} {
+		assert.Contains(t, css, rule)
+	}
+}

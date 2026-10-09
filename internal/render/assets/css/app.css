@@ -602,6 +602,10 @@ a.side-brand:hover {
   min-height: 0;
   overflow: auto;
   padding: 12px 12px 46px; /* the same space above the content as beside it */
+  /* A column, so a table panel can take the height there is. Anything else keeps its
+     own height, and the page scrolls to reach it, as before. */
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---------------------------------------------------------------------------
@@ -786,6 +790,42 @@ a.side-brand:hover {
 .panel-body {
   padding: 0 0 0;
   min-width: 0;
+}
+/* A table panel takes the height the page has, and no more: its head and foot stay
+   put and its body, with the sticky header, is what scrolls. The layouts above it
+   must be allowed to shrink for that, so they are, but only the ones holding such a
+   panel; everything else keeps its height and the page scrolls to reach it. A panel
+   with few rows is as short as they are. Where :has() is unknown the page scrolls, as
+   it did. */
+.panel {
+  flex-shrink: 0;
+}
+.panel.grows {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.panel.grows > .panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.stack:has(.panel.grows),
+[data-tabbody]:has(.panel.grows) {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+[data-tabbody]:has(.panel.grows) {
+  display: flex;
+  flex-direction: column;
+}
+.split:has(.panel.grows) {
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+}
+.split:has(.panel.grows) > * {
+  min-height: 0;
 }
 /* A form's fields sit inside the panel body, inset from its edge. */
 .panel-body.pad {
@@ -1729,6 +1769,10 @@ th:focus-within .filter-btn,
    filter button goes before the label, where its hidden box takes no space from it. */
 th.num .th-in {
   flex-direction: row-reverse;
+}
+.filter-pop.pinned {
+  position: fixed;
+  right: auto;
 }
 th.num .filter-pop {
   left: auto;
