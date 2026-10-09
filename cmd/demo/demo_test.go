@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -255,9 +256,26 @@ func TestSearchAsksSeveralPages(t *testing.T) {
 	assert.True(t, groups["Sites"])
 }
 
+// linked is the address a page links an asset at, with the hash of its contents in it.
+func linked(t *testing.T, h http.Handler, logical string) string {
+	t.Helper()
+
+	dot := strings.LastIndex(logical, ".")
+	base, ext := logical, ""
+	if dot > 0 {
+		base, ext = logical[:dot], logical[dot:]
+	}
+	m := regexp.MustCompile(`(/[^"' ]*_webui/` + regexp.QuoteMeta(base) + `\.[0-9a-f]{8}` + regexp.QuoteMeta(ext) + `)["' >]`).
+		FindStringSubmatch(get(h, "/admin/").Body.String())
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
 func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	h := handler(t)
-	logo := get(h, "/admin/_webui/logo")
+	logo := get(h, linked(t, h, "logo"))
 	assert.Equal(t, logo.Header().Get("Content-Type"), "image/png")
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
 
@@ -265,8 +283,8 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	a.Theme = themeFor("#2f9e8f")
 	themed, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	assert.Contains(t, get(themed, "/admin/_webui/theme.css").Body.String(), "--blue: #2f9e8f;")
-	assert.Equal(t, get(h, "/admin/_webui/theme.css").Code, http.StatusNotFound) // none by default
+	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #2f9e8f;")
+	assert.Equal(t, linked(t, h, "theme.css"), "") // none by default
 
 	// A colour cannot break out of its declaration: that is a Compile error.
 	a.Theme = themeFor("red; } body { display: none")

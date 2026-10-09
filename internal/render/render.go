@@ -74,9 +74,13 @@ type Renderer struct {
 
 	// settings are the entries of the settings menu, with their addresses resolved.
 	settings []settingsEntry
-	hasCSS   bool // theme tokens present, so theme.css is linked
-	search   bool // some table is searchable, so the page script has something to ask
-	logo     bool
+
+	// served is the name each asset is served as, with the hash of its contents in
+	// it, by the name it is known by here. It is set once, when the assets are built.
+	served map[string]string
+	hasCSS bool // theme tokens present, so theme.css is linked
+	search bool // some table is searchable, so the page script has something to ask
+	logo   bool
 }
 
 // settingsEntry is one entry of the settings menu. Path is the path template of the
@@ -175,8 +179,16 @@ func (r *Renderer) Href(path string) string {
 	return r.prefix + path
 }
 
-// AssetHref is the address of a framework asset.
-func (r *Renderer) AssetHref(name string) string { return r.prefix + AssetDir + "/" + name }
+// AssetHref is the address of a framework asset, by the name it is known by here
+// ("app.css"). The address carries a short hash of the file's contents, so it
+// changes when the file does and a browser can keep it for good. A name that is no
+// asset, such as the search, is its own address.
+func (r *Renderer) AssetHref(name string) string {
+	if served, ok := r.served[name]; ok {
+		name = served
+	}
+	return r.prefix + AssetDir + "/" + name
+}
 
 // Home is the first breadcrumb: the brand, linking to the root.
 func (r *Renderer) Home() Crumb {

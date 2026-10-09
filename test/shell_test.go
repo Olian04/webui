@@ -84,21 +84,21 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{}.MustCompile("/admin")
-	rec := serve(h, http.MethodGet, "/admin/_webui/app.css")
+	rec := serve(h, http.MethodGet, assetURL(t, h, "app.css"))
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/css")
 	assert.Contains(t, rec.Body.String(), "--canvas")
 	etag := rec.Header().Get("ETag")
 	assert.True(t, etag != "")
 
-	cond := httptest.NewRequest(http.MethodGet, "/admin/_webui/app.css", nil)
+	cond := httptest.NewRequest(http.MethodGet, assetURL(t, h, "app.css"), nil)
 	cond.Header.Set("If-None-Match", etag)
 	rec2 := httptest.NewRecorder()
 	h.ServeHTTP(rec2, cond)
 	assert.Equal(t, rec2.Code, http.StatusNotModified)
 
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/missing.css").Code, http.StatusNotFound)
-	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/prefs.js").Code, http.StatusOK)
+	assert.Equal(t, serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Code, http.StatusOK)
 }
 
 func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
@@ -115,22 +115,23 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	// The app does not choose light or dark: the document carries no data-theme
 	// attribute, and the stylesheet follows the viewer's system until they pick one.
 	assert.Contains(t, page, `<html lang="en">`)
-	assert.Contains(t, page, `/admin/_webui/theme.css`)
-	assert.Contains(t, page, `/admin/_webui/logo`)
+	assetURL(t, h, "theme.css") // linked, with its hash
+	assetURL(t, h, "logo")
 
-	css := serve(h, http.MethodGet, "/admin/_webui/theme.css")
+	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css"))
 	assert.Contains(t, css.Body.String(), "--blue: #ff6600;")
 
-	base := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	base := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, base, "@media (prefers-color-scheme: light)")
 	assert.Contains(t, base, ":root:not([data-theme])")
 
-	logo := serve(h, http.MethodGet, "/admin/_webui/logo")
+	logo := serve(h, http.MethodGet, assetURL(t, h, "logo"))
 	assert.Equal(t, logo.Header().Get("Content-Type"), "image/png")
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
 
 	// No tokens, no logo: nothing to link, nothing to serve.
 	plain := webui.App{}.MustCompile("")
-	assert.Equal(t, serve(plain, http.MethodGet, "/_webui/theme.css").Code, http.StatusNotFound)
-	assert.Equal(t, serve(plain, http.MethodGet, "/_webui/logo").Code, http.StatusNotFound)
+	plainPage := serve(plain, http.MethodGet, "/").Body.String()
+	assert.False(t, strings.Contains(plainPage, "theme."))
+	assert.False(t, strings.Contains(plainPage, "/_webui/logo"))
 }

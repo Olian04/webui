@@ -98,14 +98,15 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 
 	h := navApp()
 	page := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, page, `<link rel="stylesheet" href="/admin/_webui/fontawesome.css">`)
+	assert.Contains(t, page, `<link rel="stylesheet" href="`+assetURL(t, h, "fontawesome.css")+`">`)
 
-	css := serve(h, http.MethodGet, "/admin/_webui/fontawesome.css")
+	css := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css"))
 	assert.Equal(t, css.Code, http.StatusOK)
 	assert.Contains(t, css.Body.String(), `.fa-house::before{content:"\f015"}`)
-	assert.Contains(t, css.Body.String(), `url(fa-solid-900.woff2)`) // beside the stylesheet, so a relative url finds it
+	font0 := assetURL(t, h, "fa-solid-900.woff2")
+	assert.Contains(t, css.Body.String(), `url(`+font0[strings.LastIndex(font0, "/")+1:]+`)`) // beside the stylesheet, so a relative url finds it
 
-	font := serve(h, http.MethodGet, "/admin/_webui/fa-solid-900.woff2")
+	font := serve(h, http.MethodGet, assetURL(t, h, "fa-solid-900.woff2"))
 	assert.Equal(t, font.Code, http.StatusOK)
 	assert.Equal(t, font.Header().Get("Content-Type"), "font/woff2")
 }

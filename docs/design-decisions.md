@@ -220,6 +220,22 @@ design element.
   text are not themeable: they are what makes the modes differ, and the mode is the
   viewer's choice.
 
+## Assets and transport
+
+- Every asset is served under a name with a short hash of its contents before the
+  extension (`app.410f9909.css`), found by pages through `Renderer.AssetHref`. The
+  address changes when, and only when, the file does, so it is cached for a year as
+  `immutable` and never revalidated. The icon stylesheet names the font by its
+  hashed name, so the font is hashed first. An unversioned address is a 404: pages
+  are `no-store`, so no cached page names an old one.
+- Text assets are compressed once, with gzip at the best level, when the app is
+  built, and served with their own validator (`"<hash>-gzip"`) and `Vary:
+  Accept-Encoding`. Pages and the search are built per request, so they are
+  compressed by a middleware when the client accepts it, deciding from the content
+  type when the status is written. Images and fonts are left alone, as they are
+  compressed already. There is no CSRF token in a page, so compressing HTML does not
+  expose one.
+
 ## Compiling and errors
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one

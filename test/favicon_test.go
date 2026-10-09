@@ -28,11 +28,11 @@ func TestTheFaviconIsMadeFromTheLogoAndServed(t *testing.T) {
 
 	h := webui.App{Brand: webui.Brand{Name: "Acme", Logo: logo()}}.MustCompile("/admin")
 	page := serve(h, http.MethodGet, "/admin/").Body.String()
-	assert.Contains(t, page, `<link rel="icon" type="image/png" sizes="32x32" href="/admin/_webui/favicon-32.png">`)
-	assert.Contains(t, page, `<link rel="apple-touch-icon" sizes="180x180" href="/admin/_webui/favicon-180.png">`)
+	assert.Contains(t, page, `<link rel="icon" type="image/png" sizes="32x32" href="`+assetURL(t, h, "favicon-32.png")+`">`)
+	assert.Contains(t, page, `<link rel="apple-touch-icon" sizes="180x180" href="`+assetURL(t, h, "favicon-180.png")+`">`)
 
 	for name, size := range map[string]int{"favicon-32.png": 32, "favicon-180.png": 180} {
-		rec := serve(h, http.MethodGet, "/admin/_webui/"+name)
+		rec := serve(h, http.MethodGet, assetURL(t, h, name))
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.Equal(t, rec.Header().Get("Content-Type"), "image/png")
 		img, err := png.Decode(bytes.NewReader(rec.Body.Bytes()))
@@ -47,12 +47,12 @@ func TestWithoutALogoTheFaviconIsTheLibrarysMark(t *testing.T) {
 
 	h := webui.App{}.MustCompile("/admin")
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/").Body.String(),
-		`<link rel="icon" type="image/svg+xml" href="/admin/_webui/favicon.svg">`)
+		`<link rel="icon" type="image/svg+xml" href="`+assetURL(t, h, "favicon.svg")+`">`)
 
-	rec := serve(h, http.MethodGet, "/admin/_webui/favicon.svg")
+	rec := serve(h, http.MethodGet, assetURL(t, h, "favicon.svg"))
 	assert.Equal(t, rec.Header().Get("Content-Type"), "image/svg+xml")
 	assert.True(t, strings.HasPrefix(rec.Body.String(), "<svg"))
-	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/favicon-32.png").Code, http.StatusNotFound)
+	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/").Body.String(), "favicon-32"))
 }
 
 func TestNoFaviconGeneratesAndServesNothing(t *testing.T) {
@@ -66,9 +66,9 @@ func TestNoFaviconGeneratesAndServesNothing(t *testing.T) {
 		page := serve(h, http.MethodGet, "/admin/").Body.String()
 		assert.False(t, strings.Contains(page, `rel="icon"`))
 		assert.False(t, strings.Contains(page, "apple-touch-icon"))
-		for _, file := range []string{"favicon.svg", "favicon-32.png", "favicon-180.png"} {
-			if got := serve(h, http.MethodGet, "/admin/_webui/"+file).Code; got != http.StatusNotFound {
-				t.Errorf("%s: %s = %d, want 404", name, file, got)
+		for _, file := range []string{"favicon.svg", "favicon-32", "favicon-180"} {
+			if strings.Contains(page, file) {
+				t.Errorf("%s: the page links %s", name, file)
 			}
 		}
 	}

@@ -83,5 +83,5 @@ func (p *Program) add(method, path string, h http.Handler) {
 	if method != "" {
 		pattern = method + " " + path
 	}
-	p.mux.Handle(pattern, secure(p.recovered(h)))
+	p.mux.Handle(pattern, secure(compressed(p.recovered(h))))
 }

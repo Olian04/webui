@@ -175,6 +175,6 @@ func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
 
 	h := formApp(okForm())
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/dev1").Body.String(), `<div class="panel-body pad">`)
-	css := serve(h, http.MethodGet, "/admin/_webui/app.css").Body.String()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 10px 14px;")
 }
