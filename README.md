@@ -169,7 +169,7 @@ This half is for people changing the library.
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
 | `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
-| `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace and plugin, and a Cursor plugin. The repository root is the plugin, and `skills/` is where both find the skill. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace, which installs only `skills/webui` and not the source around it, and a Cursor plugin, which takes the repository root. |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 
 Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and

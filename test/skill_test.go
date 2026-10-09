@@ -157,22 +157,29 @@ func TestThePluginManifestsPackageTheSkill(t *testing.T) {
 		return out
 	}
 
-	for _, path := range []string{"../.claude-plugin/plugin.json", "../.cursor-plugin/plugin.json"} {
-		assert.Equal(t, read(path)["name"], "webui")
-		assert.Equal(t, read(path)["license"], "MIT")
-		// No version: the skill is the same for every version of the library, so an
-		// install follows the default branch.
-		_, pinned := read(path)["version"]
-		assert.False(t, pinned)
-	}
+	// Cursor takes the repository root as the plugin.
+	cursor := read("../.cursor-plugin/plugin.json")
+	assert.Equal(t, cursor["name"], "webui")
+	assert.Equal(t, cursor["license"], "MIT")
 
+	// Claude Code installs only the folder of the skill, not the Go source around it:
+	// the entry names that folder as its source, and a folder with a SKILL.md at its
+	// root is a plugin of one skill.
 	market := read("../.claude-plugin/marketplace.json")
 	assert.Equal(t, market["name"], "olian04")
 	plugins, _ := market["plugins"].([]any)
 	assert.Equal(t, len(plugins), 1)
 	entry, _ := plugins[0].(map[string]any)
 	assert.Equal(t, entry["name"], "webui")
-	assert.Equal(t, entry["source"], "./") // the repository root, where skills/ is
+	assert.Equal(t, entry["license"], "MIT")
+	source, _ := entry["source"].(map[string]any)
+	assert.Equal(t, source["source"], "git-subdir")
+	assert.Equal(t, source["url"], "Olian04/webui")
+	assert.Equal(t, source["path"], "skills/webui")
+	// No version: the skill is the same for every version of the library, so an
+	// install follows the default branch.
+	_, pinned := entry["version"]
+	assert.False(t, pinned)
 
 	// The README tells people to install what the marketplace calls it.
 	readme, err := os.ReadFile("../README.md")

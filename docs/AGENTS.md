@@ -14,7 +14,7 @@
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
-| `.claude-plugin`, `.cursor-plugin` | Packaging of the skill for Claude Code (marketplace and plugin) and Cursor (plugin). The repo root is the plugin. No `version` is set, so installs follow the default branch. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging of the skill. The Claude Code marketplace installs only `skills/webui` (a `git-subdir` source, so users do not pull the Go source); the Cursor plugin takes the repo root. No `version` is set, so installs follow the default branch. |
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
