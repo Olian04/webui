@@ -657,7 +657,7 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 				Desc:  "The cause was logged on the server. Refresh to try again.",
 			})
 		} else {
-			<div class="panel-body">
+			<div class="panel-body pad">
 				<article class="md" aria-label={ v.Node.Content.Label }>
 					@templ.Raw(v.Result.HTML)
 				</article>

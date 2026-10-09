@@ -24,7 +24,7 @@ var (
 		Path: "/handbook",
 		Nav:  webui.Nav{Label: "Runbook", Icon: "book-open", Section: "Operations"},
 		Body: webui.Markdown[Handbook]{
-			Title:   "Collector handbook",
+			Title:   "Handbook",
 			Desc:    "A Markdown: text set as markdown, read only. Raw HTML is never rendered.",
 			Load:    func(context.Context) (Handbook, error) { return Handbook{Text: handbookSource}, nil },
 			Content: HandbookText,
@@ -41,7 +41,9 @@ const handbookSource = "# Collector handbook\n" +
 	"\n" +
 	"1. Open **System** and read the health badge.\n" +
 	"2. Check the queue depth. Above 5 000 the sinks are not keeping up.\n" +
-	"3. Look at the **Audit log** for a change in the last hour.\n" +
+	"3. Look at the **Audit log** for a change in the last hour:\n" +
+	"   - a configuration saved by someone else\n" +
+	"   - a sink that was restarted without a reason\n" +
 	"\n" +
 	"| Health | Meaning | First step |\n" +
 	"| --- | --- | --- |\n" +
@@ -61,6 +63,15 @@ const handbookSource = "# Collector handbook\n" +
 	"```json\n" +
 	"{ \"sample\": 0.25, \"sinks\": [{ \"kind\": \"stdout\" }] }\n" +
 	"```\n" +
+	"\n" +
+	"### Who to call\n" +
+	"\n" +
+	"Start with the person on call, and go on to the owner of the site only when the queue\n" +
+	"is still growing after *ten minutes*.\n" +
+	"\n" +
+	"#### Contacts\n" +
+	"\n" +
+	"Numbers are kept in `/etc/collector/oncall.yml` on every host.\n" +
 	"\n" +
 	"## Checklist\n" +
 	"\n" +
