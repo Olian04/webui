@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"maps"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -31,15 +32,12 @@ type Tab struct {
 
 func (t Tab) key() string { return args.Slug(t.Label) }
 
-// Tabs is a labelled set of bodies, one shown at a time. The selected tab is kept
-// in the address as "<ID>.tab", so it survives a reload and can be linked to; the
-// library owns that parameter. Only the selected panel is loaded, and an empty or
-// unknown value selects the first.
+// Tabs is a set of labelled bodies, of which one is shown at a time. The selected
+// tab is kept in the address as "tabs.tab" ("tabs-2.tab" for a second Tabs on the
+// page), so it survives a reload and can be linked to. The library owns that
+// parameter. Only the selected panel is loaded, and an empty or unknown value
+// selects the first.
 type Tabs struct {
-	// ID names the tabs' state in the address. It defaults to "tabs", and must be
-	// unique within the page.
-	ID string
-
 	// Panels are the tabs, in order.
 	Panels []Tab
 }
@@ -68,9 +66,6 @@ func validateChildren(v *bodyValidator, what string, children []PageBody) {
 }
 
 func (t Tabs) validateBody(v *bodyValidator) {
-	v.id("Tabs", t.ID)
-	v.tabs++
-	tabs := v.tabs
 	if len(t.Panels) == 0 {
 		v.add("Tabs has no Panels", "Declare at least one Tab.")
 	}
@@ -91,9 +86,7 @@ func (t Tabs) validateBody(v *bodyValidator) {
 			v.add(fmt.Sprintf("Tabs.Panels[%d] has no Body", i), "Set Body to a Table, Form or layout.")
 			continue
 		}
-		v.scope = append(v.scope, panel{tabs: tabs, index: i})
 		p.Body.validateBody(v)
-		v.scope = v.scope[:len(v.scope)-1]
 	}
 }
 
@@ -106,7 +99,7 @@ func (s Split) lowerBody(at ir.Addr) ir.Node {
 }
 
 func (t Tabs) lowerBody(at ir.Addr) ir.Node {
-	out := &ir.Tabs{At: at, ID: effectiveID(t.ID, "tabs")}
+	out := &ir.Tabs{At: at}
 	for i, p := range t.Panels {
 		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Body: p.Body.lowerBody(childAddr(at, i))})
 	}
@@ -125,4 +118,51 @@ func lowerChildren(at ir.Addr, children []PageBody) []ir.Node {
 // nothing the user typed, so a refresh request cannot name anything else.
 func childAddr(at ir.Addr, i int) ir.Addr {
 	return append(append(ir.Addr(nil), at...), i)
+}
+
+// assignViewIDs names the view state of every table and tabs on a page: the part
+// before the dot in "devices.sort" and "tabs.tab". A table is named by its title,
+// spelled as the address spells any label, and a Tabs is "tabs". A name that
+// something else on screen already has gets "-2", then "-3". The panels of one Tabs
+// are never on screen together, so each starts from the names taken before the Tabs
+// and may repeat another panel's: the same table in two panels keeps its sort and
+// filters in both.
+func assignViewIDs(body ir.Node) {
+	var walk func(n ir.Node, taken map[string]bool)
+	claim := func(base string, taken map[string]bool) string {
+		id := base
+		for n := 2; taken[id]; n++ {
+			id = fmt.Sprintf("%s-%d", base, n)
+		}
+		taken[id] = true
+		return id
+	}
+	walk = func(n ir.Node, taken map[string]bool) {
+		switch n := n.(type) {
+		case *ir.Stack:
+			for _, c := range n.Children {
+				walk(c, taken)
+			}
+		case *ir.Split:
+			for _, c := range n.Children {
+				walk(c, taken)
+			}
+		case *ir.Tabs:
+			n.ID = claim("tabs", taken)
+			all := maps.Clone(taken)
+			for _, t := range n.Tabs {
+				panel := maps.Clone(taken)
+				walk(t.Body, panel)
+				maps.Copy(all, panel)
+			}
+			maps.Copy(taken, all)
+		case *ir.Table:
+			base := args.Slug(n.Title)
+			if base == "" {
+				base = "table"
+			}
+			n.ID = claim(base, taken)
+		}
+	}
+	walk(body, map[string]bool{})
 }

@@ -84,16 +84,21 @@
 //
 // A table says where its rows come from with exactly one of two fields:
 //
-//   - Rows returns every row. The library filters, sorts and pages them from the
-//     columns, comparing numbers as numbers and text as text. This is all most tables
-//     need.
-//   - Load is for a source that pages itself. It is handed a [Query], the window,
-//     sort and filters in force, and returns a [Window] of rows.
+//   - Rows returns every row, and the library filters, sorts and pages them from the
+//     columns, comparing numbers as numbers and text as text. Use it when the rows
+//     are all at hand or cheap to list in full, such as a slice, a cache or a small
+//     query. It is all most tables need.
+//   - Load returns one page of rows and does the filtering, sorting and paging
+//     itself. It is handed a [Query], with the window, sort and filters in force,
+//     and returns a [Window]. Use it when the source can do that work better than
+//     the library, or is too large to list in full, such as a database table or a
+//     remote API.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Badge]. A table keeps
-// its sort, filters and page in the address under its ID, so a copied address
-// reproduces the view. A column is named by its Label.
+// its sort, filters and page in the address, named by its title, so a copied address
+// reproduces the view. A table pages, 25 rows at a time unless it says otherwise. A
+// column is named by its Label.
 //
 // A table with a RowClick makes each row a link to another page, with a [Link]:
 //

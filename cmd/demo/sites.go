@@ -69,13 +69,12 @@ var SiteDetail = webui.Page[SiteArgs]{
 		return nil
 	},
 	// Two tables side by side. Each keeps its own sort, filters and page in the
-	// address under its ID, so they need distinct ones: ?devices.sort=… and
-	// ?alerts.sort=… do not touch each other.
+	// address under its title, so ?devices.sort=… and ?open-alerts.sort=… do not
+	// touch each other.
 	Body: webui.Split{SiteDevices, SiteAlerts},
 }
 
 var SiteDevices = webui.Table[Device]{
-	ID:       "devices",
 	Title:    "Devices",
 	PageSize: 5,
 	Rows: func(ctx context.Context) ([]Device, error) {
@@ -91,7 +90,6 @@ var SiteDevices = webui.Table[Device]{
 }
 
 var SiteAlerts = webui.Table[Alert]{
-	ID:    "alerts",
 	Title: "Open alerts",
 	Rows: func(ctx context.Context) ([]Alert, error) {
 		return service.AlertsAt(webui.ArgsOf[SiteArgs](ctx).Name), nil

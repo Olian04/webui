@@ -68,15 +68,21 @@ type Window[M any] struct {
 	Total int
 }
 
-// Table is a leaf that lists rows of a model M.
+// Table is a leaf that lists rows of a model M, one row to a line.
 //
-// Every column header is a sort link with a filter beside it. A table keeps its
-// sort, its filters, and its page, in the address
-// under its ID: "devices.offset", "devices.sort", "devices.desc". The library owns
-// those parameters; the page's argument struct never sees them. The panels of one
-// [Tabs] are never visible together, so they may share an ID.
+// Every column header sorts the table and has a filter beside it. Where the rows
+// come from is Rows or Load, one of the two: Rows suits data that is easy to list
+// in full, and Load suits data that is better paged by its source.
 //
-// A Table has exactly one of Rows and Load, which [App.Compile] checks.
+// A table keeps its sort, filters and page in the address, so a copied link shows
+// the same view. Each of those parameters starts with the table's name, which is
+// its Title in lower case with dashes: a table titled "Devices" uses
+// "devices.sort", "devices.desc", "devices.offset" and so on, and a table with no
+// Title is called "table". When two tables on one page would have the same name, the
+// later one gets a number, as in "devices-2". The panels of a [Tabs] are never shown
+// together, so tables in different panels may share a name, and then share their
+// state. The library owns these parameters; the page's argument struct never sees
+// them.
 type Table[M any] struct {
 	// Title is the panel's heading.
 	Title string
@@ -85,34 +91,37 @@ type Table[M any] struct {
 	// the title.
 	Desc string
 
-	// ID names the table's view state in the address. It defaults to "table", is a
-	// lower-case word, and must be unique within the page, so set it when a page has
-	// more than one table.
-	ID string
-
-	// PageSize is how many rows a page shows. Leave it zero for 25: a table always
-	// pages, since one that listed every row would grow without bound.
+	// PageSize is how many rows a page shows, or 25 when it is left zero. A table
+	// always pages, because one that listed every row would grow without bound.
 	PageSize int
 
-	// Rows returns every row, and the library does the rest: it filters, sorts and
-	// pages them by the columns' own accessors, a number as a number and text as
-	// text. It is what a table over a slice, a cache or a small query wants, and it
-	// is all that most tables need. Set Rows or Load, not both.
+	// Rows returns every row of the table, and the library does the rest: it
+	// filters, sorts and pages them by the columns' own values, comparing numbers
+	// as numbers and text as text.
+	//
+	// Use Rows when the rows are all at hand or cheap to list in full, such as a
+	// slice, a cache or a small query. It is all that most tables need. Set Rows or
+	// Load, not both.
 	Rows func(ctx context.Context) ([]M, error)
 
-	// Load is for a source that pages itself, too large to list in full. It
-	// receives the window, the sort and the filters as a [Query], and returns one
-	// [Window] of rows, doing all of that itself. Set Rows or Load, not both.
+	// Load returns one page of rows, and does the filtering, sorting and paging
+	// itself. It receives the window, the sort and the filters as a [Query], and
+	// returns a [Window] with the rows and, if it can count them, the total.
+	//
+	// Use Load when the source can do that work better than the library, or is too
+	// large to list in full, such as a database table or a remote API. Set Rows or
+	// Load, not both.
 	Load func(ctx context.Context, q Query) (Window[M], error)
 
 	// Search makes the table's rows findable from the search box in the top bar.
-	// A row is a result: its first column is the title and the other text columns
-	// the line beneath it, and it leads where RowClick leads, so the table needs a
-	// RowClick. A table with Rows is searched across every column by the library; a
-	// table with Load is handed the text in [Query.Search]. The table's page is asked
-	// with no arguments, so it may not have path arguments, and its Guard runs
-	// first. Each result is shown only if the page it leads to would let the visitor
-	// in.
+	// Each row is a result: its first column is the title, the other text columns
+	// are the line beneath it, and it leads where RowClick leads, so a searchable
+	// table needs a RowClick. With Rows the library searches every column itself;
+	// with Load the typed text arrives in [Query.Search].
+	//
+	// The table's page is asked for with no arguments, so it must not have path
+	// arguments, and its Guard runs first. A result is shown only if the page it
+	// leads to would let the visitor in.
 	Search bool
 
 	// Key identifies a row, such as by its ID. It is required when the table has
@@ -175,7 +184,6 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	if t.PageSize < 0 {
 		v.add("Table.PageSize is negative", "Use a number of rows, or leave it zero for the default of 25.")
 	}
-	v.id("Table", t.ID) // every table keeps its sort in the address
 
 	if (len(t.Actions)+len(t.BulkActions)) > 0 && t.Key == nil {
 		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
@@ -221,7 +229,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		labels[c.Key] = c.Label
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, ID: effectiveID(t.ID, "table"), PageSize: pageSizeOf(t.PageSize), Search: t.Search,
+		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}

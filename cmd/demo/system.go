@@ -60,7 +60,6 @@ var Audit = webui.Page[webui.NoArgs]{
 	Nav:   webui.Nav{Label: "Audit log", Icon: "list", Section: "Operations"},
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
-		ID:       "audit",
 		Title:    "Audit log",
 		Desc:     "The total is not known: Load returns a window and no count, so the pager offers Next while a page is full.",
 		PageSize: 8,

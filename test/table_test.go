@@ -46,7 +46,6 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], err
 				end := min(q.Offset+q.Limit, len(all))
 				return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, nil
 			},
-			ID:       "devices",
 			PageSize: 10,
 			RowClick: webui.Link[Device, detailsArgs]{
 				Page: details,
@@ -178,12 +177,12 @@ func TestTableEmpty(t *testing.T) {
 	assert.Contains(t, body, `colspan="4"`)
 }
 
-// twoTables is a page with two paging tables, one named and one left to default.
+// twoTables is a page with two paging tables, named by their titles T0 and T1.
 func twoTables() (http.Handler, *[2]webui.Query) {
 	var seen [2]webui.Query
-	table := func(i int, id string) webui.Table[Device] {
+	table := func(i int) webui.Table[Device] {
 		return webui.Table[Device]{
-			ID: id, Title: fmt.Sprintf("T%d", i), PageSize: 5,
+			Title: fmt.Sprintf("T%d", i), PageSize: 5,
 			Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
 				seen[i] = q
 				return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 50}, nil
@@ -191,26 +190,26 @@ func twoTables() (http.Handler, *[2]webui.Query) {
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		}
 	}
-	page := webui.Page[tableArgs]{Path: "/p", Body: webui.Split{table(0, "left"), table(1, "")}}
+	page := webui.Page[tableArgs]{Path: "/p", Body: webui.Split{table(0), table(1)}}
 	return webui.App{Pages: webui.Pages{page}}.MustCompile(""), &seen
 }
 
-func TestTwoTablesKeepIndependentStateUnderTheirOwnIDs(t *testing.T) {
+func TestTwoTablesKeepIndependentStateUnderTheirTitles(t *testing.T) {
 	t.Parallel()
 
 	h, seen := twoTables()
-	body := serve(h, http.MethodGet, "/p?left.offset=10&table.offset=15&table.sort=id&table.desc=true&q=x").Body.String()
+	body := serve(h, http.MethodGet, "/p?t0.offset=10&t1.offset=15&t1.sort=id&t1.desc=true&q=x").Body.String()
 
 	assert.DeepEqual(t, seen[0], webui.Query{Offset: 10, Limit: 5})
 	assert.DeepEqual(t, seen[1], webui.Query{Offset: 15, Limit: 5, Sort: "ID", Desc: true})
 
 	// Each table's links change only its own state and carry the other's along.
-	assert.Contains(t, body, `href="/p?left.offset=15&amp;q=x&amp;table.desc=true&amp;table.offset=15&amp;table.sort=id">Next`)
-	assert.Contains(t, body, `href="/p?left.offset=10&amp;q=x&amp;table.desc=true&amp;table.offset=20&amp;table.sort=id">Next`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=15&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id">Next`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.desc=true&amp;t1.offset=20&amp;t1.sort=id">Next`)
 	// Sorting one table returns only that table to its first page, and a column
 	// already sorted descending sorts ascending again.
-	assert.Contains(t, body, `href="/p?left.sort=id&amp;q=x&amp;table.desc=true&amp;table.offset=15&amp;table.sort=id">ID`)
-	assert.Contains(t, body, `href="/p?left.offset=10&amp;q=x&amp;table.sort=id">ID`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.sort=id&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id">ID`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.sort=id">ID`)
 }
 
 func TestViewStateForALeafThePageDoesNotHaveIsIgnored(t *testing.T) {
@@ -479,4 +478,70 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 	assert.Contains(t, body, "1–25 of 60")
 	assert.Contains(t, body, "dev24")
 	assert.False(t, strings.Contains(body, "dev25")) // on the next page
+}
+
+// viewTable is a table that records the Query it was asked.
+func viewTable(title string, seen *webui.Query) webui.Table[Device] {
+	return webui.Table[Device]{
+		Title: title,
+		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+			*seen = q
+			return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 1}, nil
+		},
+		Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
+	}
+}
+
+func TestATablesStateIsNamedByItsTitleAndAnUntitledOneIsTable(t *testing.T) {
+	t.Parallel()
+
+	var a, b webui.Query
+	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{viewTable("Open alerts", &a), viewTable("", &b)}}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
+	serve(h, http.MethodGet, "/p?open-alerts.sort=id&table.sort=id&table.desc=true")
+
+	assert.DeepEqual(t, a, webui.Query{Limit: 25, Sort: "ID"})
+	assert.DeepEqual(t, b, webui.Query{Limit: 25, Sort: "ID", Desc: true})
+}
+
+func TestTablesWithTheSameTitleOnScreenTogetherAreToldApartByANumber(t *testing.T) {
+	t.Parallel()
+
+	var first, second webui.Query
+	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Split{viewTable("Devices", &first), viewTable("Devices", &second)}}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
+	serve(h, http.MethodGet, "/p?devices.sort=id&devices-2.offset=3")
+
+	assert.Equal(t, first.Sort, "ID")
+	assert.Equal(t, first.Offset, 0)
+	assert.Equal(t, second.Sort, "")
+	assert.Equal(t, second.Offset, 3)
+}
+
+func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
+	t.Parallel()
+
+	// The same table in both panels of a Tabs keeps its state in both, since they are
+	// never shown together. A second Tabs is told apart by a number.
+	var outside, inA, inB, inOther webui.Query
+	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
+		viewTable("Events", &outside),
+		webui.Tabs{Panels: []webui.Tab{
+			{Label: "A", Body: viewTable("Events", &inA)},
+			{Label: "B", Body: viewTable("Events", &inB)},
+		}},
+		webui.Tabs{Panels: []webui.Tab{{Label: "Other", Body: viewTable("Other", &inOther)}, {Label: "More", Body: webui.Stack{}}}},
+	}}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
+
+	// Outside the Tabs it is "events", so the one in a panel is "events-2" in both panels.
+	serve(h, http.MethodGet, "/p?events.sort=id&events-2.offset=7")
+	assert.Equal(t, outside.Sort, "ID")
+	assert.Equal(t, inA.Offset, 7)
+	serve(h, http.MethodGet, "/p?tabs.tab=b&events-2.offset=7")
+	assert.Equal(t, inB.Offset, 7)
+
+	// The second Tabs keeps its selection under "tabs-2".
+	body := serve(h, http.MethodGet, "/p?tabs-2.tab=more").Body.String()
+	assert.Contains(t, body, `<a class="tab active" href="/p?tabs-2.tab=more" aria-current="page">More</a>`)
 }

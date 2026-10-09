@@ -202,5 +202,6 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
 	}
 	page.Body = p.Body.lowerBody(ir.Addr{})
+	assignViewIDs(page.Body)
 	return page
 }

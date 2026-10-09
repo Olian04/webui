@@ -43,10 +43,10 @@ func fixture() App {
 		Path: "/device",
 		Nav:  Nav{Label: "Devices"},
 		Body: Table[dev]{
+			Title: "Devices",
 			Load: func(context.Context, Query) (Window[dev], error) {
 				return Window[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, nil
 			},
-			ID:       "devices",
 			PageSize: 2,
 			Key:      func(d dev) string { return d.Id },
 			RowClick: Link[dev, detailArgs]{
@@ -73,7 +73,7 @@ func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 	assert.Equal(t, out.ByPath["/device"].Nav.Label, "Devices")
 
 	tabs := details.Body.(*ir.Tabs)
-	assert.Equal(t, tabs.ID, "tabs") // no ID declared: named for its component
+	assert.Equal(t, tabs.ID, "tabs")
 	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Children[0].(*ir.Split).Children[0].Addr()), []int{1, 0, 0})
 
 	table := out.ByPath["/device"].Body.(*ir.Table)

@@ -85,12 +85,12 @@ func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
 
 func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/site/Stockholm?devices.sort=id&alerts.sort=severity&alerts.desc=true").Body.String()
+	body := get(h, "/admin/site/Stockholm?devices.sort=id&open-alerts.sort=severity&open-alerts.desc=true").Body.String()
 	assert.Equal(t, strings.Count(body, `class="panel"`), 2)
 	assert.Contains(t, body, `aria-sort="ascending"`)  // devices, by its sort
 	assert.Contains(t, body, `aria-sort="descending"`) // alerts, by its own
 	assert.Contains(t, body, `name="devices.filter.id"`)
-	assert.Contains(t, body, `name="alerts.filter.device"`)
+	assert.Contains(t, body, `name="open-alerts.filter.device"`)
 
 	rec := get(h, "/admin/site/Nowhere")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
@@ -246,7 +246,7 @@ func TestAnUnknownTotalPagesByFullPages(t *testing.T) {
 	body := get(h, "/admin/audit").Body.String()
 	assert.Contains(t, body, "1–8") // a range with no "of N"
 	assert.False(t, strings.Contains(body, " of "))
-	assert.Contains(t, body, `href="/admin/audit?audit.offset=8"`)
+	assert.Contains(t, body, `href="/admin/audit?audit-log.offset=8"`)
 
 	// Actions are recorded: the newest entry is the one just made.
 	post(h, "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})
@@ -332,7 +332,7 @@ func TestTheDeviceIsOpenedFromSeveralPagesAndEachRemembersItsOwn(t *testing.T) {
 	// Every page that links to a device remembers the address the user is on.
 	for _, from := range []string{
 		"/admin/device?devices.sort=ip&devices.offset=10",
-		"/admin/site/Stockholm?alerts.sort=severity&devices.sort=id",
+		"/admin/site/Stockholm?open-alerts.sort=severity&devices.sort=id",
 		"/admin/alert",
 	} {
 		list := get(h, from).Body.String()
@@ -358,13 +358,13 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
-	from := "/admin/site/Malm\u00f6?alerts.sort=severity"
+	from := "/admin/site/Malm\u00f6?open-alerts.sort=severity"
 	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
 	assert.Equal(t, to.Path, "/admin/site/Malmö")
-	assert.Equal(t, to.RawQuery, "alerts.sort=severity")
+	assert.Equal(t, to.RawQuery, "open-alerts.sort=severity")
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")

@@ -29,7 +29,7 @@ func rowsApp(load func(context.Context) ([]Device, error)) http.Handler {
 	page := webui.Page[webui.NoArgs]{
 		Path: "/device",
 		Body: webui.Table[Device]{
-			ID:       "devices",
+			Title:    "Devices",
 			PageSize: 10,
 			Rows:     load,
 			Columns: []webui.Accessor[Device]{

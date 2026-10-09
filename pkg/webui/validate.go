@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/Olian04/webui/internal/render/assets"
@@ -67,71 +66,11 @@ type bodyValidator struct {
 	args  string // argument type name
 	facts *facts
 
-	ids   map[string][][]panel // view-state IDs taken on this page, and where
-	scope []panel              // the tab panels the node being validated sits in
-	tabs  int                  // Tabs seen so far, to tell them apart
-	errs  []CompileError
+	errs []CompileError
 }
 
 func (v *bodyValidator) add(detail, fix string) {
 	v.errs = append(v.errs, CompileError{Page: v.page, Args: v.args, Detail: detail, Fix: fix})
-}
-
-var idPattern = regexp.MustCompile(`^[a-z][a-z0-9_-]*$`)
-
-// effectiveID is a leaf's ID, or its component's lower-case name when it has
-// none: a Table is "table", a Tabs is "tabs".
-func effectiveID(id, component string) string {
-	if id != "" {
-		return id
-	}
-	return component
-}
-
-// panel is one tab panel on the way down to a node: which Tabs, which panel.
-type panel struct{ tabs, index int }
-
-// exclusive reports whether two nodes sit in different panels of one Tabs, so
-// they can never be on screen together. Their paths into the tree agree until
-// the first Tabs they share, and part ways there.
-func exclusive(a, b []panel) bool {
-	for i := 0; i < len(a) && i < len(b); i++ {
-		if a[i] == b[i] {
-			continue
-		}
-		return a[i].tabs == b[i].tabs
-	}
-	return false
-}
-
-// id checks the name a leaf's view state lives under in the address, and
-// claims it. It must be a plain lower-case word, so "<id>.offset" is
-// unambiguous, and unique within the page unless the claims are in different
-// panels of one Tabs; two pages may reuse a name, since only one is in an
-// address at a time. A leaf without an ID is claimed under its component name,
-// so a second one on the page is a clash that says so.
-func (v *bodyValidator) id(component, id string) {
-	eff := effectiveID(id, strings.ToLower(component))
-	if !idPattern.MatchString(eff) {
-		v.add(fmt.Sprintf("%s.ID %q is not a lower-case word", component, eff),
-			"Use letters, digits, '_' and '-', starting with a letter; the ID appears in the address.")
-		return
-	}
-	if v.ids == nil {
-		v.ids = map[string][][]panel{}
-	}
-	for _, prior := range v.ids[eff] {
-		if exclusive(prior, v.scope) {
-			continue
-		}
-		fix := "Give each table and tabs its own ID within a page."
-		if id == "" {
-			fix = fmt.Sprintf("Set ID on this %s; unnamed, it is called %q, as another leaf on this page already is.", component, eff)
-		}
-		v.add(fmt.Sprintf("the ID %q is used twice on this page", eff), fix)
-		return
-	}
-	v.ids[eff] = append(v.ids[eff], slices.Clone(v.scope))
 }
 
 var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$`)

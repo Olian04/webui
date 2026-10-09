@@ -24,7 +24,7 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	var loads [4]atomic.Int32
 	table := func(i int, title string) webui.Table[Device] {
 		return webui.Table[Device]{
-			ID: strings.ToLower(title), Title: title,
+			Title: title,
 			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
 				loads[i].Add(1)
 				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
@@ -44,7 +44,7 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 				},
 				table(1, "Events"),
 			},
-			webui.Tabs{ID: "view", Panels: []webui.Tab{
+			webui.Tabs{Panels: []webui.Tab{
 				{Label: "Overview", Body: table(2, "Overview")},
 				{Label: "Raw", Body: table(3, "Raw")},
 			}},
@@ -66,16 +66,16 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 
 	// The strip is links; the first needs no argument, the others carry theirs.
 	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1" aria-current="page">Overview</a>`)
-	assert.Contains(t, body, `<a class="tab" href="/admin/device/d1?view.tab=raw">Raw</a>`)
+	assert.Contains(t, body, `<a class="tab" href="/admin/device/d1?tabs.tab=raw">Raw</a>`)
 
-	raw := serve(h, http.MethodGet, "/admin/device/d1?view.tab=raw").Body.String()
+	raw := serve(h, http.MethodGet, "/admin/device/d1?tabs.tab=raw").Body.String()
 	assert.Contains(t, raw, "Raw-row")
 	assert.False(t, strings.Contains(raw, "Overview-row"))
 	assert.Equal(t, loads[3].Load(), int32(1))
-	assert.Contains(t, raw, `<a class="tab active" href="/admin/device/d1?view.tab=raw" aria-current="page">Raw</a>`)
+	assert.Contains(t, raw, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
 
 	// An unknown tab lands on the first rather than on nothing.
-	stale := serve(h, http.MethodGet, "/admin/device/d1?view.tab=Gone").Body.String()
+	stale := serve(h, http.MethodGet, "/admin/device/d1?tabs.tab=Gone").Body.String()
 	assert.Contains(t, stale, "Overview-row")
 }
 

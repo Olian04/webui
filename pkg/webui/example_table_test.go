@@ -41,10 +41,9 @@ func ExampleTable() {
 		Path: "/device",
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[device]{
-			Title:    "Devices",
-			Rows:     func(context.Context) ([]device, error) { return devices, nil },
-			Search:   true, // every column of every row is searched
-			PageSize: 25,
+			Title:  "Devices",
+			Rows:   func(context.Context) ([]device, error) { return devices, nil },
+			Search: true, // every column of every row is searched
 			RowClick: webui.Link[device, deviceArgs]{
 				Page: details,
 				Args: func(_ context.Context, d device) deviceArgs { return deviceArgs{ID: d.ID} },

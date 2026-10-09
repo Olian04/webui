@@ -101,7 +101,6 @@ var AcknowledgeAlert = webui.Action[Alert]{
 // opens it, narrowed to the last 15 minutes: the Link builds the destination's
 // arguments, query ones too.
 var AlertDeviceTable = webui.Table[Device]{
-	ID:    "device",
 	Title: "Device",
 	Rows: func(ctx context.Context) ([]Device, error) {
 		alert, _ := service.Alert(webui.ArgsOf[AlertArgs](ctx).ID)

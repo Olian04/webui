@@ -75,10 +75,10 @@ var Devices = webui.Page[webui.NoArgs]{
 	Body: webui.Table[Device]{
 		Title: "Devices",
 		Desc:  "One Table leaf. Sort, page and row links are all URLs.",
-		// The table's state is ?devices.offset, ?devices.sort, ?devices.desc, a
-		// ?devices.filter.<column> per filtered column, and ?devices.min.<column>
-		// and ?devices.max.<column> for the numeric ones.
-		ID:       "devices",
+		// The table's state is kept in the address under its title: ?devices.offset,
+		// ?devices.sort, ?devices.desc, a ?devices.filter.<column> per filtered
+		// column, and ?devices.min.<column> and ?devices.max.<column> for the
+		// numeric ones.
 		PageSize: 10,
 		// Search makes every device findable from the search box in the top bar. This
 		// table has Load, so it is handed the typed text in Query.Search; a table with

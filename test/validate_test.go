@@ -120,22 +120,6 @@ func TestValidateDeclarationChecks(t *testing.T) {
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol()},
 			Actions: []webui.Action[Device]{{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
 		}}, "declares actions but no Key"},
-		{"stateful table needs a unique ID", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{Load: okRows, PageSize: 10},
-			webui.Table[Device]{Load: okRows, PageSize: 10},
-		}}, `the ID "table" is used twice on this page`},
-		{"a clash tells you to name one", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{Load: okRows, PageSize: 10},
-			webui.Table[Device]{Load: okRows, PageSize: 10},
-		}}, `Set ID on this Table`},
-		{"explicit duplicate", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{ID: "devices", Load: okRows, PageSize: 10},
-			webui.Table[Device]{ID: "devices", Load: okRows, PageSize: 10},
-		}}, "Give each table and tabs its own ID"},
-		{"every table keeps its sort, so every table claims an ID", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{Load: okRows},
-			webui.Table[Device]{Load: okRows},
-		}}, `the ID "table" is used twice`},
 		{"two columns with labels that differ only in case", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},
 		}}, `the labels "ID" and "id" name the same column in the address`},
@@ -148,28 +132,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
 			{Label: "Raw events", Body: webui.Stack{}}, {Label: "raw  events", Body: webui.Stack{}},
 		}}}, `names the same tab as another in the address`},
-		{"same ID in one panel clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{ID: "v", Panels: []webui.Tab{
-			{Label: "A", Body: webui.Stack{
-				webui.Table[Device]{ID: "t", Load: okRows},
-				webui.Table[Device]{ID: "t", Load: okRows},
-			}},
-		}}}, `the ID "t" is used twice`},
-		{"same ID in a panel and outside the tabs clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Table[Device]{ID: "t", Load: okRows},
-			webui.Tabs{ID: "v", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
-		}}, `the ID "t" is used twice`},
-		{"same ID in two different Tabs clashes", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Tabs{ID: "v1", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
-			webui.Tabs{ID: "v2", Panels: []webui.Tab{{Label: "A", Body: webui.Table[Device]{ID: "t", Load: okRows}}}},
-		}}, `the ID "t" is used twice`},
-		{"ID must be a plain word", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			ID: "Dev.ices", Load: okRows, PageSize: 10,
-		}}, "is not a lower-case word"},
 		{"negative page size", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{Load: okRows, PageSize: -1}}, "PageSize is negative"},
-		{"tabs and a table may not share an ID", webui.Page[okArgs]{Path: "/a", Body: webui.Stack{
-			webui.Tabs{ID: "view", Panels: []webui.Tab{{Label: "A", Body: webui.Stack{}}}},
-			webui.Table[Device]{ID: "view", Load: okRows, PageSize: 10},
-		}}, `the ID "view" is used twice`},
 		{"slider needs a range", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }}},
 		}}, "has no range"},
@@ -207,11 +170,11 @@ func TestIDsOnlyNeedToBeUniquePerPage(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestPanelsOfOneTabsMayShareAnID(t *testing.T) {
+func TestPanelsOfOneTabsMayRepeatATable(t *testing.T) {
 	t.Parallel()
 
-	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}} // both are "table"
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{ID: "view", Panels: []webui.Tab{
+	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}}
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
 		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, error) { return Device{}, nil }}, shared}},
 		{Label: "Raw", Body: shared},
 	}}}}}
