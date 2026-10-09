@@ -109,8 +109,10 @@
 //	}
 //
 // A link names its destination page, so the compiler checks that the arguments fit it
-// and [App.Compile] checks that the page is mounted. Actions and BulkActions add a
-// button per row, and checkboxes with an action bar, over a table with a Key.
+// and [App.Compile] checks that the page is mounted. When the destination depends on
+// the row, such as a folder or an object, RowClick is an [Action] instead: its Run is
+// handed the row and chooses where to go with [Outcome.Then]. Actions and BulkActions
+// add a button per row, and checkboxes with an action bar, over a table with a Key.
 //
 // # Forms and actions
 //

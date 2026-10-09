@@ -44,6 +44,10 @@ type TableView struct {
 	// Hrefs is each row's destination, "" for a row that has none.
 	Hrefs []string
 
+	// ClickGates is, for a table whose RowClick is an Action, the reason each row
+	// may not be clicked by this viewer, "" when it may.
+	ClickGates []string
+
 	// Keys is each row's identity, and Gates the reason each row's action is
 	// refused to this viewer, by row then action ("" when allowed). Both are
 	// empty for a table with no actions.
@@ -188,9 +192,23 @@ func (v TableView) panelStatus() c.Tone {
 // interactive reports whether the table posts: it has row actions or bulk
 // actions. A table that declares neither has no form, no checkbox column and
 // no bar — absence is the configuration.
-func (v TableView) interactive() bool { return len(v.Node.Actions)+len(v.Node.Bulk) > 0 }
+func (v TableView) interactive() bool {
+	return len(v.Node.Actions)+len(v.Node.Bulk) > 0 || v.Node.RowAction != nil
+}
+
+// clicks is whether row i runs the table's RowAction when clicked.
+func (v TableView) clicks(i int) bool {
+	return v.Node.RowAction != nil && i < len(v.Keys) && (i >= len(v.ClickGates) || v.ClickGates[i] == "")
+}
 
 func (v TableView) selectable() bool { return len(v.Node.Bulk) > 0 }
+
+func (v TableView) rowClickValue(i int) string {
+	if i < len(v.Keys) {
+		return RowClickValue(v.Keys[i])
+	}
+	return ""
+}
 
 func (v TableView) hasRowActions() bool { return len(v.Node.Actions) > 0 }
 
@@ -221,6 +239,10 @@ func variant(role ir.Role) c.Variant {
 // RowActionValue and BulkActionValue are what an action button submits as
 // "_act". The runtime parses them back; they are defined once, here.
 func RowActionValue(action int, key string) string { return fmt.Sprintf("row:%d:%s", action, key) }
+
+// RowClickValue is the "_act" value of the button that covers a row whose click is
+// an Action.
+func RowClickValue(key string) string { return "click:0:" + key }
 
 // BulkActionValue is the "_act" value of a bulk action button.
 func BulkActionValue(action int) string { return fmt.Sprintf("bulk:%d", action) }

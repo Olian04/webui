@@ -136,9 +136,15 @@ type Table[M any] struct {
 	// position.
 	Key func(M) string
 
-	// RowClick makes each row a link: a [Link] to another page. It is always a
-	// real anchor, so middle-click, open-in-new-tab and the keyboard work.
-	// Anything that changes something is an Action instead.
+	// RowClick makes each row clickable: a [Link] to another page, or an [Action]
+	// for what a link cannot do.
+	//
+	// A Link is a real anchor, so middle-click, open-in-new-tab and the keyboard
+	// work, and the table can be searched. It suits a row that always leads to the
+	// same kind of page. An Action is handed the row and may decide where to go from
+	// it, with [Outcome.Then], such as to a folder page or an object page, or change
+	// something. It is a POST, so it cannot be opened in a new tab, it needs Key, and
+	// a table with one cannot be searched. A row its Guard refuses does nothing.
 	RowClick RowClick[M]
 
 	// Actions render as a button per row.
@@ -192,7 +198,8 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		v.add("Table.PageSize is negative", "Use a number of rows, or leave it zero for the default of 25.")
 	}
 
-	if (len(t.Actions)+len(t.BulkActions)) > 0 && t.Key == nil {
+	_, clickRuns := t.RowClick.(Action[M])
+	if (len(t.Actions)+len(t.BulkActions) > 0 || clickRuns) && t.Key == nil {
 		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
 	}
 	for i, a := range t.Actions {
@@ -207,6 +214,9 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	if t.Search {
 		if t.RowClick == nil {
 			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
+		}
+		if clickRuns {
+			v.add("a Table has Search but its RowClick is an Action", "A search result is a link to a row's page: make RowClick a Link, or remove Search.")
 		}
 		if len(t.Columns) == 0 {
 			v.add("a Table has Search but no Columns", "A search result is made from the columns: set Columns.")
@@ -240,7 +250,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
 	}
 	if t.RowClick != nil {
-		out.RowClick = t.RowClick.lowerRow()
+		out.RowClick, out.RowAction = t.RowClick.lowerRow()
 	}
 	for _, a := range t.Actions {
 		out.Actions = append(out.Actions, lowerAction(a, a.Label))

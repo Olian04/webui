@@ -131,6 +131,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view.Rows, view.Total = rows, total
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
+	view.ClickGates = clickGates(ctx, n, rows)
 	return p.render.Table(view)
 }
 
@@ -152,6 +153,22 @@ func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *
 		hrefs[i] = href
 	}
 	return hrefs
+}
+
+// clickGates is, for a table whose RowClick is an Action, why each row may not be
+// clicked by this viewer: the Action's Guard, run on the row, as it will be on the
+// POST. A row it refuses is shown but does nothing.
+func clickGates(ctx context.Context, n *ir.Table, rows []any) []string {
+	if n.RowAction == nil || n.RowAction.Guard == nil {
+		return nil
+	}
+	gates := make([]string, len(rows))
+	for i, row := range rows {
+		if err := n.RowAction.Guard(ctx, row); err != nil {
+			gates[i] = err.Error()
+		}
+	}
+	return gates
 }
 
 // rowKeysAndGates names each row and says which of its actions this viewer may

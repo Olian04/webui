@@ -957,6 +957,18 @@ tbody tr.clickable {
   position: absolute;
   inset: 0;
 }
+/* The same, for a row whose click is an action: a button, with nothing of its own. */
+button.rowbutton {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
 .rowlink:focus-visible {
   outline: none;
 }

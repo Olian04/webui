@@ -109,13 +109,17 @@ func ariaSort(d SortDir) string {
 // a cell — but the invariant is: Row.Href and RowLink.Href are the same
 // address, and there is never more than one RowLink in a row.
 type RowProps struct {
-	Href  string
-	Attrs templ.Attributes
+	Href string
+
+	// Clickable is a row that does something when clicked without an address of
+	// its own, because it holds a RowButton instead of a RowLink.
+	Clickable bool
+	Attrs     templ.Attributes
 }
 
 templ Row(p RowProps) {
 	<tr
-		class={ templ.KV("clickable", p.Href != "") }
+		class={ templ.KV("clickable", p.Href != "" || p.Clickable) }
 		{ p.Attrs... }
 	>
 		{ children... }
@@ -129,6 +133,15 @@ templ RowLink(href string) {
 	<a class="rowlink" href={ href }>
 		{ children... }
 	</a>
+}
+
+// RowButton is the single button that covers a clickable row whose click does
+// something other than lead to an address. It is styled and stretched as RowLink
+// is, and submits the table's form, so it too needs no script.
+templ RowButton(name, value string) {
+	<button class="rowlink rowbutton" type="submit" name={ name } value={ value }>
+		{ children... }
+	</button>
 }
 
 type CellProps struct {

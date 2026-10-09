@@ -272,12 +272,12 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 }
 
 templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
-	@c.Row(c.RowProps{Href: v.Hrefs[i]}) {
+	@c.Row(c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}) {
 		if v.selectable() {
 			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select row " + v.Keys[i]})
 		}
 		for j, col := range cols {
-			@r.cell(col, row, v.Hrefs[i], j == 0)
+			@r.cell(col, row, v.Hrefs[i], v.clicks(i), v.rowClickValue(i), j == 0)
 		}
 		if v.hasRowActions() {
 			<td class="actions">
@@ -296,10 +296,14 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
 
 // cell is one value. The row's single anchor lives in the first cell, because
 // the stylesheet stretches it over every other.
-templ (r *Renderer) cell(col columnView, row any, href string, first bool) {
+templ (r *Renderer) cell(col columnView, row any, href string, button bool, value string, first bool) {
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
 			@c.RowLink(href) {
+				@cellValue(col, row)
+			}
+		} else if first && button {
+			@c.RowButton("_act", value) {
 				@cellValue(col, row)
 			}
 		} else {

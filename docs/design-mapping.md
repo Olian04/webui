@@ -49,7 +49,7 @@ into existence, and nothing is configured twice.
 | `Badge` | A badge in a status column, or beside its label in a form; always read-only |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
 | `Table.Rows` or `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
-| `Table.RowClick` | Rows become links and take the pointer + hover treatment |
+| `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
 | `Table.Actions` | A button per row in a trailing cell |
 | `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
@@ -317,14 +317,20 @@ Selection itself is deliberately **not** an argument: it never enters the
 address bar, because it is request state, not page state. A shared link does
 not carry someone else's selection.
 
-### `Table.RowClick` / `Link`
+### `Table.RowClick` / `Link` / `Action`
 
-Rows become links: pointer cursor, hover surface, and the whole row is the
-target. Because `Link` names a page and builds its arguments, the destination
-is known at compile time, which is what lets a row link be a real `href`
-instead of a click handler — and therefore what lets the whole design work with
-JavaScript switched off. A row click is always a link, never a POST: whatever
-changes something is a button in the row's own cell, or on the selection.
+Rows become clickable: pointer cursor, hover surface, and the whole row is the
+target. A `Link` is the simple case. Because it names a page and builds its
+arguments, the destination is known at compile time, which is what lets a row
+link be a real `href` instead of a click handler, so middle-click and
+open-in-new-tab work, the table can be searched, and the whole design works with
+JavaScript switched off.
+
+An `Action` is for what a link cannot say: where to go depends on the row, or the
+click changes something. The row is one button, stretched over the cell as the
+anchor is, inside the table's form, so it too works without script. It is a POST,
+so it cannot be opened in a new tab; it needs the table's `Key`; a table with one
+cannot be searched; and a row its `Guard` refuses is shown but does nothing.
 
 ### `Guard` → gating, in two places from one declaration
 
