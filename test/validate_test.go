@@ -22,14 +22,27 @@ func idCol() webui.Accessor[Device] {
 	return webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}
 }
 
-// compileErrors compiles and returns the structured problems.
-func compileErrors(t *testing.T, app webui.App) webui.CompileErrors {
+// compileErrors compiles and returns the structured problems: the CompileError that
+// the returned error wraps for each.
+func compileErrors(t *testing.T, app webui.App) []webui.CompileError {
 	t.Helper()
 
 	_, err := app.Compile("/admin")
-	var errs webui.CompileErrors
-	if !errors.As(err, &errs) {
-		t.Fatalf("Compile error = %v, want CompileErrors", err)
+	var first webui.CompileError
+	if !errors.As(err, &first) {
+		t.Fatalf("Compile error = %v, want it to wrap a CompileError", err)
+	}
+	all, ok := err.(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatalf("Compile error %T does not wrap its problems with Unwrap() []error", err)
+	}
+	var errs []webui.CompileError
+	for _, e := range all.Unwrap() {
+		var ce webui.CompileError
+		if !errors.As(e, &ce) {
+			t.Fatalf("Compile reported %v, which is not a CompileError", e)
+		}
+		errs = append(errs, ce)
 	}
 	return errs
 }

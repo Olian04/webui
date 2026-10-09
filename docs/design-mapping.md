@@ -60,7 +60,7 @@ into existence, and nothing is configured twice.
 | `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |
 | `Outcome.Then` | A navigation after an accepted action |
 | leaf address (`p.0.1`) | Which panel a refresh replaces |
-| `CompileErrors` | The **Failed to compile** page, served at every address |
+| `CompileError` | The **Failed to compile** page, served at every address |
 
 ---
 
@@ -361,7 +361,7 @@ difference is that it could not have been caught earlier, because it needed the
 service. `Failure` is the same event for a reason that belongs to no one field.
 There is no default toast: an action that says nothing shows nothing.
 
-### `CompileErrors` → the compile-failure page
+### `CompileError` → the compile-failure page
 
 Served at every address under the mount until the application compiles. Because
 the errors are structured rather than scraped from a compiler, every problem is

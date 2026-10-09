@@ -8,6 +8,10 @@ import (
 // CompileError is one problem in a declaration. Go cannot recover the file and line
 // of a struct literal at run time, so a problem is located by the page's path and
 // its argument type, and both always appear in Error.
+//
+// [App.Compile] reports every problem it finds at once, as an error that wraps one
+// CompileError for each: [errors.As] finds the first, and the error's
+// Unwrap() []error lists them all.
 type CompileError struct {
 	// Page is the path of the page the problem is on, or empty for a problem with
 	// the app itself.
@@ -45,19 +49,4 @@ func (e CompileError) Error() string {
 		fmt.Fprintf(&b, "\n  Fix: %s", e.Fix)
 	}
 	return b.String()
-}
-
-// CompileErrors is every problem found in one Compile. Error joins them.
-type CompileErrors []CompileError
-
-// Error is every problem, one after another.
-func (e CompileErrors) Error() string {
-	if len(e) == 0 {
-		return ""
-	}
-	msgs := make([]string, len(e))
-	for i, err := range e {
-		msgs[i] = err.Error()
-	}
-	return strings.Join(msgs, "\n")
 }

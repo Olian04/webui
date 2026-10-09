@@ -174,8 +174,8 @@
 // # Errors
 //
 // [App.Compile] collects every problem in the declaration and reports them together
-// as [CompileErrors], each naming the page, the argument type, what is wrong and how
-// to fix it. The handler it returns is never nil: after a failed compile it serves
+// in one error that wraps a [CompileError] for each, naming the page, the argument
+// type, what is wrong and how to fix it. The handler it returns is never nil: after a failed compile it serves
 // the problems, as a page, at every path under the prefix, so a broken app is easy to
 // diagnose in the browser. [App.MustCompile] panics instead, for a process that
 // should refuse to start.

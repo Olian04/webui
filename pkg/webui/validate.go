@@ -19,9 +19,9 @@ import (
 // calls internal/args and internal/rules, so it cannot disagree with lower
 // about what an argument is called or whether a pattern is valid.
 
-func (a App) validate() CompileErrors {
+func (a App) validate() []CompileError {
 	f := a.collectFacts()
-	var errs CompileErrors
+	var errs []CompileError
 	errs = append(errs, validateTheme(a.Theme)...)
 	errs = append(errs, validateMenu(a.Menu)...)
 
