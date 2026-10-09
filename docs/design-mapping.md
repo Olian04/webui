@@ -285,6 +285,11 @@ Each rule has exactly one visual form:
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535" |
 | `Pattern` | `pattern` | None; the pattern's message is the error beneath a refused value |
 
+Beside the label of an editable field with any rule there is an information icon whose
+popover lists every rule: *Required*, the length, the bounds, and the pattern's message,
+which is the one place a pattern speaks while the value is good. It opens on hover and on
+focus, like a panel's description, so it works without a pointer or script.
+
 The browser refuses before anything is sent; the server re-runs the same set
 after. The user sees one behaviour. `Pattern` carries a message because a
 regular expression cannot explain itself — that message is the error shown when

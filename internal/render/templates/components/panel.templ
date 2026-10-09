@@ -1,5 +1,7 @@
 package components
 
+import "strings"
+
 // PanelProps is the unit of content: a bordered region with a 32px header.
 // Title and Desc are what make a grid of panels readable — a Split of two
 // untitled boxes tells the reader nothing. Desc is carried by the information
@@ -51,14 +53,34 @@ templ Panel(p PanelProps) {
 // InfoTipProps is a description behind an information icon. The text appears in
 // a raised popover on hover and on keyboard focus, and is the icon's accessible
 // name, so it is available to assistive technology and not only to a pointer.
+//
+// Lines is a list in the popover in place of Text, each an item; the icon's
+// accessible name is the lines, after Text if there is one.
 type InfoTipProps struct {
 	Text  string
+	Lines []string
 	Attrs templ.Attributes
 }
 
+func (p InfoTipProps) name() string {
+	if len(p.Lines) == 0 {
+		return p.Text
+	}
+	return strings.TrimSpace(p.Text + " " + strings.Join(p.Lines, "; "))
+}
+
 templ InfoTip(p InfoTipProps) {
-	<span class="tip" tabindex="0" role="note" aria-label={ p.Text } { p.Attrs... }>
+	<span class="tip" tabindex="0" role="note" aria-label={ p.name() } { p.Attrs... }>
 		@Icon(IconProps{Name: IconInfo, Class: "info"})
-		<span class="tip-body" aria-hidden="true">{ p.Text }</span>
+		<span class="tip-body" aria-hidden="true">
+			if len(p.Lines) == 0 {
+				{ p.Text }
+			} else {
+				<span class="tip-title">{ p.Text }</span>
+				for _, line := range p.Lines {
+					<span class="tip-item">{ line }</span>
+				}
+			}
+		</span>
 	</span>
 }

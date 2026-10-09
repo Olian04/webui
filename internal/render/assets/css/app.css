@@ -756,6 +756,20 @@ a.side-brand:hover {
   white-space: normal;
   pointer-events: none;
 }
+.tip-title {
+  display: block;
+  font-weight: 500;
+  color: var(--text);
+}
+.tip-item {
+  display: block;
+  margin-top: 2px;
+}
+.tip-item::before {
+  content: "•";
+  margin-right: 6px;
+  color: var(--text-3);
+}
 .tip:hover .tip-body,
 .tip:focus .tip-body {
   display: block;
@@ -1163,13 +1177,18 @@ html:not(.js) .actionbar .dim {
     grid-template-columns: 1fr;
   }
 }
+.lbl-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
 label.lbl {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 12px;
   font-weight: 400;
-  margin-bottom: 5px;
   color: var(--text-2);
 }
 .req {
@@ -1617,7 +1636,7 @@ td.actions .gate:hover::after,
   font-size: 14.5px;
   overflow-wrap: anywhere;
 }
-.field-static label.lbl {
+.field-static .lbl-row {
   margin-bottom: 1px; /* the value has its own height */
 }
 

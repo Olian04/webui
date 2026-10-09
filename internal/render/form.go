@@ -56,6 +56,7 @@ type fieldView struct {
 	Value       string
 	Error       string
 	Hint        string
+	RuleLines   []string
 	Placeholder string
 	ReadOnly    bool
 	Type        string
@@ -77,6 +78,7 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 		Field:       f,
 		Error:       v.Errors[f.Label],
 		Hint:        hint(f, editable),
+		RuleLines:   ruleLines(f, editable),
 		Placeholder: f.Placeholder,
 		ReadOnly:    !editable,
 		Type:        "text",
@@ -127,16 +129,51 @@ func htmlRules(f ir.Field, editable bool) c.Rules {
 // explain itself and its message says what was wrong with a value, which would
 // read as a complaint beneath a good one: it is shown when the value is refused.
 func hint(f ir.Field, editable bool) string {
-	r := f.Rules
-	switch {
-	case !editable:
+	if !editable {
 		return ""
+	}
+	if s := lengthRule(f.Rules); s != "" {
+		return s
+	}
+	return boundsRule(f.Rules)
+}
+
+// ruleLines is every constraint on an editable field, in words: what the
+// information icon beside its label lists. Unlike the hint it includes a pattern,
+// by its message, which says what a matching value is.
+func ruleLines(f ir.Field, editable bool) []string {
+	if !editable {
+		return nil
+	}
+	var out []string
+	if f.Rules.Required {
+		out = append(out, "Required")
+	}
+	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules)} {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	if p := f.Rules.Pattern; p != nil && p.Message != "" {
+		out = append(out, p.Message)
+	}
+	return out
+}
+
+func lengthRule(r ir.Rules) string {
+	switch {
 	case r.MinLen > 0 && r.MaxLen > 0:
 		return fmt.Sprintf("%d–%d characters", r.MinLen, r.MaxLen)
 	case r.MinLen > 0:
 		return fmt.Sprintf("At least %d characters", r.MinLen)
 	case r.MaxLen > 0:
 		return fmt.Sprintf("Up to %d characters", r.MaxLen)
+	}
+	return ""
+}
+
+func boundsRule(r ir.Rules) string {
+	switch {
 	case r.Min != nil && r.Max != nil:
 		return fmt.Sprintf("%s–%s", num(*r.Min), num(*r.Max))
 	case r.Min != nil:
