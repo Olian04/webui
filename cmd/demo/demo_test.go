@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -439,4 +440,14 @@ func TestMomentsAreShownInUTCAndFilteredAsMoments(t *testing.T) {
 	// A Timestamp reads the same on a device.
 	device := get(h, "/admin/device/dev_27c38b").Body.String()
 	assert.Contains(t, device, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+}
+
+func TestATimestampWithAStoreIsADateAndTimePicker(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `type="datetime-local" value="2026-10-10T23:30:00" step="1"`) // 36 hours after the seed's now
+
+	// Saved from the picker, in UTC, as Unix seconds.
+	post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.25"}, "f1_1": {"80"}, "f2": {"2026-11-01T02:00"}})
+	assert.Equal(t, service.Settings().Maintain, int(time.Date(2026, 11, 1, 2, 0, 0, 0, time.UTC).Unix()))
 }

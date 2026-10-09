@@ -1,7 +1,9 @@
 package webui
 
 import (
+	"errors"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -67,4 +69,18 @@ func timestampText(seconds int) string {
 		return ""
 	}
 	return showMoment(time.Unix(int64(seconds), 0), false)
+}
+
+// pickedMoment reads what a date and time picker submitted, in UTC. blank is true
+// when it was cleared.
+func pickedMoment(raw string) (t time.Time, blank bool, err error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, true, nil
+	}
+	t, _, ok := readDatetime(raw)
+	if !ok {
+		return time.Time{}, false, errors.New("not a date and time")
+	}
+	return t, false, nil
 }

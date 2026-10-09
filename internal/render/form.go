@@ -2,8 +2,10 @@ package render
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/internal/ir"
 	c "github.com/Olian04/webui/internal/render/templates/components"
@@ -92,7 +94,14 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	}
 	// A number input shows its value in the viewer's locale ("0,67"), which is
 	// right for typing and wrong for reading. A read-only field is only read.
-	if !fv.ReadOnly {
+	if !fv.ReadOnly && f.Display == ir.DisplayTime {
+		// A date and time picker, whose value is the moment in UTC to the second, not
+		// the text a table shows. What was typed, after a rejection, stays as it was.
+		fv.Type, fv.Rules.Step = "datetime-local", "1"
+		if _, typed := v.Values[f.Name]; !typed {
+			fv.Value = momentInput(f, v.Model)
+		}
+	} else if !fv.ReadOnly {
 		switch f.Kind {
 		case ir.KindInt:
 			fv.Type, fv.Rules.Step = "number", "1"
@@ -101,6 +110,19 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 		}
 	}
 	return fv
+}
+
+// momentInput is a moment as a date and time input holds it, in UTC, or "" when the
+// field has none.
+func momentInput(f ir.Field, model any) string {
+	if f.Get(model) == "" {
+		return ""
+	}
+	seconds := f.Num(model)
+	if math.IsInf(seconds, 0) || math.IsNaN(seconds) {
+		return ""
+	}
+	return time.Unix(int64(seconds), 0).UTC().Format("2006-01-02T15:04:05")
 }
 
 // fieldID is unique in the document: a page may hold several forms.
@@ -132,6 +154,9 @@ func ruleLines(f ir.Field, editable bool) []string {
 		return nil
 	}
 	var out []string
+	if f.Display == ir.DisplayTime {
+		out = append(out, "Date and time in UTC")
+	}
 	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules)} {
 		if s != "" {
 			out = append(out, s)

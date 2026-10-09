@@ -43,6 +43,7 @@ type Settings struct {
 	Port       int
 	SampleRate float64 // 0 to 1: the share of events kept
 	MaxLoad    float64 // percent: where ingest starts shedding
+	Maintain   int     // Unix seconds: when the next maintenance window starts
 }
 
 type RetentionPolicy struct{ Days int }
@@ -96,7 +97,7 @@ var service = newService()
 
 func newService() *Service {
 	s := &Service{
-		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80},
+		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
 	}

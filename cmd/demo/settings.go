@@ -39,6 +39,13 @@ var (
 		Load:  func(s Settings) float64 { return s.MaxLoad },
 		Store: func(s *Settings, v float64) { s.MaxLoad = v },
 	}
+	// A Timestamp with a Store is a date and time picker, in UTC, that stores Unix
+	// seconds. A Datetime stores an ISO 8601 string the same way.
+	Maintenance = webui.Timestamp[Settings]{
+		Label: "Maintenance window starts",
+		Load:  func(s Settings) int { return s.Maintain },
+		Store: func(s *Settings, v int) { s.Maintain = v },
+	}
 	Days = webui.Int[RetentionPolicy]{
 		Label: "Retention (days)",
 		Load:  func(r RetentionPolicy) int { return r.Days },
@@ -57,6 +64,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 		Fields: []webui.Accessor[Settings]{
 			webui.Group[Settings]{CollectorName, Port},
 			webui.Group[Settings]{SampleRate, MaxLoad},
+			Maintenance,
 		},
 		Submit: SaveIngest,
 	},

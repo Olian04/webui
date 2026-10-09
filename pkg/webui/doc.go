@@ -80,8 +80,8 @@
 // A [Table] is a list of rows of a model M, with columns that are [Accessor] values.
 // The same accessor is a column in a table and an input in a form, so it is written
 // once. [String], [Int], [Float], [Badge], [Datetime], [Timestamp] and [Slider] are
-// the accessors; without a Store an accessor is read-only, and a Badge, a Datetime
-// and a Timestamp never have one.
+// the accessors; without a Store an accessor is read-only, and a Badge never has one.
+// A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
 // A table says where its rows come from with exactly one of two fields:
 //

@@ -107,3 +107,63 @@ func TestAMomentInAFormIsReadOnlyOutputAndAnEmptyOneIsADash(t *testing.T) {
 	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // Created is zero: not set
 	assert.False(t, strings.Contains(body, "<input class=\"input\""))
 }
+
+// editMoments is a form whose two moments can be changed. stored is what the last
+// submission left in the model.
+func editMoments(stored *object) http.Handler {
+	when := webui.Datetime[object]{Label: "Modified", Load: func(o object) string { return o.Modified }, Store: func(o *object, v string) { o.Modified = v }}
+	made := webui.Timestamp[object]{Label: "Created", Load: func(o object) int { return o.Created }, Store: func(o *object, v int) { o.Created = v }}
+	form := webui.Form[object]{
+		Title: "Object",
+		Load: func(context.Context) (object, error) {
+			return object{Modified: "2026-10-09T11:27:00Z", Created: 1791540000}, nil
+		},
+		Fields: []webui.Accessor[object]{when, made},
+		Submit: webui.Action[object]{Run: func(_ context.Context, o object) (webui.Outcome, error) {
+			*stored = o
+			return webui.Success("Saved"), nil
+		}},
+	}
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", Body: form}}}.MustCompile("")
+}
+
+func TestAMomentWithAStoreIsADateAndTimePickerInUTC(t *testing.T) {
+	t.Parallel()
+
+	body := serve(editMoments(&object{}), http.MethodGet, "/edit").Body.String()
+
+	// The native picker, holding the moment in UTC to the second: not the text a table shows.
+	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T11:27:00" step="1"`)
+	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T10:00:00" step="1"`) // 1791540000
+	assert.False(t, strings.Contains(body, "<time"))
+	// What the picker means is said once, beside the label.
+	assert.Contains(t, body, `<span class="tip-item">Date and time in UTC</span>`)
+}
+
+func TestAMomentIsStoredAsRFC3339InUTCAndAsUnixSeconds(t *testing.T) {
+	t.Parallel()
+
+	var stored object
+	h := editMoments(&stored)
+	rec := post(h, "/edit", formValues("f0", "2026-10-10T08:15:30", "f1", "2026-10-10T08:15"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, stored.Modified, "2026-10-10T08:15:30Z")
+	assert.Equal(t, stored.Created, int(time.Date(2026, 10, 10, 8, 15, 0, 0, time.UTC).Unix()))
+
+	// A cleared picker is no value, not an error.
+	rec = post(h, "/edit", formValues("f0", "", "f1", ""))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, stored.Modified, "")
+	assert.Equal(t, stored.Created, 0)
+}
+
+func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
+	t.Parallel()
+
+	var stored object
+	rec := post(editMoments(&stored), "/edit", formValues("f0", "next tuesday", "f1", "2026-10-10T08:15"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), `value="next tuesday"`)
+	assert.Contains(t, rec.Body.String(), "Could not read this value.")
+	assert.Equal(t, stored.Modified, "") // nothing was saved
+}

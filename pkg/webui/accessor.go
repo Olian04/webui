@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -168,11 +169,15 @@ type Badge[M any] struct {
 func (Badge[M]) isAccessor() {}
 
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
-// "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is read-only, in a
-// table and in a form. It is shown in UTC as "2026-10-09 11:27" (a date alone as
-// "2026-10-09"), and a table sorts and filters it as a moment and not as the text:
-// the filter takes a start and an end, in UTC. A value with no zone is taken as UTC,
-// and one that is not a moment at all is shown as written and sorts first.
+// "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
+// "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and filters it
+// as a moment and not as the text: the filter takes a start and an end, in UTC. A
+// value with no zone is taken as UTC, and one that is not a moment at all is shown as
+// written and sorts first.
+//
+// Without Store it is read-only. With Store a form shows a date and time picker, in
+// UTC, and Store is handed the choice as RFC 3339 in UTC, "2026-10-09T11:27:00Z", or
+// an empty string when the picker is cleared.
 type Datetime[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
@@ -180,14 +185,18 @@ type Datetime[M any] struct {
 
 	// Load reads the ISO 8601 string from the model. An empty string is no value.
 	Load func(M) string
+
+	// Store writes the chosen moment to the model, as RFC 3339 in UTC. Without it the
+	// field is read-only.
+	Store func(*M, string)
 }
 
 func (Datetime[M]) isAccessor() {}
 
 // Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
-// and time. It is read-only, in a table and in a form, and is shown, sorted and
-// filtered as [Datetime] is. Zero is "not set" and shows as nothing. For a time in
-// milliseconds, divide it in Load.
+// and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
+// Zero is "not set": it shows as nothing, and clearing the picker stores it. For a
+// time in milliseconds, divide it in Load and multiply it in Store.
 type Timestamp[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
@@ -195,6 +204,10 @@ type Timestamp[M any] struct {
 
 	// Load reads the Unix time, in seconds, from the model.
 	Load func(M) int
+
+	// Store writes the chosen moment to the model, as Unix seconds. Without it the
+	// field is read-only.
+	Store func(*M, int)
 }
 
 func (Timestamp[M]) isAccessor() {}
@@ -445,17 +458,47 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Get: func(m any) string { return a.Load(m.(M)) },
 		}
 	case Datetime[M]:
-		return ir.Field{
+		f := ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
 			Get: func(m any) string { return datetimeText(a.Load(m.(M))) },
 			Num: func(m any) float64 { return datetimeNum(a.Load(m.(M))) },
 		}
+		if a.Store != nil {
+			f.Set = func(m any, raw string) error {
+				t, blank, err := pickedMoment(raw)
+				if err != nil {
+					return err
+				}
+				if blank {
+					a.Store(m.(*M), "")
+					return nil
+				}
+				a.Store(m.(*M), t.Format(time.RFC3339))
+				return nil
+			}
+		}
+		return f
 	case Timestamp[M]:
-		return ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Display: ir.DisplayTime,
+		f := ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
 			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
 			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
 		}
+		if a.Store != nil {
+			f.Set = func(m any, raw string) error {
+				t, blank, err := pickedMoment(raw)
+				if err != nil {
+					return err
+				}
+				if blank {
+					a.Store(m.(*M), 0)
+					return nil
+				}
+				a.Store(m.(*M), int(t.Unix()))
+				return nil
+			}
+		}
+		return f
 	case Slider[M]:
 		prec := -1
 		if a.Precision > 0 {
