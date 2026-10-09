@@ -1376,6 +1376,133 @@ select.input option {
   margin-top: 2px;
 }
 
+/* ------------------------------ code ------------------------------------- */
+/* An editor and a diff. Each is plain markup that works as it is (a textarea, a block of
+   text, a unified diff) and that Monaco, when script runs, mounts over and hides. */
+.code-body {
+  padding: 0;
+}
+.code-editor,
+.code-diff {
+  position: relative;
+  height: max(16rem, calc(100vh - var(--content-chrome) - 8rem));
+  height: max(16rem, calc(100dvh - var(--content-chrome) - 8rem));
+}
+.code-text,
+.code-view {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--text);
+  font:
+    13px/20px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  resize: none;
+  outline: none;
+}
+.code-text {
+  background: var(--input-bg);
+}
+.code-text:focus,
+.code-view:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.code-text[aria-invalid='true'] {
+  box-shadow: inset 0 0 0 2px var(--ring-bad);
+}
+.code-error {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+.code-host {
+  position: absolute;
+  inset: 0;
+}
+.code-editor.mounted > :is(textarea, pre),
+.code-diff.mounted > .udiff {
+  display: none;
+}
+.code-sides {
+  display: flex;
+  gap: 0;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.code-sides span {
+  flex: 1;
+}
+/* The unified diff, for a page without script. */
+.udiff {
+  box-sizing: border-box;
+  height: 100%;
+  overflow: auto;
+  padding: 6px 0;
+  font:
+    12.5px/19px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  outline: none;
+}
+.udiff:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.udiff-note,
+.udiff-sum {
+  margin: 0;
+  padding: 4px 12px 8px;
+  font-family: inherit;
+  color: var(--text-2);
+}
+.udiff-sum .ins {
+  color: var(--green);
+}
+.udiff-sum .del {
+  color: var(--red);
+}
+.udiff-line {
+  display: grid;
+  grid-template-columns: 3.5rem 3.5rem 1.25rem 1fr;
+  min-width: max-content;
+}
+.udiff-line code {
+  font: inherit;
+  white-space: pre;
+}
+.udiff-n {
+  padding-right: 8px;
+  text-align: right;
+  color: var(--text-3);
+  user-select: none;
+}
+.udiff-m {
+  color: var(--text-2);
+  user-select: none;
+}
+.udiff-line.ins {
+  background: var(--green-bg);
+}
+.udiff-line.del {
+  background: var(--red-bg);
+}
+.udiff-gap {
+  padding: 2px 0 2px 7rem;
+  color: var(--text-3);
+}
+
 /* ------------------------------ states ----------------------------------- */
 .state-page {
   max-width: 480px;

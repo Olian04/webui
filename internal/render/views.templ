@@ -20,7 +20,7 @@ templ (r *Renderer) document(d Doc) {
 		Early:       r.early(),
 		Stylesheets: r.styles(),
 		Scripts:     []string{r.AssetHref("enhance.js")},
-		Head:        r.head(),
+		Head:        r.head(d.Code),
 		Sidebar:     r.sidebar(d.Active, d.HideNav),
 		TopBar:      r.topbar(d.Crumbs, d.URL),
 		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
@@ -44,9 +44,22 @@ templ (r *Renderer) early() {
 
 // head carries the one script that must run before first paint, so the stored
 // theme never flashes. It is a classic script, because modules are deferred.
-templ (r *Renderer) head() {
+templ (r *Renderer) head(needs CodeNeeds) {
 	<script src={ r.AssetHref("prefs.js") }></script>
 	@r.favicons()
+	if needs.Used {
+		@r.codeHead(needs)
+	}
+}
+
+// codeHead links the editor on a page that has one: its stylesheet, what its script is
+// told, and the script, a module, which mounts Monaco over the textareas and the
+// plain text that are already on the page.
+templ (r *Renderer) codeHead(needs CodeNeeds) {
+	{{ code := r.code(needs) }}
+	<link rel="stylesheet" href={ code.Style }/>
+	@templ.JSONScript("webui-code", code.Config)
+	<script type="module" src={ code.Entry }></script>
 }
 
 // favicons links the browser tab's icon: the logo scaled to each size, with the
@@ -375,11 +388,15 @@ templ (r *Renderer) Form(v FormView) {
 				Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
 			}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
-				<div class="panel-body pad">
-					for _, f := range v.Node.Fields {
-						@r.formField(v, f)
-					}
-				</div>
+				if v.Node.Editor != nil {
+					@r.editorBody(v)
+				} else {
+					<div class="panel-body pad">
+						for _, f := range v.Node.Fields {
+							@r.formField(v, f)
+						}
+					</div>
+				}
 				if v.Node.Submit != nil && v.SubmitGate != "" {
 					// A visitor who may not save has nothing to save or cancel: the footer
 					// offers the way back, or no footer when there is no way back.
@@ -547,4 +564,106 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 			</div>
 		</form>
 	</details>
+}
+
+// editorBody is a code editor's text. It is a textarea when the visitor can edit it and
+// the text in a block when they cannot, and both work as they are: script mounts Monaco
+// over them and keeps the textarea in step, so the form posts as it always did. The
+// newline ahead of the text is dropped by the browser, and is there so that a text that
+// begins with one keeps it.
+templ (r *Renderer) editorBody(v FormView) {
+	{{ f := v.Node.Fields[0] }}
+	{{ fv := r.fieldView(v, f) }}
+	<div class="panel-body code-body">
+		<div class="code-editor" data-code-editor data-language={ v.Node.Editor.Language } data-label={ f.Label }>
+			if fv.ReadOnly {
+				<pre class="code-view" tabindex="0" aria-label={ f.Label }>{ "\n" + fv.Value }</pre>
+			} else {
+				<textarea
+					class="code-text"
+					id={ fv.ID }
+					name={ fv.Name }
+					aria-label={ f.Label }
+					spellcheck="false"
+					autocomplete="off"
+					autocapitalize="off"
+					wrap="off"
+					required?={ fv.Rules.Required }
+					if fv.Rules.MaxLen > 0 {
+						maxlength={ strconv.Itoa(fv.Rules.MaxLen) }
+					}
+					if fv.Error != "" {
+						aria-invalid="true"
+						aria-describedby={ fv.ID + "-error" }
+					}
+				>{ "\n" + fv.Value }</textarea>
+			}
+		</div>
+		if fv.Error != "" {
+			<div class="err code-error" id={ fv.ID + "-error" }>
+				@c.Icon(c.IconProps{Name: c.IconAlert})
+				{ fv.Error }
+			</div>
+		}
+	</div>
+}
+
+// Diff renders a diff leaf as one panel: the two texts and what changed. The page holds
+// the changes as a unified diff, which the server made, and the two texts apart for
+// Monaco, which replaces the diff with its own when script runs.
+templ (r *Renderer) Diff(v DiffView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Status: v.status(),
+		Leaf:   LeafID(v.Node.At),
+	}) {
+		if v.Failed {
+			@c.EmptyState(c.EmptyStateProps{
+				Icon:  c.IconAlert,
+				Title: "Could not load",
+				Desc:  "The cause was logged on the server. Refresh to try again.",
+			})
+		} else {
+			<div class="panel-body code-body">
+				<div class="code-sides" aria-hidden="true">
+					<span>{ v.Node.Original.Label }</span>
+					<span>{ v.Node.Modified.Label }</span>
+				</div>
+				<div class="code-diff" data-code-diff data-language={ v.Node.Language } data-label={ v.Node.Title }>
+					<pre hidden data-side="original">{ "\n" + v.Original }</pre>
+					<pre hidden data-side="modified">{ "\n" + v.Modified }</pre>
+					@r.unified(v)
+				</div>
+			</div>
+		}
+	}
+}
+
+// unified is the changes as a unified diff, the way to read them without script.
+templ (r *Renderer) unified(v DiffView) {
+	<div class="udiff" role="region" tabindex="0" aria-label={ v.Node.Original.Label + " and " + v.Node.Modified.Label + ", compared" }>
+		switch {
+			case !v.Compared:
+				<p class="udiff-note">These two are too large or too different to compare here. Script shows them side by side.</p>
+			case len(v.Hunks) == 0:
+				<p class="udiff-note">No differences.</p>
+			default:
+				<p class="udiff-sum"><span class="ins">+{ strconv.Itoa(v.Added) }</span> <span class="del">−{ strconv.Itoa(v.Removed) }</span></p>
+				for i, h := range v.Hunks {
+					if i > 0 {
+						<div class="udiff-gap" aria-hidden="true">⋯</div>
+					}
+					for _, line := range h.Lines {
+						{{ l := unifiedLine(line) }}
+						<div class={ "udiff-line", l.class() }>
+							<span class="udiff-n" aria-hidden="true">{ l.old() }</span>
+							<span class="udiff-n" aria-hidden="true">{ l.new() }</span>
+							<span class="udiff-m" aria-hidden="true">{ l.mark() }</span>
+							<code>{ line.Text }</code>
+						</div>
+					}
+				}
+		}
+	</div>
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/render"
 )
 
 // Request is what the compiled app knows about the request in flight. It rides
@@ -34,6 +35,10 @@ type Request struct {
 	// it belongs to. Both are set only while answering a POST.
 	sub     *submission
 	subLeaf string
+
+	// code is what the editors and diffs built for this response need the page to
+	// load, set as the body is built.
+	code render.CodeNeeds
 }
 
 type ctxKey struct{}

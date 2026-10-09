@@ -46,3 +46,6 @@ dist/
 
 # Built by `make build`
 /webui
+
+# The Monaco build: its dependencies are installed to build the committed assets
+tools/monaco/node_modules/

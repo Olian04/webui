@@ -9,6 +9,9 @@
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
 | `internal/favicon` | Scale `Brand.Logo` to the favicon PNGs (stdlib only).                             |
+| `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
+| `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
+| `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`Table.Rows`). |
 | `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline, POST actions, flash, `Open` resolve. |
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
@@ -18,7 +21,7 @@
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
-`pkg/webui` files: `app`, `page`, `table`, `form`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
+`pkg/webui` files: `app`, `page`, `table`, `form`, `editor`, `diff`, `language`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
 The runnable `Example` functions in `pkg/webui` are the documentation's tests, and are what pkg.go.dev shows. Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 

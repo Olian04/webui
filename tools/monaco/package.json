@@ -1,0 +1,13 @@
+{
+  "name": "webui-monaco-build",
+  "private": true,
+  "description": "Builds the Monaco editor assets that webui embeds. Run `make monaco`; the output is committed.",
+  "type": "module",
+  "scripts": { "build": "node build.mjs" },
+  "dependencies": {
+    "monaco-editor": "0.57.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

@@ -238,6 +238,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return p.tabs(ctx, req, page, n)
 	case *ir.Table:
 		return p.table(ctx, req, page, n), nil
+	case *ir.Diff:
+		return p.diff(ctx, req, page, n), nil
 	case *ir.Form:
 		var sub *submission
 		if req.sub != nil && req.subLeaf == render.LeafID(n.At) {
@@ -268,12 +270,16 @@ func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) 
 		pathVals, _ = req.encode(page)
 	}
 	crumbs := p.render.Crumbs(page, pathVals)
-	return render.Doc{
+	doc := render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
 		Active:  p.render.Active(page),
 		Content: content,
 	}
+	if req != nil {
+		doc.Code = req.code
+	}
+	return doc
 }
 
 func (p *Program) writePage(w http.ResponseWriter, r *http.Request, status int, page *ir.Page, req *Request, content templ.Component, toasts ...render.Toast) {
