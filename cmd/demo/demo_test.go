@@ -15,16 +15,25 @@ import (
 )
 
 // The demo is the library's showcase, so these tests are the list of what it
-// shows. They share the demo's one in-memory service and its -viewer flag, so
-// none of them runs in parallel.
+// shows. They share the demo's one in-memory service, so none of them runs in
+// parallel.
 
-func handler(t *testing.T) http.Handler {
+// handlerAs is the whole site, with every request carrying a session for the role, as
+// a browser that had signed in would.
+func handlerAs(t *testing.T, role Role) http.Handler {
 	t.Helper()
 
-	h, err := app.Compile("/admin")
+	compiled, err := app.Compile("/admin")
 	assert.NoError(t, err)
-	return h
+	site := routes(compiled)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("Cookie", sessionCookie+"="+sign(role))
+		site.ServeHTTP(w, r)
+	})
 }
+
+// handler is the site for an editor, who may do everything.
+func handler(t *testing.T) http.Handler { return handlerAs(t, Editor) }
 
 func get(h http.Handler, target string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()
@@ -38,13 +47,6 @@ func post(h http.Handler, target string, form url.Values) *httptest.ResponseReco
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
-}
-
-func asViewer(t *testing.T) {
-	t.Helper()
-
-	*viewer = true
-	t.Cleanup(func() { *viewer = false })
 }
 
 func TestEveryPageServes(t *testing.T) {
@@ -107,12 +109,13 @@ func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
 
 func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	h := handler(t)
-	for _, root := range []string{"/admin", "/admin/"} {
-		rec := get(h, root)
-		assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
-		assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
-		assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it
-	}
+	rec := get(h, "/admin/")
+	assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
+	assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
+	assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it
+
+	// Without the slash the server's mux adds it.
+	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")
 }
 
 func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
@@ -167,8 +170,7 @@ func TestActionsRowBulkAndDestructive(t *testing.T) {
 }
 
 func TestViewerIsRefusedWhereGuarded(t *testing.T) {
-	asViewer(t)
-	h := handler(t)
+	h := handlerAs(t, Viewer)
 
 	// A page Guard: nothing was loaded, and the sidebar does not offer the page.
 	assert.False(t, strings.Contains(get(h, "/admin/device").Body.String(), "Audit log"))

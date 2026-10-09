@@ -12,9 +12,10 @@
 //	             every kind of outcome (success, warning, failure, then)
 //	settings.go  forms: rules, Float, Slider, Placeholder
 //	system.go    a read-only form; a page guarded for editors; an unknown total
+//	auth.go      the surrounding authentication: sign in as a viewer or an editor at
+//	             /logout, and the Guards read the role from the request's context
 //
 //	go run ./cmd/demo                        # http://localhost:8080/admin/
-//	go run ./cmd/demo -viewer                # guarded controls and pages are refused
 //	go run ./cmd/demo -accent '#2f9e8f'      # override the theme's accent colour
 //	go run ./cmd/demo -broken                # the failed-to-compile page
 package main
@@ -83,12 +84,20 @@ func main() {
 		log.Println("webui:", err)
 	}
 
+	log.Printf("listening on http://localhost%s/admin/", *addr)
+	srv := &http.Server{Addr: *addr, Handler: routes(handler), ReadHeaderTimeout: 10 * time.Second}
+	log.Fatal(srv.ListenAndServe())
+}
+
+// routes is the whole site: the app behind authentication, and the pages that sign in
+// and out. webui does no authentication of its own, so this is where it is.
+func routes(app http.Handler) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/admin/", handler)
+	mux.Handle("/admin/", authenticated(app))
+	mux.HandleFunc("GET /logout", logout) // the app's menu links here: "Log out"
+	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)
 	})
-	log.Printf("listening on http://localhost%s/admin/", *addr)
-	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-	log.Fatal(srv.ListenAndServe())
+	return mux
 }

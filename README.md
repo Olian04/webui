@@ -96,8 +96,7 @@ library end to end:
 
 ```sh
 git clone https://github.com/Olian04/webui && cd webui
-go run ./cmd/demo                    # http://localhost:8080/admin/
-go run ./cmd/demo -viewer            # guarded controls and pages are refused, with the reason
+go run ./cmd/demo                    # http://localhost:8080/admin/ (you choose a viewer or an editor first)
 go run ./cmd/demo -accent '#2f9e8f'  # override the theme's accent colour
 go run ./cmd/demo -broken            # the failed-to-compile page
 ```
@@ -190,9 +189,10 @@ own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `devices.go`            | a table with paging, sorting, column filters (multi-select, range, text), search and row links; a form in tabs beside a table; a path and query argument (`?minutes=`); a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a rejection with `Reject`, a `Failure`, a `Warning` and `Then`     |
 | `sites.go`              | a nested path with a parent breadcrumb and a borrowed nav entry, two stateful tables on one page with their own `ID`s, a second page contributing search results                                                                                                                                           |
-| `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating under `-viewer`                                                                           |
+| `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action, gating by role (sign in as a viewer to see it)                                                                           |
 | `settings.go`           | rules (`Required`, length, pattern, bounds), `Float`, a writable `Slider`                                                                                                                                                                                                                                  |
 | `system.go`             | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb), `Nav.Icon`, an entry with no icon (its initial in the collapsed sidebar); a read-only form (no `Submit`), a `Badge` and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a table with an unknown total |
+| `auth.go`               | the surrounding authentication: a signed session cookie chosen at `/logout` (a viewer or an editor), read by the Guards from the request's context |
 | `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page                                                                                                                                                                                                                          |
 
 ## Conventions
