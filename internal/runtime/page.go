@@ -210,7 +210,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 				}
 				key := args.FilterKey(id, col.Key)
 				keys = append(keys, key)
-				if col.Options != nil {
+				if col.Options != nil || col.OpenSet {
 					lists = append(lists, key)
 				}
 			}

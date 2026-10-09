@@ -239,3 +239,13 @@ func TestABadgeOfALoadTableWithNoKindsStaysATextFilter(t *testing.T) {
 	assert.Contains(t, body, `placeholder="Contains…"`)
 	assert.Equal(t, len(classBoxes.FindAllString(body, -1)), 0) // no checkboxes
 }
+
+func TestSeveralValuesOfAnOpenBadgeCanBeChosenTogether(t *testing.T) {
+	t.Parallel()
+
+	body := serve(storageTable(true), http.MethodGet, "/o?objects.filter.class=STANDARD&objects.filter.class=GLACIER").Body.String()
+	assert.Contains(t, body, ">a<")                // STANDARD
+	assert.Contains(t, body, ">d<")                // GLACIER
+	assert.False(t, strings.Contains(body, ">b<")) // glacier, which is a different value
+	assert.Equal(t, strings.Count(body, " checked"), 2)
+}
