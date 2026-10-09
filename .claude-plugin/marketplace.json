@@ -1,0 +1,15 @@
+{
+  "name": "olian04",
+  "description": "Skills for building with Olian04's libraries",
+  "owner": {
+    "name": "Olian04",
+    "url": "https://github.com/Olian04"
+  },
+  "plugins": [
+    {
+      "name": "webui",
+      "source": "./",
+      "description": "Teaches an agent to build admin panels and internal tools in Go with the webui library, reading the documentation for the version in use."
+    }
+  ]
+}

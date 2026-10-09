@@ -120,13 +120,31 @@ cannot do something. It names almost none of the API. It tells the agent to read
 documentation for the version your `go.mod` pins (`go doc` reads it from the module
 cache), so it does not go stale when the library changes.
 
-To use it, copy it from the module cache, which matches your version, into the place
-your agent reads skills from, such as `.claude/skills` for Claude Code:
+It is in the open [Agent Skills](https://agentskills.io) format, so it works in Claude
+Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
+
+**Claude Code**, as a plugin:
+
+```text
+/plugin marketplace add Olian04/webui
+/plugin install webui@olian04
+```
+
+**Any agent**, with the [`skills`](https://github.com/vercel-labs/skills) CLI, which
+installs it for the agents it finds on your machine:
 
 ```sh
-mkdir -p .claude/skills
-cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui" .claude/skills/
-chmod -R u+w .claude/skills/webui
+npx skills add Olian04/webui
+```
+
+**By hand**, copying it from the module cache so it matches your version, into the
+folder your agent reads skills from (`.claude/skills` for Claude Code,
+`.cursor/skills` for Cursor, or `.agents/skills`, which several agents read):
+
+```sh
+mkdir -p .agents/skills
+cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui" .agents/skills/
+chmod -R u+w .agents/skills/webui
 ```
 
 Or read it at [`skills/webui/SKILL.md`](skills/webui/SKILL.md).
@@ -151,6 +169,7 @@ This half is for people changing the library.
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
 | `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace and plugin, and a Cursor plugin. The repository root is the plugin, and `skills/` is where both find the skill. |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 
 Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and

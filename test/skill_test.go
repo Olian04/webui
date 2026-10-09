@@ -1,6 +1,7 @@
 package webui_test
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -140,4 +141,46 @@ func TestEveryNameTheSkillGivesTheLibraryExists(t *testing.T) {
 			t.Errorf("the skill says to read go doc for %s.%s, which the package does not declare", typ, name)
 		}
 	}
+}
+
+// The skill is packaged for Claude Code and Cursor by manifests at the repository root,
+// which is the plugin. They must be valid, name the plugin as the skill is named, and
+// list it in the marketplace, or the install commands in the README stop working.
+func TestThePluginManifestsPackageTheSkill(t *testing.T) {
+	t.Parallel()
+
+	read := func(path string) map[string]any {
+		b, err := os.ReadFile(filepath.Clean(path))
+		assert.NoError(t, err)
+		var out map[string]any
+		assert.NoError(t, json.Unmarshal(b, &out))
+		return out
+	}
+
+	for _, path := range []string{"../.claude-plugin/plugin.json", "../.cursor-plugin/plugin.json"} {
+		assert.Equal(t, read(path)["name"], "webui")
+		assert.Equal(t, read(path)["license"], "MIT")
+		// No version: the skill is the same for every version of the library, so an
+		// install follows the default branch.
+		_, pinned := read(path)["version"]
+		assert.False(t, pinned)
+	}
+
+	market := read("../.claude-plugin/marketplace.json")
+	assert.Equal(t, market["name"], "olian04")
+	plugins, _ := market["plugins"].([]any)
+	assert.Equal(t, len(plugins), 1)
+	entry, _ := plugins[0].(map[string]any)
+	assert.Equal(t, entry["name"], "webui")
+	assert.Equal(t, entry["source"], "./") // the repository root, where skills/ is
+
+	// The README tells people to install what the marketplace calls it.
+	readme, err := os.ReadFile("../README.md")
+	assert.NoError(t, err)
+	assert.Contains(t, string(readme), "/plugin marketplace add Olian04/webui")
+	assert.Contains(t, string(readme), "/plugin install webui@olian04")
+	assert.Contains(t, string(readme), "npx skills add Olian04/webui")
+
+	_, err = os.Stat("../skills/webui/SKILL.md")
+	assert.NoError(t, err)
 }
