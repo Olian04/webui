@@ -55,7 +55,6 @@ type fieldView struct {
 	Field       ir.Field
 	Value       string
 	Error       string
-	Hint        string
 	RuleLines   []string
 	Placeholder string
 	ReadOnly    bool
@@ -77,7 +76,6 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 		Name:        f.Name,
 		Field:       f,
 		Error:       v.Errors[f.Label],
-		Hint:        hint(f, editable),
 		RuleLines:   ruleLines(f, editable),
 		Placeholder: f.Placeholder,
 		ReadOnly:    !editable,
@@ -124,23 +122,10 @@ func htmlRules(f ir.Field, editable bool) c.Rules {
 	return out
 }
 
-// hint is the line beneath an input that states the rule, in the library's words:
-// a length or a bound. A pattern has none, because a regular expression cannot
-// explain itself and its message says what was wrong with a value, which would
-// read as a complaint beneath a good one: it is shown when the value is refused.
-func hint(f ir.Field, editable bool) string {
-	if !editable {
-		return ""
-	}
-	if s := lengthRule(f.Rules); s != "" {
-		return s
-	}
-	return boundsRule(f.Rules)
-}
-
 // ruleLines is every constraint on an editable field, in words: what the
-// information icon beside its label lists. Unlike the hint it includes a pattern,
-// by its message, which says what a matching value is. Required is not among them:
+// information icon beside its label lists. A pattern is there by its message, which
+// says what a matching value is, and which the field shows otherwise only when a
+// value is refused. Required is not among them:
 // the asterisk beside the label says it.
 func ruleLines(f ir.Field, editable bool) []string {
 	if !editable {

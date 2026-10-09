@@ -68,9 +68,9 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.Contains(t, body, `name="f0_1" type="text" value="10.0.0.1"`)
 	assert.Contains(t, body, `required minlength="7" maxlength="15" pattern="\d{1,3}(\.\d{1,3}){3}"`)
 	assert.Contains(t, body, `<span class="req" aria-hidden="true">*</span>`)
-	// The line beneath the input is the length; the pattern's message is not there while
-	// the value is good, but is in the popover beside the label, with every other rule.
-	assert.Contains(t, body, `<div class="hint" id="p-f0_1-hint">7–15 characters</div>`)
+	// Nothing is printed beneath the input while its value is good: the rules, the
+	// pattern's message among them, are in the popover beside the label.
+	assert.False(t, strings.Contains(body, `class="hint"`))
 	for _, rule := range []string{"7–15 characters", "must be a valid IPv4 address"} {
 		assert.Contains(t, body, `<span class="tip-item">`+rule+`</span>`)
 	}
@@ -79,7 +79,7 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 
 	// A number is a number input with its bounds; zero is a real bound.
 	assert.Contains(t, body, `name="f1" type="number" value="7" min="0" max="100" step="1"`)
-	assert.Contains(t, body, ">0–100</div>")
+	assert.Contains(t, body, `<span class="tip-item">0–100</span>`) // its bounds, in the popover
 
 	// A group is layout: its fields side by side, with no frame of its own.
 	assert.Contains(t, body, `class="field-row"`)

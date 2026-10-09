@@ -278,24 +278,23 @@ reusable rather than forcing two near-identical declarations.
 
 Each rule has exactly one visual form:
 
-| Rule | Input attribute | Hint |
+| Rule | Input attribute | Shown as |
 |---|---|---|
 | Required | `required` | `*` beside the label, in critical |
-| `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters" |
-| `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535" |
-| `Pattern` | `pattern` | None; the pattern's message is the error beneath a refused value |
+| `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
+| `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
+| `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
 
-Beside the label of an editable field with any rule there is an information icon whose
-popover lists every rule but *Required*, which the asterisk says: the length, the
-bounds, and the pattern's message, which is the one place a pattern speaks while the value is good. It opens on hover and on
-focus, like a panel's description, so it works without a pointer or script.
+Nothing is printed beneath a control while its value is good. Beside the label of an
+editable field with any rule other than *Required* there is an information icon whose
+popover lists the rules: the length, the bounds, and the pattern's message. It opens on
+hover and on focus, like a panel's description, so it works without a pointer or script.
 
 The browser refuses before anything is sent; the server re-runs the same set
 after. The user sees one behaviour. `Pattern` carries a message because a
 regular expression cannot explain itself — that message is the error shown when
 a value is refused, and the reason `Pattern` is a struct while `MinLen` is a bare
-integer. It is not a standing hint: worded as a complaint, it would sit beneath a
-good value.
+integer.
 
 ---
 

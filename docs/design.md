@@ -116,7 +116,7 @@ Inter, falling back to the system UI stack. One family; no display face.
 | Table cell | 13 | 400 | Text |
 | Table header, secondary | 12.5 | 500 | Text secondary |
 | Field label | 12 | 400 | Text secondary |
-| Hint, description | 12 | 400 | Text secondary |
+| Description | 12 | 400 | Text secondary |
 | Section caption | 11 | 500, uppercase, `.05em` | Text secondary |
 
 Identifiers, addresses, timestamps and payloads use a monospace face at 12–12.5

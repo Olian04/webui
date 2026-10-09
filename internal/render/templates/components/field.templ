@@ -26,23 +26,19 @@ func num(f *float64) string {
 	return strconv.FormatFloat(*f, 'f', -1, 64)
 }
 
-// FieldProps is the label, hint and error that wrap a control. The control
-// itself is { children... }: a field has no opinion about whether it holds an
-// input, a select or something this package has not met yet.
-//
-// Error and Hint occupy the same line. An error replaces the hint, because the
-// reader needs the problem, not the rule they just broke.
+// FieldProps is the label and error that wrap a control. The control itself is
+// { children... }: a field has no opinion about whether it holds an input, a
+// select or something this package has not met yet.
 type FieldProps struct {
 	// For must match the control's id, or the label is decorative.
 	For      string
 	Label    string
 	Required bool
-	Hint     string
 	Error    string
 
 	// Rules is every constraint on the value other than Required, in words, behind an
-	// information icon beside the label: more than the one line of Hint, and shown
-	// while the value is good.
+	// information icon beside the label, so it is there while the value is good and
+	// takes no room beneath the control.
 	Rules []string
 
 	// Static is a field that shows a value and offers no control: the label sits
@@ -72,8 +68,6 @@ templ Field(p FieldProps) {
 				@Icon(IconProps{Name: IconAlert})
 				{ p.Error }
 			</div>
-		} else if p.Hint != "" {
-			<div class="hint" id={ p.For + "-hint" }>{ p.Hint }</div>
 		}
 	</div>
 }
