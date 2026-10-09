@@ -168,6 +168,13 @@ select {
   display: flex;
   height: 100vh;
   align-items: stretch;
+  /* The space the shell takes around the content: the top bar, and the content
+     region's padding above and below (the bottom one clears the status bar). A table
+     panel is held to the window less these. */
+  --topbar-h: 48px;
+  --content-pad-top: 12px;
+  --content-pad-bottom: 46px;
+  --content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));
 }
 
 /* ------------------------------ sidebar ---------------------------------- */
@@ -373,8 +380,8 @@ a.side-brand:hover {
 
 /* top bar: breadcrumbs left, actions right (Grafana's app chrome) */
 .topbar {
-  height: 48px;
-  flex: 0 0 48px;
+  height: var(--topbar-h);
+  flex: 0 0 var(--topbar-h);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -601,11 +608,8 @@ a.side-brand:hover {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 12px 12px 46px; /* the same space above the content as beside it */
-  /* A column, so a table panel can take the height there is. Anything else keeps its
-     own height, and the page scrolls to reach it, as before. */
-  display: flex;
-  flex-direction: column;
+  /* The same space above the content as beside it. */
+  padding: var(--content-pad-top) 12px var(--content-pad-bottom);
 }
 
 /* ---------------------------------------------------------------------------
@@ -791,41 +795,19 @@ a.side-brand:hover {
   padding: 0 0 0;
   min-width: 0;
 }
-/* A table panel takes the height the page has, and no more: its head and foot stay
-   put and its body, with the sticky header, is what scrolls. The layouts above it
-   must be allowed to shrink for that, so they are, but only the ones holding such a
-   panel; everything else keeps its height and the page scrolls to reach it. A panel
-   with few rows is as short as they are. Where :has() is unknown the page scrolls, as
-   it did. */
-.panel {
-  flex-shrink: 0;
-}
+/* A table panel is no taller than the window less the shell around it, and no shorter
+   than a few rows need: its head and foot stay put and its body, with the sticky
+   header, is what scrolls, so a long table does not push the page. A panel with few
+   rows is as short as they are. Nothing about the layouts around it changes, and the
+   page scrolls as usual to reach what is above or below it. */
 .panel.grows {
-  flex: 0 1 auto;
-  min-height: 0;
-  overflow: hidden;
+  max-height: max(16rem, calc(100vh - var(--content-chrome)));
+  max-height: max(16rem, calc(100dvh - var(--content-chrome)));
 }
 .panel.grows > .panel-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-}
-.stack:has(.panel.grows),
-[data-tabbody]:has(.panel.grows) {
-  flex: 0 1 auto;
-  min-height: 0;
-}
-[data-tabbody]:has(.panel.grows) {
-  display: flex;
-  flex-direction: column;
-}
-.split:has(.panel.grows) {
-  min-height: 0;
-  grid-template-rows: minmax(0, 1fr);
-  align-items: stretch;
-}
-.split:has(.panel.grows) > * {
-  min-height: 0;
 }
 /* A form's fields sit inside the panel body, inset from its edge. */
 .panel-body.pad {
