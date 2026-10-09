@@ -1625,6 +1625,24 @@ td.actions .gate:hover::after,
     monospace;
   color: var(--text-2);
 }
+/* A link a page declared: it opens in a new tab, which the arrow says. In a table it
+   sits above the row's own link, so it stays clickable. */
+a.ext {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--blue-text);
+  text-decoration: none;
+}
+a.ext:hover {
+  text-decoration: underline;
+}
+.ext-icon {
+  font-size: 10px;
+  opacity: 0.8;
+}
 /* A value shown and not offered for editing: text, a badge or a bar, in no box. Its
    label is the quiet one every field has, and the value is larger, so they read as a
    label and its value. */

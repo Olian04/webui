@@ -59,6 +59,7 @@ type fieldView struct {
 	Error       string
 	RuleLines   []string
 	Placeholder string
+	Href        string // the address of a link field, "" for any other
 	ReadOnly    bool
 	Type        string
 	Rules       c.Rules
@@ -92,6 +93,7 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	if fv.ReadOnly {
 		fv.Name = ""
 	}
+	fv.Href = linkOf(f, v.Model)
 	// A number input shows its value in the viewer's locale ("0,67"), which is
 	// right for typing and wrong for reading. A read-only field is only read.
 	if !fv.ReadOnly && f.Display == ir.DisplayTime {

@@ -105,7 +105,7 @@ func validateMenu(items []MenuItem) []CompileError {
 			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
 				"Use the name of a Font Awesome Free solid icon, such as \"book\", or leave Icon empty.")
 		}
-		if !validMenuURL(it.ExternalURL) {
+		if !validURL(it.ExternalURL) {
 			bad(fmt.Sprintf("has the ExternalURL %q, which is not a path on this site, or an http, https or mailto address", it.ExternalURL),
 				"Use a path such as \"/logout\", or an address such as \"https://example.com/help\".")
 		}
@@ -113,7 +113,10 @@ func validateMenu(items []MenuItem) []CompileError {
 	return errs
 }
 
-func validMenuURL(s string) bool {
+// validURL is whether an address may be a link: a path on this site, or an http,
+// https or mailto address. Nothing else is one, whatever it holds: a script or data
+// address in a link is how a stored value becomes code.
+func validURL(s string) bool {
 	if strings.HasPrefix(s, "/") {
 		return !strings.HasPrefix(s, "//") && !strings.HasPrefix(s, `/\`) && !strings.ContainsAny(s, "\n\r")
 	}

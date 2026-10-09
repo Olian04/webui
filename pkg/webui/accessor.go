@@ -168,6 +168,30 @@ type Badge[M any] struct {
 
 func (Badge[M]) isAccessor() {}
 
+// URL projects a string field of M as a link, which the page declares by using it:
+// no other accessor ever makes a link of its value. It is read-only, in a table and
+// in a form. The link opens in a new tab, with rel="noopener noreferrer", and is
+// marked with an arrow, and screen readers are told it opens a new tab.
+//
+// The address may be a path on this site, or an http, https or mailto address. A
+// value that is none of these, such as a script address, is shown as plain text and
+// is never a link, so data in a model cannot make one. The first column of a table
+// with a RowClick cannot be a URL, since the row's own link is there.
+type URL[M any] struct {
+	// Label is the column header and the field's label. In a table it also names
+	// the column in the address and in a [Query].
+	Label string
+
+	// Load reads the address from the model. An empty string is no link.
+	Load func(M) string
+
+	// Text is what the link says, the same on every row, such as "Download". Leave
+	// it empty to show the address itself.
+	Text string
+}
+
+func (URL[M]) isAccessor() {}
+
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
 // "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and filters it
@@ -267,6 +291,7 @@ var (
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
 	_ Accessor[struct{}] = Badge[struct{}]{}
+	_ Accessor[struct{}] = URL[struct{}]{}
 	_ Accessor[struct{}] = Datetime[struct{}]{}
 	_ Accessor[struct{}] = Timestamp[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
@@ -349,6 +374,11 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Load == nil {
 			v.add(at+" has no Load", "Set Load to func(M) string.")
 		}
+	case URL[M]:
+		label(a.Label)
+		if a.Load == nil {
+			v.add(at+" has no Load", "Set Load to func(M) string, returning the address.")
+		}
 	case Datetime[M]:
 		label(a.Label)
 		if a.Load == nil {
@@ -372,7 +402,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, Datetime, Timestamp, Slider or Group.")
+			"Use String, Int, Float, Badge, URL, Datetime, Timestamp, Slider or Group.")
 	}
 }
 
@@ -456,6 +486,22 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
 			Get: func(m any) string { return a.Load(m.(M)) },
+		}
+	case URL[M]:
+		return ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayLink,
+			Get: func(m any) string {
+				if a.Text != "" && a.Load(m.(M)) != "" {
+					return a.Text
+				}
+				return a.Load(m.(M))
+			},
+			Link: func(m any) string {
+				if u := a.Load(m.(M)); validURL(u) {
+					return u
+				}
+				return ""
+			},
 		}
 	case Datetime[M]:
 		f := ir.Field{
@@ -560,6 +606,8 @@ func accessorLabel[M any](acc Accessor[M]) string {
 	case Float[M]:
 		return a.Label
 	case Badge[M]:
+		return a.Label
+	case URL[M]:
 		return a.Label
 	case Datetime[M]:
 		return a.Label

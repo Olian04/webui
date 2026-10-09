@@ -207,6 +207,15 @@ func (v TableView) clicks(i int) bool {
 
 func (v TableView) selectable() bool { return len(v.Node.Bulk) > 0 }
 
+// linkOf is the address a DisplayLink field has for a row, "" for any other field or
+// a value that may not be a link.
+func linkOf(f ir.Field, row any) string {
+	if f.Link == nil {
+		return ""
+	}
+	return f.Link(row)
+}
+
 // momentAttr is a moment as shown, "2026-10-09 11:27" or a date alone, as the
 // datetime attribute of a <time> element reads it.
 // It is empty for text that is not a moment, which is then shown as it is.

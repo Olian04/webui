@@ -34,6 +34,10 @@ type Field struct {
 	// text, which a table's filter takes as typed.
 	Options []string
 
+	// Link is the address of a DisplayLink field, "" when the value is not one that
+	// may be a link, which is then shown as plain text.
+	Link func(model any) string
+
 	// OpenSet says the column's values are not declared but are whatever its rows
 	// hold, for a table whose rows the library holds in full: its filter is a
 	// multi-select of the values present, whatever they are, and matches the rows
@@ -55,6 +59,7 @@ const (
 	DisplayText Display = iota
 	DisplayBadge
 	DisplaySlider // a bar when read-only, a range input when writable
+	DisplayLink   // a link: Get is the text it shows, and Link its address
 	DisplayTime   // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
 )
 

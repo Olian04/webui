@@ -218,6 +218,12 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 	if t.RowClick != nil {
 		t.RowClick.validateRow(v)
+		if len(t.Columns) > 0 {
+			if _, isLink := t.Columns[0].(URL[M]); isLink {
+				v.add("a Table's first column is a URL, but its RowClick is there",
+					"The row's own link or button covers the first column, and a link cannot hold a link: put the URL in another column.")
+			}
+		}
 	}
 	if t.Search {
 		if t.RowClick == nil {

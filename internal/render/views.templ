@@ -313,17 +313,27 @@ templ (r *Renderer) cell(col columnView, row any, href string, button bool, valu
 }
 
 templ cellValue(col columnView, row any) {
-	@value(col.Field, col.Field.Get(row))
+	@value(col.Field, col.Field.Get(row), linkOf(col.Field, row))
 }
 
 // value is a field's value as the field says to show it: text, a badge, or a
 // bar. A table cell and a read-only form field show it the same way.
-templ value(f ir.Field, text string) {
+templ value(f ir.Field, text string, href string) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
 		case ir.DisplayBadge:
 			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
+				{ text }
+			}
+		case ir.DisplayLink:
+			if href != "" {
+				<a class="ext" href={ href } target="_blank" rel="noopener noreferrer">
+					{ text }
+					@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
+					<span class="sr-only">(opens in a new tab)</span>
+				</a>
+			} else {
 				{ text }
 			}
 		case ir.DisplayTime:
@@ -434,11 +444,11 @@ templ (r *Renderer) input(fv fieldView) {
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime) {
+					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
-						@value(fv.Field, fv.Value)
+						@value(fv.Field, fv.Value, fv.Href)
 					}
 				</div>
 			default:

@@ -451,3 +451,9 @@ func TestATimestampWithAStoreIsADateAndTimePicker(t *testing.T) {
 	post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.25"}, "f1_1": {"80"}, "f2": {"2026-11-01T02:00"}})
 	assert.Equal(t, service.Settings().Maintain, int(time.Date(2026, 11, 1, 2, 0, 0, 0, time.UTC).Unix()))
 }
+
+func TestAURLColumnIsTheOnlyWayAValueBecomesALink(t *testing.T) {
+	body := get(handler(t), "/admin/alert/alt_000").Body.String()
+	assert.Contains(t, body, `<a class="ext" href="https://example.com/runbooks/critical" target="_blank" rel="noopener noreferrer">`)
+	assert.Contains(t, body, "Open the runbook")
+}
