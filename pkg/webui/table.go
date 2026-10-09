@@ -123,9 +123,12 @@ type Table[M any] struct {
 	// table needs a RowClick. With Rows the library searches every column itself;
 	// with Load the typed text arrives in [Query.Search].
 	//
-	// The table's page is asked for with no arguments, so it must not have path
-	// arguments, and its Guard runs first. A result is shown only if the page it
-	// leads to would let the visitor in.
+	// The table's page is asked for with no arguments, and its Guard runs first. A
+	// page with path arguments, such as "/bucket/{name}", has none to be asked with,
+	// so its table is searched only while the visitor is on that page, with the
+	// arguments in the address they are on: the search then covers what they are
+	// looking at. A result is shown only if the page it leads to would let the
+	// visitor in.
 	Search bool
 
 	// Key identifies a row, such as by its ID. It is required when the table has
@@ -204,10 +207,6 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	if t.Search {
 		if t.RowClick == nil {
 			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
-		}
-		if len(args.Placeholders(v.page)) > 0 {
-			v.add("a Table on a page with path arguments cannot have Search",
-				"Search runs without a page's arguments, so it cannot build one. Put Search on a table of a page without placeholders, such as the list, and link to this page with RowClick.")
 		}
 		if len(t.Columns) == 0 {
 			v.add("a Table has Search but no Columns", "A search result is made from the columns: set Columns.")

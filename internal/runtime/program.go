@@ -36,7 +36,12 @@ type Program struct {
 	// gate is probe's twin that answers one question about an address: may this
 	// visitor open it? Each page's handler on it runs the page's argument decoding
 	// and Guard, as a real request would, and reports the verdict as a status.
-	gate  *http.ServeMux
+	gate *http.ServeMux
+
+	// where is the same routes again, to answer which page an address is and with
+	// what arguments: what the search needs to know about the page the visitor is on.
+	where *http.ServeMux
+
 	allow map[string]string // probe pattern → Allow header
 
 	// cross refuses cross-origin POSTs, using Fetch metadata and Origin. A
@@ -48,7 +53,7 @@ type Program struct {
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p := &Program{
 		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		mux: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+		mux: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), where: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	assets, err := p.render.Assets()

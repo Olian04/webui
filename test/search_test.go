@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -195,7 +196,7 @@ func TestASearchableTableOnTwoPagesIsOneResult(t *testing.T) {
 	assert.Equal(t, len(search(t, h, "gateway").Results), 1)
 }
 
-func TestTableSearchNeedsARowClickColumnsAndAPageWithoutPathArguments(t *testing.T) {
+func TestTableSearchNeedsARowClickAndColumns(t *testing.T) {
 	t.Parallel()
 
 	rows := func(context.Context) ([]Device, error) { return nil, nil }
@@ -204,16 +205,6 @@ func TestTableSearchNeedsARowClickColumnsAndAPageWithoutPathArguments(t *testing
 	details.Body = webui.Stack{}
 	click := webui.Link[Device, detailsArgs]{Page: details, Args: func(context.Context, Device) detailsArgs { return detailsArgs{} }}
 	cols := []webui.Accessor[Device]{searchID}
-
-	errorsOf := func(page webui.Page[detailsArgs]) string {
-		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page, details}}) {
-			all += e.Error() + "\n"
-		}
-		return all
-	}
-	none := webui.Page[detailsArgs]{Path: "/device/{id}/x", Body: webui.Table[Device]{Rows: rows, Search: true, Columns: cols, RowClick: click}}
-	assert.Contains(t, errorsOf(none), "a Table on a page with path arguments cannot have Search")
 
 	var noClick, noCols string
 	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Table[Device]{Rows: rows, Search: true, Columns: cols}}, details}}) {
@@ -334,4 +325,80 @@ func TestSearchDropsAResultWhoseLinkCannotBeBuilt(t *testing.T) {
 	got := search(t, h, "dev")
 	assert.Equal(t, len(got.Results), 1)
 	assert.Equal(t, got.Results[0].Title, "dev-ok")
+}
+
+type searchBucketArgs struct{ Name string }
+
+// bucketSearchApp is a page with a path argument whose table is searchable, and the
+// page each of its rows opens: the objects of whichever bucket is open.
+func bucketSearchApp(guard func(context.Context, searchBucketArgs) error) http.Handler {
+	objects := map[string][]Device{
+		"photos": {{Id: "cat.png", Ip: "10.0.0.1"}, {Id: "dog.png", Ip: "10.0.0.2"}},
+		"docs":   {{Id: "cat-notes.txt", Ip: "10.0.0.3"}},
+	}
+	var object webui.Page[detailsArgs]
+	object.Path = "/object/{id}"
+	object.Body = webui.Stack{}
+	bucket := webui.Page[searchBucketArgs]{
+		Path:  "/bucket/{name}",
+		Guard: guard,
+		Body: webui.Table[Device]{
+			Title: "Objects",
+			Rows: func(ctx context.Context) ([]Device, error) {
+				return objects[webui.ArgsOf[searchBucketArgs](ctx).Name], nil
+			},
+			Search:   true,
+			RowClick: webui.Link[Device, detailsArgs]{Page: object, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }},
+			Columns:  []webui.Accessor[Device]{searchID},
+		},
+	}
+	return webui.App{Pages: webui.Pages{bucket, object}}.MustCompile("/admin")
+}
+
+// searchFrom asks the search as the browser does from a page: the address it is on
+// is the Referer.
+func searchFrom(t *testing.T, h http.Handler, from, query string) []string {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/_webui/search?q="+query, nil)
+	if from != "" {
+		req.Header.Set("Referer", from)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	var out searchResponse
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+	var titles []string
+	for _, r := range out.Results {
+		titles = append(titles, r.Title)
+	}
+	return titles
+}
+
+func TestAPageWithPathArgumentsIsSearchedWhileTheVisitorIsOnIt(t *testing.T) {
+	t.Parallel()
+
+	h := bucketSearchApp(nil)
+
+	// On a bucket, its own objects are found, and only its own.
+	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
+	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/docs?x=1", "cat"), []string{"cat-notes.txt"})
+
+	// Anywhere else it has no arguments to be searched with, so it is not.
+	assert.Equal(t, len(searchFrom(t, h, "", "cat")), 0)
+	assert.Equal(t, len(searchFrom(t, h, "http://example.com/admin/object/cat.png", "cat")), 0)
+	assert.Equal(t, len(searchFrom(t, h, "http://other.example/admin/bucket/photos", "cat")), 0) // not this site
+}
+
+func TestSearchOfThePageTheVisitorIsOnStillRunsItsGuard(t *testing.T) {
+	t.Parallel()
+
+	h := bucketSearchApp(func(_ context.Context, a searchBucketArgs) error {
+		if a.Name == "docs" {
+			return errors.New("no access")
+		}
+		return nil
+	})
+	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
+	assert.Equal(t, len(searchFrom(t, h, "http://example.com/admin/bucket/docs", "cat")), 0)
 }

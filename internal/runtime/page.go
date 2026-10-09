@@ -33,6 +33,7 @@ func (p *Program) addPage(page *ir.Page) {
 		p.add(http.MethodGet, pattern, h)
 		p.probe.Handle(pattern, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
+		p.where.Handle(pattern, whereHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
 			p.add(http.MethodPost, pattern, p.postHandler(page, leaves))
