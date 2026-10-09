@@ -601,7 +601,7 @@ a.side-brand:hover {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 12px 46px;
+  padding: 12px 12px 46px; /* the same space above the content as beside it */
 }
 
 /* ---------------------------------------------------------------------------
