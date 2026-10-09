@@ -277,7 +277,10 @@ saved data.
 **Disabled vs. gated.** Disabled is 45% opacity with no explanation. *Gated* —
 a control you are not permitted to use — is also 45%, but reveals a raised
 tooltip on hover saying why. A control is never silently removed because of
-permissions and never silently fails when pressed.
+permissions and never silently fails when pressed. The exception is a form's
+Save: a form the visitor may not submit is shown as read-only output, with a Back
+button in place of Save and Cancel, since a form of inputs that cannot be sent
+would only invite typing.
 
 ---
 

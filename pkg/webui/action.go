@@ -37,7 +37,9 @@ type Action[M any] struct {
 	// Guard decides whether the visitor may do this. It receives the action's
 	// subject, and the same check disables the button, with its reason shown, and
 	// authorises the request, so there is no control that looks available and then
-	// fails. A bulk action's subject is the selection.
+	// fails. A bulk action's subject is the selection. A form's Submit that the
+	// visitor is refused is not drawn at all: the form is shown read-only, with a
+	// Back button in place of Save and Cancel.
 	Guard func(ctx context.Context, m M) error
 
 	// Run does it, and says how it ended with an [Outcome]. An error is for

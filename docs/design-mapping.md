@@ -330,7 +330,9 @@ changes something is a button in the row's own cell, or on the selection.
 2. **On a control** — the *gated* treatment: 45% opacity plus a tooltip giving
    the reason. The same check that would reject the request also disables the
    button, so there is no second authorisation rule to keep in sync and no
-   control that looks available and then fails.
+   control that looks available and then fails. A form's *Submit* is the one
+   exception: refused, it is not drawn, because a form that cannot be saved
+   is shown read-only (see `Form`).
 
 ### `Outcome`
 

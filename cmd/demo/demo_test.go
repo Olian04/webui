@@ -23,6 +23,8 @@ import (
 func handlerAs(t *testing.T, role Role) http.Handler {
 	t.Helper()
 
+	service = newService() // each test starts from the seed data, however many times it runs
+
 	compiled, err := app.Compile("/admin")
 	assert.NoError(t, err)
 	site := routes(compiled)
