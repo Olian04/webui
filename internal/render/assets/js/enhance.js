@@ -249,18 +249,23 @@
     true,
   );
 
+  // The pinned form follows its header, which moves when a pane that holds it scrolls
+  // or the window is resized. It stays open: a scroll somewhere else, such as the
+  // sidebar, does not touch it, and a resize may be the keyboard of a phone opening.
+  function repin() {
+    $$('details.filter[open]').forEach(pin);
+  }
+
   document.addEventListener(
     'scroll',
     function (e) {
-      if (e.target.closest && e.target.closest('.filter-pop')) return;
-      closeFilters(null);
+      var open = $('details.filter[open]');
+      if (open && e.target.contains && e.target.contains(open)) repin();
     },
     true,
   );
 
-  window.addEventListener('resize', function () {
-    closeFilters(null);
-  });
+  window.addEventListener('resize', repin);
 
   document.addEventListener('click', function (e) {
     if (!e.target.closest(POPOVERS)) closeFilters(null);
