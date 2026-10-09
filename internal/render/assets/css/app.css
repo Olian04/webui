@@ -1553,19 +1553,13 @@ select.input option {
   text-transform: uppercase;
   color: var(--text-2);
 }
-/* Emphasis has to be seen in running text, where 500 is too close to 400 to tell apart: strong
-   is 600, the one place outside a full-page error that the app uses it, and emphasis is a
-   slant with a little more weight. */
+/* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
+   600, the one place outside a full-page error that the app uses it. */
 .md strong {
   font-weight: 600;
 }
 .md em {
   font-style: italic;
-  font-weight: 500;
-}
-.md strong em,
-.md em strong {
-  font-weight: 600;
 }
 .md th {
   font-weight: 500;
