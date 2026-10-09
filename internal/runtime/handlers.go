@@ -70,7 +70,7 @@ func FailureHandler(problems []render.Problem) http.Handler {
 // with it; the page itself still answers 403 to anyone who types the address.
 func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 	var hide map[string]bool
-	for _, path := range p.render.GuardedPaths() {
+	for _, path := range p.render.NavPaths() {
 		page := p.App.ByPath[path]
 		if page == nil || page.Guard == nil {
 			continue

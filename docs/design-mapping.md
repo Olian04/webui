@@ -27,7 +27,7 @@ into existence, and nothing is configured twice.
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
 | `Nav.Section` | The uppercase caption above a run of entries |
 | `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the other text columns the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
-| `App.Settings` | The cog button in the top bar, beside Refresh, and the popover list of links behind it. A path that is one of the app's pages gets the mount prefix and is left out for a visitor whose page `Guard` refuses it; any other path, and an http, https or mailto address, is used as written |
+| `App.Menu` | The button in the top bar, beside Refresh, and the popover list of the app's own links behind it. A `MenuItem` is a `Nav` entry (label, icon, section caption) with an `ExternalURL`, used as written, so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |

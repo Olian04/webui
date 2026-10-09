@@ -175,7 +175,7 @@
   // A filter is a <details>, which opens and submits on its own. Script only
   // keeps one open at a time, closes it on a click elsewhere or on Escape, and
   // applies a filter to its panel alone, like any other link inside it.
-  // The settings menu is a <details> too, and shares all of it: one popover open
+  // The app's menu is a <details> too, and shares all of it: one popover open
   // at a time, closed by a click elsewhere or Escape.
   var POPOVERS = 'details.filter, details.menu';
   function closeFilters(except) {

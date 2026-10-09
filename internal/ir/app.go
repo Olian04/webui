@@ -8,16 +8,16 @@ type App struct {
 	Pages  []*Page
 	ByPath map[string]*Page // destination resolution, not a route table
 
-	// Settings are the entries of the settings menu in the top bar.
-	Settings []MenuItem
+	// Menu is the app's own links, in the menu in the top bar.
+	Menu []MenuItem
 }
 
-// MenuItem is one entry of the settings menu. URL is as the declaration wrote it,
-// which is the runtime's to resolve: a page's path gets the mount prefix.
+// MenuItem is one link of the menu, used as written: it is outside the app.
 type MenuItem struct {
-	Label string
-	Icon  string
-	URL   string
+	Label   string
+	Icon    string
+	Section string // caption above a run of entries; empty continues the run
+	URL     string
 }
 
 // Brand is the product identity in the chrome. Logo is encoded bytes; how to

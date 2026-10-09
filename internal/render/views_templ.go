@@ -70,7 +70,7 @@ func (r *Renderer) document(d Doc) templ.Component {
 			Scripts:     []string{r.AssetHref("enhance.js")},
 			Head:        r.head(),
 			Sidebar:     r.sidebar(d.Active, d.HideNav),
-			TopBar:      r.topbar(d.Crumbs, d.URL, d.HideNav),
+			TopBar:      r.topbar(d.Crumbs, d.URL),
 			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 			Toasts:      toastRegion(d.Toasts),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
@@ -344,11 +344,11 @@ func (r *Renderer) sidebar(active string, hide map[string]bool) templ.Component 
 }
 
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
-// settings menu when the app declares one.
+// menu when the app declares one.
 // The search is wrapped so it is simply absent without script rather than
 // present and inert. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-func (r *Renderer) topbar(crumbs []c.Crumb, here string, hide map[string]bool) templ.Component {
+func (r *Renderer) topbar(crumbs []c.Crumb, here string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -404,8 +404,8 @@ func (r *Renderer) topbar(crumbs []c.Crumb, here string, hide map[string]bool) t
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if items := r.menuEntries(hide); len(items) > 0 {
-				templ_7745c5c3_Err = c.SettingsMenu(items).Render(ctx, templ_7745c5c3_Buffer)
+			if items := r.menuEntries(); len(items) > 0 {
+				templ_7745c5c3_Err = c.AppMenu(items).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

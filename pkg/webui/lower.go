@@ -42,10 +42,10 @@ func (a App) lower() (*ir.App, error) {
 	}
 
 	out := &ir.App{
-		Brand:    ir.Brand{Name: a.Brand.Name},
-		Theme:    lowerTheme(a.Theme),
-		Settings: lowerSettings(a.Settings),
-		ByPath:   map[string]*ir.Page{},
+		Brand:  ir.Brand{Name: a.Brand.Name},
+		Theme:  lowerTheme(a.Theme),
+		Menu:   lowerMenu(a.Menu),
+		ByPath: map[string]*ir.Page{},
 	}
 	if a.Brand.Logo != nil {
 		var buf bytes.Buffer
@@ -103,10 +103,10 @@ func lowerTheme(t Theme) ir.Theme {
 	return ir.Theme{Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical)}
 }
 
-func lowerSettings(items []MenuItem) []ir.MenuItem {
+func lowerMenu(items []MenuItem) []ir.MenuItem {
 	out := make([]ir.MenuItem, len(items))
 	for i, it := range items {
-		out[i] = ir.MenuItem(it)
+		out[i] = ir.MenuItem{Label: it.Label, Icon: it.Icon, Section: it.Section, URL: it.ExternalURL}
 	}
 	return out
 }

@@ -33,13 +33,13 @@ var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
 	// -accent flag overrides the accent colour (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
-	// The cog in the top bar. A path that is one of the app's pages goes to it, with
-	// the mount prefix, and is left out for a visitor whose Guard refuses it (the
-	// audit log, as a viewer); any other address is used as written.
-	Settings: []webui.MenuItem{
-		{Label: "System status", Icon: "wave-square", URL: "/system"},
-		{Label: "Audit log", Icon: "list", URL: "/audit"},
-		{Label: "Documentation", Icon: "book", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
+	// The app's own links, behind the button in the top bar: places outside it. A
+	// MenuItem is a Nav entry (a Label, an Icon and a Section) with an ExternalURL,
+	// used as written.
+	Menu: []webui.MenuItem{
+		{Nav: webui.Nav{Label: "Documentation", Icon: "book", Section: "Help"}, ExternalURL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
+		{Nav: webui.Nav{Label: "Report a problem", Icon: "bug"}, ExternalURL: "https://github.com/Olian04/webui/issues"},
+		{Nav: webui.Nav{Label: "Log out", Icon: "right-from-bracket", Section: "Account"}, ExternalURL: "/logout"},
 	},
 	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
 }

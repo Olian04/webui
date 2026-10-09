@@ -13,7 +13,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"unicode"
 
@@ -72,8 +71,8 @@ type Renderer struct {
 	prefix string
 	nav    []navEntry
 
-	// settings are the entries of the settings menu, with their addresses resolved.
-	settings []settingsEntry
+	// menu is the app's own links, in the menu in the top bar.
+	menu []ir.MenuItem
 
 	// served is the name each asset is served as, with the hash of its contents in
 	// it, by the name it is known by here. It is set once, when the assets are built.
@@ -81,16 +80,6 @@ type Renderer struct {
 	hasCSS bool // theme tokens present, so theme.css is linked
 	search bool // some table is searchable, so the page script has something to ask
 	logo   bool
-}
-
-// settingsEntry is one entry of the settings menu. Path is the path template of the
-// page it leads to, when it leads to one of the app's own, so the visitor's access
-// to that page decides whether it is shown.
-type settingsEntry struct {
-	Label string
-	Icon  string
-	Href  string
-	Path  string
 }
 
 type navEntry struct {
@@ -121,13 +110,7 @@ func New(app *ir.App, prefix string) *Renderer {
 			Label: p.Nav.Label, Icon: p.Nav.Icon, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate),
 		})
 	}
-	for _, it := range app.Settings {
-		e := settingsEntry{Label: it.Label, Icon: it.Icon, Href: it.URL}
-		if page := app.ByPath[it.URL]; page != nil && !strings.Contains(it.URL, "{") {
-			e.Href, e.Path = r.Href(it.URL), it.URL
-		}
-		r.settings = append(r.settings, e)
-	}
+	r.menu = app.Menu
 	return r
 }
 
@@ -142,29 +125,12 @@ func (r *Renderer) FirstHref(hide map[string]bool) string {
 	return ""
 }
 
-// GuardedPaths is the path template of every page the chrome links to, from the
-// navigation and from the settings menu, so the runtime can ask which of them the
-// visitor may open.
-func (r *Renderer) GuardedPaths() []string {
-	var out []string
-	for _, e := range r.nav {
-		out = append(out, e.Path)
-	}
-	for _, e := range r.settings {
-		if e.Path != "" && !slices.Contains(out, e.Path) {
-			out = append(out, e.Path)
-		}
-	}
-	return out
-}
-
-// settingsShown is the settings entries the visitor may open.
-func (r *Renderer) settingsShown(hide map[string]bool) []settingsEntry {
-	var out []settingsEntry
-	for _, e := range r.settings {
-		if e.Path == "" || !hide[e.Path] {
-			out = append(out, e)
-		}
+// NavPaths is the path template of every navigation entry, in order, so the runtime
+// can ask which of them the visitor may open.
+func (r *Renderer) NavPaths() []string {
+	out := make([]string, len(r.nav))
+	for i, e := range r.nav {
+		out[i] = e.Path
 	}
 	return out
 }
@@ -386,11 +352,12 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
 
-// menuEntries is the settings menu as the component draws it.
-func (r *Renderer) menuEntries(hide map[string]bool) []c.MenuEntry {
-	var out []c.MenuEntry
-	for _, e := range r.settingsShown(hide) {
-		out = append(out, c.MenuEntry{Label: e.Label, Href: e.Href, Icon: c.IconName(e.Icon)})
+// menuEntries is the menu as the component draws it: a section's caption is above
+// the first entry of its run.
+func (r *Renderer) menuEntries() []c.MenuEntry {
+	out := make([]c.MenuEntry, len(r.menu))
+	for i, e := range r.menu {
+		out[i] = c.MenuEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon), Section: e.Section}
 	}
 	return out
 }

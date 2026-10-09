@@ -22,7 +22,7 @@ templ (r *Renderer) document(d Doc) {
 		Scripts:     []string{r.AssetHref("enhance.js")},
 		Head:        r.head(),
 		Sidebar:     r.sidebar(d.Active, d.HideNav),
-		TopBar:      r.topbar(d.Crumbs, d.URL, d.HideNav),
+		TopBar:      r.topbar(d.Crumbs, d.URL),
 		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 		Toasts:      toastRegion(d.Toasts),
 	}) {
@@ -82,11 +82,11 @@ templ (r *Renderer) sidebar(active string, hide map[string]bool) {
 }
 
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
-// settings menu when the app declares one.
+// menu when the app declares one.
 // The search is wrapped so it is simply absent without script rather than
 // present and inert. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-templ (r *Renderer) topbar(crumbs []c.Crumb, here string, hide map[string]bool) {
+templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
 		<div class="js-only">
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Attrs: r.searchAttrs()})
@@ -95,8 +95,8 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here string, hide map[string]bool) 
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
 			Attrs: templ.Attributes{"data-refresh": true},
 		})
-		if items := r.menuEntries(hide); len(items) > 0 {
-			@c.SettingsMenu(items)
+		if items := r.menuEntries(); len(items) > 0 {
+			@c.AppMenu(items)
 		}
 		<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
 	}

@@ -23,7 +23,7 @@ func (a App) validate() CompileErrors {
 	f := a.collectFacts()
 	var errs CompileErrors
 	errs = append(errs, validateTheme(a.Theme)...)
-	errs = append(errs, validateSettings(a.Settings)...)
+	errs = append(errs, validateMenu(a.Menu)...)
 
 	for i, p := range a.Pages {
 		if p == nil {
@@ -152,12 +152,12 @@ func validateTheme(t Theme) []CompileError {
 	return errs
 }
 
-// validateSettings checks the settings menu: every entry has a label and an address
-// that is a path on this site or a web or mail address, never a script.
-func validateSettings(items []MenuItem) []CompileError {
+// validateMenu checks the app's menu: every entry has a label and an address that is
+// a path on this site or a web or mail address, never a script.
+func validateMenu(items []MenuItem) []CompileError {
 	var errs []CompileError
 	for i, it := range items {
-		at := fmt.Sprintf("App.Settings[%d]", i)
+		at := fmt.Sprintf("App.Menu[%d]", i)
 		bad := func(detail, fix string) { errs = append(errs, CompileError{Detail: at + " " + detail, Fix: fix}) }
 		if it.Label == "" {
 			bad("has no Label", "Set Label; it is the entry's text.")
@@ -166,8 +166,8 @@ func validateSettings(items []MenuItem) []CompileError {
 			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
 				"Use the name of a Font Awesome Free solid icon, such as \"book\", or leave Icon empty.")
 		}
-		if !validMenuURL(it.URL) {
-			bad(fmt.Sprintf("has the URL %q, which is not a path on this site, or an http, https or mailto address", it.URL),
+		if !validMenuURL(it.ExternalURL) {
+			bad(fmt.Sprintf("has the ExternalURL %q, which is not a path on this site, or an http, https or mailto address", it.ExternalURL),
 				"Use a path such as \"/logout\", or an address such as \"https://example.com/help\".")
 		}
 	}
