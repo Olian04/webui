@@ -16,10 +16,13 @@ type cancelArgs struct {
 	ID string
 }
 
+const plainPath webui.PageID[webui.NoArgs] = "/plain"
+
 // cancelApp is a list of devices, a detail form reached from its rows, and the
 // same form on a page with nothing above it. The pages declare nothing about
-// where Cancel goes: the library remembers where the user came from.
-func cancelApp(redirect string) http.Handler {
+// where Cancel goes: the library remembers where the user came from. With
+// redirectToPlain a saved form says where to go, which beats where it came from.
+func cancelApp(redirectToPlain bool) http.Handler {
 	var details webui.Page[cancelArgs]
 	details.Path = "/device/{id}"
 	var notes webui.Page[cancelArgs]
@@ -40,11 +43,14 @@ func cancelApp(redirect string) http.Handler {
 	form := webui.Form[Device]{
 		Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.0.1"}, nil },
 		Fields: []webui.Accessor[Device]{formID, formIP},
-		Submit: webui.Action[Device]{Run: func(_ context.Context, d Device) (webui.Outcome, error) {
+		Submit: webui.Action[Device]{Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
 			if d.Ip == "10.0.0.9" {
 				return webui.Reject(webui.Field[Device](formIP, "taken")), nil
 			}
-			return webui.Outcome{}.Then(webui.Target{URL: redirect}), nil
+			if redirectToPlain {
+				return webui.Outcome{}.Then(webui.Open(ctx, plainPath, webui.NoArgs{})), nil
+			}
+			return webui.Outcome{}, nil
 		}},
 	}
 	details.Body = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain
@@ -52,7 +58,7 @@ func cancelApp(redirect string) http.Handler {
 
 	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: rows(details)}
 	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, Body: rows(details)}
-	plain := webui.Page[webui.NoArgs]{Path: "/plain", Body: rows(notes)}
+	plain := webui.Page[webui.NoArgs]{Path: plainPath, Body: rows(notes)}
 	solo := webui.Page[cancelArgs]{Path: "/solo/{id}", Body: form} // no parent page to cancel to
 	return webui.App{Pages: webui.Pages{list, other, plain, details, notes, solo}}.MustCompile("/admin")
 }
@@ -87,7 +93,7 @@ func cancelHref(t *testing.T, h http.Handler, target string) string {
 func TestCancelGoesBackToThePageTheFormWasOpenedFrom(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	for _, origin := range []string{"/admin/device?table.sort=id&table.desc=true", "/admin/other"} {
 		link := firstRowHref(t, h, origin)
 		assert.Equal(t, cancelHref(t, h, link), origin) // view state and all
@@ -97,14 +103,14 @@ func TestCancelGoesBackToThePageTheFormWasOpenedFrom(t *testing.T) {
 func TestCancelOfAFormOpenedDirectlyGoesToTheBreadcrumbParent(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	assert.Equal(t, cancelHref(t, h, "/admin/device/a"), "/admin/device")
 }
 
 func TestAFormWithNoBreadcrumbParentHasNoCancelUnlessItWasOpenedFromAPage(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	assert.Equal(t, cancelHref(t, h, "/admin/solo/a"), "")
 	assert.Equal(t, cancelHref(t, h, "/admin/solo/a?webui.from=%2Fadmin%2Fother"), "/admin/other")
 }
@@ -112,7 +118,7 @@ func TestAFormWithNoBreadcrumbParentHasNoCancelUnlessItWasOpenedFromAPage(t *tes
 func TestOnlyLinksToPagesWithAFormRememberTheOrigin(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	assert.Equal(t, firstRowHref(t, h, "/admin/plain"), "/admin/notes/a")
 	assert.Contains(t, firstRowHref(t, h, "/admin/device"), "webui.from=%2Fadmin%2Fdevice")
 }
@@ -120,7 +126,7 @@ func TestOnlyLinksToPagesWithAFormRememberTheOrigin(t *testing.T) {
 func TestCancelNeverGoesToAnAddressThatIsNotInTheApp(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	for _, evil := range []string{
 		"https://evil.example/", "//evil.example/", `/\evil.example`, "javascript:alert(1)", "evil.example/x",
 		"/logout", "/administrator", "/admin/_webui/logo",
@@ -133,7 +139,7 @@ func TestCancelNeverGoesToAnAddressThatIsNotInTheApp(t *testing.T) {
 func TestAChainOfFormsUnwindsOneHopAtATime(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	first := firstRowHref(t, h, "/admin/device")
 	// A form page reached from another form page remembers that one, which
 	// remembers its own.
@@ -145,7 +151,7 @@ func TestAChainOfFormsUnwindsOneHopAtATime(t *testing.T) {
 func TestTheOriginIsBoundedSoAChainCannotGrowTheAddressWithoutEnd(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	address := "/admin/device"
 	for range 60 {
 		address = firstRowHref(t, h, address)
@@ -156,7 +162,7 @@ func TestTheOriginIsBoundedSoAChainCannotGrowTheAddressWithoutEnd(t *testing.T) 
 func TestARejectedSubmissionKeepsTheCancelItHad(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_leaf": {"p.0"}, "f1": {"not-an-ip"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `href="/admin/other">Cancel`)
@@ -167,7 +173,7 @@ func TestARejectedSubmissionKeepsTheCancelItHad(t *testing.T) {
 func TestASavedFormReturnsToThePageItWasOpenedFrom(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother%3Ftable.sort%3Did", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/other?table.sort=id")
@@ -180,7 +186,7 @@ func TestASavedFormReturnsToThePageItWasOpenedFrom(t *testing.T) {
 func TestAnExplicitRedirectBeatsTheOrigin(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("/admin/plain")
+	h := cancelApp(true)
 	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/plain")
 }
@@ -188,7 +194,7 @@ func TestAnExplicitRedirectBeatsTheOrigin(t *testing.T) {
 func TestASavedFormNeverReturnsToAnAddressThatIsNotInTheApp(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	rec := post(h, "/admin/device/a?webui.from=https%3A%2F%2Fevil.example%2F", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/a?webui.from=https%3A%2F%2Fevil.example%2F")
 }

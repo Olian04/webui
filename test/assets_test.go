@@ -180,7 +180,7 @@ func TestPagesAndTheSearchAreCompressedToo(t *testing.T) {
 func TestAnErrorPageIsCompressedAndARedirectIsNot(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp("")
+	h := cancelApp(false)
 	missing := gzipped(t, h, "/admin/nowhere")
 	assert.Equal(t, missing.Code, http.StatusNotFound)
 	assert.Contains(t, unzip(t, missing.Body.Bytes()), "Page not found")

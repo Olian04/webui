@@ -7,16 +7,13 @@ import (
 	"github.com/Olian04/webui/internal/runtime"
 )
 
-// Target is a resolved href. Err is set when Open cannot produce a URL (no
-// runtime, unmounted page, empty path argument), and what was given it is then
-// reported rather than shown: a row link that cannot be built is a plain row, and
-// Outcome.Then with one is an error.
+// Target is where [Open] says a page is, to hand to [Outcome.Then]. It has no
+// parts to read: when Open cannot resolve the page (no compiled app, a page that is
+// not mounted, an empty path argument) Then reports why and the outcome does what
+// it would have done without it.
 type Target struct {
-	// URL is the address, including the mount prefix.
-	URL string
-
-	// Err says why there is no URL.
-	Err error
+	url string // the address, including the mount prefix
+	err error  // why there is no address
 }
 
 // Open resolves page+args through the compiled runtime, including the mount
@@ -29,13 +26,13 @@ func Open[A any](ctx context.Context, page PageRef[A], args A) Target {
 	path := page.pagePath()
 	req := runtime.From(ctx)
 	if req == nil {
-		return Target{Err: fmt.Errorf("webui: Open %q: no compiled app in this context", path)}
+		return Target{err: fmt.Errorf("webui: Open %q: no compiled app in this context", path)}
 	}
 	url, err := req.Open(path, args)
 	if err != nil {
-		return Target{Err: fmt.Errorf("webui: Open %q: %w", path, err)}
+		return Target{err: fmt.Errorf("webui: Open %q: %w", path, err)}
 	}
-	return Target{URL: url}
+	return Target{url: url}
 }
 
 // ArgsOf returns the current page's argument struct from ctx.

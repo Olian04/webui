@@ -13,10 +13,13 @@ import (
 	"github.com/Olian04/webui/test/util/assert"
 )
 
+const elsewhere webui.PageID[webui.NoArgs] = "/elsewhere"
+
 // outcomeApp is a form whose Run answers with whatever the IP asks for, so each
 // kind of Outcome can be seen by what the user is left with.
 func outcomeApp() http.Handler {
-	run := func(_ context.Context, d Device) (webui.Outcome, error) {
+	run := func(ctx context.Context, d Device) (webui.Outcome, error) {
+		there := webui.Open(ctx, elsewhere, webui.NoArgs{})
 		switch d.Ip {
 		case "10.0.0.2":
 			return webui.Warning("Saved, but the old address is still in use elsewhere"), nil
@@ -30,16 +33,14 @@ func outcomeApp() http.Handler {
 		case "10.0.0.5":
 			return webui.Failure(""), nil
 		case "10.0.0.6":
-			return webui.Success("Gone").Then(webui.Target{URL: "/admin/elsewhere"}), nil
+			return webui.Success("Gone").Then(there), nil
 		case "10.0.0.7":
-			return webui.Failure("no").Then(webui.Target{URL: "/admin/elsewhere"}), nil
+			return webui.Failure("no").Then(there), nil
 		case "10.0.0.8":
 			return webui.Reject(
 				webui.Field[Device](formIP, "taken"),
 				webui.Field[Device](formCount, "too many"),
-			).Then(webui.Target{URL: "/admin/elsewhere"}), nil
-		case "10.0.0.9":
-			return webui.Success("x").Then(webui.Target{URL: "https://evil.example/"}), nil
+			).Then(there), nil
 		}
 		return webui.Success("Saved"), nil
 	}
@@ -51,7 +52,7 @@ func outcomeApp() http.Handler {
 			Submit: webui.Action[Device]{Run: run},
 		},
 	}
-	return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, Body: webui.Stack{}}}}.MustCompile("/admin")
 }
 
 func submitIP(h http.Handler, ip string) (code int, location, flash, body string) {
@@ -145,15 +146,6 @@ func TestWithoutThenEachOutcomeDoesItsDefault(t *testing.T) {
 	assert.Equal(t, location, "/admin/device/a")
 	code, _, _, _ = submitIP(outcomeApp(), "10.0.0.3") // Failure: the form again
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
-}
-
-func TestThenNeverLeavesTheApp(t *testing.T) {
-	t.Parallel()
-
-	// An address outside the app is refused and the outcome does its default.
-	code, location, _, _ := submitIP(outcomeApp(), "10.0.0.9")
-	assert.Equal(t, code, http.StatusSeeOther)
-	assert.Equal(t, location, "/admin/device/a")
 }
 
 func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing.T) {

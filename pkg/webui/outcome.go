@@ -146,10 +146,10 @@ var _ rejection = rejected[struct{}](nil)
 // error rather than silently dropped.
 func lowerOutcome[M any](o Outcome) (ir.Outcome, error) {
 	out := ir.Outcome{Kind: ir.OutcomeKind(o.kind), Message: o.message}
-	if o.redirect.Err != nil {
-		return ir.Outcome{}, fmt.Errorf("webui: Outcome.Then: %w", o.redirect.Err)
+	if o.redirect.err != nil {
+		return ir.Outcome{}, fmt.Errorf("webui: Outcome.Then: %w", o.redirect.err)
 	}
-	out.Redirect = o.redirect.URL
+	out.Redirect = o.redirect.url
 	switch f := o.fields.(type) {
 	case nil:
 	case rejected[M]:

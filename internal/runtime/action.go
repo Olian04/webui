@@ -137,7 +137,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("submit: %w", err))
 		return
 	}
-	if to := p.then(outcome); to != "" {
+	if to := outcome.Redirect; to != "" {
 		p.leave(w, r, outcome, to) // told where to go, which replaces whatever it would have done
 		return
 	}
@@ -211,21 +211,8 @@ func (p *Program) finish(w http.ResponseWriter, r *http.Request, outcome ir.Outc
 // was told where to go does.
 func (p *Program) leave(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, target string) {
 	p.setFlash(w, r, outcomeText(outcome), outcomeTone(outcome))
-	//nolint:gosec // G710: target is this request's own path, or passed safeRedirect.
+	//nolint:gosec // G710: target is this request's own path, an address Open resolved, or one local accepted.
 	http.Redirect(w, r, target, http.StatusSeeOther)
-}
-
-// then is where the outcome says to go, when that is an address in this app. One
-// that is not is refused and logged, and the outcome does what it would have.
-func (p *Program) then(outcome ir.Outcome) string {
-	if outcome.Redirect == "" {
-		return ""
-	}
-	if !safeRedirect(outcome.Redirect) {
-		p.log.Error("webui: Outcome.Then refused: not an address on this host", "target", outcome.Redirect)
-		return ""
-	}
-	return outcome.Redirect
 }
 
 // outcomeText is what an outcome tells the user once it has left the form: its
@@ -262,8 +249,9 @@ func outcomeTone(o ir.Outcome) render.ToastTone {
 	return render.ToastOK
 }
 
-// safeRedirect accepts only a path on this host. Open produces these; a
-// hand-built Target must not turn an action into an open redirect.
+// safeRedirect accepts only a path on this host. Open produces these, and an
+// address that came in with the request, such as the one a form was opened from,
+// must be one before it is followed.
 func safeRedirect(target string) bool {
 	return strings.HasPrefix(target, "/") && !strings.HasPrefix(target, "//") && !strings.HasPrefix(target, `/\`)
 }
@@ -337,7 +325,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
 		return
 	}
-	if to := p.then(outcome); to != "" {
+	if to := outcome.Redirect; to != "" {
 		p.leave(w, r, outcome, to)
 		return
 	}

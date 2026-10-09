@@ -59,12 +59,14 @@ design element.
   does: a literal or an untyped constant converts. `Open` and `Link.Page` take a
   page or its `PageID`; only a `string` variable can no longer be a `Path`.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an
-  `Err`. A row link that cannot be built is a plain row and is logged rather than
-  panicking, and `Outcome.Then` with one is an error.
+  error, which it keeps to itself: a `Target` is opaque and only `Outcome.Then`
+  reads it, so a redirect can only be to a page of the app. A row link that cannot
+  be built is a plain row and is logged rather than panicking, and `Outcome.Then`
+  with one is an error.
 - `Open` is `webui.Open(ctx, page, args)`, not a method, so `Page` carries no
   behaviour at all. Type inference still gives a compile error on the wrong
   argument struct: `type OtherArgs does not match inferred type DetailsArgs`.
-  Resolving through the runtime means `Target.URL` includes the mount prefix,
+  Resolving through the runtime means a `Target`'s address includes the mount prefix,
   so it is a real href and the renderer no longer prepends anything; and an
   unmounted page is caught at render rather than producing a dead link.
   `Link` declares its destination page and an `Args` function instead of
@@ -240,7 +242,7 @@ design element.
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one
   place the mount prefix is stated. `Open` resolves the prefix
-  through the runtime, so `Target.URL` is absolute. The compiled
+  through the runtime, so a `Target`'s address is absolute. The compiled
   form is a separate value, so mutating `App` afterwards has no effect — which
   is the intent.
 - `Compile` returns a handler even on failure, serving the error at every path

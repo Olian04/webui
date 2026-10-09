@@ -72,17 +72,11 @@ func TestPagesThatLinkBothWaysAreStaticVars(t *testing.T) {
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/shop")
 }
 
-func TestLinkAndOpenAcceptAPageIDInPlaceOfAPage(t *testing.T) {
+func TestLinkAcceptsAPageIDInPlaceOfAPage(t *testing.T) {
 	t.Parallel()
 
-	var opened webui.Target
-	detail := webui.Page[shopItemArgs]{Path: shopDetailPath, Body: webui.Stack{}}
 	list := webui.Page[webui.NoArgs]{
 		Path: shopListPath,
-		Guard: func(ctx context.Context, _ webui.NoArgs) error {
-			opened = webui.Open(ctx, shopDetailPath, shopItemArgs{ID: "x y"})
-			return nil
-		},
 		Body: webui.Table[Device]{
 			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
 				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
@@ -95,15 +89,13 @@ func TestLinkAndOpenAcceptAPageIDInPlaceOfAPage(t *testing.T) {
 			Columns: []webui.Accessor[Device]{formID},
 		},
 	}
+	detail := webui.Page[shopItemArgs]{Path: shopDetailPath, Body: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/shop").Body.String()
-	assert.Contains(t, body, `href="/admin/shop/a"`)
-	assert.NoError(t, opened.Err)
-	assert.Equal(t, opened.URL, "/admin/shop/x%20y")
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/shop").Body.String(), `href="/admin/shop/a"`)
 }
 
-func TestAPageIDForAPageThatIsNotMountedIsReported(t *testing.T) {
+func TestALinkToAPageIDThatIsNotMountedIsReported(t *testing.T) {
 	t.Parallel()
 
 	const gone webui.PageID[shopItemArgs] = "/gone/{id}"
@@ -119,15 +111,6 @@ func TestAPageIDForAPageThatIsNotMountedIsReported(t *testing.T) {
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 1)
 	assert.Contains(t, errs[0].Detail, `a link targets "/gone/{id}", which is not mounted in this app`)
-
-	// At run time, for an Open.
-	var got webui.Target
-	page := webui.Page[webui.NoArgs]{Path: "/x", Body: webui.Stack{}, Guard: func(ctx context.Context, _ webui.NoArgs) error {
-		got = webui.Open(ctx, gone, shopItemArgs{ID: "1"})
-		return nil
-	}}
-	serve(webui.App{Pages: webui.Pages{page}}.MustCompile(""), http.MethodGet, "/x")
-	assert.Equal(t, got.Err.Error(), `webui: Open "/gone/{id}": that page is not mounted in this app`)
 }
 
 func TestALinkWithoutAPageIsACompileError(t *testing.T) {

@@ -139,11 +139,11 @@ func TestLowerOutcome(t *testing.T) {
 
 	_, err = lowerOutcome[dev](Reject(Field[int](Int[int]{Label: "n"}, "bad")))
 	assert.Error(t, err) // a Reject about another model
-	_, err = lowerOutcome[dev](Success("x").Then(Target{Err: context.Canceled}))
+	_, err = lowerOutcome[dev](Success("x").Then(Target{err: context.Canceled}))
 	assert.Error(t, err)
 
 	// Then says where to go for every kind.
 	for _, o := range []Outcome{Success("x"), Warning("x"), Failure("x"), Reject[dev]()} {
-		assert.Equal(t, o.Then(Target{URL: "/a"}).redirect.URL, "/a")
+		assert.Equal(t, o.Then(Target{url: "/a"}).redirect.url, "/a")
 	}
 }

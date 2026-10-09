@@ -260,7 +260,7 @@ func TestWrongMethodAdvertisesPost(t *testing.T) {
 	assert.Equal(t, serve(s.h, http.MethodPut, "/admin/device").Header().Get("Allow"), "GET, HEAD, POST")
 }
 
-func TestRedirectGoesWhereOpenSaysAndNowhereElse(t *testing.T) {
+func TestRedirectGoesWhereOpenSays(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()
@@ -270,13 +270,9 @@ func TestRedirectGoesWhereOpenSaysAndNowhereElse(t *testing.T) {
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device")
 
-	for _, evil := range []string{"https://evil.example/", "//evil.example/", `/\evil.example`} {
-		s.redirect = func(context.Context) webui.Target { return webui.Target{URL: evil} }
-		rec = post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
-		assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev1") // stays on this host
-	}
-
-	s.redirect = func(context.Context) webui.Target { return webui.Target{Err: errors.New("nope")} }
+	// A page that is not mounted cannot be redirected to: that is a mistake in Run.
+	const gone webui.PageID[webui.NoArgs] = "/gone"
+	s.redirect = func(ctx context.Context) webui.Target { return webui.Open(ctx, gone, webui.NoArgs{}) }
 	assert.Equal(t, post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5")).Code, http.StatusInternalServerError)
 }
 
