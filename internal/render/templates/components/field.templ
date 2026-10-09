@@ -73,9 +73,6 @@ templ FieldRow() {
 }
 
 // InputProps is a text-like control.
-// ReadOnly is what a field whose accessor declares no way to store a value
-// renders as. It is visibly not a hole you can type into, rather than being
-// hidden: the value is still worth reading.
 type InputProps struct {
 	ID          string
 	Name        string
@@ -83,7 +80,6 @@ type InputProps struct {
 	Type        string
 	Placeholder string
 	Mono        bool
-	ReadOnly    bool
 	Invalid     bool
 	Rules       Rules
 	Attrs       templ.Attributes
@@ -107,7 +103,6 @@ templ Input(p InputProps) {
 		if p.Placeholder != "" {
 			placeholder={ p.Placeholder }
 		}
-		readonly?={ p.ReadOnly }
 		required?={ p.Rules.Required }
 		if p.Rules.MinLen > 0 {
 			minlength={ strconv.Itoa(p.Rules.MinLen) }

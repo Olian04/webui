@@ -1215,12 +1215,6 @@ select.input option {
   background: var(--panel);
   color: var(--text);
 }
-.input[readonly] {
-  background: var(--hover);
-  color: var(--text-2);
-  border-color: var(--border);
-  cursor: not-allowed;
-}
 .input.invalid {
   border-color: var(--red);
 }
@@ -1613,10 +1607,12 @@ td.actions .gate:hover::after,
     monospace;
   color: var(--text-2);
 }
+/* A value shown and not offered for editing: text, a badge or a bar, in no box. */
 .static {
   display: flex;
   align-items: center;
   min-height: 32px;
+  overflow-wrap: anywhere;
 }
 
 /* ------------------------------ column filters --------------------------- */

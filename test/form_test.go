@@ -58,8 +58,10 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.Contains(t, body, `<form action="/admin/device/dev1" method="post"`)
 	assert.Contains(t, body, `name="_leaf" value="p"`)
 
-	// ID has no Store: visibly read-only, and never submitted (no name).
-	assert.Contains(t, body, `value="dev1" readonly>`)
+	// ID has no Store: shown as output, not as an input that is refused, and never
+	// submitted (no name).
+	assert.Contains(t, body, `<div class="static">dev1</div>`)
+	assert.False(t, strings.Contains(body, `value="dev1"`))
 	assert.False(t, strings.Contains(body, `name="f0_0"`))
 
 	// IP carries its rules as HTML constraint attributes, and states them.
@@ -95,7 +97,8 @@ func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.
 
 	// And nothing in it can be changed: every field is read-only, and none is submitted.
 	assert.False(t, strings.Contains(body, `name="f`))
-	assert.Contains(t, body, "readonly")
+	assert.False(t, strings.Contains(body, "<input class=\"input"))
+	assert.Contains(t, body, `<div class="static">10.0.0.1</div>`)
 	assert.False(t, strings.Contains(body, "must be a valid"))
 }
 

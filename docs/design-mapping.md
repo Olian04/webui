@@ -41,7 +41,7 @@ into existence, and nothing is configured twice.
 | `Label` | The input label / column header |
 | value kind | The input type and the column's alignment |
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
-| no `Store` | The input renders read-only on the hover surface |
+| no `Store` | The value shown as output: the form's own text under its label, in no box |
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
 | `Badge.Kinds` | The fixed options of a column: its filter is a multi-select of exactly these. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` | The input's placeholder |
@@ -263,7 +263,7 @@ renders differently in each, from the same declaration:
 | `Label` | Field label, 12.5/500 | Column header, 12.5/500 |
 | value kind | Input type | Cell alignment and formatting (numeric → right, tabular figures) |
 | `Load` | The value shown | The cell value |
-| `Store` absent | **Read-only** — hover surface, text-secondary, weak border | (no effect; a column is always read-only) |
+| `Store` absent | **Read-only** — shown as output, not as a disabled input | (no effect; a column is always read-only) |
 | `Rules` | Validation attributes + the hint line | Ignored |
 | `Label` | (the label) | Header is a sort link and has a filter beside it; the sorted one takes the link colour and a caret |
 | `Group` | Fields side by side, with no frame | Ignored |

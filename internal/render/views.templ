@@ -420,15 +420,16 @@ templ (r *Renderer) input(fv fieldView) {
 					/>
 					<output class="range-value" for={ fv.ID } data-range-value>{ fv.Value }</output>
 				</div>
-			case fv.Field.Display != ir.DisplayText:
-				// A badge, or a slider that cannot be changed: shown, not typed into.
+			case fv.ReadOnly || fv.Field.Display != ir.DisplayText:
+				// A value that cannot be changed, or a badge or a bar: shown as output, in
+				// the form's own text, and not as an input that is refused.
 				<div class="static">
 					@value(fv.Field, fv.Value)
 				</div>
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Placeholder, ReadOnly: fv.ReadOnly, Invalid: fv.Error != "",
+					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
 					Rules: fv.Rules,
 				})
 		}
