@@ -44,6 +44,8 @@ func leavesOf(root ir.Node) map[string]ir.Node {
 			out[render.LeafID(n.At)] = n
 		case *ir.Diff:
 			out[render.LeafID(n.At)] = n
+		case *ir.Markdown:
+			out[render.LeafID(n.At)] = n
 		}
 	}
 	if root != nil {

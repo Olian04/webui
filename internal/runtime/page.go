@@ -240,6 +240,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return p.table(ctx, req, page, n), nil
 	case *ir.Diff:
 		return p.diff(ctx, req, page, n), nil
+	case *ir.Markdown:
+		return p.markdown(ctx, req, page, n), nil
 	case *ir.Form:
 		var sub *submission
 		if req.sub != nil && req.subLeaf == render.LeafID(n.At) {

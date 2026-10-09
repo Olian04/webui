@@ -1025,7 +1025,8 @@ th.pick {
 .dim {
   color: var(--text-2);
 }
-.checkbox {
+.checkbox,
+.md input[type='checkbox'] {
   appearance: none;
   width: 15px;
   height: 15px;
@@ -1036,11 +1037,13 @@ th.pick {
   display: grid;
   place-content: center;
 }
-.checkbox:checked {
+.checkbox:checked,
+.md input[type='checkbox']:checked {
   background: var(--blue);
   border-color: var(--blue);
 }
-.checkbox:checked::after {
+.checkbox:checked::after,
+.md input[type='checkbox']:checked::after {
   content: '';
   width: 9px;
   height: 9px;
@@ -1501,6 +1504,183 @@ select.input option {
 .udiff-gap {
   padding: 2px 0 2px 7rem;
   color: var(--text-3);
+}
+
+/* ---------------------------- markdown ----------------------------------- */
+/* Text set as markdown. It is markup from outside the design, so each element is given the
+   look of its counterpart in the app, from the same tokens: the panel's 14px body text and
+   its 10px inset, the table's rules and header, the form's checkbox, the editor's code.
+   Headings and labels are no heavier than 500, and the structure is drawn by space more than by
+   lines. */
+.md {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.md > :first-child {
+  margin-top: 0;
+}
+.md > :last-child {
+  margin-bottom: 0;
+}
+/* Prose holds to a readable measure; code and tables use the width they are given. */
+.md > :where(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
+  max-width: 84ch;
+}
+.md :where(p, ul, ol, blockquote, pre, table) {
+  margin: 0 0 12px;
+}
+.md :where(h1, h2, h3, h4, h5, h6) {
+  margin: 22px 0 8px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+}
+.md h1 {
+  font-size: 18px;
+}
+.md h2 {
+  font-size: 15.5px;
+}
+.md h3 {
+  font-size: 14px;
+}
+/* The small headings are captions, as the sidebar's sections are. */
+.md :where(h4, h5, h6) {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+/* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
+   600, the one place outside a full-page error that the app uses it. */
+.md strong {
+  font-weight: 600;
+}
+.md em {
+  font-style: italic;
+}
+.md th {
+  font-weight: 500;
+}
+.md del {
+  color: var(--text-2);
+}
+.md a {
+  color: var(--blue-text);
+}
+.md a:hover {
+  text-decoration: underline;
+}
+.md :where(ul, ol) {
+  padding-left: 20px;
+}
+.md li {
+  padding-left: 2px;
+}
+.md li + li {
+  margin-top: 3px;
+}
+.md li > :where(ul, ol) {
+  margin: 3px 0 0;
+}
+.md li::marker {
+  color: var(--text-3);
+}
+/* A task list has the app's checkbox in place of a bullet. */
+.md li:has(> input[type='checkbox']) {
+  position: relative;
+  list-style: none;
+  margin-left: -20px;
+  padding-left: 25px;
+}
+.md input[type='checkbox'] {
+  position: absolute;
+  left: 2px;
+  top: 0.4em;
+  margin: 0;
+  opacity: 0.85;
+  cursor: default;
+}
+.md blockquote {
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--border-2);
+  color: var(--text-2);
+}
+.md blockquote > :last-child {
+  margin-bottom: 0;
+}
+.md hr {
+  height: 1px;
+  margin: 20px 0;
+  border: 0;
+  background: var(--border);
+}
+/* Anything the reader might copy is monospace, small, and a step quieter than prose. */
+.md :where(code, pre) {
+  font:
+    12.5px/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+.md :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--hover);
+  color: var(--text);
+}
+.md pre {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--input-bg);
+  overflow: auto;
+  tab-size: 2;
+}
+.md pre:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+/* A table is the app's table: a header on the hover surface, 13px cells, a rule between
+   rows and none after the last, no lines between columns. It is framed, since in a text
+   it is not a panel's content but a part of it, and it scrolls by itself when it is wide. */
+.md table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.md th,
+.md td {
+  padding: 0 10px;
+  text-align: left;
+  vertical-align: middle;
+}
+.md th {
+  height: 30px;
+  background: var(--hover);
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.md td {
+  height: 34px;
+  border-bottom: 1px solid var(--border);
+}
+.md tbody tr:last-child td {
+  border-bottom: 0;
+}
+.md td code {
+  padding: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: 12.5px;
 }
 
 /* ------------------------------ states ----------------------------------- */

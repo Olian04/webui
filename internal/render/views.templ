@@ -640,6 +640,32 @@ templ (r *Renderer) Diff(v DiffView) {
 	}
 }
 
+// Markdown renders a markdown leaf as one panel: the text, set as markup. The text was
+// rendered by internal/markdown, which leaves nothing in it that could run, so it is
+// put in the page as it is.
+templ (r *Renderer) Markdown(v MarkdownView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Status: v.status(),
+		Leaf:   LeafID(v.Node.At),
+	}) {
+		if v.Failed {
+			@c.EmptyState(c.EmptyStateProps{
+				Icon:  c.IconAlert,
+				Title: "Could not load",
+				Desc:  "The cause was logged on the server. Refresh to try again.",
+			})
+		} else {
+			<div class="panel-body pad">
+				<article class="md" aria-label={ v.Node.Content.Label }>
+					@templ.Raw(v.Result.HTML)
+				</article>
+			</div>
+		}
+	}
+}
+
 // unified is the changes as a unified diff, the way to read them without script.
 templ (r *Renderer) unified(v DiffView) {
 	<div class="udiff" role="region" tabindex="0" aria-label={ v.Node.Original.Label + " and " + v.Node.Modified.Label + ", compared" }>
