@@ -202,6 +202,7 @@ func (p *Program) here(r *http.Request) *hereRequest {
 		return nil
 	}
 	res := &hereRequest{}
+	//nolint:gosec // G704: the request is routed into this app's own mux and is never sent anywhere.
 	req, err := http.NewRequestWithContext(context.WithValue(r.Context(), hereKey{}, res), http.MethodGet, ref.RequestURI(), http.NoBody)
 	if err != nil {
 		return nil
