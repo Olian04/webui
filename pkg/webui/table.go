@@ -74,9 +74,11 @@ type Window[M any] struct {
 // Table is a leaf that lists rows of a model M, one row to a line.
 //
 // Every column header sorts the table and has a filter beside it. Where the rows
-// come from is Rows, Load or Feed, one of the three: Rows suits a small set, Load a
-// large set that can be ordered and filtered by its source, and Feed a large set
-// that cannot, which is paged by a cursor and so has no sort links or filters.
+// come from is Rows, Load or Feed, one of the three. Rows suits a set small enough to
+// list in full. Load and Feed suit a set too large for that, which the source pages:
+// Load when it pages by offset and can sort and filter on request, and Feed when it
+// pages by a cursor, which continues one sequence and so cannot be sorted or filtered
+// by the library.
 //
 // A table keeps its sort, filters and page in the address, so a copied link shows
 // the same view. Each of those parameters starts with the table's name, which is
@@ -126,17 +128,19 @@ type Table[M any] struct {
 	// Rows, Load and Feed.
 	Load func(ctx context.Context, q Query) (Window[M], error)
 
-	// Feed is for a source that hands out its rows a page at a time by a cursor, and
-	// cannot sort or filter them for you, such as an object store's listing or a
-	// feed of events. It is handed the cursor of the page asked for, "" for the first,
-	// and how many rows a page holds, and returns them with the cursor of the page
-	// after, "" when there is none.
+	// Feed is for a source that pages by a cursor, also called a continuation token,
+	// such as an object store's listing or a feed of events. The rows come in the order
+	// the source gives them, and each page continues where the last ended. Feed is
+	// handed the cursor of the page asked for, "" for the first, and how many rows a
+	// page holds, and returns them with the cursor of the page after, "" when there is
+	// none.
 	//
-	// Use Feed for a large set that has no order of your choosing, and Load for a large
-	// set that does. A feed table has no sort links and no filters, since the source
-	// decides the order, and its pager is Next and First page, since a cursor has no
-	// place in a count. The cursor is kept in the address, so it must be short enough
-	// to be one. A feed cannot be searched. Set exactly one of Rows, Load and Feed.
+	// Use Feed when the source pages by cursor, and Load when it pages by offset and
+	// can sort and filter on request. A cursor continues one sequence, so there is
+	// nothing for the library to reorder or filter: a feed table has no sort links and
+	// no filters, and its pager is Next and First page, since a cursor has no place in a
+	// count. The cursor is kept in the address, so it must be short enough to be one. A
+	// feed cannot be searched. Set exactly one of Rows, Load and Feed.
 	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
 
 	// Search makes the table's rows findable from the search box in the top bar.

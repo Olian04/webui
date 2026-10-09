@@ -62,7 +62,7 @@ var Audit = webui.Page[webui.NoArgs]{
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
 		Title:    "Audit log",
-		Desc:     "A Feed: a source that hands out its rows a page at a time by a cursor, newest first, with no order or filters of its own to offer.",
+		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so the table offers no sorting or filters.",
 		PageSize: 8,
 		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, error) {
 			// The cursor is where the page starts. It is whatever the source likes, so long
