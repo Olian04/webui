@@ -74,6 +74,14 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, here *hereReque
 	if here != nil && here.page == page {
 		raw = here.raw // the page the visitor is on: its arguments are known
 	}
+	// A path argument that is not there is not a zero to search with: decoding would
+	// take it for one, and the table would be asked for another tenant's rows. Without
+	// the arguments the page is not searched.
+	for _, a := range page.Args {
+		if a.InPath && raw[a.Name] == "" {
+			return nil
+		}
+	}
 	args, err := page.Decode(raw)
 	if err != nil {
 		return nil

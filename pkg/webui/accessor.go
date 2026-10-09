@@ -528,7 +528,7 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		f := ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
 			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
-			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
+			Num: func(m any) float64 { return timestampNum(a.Load(m.(M))) },
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {

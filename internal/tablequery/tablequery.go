@@ -10,6 +10,7 @@ package tablequery
 
 import (
 	"cmp"
+	"math"
 	"slices"
 	"strings"
 
@@ -34,6 +35,12 @@ rows:
 		}
 		for name, r := range q.Ranges {
 			if c, ok := byName[name]; ok && c.Num != nil && !within(c.Num(row), r) {
+				continue rows
+			}
+			// A moment that is not set, or is not a moment, is before every start and
+			// after no end by its number, so a filter that sets only an end would keep it.
+			// It has no time to be within, so any range drops it.
+			if c, ok := byName[name]; ok && c.Display == ir.DisplayTime && math.IsInf(c.Num(row), 0) {
 				continue rows
 			}
 		}

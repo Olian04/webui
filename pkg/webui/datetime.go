@@ -62,6 +62,15 @@ func datetimeNum(s string) float64 {
 	return math.Inf(-1)
 }
 
+// timestampNum is what a Timestamp is to the table as a number: its seconds, or, when
+// it is zero and so not set, negative infinity, as a Datetime with no moment is.
+func timestampNum(seconds int) float64 {
+	if seconds == 0 {
+		return math.Inf(-1)
+	}
+	return float64(seconds)
+}
+
 // timestampText is a Unix time in seconds as shown. Zero is "not set", and shows as
 // nothing, as an empty Datetime does.
 func timestampText(seconds int) string {

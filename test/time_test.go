@@ -167,3 +167,23 @@ func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Could not read this value.")
 	assert.Equal(t, stored.Modified, "") // nothing was saved
 }
+
+func TestAMomentThatIsNotSetIsDroppedByAnyRangeEvenOneWithOnlyAnEnd(t *testing.T) {
+	t.Parallel()
+
+	h := objectsApp(&webui.Query{})
+
+	// b has no Timestamp (zero is not set), and d no Datetime that is one. A filter
+	// with only an end would keep them if "not set" were taken for a very early time.
+	created := serve(h, http.MethodGet, "/rows?objects.max.created=1791999999").Body.String()
+	assert.False(t, strings.Contains(created, ">b</td>")) // Created is zero
+	assert.Contains(t, created, ">a</td>")
+
+	modified := serve(h, http.MethodGet, "/rows?objects.max.modified=2026-12-31T00:00").Body.String()
+	assert.False(t, strings.Contains(modified, ">d</td>")) // "not a date"
+	assert.Contains(t, modified, ">a</td>")
+
+	// And with a start, as before.
+	started := serve(h, http.MethodGet, "/rows?objects.min.created=1").Body.String()
+	assert.False(t, strings.Contains(started, ">b</td>"))
+}

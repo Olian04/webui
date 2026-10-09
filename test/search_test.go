@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
@@ -401,4 +402,25 @@ func TestSearchOfThePageTheVisitorIsOnStillRunsItsGuard(t *testing.T) {
 	})
 	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
 	assert.Equal(t, len(searchFrom(t, h, "http://example.com/admin/bucket/docs", "cat")), 0)
+}
+
+func TestAPageWithPathArgumentsIsNotSearchedWithoutThemNeitherItsGuardNorItsRows(t *testing.T) {
+	t.Parallel()
+
+	var guarded atomic.Int32
+	h := bucketSearchApp(func(context.Context, searchBucketArgs) error {
+		guarded.Add(1)
+		return nil
+	})
+
+	// From anywhere but the page itself the arguments are not known, and a missing one
+	// is not an empty bucket to search: nothing of the page runs.
+	for _, from := range []string{"", "http://example.com/admin/object/cat.png", "http://example.com/admin/bucket/"} {
+		assert.Equal(t, len(searchFrom(t, h, from, "cat")), 0)
+	}
+	assert.Equal(t, guarded.Load(), int32(0))
+
+	// On the page, they are, and it runs.
+	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
+	assert.Equal(t, guarded.Load(), int32(1))
 }
