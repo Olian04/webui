@@ -27,6 +27,9 @@ import (
 	"slices"
 	"time"
 
+	// The JSON language service for the editor: an optional import, since it is a worker of
+	// its own. The program is smaller without it, and the editor still highlights.
+	_ "github.com/Olian04/webui/pkg/monaco/json"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -42,7 +45,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, System, Audit},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit},
 }
 
 var (

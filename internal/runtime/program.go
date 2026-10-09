@@ -62,6 +62,7 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	}
 	p.add(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
 	p.add(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
+	p.add(http.MethodGet, prefix+render.AssetDir+"/monaco/{path...}", p.render.MonacoHandler())
 
 	for _, page := range app.Pages {
 		p.addPage(page)

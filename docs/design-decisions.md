@@ -247,6 +247,37 @@ design element.
   compressed already. There is no CSRF token in a page, so compressing HTML does not
   expose one.
 
+## Code editors
+
+- `Editor` and `Diff` are Monaco, the editor of VS Code, always embedded. About 5 MB
+  of assets is little next to what a Go binary weighs, and a page that has no editor
+  never links them, so the cost is the binary's and not the page's. Syntax
+  highlighting is built for every language Monaco has, and a `Language` constant is
+  generated for each by `tools/monaco`, so an unknown language is a compile error
+  instead of an editor that silently shows plain text.
+- The bundle is built from Monaco's ESM package with esbuild, with a chunk for each
+  language that is loaded when it is first used, and not from the AMD build: the AMD
+  build makes its workers from a `blob:` URL, which a strict content security policy
+  refuses. Workers are same-origin files under `_webui/monaco`, so the existing
+  policy is enough and nothing is loosened for it. The output is committed so that
+  `go get` needs no node.
+- A language service is a worker, and Monaco has four: JSON, CSS (and SCSS and
+  Less), HTML (and Handlebars and Razor) and TypeScript (and JavaScript). A service
+  is an opt-in import of its own package, because TypeScript alone is 6.7 MB.
+  Without the import the editor switches that language's features off, and so
+  highlights and nothing more: it degrades, it does not fail.
+- A service goes only to an editor that can be edited, by the visitor who sees it.
+  This is decided on the server from the same Guard that gates the Save button, so
+  a viewer never downloads a service, and the page never carries one for text that
+  cannot change.
+- An `Editor` is lowered to the same node as a `Form` with one field, so loading,
+  rules, the Guard, rejection and echo are the one pipeline and not a second one.
+  Its body limit is raised (16 MiB) on pages that have an editor only, since a
+  text is the one field that is expected to be large.
+- Without script the editor is a `textarea`, the viewer a `pre`, and a `Diff` a
+  unified diff that the server makes. The script mounts Monaco over them and keeps
+  the `textarea` as the editor has it, so the form posts as it always did.
+
 ## Compiling and errors
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one

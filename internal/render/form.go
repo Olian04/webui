@@ -43,6 +43,12 @@ type FormView struct {
 
 func (v FormView) title() string { return v.Node.Title }
 
+// Editable is whether the visitor can change the text of a code editor: it has a Store,
+// and they may submit. A viewer, or an editor whose guard refuses them, is read.
+func (v FormView) Editable() bool {
+	return len(v.Node.Fields) > 0 && v.editable(v.Node.Fields[0])
+}
+
 func (v FormView) status() c.Tone {
 	if v.Failed {
 		return c.ToneCritical

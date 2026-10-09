@@ -1,4 +1,4 @@
-.PHONY: format lint test help generate build run
+.PHONY: format lint test help generate monaco build run
 
 # Trees this library owns. A missing path fails the whole target.
 SOURCE_CODE ?= ./cmd/... ./internal/... ./pkg/... ./test/...
@@ -21,6 +21,9 @@ test: generate ## Run tests
 
 generate: ## Generate the application
 	go tool templ generate ./...
+
+monaco: ## Rebuild the embedded Monaco editor assets (needs node); the output is committed
+	cd tools/monaco && npm ci && node build.mjs
 
 build: generate ## Build the application
 	go build -o webui ./cmd/demo

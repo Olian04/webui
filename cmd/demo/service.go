@@ -88,6 +88,7 @@ type Service struct {
 	devices   []Device
 	alerts    []Alert
 	settings  Settings
+	config    Config
 	retention RetentionPolicy
 	audit     []AuditEntry // newest first
 	started   time.Time
@@ -97,6 +98,7 @@ var service = newService()
 
 func newService() *Service {
 	s := &Service{
+		config:    Config{Current: seedConfig, Deployed: seedConfig},
 		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
@@ -443,6 +445,34 @@ func (s *Service) SetSettings(v Settings) {
 	s.settings = v
 	s.mu.Unlock()
 	s.record("saved settings", v.Name)
+}
+
+// Config is the collector's configuration as text, and what it was when it was last
+// deployed: the diff of the two is what a deploy would change.
+type Config struct{ Current, Deployed string }
+
+const seedConfig = `{
+  "collector": "eu-north-1",
+  "listen": ":8125",
+  "sample": 0.25,
+  "sinks": [
+    { "kind": "stdout" },
+    { "kind": "file", "path": "/var/log/collector.log" }
+  ]
+}
+`
+
+func (s *Service) Config() Config {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.config
+}
+
+func (s *Service) SetConfig(text string) {
+	s.mu.Lock()
+	s.config.Current = text
+	s.mu.Unlock()
+	s.record("saved config", fmt.Sprintf("%d bytes", len(text)))
 }
 
 func (s *Service) Retention() RetentionPolicy {

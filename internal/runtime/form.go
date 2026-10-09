@@ -49,6 +49,15 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 			view.SubmitGate = err.Error()
 		}
 	}
+	if n.Editor != nil {
+		// A language service goes only to an editor that can be edited by this visitor:
+		// a viewer, or one whose guard refuses them, is only ever highlighted.
+		service := ""
+		if view.Editable() {
+			service = n.Editor.Service
+		}
+		req.code.Add(service)
+	}
 	return p.render.Form(view)
 }
 

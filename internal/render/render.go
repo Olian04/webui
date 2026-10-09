@@ -19,6 +19,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/render/assets"
 	c "github.com/Olian04/webui/internal/render/templates/components"
 )
 
@@ -38,6 +39,9 @@ type Doc struct {
 	// HideNav is the paths of the navigation entries this visitor may not open, so
 	// the sidebar and the search that reads it leave them out.
 	HideNav map[string]bool
+
+	// Code is what the page's editors and diffs need loaded.
+	Code CodeNeeds
 }
 
 // Toast is a message shown once, in the bottom-right region.
@@ -80,6 +84,10 @@ type Renderer struct {
 	hasCSS bool // theme tokens present, so theme.css is linked
 	search bool // some table is searchable, so the page script has something to ask
 	logo   bool
+
+	// monaco is the editor's entry script, stylesheet and plain worker, which a page
+	// links only when it has an editor or a diff.
+	monaco assets.Monaco
 }
 
 type navEntry struct {
@@ -97,6 +105,7 @@ func New(app *ir.App, prefix string) *Renderer {
 		hasCSS: app.Theme != ir.Theme{},
 		logo:   len(app.Brand.Logo) > 0,
 	}
+	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	for _, p := range app.Pages {
 		for _, t := range ir.Tables(p.Body) {
 			r.search = r.search || t.Search

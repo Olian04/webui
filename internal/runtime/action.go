@@ -14,6 +14,11 @@ import (
 // generous, and an unbounded body is a memory problem for whoever reaches it.
 const maxBody = 1 << 20
 
+// maxEditorBody bounds a submission to a page that has an editor, whose text is the
+// body and may be large. A Content.Rules.MaxLen is how an application bounds it
+// further.
+const maxEditorBody = 16 << 20
+
 // leavesOf maps each leaf's id to its node, so a POST can name one and nothing
 // else: the id comes from position, never from anything the user typed.
 func leavesOf(root ir.Node) map[string]ir.Node {
@@ -36,6 +41,8 @@ func leavesOf(root ir.Node) map[string]ir.Node {
 		case *ir.Form:
 			out[render.LeafID(n.At)] = n
 		case *ir.Table:
+			out[render.LeafID(n.At)] = n
+		case *ir.Diff:
 			out[render.LeafID(n.At)] = n
 		}
 	}
@@ -74,7 +81,11 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
-		r.Body = http.MaxBytesReader(w, r.Body, maxBody)
+		limit := int64(maxBody)
+		if hasEditor(leaves) {
+			limit = maxEditorBody
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		if err := r.ParseForm(); err != nil {
 			status := http.StatusBadRequest
 			if strings.Contains(err.Error(), "too large") {
@@ -368,4 +379,14 @@ func parseAct(s string) (kind string, index int, key string, ok bool) {
 		return "click", index, parts[2], true
 	}
 	return "", 0, "", false
+}
+
+// hasEditor reports whether any leaf is a code editor.
+func hasEditor(leaves map[string]ir.Node) bool {
+	for _, n := range leaves {
+		if f, ok := n.(*ir.Form); ok && f.Editor != nil {
+			return true
+		}
+	}
+	return false
 }

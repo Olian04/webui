@@ -57,7 +57,7 @@ func TestEveryPageServes(t *testing.T) {
 	for _, path := range []string{
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
-		"/admin/system", "/admin/audit", "/admin/",
+		"/admin/system", "/admin/audit", "/admin/config", "/admin/",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -463,4 +463,25 @@ func TestAURLColumnIsTheOnlyWayAValueBecomesALink(t *testing.T) {
 	body := get(handler(t), "/admin/alert/alt_000").Body.String()
 	assert.Contains(t, body, `<a class="ext" href="https://example.com/runbooks/critical" target="_blank" rel="noopener noreferrer">`)
 	assert.Contains(t, body, "Open the runbook")
+}
+
+func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/config").Body.String()
+	assert.Contains(t, body, `<textarea class="code-text"`)
+	assert.Contains(t, body, `data-language="json"`)
+	assert.Contains(t, body, "No differences")
+
+	rec := post(h, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{\n  \"collector\": \"eu-west-2\"\n}\n"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	body = get(h, "/admin/config").Body.String()
+	assert.False(t, strings.Contains(body, "No differences"))
+	assert.Contains(t, body, "eu-west-2")
+
+	// A viewer is shown the text and is not let save it.
+	v := handlerAs(t, Viewer)
+	body = get(v, "/admin/config").Body.String()
+	assert.Contains(t, body, `<pre class="code-view"`)
+	assert.False(t, strings.Contains(body, "<textarea"))
+	assert.Equal(t, post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}}).Code, http.StatusForbidden)
 }

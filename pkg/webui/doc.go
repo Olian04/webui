@@ -65,8 +65,8 @@
 //
 // # Layouts
 //
-// A page's Body is a single [PageBody]. [Table] and [Form] are leaves; they load
-// their own data and refresh on their own. [Stack], [Split] and [Tabs] arrange
+// A page's Body is a single [PageBody]. [Table], [Form], [Editor] and [Diff] are
+// leaves; they load their own data and refresh on their own. [Stack], [Split] and [Tabs] arrange
 // other bodies and nest:
 //
 //	Body: webui.Stack{
@@ -129,6 +129,40 @@
 // attributes and checked again on the server before the action runs. Submit is an
 // [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
+//
+// # Code editors
+//
+// An [Editor] shows one text of a model in a code editor, Monaco, the editor of VS
+// Code, with syntax highlighting for its [Language] and everything a code editor has.
+// Its Content is a [String]: with a Store the editor edits the text and saves it with
+// its Submit, as a [Form] does, and without one it is a viewer. A [Diff] shows what
+// changed between two texts, side by side when the page is wide enough, and only
+// reads.
+//
+//	webui.Editor[Config]{
+//		Title:    "Configuration",
+//		Load:     loadConfig,
+//		Content:  ConfigText,
+//		Language: webui.LangYAML,
+//		Submit:   webui.Action[Config]{Run: saveConfig},
+//	}
+//
+// The editor is part of the program and is linked by the pages that have one. Without
+// script an editor is a text box with a Save button, a viewer is the text in a block,
+// and a Diff is a unified diff, so nothing needs script to work.
+//
+// A language has a Lang constant, one for each language the editor highlights. A few
+// also have a language service, which gives diagnostics, completion and the like:
+// JSON, CSS (with SCSS and Less), HTML (with Handlebars and Razor), and TypeScript
+// (with JavaScript). A service is a worker of its own, so it is an optional import:
+//
+//	import _ "github.com/Olian04/webui/pkg/monaco/json"
+//
+// and without it the editor highlights and nothing more. The packages are
+// pkg/monaco/json, pkg/monaco/css, pkg/monaco/html and pkg/monaco/typescript. A
+// service goes only to an editor that can be edited, by the visitor who is shown it:
+// a viewer, a visitor whose Submit Guard refuses them, and every [Diff] are
+// highlighted only, so no service is sent for text that cannot change.
 //
 // # Outcomes
 //
