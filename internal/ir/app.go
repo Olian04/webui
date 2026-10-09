@@ -7,6 +7,17 @@ type App struct {
 	Theme  Theme
 	Pages  []*Page
 	ByPath map[string]*Page // destination resolution, not a route table
+
+	// Settings are the entries of the settings menu in the top bar.
+	Settings []MenuItem
+}
+
+// MenuItem is one entry of the settings menu. URL is as the declaration wrote it,
+// which is the runtime's to resolve: a page's path gets the mount prefix.
+type MenuItem struct {
+	Label string
+	Icon  string
+	URL   string
 }
 
 // Brand is the product identity in the chrome. Logo is encoded bytes; how to

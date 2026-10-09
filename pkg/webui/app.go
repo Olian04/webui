@@ -17,6 +17,27 @@ type App struct {
 
 	// Pages are the pages to serve. Each page that another links to must be here.
 	Pages Pages
+
+	// Settings are the entries of the menu behind the cog button in the top bar:
+	// links to where the app's own settings, account or documentation live. With
+	// none, there is no button.
+	Settings []MenuItem
+}
+
+// MenuItem is an entry in the settings menu, a link.
+type MenuItem struct {
+	// Label is the entry's text.
+	Label string
+
+	// Icon is the name of a Font Awesome Free solid icon, "book" for fa-book, drawn
+	// beside the label. It is optional, and an unknown name is a compile error.
+	Icon string
+
+	// URL is where the entry goes. A path that is one of the app's pages, such as
+	// "/account", goes to that page, with the mount prefix added, and is left out of
+	// the menu for a visitor whose page Guard refuses them. Any other path
+	// ("/logout") is used as written, and so is an http, https or mailto address.
+	URL string
 }
 
 // Brand is the product identity shown in the chrome.

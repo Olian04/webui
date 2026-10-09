@@ -484,6 +484,53 @@ a.side-brand:hover {
   font-size: 14px;
 }
 
+/* settings menu: the cog in the top bar and the list behind it */
+.menu {
+  position: relative;
+}
+.menu summary {
+  list-style: none;
+  cursor: pointer;
+}
+.menu summary::-webkit-details-marker {
+  display: none;
+}
+.menu[open] summary {
+  background: var(--hover);
+  color: var(--text);
+}
+.menu-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 60;
+  min-width: 200px;
+  padding: 4px 0;
+  background: var(--raise);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13.5px;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.menu-item:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.menu-icon {
+  width: 16px;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
 /* command palette */
 .palette {
   position: absolute;

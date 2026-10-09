@@ -187,7 +187,9 @@ visitor may not open is not drawn.
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
 at text-tertiary. On the right: a 290px search field, then the page's *Refresh*
-icon button.
+icon button, then, when the app declares settings, a cog button that opens a popover
+list of links: a raised surface right-aligned beneath the button, 32px items with a
+16px icon, closed by a click elsewhere or Escape.
 
 The breadcrumb is where location is expressed when the sidebar cannot show it
 — for example on a detail page that intentionally has no navigation entry of

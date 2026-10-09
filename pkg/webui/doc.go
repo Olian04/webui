@@ -163,7 +163,9 @@
 // # Looks
 //
 // [Brand] gives the name and logo. The logo is also scaled into the browser's
-// favicon, unless NoFavicon is set. [Theme] restyles the four colours that carry
+// favicon, unless NoFavicon is set. [App.Settings] adds a cog button to the top bar,
+// beside Refresh, that opens a menu of links you choose: an account page, a sign-out
+// address, the documentation. [Theme] restyles the four colours that carry
 // meaning (accent, ok, warning and critical) and the library derives the rest for
 // light and dark, which follow the viewer's system. A [Nav] Icon is the name of a Font
 // Awesome Free solid icon, "house" for fa-house, served by the app itself.

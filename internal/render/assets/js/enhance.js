@@ -175,8 +175,11 @@
   // A filter is a <details>, which opens and submits on its own. Script only
   // keeps one open at a time, closes it on a click elsewhere or on Escape, and
   // applies a filter to its panel alone, like any other link inside it.
+  // The settings menu is a <details> too, and shares all of it: one popover open
+  // at a time, closed by a click elsewhere or Escape.
+  var POPOVERS = 'details.filter, details.menu';
   function closeFilters(except) {
-    $$('details.filter[open]').forEach(function (d) {
+    $$('details.filter[open], details.menu[open]').forEach(function (d) {
       if (d !== except) d.removeAttribute('open');
     });
   }
@@ -184,7 +187,7 @@
   document.addEventListener(
     'toggle',
     function (e) {
-      if (e.target.matches && e.target.matches('details.filter') && e.target.open) {
+      if (e.target.matches && e.target.matches(POPOVERS) && e.target.open) {
         closeFilters(e.target);
         var first = $('input:not([type="hidden"])', e.target);
         if (first) first.focus();
@@ -194,12 +197,12 @@
   );
 
   document.addEventListener('click', function (e) {
-    if (!e.target.closest('details.filter')) closeFilters(null);
+    if (!e.target.closest(POPOVERS)) closeFilters(null);
   });
 
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    var open = $('details.filter[open]');
+    var open = $('details.filter[open], details.menu[open]');
     if (!open) return;
     closeFilters(null);
     var btn = $('summary', open);
@@ -311,7 +314,10 @@
 
   function pages() {
     return $$('.side-scroll a.nav-item[href]').map(function (a) {
-      return { group: 'Pages', title: a.textContent.trim(), desc: '', href: a.getAttribute('href') };
+      // The label, not the whole link: an entry with no icon holds its initial in
+      // a span of its own, which is for the collapsed sidebar and not a name.
+      var label = a.querySelector('span:not(.ni-letter)');
+      return { group: 'Pages', title: (label || a).textContent.trim(), desc: '', href: a.getAttribute('href') };
     });
   }
 

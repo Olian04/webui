@@ -59,3 +59,31 @@ templ Search(p SearchProps) {
 		}
 	</div>
 }
+
+// MenuEntry is one link in a SettingsMenu.
+type MenuEntry struct {
+	Label string
+	Href  string
+	Icon  IconName
+}
+
+// SettingsMenu is the cog button and the list of links behind it. It is a
+// <details>, so it opens and closes without script; script only closes it on a click
+// elsewhere or on Escape.
+templ SettingsMenu(items []MenuEntry) {
+	<details class="menu">
+		<summary class="iconbtn" title="Settings" aria-label="Settings">
+			@Icon(IconProps{Name: IconGear})
+		</summary>
+		<div class="menu-pop">
+			for _, it := range items {
+				<a class="menu-item" href={ it.Href }>
+					if it.Icon != IconNone {
+						@Icon(IconProps{Name: it.Icon, Class: "menu-icon"})
+					}
+					<span>{ it.Label }</span>
+				</a>
+			}
+		</div>
+	</details>
+}

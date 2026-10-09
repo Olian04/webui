@@ -2,10 +2,13 @@ package webui
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/Olian04/webui/internal/render/assets"
 )
 
 // validate checks what the type system cannot, and never stops at the first
@@ -20,6 +23,7 @@ func (a App) validate() CompileErrors {
 	f := a.collectFacts()
 	var errs CompileErrors
 	errs = append(errs, validateTheme(a.Theme)...)
+	errs = append(errs, validateSettings(a.Settings)...)
 
 	for i, p := range a.Pages {
 		if p == nil {
@@ -146,4 +150,43 @@ func validateTheme(t Theme) []CompileError {
 		}
 	}
 	return errs
+}
+
+// validateSettings checks the settings menu: every entry has a label and an address
+// that is a path on this site or a web or mail address, never a script.
+func validateSettings(items []MenuItem) []CompileError {
+	var errs []CompileError
+	for i, it := range items {
+		at := fmt.Sprintf("App.Settings[%d]", i)
+		bad := func(detail, fix string) { errs = append(errs, CompileError{Detail: at + " " + detail, Fix: fix}) }
+		if it.Label == "" {
+			bad("has no Label", "Set Label; it is the entry's text.")
+		}
+		if it.Icon != "" && !assets.HasIcon(it.Icon) {
+			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
+				"Use the name of a Font Awesome Free solid icon, such as \"book\", or leave Icon empty.")
+		}
+		if !validMenuURL(it.URL) {
+			bad(fmt.Sprintf("has the URL %q, which is not a path on this site, or an http, https or mailto address", it.URL),
+				"Use a path such as \"/logout\", or an address such as \"https://example.com/help\".")
+		}
+	}
+	return errs
+}
+
+func validMenuURL(s string) bool {
+	if strings.HasPrefix(s, "/") {
+		return !strings.HasPrefix(s, "//") && !strings.HasPrefix(s, `/\`) && !strings.ContainsAny(s, "\n\r")
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return false
+	}
+	switch u.Scheme {
+	case "http", "https":
+		return u.Host != ""
+	case "mailto":
+		return u.Opaque != ""
+	}
+	return false
 }
