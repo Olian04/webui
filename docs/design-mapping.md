@@ -233,7 +233,9 @@ One panel. Header carries the title and description; the body carries the
 fields; the footer carries `Submit` as the primary button, right-aligned, with
 a ghost *Cancel* beside it. Cancel returns to the page the user came from, which the library remembers
 (`webui.from` in the address, set by the link that opened the form), and to the
-parent in the breadcrumb when there is none.
+parent in the breadcrumb when there is none. When the `Submit` action's `Guard` refuses the
+visitor there is nothing to save or cancel, so the footer holds a ghost *Back* to the same
+address instead, and no footer at all when there is nowhere to go back to.
 
 `Bind` is invisible until something fails — see `Reject` below.
 

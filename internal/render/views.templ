@@ -328,7 +328,8 @@ templ value(f ir.Field, text string) {
 }
 
 // Form renders a loaded form leaf as one panel. The submit button and its
-// Cancel sit in the footer, inside the <form>, so they submit it.
+// Cancel sit in the footer, inside the <form>, so they submit it. When the
+// submit is refused (SubmitGate) they are replaced by a Back button.
 templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.title(),
@@ -354,14 +355,24 @@ templ (r *Renderer) Form(v FormView) {
 						@r.formField(v, f)
 					}
 				</div>
-				if v.Node.Submit != nil {
+				if v.Node.Submit != nil && v.SubmitGate != "" {
+					// A visitor who may not save has nothing to save or cancel: the footer
+					// offers the way back, or no footer when there is no way back.
+					if v.CancelHref != "" {
+						<div class="panel-foot end">
+							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+								Back
+							}
+						</div>
+					}
+				} else if v.Node.Submit != nil {
 					<div class="panel-foot end">
 						if v.CancelHref != "" {
 							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
 								Cancel
 							}
 						}
-						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Size: c.SizeSmall, Guard: v.SubmitGate}) {
+						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Size: c.SizeSmall}) {
 							{ v.Node.Submit.Label }
 						}
 					</div>

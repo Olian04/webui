@@ -43,7 +43,8 @@ func TestLogoutEndsTheSessionAndOffersABrowserBothKindsOfUser(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Continue as a viewer")
 	assert.Contains(t, rec.Body.String(), "Continue as an editor")
-	assert.Equal(t, rec.Result().Cookies()[0].MaxAge, -1) // the session is over
+	assert.Contains(t, rec.Body.String(), "It is not part of the library") // the page says so
+	assert.Equal(t, rec.Result().Cookies()[0].MaxAge, -1)                  // the session is over
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 }
 

@@ -82,15 +82,27 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Cancel</a>`)
 }
 
-func TestFormSubmitIsGatedByTheSameGuardThatAuthorisesIt(t *testing.T) {
+func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.T) {
 	t.Parallel()
 
 	f := okForm()
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
 	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
 
-	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role">`)
-	assert.Contains(t, body, `class="btn btn-primary btn-sm" type="submit" disabled>Save</button>`)
+	assert.False(t, strings.Contains(body, ">Save</button>"))
+	assert.False(t, strings.Contains(body, ">Cancel</a>"))
+	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Back</a>`)
+}
+
+func TestAFormTheVisitorMayNotSubmitAndCannotLeaveHasNoFooter(t *testing.T) {
+	t.Parallel()
+
+	f := okForm()
+	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/solo", Body: f}}} // no parent, no origin
+	body := serve(app.MustCompile("/admin"), http.MethodGet, "/admin/solo").Body.String()
+	assert.False(t, strings.Contains(body, "panel-foot"))
+	assert.False(t, strings.Contains(body, ">Save</button>"))
 }
 
 func TestFormWithoutSubmitIsReadOnly(t *testing.T) {

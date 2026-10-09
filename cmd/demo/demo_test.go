@@ -183,10 +183,16 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role">`)
 	assert.Contains(t, body, `disabled>Dismiss</button>`)
 
-	assert.Contains(t, get(h, "/admin/alert/alt_000").Body.String(), `disabled>Acknowledge</button>`)
+	alert := get(h, "/admin/alert/alt_000").Body.String() // a form: its submit is not offered, a way back is
+	assert.False(t, strings.Contains(alert, ">Acknowledge</button>"))
+	assert.Contains(t, alert, `href="/admin/alert">Back</a>`)
 
-	settings := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, settings, `disabled>Save</button>`) // a form's submit is gated by the same Guard
+	// The same goes for a device's form: no Save and no Cancel, but a way back.
+	assert.False(t, strings.Contains(get(h, "/admin/settings").Body.String(), ">Save</button>"))
+	device := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.False(t, strings.Contains(device, ">Save</button>"))
+	assert.False(t, strings.Contains(device, ">Cancel</a>"))
+	assert.Contains(t, device, `href="/admin/device">Back</a>`)
 }
 
 func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {

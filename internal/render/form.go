@@ -29,10 +29,11 @@ type FormView struct {
 	// Errors is the message for each rejected field, by label.
 	Errors map[string]string
 
-	// SubmitGate is why the viewer may not submit, "" when they may.
+	// SubmitGate is why the viewer may not submit, "" when they may. A viewer who
+	// may not submit is offered a Back button in place of Save and Cancel.
 	SubmitGate string
 
-	// CancelHref is where Cancel goes, "" for no Cancel.
+	// CancelHref is where Cancel, or Back, goes, "" for neither.
 	CancelHref string
 
 	Failed bool // Load failed: the panel says so, the page stands

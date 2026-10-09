@@ -125,11 +125,13 @@ const chooser = `<!doctype html>
 body{margin:0;min-height:100vh;display:grid;place-items:center;font:14px/1.5 system-ui,sans-serif;background:#111217;color:#ccccdc}
 main{width:min(420px,calc(100vw - 32px));background:#181b1f;border:1px solid rgba(204,204,220,.11);border-radius:2px;padding:20px}
 h1{font-size:17px;font-weight:500;margin:0 0 4px}p{margin:0 0 16px;color:rgba(204,204,220,.65)}
-form{margin:0 0 8px}button{width:100%;text-align:left;font:inherit;color:inherit;background:#22252b;border:1px solid rgba(204,204,220,.22);border-radius:2px;padding:10px 12px;cursor:pointer}
+form{margin:0 0 8px}
+.note{margin:16px 0 0;padding:10px 12px;font-size:12.5px;border:1px solid rgba(61,113,217,.45);background:rgba(61,113,217,.12);border-radius:2px;color:rgba(204,204,220,.8)}.note b{font-weight:500}button{width:100%;text-align:left;font:inherit;color:inherit;background:#22252b;border:1px solid rgba(204,204,220,.22);border-radius:2px;padding:10px 12px;cursor:pointer}
 button:hover{border-color:#3d71d9}button b{display:block;font-weight:500}button span{color:rgba(204,204,220,.65);font-size:12.5px}
-@media (prefers-color-scheme:light){body{background:#f4f5f5;color:#24292e}main{background:#fff;border-color:rgba(36,41,46,.12)}p,button span{color:#5c6269}button{background:#fff;border-color:rgba(36,41,46,.24)}}
+@media (prefers-color-scheme:light){body{background:#f4f5f5;color:#24292e}main{background:#fff;border-color:rgba(36,41,46,.12)}p,button span,.note{color:#5c6269}.note{background:#eef3fc;border-color:rgba(61,113,217,.35)}button{background:#fff;border-color:rgba(36,41,46,.24)}}
 </style></head><body><main>
 <h1>Collector</h1><p>You are signed out. Choose who to continue as.</p>
 <form method="post" action="/login"><input type="hidden" name="role" value="viewer"><button><b>Continue as a viewer</b><span>Can look at everything, and change nothing: guarded controls are disabled, with the reason.</span></button></form>
 <form method="post" action="/login"><input type="hidden" name="role" value="editor"><button><b>Continue as an editor</b><span>Can change devices, alerts and settings, and read the audit log.</span></button></form>
+<p class="note" role="note"><b>About this page.</b> It is not part of the library: it was made for the demo, to stand in for a sign-in page. The library does no authentication of its own.</p>
 </main></body></html>`
