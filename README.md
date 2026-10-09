@@ -112,6 +112,25 @@ It covers pages and their arguments, layouts, tables (paging, sorting, filters a
 search), forms and validation, outcomes (success, warning, failure, rejection and
 where to go next), links between pages, theming, errors, and security.
 
+## Building with an AI agent
+
+The repository ships a skill that teaches a coding agent to build with webui: the
+mental model, the order to work in, how to handle authentication, and when the library
+cannot do something. It names almost none of the API. It tells the agent to read the
+documentation for the version your `go.mod` pins (`go doc` reads it from the module
+cache), so it does not go stale when the library changes.
+
+To use it, copy it from the module cache, which matches your version, into the place
+your agent reads skills from, such as `.claude/skills` for Claude Code:
+
+```sh
+mkdir -p .claude/skills
+cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui" .claude/skills/
+chmod -R u+w .claude/skills/webui
+```
+
+Or read it at [`skills/webui/SKILL.md`](skills/webui/SKILL.md).
+
 ---
 
 ## Developing webui
@@ -131,6 +150,7 @@ This half is for people changing the library.
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
+| `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 
 Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and
