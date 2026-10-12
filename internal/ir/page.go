@@ -24,6 +24,19 @@ type Page struct {
 	// Guard receives the decoded arguments. Runs before anything loads, on
 	// every request to this page including section fetches.
 	Guard func(ctx context.Context, args any) error
+
+	// Search finds the things this page is the page of, by what the visitor typed in the
+	// global search: at most limit of them. Nil means the page is not searched. A hit is checked
+	// against this page's Guard, with the hit's own arguments, before it is offered.
+	Search func(ctx context.Context, query string, limit int) ([]Hit, error)
+}
+
+// Hit is one result of a page's search: the arguments of this page that it leads to, and what
+// to say about it.
+type Hit struct {
+	Args  any
+	Title string
+	Desc  string
 }
 
 // ArgSpec is one field of a page's argument struct, resolved.

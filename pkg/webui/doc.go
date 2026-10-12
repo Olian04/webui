@@ -227,11 +227,24 @@
 //
 // # Search
 //
-// The search box in the top bar lists the app's pages. A [Table] with Search set, and
-// a RowClick, adds its rows: each is a result, led by its first column, that goes where
-// the row click goes. A table with Rows is searched across every column by the
-// library; a table with Load is handed the typed text in [Query.Search]. A result is
-// offered only to a visitor who could open the page it leads to.
+// The search box in the top bar lists the app's pages, and finds the things the pages
+// are for. A [Page] says how with its Search: it is handed what was typed and returns
+// the matches, each a [Hit] holding the page's arguments that lead to it and what to say
+// about it. A page for one device finds devices, and a result is a link to the page at
+// that device.
+//
+//	var Details = webui.Page[DeviceArgs]{
+//		Path: "/device/{id}",
+//		Search: func(ctx context.Context, query string, limit int) ([]webui.Hit[DeviceArgs], error) {
+//			...
+//		},
+//	}
+//
+// For rows that are held in memory, [SearchRows] makes the Search: it looks in the fields
+// it is given and the library does the matching. Results are listed under the page's
+// name in the navigation, or under the entry it borrows its place from. A result is
+// offered only to a visitor who could open the page it leads to: the page's Guard is run
+// for each, with its own arguments.
 //
 // # Looks
 //

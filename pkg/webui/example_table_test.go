@@ -10,8 +10,8 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-// A table whose rows are a slice, that links each row to a page of its own and
-// offers its rows to the search box.
+// A table whose rows are a slice, that links each row to a page of its own, which
+// finds them from the search box.
 func ExampleTable() {
 	type device struct{ ID, IP string }
 	type deviceArgs struct{ ID string }
@@ -20,9 +20,18 @@ func ExampleTable() {
 	ip := webui.String[device]{Label: "IP", Load: func(d device) string { return d.IP }}
 	devices := []device{{"dev_1", "10.0.0.1"}, {"dev_2", "192.168.1.2"}}
 
-	// The page a row leads to. Its path argument is the device's ID.
+	// The page a row leads to. Its path argument is the device's ID. Its Search is what makes
+	// the devices findable from the search box: SearchRows looks in the fields it is given,
+	// and says what a device is as a result.
 	details := webui.Page[deviceArgs]{
 		Path: "/device/{id}",
+		Search: webui.SearchRows(
+			func(context.Context) ([]device, error) { return devices, nil },
+			func(d device) webui.Hit[deviceArgs] {
+				return webui.Hit[deviceArgs]{Args: deviceArgs{ID: d.ID}, Title: d.ID, Desc: d.IP}
+			},
+			id, ip,
+		),
 		Body: webui.Form[device]{
 			Load: func(ctx context.Context) (device, error) {
 				want := webui.ArgsOf[deviceArgs](ctx).ID
@@ -41,9 +50,8 @@ func ExampleTable() {
 		Path: "/device",
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[device]{
-			Title:  "Devices",
-			Rows:   func(context.Context) ([]device, error) { return devices, nil },
-			Search: true, // every column of every row is searched
+			Title: "Devices",
+			Rows:  func(context.Context) ([]device, error) { return devices, nil },
 			RowClick: webui.Link[device, deviceArgs]{
 				Page: details,
 				Args: func(_ context.Context, d device) deviceArgs { return deviceArgs{ID: d.ID} },

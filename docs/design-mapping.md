@@ -26,7 +26,7 @@ into existence, and nothing is configured twice.
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
 | `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
-| `Table.Search` | The table's rows as a group of results in the top bar's search, beneath the app's pages: the first column is the title, the other text columns the line beneath, and the result leads where `RowClick` does. A result appears only if the page it leads to would let the visitor in (its `Guard`) |
+| `Page.Search` | The page's things as a group of results in the top bar's search, beneath the app's pages: each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
 | `App.Menu` | The button in the top bar, beside Refresh, and the popover list of the app's own links behind it. A `MenuItem` is a `Nav` entry (label, icon, section caption) with an `ExternalURL`, used as written (the menu groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
@@ -329,14 +329,14 @@ Rows become clickable: pointer cursor, hover surface, and the whole row is the
 target. A `Link` is the simple case. Because it names a page and builds its
 arguments, the destination is known at compile time, which is what lets a row
 link be a real `href` instead of a click handler, so middle-click and
-open-in-new-tab work, the table can be searched, and the whole design works with
+open-in-new-tab work, and the whole design works with
 JavaScript switched off.
 
 An `Action` is for what a link cannot say: where to go depends on the row, or the
 click changes something. The row is one button, stretched over the cell as the
 anchor is, inside the table's form, so it too works without script. It is a POST,
-so it cannot be opened in a new tab; it needs the table's `Key`; a table with one
-cannot be searched; and a row its `Guard` refuses is shown but does nothing.
+so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
+`Guard` refuses is shown but does nothing.
 
 ### `Guard` → gating, in two places from one declaration
 
