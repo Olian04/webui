@@ -60,30 +60,38 @@ templ Search(p SearchProps) {
 	</div>
 }
 
-// MenuEntry is one link in an AppMenu. Section is a caption above this entry, which
+// LinkEntry is one link in ExternalLinks. Section is a caption above this entry, which
 // is the first of its group; the entries after it are in the group until another
-// entry has a caption of its own.
-type MenuEntry struct {
+// entry has a caption of its own. NewTab opens the link in a tab of its own.
+type LinkEntry struct {
 	Label   string
 	Href    string
 	Icon    IconName
 	Section string
+	NewTab  bool
 }
 
-// AppMenu is the button in the top bar and the list of the app's own links behind
-// it. It is a <details>, so it opens and closes without script; script only closes it
-// on a click elsewhere or on Escape.
-templ AppMenu(items []MenuEntry) {
+// ExternalLinks is the button in the top bar and the list of the app's links to other
+// places behind it. It is a <details>, so it opens and closes without script; script
+// only closes it on a click elsewhere or on Escape.
+templ ExternalLinks(items []LinkEntry) {
 	<details class="menu">
-		<summary class="iconbtn" title="Menu" aria-label="Menu">
-			@Icon(IconProps{Name: IconGear})
+		<summary class="iconbtn" title="External links" aria-label="External links">
+			@Icon(IconProps{Name: IconExternal})
 		</summary>
 		<div class="menu-pop">
 			for _, it := range items {
 				if it.Section != "" {
 					<div class="menu-section">{ it.Section }</div>
 				}
-				<a class="menu-item" href={ it.Href }>
+				<a
+					class="menu-item"
+					href={ it.Href }
+					if it.NewTab {
+						target="_blank"
+						rel="noopener noreferrer"
+					}
+				>
 					if it.Icon != IconNone {
 						@Icon(IconProps{Name: it.Icon, Class: "menu-icon"})
 					}

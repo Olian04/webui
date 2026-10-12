@@ -24,8 +24,14 @@ import (
 //     Reject says it for particular fields.
 //
 // Those are the defaults, for when the outcome says nothing about where to go.
-// Then says where, for any of the four: the user is taken there instead, with the
-// message in a toast.
+// Three methods say where, for any of the four, and replace the default:
+//
+//   - Then takes the user to a page built with Open.
+//   - Back takes them back to the page they came from, even when the action failed.
+//   - Stay leaves them where they are, even when the action succeeded.
+//
+// The message is shown in a toast wherever they end up. An Outcome says at most one of
+// the three.
 //
 // Run's error return is for something nobody can fix by editing the form, such as
 // a database being down: it is logged and the user sees only that something went
@@ -35,6 +41,8 @@ type Outcome struct {
 	message  string
 	fields   rejection
 	redirect Target
+	back     bool
+	stay     bool
 }
 
 type outcomeKind uint8
@@ -134,6 +142,33 @@ func (o Outcome) Then(to Target) Outcome {
 	return o
 }
 
+// Back takes the user back to the page they came from, for any outcome: the page whose
+// link opened the form, or when there is none the parent in the breadcrumb, or when there
+// is none either, they stay where they are. It is what a saved form does by default; Back
+// says it for the outcomes that do not, such as a Failure after which there is nothing
+// to retry.
+//
+// A Failure or Reject that goes back does not show the form again, so what the user
+// typed is not kept and a Reject's messages are not shown beside their fields: they are
+// shown joined, in the toast on the page they arrive at.
+//
+//	return webui.Failure("This device was deleted by someone else").Back(), nil
+func (o Outcome) Back() Outcome {
+	o.back = true
+	return o
+}
+
+// Stay leaves the user where they are, for any outcome. A Success or Warning that stays
+// sends them to the form again, with its message in a toast, where it would by default
+// return to the page they came from. A Failure or Reject already stays, with what was
+// typed kept, so Stay changes nothing for them.
+//
+//	return webui.Success("Saved").Stay(), nil
+func (o Outcome) Stay() Outcome {
+	o.stay = true
+	return o
+}
+
 type rejected[M any] []FieldError[M]
 
 func (rejected[M]) isRejection() {}
@@ -146,10 +181,29 @@ var _ rejection = rejected[struct{}](nil)
 // error rather than silently dropped.
 func lowerOutcome[M any](o Outcome) (ir.Outcome, error) {
 	out := ir.Outcome{Kind: ir.OutcomeKind(o.kind), Message: o.message}
+	var says []string
+	if o.redirect.err != nil || o.redirect.url != "" {
+		says = append(says, "Then")
+	}
+	if o.back {
+		says = append(says, "Back")
+	}
+	if o.stay {
+		says = append(says, "Stay")
+	}
+	if len(says) > 1 {
+		return ir.Outcome{}, fmt.Errorf("webui: an Outcome cannot say both %s and %s about where to go: use one", says[0], says[1])
+	}
 	if o.redirect.err != nil {
 		return ir.Outcome{}, fmt.Errorf("webui: Outcome.Then: %w", o.redirect.err)
 	}
 	out.Redirect = o.redirect.url
+	switch {
+	case o.back:
+		out.Return = ir.ReturnBack
+	case o.stay:
+		out.Return = ir.ReturnStay
+	}
 	switch f := o.fields.(type) {
 	case nil:
 	case rejected[M]:

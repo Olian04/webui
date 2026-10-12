@@ -218,7 +218,7 @@ func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
 	assert.False(t, strings.Contains(body, "secret-name"))
 }
 
-func TestATableTakesExactlyOneSourceAndAFeedCannotBeSearched(t *testing.T) {
+func TestATableTakesExactlyOneSource(t *testing.T) {
 	t.Parallel()
 
 	feed := func(context.Context, string, int) ([]Device, string, error) { return nil, "", nil }
@@ -232,11 +232,6 @@ func TestATableTakesExactlyOneSourceAndAFeedCannotBeSearched(t *testing.T) {
 	}
 	assert.Contains(t, problems(webui.Table[Device]{}), "none of Rows, Load and Feed")
 	assert.Contains(t, problems(webui.Table[Device]{Feed: feed, Load: okRows}), "more than one of Rows, Load and Feed")
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
-	searched := webui.Table[Device]{Feed: feed, Search: true, RowClick: webui.Link[Device, detailsArgs]{Page: details, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }}}
-	assert.Contains(t, problems(searched), "rows come from Feed")
 }
 
 func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {

@@ -157,7 +157,7 @@ func TestImagesAndFontsAreNotCompressedAgain(t *testing.T) {
 func TestPagesAndTheSearchAreCompressedToo(t *testing.T) {
 	t.Parallel()
 
-	h := searchApp(withRows, nil)
+	h := searchApp(rowsSearch(), nil)
 
 	page := serve(h, http.MethodGet, "/admin/device")
 	zipped := gzipped(t, h, "/admin/device")

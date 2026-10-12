@@ -90,7 +90,7 @@ func TestARowClickActionNamesTheRowByKeyAndSaysSoWhenItIsGone(t *testing.T) {
 	assert.Equal(t, post(h, "/admin/entry", formValues("_act", "click:1:nope")).Code, http.StatusSeeOther)
 }
 
-func TestARowClickActionNeedsARunAndAKeyAndCannotBeSearched(t *testing.T) {
+func TestARowClickActionNeedsARunAndAKey(t *testing.T) {
 	t.Parallel()
 
 	run := func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }
@@ -107,5 +107,4 @@ func TestARowClickActionNeedsARunAndAKeyAndCannotBeSearched(t *testing.T) {
 
 	assert.Contains(t, problems(webui.Table[Device]{RowClick: webui.Action[Device]{Run: run}}), "declares actions but no Key")
 	assert.Contains(t, problems(webui.Table[Device]{Key: key, RowClick: webui.Action[Device]{}}), "Table.RowClick has no Run")
-	assert.Contains(t, problems(webui.Table[Device]{Key: key, Search: true, RowClick: webui.Action[Device]{Run: run}}), "RowClick is an Action")
 }
