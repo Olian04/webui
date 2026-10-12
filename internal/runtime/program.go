@@ -85,9 +85,14 @@ func (p *Program) Handler() http.Handler { return p.mux }
 
 // add registers a route. An empty method matches any, which only the catch-all uses.
 func (p *Program) add(method, path string, h http.Handler) {
+	p.addWith(method, path, h, csp)
+}
+
+// addWith is add with the content security policy the route is served under.
+func (p *Program) addWith(method, path string, h http.Handler, policy string) {
 	pattern := path
 	if method != "" {
 		pattern = method + " " + path
 	}
-	p.mux.Handle(pattern, secure(compressed(p.recovered(h))))
+	p.mux.Handle(pattern, securedFor(policy, compressed(p.recovered(h))))
 }

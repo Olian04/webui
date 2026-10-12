@@ -9,7 +9,7 @@
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
 | `internal/favicon` | Scale `Brand.Logo` to the favicon PNGs (stdlib only).                             |
-| `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links; the only place that decides what text may do on a page. |
+| `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links unless from a trusted origin; the only place that decides what text may do on a page. |
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
 | `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
 | `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |

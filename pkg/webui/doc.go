@@ -177,6 +177,13 @@
 // its own), a mailto, or a path in the application, and an image is not drawn but is a
 // link to the picture, since the page would refuse a picture from elsewhere.
 //
+// An image is drawn when its origin is one the author trusts. TrustedOrigins lists them, each
+// as https://host or https://host:port, and a picture from one of them appears where it is
+// written, even inside a link. The page that has the Markdown, and no other, tells the
+// browser it may fetch pictures from them, in the img-src of its content security policy.
+//
+//	webui.Markdown[Notes]{..., TrustedOrigins: []string{"https://cdn.example.com"}}
+//
 // A link that is a path, such as [Config](/config) or [a device](/device/dev_1?minutes=15),
 // is an address in the application whatever it is mounted at: Compile's prefix is put in
 // front of it, and it opens in the same tab. It is not checked, since the text is not known
