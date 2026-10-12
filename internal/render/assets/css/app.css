@@ -1955,8 +1955,44 @@ select.input[multiple] option:checked {
   white-space: nowrap;
   color: var(--text-2);
 }
-.netlog {
+/* How the page came to be: the server's time, when its HTML was built, and the badges for
+   what the viewer should know: script off, and a page that a cache may have answered. */
+.status-meta {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.sb-opt {
+  color: var(--text-3);
+}
+.sb-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 6px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sb-warn {
+  background: var(--orange-bg);
+  color: var(--orange);
+  border-color: var(--orange-bd);
+}
+.status-meta [hidden] {
+  display: none;
+}
+@media (max-width: 720px) {
+  .sb-opt {
+    display: none;
+  }
+}
+.netlog {
   display: flex;
   align-items: center;
   gap: 6px;

@@ -23,7 +23,7 @@ templ (r *Renderer) document(d Doc) {
 		Head:        r.head(d.Code),
 		Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 		TopBar:      r.topbar(d.Crumbs, d.URL),
-		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
+		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: d.Built, BuildTime: d.BuildTime}),
 		Toasts:      toastRegion(d.Toasts),
 	}) {
 		if d.Content != nil {

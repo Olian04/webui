@@ -71,7 +71,7 @@ func (r *Renderer) document(d Doc) templ.Component {
 			Head:        r.head(d.Code),
 			Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 			TopBar:      r.topbar(d.Crumbs, d.URL),
-			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
+			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: d.Built, BuildTime: d.BuildTime}),
 			Toasts:      toastRegion(d.Toasts),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

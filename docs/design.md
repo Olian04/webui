@@ -229,6 +229,14 @@ request behind what is on screen, and a spinner with a short label while
 something is in flight. It is the honesty bar: if the screen changed, this says
 what changed and how much of it.
 
+On the right it says how the page came to be, in the muted text colour: how long the
+server took to build it (`0.1 ms`), how long the browser took to get and show it
+(`loaded 53 ms`), and when its HTML was built, in the viewer's time with its age
+(`built 14:49:31 · just now`). Two small uppercase badges in the warning colours say what
+the viewer should know: **JS off**, drawn only where script is off, and **cached?**, shown by
+script when the page was not built for the request that brought it. The timings are
+hidden below 720px; the badges are not. A panel fetched again updates all of it.
+
 ---
 
 ## 8. Panels
