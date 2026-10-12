@@ -76,11 +76,11 @@
 // arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
 // a failure leaves the page drawn without them.
 //
-// A page whose path is "/" is the landing page: the brand in the sidebar and the
-// first breadcrumb link to it. Without one, the root goes to the first entry in the
-// navigation the visitor may open, or failing that the first page whose path has no
-// arguments, and shows a warning that the app has no page at "/". Declare one to
-// choose where the app starts.
+// A page whose path is "/" is the landing page, and the brand in the sidebar and the first
+// breadcrumb link to it. Without one they link to where the root would go: the first entry in
+// the navigation the visitor may open, or failing that the first page whose path has no
+// arguments and whose guard lets them in. Typing the root's address goes there too, with no
+// message. If there is nowhere to go, the brand is plain text.
 //
 // # The rest of a path
 //
