@@ -129,6 +129,15 @@
 // choose several from.
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
+// An Int, a Float, a Datetime and a Timestamp have a Format, a function the application
+// writes that says how the value reads where it is only read, such as a size as "1.5 GiB":
+//
+//	webui.Int[Blob]{Label: "Size", Load: func(b Blob) int { return b.Size }, Format: humanBytes}
+//
+// It changes only what is shown. The column still sorts, filters and exports by the value,
+// an input that edits it holds the value, and the search finds a row by the text and by the
+// value. The library ships no formats: each is the application's own.
+//
 // A table says where its rows come from with exactly one of three fields:
 //
 //   - Rows returns every row, and the library filters, sorts and pages them from the

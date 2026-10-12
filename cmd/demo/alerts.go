@@ -37,10 +37,12 @@ var (
 		Load:  func(a Alert) string { return "https://example.com/runbooks/" + a.Severity },
 	}
 	// A Datetime is a moment held as an ISO 8601 string. It is shown in UTC, and the
-	// table sorts and filters it as a moment, with a start and an end.
+	// table sorts and filters it as a moment, with a start and an end. Its Format reads it as
+	// how long ago, and the column still sorts and filters by the moment.
 	Raised = webui.Datetime[Alert]{
-		Label: "Raised",
-		Load:  func(a Alert) string { return a.Raised },
+		Label:  "Raised",
+		Load:   func(a Alert) string { return a.Raised },
+		Format: ago,
 	}
 )
 

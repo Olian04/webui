@@ -456,9 +456,11 @@ func TestAcknowledgingACriticalAlertWarns(t *testing.T) {
 func TestMomentsAreShownInUTCAndFilteredAsMoments(t *testing.T) {
 	h := handler(t)
 
-	// The first alert was raised at the seed's "now".
+	// The first alert was raised at the seed's "now". It reads "just now", by the column's Format, and
+	// the <time> element still holds the moment.
 	body := get(h, "/admin/alert").Body.String()
-	assert.Contains(t, body, `<time datetime="2026-10-09T11:30:00Z">2026-10-09 11:30</time>`)
+	assert.Contains(t, body, `<time datetime="2026-10-09T11:30:00Z">just now</time>`)
+	assert.Contains(t, body, `<time datetime="2026-10-09T10:37:00Z">53 min ago</time>`)
 
 	// An end narrows the alerts to those raised by then: they are 53 minutes apart,
 	// counting back from the first, so by 08:00 there are seven.
@@ -708,4 +710,22 @@ func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *t
 	// The host serves its registry, and the app has no endpoint of its own for it.
 	assert.Equal(t, get(h, "/metrics").Code, http.StatusOK)
 	assert.Equal(t, get(compiled, "/admin/_webui/metrics").Code, http.StatusNotFound)
+}
+
+func TestAFormattedColumnReadsAsItsFormatAndSortsAndFiltersByItsValue(t *testing.T) {
+	h := handler(t)
+
+	// Stored reads "1 GiB" and sorts by the bytes: as text, "1 GiB" would come before "1 KiB" and "9 ..." after "10 ...".
+	asc := get(h, "/admin/device?devices.sort=stored").Body.String()
+	assert.Contains(t, asc, ">1 KiB<")
+	assert.False(t, strings.Contains(asc, ">1 GiB<"))
+	desc := get(h, "/admin/device?devices.sort=stored&devices.desc=true").Body.String()
+	assert.Contains(t, desc, ">1 GiB<")
+	assert.False(t, strings.Contains(desc, ">1 KiB<"))
+
+	// The bounds of its filter are bytes, and the export holds the number.
+	big := get(h, "/admin/device?devices.min.stored=1073741824").Body.String()
+	assert.Contains(t, big, ">1 GiB<")
+	assert.False(t, strings.Contains(big, ">512 MiB<"))
+	assert.Contains(t, get(h, "/admin/device?devices.export=csv").Body.String(), ",1073761364,") // dev 20: 2^30 + 20*977 bytes
 }

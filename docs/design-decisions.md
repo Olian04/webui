@@ -146,6 +146,20 @@ design element.
 
 ## Tables, filters and view state
 
+- An accessor says how its value reads with `Format`, a function the application writes, on
+  `Int`, `Float`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
+  field with no Store, and what the search looks in): sorting, filters, the range bounds, an
+  editable input and the export keep the value, so a size can read "1.5 GiB" and sort as
+  bytes. Considered and dropped: formats the library ships as constants (`FormatBytes`,
+  `FormatDuration`), which is less API to write and less to get wrong, but a list that grows
+  with every unit someone needs, and a way for an application to say anything else; and a
+  second accessor that shows what another sorts by, which is a second declaration of one
+  column. What it costs: each application writes its bytes formatter; the range filter of a
+  number is typed in the number and not in what Format shows; a moment's Format is not
+  handed an empty or unparsable value, which shows as it did. A Format that panics is
+  logged and the value shown as it is, so one bug is a plain number and not every page that
+  has the column.
+
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
   grow without bound, and every column is sortable and filterable. A table says where

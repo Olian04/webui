@@ -141,9 +141,13 @@ func held(c ir.Field, row any) []string {
 }
 
 // shown is what a column shows in a row, for finding it by what was typed: for a select, each value and
-// what it says, since the values are not joined for reading.
+// what it says, since the values are not joined for reading; for a column with a Format, the text it
+// makes and the value's own, so "1.5 GiB" and "1572864" both find the row.
 func shown(c ir.Field, row any) string {
 	if c.Display != ir.DisplaySelect {
+		if c.Show != nil {
+			return c.Show(row) + " " + c.Get(row)
+		}
 		return c.Get(row)
 	}
 	var parts []string

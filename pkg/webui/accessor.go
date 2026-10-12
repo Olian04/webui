@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -86,6 +87,20 @@ type Int[M any] struct {
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
+
+	// Format says how the value reads where it is only read: a table cell, and a form field
+	// that has no Store. It is how a size is shown as "1.5 GiB" while the column still sorts,
+	// filters and exports on the number: everything but what is shown keeps the value. A field
+	// that can be edited holds the value in its input, so that what is typed is what is stored.
+	// The search matches what Format shows as well as the value's own text. The filter of
+	// a number is typed in the number, not in the text Format makes of it.
+	//
+	// For a size in bytes: func(n int) string { return humanBytes(n) }, where humanBytes is the
+	// application's own: the library has no formats of its own.
+	//
+	// If Format panics, the panic is logged and the value is shown as it would be without
+	// Format, so a bug in a formatter is a plain number and not a page that does not load.
+	Format func(int) string
 }
 
 func (Int[M]) isAccessor() {}
@@ -124,8 +139,21 @@ type Float[M any] struct {
 	Placeholder string
 
 	// Precision is the number of decimals shown. Zero shows the shortest exact
-	// representation.
+	// representation. Format, when set, shows the value instead.
 	Precision int
+
+	// Format says how the value reads where it is only read: a table cell, and a form field
+	// that has no Store. It is how a size is shown as "1.5 GiB" while the column still sorts,
+	// filters and exports on the number: everything but what is shown keeps the value. A field
+	// that can be edited holds the value in its input, so that what is typed is what is stored.
+	// The search matches what Format shows as well as the value's own text. The filter of
+	// a number is typed in the number, not in the text Format makes of it.
+	//
+	// It is handed the value as it is, so a percentage held as 0.42 can read "42%".
+	//
+	// If Format panics, the panic is logged and the value is shown as it would be without
+	// Format, so a bug in a formatter is a plain number and not a page that does not load.
+	Format func(float64) string
 }
 
 func (Float[M]) isAccessor() {}
@@ -246,6 +274,13 @@ type Datetime[M any] struct {
 	// Store writes the chosen moment to the model, as RFC 3339 in UTC. Without it the
 	// field is read-only.
 	Store func(*M, string)
+
+	// Format says how the moment reads where it is only read, as [Int.Format] does for a
+	// number: a relative "3 h ago", or another layout than the default. It is handed the
+	// moment in UTC, and a date alone as midnight. The column still sorts and filters by the
+	// moment, and its <time> element and the export still hold it. A value that is empty or is
+	// not a moment is not handed to Format: it shows as it does without one.
+	Format func(time.Time) string
 }
 
 func (Datetime[M]) isAccessor() {}
@@ -265,6 +300,11 @@ type Timestamp[M any] struct {
 	// Store writes the chosen moment to the model, as Unix seconds. Without it the
 	// field is read-only.
 	Store func(*M, int)
+
+	// Format says how the moment reads where it is only read, as [Datetime.Format] does. It
+	// is handed the moment in UTC, and is not handed zero, which is "not set" and shows as
+	// nothing.
+	Format func(time.Time) string
 }
 
 func (Timestamp[M]) isAccessor() {}
@@ -498,6 +538,9 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
 			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
 		}
+		if a.Format != nil {
+			f.Show = shown(a.Label, f.Get, func(m any) string { return a.Format(a.Load(m.(M))) })
+		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
 				n, err := strconv.Atoi(strings.TrimSpace(raw))
@@ -518,6 +561,9 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules), Placeholder: a.Placeholder,
 			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
 			Num: func(m any) float64 { return a.Load(m.(M)) },
+		}
+		if a.Format != nil {
+			f.Show = shown(a.Label, f.Get, func(m any) string { return a.Format(a.Load(m.(M))) })
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
@@ -570,6 +616,15 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Get: func(m any) string { return datetimeText(a.Load(m.(M))) },
 			Num: func(m any) float64 { return datetimeNum(a.Load(m.(M))) },
 		}
+		if a.Format != nil {
+			f.Show = shown(a.Label, f.Get, func(m any) string {
+				t, _, ok := readDatetime(a.Load(m.(M)))
+				if !ok {
+					return f.Get(m) // not a moment: as written
+				}
+				return a.Format(t)
+			})
+		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
 				t, blank, err := pickedMoment(raw)
@@ -590,6 +645,15 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
 			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
 			Num: func(m any) float64 { return timestampNum(a.Load(m.(M))) },
+		}
+		if a.Format != nil {
+			f.Show = shown(a.Label, f.Get, func(m any) string {
+				seconds := a.Load(m.(M))
+				if seconds == 0 {
+					return "" // not set
+				}
+				return a.Format(time.Unix(int64(seconds), 0).UTC())
+			})
 		}
 		if a.Store != nil {
 			f.Set = func(m any, raw string) error {
@@ -678,4 +742,19 @@ func accessorLabel[M any](acc Accessor[M]) string {
 		return a.Label
 	}
 	return ""
+}
+
+// shown is how a field reads where it is only read, from the application's Format. A Format that
+// panics is logged and the value is shown as it is without one, so a bug in a formatter is a plain
+// number and not a page that cannot be drawn.
+func shown(label string, plain, format func(model any) string) func(model any) string {
+	return func(m any) (text string) {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("webui: a Format panicked, so the value is shown as it is", "column", label, "panic", r)
+				text = plain(m)
+			}
+		}()
+		return format(m)
+	}
 }
