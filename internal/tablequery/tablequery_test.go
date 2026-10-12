@@ -141,25 +141,27 @@ func TestAColumnTheTableDoesNotHaveIsIgnoredAndRowsAreNotChanged(t *testing.T) {
 	}
 }
 
-func TestASearchFindsARowByAnyColumnIgnoringCaseAndAppliesBeforeTheWindow(t *testing.T) {
+func TestFindReturnsTheRowsWithTheTextInAnyColumnIgnoringCaseInTheirOwnOrder(t *testing.T) {
 	// "ap" is in two names, and "degraded" is only in a status; "100" only in a number.
-	got, total := Apply(rows(), cols, ir.Query{Search: "AP"})
-	if want := []string{"Apple", "apple"}; !slices.Equal(names(got), want) || total != 2 {
-		t.Fatalf("by name: %v of %d", names(got), total)
+	if got := Find(rows(), cols, "AP", 0); !slices.Equal(names(got), []string{"Apple", "apple"}) {
+		t.Fatalf("by name: %v", names(got))
 	}
-	got, _ = Apply(rows(), cols, ir.Query{Search: "degrad"})
-	if !slices.Equal(names(got), []string{"Apple"}) {
+	if got := Find(rows(), cols, "degrad", 0); !slices.Equal(names(got), []string{"Apple"}) {
 		t.Fatalf("by status: %v", names(got))
 	}
-	got, _ = Apply(rows(), cols, ir.Query{Search: "100"})
-	if !slices.Equal(names(got), []string{"apple"}) {
+	if got := Find(rows(), cols, "100", 0); !slices.Equal(names(got), []string{"apple"}) {
 		t.Fatalf("by number: %v", names(got))
 	}
-	got, total = Apply(rows(), cols, ir.Query{Search: "a", Limit: 2})
-	if len(got) != 2 || total != 4 { // every row has an "a"
-		t.Fatalf("window: %v of %d", names(got), total)
-	}
-	if got, _ = Apply(rows(), cols, ir.Query{Search: "nothing like this"}); len(got) != 0 {
+	if got := Find(rows(), cols, "nothing like this", 0); len(got) != 0 {
 		t.Fatalf("no match: %v", names(got))
+	}
+}
+
+func TestFindStopsAtTheLimit(t *testing.T) {
+	if got := Find(rows(), cols, "a", 2); len(got) != 2 { // every row has an "a"
+		t.Fatalf("limit: %v", names(got))
+	}
+	if got := Find(rows(), cols, "a", 0); len(got) != 4 {
+		t.Fatalf("no limit: %v", names(got))
 	}
 }
