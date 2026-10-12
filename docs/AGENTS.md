@@ -55,6 +55,39 @@ Consumers outside this module cannot import `internal/`. No side effects on impo
 
 Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
+## Decided against
+
+Things that were proposed and dropped. Do not start on them again without a reason that is not in here.
+
+### Segments after a rest placeholder (`/file/{path...}/preview`)
+
+**Decision:** `{name...}` stays the last segment of a path, and anything after it is a compile error. Routing stays on `net/http.ServeMux`, which allows a rest wildcard only at the end. Decided 2026-10-12, twice: first the general form, then the narrow one below.
+
+**What was considered**
+
+1. Any position, with a matcher of our own. Dropped: it re-implements what the mux already gives (path cleaning, escaped segments, `HEAD`, `405` with `Allow`), and it needs overlap analysis between pages.
+2. Static segments after the rest only, mux kept. Register the truncated pattern (`/file/{_rest...}`) and suffix-match `/preview` ourselves. This is the version worth remembering, because it looks cheap.
+
+**What option 2 would cost**
+
+- A dispatcher shared by every page that has the same truncated pattern. A wrapper per page is not enough: `/file/{p...}` and `/file/{p...}/preview` become the same mux pattern, and `ServeMux` panics on a duplicate. The dispatcher tries the longest suffix first and falls back to the page with none.
+- The same grouping in four registrations: `GET`, `POST`, `probe` and `gate`. The winner is chosen by address before the method, so a `POST` to a suffix page with no actions is a `405` and not a fall-through to the end-rest page. The `probe`/`allow` lookup has to ask the matcher too, or a `404` turns into a `405`.
+- Matching on `r.URL.EscapedPath()`. The mux hands over the unescaped remainder, so `a%2Fb` cannot be told from `a/b`; it would have to be a 400, like the encoder's refusal of a slash inside a segment.
+- New compile checks: one rest per path, static segments only after it, and pages of the same shape with different placeholder names (today only identical text is caught).
+- Breadcrumbs: the rest crumbs link to "this page cut at that depth", which is a different address once a suffix follows. They would link to the end-rest page if one is mounted, and be plain text otherwise.
+- A rule readers must learn: `/file/x/preview` is always the preview of `x`. A file called `preview` in a subfolder is unreachable through the end-rest page. A literal-prefixed page beats the group, and a longer suffix beats a shorter one.
+- A step, not a stopping point: the next request is a dynamic segment after the rest (`/file/{path...}/v/{id}`), which needs matching from the end and a real overlap analysis.
+- Size: about 150 lines of dispatcher plus tests across the four muxes, in the hottest path of the runtime.
+
+**What not doing it costs**
+
+- A page cannot sit under an arbitrary-depth tree by path suffix. The suffix has to be something else:
+  - an argument in the query, `/file/{path...}?view=preview`, or a [`Tabs`](../pkg/webui/layout.go) panel, whose selected tab is in the address too and survives a reload;
+  - a literal before the rest, `/preview/{path...}`, which the mux routes with no help. It is a page of its own with its own `Nav` and `Guard`.
+- The addresses are less tidy than `/file/a/b/preview`.
+
+**Revisit when** a real app needs a suffix that cannot be a query argument, a tab or a prefix. Then build option 2 first, on the design above. If `ServeMux` ever allows a rest wildcard before the end of a pattern, the dispatcher is not needed and this entry should go.
+
 ## Tests
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
