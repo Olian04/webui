@@ -168,12 +168,13 @@ capitalised, in the rail.
 
 A page declared at `Path: "/"` is the landing page. The brand in the sidebar
 (logo and name) and the first breadcrumb link to it. It usually has no `Nav`
-label of its own, since the brand is its entry. An app with no such page sends
-the root to the first entry in the navigation that the visitor may open, or
-failing that to the first page whose path has no arguments and whose guard lets
-them in, with a warning toast: *This app has no page at "/", so you were sent to
-…* It is for whoever declared the app, who sees the gap each time the brand is
-used; declaring a page at "/" ends it. With nowhere to send them, a page says so.
+label of its own, since the brand is its entry. An app with no such page links the
+brand to what the root would send the visitor to: the first entry in the navigation that
+they may open, or failing that the first page whose path has no arguments and whose guard
+lets them in. The link is worked out for each visitor, so it never points at a page they
+cannot open. The root itself redirects there without a message; a toast about the missing
+page was noise to the visitors it was shown to, who cannot do anything about it. With
+nowhere to go, the brand is plain text and the root says so.
 
 ### A page with arguments → an entry for each address
 

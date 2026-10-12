@@ -45,10 +45,47 @@ func TestANavEntryWithoutAnIconCarriesItsCapitalisedInitialForTheRail(t *testing
 func TestTheBrandLinksToTheLandingPage(t *testing.T) {
 	t.Parallel()
 
-	body := serve(navApp(), http.MethodGet, "/admin/device").Body.String()
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{
+		webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}},
+	}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `<a class="side-brand" href="/admin/"`)
 	// And so does the first breadcrumb.
 	assert.Contains(t, body, `<a href="/admin/">Acme</a>`)
+}
+
+func TestTheBrandOfAnAppWithNoLandingPageLinksToThePageTheRootWouldSendYouTo(t *testing.T) {
+	t.Parallel()
+
+	body := serve(navApp(), http.MethodGet, "/admin/retention").Body.String()
+	assert.Contains(t, body, `<a class="side-brand" href="/admin/device"`) // the first entry, not the root
+	assert.Contains(t, body, `<a href="/admin/device">Acme</a>`)
+	assert.False(t, strings.Contains(body, `href="/admin/"`))
+}
+
+func TestTheBrandLinksToTheFirstPageThatNeedsNoArgumentsWhenNothingIsInTheNavigation(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	byID := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}
+	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, Body: webui.Stack{}}
+	open := webui.Page[webui.NoArgs]{Path: "/overview", Body: webui.Stack{}}
+	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
+
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a class="side-brand" href="/admin/overview"`)
+}
+
+func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
+	t.Parallel()
+
+	type one struct{ ID string }
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}}}.MustCompile("/admin")
+
+	body := serve(h, http.MethodGet, "/admin/device/x").Body.String()
+	assert.False(t, strings.Contains(body, `<a class="side-brand"`))
+	assert.Contains(t, body, `<div class="side-brand">`)
+	assert.False(t, strings.Contains(body, `href="/admin/"`)) // nor is the first breadcrumb
 }
 
 func TestWithoutALandingPageTheRootGoesToTheFirstEntry(t *testing.T) {
@@ -272,7 +309,7 @@ func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testi
 	assert.Contains(t, errs[0].Detail, `navigation entry "Device" but its path has arguments`)
 }
 
-func TestTheBrandOfAnAppWithNoPageAtTheRootAndNoEntryToOpenSaysSoInsteadOfLeadingNowhere(t *testing.T) {
+func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }
@@ -284,8 +321,6 @@ func TestTheBrandOfAnAppWithNoPageAtTheRootAndNoEntryToOpenSaysSoInsteadOfLeadin
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.Contains(t, rec.Body.String(), "Nothing to open from here")
 	}
-	// The brand leads there, and it is not a 404.
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a class="side-brand" href="/admin/"`)
 }
 
 // flashOfRoot is the toast a response left for the next page: its tone and its text.
@@ -299,21 +334,13 @@ func flashOfRoot(rec *httptest.ResponseRecorder) string {
 	return ""
 }
 
-func TestTheRootOfAnAppWithNoPageThereSendsYouToTheFirstEntryWithAWarning(t *testing.T) {
+func TestTheRootOfAnAppWithNoPageThereSendsYouToTheFirstEntryWithoutAToast(t *testing.T) {
 	t.Parallel()
 
 	rec := serve(navApp(), http.MethodGet, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusFound)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device")
-	assert.Equal(t, flashOfRoot(rec), `wThis app has no page at "/", so you were sent to Devices. Declare a page at "/" to choose where it starts.`)
-
-	// The next page shows it, as a warning toast.
-	next := httptest.NewRequest(http.MethodGet, "/admin/device", nil)
-	next.AddCookie(rec.Result().Cookies()[0])
-	out := httptest.NewRecorder()
-	navApp().ServeHTTP(out, next)
-	assert.Contains(t, out.Body.String(), `class="toast warn"`)
-	assert.Contains(t, out.Body.String(), "This app has no page at")
+	assert.Equal(t, flashOfRoot(rec), "")
 }
 
 func TestWithNoEntryTheRootSendsYouToTheFirstPageThatNeedsNoArgumentsAndYouMayOpen(t *testing.T) {
@@ -328,7 +355,7 @@ func TestWithNoEntryTheRootSendsYouToTheFirstPageThatNeedsNoArgumentsAndYouMayOp
 	rec := serve(h, http.MethodGet, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusFound)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/overview") // not the one with arguments, not the one it may not open
-	assert.Contains(t, flashOfRoot(rec), "so you were sent to /overview.")
+	assert.Equal(t, flashOfRoot(rec), "")
 }
 
 func TestARootThatHasAPageIsServedWithNoRedirectAndNoWarning(t *testing.T) {

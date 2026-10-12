@@ -40,7 +40,7 @@ func TestPageRendersNavBreadcrumbAndTheAncestorsEntry(t *testing.T) {
 	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)
 
 	// Breadcrumbs: brand › the list page's label (a link) › the path value.
-	assert.Contains(t, body, `<a href="/admin/">Demo</a>`)
+	assert.Contains(t, body, `<a href="/admin/device">Demo</a>`)
 	assert.Contains(t, body, `<a href="/admin/device">Devices</a>`)
 	assert.Contains(t, body, `<span class="cur" aria-current="page">abc</span>`)
 	assert.Contains(t, body, "<title>abc — Demo</title>")

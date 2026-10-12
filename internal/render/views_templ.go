@@ -69,7 +69,7 @@ func (r *Renderer) document(d Doc) templ.Component {
 			Stylesheets: r.styles(),
 			Scripts:     []string{r.AssetHref("enhance.js")},
 			Head:        r.head(d.Code),
-			Sidebar:     r.sidebar(d.Active, d.HideNav, d.NavLinks),
+			Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 			TopBar:      r.topbar(d.Crumbs, d.URL),
 			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 			Toasts:      toastRegion(d.Toasts),
@@ -357,7 +357,7 @@ func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 // sidebar lists the entries the visitor may open, grouped by section. A section's
 // caption appears above its first entry that is shown, so a section with nothing
 // left in it has no caption either.
-func (r *Renderer) sidebar(active string, hide map[string]bool, links map[string][]NavLink) templ.Component {
+func (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[string][]NavLink) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -408,7 +408,7 @@ func (r *Renderer) sidebar(active string, hide map[string]bool, links map[string
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: home, Footer: r.sidebarFooter()}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var16), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

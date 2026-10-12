@@ -36,6 +36,10 @@ type Doc struct {
 	URL     string // as the browser asked for it, shown in the status bar
 	Toasts  []Toast
 
+	// Home is where the brand leads, or "" when there is nowhere to go and it is plain text.
+	// The first breadcrumb leads there too, unless it is the page on screen.
+	Home string
+
 	// HideNav is the paths of the navigation entries this visitor may not open, so
 	// the sidebar and the search that reads it leave them out.
 	HideNav map[string]bool
@@ -196,7 +200,8 @@ func (r *Renderer) AssetHref(name string) string {
 	return r.prefix + AssetDir + "/" + name
 }
 
-// Home is the first breadcrumb: the brand, linking to the root.
+// Home is the first breadcrumb: the brand. Its address is the page the brand leads to, which
+// the response fills in.
 func (r *Renderer) Home() Crumb {
 	name := r.app.Brand.Name
 	if name == "" {

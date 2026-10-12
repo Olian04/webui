@@ -1,11 +1,11 @@
 package runtime
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/Olian04/webui/internal/args"
@@ -13,16 +13,11 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// root serves the prefix itself when no page claims "/". The brand and the first
-// breadcrumb lead here, so it does not leave the visitor at a dead end: it sends them
-// to the first page it can find that needs no arguments, with a warning that there is
-// no page at "/", so that whoever declared the app sees the gap. The page is the first
-// navigation entry the visitor may open, and failing that the first page declared
-// whose path has no arguments and whose guard lets them in. With none, a page says so,
-// or that the app declares no pages at all.
+// root serves the prefix itself when no page claims "/". The visitor who types the address
+// is sent to the page the brand leads to, see [Program.start]. With none, a page says so, or
+// that the app declares no pages at all.
 func (p *Program) root(w http.ResponseWriter, r *http.Request) {
-	if href, name := p.startPage(r.Context()); href != "" {
-		p.setFlash(w, r, "This app has no page at \"/\", so you were sent to "+name+". Declare a page at \"/\" to choose where it starts.", render.ToastWarning)
+	if href := p.start(r.Context(), p.hiddenNav(r.Context())); href != "" {
 		w.Header().Set("Cache-Control", "no-store")
 		http.Redirect(w, r, href, http.StatusFound)
 		return
@@ -34,23 +29,28 @@ func (p *Program) root(w http.ResponseWriter, r *http.Request) {
 	p.write(w, r, http.StatusOK, render.Doc{Content: render.NoPages()})
 }
 
-// startPage is where an app with no page at "/" starts, and what to call it: the first
-// navigation entry the visitor may open, else the first page whose path has no
-// arguments and whose guard allows them.
-func (p *Program) startPage(ctx context.Context) (href, name string) {
-	if href, name := p.render.FirstEntry(p.hiddenNav(ctx)); href != "" {
-		return href, name
+// start is the address the brand leads to, and where the root goes: the page at "/" if the
+// visitor may open it, else the first navigation entry they may open, else the first page
+// declared whose path has no arguments and whose guard lets them in. hide is the entries they
+// may not open. It is "" when there is nowhere to go, and the brand is then not a link.
+func (p *Program) start(ctx context.Context, hide map[string]bool) string {
+	if page := p.App.ByPath["/"]; page != nil {
+		if href := p.render.Href("/"); page.Guard == nil || p.mayOpen(ctx, href) {
+			return href
+		}
+	}
+	if href, _ := p.render.FirstEntry(hide); href != "" {
+		return href
 	}
 	for _, page := range p.App.Pages {
 		if len(args.Placeholders(page.PathTemplate)) > 0 {
 			continue // it has no address until its arguments are filled in
 		}
-		href := p.Prefix + args.Href(page.PathTemplate, nil, nil)
-		if p.mayOpen(ctx, href) {
-			return href, cmp.Or(page.Nav.Label, page.PathTemplate)
+		if href := p.Prefix + args.Href(page.PathTemplate, nil, nil); p.mayOpen(ctx, href) {
+			return href
 		}
 	}
-	return "", ""
+	return ""
 }
 
 // notFound is the 404 inside the shell, so the way back is on screen.
@@ -77,6 +77,12 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 	doc.Method, doc.URL = r.Method, r.URL.RequestURI()
 	if doc.HideNav == nil {
 		doc.HideNav = p.hiddenNav(r.Context())
+	}
+	doc.Home = p.start(r.Context(), doc.HideNav)
+	if len(doc.Crumbs) > 0 && doc.Crumbs[0].Href != "" {
+		// The brand crumb leads where the sidebar's brand does, and is plain text when that is nowhere.
+		doc.Crumbs = slices.Clone(doc.Crumbs)
+		doc.Crumbs[0].Href = doc.Home
 	}
 	if doc.NavLinks == nil {
 		doc.NavLinks = p.navLinks(r.Context(), doc.Here, doc.Active)
