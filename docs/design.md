@@ -335,7 +335,10 @@ figures. Identifiers are monospace text-secondary.
 
 **Badges** sit in status columns: 19px tall, 2px radius, lowercase 11.5/500,
 built from a semantic family's 14% background and 30% border. A status badge
-may carry a 6px leading dot in the same colour.
+may carry a 6px leading dot in the same colour. A select that holds several values
+is a badge for each, 4px apart, wrapping. Edited, a select is a 32px drop-down list in the
+style of an input, and with several values a list of up to six rows, with the chosen
+ones on the selected-row tint.
 
 **Inline bars** are a cell display mode, not a chart: a 56×5 track on the hover
 surface with a link-coloured fill, sitting after a right-aligned number. This

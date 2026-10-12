@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -120,6 +121,21 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	return fv
 }
 
+// choices are the options of an editable select, each with whether the field holds it: from what was
+// typed, after a rejection, or from the model. A value the field holds that is not an option
+// is not offered, and is dropped when it is saved.
+func (fv fieldView) choices() []c.SelectChoice {
+	held := ir.SplitValues(fv.Value)
+	if !fv.Field.Multi && len(held) > 1 {
+		held = held[:1] // a single select shows the first
+	}
+	out := make([]c.SelectChoice, len(fv.Field.Choices))
+	for i, ch := range fv.Field.Choices {
+		out[i] = c.SelectChoice{Value: ch.Value, Label: fv.Field.LabelOf(ch.Value), Selected: slices.Contains(held, ch.Value)}
+	}
+	return out
+}
+
 // momentInput is a moment as a date and time input holds it, in UTC, or "" when the
 // field has none.
 func momentInput(f ir.Field, model any) string {
@@ -164,6 +180,9 @@ func ruleLines(f ir.Field, editable bool) []string {
 	var out []string
 	if f.Display == ir.DisplayTime {
 		out = append(out, "Date and time in UTC")
+	}
+	if f.Display == ir.DisplaySelect && f.Multi {
+		out = append(out, "Hold Ctrl or ⌘ to choose more than one")
 	}
 	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules)} {
 		if s != "" {

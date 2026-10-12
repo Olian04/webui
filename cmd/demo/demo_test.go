@@ -208,12 +208,12 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	h := handler(t)
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {taken.IP}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "already in use by another device")
 	assert.Contains(t, rec.Body.String(), `value="`+taken.IP+`"`) // what was typed is kept
 
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.9.9.9"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // opened directly: nowhere to return to
 	device, _ := service.Device("dev_27c38b")
@@ -384,7 +384,7 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
 	from := "/admin/site/Malm\u00f6?open-alerts.sort=severity"
-	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.8.8.8"}})
+	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
@@ -393,7 +393,7 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
-	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {taken.IP}})
+	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
 }

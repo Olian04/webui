@@ -340,10 +340,14 @@ templ value(f ir.Field, text string, href string) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
-		case ir.DisplayBadge:
-			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
-				{ text }
-			}
+		case ir.DisplaySelect:
+			<span class="badges">
+				for _, val := range ir.SplitValues(text) {
+					@c.Badge(c.BadgeProps{Tone: toneOf(f, val), Dot: true}) {
+						{ f.LabelOf(val) }
+					}
+				}
+			</span>
 		case ir.DisplayLink:
 			if href != "" {
 				<a class="ext" href={ href } target="_blank" rel="noopener noreferrer">
@@ -466,13 +470,18 @@ templ (r *Renderer) input(fv fieldView) {
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink) {
+					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink || fv.Field.Display == ir.DisplaySelect) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
 						@value(fv.Field, fv.Value, fv.Href)
 					}
 				</div>
+			case fv.Field.Display == ir.DisplaySelect:
+				@c.Select(c.SelectProps{
+					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
+					Required: fv.Rules.Required, Invalid: fv.Error != "",
+				})
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
@@ -537,7 +546,7 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 					for _, opt := range fv.Options {
 						<label class="filter-opt">
 							@c.Checkbox(c.CheckboxProps{Name: fv.Key, Value: opt, Checked: slices.Contains(fv.Chosen, opt)})
-							<span>{ opt }</span>
+							<span>{ fv.name(opt) }</span>
 						</label>
 					}
 				</div>

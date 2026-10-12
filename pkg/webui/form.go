@@ -14,7 +14,7 @@ import (
 // A Form with no Submit is the library's detail view: a panel of labelled values,
 // each quiet label over its value, with no inputs and no buttons. Use it to show one
 // thing, such as an object's properties; its fields can be any accessor, including a
-// [Badge], a [Datetime] and a [Timestamp], and a [Link] or an [Action] elsewhere on the
+// [Select], a [Datetime] and a [Timestamp], and a [Link] or an [Action] elsewhere on the
 // page leads on from it.
 type Form[M any] struct {
 	// Title is the panel's heading.
@@ -105,6 +105,12 @@ func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.
 		var errs []ir.FieldError
 		for _, f := range writable {
 			raw := values[f.Name]
+			if f.Display == ir.DisplaySelect {
+				if v := rules.CheckSelect(f, raw); v != nil {
+					errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
+					continue
+				}
+			}
 			if v := rules.Check(f.Rules, f.Kind, raw); v != nil {
 				errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
 				continue

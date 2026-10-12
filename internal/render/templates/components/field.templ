@@ -138,6 +138,65 @@ templ Input(p InputProps) {
 	/>
 }
 
+// SelectChoice is one option of a Select.
+type SelectChoice struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+// SelectProps is a choice from a list. Without Multi it is a drop-down list, with an empty
+// option first for none, or, when a choice is Required, for the visitor to have to make one.
+// With Multi it is a list to tick any number of, sent as one value for each, which is what a
+// browser does without script.
+type SelectProps struct {
+	ID       string
+	Name     string
+	Choices  []SelectChoice
+	Multi    bool
+	Required bool
+	Invalid  bool
+}
+
+// size is how many options a list shows before it scrolls.
+func (p SelectProps) size() string {
+	return strconv.Itoa(min(max(len(p.Choices), 2), 6))
+}
+
+templ Select(p SelectProps) {
+	<select
+		if p.ID != "" {
+			id={ p.ID }
+		}
+		class={ "input", templ.KV("invalid", p.Invalid) }
+		if p.Name != "" {
+			name={ p.Name }
+		}
+		required?={ p.Required }
+		if p.Multi {
+			multiple
+			size={ p.size() }
+		}
+		if p.Invalid {
+			aria-invalid="true"
+			aria-describedby={ p.ID + "-error" }
+		}
+	>
+		if !p.Multi {
+			<option value="">
+				if p.Required {
+					Choose…
+				} else {
+					—
+				}
+			</option>
+		}
+		for _, c := range p.Choices {
+			<option value={ c.Value } selected?={ c.Selected }>{ c.Label }</option>
+		}
+	</select>
+}
+
 type CheckboxProps struct {
 	ID      string
 	Name    string

@@ -53,15 +53,15 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], err
 			},
 			Columns: []webui.Accessor[Device]{
 				webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }},
-				webui.Badge[Device]{
+				webui.Select[Device]{
 					Label: "Status",
-					Load: func(d Device) string {
+					Load: func(d Device) []string {
 						if d.Count%2 == 0 {
-							return "healthy"
+							return []string{"healthy"}
 						}
-						return "degraded"
+						return []string{"degraded"}
 					},
-					Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+					Options: []webui.Option{{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 				},
 				webui.Int[Device]{Label: "Occurrences", Load: func(d Device) int { return d.Count }},
 				webui.Slider[Device]{Label: "Rate", Max: 4, Precision: 2, Load: func(d Device) float64 { return float64(d.Count) / 3 }},
@@ -292,11 +292,11 @@ func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
 	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 0)
 	assert.Contains(t, body, `aria-label="Filter Status"`)
 
-	// The Badge's Kinds are the options: a multi-select of exactly those, in order.
+	// The Select's options are the filter's: a multi-select of exactly those, in the order they were declared.
 	status := body[strings.Index(body, `<div class="filter-title">Status</div>`):]
 	status = status[:strings.Index(status, `</form>`)]
 	assert.Equal(t, strings.Count(status, `type="checkbox"`), 2)
-	assert.True(t, strings.Index(status, `value="degraded"`) < strings.Index(status, `value="healthy"`))
+	assert.True(t, strings.Index(status, `value="healthy"`) < strings.Index(status, `value="degraded"`))
 	assert.False(t, strings.Contains(status, `type="search"`))
 
 	// A text column takes text; the two numeric ones, Occurrences and Rate, take a

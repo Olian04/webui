@@ -34,15 +34,15 @@ func rowsApp(load func(context.Context) ([]Device, error)) http.Handler {
 			Rows:     load,
 			Columns: []webui.Accessor[Device]{
 				webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }},
-				webui.Badge[Device]{
+				webui.Select[Device]{
 					Label: "Status",
-					Load: func(d Device) string {
+					Load: func(d Device) []string {
 						if d.Count%2 == 0 {
-							return "healthy"
+							return []string{"healthy"}
 						}
-						return "degraded"
+						return []string{"degraded"}
 					},
-					Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+					Options: []webui.Option{{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 				},
 				webui.Int[Device]{Label: "Occurrences", Load: func(d Device) int { return d.Count }},
 			},
@@ -188,7 +188,7 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 // classes are whatever the rows hold.
 func storageTable(rows bool) http.Handler {
 	items := []Device{{Id: "a", Ip: "STANDARD"}, {Id: "b", Ip: "glacier"}, {Id: "c", Ip: "STANDARD"}, {Id: "d", Ip: "GLACIER"}}
-	class := webui.Badge[Device]{Label: "Class", Load: func(d Device) string { return d.Ip }} // no Kinds
+	class := webui.Select[Device]{Label: "Class", Load: func(d Device) []string { return []string{d.Ip} }} // no Options
 	tbl := webui.Table[Device]{
 		Title:   "Objects",
 		Columns: []webui.Accessor[Device]{formID, class},

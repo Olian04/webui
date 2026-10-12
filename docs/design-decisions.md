@@ -166,8 +166,8 @@ design element.
   returns every table to its first page.
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
-  without script. A column with a fixed set of options — a `Badge`, whose options
-  are the keys of its `Kinds` — gets a multi-select of exactly those, a numeric
+  without script. A column with a fixed set of options — a `Select`, whose options
+  are the ones it lists, in that order — gets a multi-select of exactly those, a numeric
   column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
   column a text input. `Load` receives them in `Query.Filters` (the options
   chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,

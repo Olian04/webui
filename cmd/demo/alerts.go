@@ -12,11 +12,12 @@ var (
 		Label: "ID",
 		Load:  func(a Alert) string { return a.ID },
 	}
-	Severity = webui.Badge[Alert]{
+	// A Select that is read is its value as a badge, in the tone of its option.
+	Severity = webui.Select[Alert]{
 		Label: "Severity",
-		Load:  func(a Alert) string { return a.Severity },
-		Kinds: map[string]webui.Tone{
-			"critical": webui.ToneCritical, "warning": webui.ToneWarning, "info": webui.ToneNeutral,
+		Load:  func(a Alert) []string { return []string{a.Severity} },
+		Options: []webui.Option{
+			{Value: "critical", Tone: webui.ToneCritical}, {Value: "warning", Tone: webui.ToneWarning}, {Value: "info"},
 		},
 	}
 	AlertDevice = webui.String[Alert]{

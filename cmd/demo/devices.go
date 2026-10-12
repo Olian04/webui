@@ -39,12 +39,27 @@ var (
 		},
 		Placeholder: "10.0.0.1",
 	}
-	Status = webui.Badge[Device]{
+	// A Select with a Store is edited: one of the options, from a drop-down list, and a badge when it is read.
+	Status = webui.Select[Device]{
 		Label: "Status",
-		Load:  func(d Device) string { return d.Status },
-		Kinds: map[string]webui.Tone{
-			"healthy": webui.ToneOK, "degraded": webui.ToneWarning, "quiet": webui.ToneNeutral,
+		Load:  func(d Device) []string { return []string{d.Status} },
+		Store: func(d *Device, v []string) {
+			if len(v) == 1 {
+				d.Status = v[0]
+			}
 		},
+		Options: []webui.Option{
+			{Value: "healthy", Label: "Healthy", Tone: webui.ToneOK}, {Value: "degraded", Label: "Degraded", Tone: webui.ToneWarning}, {Value: "quiet", Label: "Quiet"},
+		},
+		Required: true,
+	}
+	// Multi lets it hold any number: a list to tick several of, and a badge for each when it is read.
+	Tags = webui.Select[Device]{
+		Label:   "Tags",
+		Load:    func(d Device) []string { return d.Tags },
+		Store:   func(d *Device, v []string) { d.Tags = v },
+		Multi:   true,
+		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy", Tone: webui.ToneWarning}, {Value: "staging"}},
 	}
 	Site = webui.String[Device]{
 		Label: "Site",
@@ -99,7 +114,7 @@ var Devices = webui.Page[webui.NoArgs]{
 			Page: Details,
 			Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
 		},
-		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Site, Occurrences, Rate},
+		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Rate},
 	},
 }
 
@@ -142,7 +157,8 @@ var DeviceForm = webui.Form[Device]{
 	Fields: []webui.Accessor[Device]{
 		// A Group puts its fields side by side; it is layout, with no frame.
 		webui.Group[Device]{DeviceID, IP},
-		webui.Group[Device]{Status, Site}, // a badge and a plain field: both read-only here
+		webui.Group[Device]{Status, Site}, // a choice from a list, and a plain field that is read-only
+		Tags,                              // a list to tick several of
 		Rate,                              // a slider with no Store is a bar
 		LastSeen,
 	},
@@ -158,7 +174,7 @@ var SaveDevice = webui.Action[Device]{
 		if service.IPTaken(d.IP, d.ID) {
 			return webui.Reject(webui.Field[Device](IP, "already in use by another device")), nil
 		}
-		service.SetIP(d.ID, d.IP)
+		service.SaveDevice(d)
 		// No redirect: a saved form returns to the page it was opened from, and
 		// stays where it is when it was opened directly.
 		return webui.Success("Device saved"), nil
