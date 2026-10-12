@@ -108,7 +108,7 @@ next.
    navigation entry only where the page belongs in the menu, an optional guard, and a
    body. Detail pages usually have no entry of their own; the library works out which
    entry to light.
-6. **The app.** Pages, the brand, an optional theme, and the menu of external links.
+6. **The app.** Pages, the brand, an optional theme, and the links to places outside the app.
 7. **Mount it.** Compile with the prefix the app lives under, and mount the handler
    there, behind your own authentication. See "Authentication" below.
 8. **Look at it.** Run it and open it in a browser, in light and dark, as each kind of
