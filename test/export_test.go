@@ -169,9 +169,30 @@ func TestALoadTableThatIgnoresOffsetOrNeverEndsDoesNotLoopForEver(t *testing.T) 
 		calls++
 		return webui.Window[stock]{Items: []stock{{Name: "same"}, {Name: "rows"}}, Total: -1}, nil // always the first two
 	}})
-	got := records(t, serve(h, http.MethodGet, "/admin/s?items.export=csv").Body.String())
-	assert.Equal(t, len(got), 3)
+	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
+	assert.Equal(t, len(records(t, rec.Body.String())), 3)
 	assert.Equal(t, calls, 2)
+	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "2") // it may be incomplete, and says how many rows it has
+}
+
+func TestRowsThatAreNotUniqueAreNotTakenForASourceThatIgnoresOffset(t *testing.T) {
+	t.Parallel()
+
+	// Every batch starts with the same row, as any table whose rows repeat has, and has no Total.
+	h := stockApp(webui.Table[stock]{Load: func(_ context.Context, q webui.Query) (webui.Window[stock], error) {
+		var items []stock
+		for i := q.Offset; i < min(q.Offset+q.Limit, 1100); i++ {
+			name := fmt.Sprintf("part%04d", i)
+			if i%q.Limit == 0 {
+				name = "same first row"
+			}
+			items = append(items, stock{Name: name})
+		}
+		return webui.Window[stock]{Items: items, Total: -1}, nil
+	}})
+	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
+	assert.Equal(t, len(records(t, rec.Body.String())), 1101) // all of them
+	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "")
 }
 
 func TestAnExportIsCutAtTheLimitAndSaysSo(t *testing.T) {

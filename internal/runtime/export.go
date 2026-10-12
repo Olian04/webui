@@ -31,7 +31,8 @@ const (
 	// exportTimeout bounds the whole export, which is many requests to a source.
 	exportTimeout = 60 * time.Second
 
-	// ExportTruncatedHeader is set on an export that was cut at maxExportRows, to that number.
+	// exportTruncatedHeader is set on an export that may be incomplete, to the number of rows in it: it
+	// was cut at maxExportRows, or stopped at a source that repeats itself.
 	exportTruncatedHeader = "X-Webui-Export-Truncated"
 )
 
@@ -103,7 +104,7 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": exportName(n) + kind.ext}))
 	h.Set("Cache-Control", "no-store")
 	if truncated {
-		h.Set(exportTruncatedHeader, strconv.Itoa(maxExportRows))
+		h.Set(exportTruncatedHeader, strconv.Itoa(len(rows)))
 	}
 	_, _ = w.Write(body) //nolint:gosec // G705: rows written as CSV or JSON, with a download content type, never HTML.
 }
@@ -137,7 +138,7 @@ func (p *Program) exportRows(ctx context.Context, n *ir.Table, q ir.Query) (rows
 	}
 
 	q.Offset, q.Limit = 0, exportBatch
-	var previous any
+	var previous []any
 	for {
 		w, err := n.Load(ctx, q)
 		if err != nil {
@@ -146,11 +147,16 @@ func (p *Program) exportRows(ctx context.Context, n *ir.Table, q ir.Query) (rows
 		if len(w.Rows) == 0 {
 			return rows, false, nil
 		}
-		// A source that ignores Offset would hand out its first batch for ever.
-		if previous != nil && reflect.DeepEqual(previous, w.Rows[0]) {
-			return rows, false, nil
+		// A source that ignores Offset hands out its first batch again and again, and with no Total
+		// nothing else says it has none left: an export would run to the cap with the same rows. A batch
+		// that is the same as the one before it, row for row, is that. It is not a batch that merely
+		// starts with an equal row, which any table whose rows are not unique has; and with a Total the
+		// loop ends by it, so this is not asked. What was kept is flagged as possibly incomplete.
+		if w.Total < 0 && reflect.DeepEqual(previous, w.Rows) {
+			p.log.Warn("webui: a table export stopped at a batch that repeats the one before it: the source seems to ignore Offset", "table", n.ID, "rows", len(rows))
+			return rows, true, nil
 		}
-		previous = w.Rows[0]
+		previous = w.Rows
 		rows = append(rows, w.Rows...)
 		q.Offset += len(w.Rows)
 		done := w.Total >= 0 && q.Offset >= w.Total

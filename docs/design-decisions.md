@@ -215,10 +215,15 @@ design element.
 - An export reuses the table's own `Load`, which is the one thing the library can rely
   on. `Rows` is asked for everything, with no limit. `Load` is asked for 500 rows at a
   time from `Offset` 0, with the table's sort and filters, until a window comes back
-  empty or the `Total` is reached; a source that ignores `Offset` (its first row
-  repeats) ends it, as does a cap of 100,000 rows. `Feed` is followed from the first page
-  to the last, ending at a cursor seen twice. A cut export says so in the
-  `X-Webui-Export-Truncated` header, since a note in the file would be data. The whole
+  empty or the `Total` is reached, or a cap of 100,000 rows. A source that ignores
+  `Offset` and has no `Total` would hand out its first batch for ever, so a batch that
+  is the same as the one before it, row for row, ends it. It is the whole batch and not
+  its first row that is compared: a table whose rows are not unique has batches that
+  begin with equal rows, and cutting those short would drop data without a word. `Feed`
+  is followed from the first page to the last, ending at a cursor seen twice. An export
+  that may be incomplete (cut at the cap, or stopped at a repeating source) says so in the
+  `X-Webui-Export-Truncated` header, with the number of rows the file has, since a note
+  in the file would be data. The whole
   file is built in memory before it is written: a failure half way could not change the
   status, and the cap bounds it. Global search is not part of the address, so it is not
   honoured.
