@@ -126,3 +126,32 @@ func FuzzARestPlaceholderRoundTrips(f *testing.F) {
 		}
 	})
 }
+
+type segment string
+
+type segments []segment
+
+type pathOf []string
+
+func TestARestPlaceholderMayBeASliceOfADefinedStringTypeOrADefinedSliceType(t *testing.T) {
+	t.Parallel()
+
+	type named struct{ Key segments }
+	typ := reflect.TypeOf(named{})
+	specs, problems := Spec(typ, "/f/{key...}")
+	assert.Equal(t, len(problems), 0)
+	c := NewCodec(typ, specs)
+	got, err := c.Decode(map[string]string{"key": "a/b"})
+	assert.NoError(t, err)
+	assert.DeepEqual(t, got, named{Key: segments{"a", "b"}})
+	path, _, err := c.Encode(got)
+	assert.NoError(t, err)
+	assert.Equal(t, path["key"], "a/b")
+
+	type defined struct{ Key pathOf }
+	typ = reflect.TypeOf(defined{})
+	specs, _ = Spec(typ, "/f/{key...}")
+	got, err = NewCodec(typ, specs).Decode(map[string]string{"key": "x/y/z"})
+	assert.NoError(t, err)
+	assert.DeepEqual(t, got, defined{Key: pathOf{"x", "y", "z"}})
+}

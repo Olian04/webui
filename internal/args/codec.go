@@ -116,7 +116,12 @@ func setValue(fv reflect.Value, kind ir.ValueKind, s string) error {
 		if slices.Contains(parts, "") {
 			return errors.New("it has an empty segment")
 		}
-		fv.Set(reflect.ValueOf(parts).Convert(fv.Type()))
+		// Element by element: a slice of a defined string type is not convertible from []string.
+		list := reflect.MakeSlice(fv.Type(), len(parts), len(parts))
+		for i, part := range parts {
+			list.Index(i).SetString(part)
+		}
+		fv.Set(list)
 	case ir.KindString:
 		fv.SetString(s)
 	case ir.KindBool:
