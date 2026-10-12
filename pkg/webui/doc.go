@@ -57,6 +57,31 @@
 // on every request, and a page it refuses is answered with 403. Inside any closure
 // that serves the page, [ArgsOf] returns the arguments.
 //
+// A page with arguments in its path has no entry in the sidebar by itself, since an entry
+// is a link with one address and "/site/{name}" has none until a name is filled in. Its
+// NavEntries lists them: one for each address, loaded whenever a page is drawn, each with the
+// words it says and the arguments it opens.
+//
+//	var SitePage = webui.Page[SiteArgs]{
+//		Path: "/site/{name}",
+//		Nav:  webui.Nav{Icon: "location-dot", Section: "Sites"},
+//		NavEntries: func(ctx context.Context) ([]webui.NavEntry[SiteArgs], error) {
+//			...
+//		},
+//	}
+//
+// Nav gives the entries their icon and section, and no label. The entry of the site on screen
+// is lit, and so is it for a page that borrows the place, such as "/site/{name}/log". An
+// entry is left out for a visitor whom the page's Guard refuses, checked with the entry's own
+// arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
+// a failure leaves the page drawn without them.
+//
+// A page whose path is "/" is the landing page: the brand in the sidebar and the
+// first breadcrumb link to it. Without one, the root goes to the first entry in the
+// navigation the visitor may open, or failing that the first page whose path has no
+// arguments, and shows a warning that the app has no page at "/". Declare one to
+// choose where the app starts.
+//
 // # The rest of a path
 //
 // The last segment of a path may be written {name...}, which takes every segment from
@@ -78,12 +103,6 @@
 // cannot be made into an address, and a doubled slash in an address is refused.
 // Only the last segment may be a rest, because [net/http.ServeMux], which routes the
 // pages, only allows it there, and no other argument may be a []string.
-//
-// A page whose path is "/" is the landing page: the brand in the sidebar and the
-// first breadcrumb link to it. Without one, the root goes to the first entry in the
-// navigation the visitor may open, or failing that the first page whose path has no
-// arguments, and shows a warning that the app has no page at "/". Declare one to
-// choose where the app starts.
 //
 // # Layouts
 //

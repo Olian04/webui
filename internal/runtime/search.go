@@ -117,6 +117,15 @@ func (p *Program) searchGroup(page *ir.Page) string {
 	if shadowed := p.App.ByPath[page.Nav.Shadow]; shadowed != nil && shadowed.Nav.Label != "" {
 		return shadowed.Nav.Label
 	}
+	// A page that lists entries of its own has no label and borrows no place: it is the entries.
+	// Its results are listed under the nearest page above it that has a name, such as "Sites" for
+	// "/site/{name}", which is what the visitor knows the things as.
+	segs := strings.Split(strings.Trim(page.PathTemplate, "/"), "/")
+	for i := len(segs) - 1; i >= 1; i-- {
+		if above := p.App.ByPath["/"+strings.Join(segs[:i], "/")]; above != nil && above.Nav.Label != "" {
+			return above.Nav.Label
+		}
+	}
 	return page.PathTemplate
 }
 

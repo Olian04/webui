@@ -263,7 +263,7 @@ func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/").Header().Get("Location"), "/admin/home")
 }
 
-func TestAPageWithPathArgumentsCannotHaveANavEntryBecauseItHasNoAddress(t *testing.T) {
+func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }

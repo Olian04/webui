@@ -25,6 +25,11 @@ type Page struct {
 	// every request to this page including section fetches.
 	Guard func(ctx context.Context, args any) error
 
+	// NavEntries lists the entries this page has in the navigation, each an address of the
+	// page with arguments. Nil means the page has one entry, from Nav, or none. The runtime
+	// calls it when it draws a page, so it is bounded and must not be trusted to be quick.
+	NavEntries func(ctx context.Context) ([]NavEntry, error)
+
 	// Search finds the things this page is the page of, by what the visitor typed in the
 	// global search: at most limit of them. Nil means the page is not searched. A hit is checked
 	// against this page's Guard, with the hit's own arguments, before it is offered.

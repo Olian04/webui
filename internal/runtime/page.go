@@ -266,15 +266,16 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 
 // pageDoc is the shell fields every response for a page shares.
 func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
-	pathVals := map[string]string{}
+	pathVals, query := map[string]string{}, map[string]string{}
 	if req != nil {
-		pathVals, _ = req.encode(page)
+		pathVals, query = req.encode(page)
 	}
 	crumbs := p.render.Crumbs(page, pathVals)
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
 		Active:  p.render.Active(page),
+		Here:    render.Here{Page: page.PathTemplate, Path: pathVals, Query: query},
 		Content: content,
 	}
 	if req != nil {
