@@ -64,7 +64,7 @@ var Audit = webui.Page[webui.NoArgs]{
 	Guard: canEdit[webui.NoArgs],
 	Body: webui.Table[AuditEntry]{
 		Title:    "Audit log",
-		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so the table offers no sorting or filters.",
+		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so there are no filters, and a column sorts only the page on screen: the next page continues the sequence and is ordered within itself.",
 		PageSize: 8,
 		// A feed is exported from its first page to its last, whatever page is on screen.
 		Export: true,

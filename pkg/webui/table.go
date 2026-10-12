@@ -130,9 +130,13 @@ type Table[M any] struct {
 	//
 	// Use Feed when the source pages by cursor, and Load when it pages by offset and
 	// can sort and filter on request. A cursor continues one sequence, so there is
-	// nothing for the library to reorder or filter: a feed table has no sort links and
-	// no filters, and its pager is First page, Previous and Next, with "Showing rows
-	// 10032–10054" for a count, since a cursor has no place in a total.
+	// nothing for the library to filter, and a feed table has no filters. Its columns
+	// can be sorted, but only the page on screen: the library orders the rows Feed
+	// returned, by the column's own value, and Feed is not told of it. The page after
+	// continues the sequence and is ordered within itself, so a sort never moves a row
+	// to another page, and the footer says that it is of this page. Its pager is First
+	// page, Previous and Next, with "Showing rows 10032–10054" for a count, since a
+	// cursor has no place in a total.
 	//
 	// The address holds the cursor, the number of the page's first row, and the pages
 	// before it, which is all that Previous and the row numbers are made from: nothing
@@ -144,7 +148,8 @@ type Table[M any] struct {
 	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
 
 	// Export puts two links in the table's footer, CSV and JSON, that download its rows.
-	// The file holds every row the table's sort and filters keep, not only the page on
+	// The file holds every row the table's sort and filters keep (a feed has no filters, and
+	// its sort is of a page, so a feed's file is in the source's own order), not only the page on
 	// screen, and the columns it shows, with their Labels as the header: no row actions
 	// and no row links. A table does not export unless it says so, since it is a way to take
 	// all of the rows at once.
@@ -213,7 +218,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
 	case sources > 1:
 		v.add("a Table has more than one of Rows, Load and Feed",
-			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor with no sort or filters.")
+			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor, sorting only the page on screen and with no filters.")
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
 
@@ -353,6 +358,11 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			items := make([]any, len(rows))
 			for i, r := range rows {
 				items[i] = r
+			}
+			if q.Sort != "" {
+				// The source's order is the sequence's, so only the page in hand is ordered: the
+				// next page continues the sequence, and is ordered within itself.
+				items, _ = tablequery.Apply(items, columns, ir.Query{Sort: q.Sort, Desc: q.Desc})
 			}
 			return ir.Window{Rows: items, Total: -1, Next: next}, nil
 		}

@@ -78,8 +78,8 @@ type Table struct {
 	PageSize int // rows per page, always positive: the declaration defaults it
 
 	// Feed says the rows come from a source that hands them out a page at a time by a
-	// cursor, with no way to sort or filter them: the table has no sort links and no
-	// filters, and its pager is Next and First page.
+	// cursor, with no way to filter them: the table has no filters, and its sort orders
+	// only the page in hand. Its pager is Next and First page.
 	Feed bool
 
 	// Export says the table offers its rows as a CSV or JSON file. InMemory says the rows come
