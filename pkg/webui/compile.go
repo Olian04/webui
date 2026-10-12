@@ -39,6 +39,9 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 	program, err := runtime.NewProgram(app, prefix)
 	if err != nil {
 		errs = []CompileError{{Detail: err.Error()}}
+		if errors.As(err, new(runtime.RouteConflict)) {
+			errs[0].Fix = "Change one path so that the other is strictly more specific: wherever one has a placeholder the other must have a placeholder or fixed text, and never the reverse. \"/y/{b}\" and \"/{a}/x\" cross; \"/y/{b}\" with \"/{a}/{b}\", or \"/y/x\" with \"/{a}/x\", do not."
+		}
 		return failure(errs), joined(errs)
 	}
 	return program.Handler(), nil

@@ -339,6 +339,16 @@ design element.
 
 ## Assets and transport
 
+- The framework's routes (`/_webui/...`) are a `ServeMux` of their own, and `Handler`
+  sends to it what is under that directory and everything else to the pages' mux. On
+  one mux, a page such as `/{key}/info` and the asset route `/_webui/{file}` both match
+  `/_webui/info` with neither more specific, which `ServeMux` refuses by panicking when
+  the app is built, so no page could begin with a placeholder. The directory is
+  reserved (no page path may start with it), so a placeholder never captures it: a
+  request under `/_webui` is the framework's or a 404, never a page. What it costs: one
+  more mux and a prefix check per request. Two pages whose paths cross
+  (`/{a}/x` and `/y/{b}`) still conflict, as `ServeMux` defines it, and Compile now
+  reports that as an error naming both, instead of the router's panic.
 - Every asset is served under a name with a short hash of its contents before the
   extension (`app.410f9909.css`), found by pages through `Renderer.AssetHref`. The
   address changes when, and only when, the file does, so it is cached for a year as
