@@ -192,14 +192,19 @@
 // decides the toast, its colour, and the response:
 //
 //   - [Success] and [Warning] are accepted: the action was done, and the user is
-//     sent back. A Warning says something the user should be aware of.
+//     sent back to the page they came from. A Warning says something the user should
+//     be aware of.
 //   - [Failure] and [Reject] are not accepted: nothing was done, and the form is
 //     shown again with what the user typed kept. A Failure speaks for the whole form,
 //     and a Reject for fields, with [Field].
 //
-// [Outcome.Then] says where to go next, for any of them. The zero Outcome is a quiet
-// success. Run's error is for what nobody can fix by editing the form: it is logged,
-// and the user sees that something went wrong.
+// Those are the defaults, and an outcome can replace them, for any of the four kinds.
+// [Outcome.Then] takes the user to another page. [Outcome.Back] takes them back to the
+// page they came from, even when the action failed and there is nothing to retry.
+// [Outcome.Stay] leaves them on the form, even when the action succeeded. An outcome says
+// at most one of the three. The zero Outcome is a quiet success. Run's error is for what
+// nobody can fix by editing the form: it is logged, and the user sees that something went
+// wrong.
 //
 //	Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
 //		if service.IPTaken(d.IP, d.ID) {
@@ -210,7 +215,9 @@
 //	}
 //
 // A form that saved, and its Cancel button, return to the page the user came from, so
-// a form reachable from several pages needs no code to say which.
+// a form reachable from several pages needs no code to say which. A form opened by its
+// address, with no page before it, stays where it is, and Cancel goes to its parent in the
+// breadcrumb.
 //
 // # Links between pages
 //

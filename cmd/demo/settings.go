@@ -91,10 +91,12 @@ var SaveIngest = webui.Action[Settings]{
 		}
 		service.SetSettings(s)
 		// Accepted, but worth knowing: Warning is a Success with something to be aware of.
+		// Stay keeps the user on the form, which is a page they go on tuning: a saved form
+		// would otherwise return to the page that opened it.
 		if s.MaxLoad < 20 {
-			return webui.Warning("Saved, but ingest will start shedding at a very low load"), nil
+			return webui.Warning("Saved, but ingest will start shedding at a very low load").Stay(), nil
 		}
-		return webui.Success("Saved"), nil
+		return webui.Success("Saved").Stay(), nil
 	},
 }
 

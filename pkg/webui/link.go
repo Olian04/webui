@@ -27,7 +27,8 @@ type RowClick[M any] interface {
 // that links to it. The page and the argument type must agree, which the compiler
 // checks, and [App.Compile] checks that the page is mounted. When the destination
 // has a form, the library remembers the page the user came from, so the form's
-// Cancel returns there.
+// Cancel returns there, and so does a save, unless the Outcome says otherwise with
+// [Outcome.Stay] or [Outcome.Then].
 type Link[M, A any] struct {
 	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]
