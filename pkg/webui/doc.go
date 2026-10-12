@@ -109,6 +109,11 @@
 // reproduces the view. A table pages, 25 rows at a time unless it says otherwise. A
 // column is named by its Label.
 //
+// A table with Export set offers its rows as a download, CSV or JSON, from two links in its
+// footer. The file is every row the table's sort and filters keep, not the page on screen;
+// for a source that pages, the library asks it for the rows a batch at a time, up to
+// 100,000. See [Table.Export] for what the cells hold.
+//
 // A table with a RowClick makes each row a link to another page, with a [Link]:
 //
 //	RowClick: webui.Link[Device, DeviceArgs]{

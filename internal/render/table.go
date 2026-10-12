@@ -184,7 +184,7 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 
 func (r *Renderer) pager(v TableView) c.PagerProps {
 	prev, next := r.pagerLinks(v)
-	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next}
+	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v)}
 	if v.Total < 0 {
 		p.Size = len(v.Rows) // the range ends at the last row there is
 		if len(v.Rows) == 0 {
@@ -192,6 +192,25 @@ func (r *Renderer) pager(v TableView) c.PagerProps {
 		}
 	}
 	return p
+}
+
+// exportLinks are the links that download a table, for its footer: its sort and filters are kept,
+// and where it is in its pages is not, since a download is every row. A table that does not
+// export, or has failed, has none.
+func (r *Renderer) exportLinks(v TableView) []c.ExportLink {
+	if !v.Node.Export || v.Failed {
+		return nil
+	}
+	id := v.Node.ID
+	at := func(format string) string {
+		query := cloneQuery(v.Query)
+		for _, key := range []string{args.ViewKey(id, "offset"), args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)} {
+			delete(query, key)
+		}
+		query[args.ViewKey(id, "export")] = format
+		return r.PageHref(v.Page, v.Path, query)
+	}
+	return []c.ExportLink{{Label: "CSV", Format: "CSV", Href: at("csv")}, {Label: "JSON", Format: "JSON", Href: at("json")}}
 }
 
 func cloneQuery(m map[string]string) map[string]string {

@@ -52,6 +52,8 @@ var Alerts = webui.Page[webui.NoArgs]{
 		// Rows is all it takes: the library filters, sorts, pages and searches them
 		// by the columns, so there is no query code on this page.
 		Search: true,
+		// With Rows, an export is every row the sort and filters keep, with nothing to write.
+		Export: true,
 		Rows:   func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{

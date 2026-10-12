@@ -164,6 +164,27 @@ type Table[M any] struct {
 	// visitor in.
 	Search bool
 
+	// Export puts two links in the table's footer, CSV and JSON, that download its rows.
+	// The file holds every row the table's sort and filters keep, not only the page on
+	// screen, and the columns it shows, with their Labels as the header: no row actions
+	// and no row links. A table does not export unless it says so, since it is a way to take
+	// all of the rows at once.
+	//
+	// Rows exports every row. A Load table is asked for them a batch at a time, from
+	// Offset 0, until it returns an empty window or the Total is reached, and a Feed is
+	// followed from its first page to its last, so a source that pages must not repeat rows
+	// when it is asked for the next. An export is cut at 100,000 rows, and the response
+	// says so in the header X-Webui-Export-Truncated. It runs the page's Guard, as any
+	// request for the page does.
+	//
+	// A CSV cell is the text the table shows, except that a number is written as a number
+	// and an address as the address, and a text that a spreadsheet would run as a formula,
+	// one that starts with =, +, -, @, a tab or a carriage return, is written with a quote
+	// before it. JSON is a list with an object for each row, keyed by the Labels in the
+	// columns' order, where a number is a number, a moment is an RFC 3339 time in UTC (or
+	// null when there is none), and anything else is a string.
+	Export bool
+
 	// Key identifies a row, such as by its ID. It is required when the table has
 	// Actions or BulkActions, because a request names rows by identity, never by
 	// position.
@@ -299,6 +320,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	}
 	out := &ir.Table{
 		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search, Feed: t.Feed != nil,
+		Export: t.Export, InMemory: t.Rows != nil,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}

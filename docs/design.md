@@ -241,7 +241,8 @@ load. A panel has
 no menu of its own: reloading is the page's Refresh in the top bar, so a panel
 changes only by following its own links, and the header stays quiet.
 
-A panel may have a footer separated by a 1px rule: pagination on the left,
+A panel may have a footer separated by a 1px rule: pagination on the left (with the
+table's CSV and JSON download links, as quiet buttons, beside the range),
 navigation or actions on the right.
 
 Panels never nest. If content inside a panel needs its own frame, it gets a

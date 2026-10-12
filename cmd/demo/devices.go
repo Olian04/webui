@@ -85,6 +85,9 @@ var Devices = webui.Page[webui.NoArgs]{
 		// column, and ?devices.min.<column> and ?devices.max.<column> for the
 		// numeric ones.
 		PageSize: 10,
+		// Export adds CSV and JSON links to the footer. A Load table is asked for every row
+		// the sort and filters keep, 500 at a time from Offset 0, so a download is not a page.
+		Export: true,
 		// Search makes every device findable from the search box in the top bar. This
 		// table has Load, so it is handed the typed text in Query.Search; a table with
 		// Rows needs nothing else, and the library looks in every column.

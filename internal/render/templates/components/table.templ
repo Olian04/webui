@@ -254,7 +254,37 @@ type PagerProps struct {
 	Total    int
 	PrevHref string
 	NextHref string
+	Export   []ExportLink
 	Attrs    templ.Attributes
+}
+
+// ExportLink is a link that downloads the table's rows as a file. Label is what it says, and
+// Format what the file is, for the name a screen reader gives it.
+type ExportLink struct {
+	Label  string
+	Format string
+	Href   string
+}
+
+// exportLinks are the download links of a table footer, beside the range. They carry the
+// download attribute, so a script that refreshes a panel when a link leads to the same page
+// leaves them to the browser.
+templ exportLinks(links []ExportLink) {
+	if len(links) > 0 {
+		<div class="pager-export">
+			<span class="pager-export-label">Export</span>
+			for _, l := range links {
+				@Button(ButtonProps{
+					Href:    l.Href,
+					Size:    SizeSmall,
+					Variant: VariantGhost,
+					Attrs: templ.Attributes{"download": "", "title": "Download the rows as " + l.Format, "aria-label": "Download the rows as " + l.Format},
+				}) {
+					{ l.Label }
+				}
+			}
+		</div>
+	}
 }
 
 func (p PagerProps) rangeLabel() string {
@@ -273,6 +303,7 @@ func (p PagerProps) rangeLabel() string {
 
 templ Pager(p PagerProps) {
 	<div class="pager-info">{ p.rangeLabel() }</div>
+	@exportLinks(p.Export)
 	<div class="pager">
 		@Button(ButtonProps{
 			Href:     p.PrevHref,
@@ -304,6 +335,7 @@ type CursorPagerProps struct {
 	FirstHref string
 	PrevHref  string
 	NextHref  string
+	Export    []ExportLink
 	Attrs     templ.Attributes
 }
 
@@ -323,6 +355,7 @@ func (p CursorPagerProps) info() string {
 
 templ CursorPager(p CursorPagerProps) {
 	<div class="pager-info">{ p.info() }</div>
+	@exportLinks(p.Export)
 	<div class="pager">
 		@Button(ButtonProps{
 			Href:     p.FirstHref,
