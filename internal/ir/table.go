@@ -27,10 +27,6 @@ type Query struct {
 	// Ranges are the bounds on the numeric columns, by Key. A column is in
 	// Filters or in Ranges, never both.
 	Ranges map[string]Range
-
-	// Search is what the visitor typed in the global search, to find rows of this
-	// table by any column, ignoring case. It is empty for the table's own view.
-	Search string
 }
 
 // Mark is a page of a feed the visitor has been through: where it started, and the
@@ -85,10 +81,6 @@ type Table struct {
 	// cursor, with no way to sort or filter them: the table has no sort links and no
 	// filters, and its pager is Next and First page.
 	Feed bool
-
-	// Search says the table's rows are found by the global search: each is a result
-	// that leads where RowClick does. Only a table with a RowClick has it.
-	Search bool
 
 	// Export says the table offers its rows as a CSV or JSON file. InMemory says the rows come
 	// from a Rows source, which holds all of them: a Query with no Limit is every row, where for

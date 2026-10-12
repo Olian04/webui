@@ -197,12 +197,28 @@ design element.
   (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
   in the address and in `Query`, lower-cased with dashes in the address; there is no
   key to declare, and `Compile` refuses labels that collide.
-- Search belongs to tables, not pages: a table with `Search` and a `RowClick` offers
-  its rows, the page's `Guard` runs first with zero arguments, and each result is
-  checked against the page it leads to with that page's own arguments and `Guard`. A
-  `Rows` table is searched across every column by the library; a `Load` table is handed
-  `Query.Search`. A number is searched but not shown in the result's line, since it
-  says nothing without its label.
+- Search belongs to pages, not tables. A `Page` has a `Search`, handed the text and a
+  limit, that returns `Hit`s: the arguments of that page that each result leads to, a
+  title and a line beneath. It was a table's, which could be searched only if it had a
+  `RowClick` to a `Link`, and a table that was on no page with arguments, or whose
+  rows led nowhere, offered nothing; and a page with path arguments could be searched
+  only while the visitor was on it, which needed a second copy of the routes just to ask
+  "which page is this address". A hit is the thing and the page that shows it, so the
+  question "who provides the results" has one answer, the page the result opens.
+- Each hit is checked against the page it leads to, with the page's own `Guard` and the
+  hit's arguments, so the search never offers what following it would refuse; the page's
+  `Guard` is not asked with no arguments to decide whether to search at all, since
+  one that looks the thing up refuses an empty id for the wrong reason. The
+  search itself runs for every visitor, so one that is costly or private looks at the
+  context. A search that fails or panics leaves that page out, and the rest answer.
+  Results are grouped under the page's name in the navigation, or the entry it
+  borrows from, which is what the visitor knows the page as.
+- `SearchRows` is the in-memory case: it makes a `Search` from rows, a `Hit` builder and
+  the fields to look in, so an app that lists its rows in a `Rows` table pays one
+  declaration on the detail page and no query code, as it did with `Table.Search`.
+  A table-level `Search` was removed and not kept beside it: two ways to say the same
+  thing, with different limits, would have been the first thing a reader had to learn
+  to choose between.
 
 - Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
   JSON, that download every row the sort and filters keep. It is a declaration and not

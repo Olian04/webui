@@ -49,9 +49,8 @@ var Alerts = webui.Page[webui.NoArgs]{
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
-		// Rows is all it takes: the library filters, sorts, pages and searches them
-		// by the columns, so there is no query code on this page.
-		Search: true,
+		// Rows is all it takes: the library filters, sorts and pages them by the columns, so
+		// there is no query code on this page.
 		// With Rows, an export is every row the sort and filters keep, with nothing to write.
 		Export: true,
 		Rows:   func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
@@ -76,6 +75,14 @@ type AlertArgs struct {
 // acknowledge it, beside the device it is about.
 var AlertDetails = webui.Page[AlertArgs]{
 	Path: "/alert/{id}",
+	// The alerts are findable from the search box, by any of the fields given.
+	Search: webui.SearchRows(
+		func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+		func(a Alert) webui.Hit[AlertArgs] {
+			return webui.Hit[AlertArgs]{Args: AlertArgs{ID: a.ID}, Title: a.ID, Desc: a.Severity + " · " + a.Message}
+		},
+		AlertID, Severity, AlertDevice, Message,
+	),
 	// No Nav: it lights Alerts, the page at "/alert".
 	Guard: func(_ context.Context, a AlertArgs) error {
 		if _, ok := service.Alert(a.ID); !ok {

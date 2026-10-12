@@ -107,9 +107,7 @@ func New(app *ir.App, prefix string) *Renderer {
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	for _, p := range app.Pages {
-		for _, t := range ir.Tables(p.Body) {
-			r.search = r.search || t.Search
-		}
+		r.search = r.search || p.Search != nil
 	}
 	for _, p := range app.Pages {
 		if p.Nav.Hidden {

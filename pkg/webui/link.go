@@ -11,8 +11,7 @@ import (
 // RowClick is what a click on a row does: a [Link] or an [Action].
 //
 // A Link is for the simple case, a row that leads to a page. It is one real anchor,
-// so middle-click, open-in-new-tab and the keyboard work, and the table can be
-// searched. An Action is for the rest: its Run is handed the row and may look at it
+// so middle-click, open-in-new-tab and the keyboard work. An Action is for the rest: its Run is handed the row and may look at it
 // to decide where to go, with Outcome.Then, or change something. It is a POST, so
 // the row cannot be opened in a new tab, and it needs the table's Key. The
 // interface exists to take either.
