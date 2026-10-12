@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -71,11 +72,17 @@ func (c *Codec) Encode(args any) (path, query map[string]string, err error) {
 	path, query = map[string]string{}, map[string]string{}
 	for _, f := range c.fields {
 		fv := v.Field(f.index)
-		if fv.IsZero() {
+		// An empty list is as absent as a nil one, though only the nil one is the zero value.
+		if fv.IsZero() || (f.spec.Kind == ir.KindStrings && fv.Len() == 0) {
 			if f.spec.InPath {
 				return nil, nil, fmt.Errorf("path argument %q is empty", f.spec.Name)
 			}
 			continue
+		}
+		if f.spec.Kind == ir.KindStrings {
+			if err := checkSegments(f.spec.Name, fv); err != nil {
+				return nil, nil, err
+			}
 		}
 		s := formatValue(fv, f.spec.Kind)
 		if f.spec.InPath {
@@ -87,8 +94,34 @@ func (c *Codec) Encode(args any) (path, query map[string]string, err error) {
 	return path, query, nil
 }
 
+// checkSegments refuses a path made of anything but whole segments: an empty element would
+// be a doubled slash, and one holding a slash would be read back as two.
+func checkSegments(name string, fv reflect.Value) error {
+	for i := range fv.Len() {
+		part := fv.Index(i).String()
+		switch {
+		case part == "":
+			return fmt.Errorf("path argument %q: segment %d is empty", name, i+1)
+		case strings.Contains(part, "/"):
+			return fmt.Errorf("path argument %q: segment %d, %q, contains a slash, which would make it two", name, i+1, part)
+		}
+	}
+	return nil
+}
+
 func setValue(fv reflect.Value, kind ir.ValueKind, s string) error {
 	switch kind {
+	case ir.KindStrings:
+		parts := strings.Split(s, "/")
+		if slices.Contains(parts, "") {
+			return errors.New("it has an empty segment")
+		}
+		// Element by element: a slice of a defined string type is not convertible from []string.
+		list := reflect.MakeSlice(fv.Type(), len(parts), len(parts))
+		for i, part := range parts {
+			list.Index(i).SetString(part)
+		}
+		fv.Set(list)
 	case ir.KindString:
 		fv.SetString(s)
 	case ir.KindBool:
@@ -126,6 +159,12 @@ func formatValue(fv reflect.Value, kind ir.ValueKind) string {
 		return strconv.FormatInt(fv.Int(), 10)
 	case ir.KindFloat:
 		return strconv.FormatFloat(fv.Float(), 'f', -1, 64)
+	case ir.KindStrings:
+		parts := make([]string, fv.Len())
+		for i := range parts {
+			parts[i] = fv.Index(i).String()
+		}
+		return strings.Join(parts, "/")
 	}
 	return ""
 }
