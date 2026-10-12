@@ -1,5 +1,10 @@
 package components
 
+import (
+	"fmt"
+	"time"
+)
+
 // ToastRegion is the live region toasts arrive in. It is rendered once per
 // document, empty, so that a toast added later is announced.
 templ ToastRegion() {
@@ -60,18 +65,46 @@ templ EmptyState(p EmptyStateProps) {
 }
 
 // StatusBarProps is the honesty bar: the request behind what is on screen. If
-// the screen changed, this says what changed and how much of it.
+// the screen changed, this says what changed and how much of it. Beside the request it
+// says how the page came to be: when its HTML was built and how long the server took, which
+// is what shows a page that a cache or a proxy answered for the server, and, with
+// script off, that it is off.
 type StatusBarProps struct {
 	Method string
 	URL    string
 	Note   string
-	Attrs  templ.Attributes
+
+	// Built is when the page's HTML was built, and BuildTime how long the server took from the
+	// request's arrival to that. A zero Built is not shown.
+	Built     time.Time
+	BuildTime time.Duration
+
+	Attrs templ.Attributes
+}
+
+func (p StatusBarProps) took() string {
+	ms := float64(p.BuildTime.Microseconds()) / 1000
+	if ms < 10 {
+		return fmt.Sprintf("%.1f ms", ms)
+	}
+	return fmt.Sprintf("%.0f ms", ms)
 }
 
 templ StatusBar(p StatusBarProps) {
 	<div class="statusbar" { p.Attrs... }>
 		<span class="method" data-method>{ p.Method }</span>
 		<span class="url" data-url>{ p.URL }</span>
+		<span class="status-meta">
+			<noscript>
+				<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: there is no search box, no code editor, and a panel reloads the page.">JS off</span>
+			</noscript>
+			<span class="sb-badge sb-warn" data-stale hidden></span>
+			if !p.Built.IsZero() {
+				<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>
+				<span class="sb-opt" data-loaded hidden title="How long the browser took to get and show this page"></span>
+				<time class="sb-opt" data-built datetime={ p.Built.UTC().Format(time.RFC3339Nano) } title={ "The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC") }>{ "built " + p.Built.UTC().Format("15:04:05") + "Z" }</time>
+			}
+		</span>
 		<span class={ "netlog", templ.KV("on", p.Note != "") } data-netlog>
 			<span class="spin" aria-hidden="true"></span>
 			<span data-netmsg>{ p.Note }</span>

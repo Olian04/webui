@@ -31,6 +31,7 @@ func (p *Program) leaf(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
+	timing(w, r)
 	if err := render.Fragment(r.Context(), w, http.StatusOK, body); err != nil {
 		p.log.Error("webui: render failed", "path", r.URL.Path, "leaf", r.Header.Get(LeafHeader), "err", err)
 	}

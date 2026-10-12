@@ -10,6 +10,7 @@
   'use strict';
 
   var LEAF_HEADER = 'X-Webui-Leaf';
+  var BUILT_HEADER = 'X-Webui-Built';
   var inflight = new Map();
 
   function $(selector, root) {
@@ -34,6 +35,106 @@
     if (u) u.textContent = url;
     if (n) n.textContent = note || '';
     if (log) log.classList.toggle('on', !!note);
+  }
+
+  // How the page came to be. The server says when it built the HTML and how long it took; the
+  // browser says how long it took to get and show it, and tells when what it was given is old.
+  // A page is built for each request and sent with no-store, so one that arrives long after it
+  // was built was not built for this request: a cache or a proxy between here and the server
+  // answered, or this computer's clock is not the server's. The clock is why this only says so.
+  var STALE_MS = 15000;
+
+  function pad(n) {
+    return n < 10 ? '0' + n : String(n);
+  }
+  function ago(ms) {
+    var s = Math.round(ms / 1000);
+    if (s < 2) return 'just now';
+    if (s < 60) return s + ' s ago';
+    var m = Math.floor(s / 60);
+    if (m < 60) return m + ' min ago';
+    return Math.floor(m / 60) + ' h ago';
+  }
+  function builtAt() {
+    var el = $('[data-built]');
+    var at = el ? new Date(el.getAttribute('datetime')) : null;
+    return at && !isNaN(at.getTime()) ? at : null;
+  }
+  function showBuilt() {
+    var el = $('[data-built]');
+    var at = builtAt();
+    if (!el || !at) return;
+    var age = Date.now() - at.getTime();
+    var behind = age < -2000; // built in this computer's future: its clock is behind the server's
+    el.textContent =
+      'built ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) + ':' + pad(at.getSeconds()) + (behind ? '' : ' · ' + ago(Math.max(age, 0)));
+    el.title = 'The HTML was built ' + at.toString() + (behind ? ". This computer's clock is behind the server's." : '');
+  }
+  function stale(reason) {
+    var badge = $('[data-stale]');
+    if (!badge) return;
+    badge.textContent = reason ? 'cached?' : '';
+    badge.title = reason || '';
+    badge.hidden = !reason;
+  }
+  // Whether what is on screen was built for the request that brought it.
+  function checkFresh(source) {
+    var at = builtAt();
+    if (!at) return;
+    var age = Date.now() - at.getTime();
+    if (age > STALE_MS) {
+      stale(
+        'This ' + source + ' was built ' + ago(age) + ', before it was asked for. A cache or a proxy between the server and here may have answered, or this computer\'s clock differs from the server\'s.',
+      );
+    } else {
+      stale('');
+    }
+  }
+  function millis(ms) {
+    return (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms';
+  }
+  function loaded(ms) {
+    var el = $('[data-loaded]');
+    if (!el) return;
+    el.textContent = 'loaded ' + millis(ms);
+    el.hidden = false;
+  }
+  // A panel that was fetched again has its own build time, and the status bar says the latest.
+  function noteResponse(res, took) {
+    var built = res.headers.get(BUILT_HEADER);
+    var el = $('[data-built]');
+    if (built && el) {
+      el.setAttribute('datetime', built);
+      showBuilt();
+      checkFresh('panel');
+    }
+    var dur = /dur=([\d.]+)/.exec(res.headers.get('Server-Timing') || '');
+    var build = $('[data-build]');
+    if (dur && build) build.textContent = millis(parseFloat(dur[1]));
+    loaded(took);
+  }
+  function startStatus() {
+    var nav = performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+    showBuilt();
+    if (nav && nav.transferSize === 0 && nav.decodedBodySize > 0 && nav.type !== 'reload') {
+      stale('The browser showed this page from its own cache, so it may not be what the server would send now.');
+    } else {
+      checkFresh('page');
+    }
+    function done() {
+      var n = performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+      if (n && n.loadEventEnd > 0) loaded(n.loadEventEnd - n.startTime);
+    }
+    if (document.readyState === 'complete') setTimeout(done, 0);
+    else addEventListener('load', function () { setTimeout(done, 0); });
+    setInterval(showBuilt, 10000);
+    document.addEventListener('visibilitychange', showBuilt);
+    // A page restored from the back-forward cache is the one that was left, not a new request.
+    addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      showBuilt();
+      stale('This page was restored as it was left, so it may not be what the server would send now.');
+    });
   }
 
   /* -------------------------------- toasts -------------------------------- */
@@ -109,6 +210,7 @@
   // when the answer is anything but that panel: the caller falls back to a
   // plain navigation, which is what the link was all along.
   async function fetchLeaf(id, href, signal) {
+    var started = performance.now();
     var res = await fetch(href, {
       headers: { [LEAF_HEADER]: id, Accept: 'text/html' },
       credentials: 'same-origin',
@@ -120,6 +222,7 @@
     tpl.innerHTML = await res.text(); // our own markup, from our own origin
     var next = tpl.content.firstElementChild;
     if (!next || next.getAttribute('data-leaf') !== id) throw new Error('not that panel');
+    noteResponse(res, performance.now() - started);
     return next;
   }
 
@@ -924,5 +1027,6 @@
   syncSidebarToggle();
   syncSelection(document);
   enhanceSelects(document);
+  startStatus();
   dismissToasts();
 })();

@@ -345,6 +345,27 @@ design element.
   compressed already. There is no CSRF token in a page, so compressing HTML does not
   expose one.
 
+## The status bar
+
+- The bar says how the page came to be: the server's build time, the browser's load time,
+  and when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel
+  response so the browser's own tools and the script read the same numbers. The build
+  time is measured from the request's arrival at the app to the moment the document is
+  rendered, so it includes the application's loaders and not the writing of the response.
+- **JS off** is a `<noscript>` badge, so it is there exactly when script is off and costs
+  nothing otherwise. It says what degrades, in its title.
+- **cached?** is a guess, and says so. A page is built for each request and sent
+  `no-store`, so one whose build time is more than 15 seconds before it was opened was
+  probably not built for that request: a cache, a proxy or a DNS answer put a copy between
+  the server and the viewer. The browser cache is detected from Navigation Timing (a
+  transfer of zero bytes that is not a reload), and a page restored from the back-forward
+  cache says so. What it costs: the comparison is between the server's clock and the viewer's,
+  so a computer whose clock is a minute off shows the badge on every page, and one that is behind shows
+  the time with no age; the title of the badge says this. A way to know without trusting
+  either clock would need a round trip to ask the server the time, which the bar is not worth.
+  The build time is in the page, and not taken from the `Date` header, which the script
+  cannot read for the document and which is whole seconds.
+
 ## Code editors
 
 - `Editor` and `Diff` are Monaco, the editor of VS Code, always embedded. About 5 MB
