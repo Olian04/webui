@@ -25,11 +25,12 @@ var (
 
 	RuleEditor = webui.Editor[Rule]{
 		Title: "Paging rule",
-		Desc:  "An Editor in TypeScript. With the language service imported, the types are checked as you type: this text has three errors to find and fix, and completion and hover work as in an IDE.",
+		Desc:  "An Editor in TypeScript. With the language service imported, the types are checked as you type: this text has three errors to find and fix, and completion and hover work as in an IDE. Signal, Rule, rules and pageOnCall are not declared here: they come from the editor's Context, as do the compiler options (strict, no DOM).",
 		Load:  func(context.Context) (Rule, error) { return Rule{Source: service.Rule()}, nil },
 
 		Content:  RuleSource,
 		Language: webui.LangTypeScript,
+		Context:  editorContext,
 		Submit: webui.Action[Rule]{
 			Guard: canEdit[Rule],
 			Run: func(_ context.Context, r Rule) (webui.Outcome, error) {
@@ -47,23 +48,13 @@ var PagingRule = webui.Page[webui.NoArgs]{
 }
 
 // seedRule has three type errors, on purpose, for the language service to find: a kind that no
-// signal has, a string returned as a number, and a function that does not exist. Fix them and the
-// red goes.
-const seedRule = `// Which signals page someone. The TypeScript service checks this as you type.
+// signal has, a string returned as a number, and an urgency that pageOnCall does not take. Fix them
+// and the red goes. Signal, Rule, rules and pageOnCall are declared in context/typescript/rule.d.ts,
+// which is what the editor's Context gives the service.
+const seedRule = `// Which signals page someone. The TypeScript service checks this as you type, against the
+// types the collector hands a rule (hover over a name to see them) and strict options.
 
-interface Signal {
-  at: string;
-  kind: "flush" | "connect" | "timeout";
-  detail: string;
-  ageMinutes: number;
-}
-
-interface Rule {
-  name: string;
-  matches(signal: Signal): boolean;
-}
-
-const slow: Rule = {
+export const slow: Rule = {
   name: "slow flush",
   // Error 1: no signal has the kind "timeouts" (it is "timeout"), so this can never be true.
   matches: (signal) => signal.kind === "timeouts" && signal.ageMinutes < 15,
@@ -74,10 +65,11 @@ export function lagSeconds(signal: Signal): number {
   return signal.detail;
 }
 
-export function shouldPage(signal: Signal, rules: Rule[]): boolean {
+export function shouldPage(signal: Signal): boolean {
   const hit = rules.some((rule) => rule.matches(signal));
-  // Error 3: there is no function called pageOnCall. Hover over a name to see its type, and
-  // type "signal." in any function to see completion.
-  return hit && pageOnCall(signal) > 0;
+  // Error 3: urgency is "low" or "high". Type "signal." for completion, and delete the
+  // quotes to see the signature.
+  if (hit) pageOnCall(signal, "urgent");
+  return hit;
 }
 `

@@ -22,6 +22,15 @@ type App struct {
 	// bar that is not part of the sidebar: signing out, an account page on another
 	// service, the documentation. With none, there is no button.
 	ExternalLinks []ExternalLink
+
+	// Secret keys the addresses of an [Editor]'s Context files. They are served from addresses
+	// that carry a key, which a page gives only to a visitor who may edit the editor, so the
+	// files are as private as the page is. Left empty, the app makes a random secret when it
+	// starts, which is right for one process. Behind more than one instance, set the same
+	// value, of at least 16 bytes, on every one: a page drawn by one instance hands out
+	// addresses that another must accept. Changing it, like restarting, changes the addresses,
+	// so a browser fetches the files again once.
+	Secret []byte
 }
 
 // ExternalLink is a link in [App.ExternalLinks]. It is a [Nav] entry, with the Label

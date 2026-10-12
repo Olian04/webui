@@ -2,6 +2,8 @@ package ir
 
 import (
 	"context"
+
+	"github.com/Olian04/webui/internal/editorctx"
 )
 
 // Form is a leaf holding one model.
@@ -39,6 +41,11 @@ type Editor struct {
 	// Service is the language service that covers the language, "" for none: only an
 	// editor that can be edited is given it.
 	Service string
+
+	// Context is what the language service is given besides the text: declaration files and
+	// compiler options for TypeScript, schemas for JSON. Nil for none. Like Service, it goes
+	// only to an editor that can be edited.
+	Context *editorctx.Context
 }
 
 // Addr reports the node's position in the body tree.

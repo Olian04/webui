@@ -213,6 +213,25 @@
 // a viewer, a visitor whose Submit Guard refuses them, and every [Diff] are
 // highlighted only, so no service is sent for text that cannot change.
 //
+// A service can be told more than the text. An editor's Context is a folder, usually
+// embedded, with a directory for each language it gives context to: the declaration files
+// of the types the text may use, and compiler options, for TypeScript, and a schema for JSON.
+//
+//	//go:embed context
+//	var files embed.FS // context/typescript/env.d.ts, context/json/schema.json
+//
+//	webui.Editor[Rule]{ /* ... */ Language: webui.LangTypeScript, Context: files }
+//
+// An editor reads the directory named for its own language, which can hold a tsconfig.json
+// (only its compilerOptions are read), *.d.ts files at any depth, such as the types of a
+// library under node_modules/@types, and for JSON a schema.json with any schemas it refers
+// to. A file the editor would ignore is a compile error. The files are not in the page: it
+// names them by address, each with a key that only a page drawn for a visitor who may edit
+// carries, so the browser keeps them and others cannot fetch them. The key comes from
+// [App.Secret], which is random unless set, and must be the same on every instance of an
+// application that runs as several. The TypeScript service of a page is one program, so
+// the TypeScript editors of one page share their context.
+//
 // # Markdown
 //
 // A [Markdown] shows one text of a model set as markdown: CommonMark with GitHub's

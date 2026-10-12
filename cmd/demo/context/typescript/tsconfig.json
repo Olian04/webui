@@ -1,0 +1,10 @@
+{
+  // The options of the paging rule's TypeScript service. Only compilerOptions is read.
+  "compilerOptions": {
+    "target": "ES2022",
+    // No "dom": a rule runs in the collector, where there is no document or window.
+    "lib": ["es2022"],
+    "strict": true,
+    "noUnusedLocals": true
+  }
+}

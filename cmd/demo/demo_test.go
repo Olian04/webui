@@ -646,9 +646,32 @@ func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAVie
 	assert.False(t, strings.Contains(workers(viewer), `"ts"`))
 
 	// The text has type errors on purpose, and saving it is the editor's.
-	assert.Contains(t, body, "pageOnCall(signal)")
+	assert.Contains(t, body, "pageOnCall(signal, ")
 	rec := post(editor, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"export const ok: number = 1;\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
 	assert.Equal(t, post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}}).Code, http.StatusForbidden)
+}
+
+func TestTheEditorsAreGivenTheFolderOfContextTheProgramEmbeds(t *testing.T) {
+	// One folder serves both editors, each reading the directory named for its own language.
+	editor := handler(t)
+	rule := get(editor, "/admin/rule").Body.String()
+	m := regexp.MustCompile(`"libs":\{"typescript":\[\{"path":"/rule\.d\.ts","url":"([^"]+)"\}\]`).FindStringSubmatch(rule)
+	assert.NotNil(t, m)
+	assert.Contains(t, rule, `"compiler":{"typescript":{`)
+	file := get(editor, m[1])
+	assert.Equal(t, file.Code, http.StatusOK)
+	assert.Contains(t, file.Body.String(), "declare function pageOnCall(")
+
+	config := get(editor, "/admin/config").Body.String()
+	assert.Contains(t, config, `"schemas":{`)
+	assert.Contains(t, config, "data-context=")
+
+	// A viewer is shown the text and handed none of it.
+	viewer := handlerAs(t, Viewer)
+	for _, page := range []string{"/admin/rule", "/admin/config"} {
+		body := get(viewer, page).Body.String()
+		assert.False(t, strings.Contains(body, "/_webui/code/"))
+	}
 }

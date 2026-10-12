@@ -368,6 +368,33 @@ design element.
   This is decided on the server from the same Guard that gates the Save button, so
   a viewer never downloads a service, and the page never carries one for text that
   cannot change.
+- `Editor.Context` is the one place the service is configured: an `fs.FS` with a
+  directory for each language (`typescript/`, `javascript/`, `json/`), read at compile
+  time, so a mistake in the folder is a compile error and an option the editor would
+  ignore is refused, not accepted and dropped. Decided against a field for each thing
+  (`Schema`, `Compiler`, ...): it is an escape hatch for power users and adds nothing to
+  what the others see. `tsconfig.json` is the format for the options because people
+  already have one; only `compilerOptions` is read, and the enum options are sent as
+  TypeScript's numbers, since Monaco's own enums stop at ES2020 and Node module
+  resolution. The folder has no size limit: it is the author's own embedded code.
+- The context files are **locked assets**. They are served from
+  `/_webui/code/<hash>.<ext>?k=<key>` and a page is handed the addresses, with their keys,
+  only when the visitor may edit the editor (the same Guard as the Save button). The hash
+  names the file, so the browser keeps it as `private, immutable`; the key is
+  `HMAC-SHA256(secret, name)`, so one file's key opens no other and nothing is stored for
+  keys. A wrong or missing key is a 404, so existence is not confirmed. What it costs, both
+  ways. Compared with inline in the page, it gives caching and a response that does not carry
+  a library's types on every load, and it gives up: the key is one bearer value for every
+  visitor and for the life of the process, so anyone given an address (a pasted link, an
+  access log, since the key is in the query) can fetch that file until the process
+  restarts, and a visitor who loses edit rights keeps it until then. Compared with the
+  files being public, it keeps types that a person would not publish from being read by
+  anyone who guesses a hash. The secret is random per process (`App.Secret` overrides it):
+  with several instances and no shared secret, a page drawn by one hands an address that
+  another rejects with a 404, and the editor then runs without its context. The library's
+  own assets, and the logo and favicons, stay public: they are needed before any editor
+  page, so a key would be handed to every visitor and protect nothing. The handler is
+  written so that another user-supplied asset can be locked the same way.
 - An `Editor` is lowered to the same node as a `Form` with one field, so loading,
   rules, the Guard, rejection and echo are the one pipeline and not a second one.
   Its body limit is raised (16 MiB) on pages that have an editor only, since a

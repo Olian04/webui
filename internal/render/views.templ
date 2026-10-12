@@ -584,7 +584,15 @@ templ (r *Renderer) editorBody(v FormView) {
 	{{ f := v.Node.Fields[0] }}
 	{{ fv := r.fieldView(v, f) }}
 	<div class="panel-body code-body">
-		<div class="code-editor" data-code-editor data-language={ v.Node.Editor.Language } data-label={ f.Label }>
+		<div
+			class="code-editor"
+			data-code-editor
+			data-language={ v.Node.Editor.Language }
+			data-label={ f.Label }
+			if !fv.ReadOnly && v.Node.Editor.Context != nil {
+				data-context={ v.Node.Editor.Context.ID }
+			}
+		>
 			if fv.ReadOnly {
 				<pre class="code-view" tabindex="0" aria-label={ f.Label }>{ "\n" + fv.Value }</pre>
 			} else {

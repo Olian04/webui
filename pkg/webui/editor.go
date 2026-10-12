@@ -3,7 +3,9 @@ package webui
 import (
 	"context"
 	"fmt"
+	"io/fs"
 
+	"github.com/Olian04/webui/internal/editorctx"
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -43,6 +45,38 @@ type Editor[M any] struct {
 	// default.
 	Language Language
 
+	// Context is what the editor's language service is given besides the text, for the
+	// languages that can use it: TypeScript and JavaScript, and JSON. It is one folder, such
+	// as an embedded one, with a directory for each language it gives context to, and an
+	// editor reads only the directory named for its own Language:
+	//
+	//	typescript/tsconfig.json   compiler options, as a tsconfig.json has them
+	//	typescript/*.d.ts          declarations, at any depth: globals the text may use, and
+	//	                           the types of libraries, such as
+	//	                           typescript/node_modules/@types/foo/index.d.ts
+	//	javascript/...             the same, for a JavaScript editor
+	//	json/schema.json           the schema the text must satisfy
+	//	json/*.json                other schemas, for schema.json to refer to
+	//
+	// The service then checks the text against them: a name an environment file declares
+	// is known, a type from a library is completed, and a value that breaks the schema is
+	// marked. Only compilerOptions of tsconfig.json is read, and only the options that
+	// change what is an error; anything the editor would ignore is a compile error, and so
+	// is any file it would not read. A folder embedded with //go:embed is the usual source,
+	// and fs.Sub narrows a larger one to what an editor takes.
+	//
+	// Like the service itself, Context goes only to an editor that can be edited, and only
+	// to a visitor who may edit it. The files are not in the page: it names them by
+	// address, which carries a key that only such a page gives out (see [App.Secret]), so
+	// a browser keeps them, and a visitor who cannot edit is not handed them. The page
+	// fetches every file of its language's directory when an editor mounts, so a folder
+	// of a hundred libraries costs a slow editor.
+	//
+	// A page's TypeScript service is one program, so the editors of one page share their
+	// Context: two of them may not give one file two texts. JSON schemas are each their
+	// own editor's.
+	Context fs.FS
+
 	// Submit is what saving does, as a [Form]'s is: its Guard decides who may save, and
 	// a visitor it refuses sees the text as a viewer does. It is required with a Store
 	// and an error without one.
@@ -65,6 +99,7 @@ func (e Editor[M]) validateBody(v *bodyValidator) {
 		v.add(fmt.Sprintf("Editor.Language %q is not a language the editor highlights", string(e.Language)),
 			"Use one of the Lang constants, such as LangJSON or LangGo; there is one for each language the editor knows.")
 	}
+	e.validateContext(v)
 	switch {
 	case e.editable() && e.Submit.Run == nil:
 		v.add("an Editor with a Store has no Submit.Run", "Set Submit.Run to say what saving does, or remove Content.Store to make it a viewer.")
@@ -78,6 +113,63 @@ func (e Editor[M]) validateBody(v *bodyValidator) {
 func (e Editor[M]) lowerBody(at ir.Addr) ir.Node {
 	f := Form[M]{Title: e.Title, Desc: e.Desc, Load: e.Load, Fields: []Accessor[M]{e.Content}, Submit: e.Submit}
 	out := f.lowerBody(at).(*ir.Form)
-	out.Editor = &ir.Editor{Language: e.Language.id(), Service: e.Language.service()}
+	out.Editor = &ir.Editor{Language: e.Language.id(), Service: e.Language.service(), Context: lowerContext(e.Context, e.Language)}
 	return out
+}
+
+func (e Editor[M]) validateContext(v *bodyValidator) {
+	if e.Context == nil {
+		return
+	}
+	dir := editorctx.Dir(e.Language.id())
+	switch {
+	case !e.editable():
+		v.add("Editor.Context is set but Content has no Store",
+			"A viewer loads no language service, so nothing would read the context: set Content.Store to make it an editor, or remove Context.")
+		return
+	case dir == "":
+		v.add(fmt.Sprintf("Editor.Context is set but the language %q takes none", e.Language.id()),
+			"Context is for TypeScript, JavaScript and JSON editors; remove it, or change Language.")
+		return
+	}
+	ctx, problems := editorctx.Read(e.Context, dir)
+	for _, p := range problems {
+		v.add("Editor.Context: "+p.Detail, p.Fix)
+	}
+	if ctx == nil {
+		return
+	}
+	if v.contexts == nil {
+		v.contexts = map[string]string{}
+	}
+	if dir == "json" {
+		return // a schema is matched to its own editor, so editors never share one
+	}
+	if ctx.Compiler != nil {
+		if v.compilers == nil {
+			v.compilers = map[string]string{}
+		}
+		opts := fmt.Sprint(ctx.Compiler)
+		if had, ok := v.compilers[dir]; ok && had != opts {
+			v.add(fmt.Sprintf("two editors on this page give the %s service different compiler options in their Context", dir),
+				"A page has one service for a language, so its editors share one set of options: use the same tsconfig.json in both, or put the editors on different pages.")
+		}
+		v.compilers[dir] = opts
+	}
+	for _, f := range ctx.Files {
+		key := dir + f.Path
+		if had, ok := v.contexts[key]; ok && had != f.Name {
+			v.add(fmt.Sprintf("two editors on this page give %s/%s a different text in their Context", dir, f.Path[1:]),
+				"A page has one TypeScript service, so its editors share their context: use the same file in both, or put the editors on different pages.")
+		}
+		v.contexts[key] = f.Name
+	}
+}
+
+func lowerContext(fsys fs.FS, language Language) *editorctx.Context {
+	if fsys == nil {
+		return nil
+	}
+	ctx, _ := editorctx.Read(fsys, editorctx.Dir(language.id())) // checked by validate
+	return ctx
 }

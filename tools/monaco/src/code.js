@@ -121,6 +121,91 @@ function applyTheme() {
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
 
+
+// --------------------------------------------------------------------- context
+
+// What a language service is given besides the text: declaration files and compiler
+// options for TypeScript, schemas for JSON. The files are addresses the page was handed
+// only because the visitor may edit the editor, each carrying the key that unlocks it, and
+// the browser keeps them. Whatever fails to load leaves the editor as it would be without:
+// the form still works.
+const context = config.context || {};
+
+async function fetchFiles(files) {
+  return Promise.all(
+    files.map(async (f) => {
+      const response = await fetch(f.url);
+      if (!response.ok) throw new Error(`${f.path}: ${response.status}`);
+      return { path: f.path, text: await response.text() };
+    }),
+  );
+}
+
+// A page's TypeScript service is one program, so its files and options are the page's, set
+// once for each language however many editors there are.
+const programs = {};
+function program(language) {
+  const libs = (context.libs || {})[language];
+  const options = (context.compiler || {})[language];
+  if (!workers.ts || (!libs && !options)) return;
+  programs[language] ||= (async () => {
+    const defaults = monaco.typescript[language === 'javascript' ? 'javascriptDefaults' : 'typescriptDefaults'];
+    // moduleResolution is Node's unless the options say otherwise, which is what finds a
+    // library at node_modules/@types/foo.
+    defaults.setCompilerOptions({ ...defaults.getCompilerOptions(), moduleResolution: 2, ...options });
+    try {
+      for (const f of await fetchFiles(libs || [])) defaults.addExtraLib(f.text, `file://${f.path}`);
+    } catch (err) {
+      console.warn('webui: the editor context did not load:', err);
+    }
+  })();
+}
+
+// A JSON editor's schema is registered for that editor's own text, and let go of with it.
+// Each editor has its own copy, so that two with one schema are matched by their own models.
+let schemaCount = 0;
+function schemas(id, model) {
+  const files = (context.schemas || {})[id];
+  if (!workers.json || !files) return () => {};
+  const base = `file:///schemas/${++schemaCount}`;
+  let registered = [];
+  let gone = false;
+  fetchFiles(files)
+    .then((loaded) => {
+      if (gone) return;
+      registered = loaded.map((f) => ({
+        uri: base + f.path,
+        schema: JSON.parse(f.text),
+        ...(f.path === '/schema.json' ? { fileMatch: [model.uri.toString()] } : {}),
+      }));
+      const current = monaco.json.jsonDefaults.diagnosticsOptions;
+      monaco.json.jsonDefaults.setDiagnosticsOptions({
+        ...current,
+        validate: true,
+        // The application declared the schema as what the text must be, so a value that
+        // does not fit is an error and not Monaco's default of a warning.
+        schemaValidation: 'error',
+        enableSchemaRequest: false,
+        schemas: [...(current.schemas || []), ...registered],
+      });
+    })
+    .catch((err) => console.warn('webui: the editor context did not load:', err));
+  return () => {
+    gone = true;
+    if (!registered.length) return;
+    const current = monaco.json.jsonDefaults.diagnosticsOptions;
+    monaco.json.jsonDefaults.setDiagnosticsOptions({
+      ...current,
+      schemas: (current.schemas || []).filter((s) => !registered.includes(s)),
+    });
+  };
+}
+
+// An editor's text is a model of its own with an address, which is what lets a schema be
+// matched to it and keeps two editors' texts apart as files of one program.
+const EXTENSION = { typescript: 'ts', javascript: 'js', json: 'json' };
+let editorCount = 0;
+
 // ---------------------------------------------------------------------- mounting
 
 const OPTIONS = {
@@ -153,14 +238,22 @@ function mountEditor(el) {
   const pre = el.querySelector('pre');
   const readOnly = !textarea;
   const text = textarea ? textarea.value : pre ? pre.textContent : '';
+  const extension = EXTENSION[language];
+  const model = extension
+    ? monaco.editor.createModel(text, language, monaco.Uri.parse(`file:///editor-${++editorCount}.${extension}`))
+    : null;
   const editor = monaco.editor.create(host(el), {
     ...OPTIONS,
-    value: text,
-    language,
+    ...(model ? { model } : { value: text, language }),
     readOnly,
     domReadOnly: readOnly,
     ariaLabel: el.dataset.label || 'Editor',
   });
+  let release = () => {};
+  if (model && el.dataset.context) {
+    if (language === 'json') release = schemas(el.dataset.context, model);
+    else program(language);
+  }
   if (textarea) {
     // The textarea is what the form posts, so it is kept as the editor has it.
     editor.onDidChangeModelContent(() => {
@@ -171,7 +264,11 @@ function mountEditor(el) {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => form.requestSubmit());
     }
   }
-  return () => editor.dispose();
+  return () => {
+    release();
+    editor.dispose();
+    if (model) model.dispose();
+  };
 }
 
 function mountDiff(el) {

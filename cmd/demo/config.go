@@ -32,11 +32,12 @@ var (
 
 var ConfigEditor = webui.Editor[Config]{
 	Title: "Collector configuration",
-	Desc:  "An Editor with a Store on its Content. JSON, so its language service checks the syntax: break a bracket to see it.",
+	Desc:  "An Editor with a Store on its Content. JSON, so its language service checks the syntax: break a bracket to see it. Its Context holds a schema, so a value that does not fit is marked too: try a sample of 2, a sink kind that is not stdout, file or http, or a missing listen.",
 	Load:  func(context.Context) (Config, error) { return service.Config(), nil },
 
 	Content:  ConfigText,
 	Language: webui.LangJSON,
+	Context:  editorContext,
 	Submit: webui.Action[Config]{
 		Guard: canEdit[Config],
 		Run: func(_ context.Context, c Config) (webui.Outcome, error) {
