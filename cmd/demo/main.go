@@ -37,13 +37,13 @@ var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
 	// -accent flag overrides the accent colour (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
-	// The app's own links, behind the button in the top bar: places outside it. A
-	// MenuItem is a Nav entry (a Label, an Icon and a Section) with an ExternalURL,
-	// used as written.
-	Menu: []webui.MenuItem{
-		{Label: "Documentation", Icon: "book", Section: "Help", ExternalURL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
-		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
-		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/login"},
+	// The app's links to places outside it, behind their own button in the top bar. An
+	// ExternalLink is a Nav entry (a Label, an Icon and a Section) with a URL, used as
+	// written: a web address opens in a tab of its own, a path such as /login in this one.
+	ExternalLinks: []webui.ExternalLink{
+		{Label: "Documentation", Icon: "book", Section: "Help", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
+		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
+		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
 	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
 }
