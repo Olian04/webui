@@ -236,10 +236,11 @@
 // # Looks
 //
 // [Brand] gives the name and logo. The logo is also scaled into the browser's
-// favicon, unless NoFavicon is set. [App.Menu] is the app's own links, behind a
-// button beside Refresh in the top bar: places outside the app, such as signing out
-// or the documentation. A [MenuItem] is a [Nav] entry with an ExternalURL, used as
-// written; its Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry
+// favicon, unless NoFavicon is set. [App.ExternalLinks] are the app's links to
+// places outside it, such as signing out or the documentation, behind a button beside
+// Refresh in the top bar. An [ExternalLink] is a [Nav] entry with a URL, used as
+// written: a web address opens in a tab of its own, and a path on this site in the
+// same one. Its Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry
 // meaning (accent, ok, warning and critical) and the library derives the rest for
 // light and dark, which follow the viewer's system. A [Nav] Icon is the name of a Font
 // Awesome Free solid icon, "house" for fa-house, served by the app itself.

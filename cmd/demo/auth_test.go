@@ -103,7 +103,8 @@ func TestTheLoginPageFollowsTheThemeTheAppStoresForTheVisitor(t *testing.T) {
 	assert.Contains(t, body, `:root:not([data-theme])`) // no choice: the system's
 }
 
-func TestTheAppsMenuLogsOutByLinkingToTheChooser(t *testing.T) {
+func TestTheAppsExternalLinksLogOutByLinkingToTheChooser(t *testing.T) {
 	body := get(handler(t), "/admin/device").Body.String()
-	assert.Contains(t, body, `<a class="menu-item" href="/login">`)
+	assert.Contains(t, body, `<a class="menu-item" href="/login">`)                            // a path on this site: the same tab
+	assert.Contains(t, body, `href="https://github.com/Olian04/webui/issues" target="_blank"`) // a web address: a tab of its own
 }
