@@ -57,7 +57,7 @@ func TestEveryPageServes(t *testing.T) {
 	for _, path := range []string{
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
-		"/admin/system", "/admin/audit", "/admin/config", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
+		"/admin/system", "/admin/audit", "/admin/config", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -319,7 +319,7 @@ func TestABrokenAppServesItsOwnErrors(t *testing.T) {
 	rec := get(h, "/admin/anything")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 	assert.Contains(t, rec.Body.String(), "Failed to compile")
-	assert.Contains(t, rec.Body.String(), "field When has unsupported type []string")
+	assert.Contains(t, rec.Body.String(), "field When has unsupported type []int")
 }
 
 func cancelHref(t *testing.T, h http.Handler, target string) string {
@@ -527,4 +527,26 @@ func TestEveryLinkInTheHandbookGoesToAPageThatExistsAndTheHandbookLinksToItself(
 			t.Errorf("%s links to %d other pages of the handbook and %d pages outside it", page, handbook, elsewhere)
 		}
 	}
+}
+
+func TestAPathThatTakesTheRestOfTheAddressIsAListOfSegmentsWithACrumbForEach(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/files/logs/2026/10").Body.String()
+
+	// One crumb for each segment, each a link to the folder on the way; the last is where we are.
+	assert.Contains(t, body, `<a href="/admin/files">Files</a>`)
+	assert.Contains(t, body, `<a href="/admin/files/logs">logs</a>`)
+	assert.Contains(t, body, `<a href="/admin/files/logs/2026">2026</a>`)
+	assert.Contains(t, body, `<span class="cur" aria-current="page">10</span>`)
+
+	// A row adds its name to the list, and the address is built from the elements.
+	assert.Contains(t, body, `href="/admin/files/logs/2026/10/collector.log"`)
+	// The Markdown beside it links to paths in the app, which are given the mount prefix.
+	assert.Contains(t, body, `<a href="/admin/files/logs/2026">2026</a>`)
+	assert.Contains(t, body, `<a href="/admin/files">all files</a>`)
+
+	// Nothing at the path: the page's Guard says so, before anything is loaded.
+	assert.Equal(t, get(h, "/admin/files/logs/nope").Code, http.StatusForbidden)
+	// A doubled slash is not a path of this page.
+	assert.Equal(t, get(h, "/admin/files/logs//2026").Code, http.StatusTemporaryRedirect) // cleaned by the mux
 }

@@ -45,7 +45,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", ExternalURL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", ExternalURL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
 }
 
 var (
@@ -55,7 +55,7 @@ var (
 
 // Arguments must be string, bool, int, int64 or float64, so a slice is a mistake
 // Compile reports, with the page and a fix, rather than a panic.
-type brokenArgs struct{ When []string }
+type brokenArgs struct{ When []int }
 
 var Broken = webui.Page[brokenArgs]{Path: "/event/{id}", Body: webui.Stack{}}
 

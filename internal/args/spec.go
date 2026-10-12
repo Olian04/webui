@@ -99,6 +99,11 @@ func KindOf(t reflect.Type) (kind ir.ValueKind, ok bool) {
 		return ir.KindInt64, true
 	case reflect.Float64:
 		return ir.KindFloat, true
+	case reflect.Slice:
+		if t.Elem().Kind() == reflect.String {
+			return ir.KindStrings, true
+		}
+		return 0, false
 	default:
 		return 0, false
 	}
@@ -173,7 +178,14 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		if !ok {
 			problems = append(problems, Problem{
 				Detail: fmt.Sprintf("field %s has unsupported type %s", f.Name, f.Type),
-				Fix:    "Arguments must be string, bool, int, int64 or float64 — a URL carries one value per name.",
+				Fix:    "Arguments must be string, bool, int, int64 or float64, or a []string for the {name...} that takes the rest of a path: a URL carries one value per name.",
+			})
+			continue
+		}
+		if kind == ir.KindStrings && name != RestPlaceholder(template) {
+			problems = append(problems, Problem{
+				Detail: fmt.Sprintf("field %s is a []string, but the path has no {%s...} for it to take", f.Name, name),
+				Fix:    "A []string is only for the last segment of the path written as {name...}, which takes the rest of the address, one element for each segment. Other arguments are one value.",
 			})
 			continue
 		}
@@ -197,10 +209,10 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 
 	if rest := RestPlaceholder(template); rest != "" {
 		for _, s := range specs {
-			if s.Name == rest && s.Kind != ir.KindString {
+			if s.Name == rest && s.Kind != ir.KindStrings {
 				problems = append(problems, Problem{
-					Detail: fmt.Sprintf("the path takes the rest of the address as {%s...}, but %s is not a string", rest, s.Field),
-					Fix:    "Make the field a string: it holds the remaining segments joined by \"/\".",
+					Detail: fmt.Sprintf("the path takes the rest of the address as {%s...}, but %s is not a []string", rest, s.Field),
+					Fix:    "Make the field a []string: it holds one element for each of the remaining segments.",
 				})
 			}
 		}

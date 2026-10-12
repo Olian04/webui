@@ -21,7 +21,7 @@ into existence, and nothing is configured twice.
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
 | `Theme` | The four colours an app may restyle (`Accent`, `OK`, `Warning`, `Critical`), emitted as `theme.css` |
 | `Page` | One address, one screen |
-| `Page.Path` | The address; its segments are the breadcrumb trail |
+| `Page.Path` | The address; its segments are the breadcrumb trail. A last segment written `{name...}` takes the rest of the address as a `[]string`, and each of its elements is a crumb that links to the page at that depth |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |

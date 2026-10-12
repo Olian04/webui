@@ -37,11 +37,14 @@ type ArgSpec struct {
 // ValueKind is the set of argument and accessor value types.
 type ValueKind uint8
 
-// Supported value kinds. A URL carries one value per name, so these are scalar.
+// Supported value kinds. A URL carries one value per name, so these are scalar, except
+// KindStrings, which only the rest of a path, "{name...}", takes: one element for each
+// of its segments.
 const (
 	KindString ValueKind = iota
 	KindBool
 	KindInt
 	KindFloat
 	KindInt64
+	KindStrings
 )

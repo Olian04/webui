@@ -22,6 +22,18 @@ design element.
   field cannot be distinguished from an absent one without a pointer.
 - Non-string arguments: built-in decoding for `int`, `int64`, `bool` and
   `float64`; a type that is none of these is a compile error, with a fix.
+- The rest of a path is a list. The last segment of a path may be `{name...}`, which
+  takes every segment from there on, and its field is a `[]string`, one element for
+  each. It was once a `string` of the segments joined by "/", which made every user
+  split it and made a slash inside a name ambiguous; a slice says what the segments
+  are, and the codec refuses what a slice cannot say (an empty element, or one that
+  holds a slash, which would be read back as two). The address holds the joined
+  segments, escaped one by one. A `[]string` is accepted nowhere else, because a URL
+  carries one value per name and the rest of a path is the one place a list is the
+  address itself. It is the last segment only because `net/http.ServeMux`, which
+  routes the pages, allows a rest wildcard only there; a route of our own to lift that
+  would have had to re-implement what the mux gives for nothing (cleaning, escaped
+  segments, `HEAD`, `405` with `Allow`).
 - Optionality: a zero field means absent and stays out of the URL. A field
   where zero is meaningful needs a pointer — the same trade as `Rules`.
 - Argument names come from the lower-cased field name, overridable with a
