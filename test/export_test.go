@@ -342,3 +342,58 @@ func TestAnExportIsCompressedWhenTheBrowserAccepts(t *testing.T) {
 	assert.Equal(t, rec.Header().Get("Content-Encoding"), "gzip")
 	assert.Contains(t, unzip(t, rec.Body.Bytes()), "bolt")
 }
+
+type ticket struct {
+	Name   string
+	Status []string
+	Labels []string
+}
+
+var (
+	ticketName   = webui.String[ticket]{Label: "Name", Load: func(t ticket) string { return t.Name }}
+	ticketStatus = webui.Select[ticket]{
+		Label: "Status", Load: func(t ticket) []string { return t.Status },
+		Options: []webui.Option{{Value: "open", Label: "Open"}, {Value: "done", Label: "Done"}},
+	}
+	ticketLabels = webui.Select[ticket]{
+		Label: "Labels", Load: func(t ticket) []string { return t.Labels }, Multi: true,
+		Options: []webui.Option{{Value: "ui", Label: "UI"}, {Value: "bug"}},
+	}
+)
+
+func ticketApp() http.Handler {
+	table := webui.Table[ticket]{
+		Title: "Tickets", Export: true, Columns: []webui.Accessor[ticket]{ticketName, ticketStatus, ticketLabels},
+		Rows: func(context.Context) ([]ticket, error) {
+			return []ticket{
+				{Name: "a", Status: []string{"open"}, Labels: []string{"ui", "bug"}},
+				{Name: "b", Status: []string{"done"}},
+				{Name: "c", Status: []string{"gone"}, Labels: []string{"=cmd"}}, // a value that is no option
+			}, nil
+		},
+	}
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
+}
+
+func TestASelectInACSVIsTheLabelsOfItsValuesAndNeverTheInternalSeparator(t *testing.T) {
+	t.Parallel()
+
+	rec := serve(ticketApp(), http.MethodGet, "/admin/t?tickets.export=csv")
+	assert.False(t, strings.Contains(rec.Body.String(), "\x1f"))
+	got := records(t, rec.Body.String())
+	assert.DeepEqual(t, got[1], []string{"a", "Open", "UI; bug"})
+	assert.DeepEqual(t, got[2], []string{"b", "Done", ""})
+	assert.DeepEqual(t, got[3], []string{"c", "gone", "'=cmd"}) // an unknown value says itself, and a formula is text
+}
+
+func TestASelectInJSONIsTheListOfItsValues(t *testing.T) {
+	t.Parallel()
+
+	rec := serve(ticketApp(), http.MethodGet, "/admin/t?tickets.export=json")
+	assert.False(t, strings.Contains(rec.Body.String(), "\x1f"))
+	var got []map[string]any
+	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+	assert.DeepEqual(t, got[0]["Status"], any([]any{"open"}))
+	assert.DeepEqual(t, got[0]["Labels"], any([]any{"ui", "bug"})) // the values, not the labels "UI"
+	assert.DeepEqual(t, got[1]["Labels"], any([]any{}))            // none is an empty list, not null or ""
+}

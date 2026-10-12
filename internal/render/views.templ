@@ -21,7 +21,7 @@ templ (r *Renderer) document(d Doc) {
 		Stylesheets: r.styles(),
 		Scripts:     []string{r.AssetHref("enhance.js")},
 		Head:        r.head(d.Code),
-		Sidebar:     r.sidebar(d.Active, d.HideNav),
+		Sidebar:     r.sidebar(d.Active, d.HideNav, d.NavLinks),
 		TopBar:      r.topbar(d.Crumbs, d.URL),
 		Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 		Toasts:      toastRegion(d.Toasts),
@@ -83,13 +83,13 @@ func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 // sidebar lists the entries the visitor may open, grouped by section. A section's
 // caption appears above its first entry that is shown, so a section with nothing
 // left in it has no caption either.
-templ (r *Renderer) sidebar(active string, hide map[string]bool) {
+templ (r *Renderer) sidebar(active string, hide map[string]bool, links map[string][]NavLink) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: r.Href("/"), Footer: r.sidebarFooter()}) {
-		for _, e := range r.shown(hide) {
+		for _, e := range r.shown(hide, links) {
 			if e.Section != "" {
 				@c.NavSection(e.Section)
 			}
-			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.Path == active, Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
+			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
 		}
 	}
 }
@@ -340,10 +340,14 @@ templ value(f ir.Field, text string, href string) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
-		case ir.DisplayBadge:
-			@c.Badge(c.BadgeProps{Tone: badgeTone(f, text), Dot: true}) {
-				{ text }
-			}
+		case ir.DisplaySelect:
+			<span class="badges">
+				for _, val := range ir.SplitValues(text) {
+					@c.Badge(c.BadgeProps{Tone: toneOf(f, val), Dot: true}) {
+						{ f.LabelOf(val) }
+					}
+				}
+			</span>
 		case ir.DisplayLink:
 			if href != "" {
 				<a class="ext" href={ href } target="_blank" rel="noopener noreferrer">
@@ -466,13 +470,18 @@ templ (r *Renderer) input(fv fieldView) {
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
 				<div class="static">
-					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink) {
+					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink || fv.Field.Display == ir.DisplaySelect) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
 						@value(fv.Field, fv.Value, fv.Href)
 					}
 				</div>
+			case fv.Field.Display == ir.DisplaySelect:
+				@c.Select(c.SelectProps{
+					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
+					Required: fv.Rules.Required, Invalid: fv.Error != "",
+				})
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
@@ -537,7 +546,7 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 					for _, opt := range fv.Options {
 						<label class="filter-opt">
 							@c.Checkbox(c.CheckboxProps{Name: fv.Key, Value: opt, Checked: slices.Contains(fv.Chosen, opt)})
-							<span>{ opt }</span>
+							<span>{ fv.name(opt) }</span>
 						</label>
 					}
 				</div>

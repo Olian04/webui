@@ -43,10 +43,10 @@ into existence, and nothing is configured twice.
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |
-| `Badge.Kinds` | The tone of each known value. In a `Rows` table a badge column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Kinds`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
+| `Select.Options` | The values a select can hold, in order, each with what it says and its tone. In a `Rows` table a select column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Options`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
-| `Badge` | A badge in a status column, or beside its label in a form; always read-only |
+| `Select` | A choice from a list of options. Read, in a status column or beside its label in a form, it is a badge for each value, in its option's tone. With a `Store` it is a drop-down list (a `<select>`, so it needs no script), or with `Multi` a list to choose several from; `Required` refuses nothing chosen, and a value that is not one of the options is refused on the server |
 | `URL` | A link, only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
 | `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs. With a `Store` a form shows the native date and time picker (`datetime-local`, to the second, in UTC) and says "Date and time in UTC" in the field's rules popover |
 | `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
@@ -175,6 +175,15 @@ them in, with a warning toast: *This app has no page at "/", so you were sent to
 …* It is for whoever declared the app, who sees the gap each time the brand is
 used; declaring a page at "/" ends it. With nowhere to send them, a page says so.
 
+### A page with arguments → an entry for each address
+
+An entry is a link, and a link has one address. A page at `/site/{name}` has none until a
+name is given, so on its own it has no entry (a `Nav.Label` on it is a compile error). With
+`NavEntries` it has one for each address the function returns, each a `NavEntry` of the page's
+arguments and what it says, in the place the page has in the sidebar and under the icon and
+section of its `Nav`. The entry of the address on screen is lit, and so is it for a page
+below it that borrows its place.
+
 ### A page with no entry → the ancestor's highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not
@@ -261,7 +270,7 @@ shows the range without a total and the *Next* button cannot be pre-disabled.
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Int`, `Float`, `Badge`, `URL`, `Datetime`, `Timestamp`, `Slider`) appears in both leaves and
+An accessor (`String`, `Int`, `Float`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`) appears in both leaves and
 renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
@@ -397,9 +406,9 @@ one is deferred on purpose.
 3. **Sidebar grouping — closed, flat.** `Nav.Section` is a caption above a group
    of entries, named by each entry that belongs to it. Nesting (`Nav.Parent`) would need the compile step to validate a
    tree and is not worth it until an app exceeds a screenful of entries.
-4. **Badges and inline bars — closed.** `Badge` and `Slider` are accessors
+4. **Badges and inline bars — closed.** `Select` and `Slider` are accessors
    alongside `String`, `Int` and `Float`, not a display mode bolted on top: a
-   status is a badge, and a quantity is a slider — read-only it is the progress
+   status is a select, drawn as a badge, and a quantity is a slider — read-only it is the progress
    bar, with a `Store` it is the control. They are the pressure-release valve
    for visual richness in a table, so `Form` and `Table` stay the only two
    leaves. Monospace identifiers are not covered: no accessor says "show this in
@@ -417,7 +426,7 @@ Three absences that are choices, not gaps:
   chrome.
 - **No chart or statistic leaf.** Two leaves — one that shows a model, one that
   shows a list of models — cover admin panels. A third would be the first
-  feature bolted on rather than generated by the existing ideas. `Badge` and
+  feature bolted on rather than generated by the existing ideas. `Select` and
   `Slider` exist so that the pressure for one has somewhere cheaper to go.
 - **No per-panel menu.** A panel's header carries a title, a description and a
   status. Reloading is the page's Refresh, so a panel is replaced only by

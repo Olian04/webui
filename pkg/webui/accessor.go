@@ -2,7 +2,6 @@ package webui
 
 import (
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -137,36 +136,70 @@ type Group[M any] []Accessor[M]
 
 func (Group[M]) isAccessor() {}
 
-// Badge projects a string field of M as a badge: the value in a coloured pill.
-// It is read-only, in a table and in a form. Kinds gives the tone of each value it
-// knows; any other value is drawn neutral. The badge always carries its word, so the
-// colour is never the only thing saying what state something is in.
+// Select is a choice from a list of options: the values of a field of M that holds some
+// of a set of known words, such as a status, a size or a few tags. Read, in a table or in
+// a form that is not editable, each value is a badge, in the [Tone] of its option. With a
+// Store it is edited, as a drop-down list, or as a list to tick several of with Multi.
+// Either way the badge or the option always carries its words, so the colour is never the only thing
+// saying what state something is in.
 //
-// A badge does not need to know every value it can hold. How a table filters the
-// column depends on where its rows come from:
+// A Select holds a list of values, since some hold several, so Load returns a slice and Store is
+// handed one: of at most one value unless Multi is set. A status that is one word is
+// written []string{s.Health}.
+//
+// A Select does not need to know every value it can hold unless it is edited. How a table filters
+// the column depends on where its rows come from:
 //
 //   - With Rows, the library holds every row, so the filter is a multi-select of the
-//     values the rows hold, whether or not Kinds names them. A field with an open set
-//     of values, such as a storage class, can leave Kinds empty, or name only the
+//     values the rows hold, whether or not Options names them. A field with an open set
+//     of values, such as a storage class, can leave Options empty, or name only the
 //     values worth a colour.
 //   - With Load, the source does the filtering, so the library can only offer what it
-//     is told: Kinds is then the whole set, a multi-select of exactly those values.
-//     List a neutral value too, as ToneNeutral, for it to be filterable. With no Kinds
-//     the column's filter is text.
-type Badge[M any] struct {
+//     is told: Options is then the whole set, a multi-select of exactly those values.
+//     List a neutral value too, as an Option with no Tone, for it to be filterable. With no
+//     Options the column's filter is text.
+type Select[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
 	Label string
 
-	// Load reads the value from the model.
-	Load func(M) string
+	// Options are the values it can hold, in the order they are listed, with what each says
+	// and the tone it is drawn in. They are required with a Store, since they are what the
+	// visitor chooses from, and a value that is not among them is refused on the server.
+	// See Select for what they mean to a table's filter.
+	Options []Option
 
-	// Kinds gives the [Tone] each known value is drawn in. See Badge for what it
-	// means to a table's filter.
-	Kinds map[string]Tone
+	// Load reads the values from the model. Without Multi it returns at most one; a select
+	// that was handed several shows them all when it is read, and the first when it is edited.
+	Load func(M) []string
+
+	// Store writes the chosen values to the model, for a field that is edited: none, one, or
+	// with Multi any number, each one of the Options, and without repeats. Without it the
+	// field is read-only.
+	Store func(*M, []string)
+
+	// Multi lets the visitor choose any number of the options, as a list to tick, and not
+	// one, as a drop-down list. The zero value is one.
+	Multi bool
+
+	// Required refuses a submission with nothing chosen. It is for a field that is edited.
+	Required bool
 }
 
-func (Badge[M]) isAccessor() {}
+func (Select[M]) isAccessor() {}
+
+// Option is one value a [Select] can hold.
+type Option struct {
+	// Value is what is stored: what Load returns and what Store is handed. It is not empty.
+	Value string
+
+	// Label is what the visitor reads, such as "Healthy" for the value "ok". The value
+	// is shown when it is empty.
+	Label string
+
+	// Tone is how the value is drawn: neutral, in grey, by default.
+	Tone Tone
+}
 
 // URL projects a string field of M as a link, which the page declares by using it:
 // no other accessor ever makes a link of its value. It is read-only, in a table and
@@ -290,7 +323,7 @@ var (
 	_ Accessor[struct{}] = Int[struct{}]{}
 	_ Accessor[struct{}] = Float[struct{}]{}
 	_ Accessor[struct{}] = Group[struct{}](nil)
-	_ Accessor[struct{}] = Badge[struct{}]{}
+	_ Accessor[struct{}] = Select[struct{}]{}
 	_ Accessor[struct{}] = URL[struct{}]{}
 	_ Accessor[struct{}] = Datetime[struct{}]{}
 	_ Accessor[struct{}] = Timestamp[struct{}]{}
@@ -369,11 +402,12 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			}
 			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen)
 		}
-	case Badge[M]:
+	case Select[M]:
 		label(a.Label)
 		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) string.")
+			v.add(at+" has no Load", "Set Load to func(M) []string.")
 		}
+		validateSelect(v, at, a)
 	case URL[M]:
 		label(a.Label)
 		if a.Load == nil {
@@ -402,7 +436,30 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Badge, URL, Datetime, Timestamp, Slider or Group.")
+			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider or Group.")
+	}
+}
+
+// validateSelect checks a select's options: each has a value, none twice, and one that could not be told
+// from a list of several; and that one that is edited has some to choose from.
+func validateSelect[M any](v *bodyValidator, at string, a Select[M]) {
+	seen := map[string]bool{}
+	for i, o := range a.Options {
+		switch {
+		case o.Value == "":
+			v.add(fmt.Sprintf("%s.Options[%d] has no Value", at, i), "Set Value to what is stored for this option.")
+		case strings.Contains(o.Value, ir.ListSep):
+			v.add(fmt.Sprintf("%s.Options[%d] has a control character in its Value", at, i), "A value is a word: remove the character.")
+		case seen[o.Value]:
+			v.add(fmt.Sprintf("%s.Options[%d], %q, is listed twice", at, i, o.Value), "Remove one: a value is one option.")
+		}
+		seen[o.Value] = true
+	}
+	if a.Store != nil && len(a.Options) == 0 {
+		v.add(at+" has a Store but no Options", "A select that is edited chooses from Options: list them, or remove Store to make it read-only.")
+	}
+	if a.Required && a.Store == nil {
+		v.add(at+" is Required but has no Store", "Required is about a submission, and a read-only select has none: remove it, or add a Store.")
 	}
 }
 
@@ -475,18 +532,22 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
-	case Badge[M]:
-		kinds := make(map[string]ir.Tone, len(a.Kinds))
+	case Select[M]:
+		choices := make([]ir.Choice, len(a.Options))
 		var options []string
-		for k, t := range a.Kinds {
-			kinds[k] = ir.Tone(t)
-			options = append(options, k)
+		for i, o := range a.Options {
+			choices[i] = ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)}
+			options = append(options, o.Value)
 		}
-		slices.Sort(options) // the filter lists them in a fixed order
-		return ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayBadge, Kinds: kinds, Options: options,
-			Get: func(m any) string { return a.Load(m.(M)) },
+		f := ir.Field{
+			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplaySelect,
+			Choices: choices, Multi: a.Multi, Options: options, Rules: ir.Rules{Required: a.Required},
+			Get: func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) },
 		}
+		if a.Store != nil {
+			f.Set = func(m any, raw string) error { a.Store(m.(*M), ir.SplitValues(raw)); return nil }
+		}
+		return f
 	case URL[M]:
 		return ir.Field{
 			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayLink,
@@ -605,7 +666,7 @@ func accessorLabel[M any](acc Accessor[M]) string {
 		return a.Label
 	case Float[M]:
 		return a.Label
-	case Badge[M]:
+	case Select[M]:
 		return a.Label
 	case URL[M]:
 		return a.Label

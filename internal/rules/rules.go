@@ -63,6 +63,29 @@ func Check(r ir.Rules, kind ir.ValueKind, raw string) *Violation {
 	return nil
 }
 
+// CheckSelect checks what was submitted for a select, the values joined by ListSep: at most
+// one unless the field takes several, each once, and each one that the field offers. A browser
+// only sends what it offered, so anything else is a request made by hand, and is refused.
+func CheckSelect(f ir.Field, raw string) *Violation {
+	values := ir.SplitValues(raw)
+	if !f.Multi && len(values) > 1 {
+		return &Violation{Message: "Choose only one."}
+	}
+	seen := map[string]bool{}
+	for _, v := range values {
+		if seen[v] {
+			return &Violation{Message: "Choose each option once."}
+		}
+		seen[v] = true
+		if len(f.Choices) > 0 {
+			if _, ok := f.Choice(v); !ok {
+				return &Violation{Message: "Choose from the options offered."}
+			}
+		}
+	}
+	return nil
+}
+
 func checkString(r ir.Rules, s string) *Violation {
 	n := utf8.RuneCountInString(s)
 	if r.MinLen > 0 && n < r.MinLen {

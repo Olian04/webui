@@ -228,8 +228,9 @@ func gauge(f ir.Field, text string) c.GaugeProps {
 	return c.GaugeProps{Value: x - f.Min, Max: f.Max - f.Min, Text: text}
 }
 
-func badgeTone(f ir.Field, value string) c.Tone {
-	switch f.Kinds[value] {
+// toneOf is the tone a select's value is drawn in, neutral for one it does not declare.
+func toneOf(f ir.Field, value string) c.Tone {
+	switch f.ToneOf(value) {
 	case ir.ToneOK:
 		return c.ToneOK
 	case ir.ToneWarning:
@@ -375,6 +376,7 @@ type filterView struct {
 	Key     string // the address parameter of a text or multi-select filter
 	Chosen  []string
 	Options []string
+	Field   ir.Field // for what an option says, when it says more than its value
 
 	Numeric bool
 	Moment  bool // the bounds are moments in UTC: date and time inputs
@@ -389,9 +391,12 @@ type filterView struct {
 	On     bool
 }
 
+// name is what an option of the filter says: for a select, its label, and otherwise the value.
+func (f filterView) name(option string) string { return f.Field.LabelOf(option) }
+
 func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	id := v.Node.ID
-	fv := filterView{Label: f.Label, Action: r.PageHref(v.Page, v.Path, nil)}
+	fv := filterView{Label: f.Label, Field: f, Action: r.PageHref(v.Page, v.Path, nil)}
 	gone := []string{} // the address parameters this filter owns
 	if f.Ranged() {
 		fv.Numeric = true

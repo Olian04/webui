@@ -71,14 +71,19 @@ func TestMustCompileAcceptsTheApp(t *testing.T) {
 	assert.NotNil(t, app.MustCompile("/admin"))
 }
 
-func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
+func TestNavigationHasSectionsAndTheSitePageLightsItsOwnEntry(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm").Body.String()
-	for _, caption := range []string{"Platform", "Configuration", "Operations"} {
+	for _, caption := range []string{"Platform", "Sites", "Configuration", "Operations"} {
 		assert.Contains(t, body, `<div class="nav-section">`+caption+`</div>`)
 	}
-	// SiteDetail has no entry of its own; it lights Sites, its ancestor.
-	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site"`)
+	// SiteDetail lists an entry for each site, loaded when the page is drawn, and lights the one
+	// that is on screen; the list of sites, which is another page, is not lit.
+	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site/Stockholm"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/Malm%C3%B6"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/G%C3%B6teborg"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site"`)
+	assert.False(t, strings.Contains(body, `<a class="nav-item active" href="/admin/site"`))
 	// The breadcrumb's parent is the page mounted at /site.
 	assert.Contains(t, body, `<a href="/admin/site">Sites</a>`)
 	assert.Contains(t, body, `<span class="cur" aria-current="page">Stockholm</span>`)
@@ -203,12 +208,12 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	h := handler(t)
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {taken.IP}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "already in use by another device")
 	assert.Contains(t, rec.Body.String(), `value="`+taken.IP+`"`) // what was typed is kept
 
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.9.9.9"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // opened directly: nowhere to return to
 	device, _ := service.Device("dev_27c38b")
@@ -379,7 +384,7 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
 	from := "/admin/site/Malm\u00f6?open-alerts.sort=severity"
-	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {"10.8.8.8"}})
+	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
@@ -388,7 +393,7 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
-	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f0_1": {taken.IP}})
+	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
 }
@@ -562,6 +567,20 @@ func TestTablesExportTheirRowsWhateverTheSource(t *testing.T) {
 
 	// The viewer who may not see the audit log may not download it.
 	assert.Equal(t, get(handlerAs(t, Viewer), "/admin/audit?audit-log.export=csv").Code, http.StatusForbidden)
+}
+
+func TestAHandbookPageDrawsPicturesFromItsTrustedOriginsAndNoOtherPage(t *testing.T) {
+	h := handler(t)
+	rec := get(h, "/admin/handbook/glossary")
+	body := rec.Body.String()
+	assert.Contains(t, body, `<img src="https://raw.githubusercontent.com/Olian04/webui/main/docs/images/first-page-light.png"`)
+	assert.Contains(t, body, `<img src="https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg"`)
+	assert.False(t, strings.Contains(body, `src="https://tracker.example`)) // not trusted: a link
+	assert.Contains(t, body, `<a href="https://tracker.example/pixel.gif"`)
+	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "img-src 'self' data: https://raw.githubusercontent.com https://pkg.go.dev;")
+
+	// Every other page of the demo has the library's policy, with no origin added.
+	assert.Contains(t, get(h, "/admin/device").Header().Get("Content-Security-Policy"), "img-src 'self' data:;")
 }
 
 func TestAPathThatTakesTheRestOfTheAddressIsAListOfSegmentsWithACrumbForEach(t *testing.T) {

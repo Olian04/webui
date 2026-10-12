@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/a-h/templ"
 
@@ -20,6 +21,21 @@ func (p *Program) pagePattern(template string) string {
 	return p.Prefix + template
 }
 
+// pictureOrigins are the origins the page's Markdown leaves trust to serve pictures, once
+// each, in the order they are first named. They come from the declaration, so they are the
+// same for every request and every tab, selected or not.
+func pictureOrigins(body ir.Node) []string {
+	var out []string
+	for _, m := range ir.Markdowns(body) {
+		for _, o := range m.TrustedOrigins {
+			if !slices.Contains(out, o) {
+				out = append(out, o)
+			}
+		}
+	}
+	return out
+}
+
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
 	leaves := leavesOf(page.Body)
@@ -29,13 +45,14 @@ func (p *Program) addPage(page *ir.Page) {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
 	}
 	posts := actionable(leaves)
+	policy := policy(pictureOrigins(page.Body))
 	for _, pattern := range patterns {
-		p.add(http.MethodGet, pattern, h)
+		p.addWith(http.MethodGet, pattern, h, policy)
 		p.probe.Handle(pattern, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.add(http.MethodPost, pattern, p.postHandler(page, leaves))
+			p.addWith(http.MethodPost, pattern, p.postHandler(page, leaves), policy)
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}
@@ -273,15 +290,16 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 
 // pageDoc is the shell fields every response for a page shares.
 func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
-	pathVals := map[string]string{}
+	pathVals, query := map[string]string{}, map[string]string{}
 	if req != nil {
-		pathVals, _ = req.encode(page)
+		pathVals, query = req.encode(page)
 	}
 	crumbs := p.render.Crumbs(page, pathVals)
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
 		Active:  p.render.Active(page),
+		Here:    render.Here{Page: page.PathTemplate, Path: pathVals, Query: query},
 		Content: content,
 	}
 	if req != nil {

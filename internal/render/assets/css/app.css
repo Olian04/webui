@@ -1283,6 +1283,29 @@ select.input option {
   background: var(--panel);
   color: var(--text);
 }
+/* A list to choose several from has no drop-down arrow and as many rows as options, up to six. */
+select.input[multiple] {
+  height: auto;
+  padding: 4px;
+  background-image: none;
+}
+select.input[multiple] option {
+  padding: 3px 6px;
+  border-radius: 2px;
+}/* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
+   they are marked here, with the tint a selected row of a table has. */
+select.input[multiple] option:checked {
+  background: color-mix(in srgb, var(--blue) 22%, var(--panel));
+  color: var(--text);
+  font-weight: 500;
+}
+/* A select that is read is its values, each a badge, side by side and wrapping. */
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  vertical-align: middle;
+}
 .input.invalid {
   border-color: var(--red);
 }
@@ -1578,6 +1601,13 @@ select.input option {
 }
 .md del {
   color: var(--text-2);
+}
+/* A picture from an origin the author trusts: no wider than the text, and in line with it. */
+.md img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: 2px;
 }
 .md a {
   color: var(--blue-text);

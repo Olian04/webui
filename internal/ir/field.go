@@ -2,6 +2,7 @@ package ir
 
 import (
 	"regexp"
+	"strings"
 )
 
 // Field is one accessor, lowered. The same Field can render as a table cell
@@ -31,7 +32,8 @@ type Field struct {
 
 	// Options is the fixed set of values a column can hold, when it has one: a
 	// table's filter offers exactly these, as a multi-select. Nil means free
-	// text, which a table's filter takes as typed.
+	// text, which a table's filter takes as typed. For a DisplaySelect it is the
+	// values of Choices, in their order.
 	Options []string
 
 	// Link is the address of a DisplayLink field, "" when the value is not one that
@@ -46,9 +48,64 @@ type Field struct {
 
 	// Display is how the value is shown. Text is the default.
 	Display Display
-	Kinds   map[string]Tone // DisplayBadge: the values it can hold, each with its tone
-	Min     float64         // DisplaySlider: the range, also in Rules for a writable one
-	Max     float64
+
+	// Choices is, for a DisplaySelect, the values it can hold in the order the author gave
+	// them, each with what it says and its tone. It may be empty for a read-only select whose
+	// values are whatever its rows hold. Multi says it holds any number of them: Get then
+	// returns the values joined by ListSep, and Set is handed them joined the same way.
+	Choices []Choice
+	Multi   bool
+
+	Min float64 // DisplaySlider: the range, also in Rules for a writable one
+	Max float64
+}
+
+// ListSep joins the values of a field that holds several, and of a parameter that may repeat,
+// into one string. It is a control character, so it cannot be typed into a field and no value
+// contains it.
+const ListSep = "\x1f"
+
+// Choice is one value a select can hold: what is stored, what it says, and how it is drawn.
+type Choice struct {
+	Value string
+	Label string // what it says; the value when it is empty
+	Tone  Tone
+}
+
+// Values are the values a DisplaySelect field holds in a row: what Get returns, split.
+func (f Field) Values(row any) []string { return SplitValues(f.Get(row)) }
+
+// SplitValues is a select's values, as Get holds them joined by ListSep. An empty one is none.
+func SplitValues(joined string) []string {
+	if joined == "" {
+		return nil
+	}
+	return strings.Split(joined, ListSep)
+}
+
+// Choice is the choice a value is, if the field declares one.
+func (f Field) Choice(value string) (Choice, bool) {
+	for _, c := range f.Choices {
+		if c.Value == value {
+			return c, true
+		}
+	}
+	return Choice{}, false
+}
+
+// ToneOf is the tone a value is drawn in: the one its choice has, or neutral for a value the field does
+// not declare.
+func (f Field) ToneOf(value string) Tone {
+	c, _ := f.Choice(value)
+	return c.Tone
+}
+
+// LabelOf is what a value says: its choice's label, or the value itself.
+func (f Field) LabelOf(value string) string {
+	if c, ok := f.Choice(value); ok && c.Label != "" {
+		return c.Label
+	}
+	return value
 }
 
 // Display is how a field shows its value, in a table cell and in a form.
@@ -56,11 +113,11 @@ type Display uint8
 
 // The displays.
 const (
-	DisplayText Display = iota
-	DisplayBadge
-	DisplaySlider // a bar when read-only, a range input when writable
-	DisplayLink   // a link: Get is the text it shows, and Link its address
-	DisplayTime   // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
+	DisplayText   Display = iota
+	DisplaySelect         // badges when read, a choice from a list when writable
+	DisplaySlider         // a bar when read-only, a range input when writable
+	DisplayLink           // a link: Get is the text it shows, and Link its address
+	DisplayTime           // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
 )
 
 // Ranged is whether a table filters the column by a minimum and a maximum, as it

@@ -126,8 +126,13 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 	values := map[string]string{}
+	selects := selectNames(n.Fields)
 	for k, v := range r.PostForm {
-		if !strings.HasPrefix(k, "_") && len(v) > 0 {
+		switch {
+		case strings.HasPrefix(k, "_") || len(v) == 0:
+		case selects[k]:
+			values[k] = strings.Join(v, ir.ListSep) // a select sends one value for each chosen option
+		default:
 			values[k] = v[0]
 		}
 	}
@@ -178,6 +183,25 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		}
 		p.finish(w, r, outcome, from)
 	}
+}
+
+// selectNames are the names of the form's controls that are selects, which are the ones that may be
+// sent more than once.
+func selectNames(fields []ir.Field) map[string]bool {
+	out := map[string]bool{}
+	var walk func([]ir.Field)
+	walk = func(fs []ir.Field) {
+		for _, f := range fs {
+			switch {
+			case len(f.Group) > 0:
+				walk(f.Group)
+			case f.Display == ir.DisplaySelect:
+				out[f.Name] = true
+			}
+		}
+	}
+	walk(fields)
+	return out
 }
 
 // returnTarget is where an outcome that says Back leaves for: where the form was opened

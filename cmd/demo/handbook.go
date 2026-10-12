@@ -24,6 +24,12 @@ var handbookFiles embed.FS
 //
 // The texts are files that are embedded, one per page, and link to each other and to the
 // pages of the demo.
+//
+// A picture is a link to it unless its origin is one the author trusts. These pages trust two,
+// which is why the glossary's screenshot and badge are drawn and why the browser is allowed
+// to fetch them: the content security policy of these pages, and of no other, has them in
+// its img-src. A picture from anywhere else, such as the tracking pixel in the glossary, is
+// only a link.
 var (
 	HandbookText = webui.String[Handbook]{
 		Label: "Handbook",
@@ -56,6 +62,8 @@ func handbookPage(path webui.PageID[webui.NoArgs], label, icon, file, desc strin
 				return Handbook{Text: string(text)}, nil
 			},
 			Content: HandbookText,
+
+			TrustedOrigins: []string{"https://raw.githubusercontent.com", "https://pkg.go.dev"},
 		},
 	}
 }

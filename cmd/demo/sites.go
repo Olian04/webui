@@ -27,10 +27,10 @@ var (
 		Label: "Degraded",
 		Load:  func(s SiteSummary) int { return s.Degraded },
 	}
-	SiteHealth = webui.Badge[SiteSummary]{
-		Label: "Health",
-		Load:  func(s SiteSummary) string { return s.Health() },
-		Kinds: map[string]webui.Tone{"ok": webui.ToneOK, "degraded": webui.ToneWarning},
+	SiteHealth = webui.Select[SiteSummary]{
+		Label:   "Health",
+		Load:    func(s SiteSummary) []string { return []string{s.Health()} },
+		Options: []webui.Option{{Value: "ok", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 	}
 	SiteRate = webui.Slider[SiteSummary]{
 		Label: "Mean rate / s", Max: 15, Precision: 2,
@@ -59,6 +59,19 @@ var SitesTable = webui.Table[SiteSummary]{
 
 var SiteDetail = webui.Page[SiteArgs]{
 	Path: "/site/{name}",
+	// A page with path arguments has no entry of its own, since an entry is a link with one address
+	// and this has one for each site. NavEntries gives it one for each, which it loads when a page is
+	// drawn: the icon and the section are the group's, and each entry says its own words. The page of a
+	// site lights its entry, and so does any page below it that borrows its place.
+	Nav: webui.Nav{Icon: "location-dot", Section: "Sites"},
+	NavEntries: func(context.Context) ([]webui.NavEntry[SiteArgs], error) {
+		var entries []webui.NavEntry[SiteArgs]
+		for _, s := range service.Sites() {
+			entries = append(entries, webui.NavEntry[SiteArgs]{Args: SiteArgs{Name: s.Name}, Label: s.Name})
+		}
+		return entries, nil
+	},
+
 	// Search makes the sites findable from the search box: typing "stock" finds the site beside
 	// the devices that match. The page says what a site is as a result, and SearchRows, for
 	// rows that are held in memory, does the matching over the fields it is given.
@@ -69,7 +82,6 @@ var SiteDetail = webui.Page[SiteArgs]{
 		},
 		SiteName, SiteHealth,
 	),
-	// No Nav: it lights Sites, the page at "/site".
 	Guard: func(_ context.Context, a SiteArgs) error {
 		if _, ok := service.Site(a.Name); !ok {
 			return fmt.Errorf("there is no site %q", a.Name)

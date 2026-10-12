@@ -57,6 +57,31 @@
 // on every request, and a page it refuses is answered with 403. Inside any closure
 // that serves the page, [ArgsOf] returns the arguments.
 //
+// A page with arguments in its path has no entry in the sidebar by itself, since an entry
+// is a link with one address and "/site/{name}" has none until a name is filled in. Its
+// NavEntries lists them: one for each address, loaded whenever a page is drawn, each with the
+// words it says and the arguments it opens.
+//
+//	var SitePage = webui.Page[SiteArgs]{
+//		Path: "/site/{name}",
+//		Nav:  webui.Nav{Icon: "location-dot", Section: "Sites"},
+//		NavEntries: func(ctx context.Context) ([]webui.NavEntry[SiteArgs], error) {
+//			...
+//		},
+//	}
+//
+// Nav gives the entries their icon and section, and no label. The entry of the site on screen
+// is lit, and so is it for a page that borrows the place, such as "/site/{name}/log". An
+// entry is left out for a visitor whom the page's Guard refuses, checked with the entry's own
+// arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
+// a failure leaves the page drawn without them.
+//
+// A page whose path is "/" is the landing page: the brand in the sidebar and the
+// first breadcrumb link to it. Without one, the root goes to the first entry in the
+// navigation the visitor may open, or failing that the first page whose path has no
+// arguments, and shows a warning that the app has no page at "/". Declare one to
+// choose where the app starts.
+//
 // # The rest of a path
 //
 // The last segment of a path may be written {name...}, which takes every segment from
@@ -79,12 +104,6 @@
 // Only the last segment may be a rest, because [net/http.ServeMux], which routes the
 // pages, only allows it there, and no other argument may be a []string.
 //
-// A page whose path is "/" is the landing page: the brand in the sidebar and the
-// first breadcrumb link to it. Without one, the root goes to the first entry in the
-// navigation the visitor may open, or failing that the first page whose path has no
-// arguments, and shows a warning that the app has no page at "/". Declare one to
-// choose where the app starts.
-//
 // # Layouts
 //
 // A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
@@ -103,8 +122,11 @@
 //
 // A [Table] is a list of rows of a model M, with columns that are [Accessor] values.
 // The same accessor is a column in a table and an input in a form, so it is written
-// once. [String], [Int], [Float], [Badge], [URL], [Datetime], [Timestamp] and [Slider]
-// are the accessors; without a Store an accessor is read-only, and a Badge never has one.
+// once. [String], [Int], [Float], [Select], [URL], [Datetime], [Timestamp] and [Slider]
+// are the accessors; without a Store an accessor is read-only, and a [URL] never has one.
+// A [Select] is a choice from a list of options. Read, it is a badge for each value it holds,
+// coloured by its option's [Tone]; edited, it is a drop-down list, or with Multi a list to
+// choose several from.
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
 // A table says where its rows come from with exactly one of three fields:
@@ -126,7 +148,7 @@
 //     page, Previous and Next, and says which rows it shows.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
-// and maximum for a number, or a choice among the values of a [Badge]. A table keeps
+// and maximum for a number, or a choice among the values of a [Select]. A table keeps
 // its sort, filters and page in the address, named by its title, so a copied address
 // reproduces the view. A table pages, 25 rows at a time unless it says otherwise. A
 // column is named by its Label.
@@ -203,6 +225,13 @@
 // never rendered, a link goes only to an http or https address (which opens in a tab of
 // its own), a mailto, or a path in the application, and an image is not drawn but is a
 // link to the picture, since the page would refuse a picture from elsewhere.
+//
+// An image is drawn when its origin is one the author trusts. TrustedOrigins lists them, each
+// as https://host or https://host:port, and a picture from one of them appears where it is
+// written, even inside a link. The page that has the Markdown, and no other, tells the
+// browser it may fetch pictures from them, in the img-src of its content security policy.
+//
+//	webui.Markdown[Notes]{..., TrustedOrigins: []string{"https://cdn.example.com"}}
 //
 // A link that is a path, such as [Config](/config) or [a device](/device/dev_1?minutes=15),
 // is an address in the application whatever it is mounted at: Compile's prefix is put in

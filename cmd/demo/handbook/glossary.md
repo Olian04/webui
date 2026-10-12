@@ -20,3 +20,13 @@ The words this handbook uses, and where they are in the application.
 
 An address to another site, such as [the project](https://github.com/Olian04/webui), opens
 in a tab of its own, and one that starts with `javascript:` is [not a link](javascript:alert(1)).
+
+## Pictures
+
+A picture from an origin the page trusts is drawn where it is written, such as this badge,
+which is also a link: [![Go Reference](https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg)](https://pkg.go.dev/github.com/Olian04/webui/pkg/webui)
+
+![The devices page of the library's own first example, in the light theme](https://raw.githubusercontent.com/Olian04/webui/main/docs/images/first-page-light.png)
+
+Any other is a link to it, named by what it says it shows, so the text cannot make your browser
+fetch from a server it chose: ![a tracking pixel](https://tracker.example/pixel.gif).

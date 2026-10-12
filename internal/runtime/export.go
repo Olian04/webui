@@ -232,6 +232,15 @@ func csvCell(f ir.Field, row any) string {
 			return csvText(href)
 		}
 	}
+	if f.Display == ir.DisplaySelect {
+		// What the cell says: the labels of its values, one after another. A comma would be read as
+		// one more value of a list in a cell that is already quoted for it, so it is a semicolon.
+		var labels []string
+		for _, v := range f.Values(row) {
+			labels = append(labels, f.LabelOf(v))
+		}
+		return csvText(strings.Join(labels, "; "))
+	}
 	text := f.Get(row)
 	if isNumber(f) {
 		return text
@@ -288,9 +297,22 @@ func exportJSON(columns []ir.Field, rows []any) ([]byte, error) {
 }
 
 // jsonCell is one value as JSON: a moment as an RFC 3339 time in UTC, or null when there is none; a
-// number as a number; and anything else, an address included, as a string.
+// number as a number; a select as the list of its values; and anything else, an address included, as a
+// string.
 func jsonCell(f ir.Field, row any) ([]byte, error) {
 	switch {
+	case f.Display == ir.DisplaySelect:
+		// A list of the values it holds, which is what it is, and not their labels: a value is what
+		// the model stores and what a program reads. A select that holds none is an empty list.
+		values := f.Values(row)
+		if values == nil {
+			values = []string{}
+		}
+		b, err := json.Marshal(values)
+		if err != nil {
+			return nil, fmt.Errorf("json: %w", err)
+		}
+		return b, nil
 	case f.Display == ir.DisplayTime && f.Num != nil:
 		seconds := f.Num(row)
 		if math.IsInf(seconds, 0) || math.IsNaN(seconds) {

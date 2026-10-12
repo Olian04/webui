@@ -8,12 +8,17 @@
 // at, so it is given the mount's prefix and opens in the same tab. An image is not drawn,
 // since the page's policy would refuse one from elsewhere and a picture is a way for
 // a text to make the visitor's browser fetch from it: it is a link to the picture,
-// named by its alt text.
+// named by its alt text. The exception is a picture from an origin the author trusts,
+// which is drawn, and which the page's policy is told to allow.
 package markdown
 
 import (
 	"bytes"
+	"errors"
 	"net/url"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -38,7 +43,19 @@ type Result struct {
 var (
 	highlightKey = parser.NewContextKey()
 	prefixKey    = parser.NewContextKey()
+	originsKey   = parser.NewContextKey()
 )
+
+// Options is what a text is rendered against.
+type Options struct {
+	// Prefix is the address the application is mounted at, which a link to a path in the
+	// application is given. It is empty, or "/admin" and the like.
+	Prefix string
+
+	// TrustedOrigins are the origins a picture may be drawn from, each as Origin made it.
+	// A picture from anywhere else is a link.
+	TrustedOrigins []string
+}
 
 var converter = sync.OnceValue(func() goldmark.Markdown {
 	return goldmark.New(
@@ -47,13 +64,13 @@ var converter = sync.OnceValue(func() goldmark.Markdown {
 	)
 })
 
-// Render renders markdown. A link to a path in the application is given prefix, the
-// address the application is mounted at, which is empty or "/admin" and the like. A text
-// that cannot be rendered is shown as it is, so the reader still has it.
-func Render(source, prefix string) Result {
+// Render renders markdown. A link to a path in the application is given the mount's
+// prefix. A text that cannot be rendered is shown as it is, so the reader still has it.
+func Render(source string, opts Options) Result {
 	var buf bytes.Buffer
 	pc := parser.NewContext()
-	pc.Set(prefixKey, prefix)
+	pc.Set(prefixKey, opts.Prefix)
+	pc.Set(originsKey, opts.TrustedOrigins)
 	if err := converter().Convert([]byte(source), &buf, parser.WithContext(pc)); err != nil {
 		return Result{HTML: "<pre>" + string(util.EscapeHTML([]byte(source))) + "</pre>"}
 	}
@@ -70,6 +87,7 @@ type transformer struct{}
 func (transformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
 	prefix, _ := pc.Get(prefixKey).(string)
+	origins, _ := pc.Get(originsKey).([]string)
 	var images, links, autos []ast.Node
 	_ = ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
@@ -91,6 +109,9 @@ func (transformer) Transform(doc *ast.Document, reader text.Reader, pc parser.Co
 	})
 
 	for _, n := range images {
+		if img := n.(*ast.Image); drawn(img, origins) {
+			continue // from an origin the author trusts: it stays a picture, even inside a link
+		}
 		if inLink(n) {
 			unwrap(n) // a link inside a link is not markup, so the picture is only its alt text
 			continue
@@ -166,6 +187,98 @@ func external(n ast.Node, dest string) {
 	}
 	n.SetAttributeString("rel", []byte("noopener noreferrer"))
 }
+
+// drawn reports whether a picture is from a trusted origin, and if so makes it ready to be
+// drawn: its address is the one that was checked, written out again, and the browser is asked
+// to fetch it late, without a referrer. The picture is not drawn unless every one of these holds:
+// an https address with a host and no user, nothing a browser would read differently from
+// the way it was parsed, and an origin that is in the list.
+func drawn(img *ast.Image, origins []string) bool {
+	clean, ok := trusted(string(img.Destination), origins)
+	if !ok {
+		return false
+	}
+	img.Destination = []byte(clean)
+	img.SetAttributeString("class", []byte("md-img"))
+	img.SetAttributeString("loading", []byte("lazy"))
+	img.SetAttributeString("decoding", []byte("async"))
+	img.SetAttributeString("referrerpolicy", []byte("no-referrer"))
+	return true
+}
+
+// trusted is the address a picture may be drawn from, written out again, if it is from
+// one of the origins.
+func trusted(dest string, origins []string) (string, bool) {
+	if len(origins) == 0 || hasUnsafe(dest) {
+		return "", false
+	}
+	u, err := url.Parse(strings.TrimSpace(dest))
+	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Opaque != "" || u.Hostname() == "" {
+		return "", false
+	}
+	origin, err := Origin("https://" + u.Host)
+	if err != nil || !slices.Contains(origins, origin) {
+		return "", false
+	}
+	host := strings.TrimPrefix(origin, "https://")
+	clean := url.URL{Scheme: "https", Host: host, Path: u.Path, RawPath: u.RawPath, RawQuery: u.RawQuery}
+	return clean.String(), true
+}
+
+// hasUnsafe is whether an address holds what a browser reads differently from a parser: a
+// backslash, which it takes for a slash, whitespace and control characters, which it
+// strips or splits on.
+func hasUnsafe(s string) bool {
+	for _, r := range s {
+		if r == '\\' || r <= ' ' || r == 0x7f {
+			return true
+		}
+	}
+	return false
+}
+
+// Origin is an origin as a policy and a comparison both want it: "https://host", with the
+// port after it unless it is the default, and the host in lower case, without a trailing
+// dot. It is written as https://example.com or https://cdn.example.com:8443 and nothing
+// more: no path, query or user, no wildcard, and an ASCII host, so a name that is not
+// ASCII is written as the punycode the browser would use. An error says what is wrong.
+func Origin(s string) (string, error) {
+	if hasUnsafe(s) || strings.ContainsAny(s, ";,\"'%*") {
+		return "", errors.New("it contains a space, a quote, a backslash, a percent sign, a wildcard or another character that does not belong in an origin")
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", errors.New("it is not an address")
+	}
+	switch {
+	case u.Scheme != "https":
+		return "", errors.New("it must start with https://")
+	case u.User != nil:
+		return "", errors.New("it must not have a user")
+	case u.Path != "" || u.RawQuery != "" || u.Fragment != "" || u.Opaque != "" || u.ForceQuery:
+		return "", errors.New("it must be only a scheme, a host and perhaps a port, with no path, query or fragment")
+	case u.Hostname() == "":
+		return "", errors.New("it has no host")
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	if !validHost.MatchString(host) {
+		return "", errors.New("its host must be a name of letters, digits and hyphens in ASCII; write a name that is not as its punycode")
+	}
+	port := u.Port()
+	if port == "443" {
+		port = ""
+	}
+	if port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 {
+			return "", errors.New("its port is not a number from 1 to 65535")
+		}
+		host += ":" + strconv.Itoa(n)
+	}
+	return "https://" + host, nil
+}
+
+var validHost = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)
 
 // inLink reports whether n is inside a link.
 func inLink(n ast.Node) bool {

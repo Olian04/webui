@@ -166,8 +166,8 @@ design element.
   returns every table to its first page.
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
-  without script. A column with a fixed set of options — a `Badge`, whose options
-  are the keys of its `Kinds` — gets a multi-select of exactly those, a numeric
+  without script. A column with a fixed set of options — a `Select`, whose options
+  are the ones it lists, in that order — gets a multi-select of exactly those, a numeric
   column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
   column a text input. `Load` receives them in `Query.Filters` (the options
   chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,
@@ -262,8 +262,10 @@ design element.
   cell as a formula. A number is left alone, so that a negative one is not turned into
   text. The file starts with a byte order mark, which Excel needs to read it as UTF-8
   (a tool that does not want one has to strip it). JSON keeps the types: a number is a
-  number, a moment is an RFC 3339 time in UTC or `null` when there is none, and anything
-  else is a string. Its keys are the columns' labels, in the columns' order. Row actions,
+  number, a moment is an RFC 3339 time in UTC or `null` when there is none, a `Select` is
+  the list of its values (what the model stores, not what they say), and anything else is
+  a string. A `Select` in CSV is the labels of its values joined by `; `, since that is
+  what the cell shows and a comma in a quoted cell reads as a list of one. Its keys are the columns' labels, in the columns' order. Row actions,
   row links and the selection column are not columns and are not in the file.
 
 ## Navigation and links
@@ -271,6 +273,29 @@ design element.
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
   proper prefix that is a page with a `Label`, never the root). There is no field to
   declare, because the breadcrumb already derives its parents the same way.
+- A page with path arguments has entries through `Page.NavEntries`, a function of `ctx`
+  that returns the arguments each entry opens and what it says. It is on the page and
+  not on `Nav`, because the arguments are typed by the page and `Nav` is not generic.
+  `Nav` still gives the icon and the section of all of them, and must have no label,
+  since each entry has its own. It is loaded when a full page is drawn, for the visitor
+  it is drawn for, and not kept between pages: what a sidebar lists is as likely to
+  depend on who is looking as anything, and a cache the library cannot key would be
+  wrong for someone. The price is paid on the way of every page, so it is bounded: a
+  deadline of two seconds, the first fifty entries, and a panic or an error leaves the
+  page drawn without them and logs the cause. A fragment (a refreshed leaf), an asset
+  and the search do not load it, since none of them draws the sidebar.
+- An entry that lists several is left out when the page's `Guard` refuses the visitor
+  with that entry's own arguments. The `Guard` is not asked with no arguments to decide
+  for all of them, as it is for a page with one entry: a `Guard` that looks the thing up
+  would refuse an empty name and hide every one.
+- Which entry is lit is the one whose arguments fit the address best: its page is the one
+  lit (the page itself or the page that borrows its place), and its path and query
+  arguments are the ones in the address, with state that is not an argument (a table's
+  sort, where the visitor came from) ignored. An argument the address lacks does not
+  match, so a page that borrows the place lights the general entry, and an entry that
+  needs a query argument only when the page carries the same one. When
+  several fit, the one with the most arguments wins, so a general entry is not lit beside
+  a more particular one.
 - Entries and search results whose page `Guard` refuses the visitor are left out; the
   guards are asked with no arguments, as a visitor who opened the page bare would be.
   The page still answers 403 to anyone who types the address.
@@ -370,10 +395,27 @@ design element.
   checked against the pages, since the text is only known when it is loaded; one that
   is no page is the application's own not-found page. `//host` and `/\host` are
   other sites to a browser, and are refused.
-- An image is a link to the picture, named by its alt text. The content security
-  policy refuses a picture from another site, so drawing one would only show a broken
-  icon, and a picture is how a text makes the visitor's browser fetch from a server of
-  the text's choosing. The policy is not loosened for markdown.
+- An image is a link to the picture, named by its alt text, unless its origin is one
+  the author trusts. The content security policy refuses a picture from another site,
+  so drawing one would only show a broken icon, and a picture is how a text makes the
+  visitor's browser fetch from a server of the text's choosing. `TrustedOrigins` is
+  the author's way to say that a server is theirs, or one they answer for.
+- A trusted origin is exact: `https://host` with a port only when it is not 443, in
+  ASCII, and nothing else. No wildcard (a `*.example.com` trusts every site anyone can
+  create there), no path, no user, no `http`. The list goes into a header, so an entry
+  with a space, a `;`, a comma or a quote is a compile error, and the renderer writes
+  the checked address out again rather than the text it was given. A picture is
+  compared as a parsed origin, never as a string prefix: `cdn.example.com.evil.example`,
+  `cdn.example.com@evil.example`, a backslash, a protocol-relative address and a
+  subdomain are all other origins and stay links.
+- The policy is set per page, at compile time, from the origins of the Markdown leaves
+  the page declares, tabs that are not selected included. It is not computed while a
+  request is served: the header is written before the body is built, and a leaf
+  refresh is a fetch inside a document that already has its policy. A page whose
+  Markdown names no origin has the library's policy byte for byte, and so has every
+  other page. Links get no such treatment: they were never behind a warning page, so
+  a trusted origin changes nothing about them, and the library does not have an
+  interstitial for untrusted links.
 - Code blocks are plain text in a block. When one names a language, the page links the
   editor that is already embedded and the glue colours the block by its tokenizers; a
   page whose markdown has no such block never links the editor. Colouring is

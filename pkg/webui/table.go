@@ -27,8 +27,8 @@ type Query struct {
 	Desc bool
 
 	// Filters are the column filters in force, by the column's Label.
-	// A column with a fixed set of options — a Badge, whose options are the keys
-	// of its Kinds — holds the options chosen, always among that set. Any other
+	// A column with a fixed set of options, a Select, whose options are those it
+	// lists, holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
 	// (Int, Float and Slider) and moments (Datetime and Timestamp) are not here but
 	// in Ranges. Load does the filtering, as it does the sorting.
@@ -158,12 +158,13 @@ type Table[M any] struct {
 	// does when it has no Total. It runs the page's Guard, as any
 	// request for the page does.
 	//
-	// A CSV cell is the text the table shows, except that a number is written as a number
-	// and an address as the address, and a text that a spreadsheet would run as a formula,
+	// A CSV cell is the text the table shows, except that a number is written as a number,
+	// a [Select] as the labels of its values joined by "; ", and an address as the address, and a text that a spreadsheet would run as a formula,
 	// one that starts with =, +, -, @, a tab or a carriage return, is written with a quote
 	// before it. JSON is a list with an object for each row, keyed by the Labels in the
 	// columns' order, where a number is a number, a moment is an RFC 3339 time in UTC (or
-	// null when there is none), and anything else is a string.
+	// null when there is none), a [Select] is the list of its values, and anything else is a
+	// string.
 	Export bool
 
 	// Key identifies a row, such as by its ID. It is required when the table has
@@ -279,10 +280,10 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		labels[c.Key] = c.Label
 	}
 	if t.Rows != nil {
-		// The library holds every row, so a badge's choices are the values the rows
+		// The library holds every row, so a select's choices are the values the rows
 		// have, whether or not its Kinds name them.
 		for i := range columns {
-			columns[i].OpenSet = columns[i].Display == ir.DisplayBadge
+			columns[i].OpenSet = columns[i].Display == ir.DisplaySelect
 		}
 	}
 	out := &ir.Table{
