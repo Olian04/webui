@@ -27,8 +27,8 @@ type Query struct {
 	Desc bool
 
 	// Filters are the column filters in force, by the column's Label.
-	// A column with a fixed set of options — a Badge, whose options are the keys
-	// of its Kinds — holds the options chosen, always among that set. Any other
+	// A column with a fixed set of options, a Select, whose options are those it
+	// lists, holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
 	// (Int, Float and Slider) and moments (Datetime and Timestamp) are not here but
 	// in Ranges. Load does the filtering, as it does the sorting.
@@ -291,10 +291,10 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		labels[c.Key] = c.Label
 	}
 	if t.Rows != nil {
-		// The library holds every row, so a badge's choices are the values the rows
+		// The library holds every row, so a select's choices are the values the rows
 		// have, whether or not its Kinds name them.
 		for i := range columns {
-			columns[i].OpenSet = columns[i].Display == ir.DisplayBadge
+			columns[i].OpenSet = columns[i].Display == ir.DisplaySelect
 		}
 	}
 	out := &ir.Table{

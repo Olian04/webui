@@ -81,8 +81,11 @@
 //
 // A [Table] is a list of rows of a model M, with columns that are [Accessor] values.
 // The same accessor is a column in a table and an input in a form, so it is written
-// once. [String], [Int], [Float], [Badge], [URL], [Datetime], [Timestamp] and [Slider]
-// are the accessors; without a Store an accessor is read-only, and a Badge never has one.
+// once. [String], [Int], [Float], [Select], [URL], [Datetime], [Timestamp] and [Slider]
+// are the accessors; without a Store an accessor is read-only, and a [URL] never has one.
+// A [Select] is a choice from a list of options. Read, it is a badge for each value it holds,
+// coloured by its option's [Tone]; edited, it is a drop-down list, or with Multi a list to
+// choose several from.
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
 // A table says where its rows come from with exactly one of three fields:
@@ -104,7 +107,7 @@
 //     page, Previous and Next, and says which rows it shows.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
-// and maximum for a number, or a choice among the values of a [Badge]. A table keeps
+// and maximum for a number, or a choice among the values of a [Select]. A table keeps
 // its sort, filters and page in the address, named by its title, so a copied address
 // reproduces the view. A table pages, 25 rows at a time unless it says otherwise. A
 // column is named by its Label.

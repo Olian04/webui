@@ -27,10 +27,10 @@ var (
 		Label: "Degraded",
 		Load:  func(s SiteSummary) int { return s.Degraded },
 	}
-	SiteHealth = webui.Badge[SiteSummary]{
-		Label: "Health",
-		Load:  func(s SiteSummary) string { return s.Health() },
-		Kinds: map[string]webui.Tone{"ok": webui.ToneOK, "degraded": webui.ToneWarning},
+	SiteHealth = webui.Select[SiteSummary]{
+		Label:   "Health",
+		Load:    func(s SiteSummary) []string { return []string{s.Health()} },
+		Options: []webui.Option{{Value: "ok", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 	}
 	SiteRate = webui.Slider[SiteSummary]{
 		Label: "Mean rate / s", Max: 15, Precision: 2,

@@ -176,10 +176,12 @@ func TestFormLoadFailureFailsThePanel(t *testing.T) {
 }
 
 var (
-	formStatus = webui.Badge[Device]{
+	formStatus = webui.Select[Device]{
 		Label: "Status",
-		Load:  func(d Device) string { return map[bool]string{true: "healthy", false: "degraded"}[d.Count > 5] },
-		Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning},
+		Load: func(d Device) []string {
+			return []string{map[bool]string{true: "healthy", false: "degraded"}[d.Count > 5]}
+		},
+		Options: []webui.Option{{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 	}
 	formLoad = webui.Slider[Device]{
 		Label: "Load", Min: 0, Max: 100, Precision: 1,

@@ -12,10 +12,12 @@ var (
 		Label: "Version",
 		Load:  func(s SystemInfo) string { return s.Version },
 	}
-	Health = webui.Badge[SystemInfo]{
+	Health = webui.Select[SystemInfo]{
 		Label: "Health",
-		Load:  func(s SystemInfo) string { return s.Health },
-		Kinds: map[string]webui.Tone{"healthy": webui.ToneOK, "degraded": webui.ToneWarning, "down": webui.ToneCritical},
+		Load:  func(s SystemInfo) []string { return []string{s.Health} },
+		Options: []webui.Option{
+			{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}, {Value: "down", Tone: webui.ToneCritical},
+		},
 	}
 	Uptime = webui.String[SystemInfo]{
 		Label: "Uptime",

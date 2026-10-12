@@ -139,8 +139,8 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		{"slider range must be ascending", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Min: 5, Max: 5, Load: func(Device) float64 { return 0 }}},
 		}}, "has no range"},
-		{"badge needs a load", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{webui.Badge[Device]{Label: "Status"}},
+		{"select needs a load", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
+			Load: okRows, Columns: []webui.Accessor[Device]{webui.Select[Device]{Label: "Status"}},
 		}}, "has no Load"},
 		{"tabs need panels", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{}}, "Tabs has no Panels"},
 	}

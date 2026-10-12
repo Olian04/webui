@@ -17,6 +17,7 @@ type Device struct {
 	Count                int
 	Duration             float64
 	LastSeen             int // Unix seconds
+	Tags                 []string
 }
 
 // epoch is "now" for the seed data, fixed so the demo and its tests read the same
@@ -105,10 +106,11 @@ func newService() *Service {
 	}
 	sites := []string{"Stockholm", "Malmö", "Göteborg"}
 	statuses := []string{"healthy", "healthy", "degraded", "quiet"}
+	tags := [][]string{{"edge"}, {"edge", "gpu"}, nil, {"legacy"}, {"staging", "gpu"}}
 	for i := range 37 {
 		d := Device{
 			ID: fmt.Sprintf("dev_%06x", 0x27c38b+i*977), IP: fmt.Sprintf("10.0.%d.%d", i/8, 10+i),
-			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)],
+			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)], Tags: tags[i%len(tags)],
 			Count: 40 + (i*53)%900, Duration: 60 + float64(i%7)*30,
 			LastSeen: int(epoch.Add(-time.Duration(i*17) * time.Minute).Unix()),
 		}
@@ -173,6 +175,18 @@ func (s *Service) SetIP(id, ip string) {
 	s.record("changed IP", id)
 }
 
+// SaveDevice is what a device's form saves: its address, status and tags.
+func (s *Service) SaveDevice(d Device) {
+	s.mu.Lock()
+	for i := range s.devices {
+		if s.devices[i].ID == d.ID {
+			s.devices[i].IP, s.devices[i].Status, s.devices[i].Tags = d.IP, d.Status, slices.Clone(d.Tags)
+		}
+	}
+	s.mu.Unlock()
+	s.record("changed device", d.ID)
+}
+
 // Bounds limit a number, both ends inclusive; nil is unbounded.
 type Bounds struct{ Min, Max *float64 }
 
@@ -216,6 +230,7 @@ var deviceKeys = map[string]func(x, y Device) int{
 	"ID":          func(x, y Device) int { return cmp.Compare(x.ID, y.ID) },
 	"IP":          func(x, y Device) int { return cmp.Compare(x.IP, y.IP) },
 	"Status":      func(x, y Device) int { return cmp.Compare(x.Status, y.Status) },
+	"Tags":        func(x, y Device) int { return cmp.Compare(strings.Join(x.Tags, ","), strings.Join(y.Tags, ",")) },
 	"Site":        func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
 	"Occurrences": func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
 	"Rate / s":    func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
@@ -230,6 +245,10 @@ var deviceFilters = map[string]func(d Device, values []string) bool{
 	"IP":     containing(func(d Device) string { return d.IP }),
 	"Site":   containing(func(d Device) string { return d.Site }),
 	"Status": oneOf(func(d Device) string { return d.Status }),
+	// Tags holds several: the device passes if it has any of the tags chosen.
+	"Tags": func(d Device, values []string) bool {
+		return slices.ContainsFunc(d.Tags, func(t string) bool { return slices.Contains(values, t) })
+	},
 }
 
 // deviceNumbers are the numeric columns, which a table filters by range.

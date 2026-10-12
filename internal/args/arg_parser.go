@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/Olian04/webui/internal/ir"
 )
 
 // ListSep joins the values of a parameter that may repeat ("a=1&a=2") into one
@@ -13,7 +15,7 @@ import (
 // character: it cannot be typed into a field, so no value contains it. Href
 // splits on it again, so a list round-trips through an address as repeated
 // parameters, which is also what a plain HTML form of checkboxes submits.
-const ListSep = "\x1f"
+const ListSep = ir.ListSep
 
 type ArgParser struct {
 	PathKeys  []string

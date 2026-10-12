@@ -79,9 +79,11 @@ func Options(rows []any, cols []ir.Field) map[string][]string {
 		seen := map[string]bool{}
 		values := []string{}
 		for _, row := range rows {
-			if v := c.Get(row); v != "" && !seen[v] {
-				seen[v] = true
-				values = append(values, v)
+			for _, v := range held(c, row) {
+				if !seen[v] {
+					seen[v] = true
+					values = append(values, v)
+				}
 			}
 		}
 		slices.SortFunc(values, func(a, b string) int {
@@ -105,11 +107,36 @@ func matches(c ir.Field, row any, values []string) bool {
 	if len(values) == 0 {
 		return true
 	}
-	have := c.Get(row)
 	if c.Options != nil || c.OpenSet {
-		return slices.Contains(values, have)
+		// A select may hold several: the row passes if it holds any of the options chosen.
+		return slices.ContainsFunc(held(c, row), func(v string) bool { return slices.Contains(values, v) })
 	}
-	return strings.Contains(strings.ToLower(have), strings.ToLower(values[0]))
+	return strings.Contains(strings.ToLower(c.Get(row)), strings.ToLower(values[0]))
+}
+
+// held are the values a row has in a column with a fixed or open set: the one it shows, or for a select,
+// each of those it holds. A row with none holds none.
+func held(c ir.Field, row any) []string {
+	if c.Display == ir.DisplaySelect {
+		return c.Values(row)
+	}
+	if v := c.Get(row); v != "" {
+		return []string{v}
+	}
+	return nil
+}
+
+// shown is what a column shows in a row, for finding it by what was typed: for a select, each value and
+// what it says, since the values are not joined for reading.
+func shown(c ir.Field, row any) string {
+	if c.Display != ir.DisplaySelect {
+		return c.Get(row)
+	}
+	var parts []string
+	for _, v := range c.Values(row) {
+		parts = append(parts, v, c.LabelOf(v))
+	}
+	return strings.Join(parts, " ")
 }
 
 // found is whether any column of a row contains what was searched for, ignoring
@@ -117,7 +144,7 @@ func matches(c ir.Field, row any, values []string) bool {
 func found(cols []ir.Field, row any, text string) bool {
 	needle := strings.ToLower(text)
 	for _, c := range cols {
-		if c.Get != nil && strings.Contains(strings.ToLower(c.Get(row)), needle) {
+		if c.Get != nil && strings.Contains(strings.ToLower(shown(c, row)), needle) {
 			return true
 		}
 	}
