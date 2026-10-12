@@ -60,6 +60,11 @@ func (p *Program) notFound(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
+	p.missing(w, r)
+}
+
+// missing is the 404 in the shell, for an address that is nothing of the app's.
+func (p *Program) missing(w http.ResponseWriter, r *http.Request) {
 	p.write(w, r, http.StatusNotFound, render.Doc{
 		Title:   "Not found",
 		Crumbs:  []render.Crumb{p.render.Home(), {Label: "Not found"}},

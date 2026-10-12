@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
@@ -27,6 +28,14 @@ type Program struct {
 	// recovery. ServeMux keeps a tree of patterns and picks the most specific one for
 	// a request, so registration order does not decide the winner.
 	mux *http.ServeMux
+
+	// fw is the framework's own routes, the ones under the asset directory: assets, the
+	// search, the editor and its files. They are a mux of their own, because the pages'
+	// patterns may begin with a placeholder, and "/{key}/info" and "/_webui/{file}" both match
+	// "/_webui/info" with neither the more specific, which a single ServeMux refuses to
+	// have. The asset directory is reserved, so no page is ever served from it, and
+	// [Program.Handler] sends what is under it here and the rest to mux.
+	fw *http.ServeMux
 
 	render *render.Renderer
 	log    *slog.Logger
@@ -51,7 +60,7 @@ type Program struct {
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p := &Program{
 		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		mux: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+		mux: http.NewServeMux(), fw: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	secret := app.Secret
@@ -67,13 +76,17 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.add(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
-	p.add(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
-	p.add(http.MethodGet, prefix+render.AssetDir+"/monaco/{path...}", p.render.MonacoHandler())
-	p.add(http.MethodGet, prefix+render.AssetDir+"/code/{name}", p.render.ContextHandler())
+	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
+	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
+	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/monaco/{path...}", p.render.MonacoHandler())
+	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/code/{name}", p.render.ContextHandler())
+	// Anything else under the directory is not a page, whatever a page's pattern could
+	// say of it: it is a 404 in the shell.
+	p.addFramework("", prefix+render.AssetDir+"/", http.HandlerFunc(p.missing))
+	p.addFramework("", prefix+render.AssetDir, http.HandlerFunc(p.missing))
 
-	for _, page := range app.Pages {
-		p.addPage(page)
+	if err := p.addPages(); err != nil {
+		return nil, err
 	}
 	if app.ByPath["/"] == nil {
 		p.add(http.MethodGet, prefix+"/{$}", http.HandlerFunc(p.root))
@@ -88,8 +101,27 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	return p, nil
 }
 
-// Handler is the whole app, for the mount prefix it was built with.
-func (p *Program) Handler() http.Handler { return p.mux }
+// Handler is the whole app, for the mount prefix it was built with: what is under the
+// asset directory is the framework's, and the rest is the pages'.
+func (p *Program) Handler() http.Handler {
+	dir := p.Prefix + render.AssetDir
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == dir || strings.HasPrefix(r.URL.Path, dir+"/") {
+			p.fw.ServeHTTP(w, r)
+			return
+		}
+		p.mux.ServeHTTP(w, r)
+	})
+}
+
+// addFramework registers a route of the framework's own, wrapped as a page's is.
+func (p *Program) addFramework(method, path string, h http.Handler) {
+	pattern := path
+	if method != "" {
+		pattern = method + " " + path
+	}
+	p.fw.Handle(pattern, securedFor(csp, compressed(p.recovered(h))))
+}
 
 // add registers a route. An empty method matches any, which only the catch-all uses.
 func (p *Program) add(method, path string, h http.Handler) {
@@ -103,4 +135,36 @@ func (p *Program) addWith(method, path string, h http.Handler, policy string) {
 		pattern = method + " " + path
 	}
 	p.mux.Handle(pattern, securedFor(policy, compressed(p.recovered(h))))
+}
+
+// RouteConflict is two pages whose paths match one address, with neither more specific than
+// the other: "/{a}/x" and "/y/{b}" both match "/y/x". The router cannot choose between them.
+type RouteConflict struct{ Detail string }
+
+func (e RouteConflict) Error() string { return e.Detail }
+
+// addPages registers every page. ServeMux panics when two patterns conflict, which is the
+// application's declaration being wrong, so it is reported as an error and not a crash.
+func (p *Program) addPages() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			msg := fmt.Sprint(r)
+			lines := strings.Split(msg, "\n")
+			detail := msg
+			if len(lines) > 1 {
+				detail = strings.TrimSpace(lines[1])
+			}
+			for _, method := range []string{"GET ", "POST "} {
+				detail = strings.ReplaceAll(detail, method, "")
+			}
+			if p.Prefix != "" {
+				detail = strings.ReplaceAll(detail, p.Prefix+"/", "/") // the paths as the pages declare them
+			}
+			err = RouteConflict{Detail: "two page paths match the same address and neither is more specific: " + detail}
+		}
+	}()
+	for _, page := range p.App.Pages {
+		p.addPage(page)
+	}
+	return nil
 }
