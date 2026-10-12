@@ -154,6 +154,12 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.leave(w, r, outcome, to) // told where to go, which replaces whatever it would have done
 		return
 	}
+	if outcome.Return == ir.ReturnBack {
+		// Back leaves for where the user came from, even for an outcome that would have shown
+		// the form again: what was typed is not kept, and the message is in the toast it arrives to.
+		p.leave(w, r, outcome, p.returnTarget(r, req, page))
+		return
+	}
 	switch outcome.Kind {
 	case ir.OutcomeFailure:
 		// Not done, and not for one field: show the form again with what was typed,
@@ -166,8 +172,22 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 			Title: "Not saved", Desc: plural(len(outcome.Fields), "field needs", "fields need") + " attention.", Tone: render.ToastError,
 		})
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
-		p.finish(w, r, outcome, req.From)
+		from := req.From
+		if outcome.Return == ir.ReturnStay {
+			from = "" // stay: the form again, not where it was opened from
+		}
+		p.finish(w, r, outcome, from)
 	}
+}
+
+// returnTarget is where an outcome that says Back leaves for: where the form was opened
+// from, else the breadcrumb parent, else where the user already is.
+func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) string {
+	path, _ := req.encode(page)
+	if to := p.returnHref(req, page, path); to != "" {
+		return to
+	}
+	return r.URL.RequestURI()
 }
 
 // toastOf is an outcome's message as a toast. A failure without a message still
@@ -343,6 +363,10 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 	}
 	if to := outcome.Redirect; to != "" {
 		p.leave(w, r, outcome, to)
+		return
+	}
+	if outcome.Return == ir.ReturnBack {
+		p.leave(w, r, outcome, p.returnTarget(r, req, page))
 		return
 	}
 	switch outcome.Kind {

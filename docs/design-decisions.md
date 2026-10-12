@@ -220,6 +220,17 @@ design element.
   put. It is only ever followed when it is a path in the app, so it cannot become an
   open redirect. Expressing this as a hook the form implemented was tried and
   rejected: every link into the page had to remember to set it.
+- The author can override where an outcome leaves the user, for every kind of outcome,
+  with three methods that exclude each other. `Then(target)` goes to a page. `Back()`
+  goes to where the user came from (else the breadcrumb parent, else stays), and
+  `Stay()` stays. They exist for the cases the kind of outcome gets wrong: a `Failure`
+  after which there is nothing to retry (the thing was deleted meanwhile) goes back,
+  and a `Success` on a page the user goes on tuning stays. A `Failure` or `Reject` that
+  goes back is not shown again, so what was typed is lost and a `Reject`'s messages
+  are joined into the toast, as they already are for `Then`; the author chose to
+  leave. `Stay` on a not-accepted outcome changes nothing, since keeping what was
+  typed is what it does already. Cancel is navigation with no outcome to consult, so
+  it always goes back.
 - The sidebar collapses to an icon rail from a button in its footer, and always below
   820px; the choice is a browser preference, so it stays out of the address. An entry
   with no icon shows its label's initial in the rail.
