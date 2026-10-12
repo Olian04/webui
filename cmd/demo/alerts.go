@@ -110,6 +110,12 @@ var AcknowledgeAlert = webui.Action[Alert]{
 	Label: "Acknowledge",
 	Guard: canEdit[Alert],
 	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
+		// Someone else got there first. A Failure would show the form again, for an alert
+		// there is nothing left to do about; Back leaves for the page the user came from, with
+		// the reason in a toast.
+		if a.Acked {
+			return webui.Failure(a.ID + " was already acknowledged").Back(), nil
+		}
 		service.Acknowledge(a.ID)
 		return webui.Success("Acknowledged " + a.ID), nil
 	},

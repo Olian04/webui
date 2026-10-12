@@ -8,12 +8,13 @@ type App struct {
 	Pages  []*Page
 	ByPath map[string]*Page // destination resolution, not a route table
 
-	// Menu is the app's own links, in the menu in the top bar.
-	Menu []MenuItem
+	// ExternalLinks are the app's own links to places outside it, behind a button in the
+	// top bar.
+	ExternalLinks []ExternalLink
 }
 
-// MenuItem is one link of the menu, used as written: it is outside the app.
-type MenuItem struct {
+// ExternalLink is one of those links, used as written: it is outside the app.
+type ExternalLink struct {
 	Label   string
 	Icon    string
 	Section string // the group the entry is listed under, captioned; empty is ungrouped, listed first
