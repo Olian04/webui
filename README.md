@@ -167,7 +167,7 @@ This half is for people changing the library.
 | `internal/runtime`    | The compiled app: routes, the request pipeline, actions, flash, search, and `Open`.                                                                                          |
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
-| `internal/markdown`   | Markdown to HTML for `Markdown`, with goldmark: no raw HTML, links to http, https and mailto only, images as links.                                                          |
+| `internal/markdown`   | Markdown to HTML for `Markdown`, with goldmark: no raw HTML, links to http, https and mailto only, images as links unless the origin is trusted.                                                          |
 | `internal/textdiff`   | The unified diff that a `Diff` shows without script.                                                                                                                         |
 | `pkg/monaco`          | Optional language services for the editor, one package each (`json`, `css`, `html`, `typescript`). Importing one embeds its worker and offers it to editable editors.          |
 | `tools/monaco`        | The build of the embedded Monaco editor, with `make monaco`. It needs node, and its output (`internal/render/assets/monaco`, `pkg/monaco/*/worker`) is committed.             |

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 
 	"github.com/a-h/templ"
 
@@ -20,6 +21,21 @@ func (p *Program) pagePattern(template string) string {
 	return p.Prefix + template
 }
 
+// pictureOrigins are the origins the page's Markdown leaves trust to serve pictures, once
+// each, in the order they are first named. They come from the declaration, so they are the
+// same for every request and every tab, selected or not.
+func pictureOrigins(body ir.Node) []string {
+	var out []string
+	for _, m := range ir.Markdowns(body) {
+		for _, o := range m.TrustedOrigins {
+			if !slices.Contains(out, o) {
+				out = append(out, o)
+			}
+		}
+	}
+	return out
+}
+
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
 	leaves := leavesOf(page.Body)
@@ -29,13 +45,14 @@ func (p *Program) addPage(page *ir.Page) {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
 	}
 	posts := actionable(leaves)
+	policy := policy(pictureOrigins(page.Body))
 	for _, pattern := range patterns {
-		p.add(http.MethodGet, pattern, h)
+		p.addWith(http.MethodGet, pattern, h, policy)
 		p.probe.Handle(pattern, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.add(http.MethodPost, pattern, p.postHandler(page, leaves))
+			p.addWith(http.MethodPost, pattern, p.postHandler(page, leaves), policy)
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}

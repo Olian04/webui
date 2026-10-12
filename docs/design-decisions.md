@@ -359,10 +359,27 @@ design element.
   checked against the pages, since the text is only known when it is loaded; one that
   is no page is the application's own not-found page. `//host` and `/\host` are
   other sites to a browser, and are refused.
-- An image is a link to the picture, named by its alt text. The content security
-  policy refuses a picture from another site, so drawing one would only show a broken
-  icon, and a picture is how a text makes the visitor's browser fetch from a server of
-  the text's choosing. The policy is not loosened for markdown.
+- An image is a link to the picture, named by its alt text, unless its origin is one
+  the author trusts. The content security policy refuses a picture from another site,
+  so drawing one would only show a broken icon, and a picture is how a text makes the
+  visitor's browser fetch from a server of the text's choosing. `TrustedOrigins` is
+  the author's way to say that a server is theirs, or one they answer for.
+- A trusted origin is exact: `https://host` with a port only when it is not 443, in
+  ASCII, and nothing else. No wildcard (a `*.example.com` trusts every site anyone can
+  create there), no path, no user, no `http`. The list goes into a header, so an entry
+  with a space, a `;`, a comma or a quote is a compile error, and the renderer writes
+  the checked address out again rather than the text it was given. A picture is
+  compared as a parsed origin, never as a string prefix: `cdn.example.com.evil.example`,
+  `cdn.example.com@evil.example`, a backslash, a protocol-relative address and a
+  subdomain are all other origins and stay links.
+- The policy is set per page, at compile time, from the origins of the Markdown leaves
+  the page declares, tabs that are not selected included. It is not computed while a
+  request is served: the header is written before the body is built, and a leaf
+  refresh is a fetch inside a document that already has its policy. A page whose
+  Markdown names no origin has the library's policy byte for byte, and so has every
+  other page. Links get no such treatment: they were never behind a warning page, so
+  a trusted origin changes nothing about them, and the library does not have an
+  interstitial for untrusted links.
 - Code blocks are plain text in a block. When one names a language, the page links the
   editor that is already embedded and the glue colours the block by its tokenizers; a
   page whose markdown has no such block never links the editor. Colouring is

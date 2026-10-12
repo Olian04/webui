@@ -127,3 +127,102 @@ func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) 
 		assert.False(t, strings.Contains(body, `href="//`))
 	}
 }
+
+func markdownWithOrigins(text string, origins ...string) webui.Markdown[handbook] {
+	return webui.Markdown[handbook]{
+		Title: "Handbook", Content: handbookText, TrustedOrigins: origins,
+		Load: func(context.Context) (handbook, error) { return handbook{Text: text}, nil },
+	}
+}
+
+func policyOf(h http.Handler, target string) string {
+	return serve(h, http.MethodGet, target).Header().Get("Content-Security-Policy")
+}
+
+const basePolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+
+func TestAPictureFromATrustedOriginIsDrawnAndTheBrowserIsAllowedToFetchIt(t *testing.T) {
+	t.Parallel()
+
+	h := editorApp(markdownWithOrigins("![The logo](https://cdn.example.com/l.png) ![Other](https://evil.example/o.png)", "https://cdn.example.com"))
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `<img src="https://cdn.example.com/l.png" alt="The logo"`)
+	assert.False(t, strings.Contains(body, `src="https://evil.example`)) // not trusted: a link
+	assert.Contains(t, body, `<a href="https://evil.example/o.png"`)
+
+	// The page's policy, and only this page's, allows that origin to serve pictures.
+	assert.Equal(t, policyOf(h, "/admin/e"), strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://cdn.example.com", 1))
+}
+
+func TestAPageThatTrustsNoOriginHasTheSamePolicyAsEveryOtherPage(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, policyOf(markdownApp("![x](https://cdn.example.com/l.png)"), "/admin/e"), basePolicy)
+	other := webui.App{Pages: webui.Pages{
+		webui.Page[webui.NoArgs]{Path: "/with", Body: markdownWithOrigins("x", "https://cdn.example.com")},
+		webui.Page[webui.NoArgs]{Path: "/without", Body: markdownWithOrigins("x")},
+		webui.Page[webui.NoArgs]{Path: "/plain", Body: webui.Stack{}},
+	}}.MustCompile("/admin")
+	assert.True(t, policyOf(other, "/admin/with") != basePolicy)
+	assert.Equal(t, policyOf(other, "/admin/without"), basePolicy)
+	assert.Equal(t, policyOf(other, "/admin/plain"), basePolicy)
+	assert.Equal(t, policyOf(other, "/admin/nothing-here"), basePolicy) // the 404 too
+}
+
+func TestThePolicyHasTheOriginsOfEveryMarkdownOnThePageOnceEach(t *testing.T) {
+	t.Parallel()
+
+	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Stack{
+		markdownWithOrigins("a", "https://a.example", "https://shared.example"),
+		webui.Tabs{Panels: []webui.Tab{
+			{Label: "One", Body: markdownWithOrigins("b", "https://shared.example", "https://B.example:443")},
+			{Label: "Two", Body: markdownWithOrigins("c", "https://c.example:8443")}, // a tab that is not selected still counts
+		}},
+	}}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example https://c.example:8443", 1)
+	assert.Equal(t, policyOf(h, "/admin/e"), want)
+	assert.Equal(t, policyOf(h, "/admin/e?tabs.tab=two"), want) // the same whichever tab is shown
+	// A refresh of one leaf is a fetch inside the document that has the policy.
+	req := httptest.NewRequest(http.MethodGet, "/admin/e", nil)
+	req.Header.Set("X-Webui-Leaf", "p.0")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, rec.Header().Get("Content-Security-Policy"), want)
+}
+
+func TestTheErrorPagesOfAPageHaveItsPolicyToo(t *testing.T) {
+	t.Parallel()
+
+	page := webui.Page[webui.NoArgs]{
+		Path:  "/e",
+		Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") },
+		Body:  markdownWithOrigins("x", "https://cdn.example.com"),
+	}
+	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	rec := serve(h, http.MethodGet, "/admin/e")
+	assert.Equal(t, rec.Code, http.StatusForbidden)
+	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "https://cdn.example.com")
+}
+
+func TestATrustedOriginMustBeAnOriginAndNothingThatCouldChangeThePolicy(t *testing.T) {
+	t.Parallel()
+
+	problems := func(origin string) string {
+		return editorErrors(t, markdownWithOrigins("x", origin))
+	}
+	for _, bad := range []string{"", "cdn.example.com", "http://cdn.example.com", "https://cdn.example.com/img", "https://*.example.com",
+		"https://cdn.example.com; script-src *", "https://cdn.example.com 'unsafe-inline'", "https://user@cdn.example.com", "https://cdn.exämple.com"} {
+		assert.Contains(t, problems(bad), "is not an origin")
+	}
+	assert.Contains(t, problems("http://cdn.example.com"), "must start with https://")
+	assert.Contains(t, problems("https://cdn.example.com/img"), "no path, query or fragment")
+	assert.Contains(t, problems("https://cdn.example.com"+";"), "does not belong in an origin")
+	assert.Contains(t, problems("https://cdn.example.com/"), `Markdown.TrustedOrigins[0], "https://cdn.example.com/"`)
+	assert.Contains(t, problems("nope"), `Write it as "https://example.com"`)
+
+	for _, ok := range []string{"https://cdn.example.com", "https://cdn.example.com:8443", "https://CDN.example.com"} {
+		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: markdownWithOrigins("x", ok)}}}.Compile("/admin")
+		assert.NoError(t, err)
+	}
+}

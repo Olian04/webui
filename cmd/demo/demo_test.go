@@ -546,6 +546,20 @@ func TestEveryLinkInTheHandbookGoesToAPageThatExistsAndTheHandbookLinksToItself(
 	}
 }
 
+func TestAHandbookPageDrawsPicturesFromItsTrustedOriginsAndNoOtherPage(t *testing.T) {
+	h := handler(t)
+	rec := get(h, "/admin/handbook/glossary")
+	body := rec.Body.String()
+	assert.Contains(t, body, `<img src="https://raw.githubusercontent.com/Olian04/webui/main/docs/images/first-page-light.png"`)
+	assert.Contains(t, body, `<img src="https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg"`)
+	assert.False(t, strings.Contains(body, `src="https://tracker.example`)) // not trusted: a link
+	assert.Contains(t, body, `<a href="https://tracker.example/pixel.gif"`)
+	assert.Contains(t, rec.Header().Get("Content-Security-Policy"), "img-src 'self' data: https://raw.githubusercontent.com https://pkg.go.dev;")
+
+	// Every other page of the demo has the library's policy, with no origin added.
+	assert.Contains(t, get(h, "/admin/device").Header().Get("Content-Security-Policy"), "img-src 'self' data:;")
+}
+
 func TestAPathThatTakesTheRestOfTheAddressIsAListOfSegmentsWithACrumbForEach(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/files/logs/2026/10").Body.String()

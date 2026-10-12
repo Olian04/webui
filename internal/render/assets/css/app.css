@@ -1567,6 +1567,13 @@ select.input option {
 .md del {
   color: var(--text-2);
 }
+/* A picture from an origin the author trusts: no wider than the text, and in line with it. */
+.md img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: 2px;
+}
 .md a {
   color: var(--blue-text);
 }

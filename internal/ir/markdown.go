@@ -14,6 +14,10 @@ type Markdown struct {
 
 	// Content is the markdown, as a field.
 	Content Field
+
+	// TrustedOrigins are the origins a picture in the text may be drawn from, each as
+	// markdown.Origin writes it: "https://host", with a port only when it is not the default.
+	TrustedOrigins []string
 }
 
 // Addr reports the node's position in the body tree.
