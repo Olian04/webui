@@ -69,6 +69,14 @@ var (
 		Label: "Occurrences",
 		Load:  func(d Device) int { return d.Count },
 	}
+	// Format changes how the value reads where it is only read, and nothing else: this column
+	// reads "1.5 GiB" and sorts, filters (the bounds are bytes) and exports as the number of bytes.
+	// The library ships no formats: humanBytes is this program's own (see format.go).
+	Stored = webui.Int[Device]{
+		Label:  "Stored",
+		Load:   func(d Device) int { return d.Stored },
+		Format: humanBytes,
+	}
 	// A Timestamp is a moment held as Unix seconds; it reads as a Datetime does.
 	LastSeen = webui.Timestamp[Device]{
 		Label: "Last seen",
@@ -117,7 +125,7 @@ var Devices = webui.Page[webui.NoArgs]{
 			Page: Details,
 			Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
 		},
-		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Rate},
+		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate},
 	},
 }
 

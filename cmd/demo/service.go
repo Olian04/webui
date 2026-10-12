@@ -15,6 +15,7 @@ import (
 type Device struct {
 	ID, IP, Status, Site string
 	Count                int
+	Stored               int // bytes kept
 	Duration             float64
 	LastSeen             int // Unix seconds
 	Tags                 []string
@@ -113,7 +114,7 @@ func newService() *Service {
 		d := Device{
 			ID: fmt.Sprintf("dev_%06x", 0x27c38b+i*977), IP: fmt.Sprintf("10.0.%d.%d", i/8, 10+i),
 			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)], Tags: tags[i%len(tags)],
-			Count: 40 + (i*53)%900, Duration: 60 + float64(i%7)*30,
+			Count: 40 + (i*53)%900, Stored: 1<<(10+i%21) + i*977, Duration: 60 + float64(i%7)*30,
 			LastSeen: int(epoch.Add(-time.Duration(i*17) * time.Minute).Unix()),
 		}
 		if d.Site == "Göteborg" && d.Status == "degraded" {
@@ -235,6 +236,7 @@ var deviceKeys = map[string]func(x, y Device) int{
 	"Tags":        func(x, y Device) int { return cmp.Compare(strings.Join(x.Tags, ","), strings.Join(y.Tags, ",")) },
 	"Site":        func(x, y Device) int { return cmp.Compare(x.Site, y.Site) },
 	"Occurrences": func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
+	"Stored":      func(x, y Device) int { return cmp.Compare(x.Stored, y.Stored) }, // by the bytes, though it reads "1.5 GiB"
 	"Rate / s":    func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
 }
 
@@ -256,6 +258,7 @@ var deviceFilters = map[string]func(d Device, values []string) bool{
 // deviceNumbers are the numeric columns, which a table filters by range.
 var deviceNumbers = map[string]func(d Device) float64{
 	"Occurrences": func(d Device) float64 { return float64(d.Count) },
+	"Stored":      func(d Device) float64 { return float64(d.Stored) },
 	"Rate / s":    func(d Device) float64 { return d.Rate() },
 }
 

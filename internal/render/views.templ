@@ -331,12 +331,12 @@ templ (r *Renderer) cell(col columnView, row any, href string, button bool, valu
 }
 
 templ cellValue(col columnView, row any) {
-	@value(col.Field, col.Field.Get(row), linkOf(col.Field, row))
+	@value(col.Field, col.Field.Shown(row), momentOf(col.Field, row), linkOf(col.Field, row))
 }
 
 // value is a field's value as the field says to show it: text, a badge, or a
 // bar. A table cell and a read-only form field show it the same way.
-templ value(f ir.Field, text string, href string) {
+templ value(f ir.Field, text string, moment string, href string) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
@@ -359,8 +359,8 @@ templ value(f ir.Field, text string, href string) {
 				{ text }
 			}
 		case ir.DisplayTime:
-			if momentAttr(text) != "" {
-				<time datetime={ momentAttr(text) }>{ text }</time>
+			if moment != "" {
+				<time datetime={ moment }>{ text }</time>
 			} else {
 				{ text }
 			}
@@ -474,7 +474,7 @@ templ (r *Renderer) input(fv fieldView) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
-						@value(fv.Field, fv.Value, fv.Href)
+						@value(fv.Field, fv.Value, fv.Moment, fv.Href)
 					}
 				</div>
 			case fv.Field.Display == ir.DisplaySelect:

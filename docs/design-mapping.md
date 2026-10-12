@@ -40,6 +40,7 @@ into existence, and nothing is configured twice.
 | accessor in a `Table` | A column |
 | `Label` | The input label / column header |
 | value kind | The input type and the column's alignment |
+| `Format` (on `Int`, `Float`, `Datetime`, `Timestamp`) | How the value reads where it is only read: a table cell, a field with no `Store`. The column still sorts, filters and exports by the value, and an editable input holds the value |
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it |

@@ -67,6 +67,7 @@ type fieldView struct {
 	RuleLines   []string
 	Placeholder string
 	Href        string // the address of a link field, "" for any other
+	Moment      string // the moment a time field holds, for its <time> element, "" for any other
 	ReadOnly    bool
 	Type        string
 	Rules       c.Rules
@@ -96,6 +97,12 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 		fv.Value = raw
 	} else if f.Get != nil {
 		fv.Value = f.Get(v.Model)
+		if !editable && f.Show != nil {
+			fv.Value = f.Shown(v.Model) // only read: as a person reads it, and not as it is held
+		}
+	}
+	if f.Get != nil {
+		fv.Moment = momentOf(f, v.Model)
 	}
 	if fv.ReadOnly {
 		fv.Name = ""

@@ -284,6 +284,16 @@ func linkOf(f ir.Field, row any) string {
 // momentAttr is a moment as shown, "2026-10-09 11:27" or a date alone, as the
 // datetime attribute of a <time> element reads it.
 // It is empty for text that is not a moment, which is then shown as it is.
+// momentOf is the machine-readable moment of a time field in a row, for its <time> element: the
+// value's own text, which is what it holds, and not the text it is shown as, which a Format may
+// have made something other than a moment. "" for any other field.
+func momentOf(f ir.Field, row any) string {
+	if f.Display != ir.DisplayTime || f.Get == nil {
+		return ""
+	}
+	return momentAttr(f.Get(row))
+}
+
 func momentAttr(text string) string {
 	if _, err := time.Parse("2006-01-02 15:04", text); err == nil {
 		return text[:10] + "T" + text[11:] + ":00Z"

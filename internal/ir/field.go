@@ -25,6 +25,12 @@ type Field struct {
 	// filters as a number and not as the text Get shows. Nil for any other kind.
 	Num func(model any) float64
 
+	// Show is the text a person reads where the value is only read: a table cell, a field that
+	// cannot be edited, and what the search looks in. Nil means Get. It is how an application
+	// says a size reads "1.5 GiB" while the column sorts, filters and exports on the number:
+	// nothing but what is shown reads it.
+	Show func(model any) string
+
 	Rules Rules
 
 	Key         string // the label as the address names it, lower-cased with dashes: what Query.Sort carries
@@ -70,6 +76,14 @@ type Choice struct {
 	Value string
 	Label string // what it says; the value when it is empty
 	Tone  Tone
+}
+
+// Shown is the text that a value is read as: Show, else Get.
+func (f Field) Shown(row any) string {
+	if f.Show != nil {
+		return f.Show(row)
+	}
+	return f.Get(row)
 }
 
 // Values are the values a DisplaySelect field holds in a row: what Get returns, split.
