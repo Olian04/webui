@@ -75,7 +75,7 @@ func themeFor(accent string) webui.Theme {
 }
 
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
+	addr := flag.String("addr", ":7689", "listen address")
 	flag.Parse()
 
 	a := app
