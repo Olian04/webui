@@ -20,8 +20,10 @@ import (
 // loader sort by something it never offered.
 func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	if n.Feed {
-		// A feed has a cursor and nothing else to ask: no offset, sort or filters.
+		// A feed has a cursor, and no offset or filters. It may be sorted, but only the page that
+		// the source handed out: the order of the rows in a window of the sequence.
 		q := ir.Query{Limit: n.PageSize, Start: 1}
+		q.Sort, q.Desc = sortOf(n, raw)
 		if after := raw[args.ViewKey(n.ID, "after")]; after != "" && len(after) <= maxCursor {
 			q.After = after
 			// Past the first page, which row it starts at and the way back are what the
@@ -41,16 +43,18 @@ func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 	}
 	q.Filters = filtersOf(n, raw)
 	q.Ranges = rangesOf(n, raw)
-	if key := raw[args.ViewKey(n.ID, "sort")]; key != "" {
-		for _, col := range n.Columns {
-			if col.Key == key {
-				q.Sort = key
-				q.Desc = raw[args.ViewKey(n.ID, "desc")] == "true"
-				break
-			}
-		}
-	}
+	q.Sort, q.Desc = sortOf(n, raw)
 	return q
+}
+
+// sortOf is the column the address sorts the table by, and whether it is descending. A
+// column the table does not have is no sort.
+func sortOf(n *ir.Table, raw map[string]string) (key string, desc bool) {
+	key = raw[args.ViewKey(n.ID, "sort")]
+	if key == "" || !slices.ContainsFunc(n.Columns, func(col ir.Field) bool { return col.Key == key }) {
+		return "", false
+	}
+	return key, raw[args.ViewKey(n.ID, "desc")] == "true"
 }
 
 // maxCursor bounds a feed's cursor in the address. It is whatever the source made it,

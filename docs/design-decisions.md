@@ -157,8 +157,16 @@ design element.
   means unknown. `Feed` is for a source that pages by a cursor: the rows come in the
   source's order, and it is handed the cursor and a page size and returns the rows and
   the next cursor. A cursor continues one sequence, so there is nothing for the library
-  to reorder or filter: the table has no sort links or filters, only First page, Previous and Next, and
-  says which rows it shows. The address carries the cursor, the first row's number and the pages
+  to filter: the table has no filters, only First page, Previous and Next, and says which
+  rows it shows. Its columns sort the page in hand and no more: the library orders the rows
+  `Feed` returned, with the same comparison `Rows` uses, in the query that built the page, and the
+  source is not told. The sort is view state in the address like any other, so Next and Previous
+  keep it, and each page is ordered within itself; the sort link stays on the page, since the cursor
+  is the way back to it, and the footer says "sorted within this page" so that the order is not
+  mistaken for the sequence's. What this costs: a sort by a column does not find that column's
+  smallest value in the sequence, only on the page, which is all a cursor can honestly offer;
+  a source that can sort should be a `Load`. The export of a feed ignores the sort, since it
+  is the sequence from its first page to its last. The address carries the cursor, the first row's number and the pages
   before, so nothing is kept on the server; Previous goes back as far as the address
   remembers (a bounded number of characters, the oldest forgotten first). It is a source of
   its own, not a mode of `Query`, so a table can never carry both a cursor and an

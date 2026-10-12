@@ -150,19 +150,63 @@ func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testi
 	assert.True(t, strings.Count(at, "objects.back=") < hops) // but not all the way
 }
 
-func TestAFeedHasNoSortLinksOrFiltersAndIgnoresTheirAddressParameters(t *testing.T) {
+func TestAFeedHasSortLinksButNoFiltersAndIgnoresTheFilterAndOffsetParameters(t *testing.T) {
 	t.Parallel()
 
 	var seen []asked
 	var act []string
 	h := feedApp(&seen, &act)
-	body := serve(h, http.MethodGet, "/f?objects.sort=id&objects.desc=true&objects.filter.id=zzz&objects.offset=3").Body.String()
+	body := serve(h, http.MethodGet, "/f?objects.filter.id=zzz&objects.offset=3").Body.String()
 
-	assert.Contains(t, body, `<th class=""><span class="th-in">ID </span></th>`) // a plain header: no sort link, no filter
+	assert.Contains(t, body, `objects.sort=id`) // the column can be sorted
 	assert.False(t, strings.Contains(body, `class="filter`))
-	assert.False(t, strings.Contains(body, "aria-sort"))
-	assert.DeepEqual(t, seen[0], asked{"", 4}) // the first page, whatever was asked of it
+	assert.Contains(t, body, `aria-sort="none"`) // and is not, until asked
+	assert.DeepEqual(t, seen[0], asked{"", 4})   // the first page, whatever was asked of it
 	assert.Contains(t, body, ">o0<")
+}
+
+func TestAFeedIsSortedWithinThePageInHandAndTheSourceIsNotToldOfIt(t *testing.T) {
+	t.Parallel()
+
+	var seen []asked
+	var act []string
+	h := feedApp(&seen, &act)
+
+	at := func(body string, ids ...string) {
+		t.Helper()
+		last := -1
+		for _, id := range ids {
+			i := strings.Index(body, ">"+id+"<")
+			assert.True(t, i > last)
+			last = i
+		}
+	}
+
+	first := serve(h, http.MethodGet, "/f?objects.sort=id&objects.desc=true").Body.String()
+	at(first, "o3", "o2", "o1", "o0") // the page the source handed out, in the order asked
+	assert.Contains(t, first, `aria-sort="descending"`)
+	assert.Contains(t, first, "sorted within this page")
+	assert.DeepEqual(t, seen[len(seen)-1], asked{"", 4}) // the source is handed the cursor and the size
+
+	// The next page continues the sequence, and is ordered within itself, with the sort kept.
+	next := pagerHref(first, "Next")
+	assert.Contains(t, next, "objects.sort=id")
+	assert.Contains(t, next, "objects.desc=true")
+	second := serve(h, http.MethodGet, next).Body.String()
+	at(second, "o7", "o6", "o5", "o4")
+	assert.DeepEqual(t, seen[len(seen)-1], asked{"4", 4})
+
+	// Sorting a page stays on it: the cursor is in the link that sorts, and the other way is a click away.
+	asc := regexp.MustCompile(`<th[^>]*><span class="th-in"><a href="([^"]*)"`).FindStringSubmatch(second)
+	assert.NotNil(t, asc)
+	assert.Contains(t, html.UnescapeString(asc[1]), "objects.after=4")
+	ascending := serve(h, http.MethodGet, html.UnescapeString(asc[1])).Body.String()
+	at(ascending, "o4", "o5", "o6", "o7")
+
+	// A column the table has not got is no sort.
+	plain := serve(h, http.MethodGet, "/f?objects.sort=nope").Body.String()
+	at(plain, "o0", "o1", "o2", "o3")
+	assert.False(t, strings.Contains(plain, "sorted within this page"))
 }
 
 func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) {
