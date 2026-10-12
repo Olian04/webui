@@ -64,17 +64,17 @@ func TestASelectThatIsEditedIsAListToChooseFrom(t *testing.T) {
 
 	// One value: a drop-down list, with the choice that is held selected. It is required, so the
 	// empty option asks for a choice.
-	assert.Contains(t, body, `<select id="p-f1" class="input" name="f1" required>`)
+	assert.Contains(t, body, `<select data-select id="p-f1" class="input" name="f1" required>`)
 	assert.Contains(t, body, `<option value="">Choose…</option>`)
-	assert.Contains(t, body, `<option value="done" selected>Done</option>`)
-	assert.Contains(t, body, `<option value="open">Open</option>`) // an option says its label
+	assert.Contains(t, body, `<option value="done" data-badge="badge-ok" selected>Done</option>`)
+	assert.Contains(t, body, `<option value="open" data-badge="badge-warn">Open</option>`) // an option says its label
 	assert.False(t, strings.Contains(body, `<option value="open" selected>`))
 
 	// Any number: a list, with each that is held selected, and a hint on how to choose several.
-	assert.Contains(t, body, `<select id="p-f2" class="input" name="f2" multiple size="3">`)
-	assert.Contains(t, body, `<option value="bug" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui">UI</option>`)
-	assert.Contains(t, body, `<option value="docs" selected>docs</option>`)
+	assert.Contains(t, body, `<select data-select id="p-f2" class="input" name="f2" multiple size="3">`)
+	assert.Contains(t, body, `<option value="bug" data-badge="badge-mute" selected>bug</option>`)
+	assert.Contains(t, body, `<option value="ui" data-badge="badge-mute">UI</option>`)
+	assert.Contains(t, body, `<option value="docs" data-badge="badge-mute" selected>docs</option>`)
 	assert.Contains(t, body, "Hold Ctrl or ⌘ to choose more than one")
 	assert.False(t, strings.Contains(body, `<option value="">`+"—")) // a list of several has no empty option
 }
@@ -154,10 +154,26 @@ func TestARejectedSubmissionKeepsWhatWasChosen(t *testing.T) {
 	var saved task
 	// Status is missing, so it is refused; what was chosen in the labels is shown again.
 	_, body := submitTask(taskApp(task{Name: "a", Labels: []string{"docs"}}, &saved), url.Values{"f1": {""}, "f2": {"bug", "ui"}})
-	assert.Contains(t, body, `<option value="bug" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui" selected>UI</option>`)
+	assert.Contains(t, body, `<option value="bug" data-badge="badge-mute" selected>bug</option>`)
+	assert.Contains(t, body, `<option value="ui" data-badge="badge-mute" selected>UI</option>`)
 	assert.False(t, strings.Contains(body, `<option value="docs" selected>`))
 	assert.Contains(t, body, `aria-invalid="true"`)
+}
+
+func TestASelectIsMarkedForTheScriptThatTurnsItIntoADropDown(t *testing.T) {
+	t.Parallel()
+
+	var saved task
+	body := serve(taskApp(task{Name: "a", Status: []string{"done"}, Labels: []string{"bug"}}, &saved), http.MethodGet, "/admin/t").Body.String()
+
+	// The script replaces the native control with a drop-down that shows the choices as badges,
+	// so it needs the select marked, each option's tone, and the label's id to name the popup.
+	// Without the script the same markup is the native control.
+	assert.Equal(t, 2, strings.Count(body, "<select data-select "))
+	assert.Contains(t, body, `<option value="open" data-badge="badge-warn">Open</option>`)
+	assert.Contains(t, body, `<option value="done" data-badge="badge-ok" selected>Done</option>`)
+	assert.Contains(t, body, `<option value="later" data-badge="badge-mute">later</option>`) // no tone: muted
+	assert.Contains(t, body, `<label class="lbl" id="p-f1-label" for="p-f1">`)
 }
 
 func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T) {
@@ -201,7 +217,7 @@ func TestASingleSelectHandedSeveralValuesShowsTheFirstWhenItIsEdited(t *testing.
 
 	var saved task
 	body := serve(taskApp(task{Name: "a", Status: []string{"later", "done"}}, &saved), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="later" selected>later</option>`)
+	assert.Contains(t, body, `<option value="later" data-badge="badge-mute" selected>later</option>`)
 	assert.False(t, strings.Contains(body, `<option value="done" selected>`))
 }
 

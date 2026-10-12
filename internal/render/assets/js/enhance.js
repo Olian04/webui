@@ -610,6 +610,305 @@
     if (!e.target.closest('.search') && !e.target.closest('[data-palette]')) closePalette();
   });
 
+  /* ------------------------------ choice lists ----------------------------- */
+
+  // A select is a real <select> in the markup, and that is what is submitted. With script it is
+  // hidden, and a field takes its place that shows what is chosen as the badges it is when read,
+  // over a list of the options in which a click ticks one. The field is a combobox: Enter, Space and
+  // the arrow keys open it and move through the list, Enter or Space ticks, Backspace unticks the
+  // last of several, Escape closes. It changes the <select>, and tells it so, and nothing else.
+
+  var selectCount = 0;
+
+  function make(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function enhanceSelect(sel) {
+    var multi = sel.multiple;
+    var required = sel.required;
+    var id = sel.id || 'select-' + ++selectCount;
+    var options = Array.prototype.filter.call(sel.options, function (o) {
+      return o.value !== '';
+    });
+    var emptyText = required ? 'Choose…' : 'None';
+
+    var wrap = make('div', 'msel' + (multi ? ' msel-multi' : ''));
+    var field = make('div', 'input msel-field' + (sel.classList.contains('invalid') ? ' invalid' : ''));
+    field.id = id + '-field';
+    field.tabIndex = 0;
+    field.setAttribute('role', 'combobox');
+    field.setAttribute('aria-haspopup', 'listbox');
+    field.setAttribute('aria-expanded', 'false');
+    field.setAttribute('aria-controls', id + '-list');
+    var labelled = document.getElementById(id + '-label');
+    if (labelled) field.setAttribute('aria-labelledby', id + '-label');
+    ['aria-invalid', 'aria-describedby'].forEach(function (name) {
+      if (sel.hasAttribute(name)) field.setAttribute(name, sel.getAttribute(name));
+    });
+    var chips = make('span', 'badges');
+    var hint = make('span', 'msel-hint', emptyText);
+    var chevron = make('span', 'msel-chevron');
+    chevron.setAttribute('aria-hidden', 'true');
+    field.appendChild(chips);
+    field.appendChild(hint);
+    field.appendChild(chevron);
+
+    var list = make('div', 'msel-pop');
+    list.id = id + '-list';
+    list.setAttribute('role', 'listbox');
+    list.hidden = true;
+    if (multi) list.setAttribute('aria-multiselectable', 'true');
+    if (labelled) list.setAttribute('aria-labelledby', id + '-label');
+
+    // One row for each option, and for a select of one that may be left empty, a row for none.
+    var rows = [];
+    function row(option, none) {
+      var r = make('div', 'msel-opt' + (none ? ' msel-none' : ''));
+      r.id = id + '-opt-' + rows.length;
+      r.setAttribute('role', 'option');
+      r.appendChild(make('span', 'msel-check'));
+      if (none) {
+        r.appendChild(make('span', 'msel-none-text', 'None'));
+      } else {
+        r.appendChild(badge(option));
+      }
+      r.option = option;
+      rows.push(r);
+      list.appendChild(r);
+    }
+    if (!multi && !required) row(null, true);
+    options.forEach(function (o) {
+      row(o, false);
+    });
+
+    function badge(option) {
+      var b = make('span', 'badge ' + (option.getAttribute('data-badge') || 'badge-mute'));
+      var dot = make('span', 'dot');
+      dot.setAttribute('aria-hidden', 'true');
+      b.appendChild(dot);
+      b.appendChild(document.createTextNode(option.textContent));
+      return b;
+    }
+
+    var active = -1;
+    function chosen() {
+      return options.filter(function (o) {
+        return o.selected;
+      });
+    }
+    function draw() {
+      var picked = chosen();
+      chips.textContent = '';
+      picked.forEach(function (o) {
+        chips.appendChild(badge(o));
+      });
+      hint.hidden = picked.length > 0;
+      rows.forEach(function (r, i) {
+        var on = r.option ? r.option.selected : picked.length === 0;
+        r.setAttribute('aria-selected', on ? 'true' : 'false');
+        r.classList.toggle('on', on);
+        r.classList.toggle('active', i === active);
+      });
+      if (active >= 0) {
+        field.setAttribute('aria-activedescendant', rows[active].id);
+      } else {
+        field.removeAttribute('aria-activedescendant');
+      }
+    }
+    function changed() {
+      field.classList.remove('invalid');
+      field.removeAttribute('aria-invalid');
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+      draw();
+    }
+    function toggle(r) {
+      if (!r.option) {
+        options.forEach(function (o) {
+          o.selected = false;
+        });
+        sel.value = '';
+      } else if (multi) {
+        r.option.selected = !r.option.selected;
+      } else {
+        options.forEach(function (o) {
+          o.selected = o === r.option;
+        });
+      }
+      changed();
+      if (!multi) close(true);
+    }
+
+    function isOpen() {
+      return !list.hidden;
+    }
+    function open() {
+      if (isOpen()) return;
+      closeSelects(wrap);
+      list.hidden = false;
+      wrap.classList.add('open');
+      field.setAttribute('aria-expanded', 'true');
+      // Above the field when there is not room beneath it and there is above.
+      var box = field.getBoundingClientRect();
+      var room = window.innerHeight - box.bottom;
+      list.classList.toggle('up', room < Math.min(list.scrollHeight, 260) + 12 && box.top > room);
+      var first = rows.findIndex(function (r) {
+        return r.classList.contains('on') && r.option;
+      });
+      move(first >= 0 ? first : 0);
+    }
+    function close(refocus) {
+      if (!isOpen()) return;
+      list.hidden = true;
+      wrap.classList.remove('open');
+      field.setAttribute('aria-expanded', 'false');
+      active = -1;
+      draw();
+      if (refocus) field.focus();
+    }
+    function move(i) {
+      active = Math.max(0, Math.min(rows.length - 1, i));
+      draw();
+      rows[active].scrollIntoView({ block: 'nearest' });
+    }
+    wrap.close = close;
+
+    field.addEventListener('click', function () {
+      if (isOpen()) close(false);
+      else open();
+    });
+    // The list takes the click, and the focus stays on the field.
+    list.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+    });
+    list.addEventListener('click', function (e) {
+      var r = e.target.closest('.msel-opt');
+      if (r) toggle(r);
+    });
+    list.addEventListener('mousemove', function (e) {
+      var r = e.target.closest('.msel-opt');
+      if (r && rows.indexOf(r) !== active) {
+        active = rows.indexOf(r);
+        draw();
+      }
+    });
+    field.addEventListener('keydown', function (e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      var key = e.key;
+      if (!isOpen()) {
+        if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
+          e.preventDefault();
+          open();
+        } else if (multi && (key === 'Backspace' || key === 'Delete')) {
+          var picked = chosen();
+          if (picked.length) {
+            picked[picked.length - 1].selected = false;
+            changed();
+          }
+        }
+        return;
+      }
+      switch (key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          move(active + 1);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          move(active - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          move(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          move(rows.length - 1);
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          if (active >= 0) toggle(rows[active]);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          e.stopPropagation();
+          close(true);
+          break;
+        case 'Tab':
+          close(false);
+          break;
+        default:
+          // Typing the start of an option moves to the next one that begins so.
+          if (key.length === 1) {
+            var typed = key.toLowerCase();
+            for (var n = 1; n <= rows.length; n++) {
+              var at = (active + n) % rows.length;
+              if (rows[at].textContent.trim().toLowerCase().indexOf(typed) === 0) {
+                move(at);
+                break;
+              }
+            }
+          }
+      }
+    });
+    field.addEventListener('focusout', function (e) {
+      if (!wrap.contains(e.relatedTarget)) close(false);
+    });
+
+    // A select that must have a choice says so before the form leaves, since the <select> that
+    // would have said so is hidden and cannot be pointed at. The server asks as well.
+    if (required) {
+      sel.required = false;
+      var form = sel.form;
+      if (form) {
+        form.addEventListener('submit', function (e) {
+          if (chosen().length === 0) {
+            e.preventDefault();
+            field.classList.add('invalid');
+            field.setAttribute('aria-invalid', 'true');
+            field.focus();
+          }
+        });
+      }
+    }
+    if (labelled) {
+      labelled.addEventListener('click', function (e) {
+        e.preventDefault();
+        field.focus();
+      });
+    }
+
+    sel.hidden = true;
+    sel.setAttribute('data-enhanced', '');
+    wrap.appendChild(field);
+    wrap.appendChild(list);
+    sel.parentNode.insertBefore(wrap, sel);
+    draw();
+  }
+
+  function closeSelects(except) {
+    $$('.msel.open').forEach(function (w) {
+      if (w !== except && w.close) w.close(false);
+    });
+  }
+
+  function enhanceSelects(root) {
+    $$('select[data-select]:not([data-enhanced])', root).forEach(enhanceSelect);
+  }
+
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.msel')) closeSelects(null);
+  });
+
+  // A panel that is fetched again brings its selects as plain ones.
+  new MutationObserver(function () {
+    enhanceSelects(document);
+  }).observe(document.body, { childList: true, subtree: true });
+
   /* --------------------------------- start -------------------------------- */
 
   // The hint beside the search box says the key this platform has.
@@ -624,5 +923,6 @@
   }
   syncSidebarToggle();
   syncSelection(document);
+  enhanceSelects(document);
   dismissToasts();
 })();

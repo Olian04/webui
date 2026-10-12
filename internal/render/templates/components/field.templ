@@ -51,7 +51,7 @@ templ Field(p FieldProps) {
 	<div class={ "field", templ.KV("field-static", p.Static) } { p.Attrs... }>
 		if p.Label != "" {
 			<div class="lbl-row">
-				<label class="lbl" for={ p.For }>
+				<label class="lbl" id={ p.For + "-label" } for={ p.For }>
 					{ p.Label }
 					if p.Required {
 						<span class="req" aria-hidden="true">*</span>
@@ -143,12 +143,16 @@ type SelectChoice struct {
 	Value    string
 	Label    string
 	Selected bool
+	Tone     Tone // how the option is drawn when script presents the list: as the badge it is when read
 }
 
 // SelectProps is a choice from a list. Without Multi it is a drop-down list, with an empty
 // option first for none, or, when a choice is Required, for the visitor to have to make one.
 // With Multi it is a list to tick any number of, sent as one value for each, which is what a
-// browser does without script.
+// browser does without script. It is a real <select> either way, and is what is submitted:
+// with script it is hidden and replaced by a field that shows the choice as badges, over a
+// list of the options, each ticked by a click. The options say the badge each is drawn as, so
+// the script needs nothing but the markup.
 type SelectProps struct {
 	ID       string
 	Name     string
@@ -165,6 +169,7 @@ func (p SelectProps) size() string {
 
 templ Select(p SelectProps) {
 	<select
+		data-select
 		if p.ID != "" {
 			id={ p.ID }
 		}
@@ -192,7 +197,7 @@ templ Select(p SelectProps) {
 			</option>
 		}
 		for _, c := range p.Choices {
-			<option value={ c.Value } selected?={ c.Selected }>{ c.Label }</option>
+			<option value={ c.Value } data-badge={ c.Tone.badge() } selected?={ c.Selected }>{ c.Label }</option>
 		}
 	</select>
 }

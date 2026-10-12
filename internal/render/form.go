@@ -131,7 +131,7 @@ func (fv fieldView) choices() []c.SelectChoice {
 	}
 	out := make([]c.SelectChoice, len(fv.Field.Choices))
 	for i, ch := range fv.Field.Choices {
-		out[i] = c.SelectChoice{Value: ch.Value, Label: fv.Field.LabelOf(ch.Value), Selected: slices.Contains(held, ch.Value)}
+		out[i] = c.SelectChoice{Value: ch.Value, Label: fv.Field.LabelOf(ch.Value), Selected: slices.Contains(held, ch.Value), Tone: toneOf(fv.Field, ch.Value)}
 	}
 	return out
 }
