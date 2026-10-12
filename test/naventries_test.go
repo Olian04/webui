@@ -258,3 +258,33 @@ func TestNavEntriesAreCheckedWhenTheAppCompiles(t *testing.T) {
 	_, err := webui.App{Pages: webui.Pages{webui.Page[siteArgs]{Path: "/site/{name}", Nav: webui.Nav{Icon: "location-dot", Section: "Platform"}, NavEntries: siteEntries("x"), Body: webui.Stack{}}}}.Compile("/admin")
 	assert.NoError(t, err)
 }
+
+func TestAPageThatBorrowsTheNavigationPlaceLightsOnlyTheEntryItsAddressFits(t *testing.T) {
+	t.Parallel()
+
+	entries := func(context.Context) ([]webui.NavEntry[queryArgs], error) {
+		return []webui.NavEntry[queryArgs]{
+			{Args: queryArgs{}, Label: "All devices"},
+			{Args: queryArgs{Site: "Stockholm"}, Label: "Stockholm"},
+			{Args: queryArgs{Site: "Malmö"}, Label: "Malmö"},
+		}, nil
+	}
+	list := webui.Page[queryArgs]{Path: "/device", Nav: webui.Nav{Section: "Devices"}, NavEntries: entries, Body: webui.Stack{}}
+	log := webui.Page[queryArgs]{Path: "/device/log", Body: webui.Stack{}} // no entry of its own: it borrows the place
+	h := webui.App{Pages: webui.Pages{list, log}}.MustCompile("/admin")
+	lit := func(target string) string {
+		var out []string
+		for _, e := range sidebar(t, h, target) {
+			if strings.HasSuffix(e, "*") {
+				out = append(out, strings.SplitN(e, ">", 2)[0])
+			}
+		}
+		return strings.Join(out, ",")
+	}
+	// Not every entry: the page carries no site, so only the entry that needs none fits.
+	assert.Equal(t, lit("/admin/device/log"), "All devices")
+	// With a site in its own address, the entry of that site.
+	assert.Equal(t, lit("/admin/device/log?site=Stockholm"), "Stockholm")
+	assert.Equal(t, lit("/admin/device/log?site=Malm%C3%B6"), "Malmö")
+	assert.Equal(t, lit("/admin/device/log?site=Elsewhere"), "All devices")
+}

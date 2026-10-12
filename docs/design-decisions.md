@@ -225,9 +225,11 @@ design element.
   for all of them, as it is for a page with one entry: a `Guard` that looks the thing up
   would refuse an empty name and hide every one.
 - Which entry is lit is the one whose arguments fit the address best: its page is the one
-  lit (the page itself or the page that borrows its place), its path arguments are the
-  ones in the address, and, on the page itself, so are its query arguments, with state
-  that is not an argument (a table's sort, where the visitor came from) ignored. When
+  lit (the page itself or the page that borrows its place), and its path and query
+  arguments are the ones in the address, with state that is not an argument (a table's
+  sort, where the visitor came from) ignored. An argument the address lacks does not
+  match, so a page that borrows the place lights the general entry, and an entry that
+  needs a query argument only when the page carries the same one. When
   several fit, the one with the most arguments wins, so a general entry is not lit beside
   a more particular one.
 - Entries and search results whose page `Guard` refuses the visitor are left out; the

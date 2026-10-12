@@ -227,10 +227,11 @@ func (p *Program) loadNavEntries(ctx context.Context, page *ir.Page) (entries []
 }
 
 // entryScore is how well an entry of page fits the address on screen, or -1 when it does not: its
-// page is the one lit (the page itself, or the one that borrows its place), every path argument it
-// has is the one in the address, and, when it is the page itself, every query argument it has is too.
-// Table and tab state in the address is not an argument and does not count against it. More
-// arguments that agree is a better fit.
+// page is the one lit (the page itself, or the one that borrows its place), and every argument it
+// has, in the path and in the query, is the one in the address. An argument the address does not
+// have is not the entry's, so on a page that borrows the place an entry with query arguments that
+// the page does not carry is not lit, and the general one is. Table and tab state in the address is
+// not an argument and does not count against it. More arguments that agree is a better fit.
 func entryScore(page *ir.Page, here render.Here, active string, path, query map[string]string) int {
 	if active != page.PathTemplate {
 		return -1
@@ -242,13 +243,11 @@ func entryScore(page *ir.Page, here render.Here, active string, path, query map[
 		}
 		score++
 	}
-	if here.Page == page.PathTemplate {
-		for name, value := range query {
-			if here.Query[name] != value {
-				return -1
-			}
-			score++
+	for name, value := range query {
+		if here.Query[name] != value {
+			return -1
 		}
+		score++
 	}
 	return score
 }
