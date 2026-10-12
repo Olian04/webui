@@ -477,8 +477,8 @@ func (r *Renderer) topbar(crumbs []c.Crumb, here string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if items := r.menuEntries(); len(items) > 0 {
-				templ_7745c5c3_Err = c.AppMenu(items).Render(ctx, templ_7745c5c3_Buffer)
+			if items := r.linkEntries(); len(items) > 0 {
+				templ_7745c5c3_Err = c.ExternalLinks(items).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -82,6 +82,24 @@ type Page[A any] struct {
 	// as it is.
 	NavEntries func(ctx context.Context) ([]NavEntry[A], error)
 
+	// Search makes the things this page is the page of findable from the search box in
+	// the top bar. It is handed what the visitor typed and the most it should return, and
+	// returns the matches: each a [Hit], the arguments of this page that lead to it, and
+	// what to say about it. A page for one device finds devices, and a result is a link
+	// to the page at that device.
+	//
+	// It is called for every visitor whenever they search, with the arguments the page
+	// has when nothing is selected, so it returns what any of them could look for and does
+	// not rely on the page's Guard. The library runs that Guard for each hit, with the
+	// hit's own arguments, and offers a result only if the visitor could open it. The results
+	// are shown under the page's [Nav] label, or under the entry it borrows its place from.
+	//
+	// Match however the source can, ignoring case, against whatever the visitor sees of a
+	// result. [SearchRows] makes one from rows held in memory. If it returns an error the
+	// page is left out of the search, the cause is logged, and the rest are searched.
+	// A page with no Search is not searched, though its [Nav] entry is still listed.
+	Search func(ctx context.Context, query string, limit int) ([]Hit[A], error)
+
 	// Body is what the page shows: a [Table], a [Form], or a layout of them.
 	Body PageBody
 }
@@ -260,6 +278,19 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 			out := make([]ir.NavEntry, len(entries))
 			for i, e := range entries {
 				out[i] = ir.NavEntry{Args: e.Args, Label: e.Label}
+			}
+			return out, nil
+		}
+	}
+	if p.Search != nil {
+		page.Search = func(ctx context.Context, query string, limit int) ([]ir.Hit, error) {
+			found, err := p.Search(ctx, query, limit)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]ir.Hit, len(found))
+			for i, h := range found {
+				out[i] = ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc}
 			}
 			return out, nil
 		}

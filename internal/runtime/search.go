@@ -4,8 +4,8 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -25,18 +25,14 @@ type searchHit struct {
 	Href  string `json:"href"`
 }
 
-// search answers the global search with the rows of every table that offers
-// itself to it. A table is searched under its own name, after its page's Guard has
-// run with no arguments, which is what a visitor who opened the page bare would be
-// allowed. A page that needs arguments, such as one in a path, is searched only
-// while the visitor is on it, with the arguments in the address they are on: the
-// search then covers the thing they are looking at. A page that refuses, or a
-// table that fails, is left out, and the rest answer.
+// search answers the global search with what every page that offers itself to it finds.
+// A page's Search is handed what was typed, and answers with the arguments of the page
+// that each result leads to. A page that fails is left out, and the rest answer.
 //
 // Every result is then checked against the page it leads to, with that page's own
 // arguments and Guard, so the search never offers what following it would refuse:
-// a device the visitor may not see is not a hit, however the page that found it
-// was allowed.
+// a device the visitor may not see is not a hit, however the search that found it
+// was written.
 func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if runes := []rune(query); len(runes) > searchMaxChars {
@@ -47,10 +43,9 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	if query != "" {
 		ctx, cancel := context.WithTimeout(r.Context(), searchTimeout)
 		defer cancel()
-		here := p.here(r)
-		seen := map[string]bool{} // a table on two pages is one result, not two
+		seen := map[string]bool{} // a thing found by two pages is one result, not two
 		for _, page := range p.App.Pages {
-			hits = append(hits, p.searchPage(ctx, page, here, query, seen)...)
+			hits = append(hits, p.searchPage(ctx, page, query, seen)...)
 		}
 	}
 
@@ -59,85 +54,79 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"results": hits})
 }
 
-// searchPage is the hits of one page's searchable tables.
-func (p *Program) searchPage(ctx context.Context, page *ir.Page, here *hereRequest, query string, seen map[string]bool) []searchHit {
-	var tables []*ir.Table
-	for _, t := range ir.Tables(page.Body) {
-		if t.Search {
-			tables = append(tables, t)
-		}
-	}
-	if len(tables) == 0 {
+// searchPage is the hits of one page's search. The page is searched with the arguments it has
+// when nothing is selected, which a Search that is about all of the page's things does not
+// read; the page's Guard is not asked, since with no arguments it would refuse for the wrong
+// reason, and each hit is checked against it with its own.
+func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, seen map[string]bool) []searchHit {
+	if page.Search == nil {
 		return nil
 	}
 	raw := map[string]string{}
-	if here != nil && here.page == page {
-		raw = here.raw // the page the visitor is on: its arguments are known
-	}
-	// A path argument that is not there is not a zero to search with: decoding would
-	// take it for one, and the table would be asked for another tenant's rows. Without
-	// the arguments the page is not searched.
-	for _, a := range page.Args {
-		if a.InPath && raw[a.Name] == "" {
-			return nil
-		}
-	}
 	args, err := page.Decode(raw)
 	if err != nil {
 		return nil
 	}
-	req := &Request{program: p, Args: args, Raw: raw}
-	ctx = With(ctx, req)
-	if page.Guard != nil && page.Guard(ctx, args) != nil {
+	ctx = With(ctx, &Request{program: p, Args: args, Raw: raw})
+
+	found, err := p.found(ctx, page, query)
+	if err != nil {
+		if ctx.Err() == nil {
+			p.log.Error("webui: search failed", "page", page.PathTemplate, "err", err)
+		}
 		return nil
 	}
 
+	group := p.searchGroup(page)
 	var hits []searchHit
-	for _, t := range tables {
-		group := cmp.Or(t.Title, page.Nav.Label, page.PathTemplate)
-		window, err := t.Load(ctx, ir.Query{Limit: searchPerPage, Search: query})
-		rows := window.Rows
-		if err != nil && ctx.Err() == nil {
-			p.log.Error("webui: search failed", "page", page.PathTemplate, "table", t.Title, "err", err)
+	for i, hit := range found {
+		if i == searchPerPage {
+			break
 		}
-		for i, row := range rows {
-			if i == searchPerPage {
-				break
-			}
-			href, err := p.open(t.RowClick.Dest, t.RowClick.Args(ctx, row), "")
-			if err != nil {
-				p.log.Error("webui: search result dropped: its link cannot be built", "page", page.PathTemplate, "err", err)
-				continue
-			}
-			if seen[href] || !p.mayOpen(ctx, href) {
-				continue // a result is only for what this visitor could open: the destination's Guard has the last word
-			}
-			seen[href] = true
-			title, desc := rowText(t, row)
-			hits = append(hits, searchHit{Group: group, Title: title, Desc: desc, Href: href})
+		href, err := p.open(page.PathTemplate, hit.Args, "")
+		if err != nil {
+			p.log.Error("webui: search result dropped: its link cannot be built", "page", page.PathTemplate, "err", err)
+			continue
 		}
+		if seen[href] || !p.mayOpen(ctx, href) {
+			continue // a result is only for what this visitor could open: the destination's Guard has the last word
+		}
+		seen[href] = true
+		hits = append(hits, searchHit{Group: group, Title: cmp.Or(hit.Title, href), Desc: hit.Desc, Href: href})
 	}
 	return hits
 }
 
-// rowText is a row as a search result: its first column is the title, and the
-// other text columns, where they say something, are the line beneath it. A number
-// is left out of the line, since without its column's label it says nothing, but it
-// is still searched.
-func rowText(t *ir.Table, row any) (title, desc string) {
-	var rest []string
-	for i, c := range t.Columns {
-		if c.Get == nil {
-			continue
+// found is what a page's search returns, with a panic in it answered as an error: a search is
+// asked on every keystroke, and one that fails must not take the others with it.
+func (p *Program) found(ctx context.Context, page *ir.Page, query string) (hits []ir.Hit, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in search: %v", r)
 		}
-		switch text := c.Get(row); {
-		case i == 0:
-			title = text
-		case text != "" && (c.Num == nil || c.Display == ir.DisplayTime):
-			rest = append(rest, text)
+	}()
+	return page.Search(ctx, query, searchPerPage) //nolint:wrapcheck // the caller logs it with the page
+}
+
+// searchGroup is what a page's results are listed under: the page's name in the navigation, or the
+// name of the entry it borrows its place from, so the results of a device's page are "Devices".
+func (p *Program) searchGroup(page *ir.Page) string {
+	if page.Nav.Label != "" {
+		return page.Nav.Label
+	}
+	if shadowed := p.App.ByPath[page.Nav.Shadow]; shadowed != nil && shadowed.Nav.Label != "" {
+		return shadowed.Nav.Label
+	}
+	// A page that lists entries of its own has no label and borrows no place: it is the entries.
+	// Its results are listed under the nearest page above it that has a name, such as "Sites" for
+	// "/site/{name}", which is what the visitor knows the things as.
+	segs := strings.Split(strings.Trim(page.PathTemplate, "/"), "/")
+	for i := len(segs) - 1; i >= 1; i-- {
+		if above := p.App.ByPath["/"+strings.Join(segs[:i], "/")]; above != nil && above.Nav.Label != "" {
+			return above.Nav.Label
 		}
 	}
-	return title, strings.Join(rest, " · ")
+	return page.PathTemplate
 }
 
 // mayOpen reports whether the visitor could open the page at href: it is a page
@@ -175,50 +164,4 @@ func (w *verdictWriter) WriteHeader(code int) {
 func (w *verdictWriter) Write(b []byte) (int, error) {
 	w.WriteHeader(http.StatusOK)
 	return len(b), nil
-}
-
-// hereRequest is the page an address is, and the arguments it carries.
-type hereRequest struct {
-	page *ir.Page
-	raw  map[string]string
-}
-
-type hereKey struct{}
-
-// whereHandler records which page the address is for, and what it says, in the
-// hereRequest the caller put in the request's context.
-func whereHandler(page *ir.Page) http.HandlerFunc {
-	parser := argParser(page)
-	return func(_ http.ResponseWriter, r *http.Request) {
-		res, ok := r.Context().Value(hereKey{}).(*hereRequest)
-		if !ok {
-			return
-		}
-		if raw, err := parser.Parse(r); err == nil {
-			res.page, res.raw = page, raw
-		}
-	}
-}
-
-// here is the page the visitor is on, from the address the search was asked from
-// (the Referer; the library's responses name the same origin as the policy, so a
-// browser sends it whole). It is only the answer to "which page, with which
-// arguments", and is checked as everything else is: the page's own Guard runs
-// before any of its tables is searched. An address from elsewhere, or none, is no page.
-func (p *Program) here(r *http.Request) *hereRequest {
-	ref, err := url.Parse(r.Referer())
-	if err != nil || ref.Host != r.Host {
-		return nil
-	}
-	res := &hereRequest{}
-	//nolint:gosec // G704: the request is routed into this app's own mux and is never sent anywhere.
-	req, err := http.NewRequestWithContext(context.WithValue(r.Context(), hereKey{}, res), http.MethodGet, ref.RequestURI(), http.NoBody)
-	if err != nil {
-		return nil
-	}
-	p.where.ServeHTTP(&verdictWriter{}, req)
-	if res.page == nil {
-		return nil
-	}
-	return res
 }

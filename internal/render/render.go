@@ -101,7 +101,7 @@ type Renderer struct {
 	nav    []navEntry
 
 	// menu is the app's own links, in the menu in the top bar.
-	menu []ir.MenuItem
+	links []ir.ExternalLink
 
 	// served is the name each asset is served as, with the hash of its contents in
 	// it, by the name it is known by here. It is set once, when the assets are built.
@@ -138,9 +138,7 @@ func New(app *ir.App, prefix string) *Renderer {
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	for _, p := range app.Pages {
-		for _, t := range ir.Tables(p.Body) {
-			r.search = r.search || t.Search
-		}
+		r.search = r.search || p.Search != nil
 	}
 	for _, p := range app.Pages {
 		if p.Nav.Hidden {
@@ -152,7 +150,7 @@ func New(app *ir.App, prefix string) *Renderer {
 		}
 		r.nav = append(r.nav, e)
 	}
-	r.menu = app.Menu
+	r.links = app.ExternalLinks
 	return r
 }
 
@@ -450,14 +448,15 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
 
-// menuEntries is the menu as the component draws it, grouped by Section like the
-// sidebar: the entries with no Section first, then each section in the order it is
-// first named, each with its caption above the first of its entries.
-func (r *Renderer) menuEntries() []c.MenuEntry {
-	out := make([]c.MenuEntry, 0, len(r.menu))
-	for _, g := range bySection(r.menu, func(e ir.MenuItem) string { return e.Section }) {
+// linkEntries are the external links as the component draws them, grouped by Section
+// like the sidebar: the entries with no Section first, then each section in the order it
+// is first named, each with its caption above the first of its entries. A link to a web
+// address opens in a tab of its own; a path on this site and a mail address do not.
+func (r *Renderer) linkEntries() []c.LinkEntry {
+	out := make([]c.LinkEntry, 0, len(r.links))
+	for _, g := range bySection(r.links, func(e ir.ExternalLink) string { return e.Section }) {
 		for i, e := range g.items {
-			entry := c.MenuEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon)}
+			entry := c.LinkEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon), NewTab: isWebAddress(e.URL)}
 			if i == 0 {
 				entry.Section = g.section
 			}
@@ -465,4 +464,11 @@ func (r *Renderer) menuEntries() []c.MenuEntry {
 		}
 	}
 	return out
+}
+
+// isWebAddress is whether an address is on the web, as opposed to a path on this site or a
+// mail address: the links that leave the app, and so open in a tab of their own.
+func isWebAddress(address string) bool {
+	a := strings.ToLower(address)
+	return strings.HasPrefix(a, "http://") || strings.HasPrefix(a, "https://")
 }

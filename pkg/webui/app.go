@@ -18,29 +18,31 @@ type App struct {
 	// Pages are the pages to serve. Each page that another links to must be here.
 	Pages Pages
 
-	// Menu is the app's own links, in a menu behind a button in the top bar: the
-	// places outside the app that it wants a visitor to reach, such as signing out,
-	// an account page on another service, or the documentation. With none, there is no
-	// button.
-	Menu []MenuItem
+	// ExternalLinks are the app's links to places outside it, behind a button in the top
+	// bar that is not part of the sidebar: signing out, an account page on another
+	// service, the documentation. With none, there is no button.
+	ExternalLinks []ExternalLink
 }
 
-// MenuItem is a link in [App.Menu]. It is a [Nav] entry, with the Label that is its
-// text, the Icon beside it, and the Section that captions it, and with an address
-// outside the app.
+// ExternalLink is a link in [App.ExternalLinks]. It is a [Nav] entry, with the Label
+// that is its text, the Icon beside it, and the Section that captions it, and with an
+// address outside the app.
 //
-// Like the sidebar, the menu is grouped by Section and not by position: the
+// An address on the web opens in a tab of its own, so the app stays where it was; a path
+// on the same site, such as "/logout", and a mail address, open in the same tab.
+//
+// Like the sidebar, the list is grouped by Section and not by position: the
 // entries with no Section come first, and each Section follows, in the order it is
 // first named, with its entries in the order they were given. An entry belongs to
 // a section only by saying so.
-type MenuItem struct {
+type ExternalLink struct {
 	Nav
 
-	// ExternalURL is where the entry goes, used as written: an http, https or mailto
+	// URL is where the link goes, used as written: an http, https or mailto
 	// address, or a path elsewhere on the same site such as "/logout". The mount
 	// prefix is not added, so it is no way to link to one of the app's own pages;
 	// give the page a [Nav] entry for that.
-	ExternalURL string
+	URL string
 }
 
 // Brand is the product identity shown in the chrome.

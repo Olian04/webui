@@ -108,8 +108,8 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
 			Attrs: templ.Attributes{"data-refresh": true},
 		})
-		if items := r.menuEntries(); len(items) > 0 {
-			@c.AppMenu(items)
+		if items := r.linkEntries(); len(items) > 0 {
+			@c.ExternalLinks(items)
 		}
 		<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
 	}

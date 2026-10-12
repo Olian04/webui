@@ -266,18 +266,30 @@ func TestAFeedPagesByACursorWithNoSortOrFilters(t *testing.T) {
 	assert.Contains(t, get(h, "/admin/audit").Body.String(), "saved retention")
 }
 
-func TestSearchAsksSeveralPages(t *testing.T) {
-	rec := get(handler(t), "/admin/_webui/search?q=stock")
-	var got struct {
-		Results []struct{ Group, Title string }
+func TestSearchAsksTheDetailPagesThatOfferThemselves(t *testing.T) {
+	h := handler(t)
+	results := func(q string) (groups map[string][]string) {
+		var got struct {
+			Results []struct{ Group, Title, Href string }
+		}
+		assert.NoError(t, json.Unmarshal(get(h, "/admin/_webui/search?q="+url.QueryEscape(q)).Body.Bytes(), &got))
+		groups = map[string][]string{}
+		for _, r := range got.Results {
+			groups[r.Group] = append(groups[r.Group], r.Href)
+		}
+		return groups
 	}
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
-	groups := map[string]bool{}
-	for _, r := range got.Results {
-		groups[r.Group] = true
-	}
-	assert.True(t, groups["Devices"])
-	assert.True(t, groups["Sites"])
+
+	// Each detail page is found under the entry it lights: devices under Devices, sites under Sites.
+	groups := results("stock")
+	assert.True(t, len(groups["Devices"]) > 0)
+	assert.True(t, strings.HasPrefix(groups["Devices"][0], "/admin/device/dev_"))
+	assert.DeepEqual(t, groups["Sites"], []string{"/admin/site/Stockholm"})
+
+	// An alert is found by its message, though its page is not the one the alerts are listed on.
+	alert := results("ingest lag")
+	assert.True(t, len(alert["Alerts"]) > 0)
+	assert.True(t, strings.HasPrefix(alert["Alerts"][0], "/admin/alert/alt_"))
 }
 
 // linked is the address a page links an asset at, with the hash of its contents in it.
@@ -532,4 +544,26 @@ func TestEveryLinkInTheHandbookGoesToAPageThatExistsAndTheHandbookLinksToItself(
 			t.Errorf("%s links to %d other pages of the handbook and %d pages outside it", page, handbook, elsewhere)
 		}
 	}
+}
+
+func TestAnOutcomeCanSayWhereToGoWhateverItsKind(t *testing.T) {
+	h := handler(t)
+
+	// Stay: the ingest form is one the user goes on tuning, so a save that was reached
+	// from a link still stays on it, with where it came from kept in the address.
+	own := "/admin/settings?webui.from=" + url.QueryEscape("/admin/system")
+	rec := post(h, own, url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, rec.Header().Get("Location"), own)
+
+	// Back: someone else acknowledged the alert first. A Failure would show the form again,
+	// for an alert with nothing left to do; Back leaves for the page the user came from, with
+	// the reason in a toast, and for the parent when it was opened directly.
+	from := "?webui.from=" + url.QueryEscape("/admin/alert")
+	post(h, "/admin/alert/alt_001"+from, url.Values{"_leaf": {"p.0"}})
+	rec = post(h, "/admin/alert/alt_001"+from, url.Values{"_leaf": {"p.0"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
+	rec = post(h, "/admin/alert/alt_001", url.Values{"_leaf": {"p.0"}})
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
 }

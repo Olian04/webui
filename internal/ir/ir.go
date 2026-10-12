@@ -46,6 +46,16 @@ const (
 	OutcomeReject                     // not done; the form is shown again with what was typed, by field
 )
 
+// ReturnKind is where an outcome leaves the user when it says, whatever kind it is.
+type ReturnKind uint8
+
+// The kinds. Default is the zero value: the outcome's kind decides.
+const (
+	ReturnDefault ReturnKind = iota // accepted outcomes return to where the form was opened from; the others show the form again
+	ReturnBack                      // leave for where the user came from, whatever the kind
+	ReturnStay                      // stay where the user is, and keep what was typed
+)
+
 // Outcome is what an action reports when it runs and no error stopped it. Fields
 // is set only for a rejection. Redirect is an already-resolved URL: pkg/webui
 // built it with Open, which had ctx and therefore the mount prefix. The
@@ -55,6 +65,7 @@ type Outcome struct {
 	Kind     OutcomeKind
 	Message  string
 	Redirect string // empty means stay, or return to where the form was opened from
+	Return   ReturnKind
 	Fields   []FieldError
 }
 

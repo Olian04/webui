@@ -48,10 +48,8 @@ var Sites = webui.Page[webui.NoArgs]{
 // hold the one a page already has.
 var SitesTable = webui.Table[SiteSummary]{
 	Title: "Sites",
-	Desc:  "An unpaged table. It only says what its rows are, and the library sorts, filters and searches them.",
-	// Searchable too: typing "stock" finds the site beside the devices that match.
-	Search: true,
-	Rows:   func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
+	Desc:  "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
+	Rows:  func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
 	RowClick: webui.Link[SiteSummary, SiteArgs]{
 		Page: SiteDetail,
 		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
@@ -73,6 +71,17 @@ var SiteDetail = webui.Page[SiteArgs]{
 		}
 		return entries, nil
 	},
+
+	// Search makes the sites findable from the search box: typing "stock" finds the site beside
+	// the devices that match. The page says what a site is as a result, and SearchRows, for
+	// rows that are held in memory, does the matching over the fields it is given.
+	Search: webui.SearchRows(
+		func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
+		func(s SiteSummary) webui.Hit[SiteArgs] {
+			return webui.Hit[SiteArgs]{Args: SiteArgs{Name: s.Name}, Title: s.Name, Desc: s.Health()}
+		},
+		SiteName, SiteHealth,
+	),
 	Guard: func(_ context.Context, a SiteArgs) error {
 		if _, ok := service.Site(a.Name); !ok {
 			return fmt.Errorf("there is no site %q", a.Name)

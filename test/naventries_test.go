@@ -288,3 +288,17 @@ func TestAPageThatBorrowsTheNavigationPlaceLightsOnlyTheEntryItsAddressFits(t *t
 	assert.Equal(t, lit("/admin/device/log?site=Malm%C3%B6"), "Malmö")
 	assert.Equal(t, lit("/admin/device/log?site=Elsewhere"), "All devices")
 }
+
+func TestTheSearchResultsOfAPageThatListsEntriesAreGroupedUnderTheNearestNamedPageAboveIt(t *testing.T) {
+	t.Parallel()
+
+	sites := webui.Page[webui.NoArgs]{Path: "/site", Nav: webui.Nav{Label: "Sites"}, Body: webui.Stack{}}
+	site := webui.Page[siteArgs]{
+		Path: "/site/{name}", Nav: webui.Nav{Section: "Sites"}, NavEntries: siteEntries("Stockholm"), Body: webui.Stack{},
+		Search: func(context.Context, string, int) ([]webui.Hit[siteArgs], error) {
+			return []webui.Hit[siteArgs]{{Args: siteArgs{Name: "Stockholm"}, Title: "Stockholm"}}, nil
+		},
+	}
+	h := webui.App{Pages: webui.Pages{sites, site}}.MustCompile("/admin")
+	assert.Equal(t, search(t, h, "stock").Results[0].Group, "Sites") // not the path "/site/{name}"
+}

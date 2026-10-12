@@ -29,6 +29,19 @@ type Page struct {
 	// page with arguments. Nil means the page has one entry, from Nav, or none. The runtime
 	// calls it when it draws a page, so it is bounded and must not be trusted to be quick.
 	NavEntries func(ctx context.Context) ([]NavEntry, error)
+
+	// Search finds the things this page is the page of, by what the visitor typed in the
+	// global search: at most limit of them. Nil means the page is not searched. A hit is checked
+	// against this page's Guard, with the hit's own arguments, before it is offered.
+	Search func(ctx context.Context, query string, limit int) ([]Hit, error)
+}
+
+// Hit is one result of a page's search: the arguments of this page that it leads to, and what
+// to say about it.
+type Hit struct {
+	Args  any
+	Title string
+	Desc  string
 }
 
 // ArgSpec is one field of a page's argument struct, resolved.
