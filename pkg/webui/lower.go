@@ -36,7 +36,7 @@ import (
 func (a App) lower() (*ir.App, error) {
 	l := &appLowerer{entries: map[string]bool{}}
 	for _, p := range a.Pages {
-		if p.pageNav().Label != "" {
+		if p.pageNav().Label != "" || p.hasNavEntries() {
 			l.entries[p.pagePath()] = true
 		}
 	}
@@ -84,9 +84,9 @@ type appLowerer struct {
 // borrows the nearest ancestor's: the longest proper prefix of its path, by
 // segments, that is a page with an entry. The root is never an ancestor, so a
 // labelled landing page does not light for every hidden page in the app.
-func (l *appLowerer) nav(n Nav, path string) ir.Nav {
-	out := ir.Nav{Label: n.Label, Icon: n.Icon, Section: n.Section, Hidden: n.Label == ""}
-	if n.Label != "" {
+func (l *appLowerer) nav(n Nav, path string, dynamic bool) ir.Nav {
+	out := ir.Nav{Label: n.Label, Icon: n.Icon, Section: n.Section, Hidden: n.Label == "" && !dynamic, Dynamic: dynamic}
+	if n.Label != "" || dynamic {
 		return out
 	}
 	segs := strings.Split(strings.Trim(path, "/"), "/")

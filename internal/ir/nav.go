@@ -9,4 +9,11 @@ type Nav struct {
 	Section string // the group the entry is listed under, captioned; empty is ungrouped, listed first
 	Shadow  string
 	Hidden  bool // no entry of its own: the page has no Label
+	Dynamic bool // the entries are not declared but loaded, one for each of the page's NavEntries
+}
+
+// NavEntry is one entry of a page that lists several: the arguments of the page it opens, and what it says.
+type NavEntry struct {
+	Args  any
+	Label string
 }

@@ -65,6 +65,23 @@ type Page[A any] struct {
 	// Guard refuses are also left out of the sidebar and the search.
 	Guard func(ctx context.Context, a A) error
 
+	// NavEntries gives a page with arguments entries of its own in the sidebar: one for each
+	// address of the page that it returns, such as one for each site of a page at
+	// "/site/{name}". A page with arguments has no entry otherwise, since an entry is a link with
+	// one address and a path with {arguments} has none until they are filled in.
+	//
+	// Each [NavEntry] is the page's arguments and the words the entry says. [Nav]'s Icon and
+	// Section are the icon and the group of all of them; its Label must be empty, since each
+	// entry has its own. A page's pages that borrow its place, such as "/site/{name}/log", light
+	// the entry of the same site.
+	//
+	// It is called whenever a full page is drawn, for every visitor, so it must be quick and
+	// not rely on what the page's Guard would refuse: the library calls it with a deadline of two seconds,
+	// keeps the first 50 entries, and runs the Guard for each, with the entry's arguments, leaving
+	// out those that would be refused. A failure, or a panic, leaves the entries out and the page
+	// as it is.
+	NavEntries func(ctx context.Context) ([]NavEntry[A], error)
+
 	// Body is what the page shows: a [Table], a [Form], or a layout of them.
 	Body PageBody
 }
@@ -72,7 +89,9 @@ type Page[A any] struct {
 // Nav is a navbar entry. A page with an empty Label has no entry of its own, and
 // lights the entry of its nearest ancestor: the page whose path is the longest
 // prefix of its own that has a Label. A page at "/device/{id}" borrows the
-// "Devices" entry of the page at "/device", so there is nothing to declare.
+// "Devices" entry of the page at "/device", so there is nothing to declare. A page whose
+// path has arguments has no single address to link to, so it has entries only through
+// [Page.NavEntries], which lists one for each address.
 type Nav struct {
 	// Label is the entry's text. A page with no Label has no entry of its own.
 	Label string
@@ -99,7 +118,19 @@ type PageBody interface {
 	lowerBody(at ir.Addr) ir.Node
 }
 
+// NavEntry is one entry in the sidebar of a [Page] that has [Page.NavEntries]: an address
+// of the page, and what it says.
+type NavEntry[A any] struct {
+	// Args are the page's arguments that the entry opens, with the path ones filled in.
+	Args A
+
+	// Label is what the entry says. An entry with none is left out.
+	Label string
+}
+
 func (Page[A]) isPage() {}
+
+func (p Page[A]) hasNavEntries() bool { return p.NavEntries != nil }
 
 func (p Page[A]) pagePath() string { return string(p.Path) }
 
@@ -141,7 +172,11 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 
 	if p.Nav.Label != "" && len(args.Placeholders(path)) > 0 {
 		v.add(fmt.Sprintf("the page has the navigation entry %q but its path has arguments", p.Nav.Label),
-			"A sidebar entry is a link with one address, and a path with {arguments} has none until they are filled in. Remove Nav, or link to the page from another page's table with a Link.")
+			"A sidebar entry is a link with one address, and a path with {arguments} has none until they are filled in. Remove Nav.Label, give the page NavEntries to list an entry for each address, or link to the page from another page's table with a Link.")
+	}
+	if p.NavEntries != nil && p.Nav.Label != "" {
+		v.add(fmt.Sprintf("the page has NavEntries and the navigation label %q", p.Nav.Label),
+			"Each entry says its own words, in NavEntry.Label. Remove Nav.Label; Nav.Icon and Nav.Section are the icon and the group of all the entries.")
 	}
 	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
 		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
@@ -209,12 +244,25 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	page := &ir.Page{
 		PathTemplate: string(p.Path),
 		Args:         specs,
-		Nav:          l.nav(p.Nav, string(p.Path)),
+		Nav:          l.nav(p.Nav, string(p.Path), p.NavEntries != nil),
 		Decode:       codec.Decode,
 		Encode:       codec.Encode,
 	}
 	if p.Guard != nil {
 		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
+	}
+	if p.NavEntries != nil {
+		page.NavEntries = func(ctx context.Context) ([]ir.NavEntry, error) {
+			entries, err := p.NavEntries(ctx)
+			if err != nil {
+				return nil, err
+			}
+			out := make([]ir.NavEntry, len(entries))
+			for i, e := range entries {
+				out[i] = ir.NavEntry{Args: e.Args, Label: e.Label}
+			}
+			return out, nil
+		}
 	}
 	page.Body = p.Body.lowerBody(ir.Addr{})
 	assignViewIDs(page.Body)

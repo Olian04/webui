@@ -96,6 +96,7 @@ type pageLike interface {
 	isPage()
 	pagePath() string
 	pageNav() Nav
+	hasNavEntries() bool
 	pageArgType() reflect.Type
 	validatePage(f *facts) []CompileError
 	lowerPage(l *appLowerer) *ir.Page

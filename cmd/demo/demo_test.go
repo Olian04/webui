@@ -71,14 +71,19 @@ func TestMustCompileAcceptsTheApp(t *testing.T) {
 	assert.NotNil(t, app.MustCompile("/admin"))
 }
 
-func TestNavigationHasSectionsAndTheSitePageLightsSites(t *testing.T) {
+func TestNavigationHasSectionsAndTheSitePageLightsItsOwnEntry(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm").Body.String()
-	for _, caption := range []string{"Platform", "Configuration", "Operations"} {
+	for _, caption := range []string{"Platform", "Sites", "Configuration", "Operations"} {
 		assert.Contains(t, body, `<div class="nav-section">`+caption+`</div>`)
 	}
-	// SiteDetail has no entry of its own; it lights Sites, its ancestor.
-	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site"`)
+	// SiteDetail lists an entry for each site, loaded when the page is drawn, and lights the one
+	// that is on screen; the list of sites, which is another page, is not lit.
+	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site/Stockholm"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/Malm%C3%B6"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/G%C3%B6teborg"`)
+	assert.Contains(t, body, `<a class="nav-item" href="/admin/site"`)
+	assert.False(t, strings.Contains(body, `<a class="nav-item active" href="/admin/site"`))
 	// The breadcrumb's parent is the page mounted at /site.
 	assert.Contains(t, body, `<a href="/admin/site">Sites</a>`)
 	assert.Contains(t, body, `<span class="cur" aria-current="page">Stockholm</span>`)

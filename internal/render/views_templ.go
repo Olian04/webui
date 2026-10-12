@@ -69,7 +69,7 @@ func (r *Renderer) document(d Doc) templ.Component {
 			Stylesheets: r.styles(),
 			Scripts:     []string{r.AssetHref("enhance.js")},
 			Head:        r.head(d.Code),
-			Sidebar:     r.sidebar(d.Active, d.HideNav),
+			Sidebar:     r.sidebar(d.Active, d.HideNav, d.NavLinks),
 			TopBar:      r.topbar(d.Crumbs, d.URL),
 			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
 			Toasts:      toastRegion(d.Toasts),
@@ -357,7 +357,7 @@ func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 // sidebar lists the entries the visitor may open, grouped by section. A section's
 // caption appears above its first entry that is shown, so a section with nothing
 // left in it has no caption either.
-func (r *Renderer) sidebar(active string, hide map[string]bool) templ.Component {
+func (r *Renderer) sidebar(active string, hide map[string]bool, links map[string][]NavLink) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -390,7 +390,7 @@ func (r *Renderer) sidebar(active string, hide map[string]bool) templ.Component 
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			for _, e := range r.shown(hide) {
+			for _, e := range r.shown(hide, links) {
 				if e.Section != "" {
 					templ_7745c5c3_Err = c.NavSection(e.Section).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
@@ -401,7 +401,7 @@ func (r *Renderer) sidebar(active string, hide map[string]bool) templ.Component 
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.Path == active, Icon: c.IconName(e.Icon), Letter: initial(e.Label)}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), Letter: initial(e.Label)}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

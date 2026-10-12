@@ -209,6 +209,27 @@ design element.
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
   proper prefix that is a page with a `Label`, never the root). There is no field to
   declare, because the breadcrumb already derives its parents the same way.
+- A page with path arguments has entries through `Page.NavEntries`, a function of `ctx`
+  that returns the arguments each entry opens and what it says. It is on the page and
+  not on `Nav`, because the arguments are typed by the page and `Nav` is not generic.
+  `Nav` still gives the icon and the section of all of them, and must have no label,
+  since each entry has its own. It is loaded when a full page is drawn, for the visitor
+  it is drawn for, and not kept between pages: what a sidebar lists is as likely to
+  depend on who is looking as anything, and a cache the library cannot key would be
+  wrong for someone. The price is paid on the way of every page, so it is bounded: a
+  deadline of two seconds, the first fifty entries, and a panic or an error leaves the
+  page drawn without them and logs the cause. A fragment (a refreshed leaf), an asset
+  and the search do not load it, since none of them draws the sidebar.
+- An entry that lists several is left out when the page's `Guard` refuses the visitor
+  with that entry's own arguments. The `Guard` is not asked with no arguments to decide
+  for all of them, as it is for a page with one entry: a `Guard` that looks the thing up
+  would refuse an empty name and hide every one.
+- Which entry is lit is the one whose arguments fit the address best: its page is the one
+  lit (the page itself or the page that borrows its place), its path arguments are the
+  ones in the address, and, on the page itself, so are its query arguments, with state
+  that is not an argument (a table's sort, where the visitor came from) ignored. When
+  several fit, the one with the most arguments wins, so a general entry is not lit beside
+  a more particular one.
 - Entries and search results whose page `Guard` refuses the visitor are left out; the
   guards are asked with no arguments, as a visitor who opened the page bare would be.
   The page still answers 403 to anyone who types the address.

@@ -175,6 +175,15 @@ them in, with a warning toast: *This app has no page at "/", so you were sent to
 …* It is for whoever declared the app, who sees the gap each time the brand is
 used; declaring a page at "/" ends it. With nowhere to send them, a page says so.
 
+### A page with arguments → an entry for each address
+
+An entry is a link, and a link has one address. A page at `/site/{name}` has none until a
+name is given, so on its own it has no entry (a `Nav.Label` on it is a compile error). With
+`NavEntries` it has one for each address the function returns, each a `NavEntry` of the page's
+arguments and what it says, in the place the page has in the sidebar and under the icon and
+section of its `Nav`. The entry of the address on screen is lit, and so is it for a page
+below it that borrows its place.
+
 ### A page with no entry → the ancestor's highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not

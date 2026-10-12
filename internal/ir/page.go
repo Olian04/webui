@@ -24,6 +24,11 @@ type Page struct {
 	// Guard receives the decoded arguments. Runs before anything loads, on
 	// every request to this page including section fetches.
 	Guard func(ctx context.Context, args any) error
+
+	// NavEntries lists the entries this page has in the navigation, each an address of the
+	// page with arguments. Nil means the page has one entry, from Nav, or none. The runtime
+	// calls it when it draws a page, so it is bounded and must not be trusted to be quick.
+	NavEntries func(ctx context.Context) ([]NavEntry, error)
 }
 
 // ArgSpec is one field of a page's argument struct, resolved.

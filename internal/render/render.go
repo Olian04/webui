@@ -40,8 +40,33 @@ type Doc struct {
 	// the sidebar and the search that reads it leave them out.
 	HideNav map[string]bool
 
+	// Here is the page the response is for, and the arguments of its address, so an entry
+	// of a page that lists several can tell which of them is the one on screen.
+	Here Here
+
+	// NavLinks are the entries of the pages that list several in the navigation, by page
+	// path template: loaded for this response, for this visitor, and already checked
+	// against the page's Guard.
+	NavLinks map[string][]NavLink
+
 	// Code is what the page's editors and diffs need loaded.
 	Code CodeNeeds
+}
+
+// Here is a page and the arguments of the address it was asked at, by name: the path ones,
+// and the query ones with the table and tab state that rides along in the address.
+type Here struct {
+	Page  string // the page's path template
+	Path  map[string]string
+	Query map[string]string
+}
+
+// NavLink is one entry of a page that lists several in the navigation: where it goes, what it says,
+// and whether it is the one that is on screen.
+type NavLink struct {
+	Label  string
+	Href   string
+	Active bool
 }
 
 // Toast is a message shown once, in the bottom-right region.
@@ -96,6 +121,12 @@ type navEntry struct {
 	Section string
 	Path    string // path template, the identity used for Active
 	Href    string
+
+	// Dynamic is the place of a page that lists several entries, which are not known until a
+	// response is drawn: Label and Href are empty, and the entries are the response's NavLinks.
+	// Lit is whether one of those is the entry on screen.
+	Dynamic bool
+	Lit     bool
 }
 
 // New derives the navigation and asset links from app.
@@ -115,9 +146,11 @@ func New(app *ir.App, prefix string) *Renderer {
 		if p.Nav.Hidden {
 			continue
 		}
-		r.nav = append(r.nav, navEntry{
-			Label: p.Nav.Label, Icon: p.Nav.Icon, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate),
-		})
+		e := navEntry{Label: p.Nav.Label, Icon: p.Nav.Icon, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate)}
+		if p.Nav.Dynamic {
+			e.Label, e.Href, e.Dynamic = "", "", true
+		}
+		r.nav = append(r.nav, e)
 	}
 	r.menu = app.Menu
 	return r
@@ -126,7 +159,7 @@ func New(app *ir.App, prefix string) *Renderer {
 // FirstEntry is the address and name of the first navigation entry the visitor may
 // open, or "". hide is the paths of the entries they may not.
 func (r *Renderer) FirstEntry(hide map[string]bool) (href, name string) {
-	if shown := r.shown(hide); len(shown) > 0 {
+	if shown := r.shown(hide, nil); len(shown) > 0 {
 		return shown[0].Href, shown[0].Label // the first the sidebar lists, which sections reorder
 	}
 	return "", ""
@@ -135,9 +168,11 @@ func (r *Renderer) FirstEntry(hide map[string]bool) (href, name string) {
 // NavPaths is the path template of every navigation entry, in order, so the runtime
 // can ask which of them the visitor may open.
 func (r *Renderer) NavPaths() []string {
-	out := make([]string, len(r.nav))
-	for i, e := range r.nav {
-		out[i] = e.Path
+	out := make([]string, 0, len(r.nav))
+	for _, e := range r.nav {
+		if !e.Dynamic { // those are decided for each entry, with its own arguments, when they are loaded
+			out = append(out, e.Path)
+		}
 	}
 	return out
 }
@@ -347,10 +382,17 @@ func initial(label string) string {
 // Section come first, then each section in the order it is first named, each with
 // its entries in the order given and its caption on the first of them. A section
 // with nothing left in it has no caption either.
-func (r *Renderer) shown(hide map[string]bool) []navEntry {
+func (r *Renderer) shown(hide map[string]bool, links map[string][]NavLink) []navEntry {
 	var open []navEntry
 	for _, e := range r.nav {
-		if !hide[e.Path] {
+		switch {
+		case hide[e.Path]:
+		case e.Dynamic:
+			// The place of a page that lists several: an entry for each, in the order it gave them.
+			for _, l := range links[e.Path] {
+				open = append(open, navEntry{Label: l.Label, Icon: e.Icon, Section: e.Section, Path: e.Path, Href: l.Href, Dynamic: true, Lit: l.Active})
+			}
+		default:
 			open = append(open, e)
 		}
 	}
@@ -365,6 +407,15 @@ func (r *Renderer) shown(hide map[string]bool) []navEntry {
 		}
 	}
 	return out
+}
+
+// lit is whether an entry is the one on screen: a page that lists several says which of them, and any
+// other is lit when it is the page's own entry, or the one the page borrows its place from.
+func (e navEntry) lit(active string) bool {
+	if e.Dynamic {
+		return e.Lit
+	}
+	return e.Path == active
 }
 
 // group is the entries of one section, in the order they were given.

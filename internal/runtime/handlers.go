@@ -3,9 +3,13 @@ package runtime
 import (
 	"cmp"
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
 )
 
@@ -74,6 +78,9 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 	if doc.HideNav == nil {
 		doc.HideNav = p.hiddenNav(r.Context())
 	}
+	if doc.NavLinks == nil {
+		doc.NavLinks = p.navLinks(r.Context(), doc.Here, doc.Active)
+	}
 	doc.Toasts = append(p.takeFlash(w, r), doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
 	if err := render.Write(r.Context(), w, status, p.render.Document(doc)); err != nil {
@@ -122,4 +129,126 @@ func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 		hide[path] = true
 	}
 	return hide
+}
+
+const (
+	// maxNavEntries bounds the entries of one page that lists several, so a source of thousands
+	// does not make a sidebar of them, nor the page that has them slow to draw.
+	maxNavEntries = 50
+
+	// navEntriesTimeout bounds the loading of a page's entries. It is on the way of every full page.
+	navEntriesTimeout = 2 * time.Second
+)
+
+// navLinks loads the entries of every page that lists several in the navigation, for the visitor
+// this response is for. They are asked for each time a full page is drawn, a page at a time and
+// each within a deadline; one that fails, panics or is too slow is left out, and the page is
+// drawn as if it had none, since a sidebar must not be what takes a page down. An entry the page's
+// Guard would refuse, with the entry's own arguments, is left out, and the first maxNavEntries
+// are kept.
+func (p *Program) navLinks(ctx context.Context, here render.Here, active string) map[string][]render.NavLink {
+	var out map[string][]render.NavLink
+	for _, page := range p.App.Pages {
+		if page.NavEntries == nil {
+			continue
+		}
+		links := p.pageNavLinks(ctx, page, here, active)
+		if len(links) == 0 {
+			continue
+		}
+		if out == nil {
+			out = map[string][]render.NavLink{}
+		}
+		out[page.PathTemplate] = links
+	}
+	return out
+}
+
+func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.Here, active string) []render.NavLink {
+	ctx, cancel := context.WithTimeout(ctx, navEntriesTimeout)
+	defer cancel()
+	raw := map[string]string{}
+	zero, err := page.Decode(raw)
+	if err != nil {
+		return nil
+	}
+	entries, err := p.loadNavEntries(With(ctx, &Request{program: p, Args: zero, Raw: raw}), page)
+	if err != nil {
+		if ctx.Err() == nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			p.log.Error("webui: a page's navigation entries failed, so it has none", "page", page.PathTemplate, "err", err)
+		}
+		return nil
+	}
+	if len(entries) > maxNavEntries {
+		p.log.Warn("webui: a page has more navigation entries than are shown", "page", page.PathTemplate, "entries", len(entries), "shown", maxNavEntries)
+		entries = entries[:maxNavEntries]
+	}
+
+	var links []render.NavLink
+	best := -1
+	for _, e := range entries {
+		if e.Label == "" {
+			continue
+		}
+		if page.Guard != nil && page.Guard(With(ctx, &Request{program: p, Args: e.Args, Raw: raw}), e.Args) != nil {
+			continue // the visitor could not open it
+		}
+		path, query, err := page.Encode(e.Args)
+		if err != nil {
+			p.log.Error("webui: a navigation entry is dropped: its address cannot be built", "page", page.PathTemplate, "label", e.Label, "err", err)
+			continue
+		}
+		link := render.NavLink{Label: e.Label, Href: p.Prefix + args.Href(page.PathTemplate, path, query)}
+		if score := entryScore(page, here, active, path, query); score >= 0 {
+			// The entries that fit the address best are the one on screen, so a general entry is not
+			// lit beside a more particular one that is.
+			if score > best {
+				best = score
+				for i := range links {
+					links[i].Active = false
+				}
+			}
+			link.Active = score == best
+		}
+		links = append(links, link)
+	}
+	return links
+}
+
+// loadNavEntries asks a page for its entries, with a panic in it answered as an error: it is on the
+// way of every page, and must not be what takes one down.
+func (p *Program) loadNavEntries(ctx context.Context, page *ir.Page) (entries []ir.NavEntry, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in NavEntries: %v", r)
+		}
+	}()
+	return page.NavEntries(ctx) //nolint:wrapcheck // the caller logs it with the page
+}
+
+// entryScore is how well an entry of page fits the address on screen, or -1 when it does not: its
+// page is the one lit (the page itself, or the one that borrows its place), every path argument it
+// has is the one in the address, and, when it is the page itself, every query argument it has is too.
+// Table and tab state in the address is not an argument and does not count against it. More
+// arguments that agree is a better fit.
+func entryScore(page *ir.Page, here render.Here, active string, path, query map[string]string) int {
+	if active != page.PathTemplate {
+		return -1
+	}
+	score := 0
+	for name, value := range path {
+		if here.Path[name] != value {
+			return -1
+		}
+		score++
+	}
+	if here.Page == page.PathTemplate {
+		for name, value := range query {
+			if here.Query[name] != value {
+				return -1
+			}
+			score++
+		}
+	}
+	return score
 }
