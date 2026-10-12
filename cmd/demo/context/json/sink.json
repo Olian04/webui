@@ -1,0 +1,10 @@
+{
+  "title": "A place the collector writes to",
+  "type": "object",
+  "required": ["kind"],
+  "properties": {
+    "kind": { "enum": ["stdout", "file", "http"], "description": "Where the signals go." },
+    "path": { "type": "string", "description": "The file, for a sink of kind \"file\"." },
+    "url": { "type": "string", "description": "The address, for a sink of kind \"http\"." }
+  }
+}

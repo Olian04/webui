@@ -23,6 +23,12 @@ func (a App) validate() []CompileError {
 	var errs []CompileError
 	errs = append(errs, validateTheme(a.Theme)...)
 	errs = append(errs, validateExternalLinks(a.ExternalLinks)...)
+	if n := len(a.Secret); n > 0 && n < 16 {
+		errs = append(errs, CompileError{
+			Detail: fmt.Sprintf("App.Secret is %d bytes, which is too short to keep an address private", n),
+			Fix:    "Use at least 16 random bytes, or leave Secret empty and the app makes one when it starts.",
+		})
+	}
 
 	for i, p := range a.Pages {
 		if p == nil {
@@ -67,6 +73,15 @@ type bodyValidator struct {
 	facts *facts
 
 	errs []CompileError
+
+	// contexts is the text of each file of an editor's Context on this page, by the language
+	// and path the service sees it at. A page's TypeScript service is one program, so two
+	// editors cannot give one path two texts.
+	contexts map[string]string
+
+	// compilers is the options of each language's tsconfig.json on this page, which the page's
+	// one service for that language has only one set of.
+	compilers map[string]string
 }
 
 func (v *bodyValidator) add(detail, fix string) {

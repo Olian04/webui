@@ -55,6 +55,7 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 		service := ""
 		if view.Editable() {
 			service = n.Editor.Service
+			req.code.AddContext(n.Editor.Context)
 		}
 		req.code.Add(service)
 	}

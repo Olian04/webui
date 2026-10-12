@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Collector configuration",
+  "type": "object",
+  "required": ["collector", "listen"],
+  "additionalProperties": false,
+  "properties": {
+    "collector": { "type": "string", "description": "The region this collector runs in." },
+    "listen": { "type": "string", "pattern": "^:[0-9]+$", "description": "The address it takes metrics on, such as \":8125\"." },
+    "sample": { "type": "number", "minimum": 0, "maximum": 1, "description": "The share of signals kept." },
+    "sinks": { "type": "array", "items": { "$ref": "./sink.json" } }
+  }
+}

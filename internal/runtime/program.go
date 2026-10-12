@@ -7,6 +7,8 @@
 package runtime
 
 import (
+	"crypto/rand"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -52,6 +54,15 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		mux: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
+	secret := app.Secret
+	if len(secret) == 0 {
+		secret = make([]byte, 32)
+		if _, err := rand.Read(secret); err != nil {
+			return nil, fmt.Errorf("webui: cannot make a secret: %w", err)
+		}
+	}
+	p.render.SetSecret(secret)
+
 	assets, err := p.render.Assets()
 	if err != nil {
 		return nil, err
@@ -59,6 +70,7 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p.add(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
 	p.add(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
 	p.add(http.MethodGet, prefix+render.AssetDir+"/monaco/{path...}", p.render.MonacoHandler())
+	p.add(http.MethodGet, prefix+render.AssetDir+"/code/{name}", p.render.ContextHandler())
 
 	for _, page := range app.Pages {
 		p.addPage(page)

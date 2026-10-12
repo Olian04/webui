@@ -9,6 +9,10 @@
 // editor. Without the import the editor still highlights, and the worker is not
 // linked into the program.
 //
+// The service can be told more than the text by the editor's Context: declaration files for
+// the types of a library or an environment, and the options of a tsconfig.json. See
+// [webui.Editor].
+//
 // A viewer, and a [webui.Diff], never load it.
 package typescript
 

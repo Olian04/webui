@@ -58,3 +58,34 @@ func Tables(n Node) []*Table {
 	}
 	return out
 }
+
+// Editors is every form under n that is a code editor, in the order the page shows them,
+// including one in a tab that is not selected, for the same reason as Tables.
+func Editors(n Node) []*Form {
+	var out []*Form
+	var walk func(Node)
+	walk = func(n Node) {
+		switch n := n.(type) {
+		case *Stack:
+			for _, c := range n.Children {
+				walk(c)
+			}
+		case *Split:
+			for _, c := range n.Children {
+				walk(c)
+			}
+		case *Tabs:
+			for _, t := range n.Tabs {
+				walk(t.Body)
+			}
+		case *Form:
+			if n.Editor != nil {
+				out = append(out, n)
+			}
+		}
+	}
+	if n != nil {
+		walk(n)
+	}
+	return out
+}

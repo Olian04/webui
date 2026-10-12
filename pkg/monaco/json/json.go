@@ -9,6 +9,9 @@
 // editor. Without the import the editor still highlights, and the worker is not
 // linked into the program.
 //
+// The service can check the text against a schema, which the editor's Context holds as
+// json/schema.json. See [webui.Editor].
+//
 // A viewer, and a [webui.Diff], never load it.
 package json
 

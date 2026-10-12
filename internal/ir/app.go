@@ -11,6 +11,10 @@ type App struct {
 	// ExternalLinks are the app's own links to places outside it, behind a button in the
 	// top bar.
 	ExternalLinks []ExternalLink
+
+	// Secret keys the addresses of the files the application hands only to the visitors it
+	// has shown an editor to. Empty: the runtime makes a random one.
+	Secret []byte
 }
 
 // ExternalLink is one of those links, used as written: it is outside the app.

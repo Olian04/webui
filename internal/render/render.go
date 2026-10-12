@@ -114,6 +114,11 @@ type Renderer struct {
 	search bool // some table is searchable, so the page script has something to ask
 	logo   bool
 
+	// contexts is the text of every file an editor's Context holds, by the name it is
+	// served as, and secret keys the addresses that unlock them.
+	contexts map[string][]byte
+	secret   []byte
+
 	// monaco is the editor's entry script, stylesheet and plain worker, which a page
 	// links only when it has an editor or a diff.
 	monaco assets.Monaco
@@ -141,6 +146,7 @@ func New(app *ir.App, prefix string) *Renderer {
 		logo:   len(app.Brand.Logo) > 0,
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
+	r.contexts = collectContexts(app)
 	for _, p := range app.Pages {
 		r.search = r.search || p.Search != nil
 	}
