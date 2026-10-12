@@ -42,13 +42,6 @@ type Query struct {
 	// 8601 string, is for the source to read the same way.
 	// Sort is by the same number, so moments order as moments and not as text.
 	Ranges map[string]Range
-
-	// Search is what the visitor typed in the global search, to find rows of this
-	// table by any column, and is only ever set for that: a table has no search
-	// box of its own. Match it however the source can, case-insensitively, against
-	// whatever the columns show. It is empty for the table's own view. A table
-	// with Rows never sees it, since the library searches the rows itself.
-	Search string
 }
 
 // Range bounds a number, both ends inclusive. A nil end is unbounded.
@@ -146,23 +139,9 @@ type Table[M any] struct {
 	// is kept on the server, and the source is handed only the cursor and the size.
 	// So cursors must be short enough to be in an address, and Previous goes back as
 	// far as the address can remember, which is further for short cursors; the oldest
-	// pages are forgotten first, and First page is always there. A feed cannot be
-	// searched. Set exactly one of Rows, Load and Feed.
+	// pages are forgotten first, and First page is always there. Set exactly one of
+	// Rows, Load and Feed.
 	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
-
-	// Search makes the table's rows findable from the search box in the top bar.
-	// Each row is a result: its first column is the title, the other text columns
-	// are the line beneath it, and it leads where RowClick leads, so a searchable
-	// table needs a RowClick. With Rows the library searches every column itself;
-	// with Load the typed text arrives in [Query.Search].
-	//
-	// The table's page is asked for with no arguments, and its Guard runs first. A
-	// page with path arguments, such as "/bucket/{name}", has none to be asked with,
-	// so its table is searched only while the visitor is on that page, with the
-	// arguments in the address they are on: the search then covers what they are
-	// looking at. A result is shown only if the page it leads to would let the
-	// visitor in.
-	Search bool
 
 	// Key identifies a row, such as by its ID. It is required when the table has
 	// Actions or BulkActions, because a request names rows by identity, never by
@@ -173,11 +152,11 @@ type Table[M any] struct {
 	// for what a link cannot do.
 	//
 	// A Link is a real anchor, so middle-click, open-in-new-tab and the keyboard
-	// work, and the table can be searched. It suits a row that always leads to the
-	// same kind of page. An Action is handed the row and may decide where to go from
-	// it, with [Outcome.Then], such as to a folder page or an object page, or change
-	// something. It is a POST, so it cannot be opened in a new tab, it needs Key, and
-	// a table with one cannot be searched. A row its Guard refuses does nothing.
+	// work. It suits a row that always leads to the same kind of page. An Action is
+	// handed the row and may decide where to go from it, with [Outcome.Then], such as
+	// to a folder page or an object page, or change something. It is a POST, so it
+	// cannot be opened in a new tab, and it needs Key. A row its Guard refuses does
+	// nothing.
 	RowClick RowClick[M]
 
 	// Actions render as a button per row.
@@ -257,20 +236,6 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 			}
 		}
 	}
-	if t.Search {
-		if t.RowClick == nil {
-			v.add("a Table has Search but no RowClick", "A search result is a link to a row's page: set RowClick, or remove Search.")
-		}
-		if t.Feed != nil {
-			v.add("a Table has Search but its rows come from Feed", "A feed has no way to be asked for rows matching text: use Rows or Load, or remove Search.")
-		}
-		if clickRuns {
-			v.add("a Table has Search but its RowClick is an Action", "A search result is a link to a row's page: make RowClick a Link, or remove Search.")
-		}
-		if len(t.Columns) == 0 {
-			v.add("a Table has Search but no Columns", "A search result is made from the columns: set Columns.")
-		}
-	}
 }
 
 // defaultPageSize is how many rows a page shows when the table does not say.
@@ -298,7 +263,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		}
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Search: t.Search, Feed: t.Feed != nil,
+		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Feed: t.Feed != nil,
 		Columns: columns,
 		Load:    t.loader(columns, labels),
 	}
@@ -322,7 +287,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 // the two otherwise differ only in the type of a Range, which the user sees as
 // theirs.
 func queryOf(q ir.Query, labels map[string]string) Query {
-	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc, Search: q.Search}
+	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc}
 	if q.Filters != nil {
 		out.Filters = make(map[string][]string, len(q.Filters))
 		for name, values := range q.Filters {

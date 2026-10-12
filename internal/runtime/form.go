@@ -22,7 +22,7 @@ type submission struct {
 func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.Form, sub *submission) templ.Component {
 	view := render.FormView{Node: n, Page: page}
 	view.Path, view.Query = req.encode(page)
-	view.CancelHref = p.cancelHref(req, page, view.Path)
+	view.CancelHref = p.returnHref(req, page, view.Path)
 
 	if sub != nil {
 		view.Model, view.Values = sub.model, sub.values
@@ -61,10 +61,11 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	return p.render.Form(view)
 }
 
-// cancelHref is where a form's Cancel goes: back to the page the user came from,
-// when a link says so, and otherwise to the parent in the breadcrumb, when there
-// is one that is not the app's home.
-func (p *Program) cancelHref(req *Request, page *ir.Page, path map[string]string) string {
+// returnHref is where a form's Cancel goes, and where an outcome that says Back leaves
+// for: back to the page the user came from, when a link says so, and otherwise to the
+// parent in the breadcrumb, when there is one that is not the app's home. It is empty
+// when there is neither.
+func (p *Program) returnHref(req *Request, page *ir.Page, path map[string]string) string {
 	if req.From != "" {
 		return req.From
 	}

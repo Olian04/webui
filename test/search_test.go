@@ -33,8 +33,6 @@ func search(t *testing.T, h http.Handler, query string) searchResponse {
 	return out
 }
 
-type searchPageArgs struct{ Q string }
-
 var (
 	searchID   = webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}
 	searchIP   = webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }}
@@ -49,186 +47,158 @@ func searchDevices() []Device {
 	}
 }
 
-// searchTable is a table that offers its rows to the search, from Rows or Load.
-func searchTable(details webui.PageRef[detailsArgs]) webui.Table[Device] {
-	return webui.Table[Device]{
-		Title:   "Devices",
-		Search:  true,
-		Columns: []webui.Accessor[Device]{searchID, searchIP, searchSite},
-		RowClick: webui.Link[Device, detailsArgs]{
-			Page: details,
-			Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} },
-		},
-	}
+// deviceHit is a device as a result of the page that shows one.
+func deviceHit(d Device) webui.Hit[detailsArgs] {
+	return webui.Hit[detailsArgs]{Args: detailsArgs{Id: d.Id}, Title: d.Id, Desc: d.Ip}
 }
 
-// searchApp has a list whose table is searchable and a detail page its rows lead to.
-func searchApp(table func(webui.Table[Device]) webui.Table[Device], guard func(context.Context, searchPageArgs) error) http.Handler {
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
-	base := table(searchTable(details))
-	list := webui.Page[searchPageArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Guard: guard, Body: base}
+// searchApp has a list page, and the detail page that finds the devices: its Search, and the Guard
+// that decides which of them a visitor may open.
+func searchApp(search func(context.Context, string, int) ([]webui.Hit[detailsArgs], error), guard func(context.Context, detailsArgs) error) http.Handler {
+	details := webui.Page[detailsArgs]{Path: "/device/{id}", Guard: guard, Search: search, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
 	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, Body: webui.Stack{}}
 	return webui.App{Pages: webui.Pages{list, details, other}}.MustCompile("/admin")
 }
 
-func withRows(t webui.Table[Device]) webui.Table[Device] {
-	t.Rows = func(context.Context) ([]Device, error) { return searchDevices(), nil }
-	return t
+// rowsSearch is a page's Search made from the devices in memory.
+func rowsSearch() func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+	return webui.SearchRows(
+		func(context.Context) ([]Device, error) { return searchDevices(), nil },
+		deviceHit, searchID, searchIP, searchSite,
+	)
 }
 
-func TestSearchFindsRowsByAnyColumnAndShowsFirstColumnAsTheTitle(t *testing.T) {
+func TestSearchRowsFindsRowsByAnyFieldIgnoringCaseAndLeadsToThePage(t *testing.T) {
 	t.Parallel()
 
-	h := searchApp(withRows, nil)
+	h := searchApp(rowsSearch(), nil)
 
-	got := search(t, h, "eth%200") // matches the ID column
+	got := search(t, h, "eth%200") // matches the ID
 	assert.Equal(t, len(got.Results), 1)
-	assert.Equal(t, got.Results[0].Group, "Devices") // the table's own name
 	assert.Equal(t, got.Results[0].Title, "dev-eth 0")
-	assert.Equal(t, got.Results[0].Desc, "10.0.0.1")                  // the numbers are searched, but not shown without their label
-	assert.Equal(t, got.Results[0].Href, "/admin/device/dev-eth%200") // the mount prefix, escaped
+	assert.Equal(t, got.Results[0].Desc, "10.0.0.1")
+	assert.Equal(t, got.Results[0].Href, "/admin/device/dev-eth%200") // the page with the hit's arguments: the mount prefix, escaped
 
-	// Not only the first column: an address, and a number.
+	// Not only the first field: an address, and a number, which is searched as it is shown.
 	assert.Equal(t, search(t, h, "192.168").Results[0].Title, "gateway")
 	assert.Equal(t, search(t, h, "6").Results[0].Title, "gateway") // 6 occurrences (and no id has a 6)
 	assert.Equal(t, len(search(t, h, "ETH").Results), 2)           // ignoring case
 	assert.Equal(t, len(search(t, h, "nothing").Results), 0)
 }
 
-func TestSearchOfALoadTableIsHandedTheTextInQuerySearch(t *testing.T) {
+func TestAPagesResultsAreListedUnderItsNameInTheNavigationOrTheEntryItBorrowsFrom(t *testing.T) {
 	t.Parallel()
 
-	var seen webui.Query
-	h := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Load = func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
-			seen = q
-			if q.Search == "" {
-				return webui.Window[Device]{Items: searchDevices(), Total: 3}, nil
-			}
-			return webui.Window[Device]{Items: searchDevices()[2:], Total: 1}, nil
-		}
-		return t
+	// The detail page has no entry of its own, so it lights Devices: its results are Devices.
+	assert.Equal(t, search(t, searchApp(rowsSearch(), nil), "gate").Results[0].Group, "Devices")
+
+	// A page with an entry of its own is its own group.
+	labelled := webui.Page[detailsArgs]{Path: "/thing/{id}", Search: rowsSearch(), Body: webui.Stack{}}
+	h := webui.App{Pages: webui.Pages{labelled}}.MustCompile("/admin")
+	assert.Equal(t, search(t, h, "gate").Results[0].Group, "/thing/{id}") // none at all: the path
+
+	own := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "All devices"}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+		return []webui.Hit[webui.NoArgs]{{Title: "The list"}}, nil
+	}, Body: webui.Stack{}}
+	h = webui.App{Pages: webui.Pages{own}}.MustCompile("/admin")
+	assert.Equal(t, search(t, h, "x").Results[0].Group, "All devices")
+	assert.Equal(t, search(t, h, "x").Results[0].Href, "/admin/devices")
+}
+
+func TestASearchIsHandedTheTextAndALimitAndTheAppsOwnContext(t *testing.T) {
+	t.Parallel()
+
+	var query string
+	var limit int
+	h := searchApp(func(ctx context.Context, q string, n int) ([]webui.Hit[detailsArgs], error) {
+		query, limit = q, n
+		// The context is the app's, as anywhere in a page: its arguments are what the page has when
+		// nothing is selected.
+		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "x"}, Title: webui.ArgsOf[detailsArgs](ctx).Id + "|ok"}}, nil
 	}, nil)
 
 	got := search(t, h, "gate")
-	assert.Equal(t, seen.Search, "gate")
-	assert.Equal(t, seen.Limit, 8) // a handful, not the table
-	assert.Equal(t, len(got.Results), 1)
-
-	// The table's own page never carries it.
-	seen = webui.Query{Search: "stale"}
-	serve(h, http.MethodGet, "/admin/device")
-	assert.Equal(t, seen.Search, "")
+	assert.Equal(t, query, "gate")
+	assert.Equal(t, limit, 8) // a handful, not the table
+	assert.Equal(t, got.Results[0].Title, "|ok")
 }
 
-func TestSearchIsEmptyForNoQueryAndWhenNoTableOffersIt(t *testing.T) {
+func TestSearchIsEmptyForNoQueryAndForAPageThatHasNoSearch(t *testing.T) {
 	t.Parallel()
 
 	called := false
-	h := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Rows = func(context.Context) ([]Device, error) { called = true; return nil, nil }
-		return t
-	}, nil)
+	h := searchApp(func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) { called = true; return nil, nil }, nil)
 	assert.Equal(t, len(search(t, h, "").Results), 0)
 	assert.Equal(t, len(search(t, h, "%20%20").Results), 0)
 	assert.False(t, called)
 
-	notSearchable := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t = withRows(t)
-		t.Search = false
-		return t
-	}, nil)
-	assert.Equal(t, len(search(t, notSearchable, "dev").Results), 0)
+	none := searchApp(nil, nil)
+	assert.Equal(t, len(search(t, none, "dev").Results), 0)
 }
 
-func TestSearchRunsThePageGuardWithZeroArgumentsFirst(t *testing.T) {
+func TestSearchCapsTheHitsOfAPageAndSurvivesAFailingOrPanickingPage(t *testing.T) {
 	t.Parallel()
 
-	var guarded searchPageArgs
-	called := false
-	h := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Rows = func(context.Context) ([]Device, error) { called = true; return searchDevices(), nil }
-		return t
-	}, func(_ context.Context, a searchPageArgs) error {
-		guarded = a
-		return errors.New("not for you")
-	})
-	assert.Equal(t, len(search(t, h, "dev").Results), 0)
-	assert.False(t, called) // a refused page's table is never asked
-	assert.Equal(t, guarded, searchPageArgs{})
-}
-
-func TestSearchCapsHitsPerTableAndSurvivesAFailingTable(t *testing.T) {
-	t.Parallel()
-
-	many := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Rows = func(context.Context) ([]Device, error) {
-			var out []Device
-			for i := range 30 {
-				out = append(out, Device{Id: fmt.Sprint("dev", i)})
-			}
-			return out, nil
+	many := func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		var hits []webui.Hit[detailsArgs]
+		for i := range 20 {
+			hits = append(hits, webui.Hit[detailsArgs]{Args: detailsArgs{Id: fmt.Sprintf("d%d", i)}, Title: "t"})
 		}
-		return t
-	}, nil)
-	assert.Equal(t, len(search(t, many, "dev").Results), 8)
-
-	failing := searchApp(func(t webui.Table[Device]) webui.Table[Device] {
-		t.Rows = func(context.Context) ([]Device, error) { return nil, errors.New("backend down: hunter2") }
-		return t
-	}, nil)
-	rec := serve(failing, http.MethodGet, "/admin/_webui/search?q=x")
-	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.False(t, strings.Contains(rec.Body.String(), "hunter2"))
-}
-
-func TestASearchableTableOnTwoPagesIsOneResult(t *testing.T) {
-	t.Parallel()
-
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
-	table := withRows(searchTable(details))
-	a := webui.Page[webui.NoArgs]{Path: "/a", Body: table}
-	b := webui.Page[webui.NoArgs]{Path: "/b", Body: webui.Stack{table}}
-	h := webui.App{Pages: webui.Pages{a, b, details}}.MustCompile("/admin")
-	assert.Equal(t, len(search(t, h, "gateway").Results), 1)
-}
-
-func TestTableSearchNeedsARowClickAndColumns(t *testing.T) {
-	t.Parallel()
-
-	rows := func(context.Context) ([]Device, error) { return nil, nil }
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
-	click := webui.Link[Device, detailsArgs]{Page: details, Args: func(context.Context, Device) detailsArgs { return detailsArgs{} }}
-	cols := []webui.Accessor[Device]{searchID}
-
-	var noClick, noCols string
-	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Table[Device]{Rows: rows, Search: true, Columns: cols}}, details}}) {
-		noClick += e.Error()
+		return hits, nil
 	}
-	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Table[Device]{Rows: rows, Search: true, RowClick: click}}, details}}) {
-		noCols += e.Error()
-	}
-	assert.Contains(t, noClick, "a Table has Search but no RowClick")
-	assert.Contains(t, noCols, "a Table has Search but no Columns")
+	assert.Equal(t, len(search(t, searchApp(many, nil), "d").Results), 8)
+
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, Body: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+		return nil, errors.New("db secret-host is down")
+	}}
+	panics := webui.Page[webui.NoArgs]{Path: "/panics", Nav: webui.Nav{Label: "Panics"}, Body: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+		panic("boom")
+	}}
+	ok := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}, Search: rowsSearch()}
+	h := webui.App{Pages: webui.Pages{broken, panics, ok}}.MustCompile("/admin")
+	got := search(t, h, "gate")
+	assert.Equal(t, len(got.Results), 1) // the others answer
+	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/_webui/search?q=gate").Body.String(), "secret-host"))
 }
 
-func TestSearchBoxKnowsWhereToAskOnlyWhenATableOffersSearch(t *testing.T) {
+func TestAThingFoundByTwoPagesIsOneResult(t *testing.T) {
 	t.Parallel()
 
-	with := searchApp(withRows, nil)
+	a := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}, Search: rowsSearch()}
+	again := webui.Page[detailsArgs]{Path: "/device/{id}/log", Body: webui.Stack{}, Search: rowsSearch()}
+	h := webui.App{Pages: webui.Pages{a, again}}.MustCompile("/admin")
+	// Two pages, two addresses: two results. The same address twice is one.
+	assert.Equal(t, len(search(t, h, "gateway").Results), 2)
+
+	dup := func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "same"}, Title: "one"}, {Args: detailsArgs{Id: "same"}, Title: "two"}}, nil
+	}
+	got := search(t, searchApp(dup, nil), "x")
+	assert.Equal(t, len(got.Results), 1)
+	assert.Equal(t, got.Results[0].Title, "one")
+}
+
+func TestAHitWithNoTitleIsNamedByItsAddress(t *testing.T) {
+	t.Parallel()
+
+	h := searchApp(func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "a"}}}, nil
+	}, nil)
+	assert.Equal(t, search(t, h, "a").Results[0].Title, "/admin/device/a")
+}
+
+func TestSearchBoxKnowsWhereToAskOnlyWhenAPageOffersSearch(t *testing.T) {
+	t.Parallel()
+
+	with := searchApp(rowsSearch(), nil)
 	body := serve(with, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `data-search-url="/admin/_webui/search"`)
 	assert.Contains(t, body, `role="combobox"`)
 	assert.Contains(t, body, `role="listbox"`)
 
-	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Stack{}}}}.MustCompile("/admin")
-	assert.False(t, strings.Contains(serve(without, http.MethodGet, "/admin/a").Body.String(), "data-search-url"))
+	without := searchApp(nil, nil)
+	assert.False(t, strings.Contains(serve(without, http.MethodGet, "/admin/device").Body.String(), "data-search-url"))
 }
 
 func TestInfoIconCarriesItsDescriptionInAPopover(t *testing.T) {
@@ -265,16 +235,13 @@ func TestSearchBoxHasAVisibleFocusRing(t *testing.T) {
 // guardedSearchApp finds three devices; the detail page's Guard decides which of
 // them this visitor may open.
 func guardedSearchApp(allowed func(id string) error) http.Handler {
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Guard = func(_ context.Context, a detailsArgs) error { return allowed(a.Id) }
-	details.Body = webui.Stack{}
-	table := searchTable(details)
-	table.Rows = func(context.Context) ([]Device, error) {
-		return []Device{{Id: "dev-a"}, {Id: "dev-secret"}, {Id: "dev-b"}}, nil
-	}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Body: table}
-	return webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+	return searchApp(func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		var hits []webui.Hit[detailsArgs]
+		for _, id := range []string{"dev-a", "dev-secret", "dev-b"} {
+			hits = append(hits, webui.Hit[detailsArgs]{Args: detailsArgs{Id: id}, Title: id})
+		}
+		return hits, nil
+	}, func(_ context.Context, a detailsArgs) error { return allowed(a.Id) })
 }
 
 func TestSearchOffersOnlyWhatTheVisitorCouldOpen(t *testing.T) {
@@ -307,120 +274,85 @@ func TestSearchChecksTheGuardWithTheResultsOwnArguments(t *testing.T) {
 	assert.True(t, seen["dev-a"] && seen["dev-secret"] && seen["dev-b"]) // each result, by its own id
 }
 
-func TestSearchDropsAResultWhoseLinkCannotBeBuilt(t *testing.T) {
+func TestSearchDoesNotAskThePagesGuardWithNoArgumentsToLetItFindThings(t *testing.T) {
 	t.Parallel()
 
-	var details webui.Page[detailsArgs]
-	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
-	table := searchTable(details)
-	table.Rows = func(context.Context) ([]Device, error) {
-		return []Device{{Id: ""}, {Id: "dev-ok"}}, nil // an empty path argument has no address
-	}
-	table.Columns = []webui.Accessor[Device]{searchIP, searchID}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Body: webui.Table[Device]{
-		Search: true, Rows: table.Rows, Columns: []webui.Accessor[Device]{searchID, searchIP},
-		RowClick: table.RowClick,
-	}}
-	h := webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
-	got := search(t, h, "dev")
-	assert.Equal(t, len(got.Results), 1)
-	assert.Equal(t, got.Results[0].Title, "dev-ok")
-}
-
-type searchBucketArgs struct{ Name string }
-
-// bucketSearchApp is a page with a path argument whose table is searchable, and the
-// page each of its rows opens: the objects of whichever bucket is open.
-func bucketSearchApp(guard func(context.Context, searchBucketArgs) error) http.Handler {
-	objects := map[string][]Device{
-		"photos": {{Id: "cat.png", Ip: "10.0.0.1"}, {Id: "dog.png", Ip: "10.0.0.2"}},
-		"docs":   {{Id: "cat-notes.txt", Ip: "10.0.0.3"}},
-	}
-	var object webui.Page[detailsArgs]
-	object.Path = "/object/{id}"
-	object.Body = webui.Stack{}
-	bucket := webui.Page[searchBucketArgs]{
-		Path:  "/bucket/{name}",
-		Guard: guard,
-		Body: webui.Table[Device]{
-			Title: "Objects",
-			Rows: func(ctx context.Context) ([]Device, error) {
-				return objects[webui.ArgsOf[searchBucketArgs](ctx).Name], nil
-			},
-			Search:   true,
-			RowClick: webui.Link[Device, detailsArgs]{Page: object, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }},
-			Columns:  []webui.Accessor[Device]{searchID},
-		},
-	}
-	return webui.App{Pages: webui.Pages{bucket, object}}.MustCompile("/admin")
-}
-
-// searchFrom asks the search as the browser does from a page: the address it is on
-// is the Referer.
-func searchFrom(t *testing.T, h http.Handler, from, query string) []string {
-	t.Helper()
-
-	req := httptest.NewRequest(http.MethodGet, "/admin/_webui/search?q="+query, nil)
-	if from != "" {
-		req.Header.Set("Referer", from)
-	}
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	var out searchResponse
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
-	var titles []string
-	for _, r := range out.Results {
-		titles = append(titles, r.Title)
-	}
-	return titles
-}
-
-func TestAPageWithPathArgumentsIsSearchedWhileTheVisitorIsOnIt(t *testing.T) {
-	t.Parallel()
-
-	h := bucketSearchApp(nil)
-
-	// On a bucket, its own objects are found, and only its own.
-	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
-	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/docs?x=1", "cat"), []string{"cat-notes.txt"})
-
-	// Anywhere else it has no arguments to be searched with, so it is not.
-	assert.Equal(t, len(searchFrom(t, h, "", "cat")), 0)
-	assert.Equal(t, len(searchFrom(t, h, "http://example.com/admin/object/cat.png", "cat")), 0)
-	assert.Equal(t, len(searchFrom(t, h, "http://other.example/admin/bucket/photos", "cat")), 0) // not this site
-}
-
-func TestSearchOfThePageTheVisitorIsOnStillRunsItsGuard(t *testing.T) {
-	t.Parallel()
-
-	h := bucketSearchApp(func(_ context.Context, a searchBucketArgs) error {
-		if a.Name == "docs" {
-			return errors.New("no access")
+	// A Guard that refuses an empty id, as one that looks the thing up would, does not stop the page
+	// from being searched: each result is checked with its own id.
+	h := guardedSearchApp(func(id string) error {
+		if id == "" {
+			return errors.New("no such device")
 		}
 		return nil
 	})
-	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
-	assert.Equal(t, len(searchFrom(t, h, "http://example.com/admin/bucket/docs", "cat")), 0)
+	assert.Equal(t, len(search(t, h, "dev").Results), 3)
 }
 
-func TestAPageWithPathArgumentsIsNotSearchedWithoutThemNeitherItsGuardNorItsRows(t *testing.T) {
+func TestSearchDropsAResultWhoseLinkCannotBeBuilt(t *testing.T) {
 	t.Parallel()
 
-	var guarded atomic.Int32
-	h := bucketSearchApp(func(context.Context, searchBucketArgs) error {
-		guarded.Add(1)
-		return nil
-	})
-
-	// From anywhere but the page itself the arguments are not known, and a missing one
-	// is not an empty bucket to search: nothing of the page runs.
-	for _, from := range []string{"", "http://example.com/admin/object/cat.png", "http://example.com/admin/bucket/"} {
-		assert.Equal(t, len(searchFrom(t, h, from, "cat")), 0)
-	}
-	assert.Equal(t, guarded.Load(), int32(0))
-
-	// On the page, they are, and it runs.
-	assert.DeepEqual(t, searchFrom(t, h, "http://example.com/admin/bucket/photos", "cat"), []string{"cat.png"})
-	assert.Equal(t, guarded.Load(), int32(1))
+	h := searchApp(func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: ""}, Title: "empty"}, {Args: detailsArgs{Id: "dev-ok"}, Title: "ok"}}, nil // an empty path argument has no address
+	}, nil)
+	got := search(t, h, "dev")
+	assert.Equal(t, len(got.Results), 1)
+	assert.Equal(t, got.Results[0].Title, "ok")
 }
+
+func TestAPageWithPathArgumentsFindsThingsAcrossAllOfThem(t *testing.T) {
+	t.Parallel()
+
+	type objectArgs struct{ Bucket, Name string }
+	objects := map[string][]string{"photos": {"cat.png", "dog.png"}, "docs": {"cat-notes.txt"}}
+	object := webui.Page[objectArgs]{
+		Path: "/bucket/{bucket}/{name}",
+		Search: func(_ context.Context, q string, _ int) ([]webui.Hit[objectArgs], error) {
+			var hits []webui.Hit[objectArgs]
+			for _, bucket := range []string{"docs", "photos"} {
+				for _, name := range objects[bucket] {
+					if strings.Contains(name, q) {
+						hits = append(hits, webui.Hit[objectArgs]{Args: objectArgs{Bucket: bucket, Name: name}, Title: name, Desc: bucket})
+					}
+				}
+			}
+			return hits, nil
+		},
+		Body: webui.Stack{},
+	}
+	h := webui.App{Pages: webui.Pages{object}}.MustCompile("/admin")
+	got := search(t, h, "cat")
+	assert.Equal(t, len(got.Results), 2) // wherever the visitor is, in any bucket
+	assert.Equal(t, got.Results[0].Href, "/admin/bucket/docs/cat-notes.txt")
+	assert.Equal(t, got.Results[1].Href, "/admin/bucket/photos/cat.png")
+}
+
+func TestSearchRowsNeedsRowsAHitAndAField(t *testing.T) {
+	t.Parallel()
+
+	for name, s := range map[string]func(context.Context, string, int) ([]webui.Hit[detailsArgs], error){
+		"no rows":  webui.SearchRows[Device, detailsArgs](nil, deviceHit, searchID),
+		"no hit":   webui.SearchRows[Device, detailsArgs](func(context.Context) ([]Device, error) { return nil, nil }, nil, searchID),
+		"no field": webui.SearchRows(func(context.Context) ([]Device, error) { return nil, nil }, deviceHit),
+	} {
+		if _, err := s(context.Background(), "x", 8); err == nil {
+			t.Errorf("%s: no error", name)
+		}
+	}
+	failing := webui.SearchRows(func(context.Context) ([]Device, error) { return nil, errors.New("down") }, deviceHit, searchID)
+	_, err := failing(context.Background(), "x", 8)
+	assert.Error(t, err)
+}
+
+func TestSearchOfAPageTheVisitorMayNotOpenAtAllIsNotCalledMoreThanOncePerSearch(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	h := searchApp(func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+		calls.Add(1)
+		return nil, nil
+	}, nil)
+	search(t, h, "x")
+	assert.Equal(t, int(calls.Load()), 1)
+}
+
+var _ = httptest.NewRecorder

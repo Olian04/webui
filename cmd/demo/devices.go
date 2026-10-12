@@ -100,19 +100,11 @@ var Devices = webui.Page[webui.NoArgs]{
 		// column, and ?devices.min.<column> and ?devices.max.<column> for the
 		// numeric ones.
 		PageSize: 10,
-		// Search makes every device findable from the search box in the top bar. This
-		// table has Load, so it is handed the typed text in Query.Search; a table with
-		// Rows needs nothing else, and the library looks in every column.
-		Search: true,
 		// Load, not Rows: the source pages itself, as a database would, so it is
 		// handed the window, the sort and the filters and does that work. Every
 		// other table in the demo says only what its rows are, with Rows, and
 		// leaves the rest to the library.
 		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
-			if q.Search != "" {
-				found := service.Find(q.Search, q.Limit)
-				return webui.Window[Device]{Items: found, Total: len(found)}, nil
-			}
 			// A column is named by its Label. The numeric columns, Occurrences and
 			// Rate / s, arrive as bounds.
 			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
@@ -128,6 +120,16 @@ var Devices = webui.Page[webui.NoArgs]{
 
 var Details = webui.Page[DeviceArgs]{
 	Path: "/device/{id}",
+	// Search makes every device findable from the search box in the top bar. It is handed the
+	// text, and the most to return, and the source does the looking, as a database would: each
+	// result is the arguments of this page, and what to say about it.
+	Search: func(_ context.Context, query string, limit int) ([]webui.Hit[DeviceArgs], error) {
+		var hits []webui.Hit[DeviceArgs]
+		for _, d := range service.Find(query, limit) {
+			hits = append(hits, webui.Hit[DeviceArgs]{Args: DeviceArgs{ID: d.ID}, Title: d.ID, Desc: d.IP + " · " + d.Site})
+		}
+		return hits, nil
+	},
 	// No Nav, so no sidebar entry of its own: it lights Devices, the page at "/device".
 	// Guard runs before anything is loaded, so an unknown device is never read.
 	Guard: func(_ context.Context, a DeviceArgs) error {
