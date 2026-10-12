@@ -1,5 +1,7 @@
 package ir
 
+import "github.com/prometheus/client_golang/prometheus"
+
 // App is one compiled program. It carries no mount prefix: where the app is
 // mounted is a transport concern, passed to the runtime separately.
 type App struct {
@@ -11,6 +13,9 @@ type App struct {
 	// ExternalLinks are the app's own links to places outside it, behind a button in the
 	// top bar.
 	ExternalLinks []ExternalLink
+
+	// Metrics is where the runtime registers what it counts, or nil for nothing counted.
+	Metrics prometheus.Registerer
 
 	// Secret keys the addresses of the files the application hands only to the visitors it
 	// has shown an editor to. Empty: the runtime makes a random one.

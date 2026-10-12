@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -41,6 +42,7 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 
 	hits := []searchHit{}
 	if query != "" {
+		defer p.m.Search(time.Now())
 		ctx, cancel := context.WithTimeout(r.Context(), searchTimeout)
 		defer cancel()
 		seen := map[string]bool{} // a thing found by two pages is one result, not two
@@ -71,6 +73,9 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 
 	found, err := p.found(ctx, page, query)
 	if err != nil {
+		if ctx.Err() == nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			p.m.SearchFailed(page.PathTemplate)
+		}
 		if ctx.Err() == nil {
 			p.log.Error("webui: search failed", "page", page.PathTemplate, "err", err)
 		}

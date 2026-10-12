@@ -47,12 +47,12 @@ func (p *Program) addPage(page *ir.Page) {
 	posts := actionable(leaves)
 	policy := policy(pictureOrigins(page.Body))
 	for _, pattern := range patterns {
-		p.addWith(http.MethodGet, pattern, h, policy)
+		p.addWith(http.MethodGet, pattern, page.PathTemplate, h, policy)
 		p.probe.Handle(pattern, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.addWith(http.MethodPost, pattern, p.postHandler(page, leaves), policy)
+			p.addWith(http.MethodPost, pattern, page.PathTemplate, p.postHandler(page, leaves), policy)
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}

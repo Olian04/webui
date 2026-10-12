@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/Olian04/webui/test/util/assert"
 )
 
@@ -677,4 +679,33 @@ func TestTheEditorsAreGivenTheFolderOfContextTheProgramEmbeds(t *testing.T) {
 		body := get(viewer, page).Body.String()
 		assert.False(t, strings.Contains(body, "/_webui/code/"))
 	}
+}
+
+func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	a := app
+	a.Metrics = reg
+	compiled, err := a.Compile("/admin")
+	assert.NoError(t, err)
+	h := routes(compiled)
+
+	login := post(h, "/login", url.Values{"role": {"editor"}})
+	req := httptest.NewRequest(http.MethodGet, "/admin/device", nil)
+	for _, c := range login.Result().Cookies() {
+		req.AddCookie(c)
+	}
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	families, err := reg.Gather()
+	assert.NoError(t, err)
+	names := map[string]bool{}
+	for _, f := range families {
+		names[f.GetName()] = true
+	}
+	assert.True(t, names["webui_http_requests_total"])
+	assert.True(t, names["webui_load_duration_seconds"])
+
+	// The host serves its registry, and the app has no endpoint of its own for it.
+	assert.Equal(t, get(h, "/metrics").Code, http.StatusOK)
+	assert.Equal(t, get(compiled, "/admin/_webui/metrics").Code, http.StatusNotFound)
 }

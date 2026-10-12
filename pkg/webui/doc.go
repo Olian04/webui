@@ -350,6 +350,23 @@
 // diagnose in the browser. [App.MustCompile] panics instead, for a process that
 // should refuse to start.
 //
+// # Metrics
+//
+// An app can count what it does, as Prometheus metrics, by being given the registry to put
+// them in: [App.Metrics]. They are about the app and nothing else, with no Go runtime or
+// process metrics, which the program has of its own: webui_http_requests_total and
+// webui_http_request_duration_seconds for the requests each page answers,
+// webui_http_requests_in_flight, webui_load_duration_seconds and webui_load_errors_total
+// for the application's own Load functions, webui_actions_total for what actions come to
+// (success, warning, failure, reject, invalid, denied or error), webui_exports_total,
+// webui_search_duration_seconds, webui_search_errors_total, webui_nav_entries_errors_total
+// and webui_build_info. A page is labelled by its path template, "/device/{id}", never by
+// the address that was asked, so the number of series does not grow with the data.
+//
+// The app serves none of it. The program registers its own registry and serves it with
+// promhttp where it serves the rest of its metrics, so where they are, and who may read them,
+// are the program's decisions.
+//
 // # Security
 //
 // The library sets no authentication: mount the handler behind your own. A [Page]'s

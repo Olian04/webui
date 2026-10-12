@@ -187,6 +187,7 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 	entries, err := p.loadNavEntries(With(ctx, &Request{program: p, Args: zero, Raw: raw}), page)
 	if err != nil {
 		if ctx.Err() == nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			p.m.NavFailed(page.PathTemplate)
 			p.log.Error("webui: a page's navigation entries failed, so it has none", "page", page.PathTemplate, "err", err)
 		}
 		return nil

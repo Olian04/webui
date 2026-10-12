@@ -46,6 +46,7 @@ func (a App) lower() (*ir.App, error) {
 		Theme:         lowerTheme(a.Theme),
 		ExternalLinks: lowerExternalLinks(a.ExternalLinks),
 		Secret:        a.Secret,
+		Metrics:       a.Metrics,
 		ByPath:        map[string]*ir.Page{},
 	}
 	if a.Brand.Logo != nil {

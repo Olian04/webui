@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
@@ -120,7 +121,9 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 
+	started := time.Now()
 	base, err := n.Load(ctx)
+	p.m.Load(page.PathTemplate, formKind(n), started, err)
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
 		return
@@ -139,6 +142,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 
 	model, errs := n.Bind(base, values)
 	if len(errs) > 0 {
+		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
 		p.rerender(w, r, page, req, n, model, values, errs, render.Toast{
 			Title: "Not saved", Desc: plural(len(errs), "field needs", "fields need") + " attention.", Tone: render.ToastError,
 		})
@@ -146,15 +150,18 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	}
 	if n.Submit.Guard != nil {
 		if err := n.Submit.Guard(ctx, model); err != nil {
+			p.m.Action(page.PathTemplate, "denied")
 			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
 			return
 		}
 	}
 	outcome, err := n.Submit.Run(ctx, model)
 	if err != nil {
+		p.m.Action(page.PathTemplate, "error")
 		p.fail(w, r, page, req, fmt.Errorf("submit: %w", err))
 		return
 	}
+	p.m.Action(page.PathTemplate, resultOf(outcome))
 	if to := outcome.Redirect; to != "" {
 		p.leave(w, r, outcome, to) // told where to go, which replaces whatever it would have done
 		return
@@ -333,7 +340,9 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		return
 	}
 
+	started := time.Now()
 	window, err := n.Load(ctx, queryOf(n, req.Raw))
+	p.m.Load(page.PathTemplate, "table", started, err)
 	rows := window.Rows
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table load: %w", err))
@@ -376,15 +385,18 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 
 	if action.Guard != nil {
 		if err := action.Guard(ctx, subject); err != nil {
+			p.m.Action(page.PathTemplate, "denied")
 			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
 			return
 		}
 	}
 	outcome, err := action.Run(ctx, subject)
 	if err != nil {
+		p.m.Action(page.PathTemplate, "error")
 		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
 		return
 	}
+	p.m.Action(page.PathTemplate, resultOf(outcome))
 	if to := outcome.Redirect; to != "" {
 		p.leave(w, r, outcome, to)
 		return
@@ -439,4 +451,18 @@ func hasEditor(leaves map[string]ir.Node) bool {
 		}
 	}
 	return false
+}
+
+// resultOf is what an outcome is called in the metrics.
+func resultOf(o ir.Outcome) string {
+	switch o.Kind {
+	case ir.OutcomeFailure:
+		return "failure"
+	case ir.OutcomeReject:
+		return "reject"
+	case ir.OutcomeWarning:
+		return "warning"
+	case ir.OutcomeSuccess:
+	}
+	return "success"
 }
