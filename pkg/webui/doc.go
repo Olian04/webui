@@ -52,8 +52,8 @@
 //
 //	var Details = webui.Page[DeviceArgs]{Path: "/device/{id}", Body: ...}
 //
-// Arguments may be string, bool, int, int64 or float64. A field left at its zero
-// value is absent from the address. A page's Guard runs before anything is loaded,
+// Arguments may be string, bool, int, int64 or float64, and one more, below. A field
+// left at its zero value is absent from the address. A page's Guard runs before anything is loaded,
 // on every request, and a page it refuses is answered with 403. Inside any closure
 // that serves the page, [ArgsOf] returns the arguments.
 //
@@ -81,6 +81,28 @@
 // navigation the visitor may open, or failing that the first page whose path has no
 // arguments, and shows a warning that the app has no page at "/". Declare one to
 // choose where the app starts.
+//
+// # The rest of a path
+//
+// The last segment of a path may be written {name...}, which takes every segment from
+// there on. Its field is a []string with one element for each segment, which is how a
+// page can be at any depth of a tree, such as the folders of a bucket:
+//
+//	type ObjectArgs struct {
+//		Bucket string   `webui:"bucket"` // /bucket/photos/...
+//		Prefix []string `webui:"prefix"` // ...2026/summer/img.png
+//	}
+//
+//	var Object = webui.Page[ObjectArgs]{Path: "/bucket/{bucket}/{prefix...}", Body: ...}
+//
+// The address /bucket/photos/2026/summer/img.png gives Prefix as
+// ["2026", "summer", "img.png"]. Each segment is a crumb in the breadcrumb that leads to
+// the page at that depth, so a nested folder reads as the folders above it. Like any
+// path argument it is required: an address with nothing after the bucket is not this
+// page. An element is one whole segment, so an empty one, or one that contains a slash,
+// cannot be made into an address, and a doubled slash in an address is refused.
+// Only the last segment may be a rest, because [net/http.ServeMux], which routes the
+// pages, only allows it there, and no other argument may be a []string.
 //
 // # Layouts
 //

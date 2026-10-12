@@ -49,11 +49,11 @@ type Page[A any] struct {
 	// PageID declared for one page's arguments cannot be given to another; a
 	// string literal or an untyped constant converts without ceremony.
 	//
-	// The last segment may be {name...}, which takes the rest of the address: for
+	// The last segment may be {name...}, which takes the rest of the address, and only the
+	// last may be one. Its field must be a []string with one element for each segment: for
 	// "/bucket/{name}/{key...}" the key of "/bucket/photos/2026/summer" is
-	// "2026/summer". Its field must be a string. Each segment of the value is a
-	// breadcrumb that links to the page at that depth, so a nested folder reads as the
-	// folders on the way to it.
+	// ["2026", "summer"]. Each segment is a breadcrumb that links to the page at that
+	// depth, so a nested folder reads as the folders on the way to it.
 	Path PageID[A]
 
 	// Nav is the page's entry in the sidebar. A page with no Label has no entry.
