@@ -82,6 +82,12 @@ type Table struct {
 	// filters, and its pager is Next and First page.
 	Feed bool
 
+	// Export says the table offers its rows as a CSV or JSON file. InMemory says the rows come
+	// from a Rows source, which holds all of them: a Query with no Limit is every row, where for
+	// any other source it is whatever the source makes of it.
+	Export   bool
+	InMemory bool
+
 	Columns  []Field
 	RowClick *Link // nil means rows do not lead anywhere
 	// RowAction runs when a row is clicked, in place of RowClick's link: a POST to

@@ -66,6 +66,8 @@ var Audit = webui.Page[webui.NoArgs]{
 		Title:    "Audit log",
 		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so the table offers no sorting or filters.",
 		PageSize: 8,
+		// A feed is exported from its first page to its last, whatever page is on screen.
+		Export: true,
 		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, error) {
 			// The cursor is where the page starts. It is whatever the source likes, so long
 			// as it can read it back; here, an index. Asking for one row more than a page is

@@ -1084,6 +1084,18 @@ html:not(.js) .actionbar .dim {
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
 }
+/* The download links sit beside the range, and the pager keeps the right: the auto margin takes
+   the space that space-between would have put on both sides of them. */
+.pager-export {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+.pager-export-label {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
 .empty {
   padding: 44px 16px;
   text-align: center;

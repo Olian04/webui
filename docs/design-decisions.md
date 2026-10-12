@@ -232,6 +232,42 @@ design element.
   thing, with different limits, would have been the first thing a reader had to learn
   to choose between.
 
+- Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
+  JSON, that download every row the sort and filters keep. It is a declaration and not
+  a default because it is a way to take all of the rows at once, and a table that
+  does not say so offers nothing and ignores the parameter, as for any leaf the page
+  does not have. The address is the page's own with `<table>.export=csv|json`, so
+  it runs the page's Guard like any request, and it never appears in the links of the
+  page the visitor then sees. The parameter is read from the request and is not one
+  of the table's view keys, which is what keeps it out of them.
+- An export reuses the table's own `Load`, which is the one thing the library can rely
+  on. `Rows` is asked for everything, with no limit. `Load` is asked for 500 rows at a
+  time from `Offset` 0, with the table's sort and filters, until a window comes back
+  empty or the `Total` is reached, or a cap of 100,000 rows. A source that ignores
+  `Offset` and has no `Total` would hand out its first batch for ever, so a batch that
+  is the same as the one before it, row for row, ends it. It is the whole batch and not
+  its first row that is compared: a table whose rows are not unique has batches that
+  begin with equal rows, and cutting those short would drop data without a word. `Feed`
+  is followed from the first page to the last, ending at a cursor seen twice. An export
+  that may be incomplete (cut at the cap, or stopped at a repeating source) says so in the
+  `X-Webui-Export-Truncated` header, with the number of rows the file has, since a note
+  in the file would be data. The whole
+  file is built in memory before it is written: a failure half way could not change the
+  status, and the cap bounds it. Global search is not part of the address, so it is not
+  honoured.
+- What a cell holds is decided once, for both files. CSV is the text the table shows, so
+  it is what the person saw, except that a number is a number, an address is the address
+  and not the words that link to it, and any other text that starts with `=`, `+`, `-`,
+  `@`, a tab or a carriage return gets a quote before it, as spreadsheets run such a
+  cell as a formula. A number is left alone, so that a negative one is not turned into
+  text. The file starts with a byte order mark, which Excel needs to read it as UTF-8
+  (a tool that does not want one has to strip it). JSON keeps the types: a number is a
+  number, a moment is an RFC 3339 time in UTC or `null` when there is none, a `Select` is
+  the list of its values (what the model stores, not what they say), and anything else is
+  a string. A `Select` in CSV is the labels of its values joined by `; `, since that is
+  what the cell shows and a comma in a quoted cell reads as a list of one. Its keys are the columns' labels, in the columns' order. Row actions,
+  row links and the selection column are not columns and are not in the file.
+
 ## Navigation and links
 
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest

@@ -1144,7 +1144,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	}
 	if v.Node.Feed {
 		first, prev, next := r.feedLinks(v)
-		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next})
+		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next, Export: r.exportLinks(v)})
 	}
 	return c.Pager(r.pager(v))
 }

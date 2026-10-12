@@ -98,6 +98,13 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 			return
 		}
 		ctx := r.Context()
+		if table, format, bad := exportOf(r, leaves); bad {
+			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest())
+			return
+		} else if table != nil {
+			p.export(w, r, page, req, table, format)
+			return
+		}
 		if id := r.Header.Get(LeafHeader); id != "" {
 			p.leaf(w, r, page, req, leaves[id])
 			return

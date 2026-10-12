@@ -546,6 +546,29 @@ func TestEveryLinkInTheHandbookGoesToAPageThatExistsAndTheHandbookLinksToItself(
 	}
 }
 
+func TestTablesExportTheirRowsWhateverTheSource(t *testing.T) {
+	h := handler(t)
+
+	// Load: the device table is 10 to a page, and the export is every device the filter keeps.
+	rec := get(h, "/admin/device?devices.export=csv&devices.sort=id&devices.desc=true&devices.offset=10")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Equal(t, rec.Header().Get("Content-Disposition"), "attachment; filename=devices.csv")
+	assert.Equal(t, strings.Count(rec.Body.String(), "\n"), 38) // the header and 37 devices, and a line ends each
+
+	// Rows: the open alerts, as JSON.
+	var alerts []map[string]any
+	assert.NoError(t, json.Unmarshal(get(h, "/admin/alert?alerts.export=json").Body.Bytes(), &alerts))
+	assert.True(t, len(alerts) > 0)
+
+	// Feed: the whole audit log, not the page of eight.
+	audit := get(h, "/admin/audit?audit-log.export=csv")
+	assert.Equal(t, audit.Header().Get("Content-Disposition"), "attachment; filename=audit-log.csv")
+	assert.True(t, strings.Count(audit.Body.String(), "\n") > 9)
+
+	// The viewer who may not see the audit log may not download it.
+	assert.Equal(t, get(handlerAs(t, Viewer), "/admin/audit?audit-log.export=csv").Code, http.StatusForbidden)
+}
+
 func TestAHandbookPageDrawsPicturesFromItsTrustedOriginsAndNoOtherPage(t *testing.T) {
 	h := handler(t)
 	rec := get(h, "/admin/handbook/glossary")
