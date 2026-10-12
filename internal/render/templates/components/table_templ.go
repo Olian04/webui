@@ -1145,10 +1145,22 @@ type CursorPagerProps struct {
 	PrevHref  string
 	NextHref  string
 	Export    []ExportLink
-	Attrs     templ.Attributes
+
+	// Sorted says the rows on the page are in a sort of the viewer's choosing, which is of this
+	// page only: the page after it is ordered within itself, and the sequence is not.
+	Sorted bool
+	Attrs  templ.Attributes
 }
 
 func (p CursorPagerProps) info() string {
+	text := p.rows()
+	if p.Sorted && p.Rows > 1 {
+		text += " · sorted within this page"
+	}
+	return text
+}
+
+func (p CursorPagerProps) rows() string {
 	switch {
 	case p.Rows == 0:
 		return "No results"
@@ -1190,7 +1202,7 @@ func CursorPager(p CursorPagerProps) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(p.info())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/table.templ`, Line: 357, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/table.templ`, Line: 369, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {

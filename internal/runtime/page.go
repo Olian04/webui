@@ -221,6 +221,9 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 			if node.Feed {
 				keys = append(keys, args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id))
 				lists = append(lists, args.BackKey(id))
+				if sortable(node) {
+					keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
+				}
 				continue
 			}
 			keys = append(keys, args.ViewKey(id, "offset"))

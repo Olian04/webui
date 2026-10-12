@@ -336,10 +336,22 @@ type CursorPagerProps struct {
 	PrevHref  string
 	NextHref  string
 	Export    []ExportLink
-	Attrs     templ.Attributes
+
+	// Sorted says the rows on the page are in a sort of the viewer's choosing, which is of this
+	// page only: the page after it is ordered within itself, and the sequence is not.
+	Sorted bool
+	Attrs  templ.Attributes
 }
 
 func (p CursorPagerProps) info() string {
+	text := p.rows()
+	if p.Sorted && p.Rows > 1 {
+		text += " · sorted within this page"
+	}
+	return text
+}
+
+func (p CursorPagerProps) rows() string {
 	switch {
 	case p.Rows == 0:
 		return "No results"

@@ -71,7 +71,7 @@ func (r *Renderer) document(d Doc) templ.Component {
 			Head:        r.head(d.Code),
 			Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 			TopBar:      r.topbar(d.Crumbs, d.URL),
-			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL}),
+			Status:      c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: d.Built, BuildTime: d.BuildTime}),
 			Toasts:      toastRegion(d.Toasts),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -1144,7 +1144,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	}
 	if v.Node.Feed {
 		first, prev, next := r.feedLinks(v)
-		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next, Export: r.exportLinks(v)})
+		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next, Sorted: v.Q.Sort != "", Export: r.exportLinks(v)})
 	}
 	return c.Pager(r.pager(v))
 }

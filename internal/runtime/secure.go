@@ -1,8 +1,11 @@
 package runtime
 
 import (
+	"context"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // csp allows what the shell uses and nothing else. Inline styles stay because
@@ -34,10 +37,34 @@ func secure(next http.Handler) http.Handler { return securedFor(csp, next) }
 // securedFor is secure with the content security policy it is given.
 func securedFor(policy string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), startedKey{}, time.Now()))
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")
 		h.Set("Content-Security-Policy", policy)
 		next.ServeHTTP(w, r)
 	})
+}
+
+// startedKey is where the time a request arrived is kept in its context, for the time it took to
+// build the page that answers it.
+type startedKey struct{}
+
+// BuiltHeader is when a response's HTML was built, as the page's script reads it for the status
+// bar of a panel that was fetched again. Date says when the response was sent and is the
+// second's, so it is not the one.
+const BuiltHeader = "X-Webui-Built"
+
+// timing stamps a response with when its HTML was built and how long that took from the
+// request's arrival, for the status bar and, as Server-Timing, for the browser's own tools. It
+// returns both, so a full page can say them too.
+func timing(w http.ResponseWriter, r *http.Request) (built time.Time, took time.Duration) {
+	built = time.Now().UTC()
+	if started, ok := r.Context().Value(startedKey{}).(time.Time); ok {
+		took = built.Sub(started)
+	}
+	h := w.Header()
+	h.Set("Server-Timing", "build;dur="+strconv.FormatFloat(float64(took.Microseconds())/1000, 'f', 1, 64))
+	h.Set(BuiltHeader, built.Format(time.RFC3339Nano))
+	return built, took
 }

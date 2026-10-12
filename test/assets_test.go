@@ -166,7 +166,7 @@ func TestPagesAndTheSearchAreCompressedToo(t *testing.T) {
 	assert.Contains(t, vary, "Accept-Encoding")
 	assert.Contains(t, vary, "X-Webui-Leaf") // the page's own is kept
 	assert.Equal(t, zipped.Header().Get("Content-Length"), "")
-	assert.Equal(t, unzip(t, zipped.Body.Bytes()), page.Body.String())
+	assert.Equal(t, builtless(unzip(t, zipped.Body.Bytes())), builtless(page.Body.String()))
 	assert.True(t, zipped.Body.Len() < page.Body.Len()/2)
 
 	found := gzipped(t, h, "/admin/_webui/search?q=dev")
@@ -209,4 +209,13 @@ func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.
 	assert.Contains(t, css, "height: var(--topbar-h);")
 	assert.Contains(t, css, "padding: var(--content-pad-top) 12px var(--content-pad-bottom);")
 	assert.False(t, strings.Contains(css, ":has(.panel.grows)")) // no layout around the panel is touched
+}
+
+// builtless is a page without what the status bar says of the request that built it: two
+// responses to one address differ in when they were built and how long it took.
+func builtless(page string) string {
+	page = regexp.MustCompile(`datetime="[^"]*"`).ReplaceAllString(page, `datetime=""`)
+	page = regexp.MustCompile(`The HTML was built [^"]*"`).ReplaceAllString(page, `"`)
+	page = regexp.MustCompile(`>built [0-9:]+Z<`).ReplaceAllString(page, `>built<`)
+	return regexp.MustCompile(`(data-build[^>]*>)[0-9.]+ ms<`).ReplaceAllString(page, `${1}0 ms<`)
 }

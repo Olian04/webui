@@ -82,9 +82,11 @@ func (r *Renderer) columns(v TableView) []columnView {
 		if (f.Kind == ir.KindInt || f.Kind == ir.KindFloat) && f.Display != ir.DisplayTime {
 			col.Align = c.AlignEnd
 		}
-		if f.Key != "" && !v.Node.Feed { // a feed's source decides the order, and has no filters
+		if f.Key != "" {
 			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
-			col.Filter = r.filterMenu(v, f)
+			if !v.Node.Feed { // a feed is one sequence, which there is nothing to filter
+				col.Filter = r.filterMenu(v, f)
+			}
 		}
 		out[i] = col
 	}
@@ -94,11 +96,12 @@ func (r *Renderer) columns(v TableView) []columnView {
 // sortLink is the address that sorts by key. Following it from an unsorted or
 // differently sorted column sorts ascending; from the ascending column,
 // descending (when the table has somewhere to record that). Either way the
-// table returns to its first page.
+// table returns to its first page, except a feed, which stays where it is: it
+// orders the page on screen, and its cursor is the way back to it.
 func (r *Renderer) sortLink(v TableView, key string) (string, c.SortDir) {
 	id := v.Node.ID
 	query := cloneQuery(v.Query)
-	delete(query, args.ViewKey(id, "offset"))
+	delete(query, args.ViewKey(id, "offset")) // a feed has none
 
 	current := c.SortNone
 	if v.Q.Sort == key {

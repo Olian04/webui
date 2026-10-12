@@ -157,8 +157,16 @@ design element.
   means unknown. `Feed` is for a source that pages by a cursor: the rows come in the
   source's order, and it is handed the cursor and a page size and returns the rows and
   the next cursor. A cursor continues one sequence, so there is nothing for the library
-  to reorder or filter: the table has no sort links or filters, only First page, Previous and Next, and
-  says which rows it shows. The address carries the cursor, the first row's number and the pages
+  to filter: the table has no filters, only First page, Previous and Next, and says which
+  rows it shows. Its columns sort the page in hand and no more: the library orders the rows
+  `Feed` returned, with the same comparison `Rows` uses, in the query that built the page, and the
+  source is not told. The sort is view state in the address like any other, so Next and Previous
+  keep it, and each page is ordered within itself; the sort link stays on the page, since the cursor
+  is the way back to it, and the footer says "sorted within this page" so that the order is not
+  mistaken for the sequence's. What this costs: a sort by a column does not find that column's
+  smallest value in the sequence, only on the page, which is all a cursor can honestly offer;
+  a source that can sort should be a `Load`. The export of a feed ignores the sort, since it
+  is the sequence from its first page to its last. The address carries the cursor, the first row's number and the pages
   before, so nothing is kept on the server; Previous goes back as far as the address
   remembers (a bounded number of characters, the oldest forgotten first). It is a source of
   its own, not a mode of `Query`, so a table can never carry both a cursor and an
@@ -354,6 +362,27 @@ design element.
   type when the status is written. Images and fonts are left alone, as they are
   compressed already. There is no CSRF token in a page, so compressing HTML does not
   expose one.
+
+## The status bar
+
+- The bar says how the page came to be: the server's build time, the browser's load time,
+  and when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel
+  response so the browser's own tools and the script read the same numbers. The build
+  time is measured from the request's arrival at the app to the moment the document is
+  rendered, so it includes the application's loaders and not the writing of the response.
+- **JS off** is a `<noscript>` badge, so it is there exactly when script is off and costs
+  nothing otherwise. It says what degrades, in its title.
+- **cached?** is a guess, and says so. A page is built for each request and sent
+  `no-store`, so one whose build time is more than 15 seconds before it was opened was
+  probably not built for that request: a cache, a proxy or a DNS answer put a copy between
+  the server and the viewer. The browser cache is detected from Navigation Timing (a
+  transfer of zero bytes that is not a reload), and a page restored from the back-forward
+  cache says so. What it costs: the comparison is between the server's clock and the viewer's,
+  so a computer whose clock is a minute off shows the badge on every page, and one that is behind shows
+  the time with no age; the title of the badge says this. A way to know without trusting
+  either clock would need a round trip to ask the server the time, which the bar is not worth.
+  The build time is in the page, and not taken from the `Date` header, which the script
+  cannot read for the document and which is whole seconds.
 
 ## Code editors
 

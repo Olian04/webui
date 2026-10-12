@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/a-h/templ"
@@ -43,6 +44,11 @@ type Doc struct {
 	// HideNav is the paths of the navigation entries this visitor may not open, so
 	// the sidebar and the search that reads it leave them out.
 	HideNav map[string]bool
+
+	// Built is when the HTML was built, and BuildTime how long that took from the request's
+	// arrival, which the status bar shows. A zero Built says nothing.
+	Built     time.Time
+	BuildTime time.Duration
 
 	// Here is the page the response is for, and the arguments of its address, so an entry
 	// of a page that lists several can tell which of them is the one on screen.
