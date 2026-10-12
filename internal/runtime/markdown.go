@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -13,7 +14,9 @@ import (
 // not the page. The page is given the editor only when the text has a fenced block
 // that names a language, which is all it would colour.
 func (p *Program) markdown(ctx context.Context, req *Request, page *ir.Page, n *ir.Markdown) templ.Component {
+	started := time.Now()
 	model, err := n.Load(ctx)
+	p.m.Load(page.PathTemplate, "markdown", started, err)
 	if err != nil {
 		if ctx.Err() == nil {
 			p.log.Error("webui: markdown load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)

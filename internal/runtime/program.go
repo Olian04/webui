@@ -12,8 +12,10 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/metrics"
 	"github.com/Olian04/webui/internal/render"
 )
 
@@ -39,6 +41,10 @@ type Program struct {
 
 	render *render.Renderer
 	log    *slog.Logger
+
+	// m counts and times what the app does. It is nil when the app was given no registry,
+	// and a nil Recorder records nothing.
+	m *metrics.Recorder
 
 	// probe matches a path against the page patterns regardless of method, so
 	// the catch-all can tell "no such page" (404) from "wrong method" (405).
@@ -72,6 +78,14 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	}
 	p.render.SetSecret(secret)
 
+	if app.Metrics != nil {
+		m, err := metrics.New(app.Metrics)
+		if err != nil {
+			return nil, fmt.Errorf("webui: App.Metrics: %w", err)
+		}
+		p.m = m
+	}
+
 	assets, err := p.render.Assets()
 	if err != nil {
 		return nil, err
@@ -89,15 +103,15 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		return nil, err
 	}
 	if app.ByPath["/"] == nil {
-		p.add(http.MethodGet, prefix+"/{$}", http.HandlerFunc(p.root))
+		p.add(http.MethodGet, prefix+"/{$}", "/", http.HandlerFunc(p.root))
 		if prefix != "" {
-			p.add(http.MethodGet, prefix, http.HandlerFunc(p.root)) // mounted at "/admin" exactly
+			p.add(http.MethodGet, prefix, "/", http.HandlerFunc(p.root)) // mounted at "/admin" exactly
 		}
 	}
 
 	// The catch-all is last in intent, not in registration: ServeMux picks the
 	// most specific pattern, so it only sees what nothing else claimed.
-	p.add("", prefix+"/", http.HandlerFunc(p.notFound))
+	p.add("", prefix+"/", unmatched, http.HandlerFunc(p.notFound))
 	return p, nil
 }
 
@@ -120,22 +134,75 @@ func (p *Program) addFramework(method, path string, h http.Handler) {
 	if method != "" {
 		pattern = method + " " + path
 	}
-	p.fw.Handle(pattern, securedFor(csp, compressed(p.recovered(h))))
+	p.fw.Handle(pattern, p.metered(framework, securedFor(csp, compressed(p.recovered(h)))))
 }
 
-// add registers a route. An empty method matches any, which only the catch-all uses.
-func (p *Program) add(method, path string, h http.Handler) {
-	p.addWith(method, path, h, csp)
+// The page label of what no page answered, and of the framework's own routes. Neither is
+// the path template of a page, which always begins with a slash and is not reserved.
+const (
+	unmatched = "unmatched"
+	framework = render.AssetDir
+)
+
+// add registers a route. An empty method matches any, which only the catch-all uses. page is
+// what the route is called in the metrics: the path template of the page it answers.
+func (p *Program) add(method, path, page string, h http.Handler) {
+	p.addWith(method, path, page, h, csp)
 }
 
 // addWith is add with the content security policy the route is served under.
-func (p *Program) addWith(method, path string, h http.Handler, policy string) {
+func (p *Program) addWith(method, path, page string, h http.Handler, policy string) {
 	pattern := path
 	if method != "" {
 		pattern = method + " " + path
 	}
-	p.mux.Handle(pattern, securedFor(policy, compressed(p.recovered(h))))
+	p.mux.Handle(pattern, p.metered(page, securedFor(policy, compressed(p.recovered(h)))))
 }
+
+// metered counts a request and its time, under the page that answers it. The status is what
+// the handler wrote, and a handler that wrote none answered 200.
+func (p *Program) metered(page string, next http.Handler) http.Handler {
+	if p.m == nil {
+		return next
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
+		done := p.m.Begin()
+		sw := &statusWriter{ResponseWriter: w}
+		defer func() { done(page, r.Method, sw.code(), started) }()
+		next.ServeHTTP(sw, r)
+	})
+}
+
+// statusWriter remembers the status written, for the metrics.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *statusWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b) //nolint:wrapcheck // a plain pass-through
+}
+
+func (w *statusWriter) code() int {
+	if w.status == 0 {
+		return http.StatusOK
+	}
+	return w.status
+}
+
+// Unwrap lets http.ResponseController reach the writer underneath.
+func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // RouteConflict is two pages whose paths match one address, with neither more specific than
 // the other: "/{a}/x" and "/y/{b}" both match "/y/x". The router cannot choose between them.

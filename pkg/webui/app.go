@@ -4,6 +4,8 @@ import (
 	"image"
 	"reflect"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -22,6 +24,28 @@ type App struct {
 	// bar that is not part of the sidebar: signing out, an account page on another
 	// service, the documentation. With none, there is no button.
 	ExternalLinks []ExternalLink
+
+	// Metrics is the registry the app puts its own metrics in, or nil to count nothing.
+	// They are Prometheus metrics, all named webui_..., about what the app does: the
+	// requests each page answers and how long they take, how long the application's Load
+	// functions take and how often they fail, what actions come to, searches, exports, and
+	// the sidebar entries of pages that list several. The labels are low in number by
+	// design: the path template of a page ("/device/{id}") and never an address that was
+	// asked for, a method, a status, and a few fixed names. It has no Go runtime or process
+	// metrics: the application has its own for those.
+	//
+	// The app serves none of it. The application registers a registry of its own, as it
+	// does for its other metrics, and serves that where it serves them, so what is
+	// exposed, where, and to whom stay its decisions:
+	//
+	//	reg := prometheus.NewRegistry()
+	//	handler := webui.App{Metrics: reg, Pages: pages}.MustCompile("/admin")
+	//	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+	//
+	// Compile fails if the registry already has a webui metric, which is two apps given one
+	// registry: give each its own wrapper from [prometheus.WrapRegistererWith], with a
+	// label of its own, to tell them apart.
+	Metrics prometheus.Registerer
 
 	// Secret keys the addresses of an [Editor]'s Context files. They are served from addresses
 	// that carry a key, which a page gives only to a visitor who may edit the editor, so the

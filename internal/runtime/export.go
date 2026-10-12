@@ -77,7 +77,9 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	ctx, cancel := context.WithTimeout(r.Context(), exportTimeout)
 	defer cancel()
 
+	started := time.Now()
 	rows, truncated, err := p.exportRows(ctx, n, queryOf(n, req.Raw))
+	p.m.Load(page.PathTemplate, "export", started, err)
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table export: %w", err))
 		return
@@ -98,6 +100,7 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 
+	p.m.Export(page.PathTemplate, format)
 	kind := exportFormats[format]
 	h := w.Header()
 	h.Set("Content-Type", kind.contentType)

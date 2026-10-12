@@ -168,7 +168,9 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
+	started := time.Now()
 	window, err := n.Load(ctx, view.Q)
+	p.m.Load(page.PathTemplate, "table", started, err)
 	if err != nil {
 		if ctx.Err() == nil {
 			p.log.Error("webui: table load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)

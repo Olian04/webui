@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -31,7 +32,9 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 			view.Errors[e.Label] = e.Message
 		}
 	} else {
+		started := time.Now()
 		model, err := n.Load(ctx)
+		p.m.Load(page.PathTemplate, formKind(n), started, err)
 		if err != nil {
 			if ctx.Err() == nil {
 				p.log.Error("webui: form load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
@@ -75,4 +78,13 @@ func (p *Program) returnHref(req *Request, page *ir.Page, path map[string]string
 		return ""
 	}
 	return crumbs[len(crumbs)-2].Href
+}
+
+// formKind is what a form's panel is called in the metrics: a code editor is not a form to
+// whoever reads them.
+func formKind(n *ir.Form) string {
+	if n.Editor != nil {
+		return "editor"
+	}
+	return "form"
 }

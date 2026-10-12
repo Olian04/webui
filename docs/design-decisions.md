@@ -463,6 +463,29 @@ design element.
   mistake is a cross-site script. It is pure Go, and was already in the module graph
   through the linter, so it adds nothing transitive.
 
+## Metrics
+
+- The app collects and does not serve. `App.Metrics` is a `prometheus.Registerer`, the
+  program's own, and the program serves its registry where it serves its other metrics.
+  A `/_webui/metrics` was proposed and dropped: what is exposed, at which address and to
+  whom are the host's decisions, and the metrics name every page template and how much
+  each is used, which should not be public by default. What it costs: one line more for
+  the program, and two apps given one registry fail to compile (their metrics have the
+  same names), unless each is wrapped with `prometheus.WrapRegistererWith`.
+- Only webui's own metrics, `webui_...`, on a registry the program supplies, so the Go
+  runtime and process collectors are the program's to add or not. `prometheus/client_golang`
+  is a dependency of the library for this: it was weighed against writing the text format
+  by hand, and the standard client won on correctness (histograms, the exposition formats)
+  at the price of its own transitive dependencies in every program that imports webui.
+- Labels are the page's path template and a few fixed names, never an address, a user, a
+  table's row or an error text, so the series are bounded by what the app declared. A
+  request no page answered is `unmatched`, and the framework's own routes are `/_webui`.
+  Loads are timed where the application's function is called, so a slow source shows up
+  as itself and not as a slow page; a load that failed because the visitor left is not
+  an error.
+- A nil recorder does nothing, so the code that counts does not ask whether metrics are on,
+  and an app with no registry pays one nil check.
+
 ## Compiling and errors
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one
