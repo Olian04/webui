@@ -90,6 +90,7 @@ type Service struct {
 	alerts    []Alert
 	settings  Settings
 	config    Config
+	rule      string // the paging rule, TypeScript
 	retention RetentionPolicy
 	audit     []AuditEntry // newest first
 	started   time.Time
@@ -100,6 +101,7 @@ var service = newService()
 func newService() *Service {
 	s := &Service{
 		config:    Config{Current: seedConfig, Deployed: seedConfig},
+		rule:      seedRule,
 		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
@@ -492,6 +494,19 @@ func (s *Service) SetConfig(text string) {
 	s.config.Current = text
 	s.mu.Unlock()
 	s.record("saved config", fmt.Sprintf("%d bytes", len(text)))
+}
+
+func (s *Service) Rule() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.rule
+}
+
+func (s *Service) SetRule(text string) {
+	s.mu.Lock()
+	s.rule = text
+	s.mu.Unlock()
+	s.record("saved paging rule", fmt.Sprintf("%d bytes", len(text)))
 }
 
 func (s *Service) Retention() RetentionPolicy {

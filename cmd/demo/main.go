@@ -30,6 +30,10 @@ import (
 	// The JSON language service for the editor: an optional import, since it is a worker of
 	// its own. The program is smaller without it, and the editor still highlights.
 	_ "github.com/Olian04/webui/pkg/monaco/json"
+
+	// And TypeScript's, which is large (about 7 MB of worker), so it is the one to leave out when
+	// the program should be small: the editor then highlights TypeScript and checks nothing.
+	_ "github.com/Olian04/webui/pkg/monaco/typescript"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -45,7 +49,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary},
 }
 
 var (
