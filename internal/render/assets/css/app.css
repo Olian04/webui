@@ -1299,6 +1299,126 @@ select.input[multiple] option:checked {
   color: var(--text);
   font-weight: 500;
 }
+/* With script a select is a field that shows what is chosen as the badges it is when read, over a
+   list of the options, each ticked by a click. The <select> stays in the form, hidden, and is what
+   is submitted. Without script none of this is on the page. */
+.msel {
+  position: relative;
+}
+.msel-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  height: auto;
+  min-height: 32px;
+  padding: 4px 28px 4px 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.msel-field:focus-visible,
+.msel.open .msel-field {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px var(--ring);
+  outline: none;
+}
+.msel-field.invalid {
+  border-color: var(--red);
+}
+.msel-field.invalid:focus-visible,
+.msel.open .msel-field.invalid {
+  box-shadow: 0 0 0 2px var(--ring-bad);
+}
+.msel-hint {
+  color: var(--text-3);
+  font-size: 13.5px;
+}
+.msel-chevron {
+  position: absolute;
+  right: 11px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-2);
+  border-bottom: 1.5px solid var(--text-2);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+  transition: transform 0.11s;
+}
+.msel.open .msel-chevron {
+  transform: translateY(-30%) rotate(-135deg);
+}
+.msel-pop {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 260px;
+  overflow: auto;
+  padding: 4px;
+  background: var(--raise);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+.msel-pop.up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.msel-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.msel-opt.active {
+  background: var(--hover);
+}
+.msel-opt.on {
+  background: var(--tint);
+}
+.msel-opt.on.active {
+  background: color-mix(in srgb, var(--blue) 16%, transparent);
+}
+.msel-none-text {
+  color: var(--text-2);
+  font-size: 13px;
+}
+/* The mark in front of an option is the form's checkbox, or for a choice of one its round form. */
+.msel-check {
+  flex: none;
+  display: grid;
+  place-content: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  background: var(--input-bg);
+}
+.msel:not(.msel-multi) .msel-check {
+  border-radius: 50%;
+}
+.msel-opt.on .msel-check {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.msel-opt.on .msel-check::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+.msel:not(.msel-multi) .msel-opt.on .msel-check::after {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  clip-path: none;
+}
 /* A select that is read is its values, each a badge, side by side and wrapping. */
 .badges {
   display: inline-flex;
