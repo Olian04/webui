@@ -44,9 +44,6 @@ rows:
 				continue rows
 			}
 		}
-		if q.Search != "" && !found(cols, row, q.Search) {
-			continue
-		}
 		kept = append(kept, row)
 	}
 
@@ -66,6 +63,23 @@ rows:
 		hi = min(lo+q.Limit, total)
 	}
 	return kept[lo:hi], total
+}
+
+// Find returns the rows in which any column contains text, ignoring case, in their own order, and
+// at most limit of them (all of them when limit is not positive). It looks in what a column shows,
+// which is what a person typing in a search box has in front of them.
+func Find(rows []any, cols []ir.Field, text string, limit int) []any {
+	var out []any
+	for _, row := range rows {
+		if !found(cols, row, text) {
+			continue
+		}
+		out = append(out, row)
+		if limit > 0 && len(out) == limit {
+			break
+		}
+	}
+	return out
 }
 
 // Options are the values the rows hold in each of the open-set columns, by Key,

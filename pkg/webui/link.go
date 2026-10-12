@@ -11,8 +11,7 @@ import (
 // RowClick is what a click on a row does: a [Link] or an [Action].
 //
 // A Link is for the simple case, a row that leads to a page. It is one real anchor,
-// so middle-click, open-in-new-tab and the keyboard work, and the table can be
-// searched. An Action is for the rest: its Run is handed the row and may look at it
+// so middle-click, open-in-new-tab and the keyboard work. An Action is for the rest: its Run is handed the row and may look at it
 // to decide where to go, with Outcome.Then, or change something. It is a POST, so
 // the row cannot be opened in a new tab, and it needs the table's Key. The
 // interface exists to take either.
@@ -27,7 +26,8 @@ type RowClick[M any] interface {
 // that links to it. The page and the argument type must agree, which the compiler
 // checks, and [App.Compile] checks that the page is mounted. When the destination
 // has a form, the library remembers the page the user came from, so the form's
-// Cancel returns there.
+// Cancel returns there, and so does a save, unless the Outcome says otherwise with
+// [Outcome.Stay] or [Outcome.Then].
 type Link[M, A any] struct {
 	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]
