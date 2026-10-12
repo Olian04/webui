@@ -38,13 +38,13 @@ func TestSpecReportsEveryProblem(t *testing.T) {
 	t.Parallel()
 
 	type bad struct {
-		When []string
+		When []int
 		A    string `webui:"x"`
 		B    string `webui:"x"`
 	}
 	_, problems := Spec(reflect.TypeOf(bad{}), "/event/{id}")
 	assert.Equal(t, len(problems), 3)
-	assert.Equal(t, problems[0].Detail, "field When has unsupported type []string")
+	assert.Equal(t, problems[0].Detail, "field When has unsupported type []int")
 	assert.Contains(t, problems[1].Detail, `two fields both map to the argument "x"`)
 	assert.Equal(t, problems[2].Detail, "the path declares {id} but bad has no field for it")
 	assert.Equal(t, problems[2].Fix,
