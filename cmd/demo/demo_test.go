@@ -57,7 +57,7 @@ func TestEveryPageServes(t *testing.T) {
 	for _, path := range []string{
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
-		"/admin/system", "/admin/audit", "/admin/config", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
+		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -625,4 +625,30 @@ func TestAnOutcomeCanSayWhereToGoWhateverItsKind(t *testing.T) {
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
 	rec = post(h, "/admin/alert/alt_001", url.Values{"_leaf": {"p.0"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
+}
+
+func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAViewer(t *testing.T) {
+	workers := func(h http.Handler) string {
+		body := get(h, "/admin/rule").Body.String()
+		i := strings.Index(body, `<script id="webui-code"`)
+		assert.True(t, i >= 0)
+		return body[i : i+strings.Index(body[i:], "</script>")]
+	}
+	editor := handler(t)
+	body := get(editor, "/admin/rule").Body.String()
+	assert.Contains(t, body, `data-language="typescript"`)
+	assert.Contains(t, body, `<textarea class="code-text"`)
+	assert.Contains(t, workers(editor), `"ts":"/admin/_webui/monaco/workers/ts.worker-`) // the service the program imported
+
+	// The same text is read by a viewer, who is sent no service: nothing there can be changed.
+	viewer := handlerAs(t, Viewer)
+	assert.Contains(t, get(viewer, "/admin/rule").Body.String(), `<pre class="code-view"`)
+	assert.False(t, strings.Contains(workers(viewer), `"ts"`))
+
+	// The text has type errors on purpose, and saving it is the editor's.
+	assert.Contains(t, body, "pageOnCall(signal)")
+	rec := post(editor, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"export const ok: number = 1;\n"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
+	assert.Equal(t, post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}}).Code, http.StatusForbidden)
 }
