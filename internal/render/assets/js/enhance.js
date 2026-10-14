@@ -70,19 +70,28 @@
       'built ' + pad(at.getHours()) + ':' + pad(at.getMinutes()) + ':' + pad(at.getSeconds()) + (behind ? '' : ' · ' + ago(Math.max(age, 0)));
     el.title = 'The HTML was built ' + at.toString() + (behind ? ". This computer's clock is behind the server's." : '');
   }
-  function stale(reason) {
+  function stale(reason, label) {
     var badge = $('[data-stale]');
     if (!badge) return;
-    badge.textContent = reason ? 'cached?' : '';
+    badge.textContent = reason ? label || 'cached?' : '';
     badge.title = reason || '';
     badge.hidden = !reason;
+  }
+  // Whether the browser fetched this page ahead of the click, as the rules in the page it was left from
+  // ask it to.
+  function prefetched() {
+    var nav = performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
+    return !!nav && nav.deliveryType === 'navigational-prefetch';
   }
   // Whether what is on screen was built for the request that brought it.
   function checkFresh(source) {
     var at = builtAt();
     if (!at) return;
     var age = Date.now() - at.getTime();
-    if (age > STALE_MS) {
+    if (age > STALE_MS && source === 'page' && prefetched()) {
+      // The browser fetched it when the pointer rested on the link: old by the time of the click, not cached.
+      stale('This page was fetched ahead, when the pointer rested on its link, ' + ago(age) + ', and not when it was opened.', 'fetched ahead');
+    } else if (age > STALE_MS) {
       stale(
         'This ' + source + ' was built ' + ago(age) + ', before it was asked for. A cache or a proxy between the server and here may have answered, or this computer\'s clock differs from the server\'s.',
       );
