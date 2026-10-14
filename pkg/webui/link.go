@@ -16,7 +16,6 @@ import (
 // the row cannot be opened in a new tab, and it needs the table's Key. The
 // interface exists to take either.
 type RowClick[M any] interface {
-	isRowClick()
 	validateRow(v *bodyValidator)
 	lowerRow() (*ir.Link, *ir.Action)
 }
@@ -35,8 +34,6 @@ type Link[M, A any] struct {
 	// Args builds the destination's arguments from a row.
 	Args func(ctx context.Context, m M) A
 }
-
-func (Link[M, A]) isRowClick() {}
 
 // ASSERT: Link and Action implement RowClick
 var (

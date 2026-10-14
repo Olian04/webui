@@ -49,19 +49,13 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 
 // joined is the problems as one error that wraps each of them.
 func joined(errs []CompileError) error {
-	all := make([]error, len(errs))
-	for i, e := range errs {
-		all[i] = e
-	}
-	return errors.Join(all...)
+	return errors.Join(conv(errs, func(e CompileError) error { return e })...)
 }
 
 func failure(errs []CompileError) http.Handler {
-	problems := make([]render.Problem, len(errs))
-	for i, e := range errs {
-		problems[i] = render.Problem{Where: e.where(), Detail: e.Detail, Fix: e.Fix}
-	}
-	return runtime.FailureHandler(problems)
+	return runtime.FailureHandler(conv(errs, func(e CompileError) render.Problem {
+		return render.Problem{Where: e.where(), Detail: e.Detail, Fix: e.Fix}
+	}))
 }
 
 // validatePrefix checks the one place the mount prefix is stated.

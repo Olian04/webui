@@ -49,63 +49,45 @@ type Action[M any] struct {
 }
 
 // validateAction checks what every action needs. needLabel is false only for a
-// Form's Submit, which has a default.
-func validateAction(v *bodyValidator, at, label string, hasRun, needLabel bool) {
-	if !hasRun {
+// Form's Submit and a row's click, which have a default or no button.
+func validateAction[S any](v *bodyValidator, at string, a Action[S], needLabel bool) {
+	if a.Run == nil {
 		v.add(at+" has no Run", "Set Run, or remove the action.")
 	}
-	if needLabel && label == "" {
+	if needLabel && a.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
 }
 
-// lowerAction wraps the typed closures with the single assertion each needs.
-func lowerAction[M any](a Action[M], label string) *ir.Action {
-	out := &ir.Action{Label: label, Role: ir.Role(a.Role)}
+// lowerActionWith wraps the typed closures with the single assertion each needs. arg turns the
+// runtime's subject into what the user's funcs take, and M is the model a Reject is about.
+func lowerActionWith[S, M any](a Action[S], arg func(any) S) *ir.Action {
+	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role)}
 	if a.Guard != nil {
-		out.Guard = func(ctx context.Context, s any) error { return a.Guard(ctx, s.(M)) }
+		out.Guard = func(ctx context.Context, s any) error { return a.Guard(ctx, arg(s)) }
 	}
 	out.Run = func(ctx context.Context, s any) (ir.Outcome, error) {
-		e, err := a.Run(ctx, s.(M))
+		e, err := a.Run(ctx, arg(s))
 		if err != nil {
 			return ir.Outcome{}, err
 		}
 		return lowerOutcome[M](e)
 	}
 	return out
+}
+
+func lowerAction[M any](a Action[M]) *ir.Action {
+	return lowerActionWith[M, M](a, func(s any) M { return s.(M) })
 }
 
 // lowerBulk is lowerAction for a selection. The runtime holds rows as []any,
 // so the []M the user's func wants is built here, where M is known.
 func lowerBulk[M any](a Action[[]M]) *ir.Action {
-	rows := func(s any) []M {
-		in := s.([]any)
-		out := make([]M, len(in))
-		for i, r := range in {
-			out[i] = r.(M)
-		}
-		return out
-	}
-	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role)}
-	if a.Guard != nil {
-		out.Guard = func(ctx context.Context, s any) error { return a.Guard(ctx, rows(s)) }
-	}
-	out.Run = func(ctx context.Context, s any) (ir.Outcome, error) {
-		e, err := a.Run(ctx, rows(s))
-		if err != nil {
-			return ir.Outcome{}, err
-		}
-		return lowerOutcome[M](e)
-	}
-	return out
+	return lowerActionWith[[]M, M](a, func(s any) []M { return conv(s.([]any), func(r any) M { return r.(M) }) })
 }
-
-func (Action[M]) isRowClick() {}
 
 // validateRow checks an Action used as a table's RowClick: it has a Run, and no
 // Label is needed, since the row is what is clicked.
-func (a Action[M]) validateRow(v *bodyValidator) {
-	validateAction(v, "Table.RowClick", a.Label, a.Run != nil, false)
-}
+func (a Action[M]) validateRow(v *bodyValidator) { validateAction(v, "Table.RowClick", a, false) }
 
-func (a Action[M]) lowerRow() (*ir.Link, *ir.Action) { return nil, lowerAction(a, a.Label) }
+func (a Action[M]) lowerRow() (*ir.Link, *ir.Action) { return nil, lowerAction(a) }

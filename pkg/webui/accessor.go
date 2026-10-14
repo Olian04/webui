@@ -15,7 +15,8 @@ import (
 // Accessor is a named, typed projection of M. A table cell and a form input
 // share the same accessor.
 type Accessor[M any] interface {
-	isAccessor()
+	// label is the accessor's label, which names a column and resolves a FieldError. A Group has none.
+	label() string
 }
 
 // String projects a string field of M.
@@ -38,7 +39,7 @@ type String[M any] struct {
 	Placeholder string
 }
 
-func (String[M]) isAccessor() {}
+func (a String[M]) label() string { return a.Label }
 
 // StringRules is declarative validation for a string value.
 // Scalar zero means "no constraint". Pattern is a pointer because the
@@ -103,7 +104,7 @@ type Int[M any] struct {
 	Format func(int) string
 }
 
-func (Int[M]) isAccessor() {}
+func (a Int[M]) label() string { return a.Label }
 
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
@@ -156,13 +157,13 @@ type Float[M any] struct {
 	Format func(float64) string
 }
 
-func (Float[M]) isAccessor() {}
+func (a Float[M]) label() string { return a.Label }
 
 // Group composes accessors inside a form. It is not a table column;
 // Compile rejects Group listed in Columns.
 type Group[M any] []Accessor[M]
 
-func (Group[M]) isAccessor() {}
+func (Group[M]) label() string { return "" }
 
 // Select is a choice from a list of options: the values of a field of M that holds some
 // of a set of known words, such as a status, a size or a few tags. Read, in a table or in
@@ -214,7 +215,7 @@ type Select[M any] struct {
 	Required bool
 }
 
-func (Select[M]) isAccessor() {}
+func (a Select[M]) label() string { return a.Label }
 
 // Option is one value a [Select] can hold.
 type Option struct {
@@ -251,7 +252,7 @@ type URL[M any] struct {
 	Text string
 }
 
-func (URL[M]) isAccessor() {}
+func (a URL[M]) label() string { return a.Label }
 
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
@@ -283,7 +284,7 @@ type Datetime[M any] struct {
 	Format func(time.Time) string
 }
 
-func (Datetime[M]) isAccessor() {}
+func (a Datetime[M]) label() string { return a.Label }
 
 // Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
 // and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
@@ -307,7 +308,7 @@ type Timestamp[M any] struct {
 	Format func(time.Time) string
 }
 
-func (Timestamp[M]) isAccessor() {}
+func (a Timestamp[M]) label() string { return a.Label }
 
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
@@ -337,7 +338,7 @@ type Slider[M any] struct {
 	Precision int
 }
 
-func (Slider[M]) isAccessor() {}
+func (a Slider[M]) label() string { return a.Label }
 
 // Tone is the semantic meaning of a badge.
 type Tone string
@@ -380,14 +381,17 @@ type accessorSite struct {
 	uniqueLbl  bool // a FieldError resolves by label, so a form needs them unique
 }
 
-func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accessorSite, seen map[string]bool) {
+func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accessorSite) {
+	seen := map[string]bool{}
 	for i, acc := range accs {
 		validateAccessor[M](v, acc, fmt.Sprintf("%s[%d]", site.where, i), site, seen)
 	}
 }
 
 func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
-	label := func(l string) {
+	// common is what every leaf needs: a label, unique where that matters, and a Load. sig is what
+	// Load must be, for the message.
+	common := func(l string, noLoad bool, sig string) {
 		switch {
 		case l == "":
 			v.add(at+" has no Label", "Give the accessor a Label; it is the column header and the input label.")
@@ -397,15 +401,15 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		default:
 			seen[l] = true
 		}
+		if noLoad {
+			v.add(at+" has no Load", "Set Load to "+sig+".")
+		}
 	}
 	switch a := acc.(type) {
 	case nil:
 		v.add(at+" is nil", "Remove it or declare an accessor.")
 	case String[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) string.")
-		}
+		common(a.Label, a.Load == nil, "func(M) string")
 		if p := a.Rules.Pattern; p != nil {
 			if _, err := rules.Compile(p.Expr, p.Message); err != nil {
 				v.add(fmt.Sprintf("%s: %v", at, err),
@@ -416,19 +420,11 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
 		}
 	case Int[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) int.")
-		}
+		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 	case Float[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) float64.")
-		}
-		if a.Precision < 0 {
-			v.add(at+" has a negative Precision", "Use 0 for the shortest exact form, or a number of decimals.")
-		}
+		common(a.Label, a.Load == nil, "func(M) float64")
+		validatePrecision(v, at, a.Precision)
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 	case Group[M]:
 		if !site.allowGroup {
@@ -443,40 +439,29 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen)
 		}
 	case Select[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) []string.")
-		}
+		common(a.Label, a.Load == nil, "func(M) []string")
 		validateSelect(v, at, a)
 	case URL[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) string, returning the address.")
-		}
+		common(a.Label, a.Load == nil, "func(M) string, returning the address")
 	case Datetime[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) string, returning an ISO 8601 moment.")
-		}
+		common(a.Label, a.Load == nil, "func(M) string, returning an ISO 8601 moment")
 	case Timestamp[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) int, returning a Unix time in seconds.")
-		}
+		common(a.Label, a.Load == nil, "func(M) int, returning a Unix time in seconds")
 	case Slider[M]:
-		label(a.Label)
-		if a.Load == nil {
-			v.add(at+" has no Load", "Set Load to func(M) float64.")
-		}
+		common(a.Label, a.Load == nil, "func(M) float64")
 		if !(a.Max > a.Min) {
 			v.add(at+" has no range", "Set Max greater than Min; the slider is drawn between them.")
 		}
-		if a.Precision < 0 {
-			v.add(at+" has a negative Precision", "Use 0 for the shortest exact form, or a number of decimals.")
-		}
+		validatePrecision(v, at, a.Precision)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
 			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider or Group.")
+	}
+}
+
+func validatePrecision(v *bodyValidator, at string, precision int) {
+	if precision < 0 {
+		v.add(at+" has a negative Precision", "Use 0 for the shortest exact form, or a number of decimals.")
 	}
 }
 
@@ -524,177 +509,133 @@ func lowerAccessors[M any](accs []Accessor[M], prefix string) []ir.Field {
 func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Rules: lowerStringRules(a.Rules), Placeholder: a.Placeholder,
-			Get: func(m any) string { return a.Load(m.(M)) },
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error { a.Store(m.(*M), raw); return nil }
-		}
+		f := head(name, a.Label, ir.KindString)
+		f.Rules, f.Placeholder = lowerStringRules(a.Rules), a.Placeholder
+		f.Get = func(m any) string { return a.Load(m.(M)) }
+		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
 		return f
 	case Int[M]:
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindInt, Rules: lowerNumberRules(a.Rules), Placeholder: a.Placeholder,
-			Get: func(m any) string { return strconv.Itoa(a.Load(m.(M))) },
-			Num: func(m any) float64 { return float64(a.Load(m.(M))) },
-		}
-		if a.Format != nil {
-			f.Show = shown(a.Label, f.Get, func(m any) string { return a.Format(a.Load(m.(M))) })
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error {
-				n, err := strconv.Atoi(strings.TrimSpace(raw))
-				if err != nil {
-					return fmt.Errorf("%w", err)
-				}
-				a.Store(m.(*M), n)
-				return nil
-			}
-		}
+		f := head(name, a.Label, ir.KindInt)
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+		f.Get = func(m any) string { return strconv.Itoa(a.Load(m.(M))) }
+		f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
+		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
+		f.Set = setter(a.Store, func(raw string) (int, error) { return strconv.Atoi(strings.TrimSpace(raw)) })
 		return f
 	case Float[M]:
-		prec := -1
-		if a.Precision > 0 {
-			prec = a.Precision
-		}
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Rules: lowerNumberRules(a.Rules), Placeholder: a.Placeholder,
-			Get: func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
-			Num: func(m any) float64 { return a.Load(m.(M)) },
-		}
-		if a.Format != nil {
-			f.Show = shown(a.Label, f.Get, func(m any) string { return a.Format(a.Load(m.(M))) })
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error {
-				x, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
-				if err != nil {
-					return fmt.Errorf("%w", err)
-				}
-				a.Store(m.(*M), x)
-				return nil
-			}
-		}
+		f := head(name, a.Label, ir.KindFloat)
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+		f.Get, f.Num = floatReads(a.Load, a.Precision)
+		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
+		f.Set = setter(a.Store, parseFloat)
 		return f
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
 	case Select[M]:
-		choices := make([]ir.Choice, len(a.Options))
-		var options []string
-		for i, o := range a.Options {
-			choices[i] = ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)}
-			options = append(options, o.Value)
+		f := head(name, a.Label, ir.KindString)
+		f.Display, f.Multi, f.Rules = ir.DisplaySelect, a.Multi, ir.Rules{Required: a.Required}
+		for _, o := range a.Options {
+			f.Choices = append(f.Choices, ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)})
+			f.Options = append(f.Options, o.Value)
 		}
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplaySelect,
-			Choices: choices, Multi: a.Multi, Options: options, Rules: ir.Rules{Required: a.Required},
-			Get: func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) },
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error { a.Store(m.(*M), ir.SplitValues(raw)); return nil }
-		}
+		f.Get = func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) }
+		f.Set = setter(a.Store, func(raw string) ([]string, error) { return ir.SplitValues(raw), nil })
 		return f
 	case URL[M]:
-		return ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayLink,
-			Get: func(m any) string {
-				if a.Text != "" && a.Load(m.(M)) != "" {
-					return a.Text
-				}
-				return a.Load(m.(M))
-			},
-			Link: func(m any) string {
-				if u := a.Load(m.(M)); validURL(u) {
-					return u
-				}
-				return ""
-			},
-		}
-	case Datetime[M]:
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
-			Get: func(m any) string { return datetimeText(a.Load(m.(M))) },
-			Num: func(m any) float64 { return datetimeNum(a.Load(m.(M))) },
-		}
-		if a.Format != nil {
-			f.Show = shown(a.Label, f.Get, func(m any) string {
-				t, _, ok := readDatetime(a.Load(m.(M)))
-				if !ok {
-					return f.Get(m) // not a moment: as written
-				}
-				return a.Format(t)
-			})
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error {
-				t, blank, err := pickedMoment(raw)
-				if err != nil {
-					return err
-				}
-				if blank {
-					a.Store(m.(*M), "")
-					return nil
-				}
-				a.Store(m.(*M), t.Format(time.RFC3339))
-				return nil
+		f := head(name, a.Label, ir.KindString)
+		f.Display = ir.DisplayLink
+		f.Get = func(m any) string {
+			if a.Text != "" && a.Load(m.(M)) != "" {
+				return a.Text
 			}
+			return a.Load(m.(M))
 		}
+		f.Link = func(m any) string {
+			if u := a.Load(m.(M)); validURL(u) {
+				return u
+			}
+			return ""
+		}
+		return f
+	case Datetime[M]:
+		f := head(name, a.Label, ir.KindString)
+		f.Display = ir.DisplayTime
+		f.Get = func(m any) string { return datetimeText(a.Load(m.(M))) }
+		f.Num = func(m any) float64 { return datetimeNum(a.Load(m.(M))) }
+		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
+			t, _, ok := readDatetime(a.Load(m.(M))) // not a moment: as written
+			return t, ok
+		})
+		f.Set = setter(a.Store, func(raw string) (string, error) {
+			t, blank, err := pickedMoment(raw)
+			if err != nil || blank {
+				return "", err // cleared: stored as nothing
+			}
+			return t.Format(time.RFC3339), nil
+		})
 		return f
 	case Timestamp[M]:
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindString, Display: ir.DisplayTime,
-			Get: func(m any) string { return timestampText(a.Load(m.(M))) },
-			Num: func(m any) float64 { return timestampNum(a.Load(m.(M))) },
-		}
-		if a.Format != nil {
-			f.Show = shown(a.Label, f.Get, func(m any) string {
-				seconds := a.Load(m.(M))
-				if seconds == 0 {
-					return "" // not set
-				}
-				return a.Format(time.Unix(int64(seconds), 0).UTC())
-			})
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error {
-				t, blank, err := pickedMoment(raw)
-				if err != nil {
-					return err
-				}
-				if blank {
-					a.Store(m.(*M), 0)
-					return nil
-				}
-				a.Store(m.(*M), int(t.Unix()))
-				return nil
+		f := head(name, a.Label, ir.KindString)
+		f.Display = ir.DisplayTime
+		f.Get = func(m any) string { return timestampText(a.Load(m.(M))) }
+		f.Num = func(m any) float64 { return timestampNum(a.Load(m.(M))) }
+		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
+			seconds := a.Load(m.(M)) // zero is not set: shown as nothing
+			return time.Unix(int64(seconds), 0).UTC(), seconds != 0
+		})
+		f.Set = setter(a.Store, func(raw string) (int, error) {
+			t, blank, err := pickedMoment(raw)
+			if err != nil || blank {
+				return 0, err // cleared: stored as not set
 			}
-		}
+			return int(t.Unix()), nil
+		})
 		return f
 	case Slider[M]:
-		prec := -1
-		if a.Precision > 0 {
-			prec = a.Precision
-		}
 		lo, hi := a.Min, a.Max
-		f := ir.Field{
-			Name: name, Label: a.Label, Key: args.Slug(a.Label), Kind: ir.KindFloat, Display: ir.DisplaySlider, Min: lo, Max: hi,
-			Rules: ir.Rules{Min: &lo, Max: &hi},
-			Get:   func(m any) string { return strconv.FormatFloat(a.Load(m.(M)), 'f', prec, 64) },
-			Num:   func(m any) float64 { return a.Load(m.(M)) },
-		}
-		if a.Store != nil {
-			f.Set = func(m any, raw string) error {
-				x, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
-				if err != nil {
-					return fmt.Errorf("%w", err)
-				}
-				a.Store(m.(*M), x)
-				return nil
-			}
-		}
+		f := head(name, a.Label, ir.KindFloat)
+		f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
+		f.Get, f.Num = floatReads(a.Load, a.Precision)
+		f.Set = setter(a.Store, parseFloat)
 		return f
 	}
 	return ir.Field{Name: name}
+}
+
+// head is what every field starts with: its name, its label, the key the address names it by,
+// and its kind.
+func head(name, label string, kind ir.ValueKind) ir.Field {
+	return ir.Field{Name: name, Label: label, Key: args.Slug(label), Kind: kind}
+}
+
+// setter is the Set of a field: the raw text is read as a T, then stored. A nil store makes no
+// Set, which is what makes a field read-only. What went wrong in reading is not said: the form
+// answers every unreadable value alike.
+func setter[M, T any](store func(*M, T), parse func(string) (T, error)) func(any, string) error {
+	if store == nil {
+		return nil
+	}
+	return func(m any, raw string) error {
+		v, err := parse(raw)
+		if err != nil {
+			return err
+		}
+		store(m.(*M), v)
+		return nil
+	}
+}
+
+func parseFloat(raw string) (float64, error) { return strconv.ParseFloat(strings.TrimSpace(raw), 64) }
+
+// floatReads are the Get and Num of a float: the text, with Precision decimals or the shortest
+// exact form for zero, and the number.
+func floatReads[M any](load func(M) float64, precision int) (get func(any) string, num func(any) float64) {
+	prec := -1
+	if precision > 0 {
+		prec = precision
+	}
+	return func(m any) string { return strconv.FormatFloat(load(m.(M)), 'f', prec, 64) },
+		func(m any) float64 { return load(m.(M)) }
 }
 
 func lowerStringRules(r StringRules) ir.Rules {
@@ -720,34 +661,24 @@ func lowerNumberRules[T int | float64](r NumberRules[T]) ir.Rules {
 	return out
 }
 
-// accessorLabel resolves an accessor to its label, for FieldError. A Group has no
-// label of its own.
-func accessorLabel[M any](acc Accessor[M]) string {
-	switch a := acc.(type) {
-	case String[M]:
-		return a.Label
-	case Int[M]:
-		return a.Label
-	case Float[M]:
-		return a.Label
-	case Select[M]:
-		return a.Label
-	case URL[M]:
-		return a.Label
-	case Datetime[M]:
-		return a.Label
-	case Timestamp[M]:
-		return a.Label
-	case Slider[M]:
-		return a.Label
+// labelOf is the label of an accessor, for a FieldError and a column's name. A nil accessor and a
+// Group have none.
+func labelOf[M any](acc Accessor[M]) string {
+	if acc == nil {
+		return ""
 	}
-	return ""
+	return acc.label()
 }
 
-// shown is how a field reads where it is only read, from the application's Format. A Format that
-// panics is logged and the value is shown as it is without one, so a bug in a formatter is a plain
-// number and not a page that cannot be drawn.
-func shown(label string, plain, format func(model any) string) func(model any) string {
+// shown is how a field reads where it is only read, from the application's Format, or nil when it
+// has none. value reads the field's value in the form Format takes, and says whether there is
+// one: a value that is not one is shown as it is without a Format. A Format that panics is logged
+// and the value is shown that way too, so a bug in a formatter is a plain value and not a page
+// that cannot be drawn.
+func shown[T any](label string, plain func(any) string, format func(T) string, value func(any) (T, bool)) func(any) string {
+	if format == nil {
+		return nil
+	}
 	return func(m any) (text string) {
 		defer func() {
 			if r := recover(); r != nil {
@@ -755,6 +686,9 @@ func shown(label string, plain, format func(model any) string) func(model any) s
 				text = plain(m)
 			}
 		}()
-		return format(m)
+		if v, ok := value(m); ok {
+			return format(v)
+		}
+		return plain(m)
 	}
 }

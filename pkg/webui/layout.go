@@ -12,13 +12,9 @@ import (
 // [PageBody], including other layouts.
 type Stack []PageBody
 
-func (Stack) isPageBody() {}
-
 // Split lays out bodies side by side, across the width of the page. It collapses to
 // a column on a narrow screen. Its children may be any [PageBody].
 type Split []PageBody
-
-func (Split) isPageBody() {}
 
 // Tab is one panel in Tabs. It is selected in the address by its label, in lower
 // case with dashes for anything else: the "Raw events" tab is "?tabs.tab=raw-events".
@@ -41,8 +37,6 @@ type Tabs struct {
 	// Panels are the tabs, in order.
 	Panels []Tab
 }
-
-func (Tabs) isPageBody() {}
 
 // ASSERT: layouts implement PageBody
 var (

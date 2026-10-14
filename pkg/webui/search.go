@@ -41,15 +41,7 @@ func SearchRows[M, A any](rows func(ctx context.Context) ([]M, error), hit func(
 		if err != nil {
 			return nil, err
 		}
-		items := make([]any, len(all))
-		for i, r := range all {
-			items[i] = r
-		}
-		found := tablequery.Find(items, cols, query, limit)
-		out := make([]Hit[A], len(found))
-		for i, r := range found {
-			out[i] = hit(r.(M))
-		}
-		return out, nil
+		found := tablequery.Find(anys(all), cols, query, limit)
+		return conv(found, func(r any) Hit[A] { return hit(r.(M)) }), nil
 	}
 }

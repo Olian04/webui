@@ -131,7 +131,6 @@ type Nav struct {
 // PageBody is what a page shows: a leaf, [Table], [Form], [Editor], [Diff] or [Markdown], or a layout of them,
 // [Stack], [Split] or [Tabs]. Only this package implements it.
 type PageBody interface {
-	isPageBody()
 	validateBody(v *bodyValidator)
 	lowerBody(at ir.Addr) ir.Node
 }
@@ -146,13 +145,10 @@ type NavEntry[A any] struct {
 	Label string
 }
 
-func (Page[A]) isPage() {}
-
-func (p Page[A]) hasNavEntries() bool { return p.NavEntries != nil }
+// hasNavEntry is whether the page has an entry of its own in the sidebar, or lists several.
+func (p Page[A]) hasNavEntry() bool { return p.Nav.Label != "" || p.NavEntries != nil }
 
 func (p Page[A]) pagePath() string { return string(p.Path) }
-
-func (p Page[A]) pageNav() Nav { return p.Nav }
 
 func (p Page[A]) pageArgType() reflect.Type { return reflect.TypeFor[A]() }
 
@@ -169,10 +165,8 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 	path := string(p.Path)
 	v := &bodyValidator{page: path, args: typeName(typ), facts: f}
 
-	if errs := validatePath(path); len(errs) > 0 {
-		for _, e := range errs {
-			v.add(e.Detail, e.Fix)
-		}
+	if detail, fix := validatePath(path); detail != "" {
+		v.add(detail, fix)
 		return v.errs
 	}
 	if f.paths[path] > 1 {
@@ -211,40 +205,39 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 	return v.errs
 }
 
-func validatePath(path string) []CompileError {
-	bad := func(detail, fix string) []CompileError { return []CompileError{{Detail: detail, Fix: fix}} }
+// validatePath is the first thing wrong with a path, and how to put it right; empty if nothing is.
+func validatePath(path string) (detail, fix string) {
 	if path == "" || path[0] != '/' {
-		return bad("Path must start with \"/\"", "Write the path as \"/device\" or \"/device/{id}\".")
+		return "Path must start with \"/\"", "Write the path as \"/device\" or \"/device/{id}\"."
 	}
 	if strings.ContainsAny(path, "?#") {
-		return bad("Path must not contain a query or fragment",
-			"Declare query parameters as fields on the argument struct.")
+		return "Path must not contain a query or fragment", "Declare query parameters as fields on the argument struct."
 	}
 	if path == reservedPrefix || strings.HasPrefix(path, reservedPrefix+"/") {
-		return bad("Path is under the reserved prefix "+reservedPrefix,
-			"Choose another path; "+reservedPrefix+" serves the framework's own assets.")
+		return "Path is under the reserved prefix " + reservedPrefix,
+			"Choose another path; " + reservedPrefix + " serves the framework's own assets."
 	}
 	if path == "/" {
-		return nil
+		return "", ""
 	}
 	segs := strings.Split(path[1:], "/")
 	for i, seg := range segs {
 		switch {
 		case seg == "":
-			return bad("Path has an empty segment", "Remove the doubled or trailing slash.")
+			return "Path has an empty segment", "Remove the doubled or trailing slash."
 		case strings.ContainsAny(seg, "{}"):
 			name, rest, ok := args.Placeholder(seg)
 			if !ok || !placeholderName.MatchString(name) {
-				return bad("Path segment "+seg+" is not a valid placeholder",
-					"A placeholder is a whole segment of the form {name}, or {name...} for the rest of the path.")
+				return "Path segment " + seg + " is not a valid placeholder",
+					"A placeholder is a whole segment of the form {name}, or {name...} for the rest of the path."
 			}
 			if rest && i != len(segs)-1 {
-				return bad("Path segment "+seg+" takes the rest of the path but is not the last",
-					"Only the last segment may be {name...}; it matches every segment from there on.")
+				return "Path segment " + seg + " takes the rest of the path but is not the last",
+					"Only the last segment may be {name...}; it matches every segment from there on."
 			}
 		}
 	}
-	return nil
+	return "", ""
 }
 
 func typeName(t reflect.Type) string {
@@ -254,7 +247,7 @@ func typeName(t reflect.Type) string {
 	return t.String()
 }
 
-func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
+func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 	typ := reflect.TypeFor[A]()
 	specs, _ := args.Spec(typ, string(p.Path))
 	codec := args.NewCodec(typ, specs)
@@ -262,7 +255,7 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 	page := &ir.Page{
 		PathTemplate: string(p.Path),
 		Args:         specs,
-		Nav:          l.nav(p.Nav, string(p.Path), p.NavEntries != nil),
+		Nav:          lowerNav(entries, p.Nav, string(p.Path), p.NavEntries != nil),
 		Decode:       codec.Decode,
 		Encode:       codec.Encode,
 	}
@@ -275,11 +268,7 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 			if err != nil {
 				return nil, err
 			}
-			out := make([]ir.NavEntry, len(entries))
-			for i, e := range entries {
-				out[i] = ir.NavEntry{Args: e.Args, Label: e.Label}
-			}
-			return out, nil
+			return conv(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
 		}
 	}
 	if p.Search != nil {
@@ -288,11 +277,7 @@ func (p Page[A]) lowerPage(l *appLowerer) *ir.Page {
 			if err != nil {
 				return nil, err
 			}
-			out := make([]ir.Hit, len(found))
-			for i, h := range found {
-				out[i] = ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc}
-			}
-			return out, nil
+			return conv(found, func(h Hit[A]) ir.Hit { return ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc} }), nil
 		}
 	}
 	page.Body = p.Body.lowerBody(ir.Addr{})
