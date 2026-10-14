@@ -24,34 +24,12 @@ const maxEditorBody = 16 << 20
 // else: the id comes from position, never from anything the user typed.
 func leavesOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
-	var walk func(ir.Node)
-	walk = func(n ir.Node) {
-		switch n := n.(type) {
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Split:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Tabs:
-			for _, t := range n.Tabs {
-				walk(t.Body)
-			}
-		case *ir.Form:
-			out[render.LeafID(n.At)] = n
-		case *ir.Table:
-			out[render.LeafID(n.At)] = n
-		case *ir.Diff:
-			out[render.LeafID(n.At)] = n
-		case *ir.Markdown:
-			out[render.LeafID(n.At)] = n
+	ir.Walk(root, func(n ir.Node) {
+		switch n.(type) {
+		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown:
+			out[render.LeafID(n.Addr())] = n
 		}
-	}
-	if root != nil {
-		walk(root)
-	}
+	})
 	return out
 }
 
@@ -196,18 +174,11 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 // sent more than once.
 func selectNames(fields []ir.Field) map[string]bool {
 	out := map[string]bool{}
-	var walk func([]ir.Field)
-	walk = func(fs []ir.Field) {
-		for _, f := range fs {
-			switch {
-			case len(f.Group) > 0:
-				walk(f.Group)
-			case f.Display == ir.DisplaySelect:
-				out[f.Name] = true
-			}
+	for f := range ir.Leaves(fields) {
+		if f.Display == ir.DisplaySelect {
+			out[f.Name] = true
 		}
 	}
-	walk(fields)
 	return out
 }
 

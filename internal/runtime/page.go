@@ -169,66 +169,27 @@ func argParser(page *ir.Page) args.ArgParser {
 	return parser
 }
 
-// viewNodes maps each leaf that keeps view state in the address to its ID: the
-// tables that page or sort, and every Tabs. The parser reads the parameters it
-// implies.
-func viewNodes(n ir.Node) map[string]ir.Node {
-	out := map[string]ir.Node{}
-	var walk func(ir.Node)
-	walk = func(n ir.Node) {
-		switch n := n.(type) {
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Split:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Tabs:
-			out[n.ID] = n
-			for _, t := range n.Tabs {
-				walk(t.Body)
-			}
-		case *ir.Table:
-			out[n.ID] = n
-		}
-	}
-	if n != nil {
-		walk(n)
-	}
-	return out
-}
-
-func sortable(n *ir.Table) bool {
-	for _, col := range n.Columns {
-		if col.Key != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // viewKeys lists the address parameters the body's leaves keep state in, and
 // which of them may repeat: a multi-select filter is one parameter per chosen
-// option.
+// option. They are the tables that page or sort, and every Tabs.
 func viewKeys(n ir.Node) (keys, lists []string) {
-	for id, node := range viewNodes(n) {
+	ir.Walk(n, func(node ir.Node) {
 		switch node := node.(type) {
 		case *ir.Tabs:
-			keys = append(keys, args.ViewKey(id, "tab"))
+			keys = append(keys, args.ViewKey(node.ID, "tab"))
 		case *ir.Table:
+			id := node.ID
 			if node.Feed {
 				keys = append(keys, args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id))
 				lists = append(lists, args.BackKey(id))
-				if sortable(node) {
-					keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
-				}
-				continue
+			} else {
+				keys = append(keys, args.ViewKey(id, "offset"))
 			}
-			keys = append(keys, args.ViewKey(id, "offset"))
-			if sortable(node) {
+			if slices.ContainsFunc(node.Columns, func(col ir.Field) bool { return col.Key != "" }) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
+			}
+			if node.Feed {
+				return // one sequence: nothing to filter
 			}
 			for _, col := range node.Columns {
 				if col.Key == "" {
@@ -246,7 +207,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 				}
 			}
 		}
-	}
+	})
 	return keys, lists
 }
 

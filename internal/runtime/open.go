@@ -108,15 +108,11 @@ func resolvesAsWritten(address string) bool {
 
 // hasForm reports whether a page body has a form anywhere in it.
 func hasForm(n ir.Node) bool {
-	switch n := n.(type) {
-	case *ir.Form:
-		return true
-	case *ir.Stack:
-		return slices.ContainsFunc(n.Children, hasForm)
-	case *ir.Split:
-		return slices.ContainsFunc(n.Children, hasForm)
-	case *ir.Tabs:
-		return slices.ContainsFunc(n.Tabs, func(t ir.Tab) bool { return hasForm(t.Body) })
-	}
-	return false
+	found := false
+	ir.Walk(n, func(n ir.Node) {
+		if _, ok := n.(*ir.Form); ok {
+			found = true
+		}
+	})
+	return found
 }

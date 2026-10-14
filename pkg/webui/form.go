@@ -88,17 +88,11 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 // (parse → rules), applies each value that passed, and collects every failure.
 func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.FieldError) {
 	var writable []ir.Field
-	var walk func([]ir.Field)
-	walk = func(fs []ir.Field) {
-		for _, f := range fs {
-			if len(f.Group) > 0 {
-				walk(f.Group)
-			} else if f.Set != nil {
-				writable = append(writable, f)
-			}
+	for f := range ir.Leaves(fields) {
+		if f.Set != nil {
+			writable = append(writable, f)
 		}
 	}
-	walk(fields)
 
 	return func(base any, values map[string]string) (any, []ir.FieldError) {
 		m := base.(M)
