@@ -19,41 +19,53 @@ import (
 
 // Apply returns the window q asks of rows, and how many rows pass the filters.
 // Rows are not changed; a column q names that cols does not have is ignored.
+//
+// What the query asks is resolved once, before the rows: the column each filter and range is on, and
+// the text a filter looks for in lower case. The sort reads each row's key once, not at every
+// comparison.
 func Apply(rows []any, cols []ir.Field, q ir.Query) (window []any, total int) {
-	byName := make(map[string]ir.Field, len(cols))
-	for _, c := range cols {
-		byName[c.Key] = c
+	var filters []filter
+	for name, values := range q.Filters {
+		if c := column(cols, name); c != nil && len(values) > 0 {
+			f := filter{col: c, values: values}
+			if c.Options == nil && !c.OpenSet {
+				f.needle = strings.ToLower(values[0])
+			}
+			filters = append(filters, f)
+		}
+	}
+	var ranges []bounds
+	for name, r := range q.Ranges {
+		if c := column(cols, name); c != nil {
+			ranges = append(ranges, bounds{col: c, r: r})
+		}
 	}
 
 	kept := make([]any, 0, len(rows))
 rows:
 	for _, row := range rows {
-		for name, values := range q.Filters {
-			if c, ok := byName[name]; ok && !matches(c, row, values) {
+		for i := range filters {
+			if !filters[i].passes(row) {
 				continue rows
 			}
 		}
-		for name, r := range q.Ranges {
-			if c, ok := byName[name]; ok && c.Num != nil && !within(c.Num(row), r) {
+		for i := range ranges {
+			c := ranges[i].col
+			if c.Num != nil && !within(c.Num(row), ranges[i].r) {
 				continue rows
 			}
 			// A moment that is not set, or is not a moment, is before every start and
 			// after no end by its number, so a filter that sets only an end would keep it.
 			// It has no time to be within, so any range drops it.
-			if c, ok := byName[name]; ok && c.Display == ir.DisplayTime && math.IsInf(c.Num(row), 0) {
+			if c.Display == ir.DisplayTime && math.IsInf(c.Num(row), 0) {
 				continue rows
 			}
 		}
 		kept = append(kept, row)
 	}
 
-	if c, ok := byName[q.Sort]; ok && q.Sort != "" {
-		slices.SortStableFunc(kept, func(a, b any) int {
-			if q.Desc {
-				a, b = b, a
-			}
-			return compare(c, a, b)
-		})
+	if c := column(cols, q.Sort); c != nil && q.Sort != "" {
+		sortRows(kept, c, q.Desc)
 	}
 
 	total = len(kept)
@@ -63,6 +75,80 @@ rows:
 		hi = min(lo+q.Limit, total)
 	}
 	return kept[lo:hi], total
+}
+
+// column is the column of cols with the key, or nil. Where several have it, the last is it.
+func column(cols []ir.Field, key string) *ir.Field {
+	for i := len(cols) - 1; i >= 0; i-- {
+		if cols[i].Key == key {
+			return &cols[i]
+		}
+	}
+	return nil
+}
+
+// filter is one column's filter as the query asks it: needle is what a column without a set of
+// options looks for, in lower case.
+type filter struct {
+	col    *ir.Field
+	values []string
+	needle string
+}
+
+// passes is whether a row passes the filter: a column with a fixed set of options keeps the rows
+// holding any of the options chosen, and any other the rows whose text contains what was typed,
+// ignoring case.
+func (f *filter) passes(row any) bool {
+	if f.col.Options != nil || f.col.OpenSet {
+		// A select may hold several: the row passes if it holds any of the options chosen.
+		return slices.ContainsFunc(held(f.col, row), func(v string) bool { return slices.Contains(f.values, v) })
+	}
+	return strings.Contains(strings.ToLower(f.col.Get(row)), f.needle)
+}
+
+// bounds is the range a query puts on a numeric column.
+type bounds struct {
+	col *ir.Field
+	r   ir.Range
+}
+
+// keyed is a row with what it is ordered by, read once.
+type keyed struct {
+	row   any
+	num   float64
+	text  string
+	lower string
+}
+
+// sortRows orders rows by a column: a number as a number, anything else as text without regard to
+// case, and by the exact text when that ties, so the order is the same however the rows arrived.
+// Rows that are equal stay as they were.
+func sortRows(rows []any, c *ir.Field, desc bool) {
+	keys := make([]keyed, len(rows))
+	for i, row := range rows {
+		keys[i].row = row
+		if c.Num != nil {
+			keys[i].num = c.Num(row)
+		} else {
+			keys[i].text = c.Get(row)
+			keys[i].lower = strings.ToLower(keys[i].text)
+		}
+	}
+	slices.SortStableFunc(keys, func(a, b keyed) int {
+		if desc {
+			a, b = b, a
+		}
+		if c.Num != nil {
+			return cmp.Compare(a.num, b.num)
+		}
+		if n := cmp.Compare(a.lower, b.lower); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.text, b.text)
+	})
+	for i := range keys {
+		rows[i] = keys[i].row
+	}
 }
 
 // Find returns the rows in which any column contains text, ignoring case, in their own order, and
@@ -86,7 +172,8 @@ func Find(rows []any, cols []ir.Field, text string, limit int) []any {
 // sorted without regard to case. Every row counts, whatever the filters.
 func Options(rows []any, cols []ir.Field) map[string][]string {
 	var out map[string][]string
-	for _, c := range cols {
+	for i := range cols {
+		c := &cols[i]
 		if !c.OpenSet || c.Get == nil {
 			continue
 		}
@@ -114,23 +201,9 @@ func Options(rows []any, cols []ir.Field) map[string][]string {
 	return out
 }
 
-// matches is whether a row passes one column's filter: a column with a fixed set
-// of options keeps the rows holding any of the options chosen, and any other the
-// rows whose text contains what was typed, ignoring case.
-func matches(c ir.Field, row any, values []string) bool {
-	if len(values) == 0 {
-		return true
-	}
-	if c.Options != nil || c.OpenSet {
-		// A select may hold several: the row passes if it holds any of the options chosen.
-		return slices.ContainsFunc(held(c, row), func(v string) bool { return slices.Contains(values, v) })
-	}
-	return strings.Contains(strings.ToLower(c.Get(row)), strings.ToLower(values[0]))
-}
-
 // held are the values a row has in a column with a fixed or open set: the one it shows, or for a select,
 // each of those it holds. A row with none holds none.
-func held(c ir.Field, row any) []string {
+func held(c *ir.Field, row any) []string {
 	if c.Display == ir.DisplaySelect {
 		return c.Values(row)
 	}
@@ -173,18 +246,4 @@ func found(cols []ir.Field, row any, text string) bool {
 // nil is unbounded.
 func within(x float64, r ir.Range) bool {
 	return (r.Min == nil || x >= *r.Min) && (r.Max == nil || x <= *r.Max)
-}
-
-// compare orders two rows by a column: a number as a number, anything else as text
-// without regard to case, and by the exact text when that ties, so the order is
-// the same however the rows arrived.
-func compare(c ir.Field, a, b any) int {
-	if c.Num != nil {
-		return cmp.Compare(c.Num(a), c.Num(b))
-	}
-	x, y := c.Get(a), c.Get(b)
-	if n := cmp.Compare(strings.ToLower(x), strings.ToLower(y)); n != 0 {
-		return n
-	}
-	return cmp.Compare(x, y)
 }
