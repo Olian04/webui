@@ -93,13 +93,13 @@ func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.
 		for _, f := range writable {
 			raw := values[f.Name]
 			if f.Display == ir.DisplaySelect {
-				if v := rules.CheckSelect(f, raw); v != nil {
-					errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
+				if msg := rules.CheckSelect(f, raw); msg != "" {
+					errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
 					continue
 				}
 			}
-			if v := rules.Check(f.Rules, f.Kind, raw); v != nil {
-				errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
+			if msg := rules.Check(f.Rules, f.Kind, raw); msg != "" {
+				errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
 				continue
 			}
 			if raw == "" && f.Kind != ir.KindString {

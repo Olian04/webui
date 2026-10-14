@@ -6,6 +6,7 @@ import (
 	"image/png"
 	"strings"
 
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/favicon"
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -112,20 +113,7 @@ func lowerTheme(t Theme) ir.Theme {
 }
 
 func lowerExternalLinks(items []ExternalLink) []ir.ExternalLink {
-	return conv(items, func(it ExternalLink) ir.ExternalLink {
+	return convert.Slice(items, func(it ExternalLink) ir.ExternalLink {
 		return ir.ExternalLink{Label: it.Label, Icon: it.Icon, Section: it.Section, URL: it.URL}
 	})
 }
-
-// conv is in with f applied to each element: the conversion between a declaration's list and the
-// IR's.
-func conv[T, U any](in []T, f func(T) U) []U {
-	out := make([]U, len(in))
-	for i, v := range in {
-		out[i] = f(v)
-	}
-	return out
-}
-
-// anys is rows as the []any the IR holds them in, the model's type erased.
-func anys[M any](rows []M) []any { return conv(rows, func(r M) any { return r }) }

@@ -3,7 +3,6 @@ package runtime
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"slices"
 	"time"
@@ -55,7 +54,7 @@ func (p *Program) start(ctx context.Context, hide map[string]bool) string {
 
 // notFound is the 404 inside the shell, so the way back is on screen.
 func (p *Program) notFound(w http.ResponseWriter, r *http.Request) {
-	if _, pattern := p.probe.Handler(r); pattern != "" {
+	if _, pattern := p.gate.Handler(r); pattern != "" {
 		w.Header().Set("Allow", p.allow[pattern])
 		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
@@ -104,7 +103,7 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 // FailureHandler serves the compile problems at every address and for every
 // method: the app did not compile, so there is nothing else to serve.
 func FailureHandler(problems []render.Problem) http.Handler {
-	return secure(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return securedFor(csp, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if err := render.Write(r.Context(), w, http.StatusInternalServerError, render.CompileFailure(problems)); err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -127,12 +126,12 @@ func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 		}
 		args, err := page.Decode(map[string]string{})
 		if err == nil {
-			err = page.Guard(With(ctx, &Request{program: p, Args: args, Raw: map[string]string{}}), args)
+			err = page.Guard(p.reqCtx(ctx, args, map[string]string{}), args)
 		}
 		if err == nil {
 			continue
 		}
-		if ctxErr(ctx) {
+		if ctx.Err() != nil {
 			return nil // the visitor went away: nothing to draw for
 		}
 		if hide == nil {
@@ -184,7 +183,7 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 	if err != nil {
 		return nil
 	}
-	entries, err := p.loadNavEntries(With(ctx, &Request{program: p, Args: zero, Raw: raw}), page)
+	entries, err := guarded("NavEntries", func() ([]ir.NavEntry, error) { return page.NavEntries(p.reqCtx(ctx, zero, raw)) })
 	if err != nil {
 		if ctx.Err() == nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			p.m.NavFailed(page.PathTemplate)
@@ -203,7 +202,7 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 		if e.Label == "" {
 			continue
 		}
-		if page.Guard != nil && page.Guard(With(ctx, &Request{program: p, Args: e.Args, Raw: raw}), e.Args) != nil {
+		if page.Guard != nil && page.Guard(p.reqCtx(ctx, e.Args, raw), e.Args) != nil {
 			continue // the visitor could not open it
 		}
 		path, query, err := page.Encode(e.Args)
@@ -226,17 +225,6 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 		links = append(links, link)
 	}
 	return links
-}
-
-// loadNavEntries asks a page for its entries, with a panic in it answered as an error: it is on the
-// way of every page, and must not be what takes one down.
-func (p *Program) loadNavEntries(ctx context.Context, page *ir.Page) (entries []ir.NavEntry, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic in NavEntries: %v", r)
-		}
-	}()
-	return page.NavEntries(ctx) //nolint:wrapcheck // the caller logs it with the page
 }
 
 // entryScore is how well an entry of page fits the address on screen, or -1 when it does not: its

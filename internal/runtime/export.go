@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -37,35 +39,30 @@ const (
 )
 
 // exportFormats are the files a table can be downloaded as, by the value of its export parameter.
-var exportFormats = map[string]struct{ ext, contentType string }{
-	"csv":  {".csv", "text/csv; charset=utf-8"},
-	"json": {".json", "application/json"},
+var exportFormats = map[string]struct {
+	ext, contentType string
+	encode           func(columns []ir.Field, rows []any) []byte
+}{
+	"csv":  {".csv", "text/csv; charset=utf-8", exportCSV},
+	"json": {".json", "application/json", exportJSON},
 }
 
 // exportOf is the table a request asks to download, and as what, if it does. A table that
 // does not declare Export ignores the parameter, as any parameter for a leaf the page does
 // not have is. A format that is not one is the request's mistake.
 func exportOf(r *http.Request, leaves map[string]ir.Node) (n *ir.Table, format string, bad bool) {
-	query := r.URL.Query()
-	ids := make([]string, 0, len(leaves))
+	var tables []*ir.Table
 	for _, leaf := range leaves {
 		if t, ok := leaf.(*ir.Table); ok && t.Export && t.ID != "" {
-			ids = append(ids, t.ID)
+			tables = append(tables, t)
 		}
 	}
-	slices.Sort(ids)
-	for _, id := range ids {
-		value, asked := query[args.ViewKey(id, "export")]
-		if !asked {
-			continue
-		}
-		if _, known := exportFormats[value[0]]; !known {
-			return nil, "", true
-		}
-		for _, leaf := range leaves {
-			if t, ok := leaf.(*ir.Table); ok && t.ID == id {
-				return t, value[0], false
-			}
+	slices.SortFunc(tables, func(a, b *ir.Table) int { return strings.Compare(a.ID, b.ID) })
+	query := r.URL.Query()
+	for _, t := range tables {
+		if value, asked := query[args.ViewKey(t.ID, "export")]; asked {
+			_, known := exportFormats[value[0]]
+			return t, value[0], !known
 		}
 	}
 	return nil, "", false
@@ -88,37 +85,17 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.log.Warn("webui: a table export was cut", "page", page.PathTemplate, "table", n.ID, "rows", maxExportRows)
 	}
 
-	var body []byte
-	switch format {
-	case "csv":
-		body, err = exportCSV(n.Columns, rows)
-	default:
-		body, err = exportJSON(n.Columns, rows)
-	}
-	if err != nil {
-		p.fail(w, r, page, req, fmt.Errorf("table export: %w", err))
-		return
-	}
-
 	p.m.Export(page.PathTemplate, format)
 	kind := exportFormats[format]
 	h := w.Header()
 	h.Set("Content-Type", kind.contentType)
-	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": exportName(n) + kind.ext}))
+	// The file is named for the table in the address, or "table".
+	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": cmp.Or(n.ID, "table") + kind.ext}))
 	h.Set("Cache-Control", "no-store")
 	if truncated {
 		h.Set(exportTruncatedHeader, strconv.Itoa(len(rows)))
 	}
-	_, _ = w.Write(body) //nolint:gosec // G705: rows written as CSV or JSON, with a download content type, never HTML.
-}
-
-// exportName is the file's name without its extension: the table's name in the address, or
-// "table".
-func exportName(n *ir.Table) string {
-	if n.ID != "" {
-		return n.ID
-	}
-	return "table"
+	_, _ = w.Write(kind.encode(n.Columns, rows)) //nolint:gosec // G705: rows written as CSV or JSON, with a download content type, never HTML.
 }
 
 // exportRows loads every row of a table that the view in q keeps, a batch at a time for a
@@ -202,28 +179,15 @@ func isNumber(f ir.Field) bool {
 
 // exportCSV is the rows as CSV, with the columns' labels for a header. It starts with a byte order
 // mark, which is what makes a spreadsheet read it as UTF-8 and not as the system's own encoding.
-func exportCSV(columns []ir.Field, rows []any) ([]byte, error) {
+func exportCSV(columns []ir.Field, rows []any) []byte {
 	var buf bytes.Buffer
 	buf.WriteString("\xEF\xBB\xBF")
-	w := csv.NewWriter(&buf)
-	header := make([]string, len(columns))
-	for i, c := range columns {
-		header[i] = csvText(c.Label)
-	}
-	if err := w.Write(header); err != nil {
-		return nil, fmt.Errorf("csv: %w", err)
-	}
-	record := make([]string, len(columns))
+	records := [][]string{convert.Slice(columns, func(c ir.Field) string { return csvText(c.Label) })}
 	for _, row := range rows {
-		for i, c := range columns {
-			record[i] = csvCell(c, row)
-		}
-		if err := w.Write(record); err != nil {
-			return nil, fmt.Errorf("csv: %w", err)
-		}
+		records = append(records, convert.Slice(columns, func(c ir.Field) string { return csvCell(c, row) }))
 	}
-	w.Flush()
-	return buf.Bytes(), w.Error() //nolint:wrapcheck // a write to memory
+	_ = csv.NewWriter(&buf).WriteAll(records) // a write to memory does not fail
+	return buf.Bytes()
 }
 
 // csvCell is one value as a spreadsheet will read it. A number is itself, so a negative one is not
@@ -262,15 +226,8 @@ func csvText(s string) string {
 }
 
 // exportJSON is the rows as a list of objects keyed by the columns' labels, in their order.
-func exportJSON(columns []ir.Field, rows []any) ([]byte, error) {
-	keys := make([][]byte, len(columns))
-	for i, c := range columns {
-		k, err := json.Marshal(c.Label)
-		if err != nil {
-			return nil, fmt.Errorf("json: %w", err)
-		}
-		keys[i] = k
-	}
+func exportJSON(columns []ir.Field, rows []any) []byte {
+	keys := convert.Slice(columns, func(c ir.Field) []byte { return mustJSON(c.Label) })
 	var buf bytes.Buffer
 	buf.WriteString("[")
 	for i, row := range rows {
@@ -282,13 +239,9 @@ func exportJSON(columns []ir.Field, rows []any) ([]byte, error) {
 			if j > 0 {
 				buf.WriteString(", ")
 			}
-			v, err := jsonCell(c, row)
-			if err != nil {
-				return nil, err
-			}
 			buf.Write(keys[j])
 			buf.WriteString(": ")
-			buf.Write(v)
+			buf.Write(jsonCell(c, row))
 		}
 		buf.WriteString("}")
 	}
@@ -296,13 +249,13 @@ func exportJSON(columns []ir.Field, rows []any) ([]byte, error) {
 		buf.WriteString("\n")
 	}
 	buf.WriteString("]\n")
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
 // jsonCell is one value as JSON: a moment as an RFC 3339 time in UTC, or null when there is none; a
 // number as a number; a select as the list of its values; and anything else, an address included, as a
 // string.
-func jsonCell(f ir.Field, row any) ([]byte, error) {
+func jsonCell(f ir.Field, row any) []byte {
 	switch {
 	case f.Display == ir.DisplaySelect:
 		// A list of the values it holds, which is what it is, and not their labels: a value is what
@@ -311,35 +264,29 @@ func jsonCell(f ir.Field, row any) ([]byte, error) {
 		if values == nil {
 			values = []string{}
 		}
-		b, err := json.Marshal(values)
-		if err != nil {
-			return nil, fmt.Errorf("json: %w", err)
-		}
-		return b, nil
+		return mustJSON(values)
 	case f.Display == ir.DisplayTime && f.Num != nil:
 		seconds := f.Num(row)
 		if math.IsInf(seconds, 0) || math.IsNaN(seconds) {
-			return []byte("null"), nil
+			return []byte("null")
 		}
-		return marshalString(time.Unix(int64(seconds), 0).UTC().Format(time.RFC3339))
+		return mustJSON(time.Unix(int64(seconds), 0).UTC().Format(time.RFC3339))
 	case isNumber(f):
 		text := f.Get(row)
 		if x, err := strconv.ParseFloat(text, 64); err == nil && !math.IsInf(x, 0) && !math.IsNaN(x) && json.Valid([]byte(text)) {
-			return []byte(text), nil
+			return []byte(text)
 		}
-		return marshalString(text)
+		return mustJSON(text)
 	case f.Display == ir.DisplayLink && f.Link != nil:
 		if href := f.Link(row); href != "" {
-			return marshalString(href)
+			return mustJSON(href)
 		}
 	}
-	return marshalString(f.Get(row))
+	return mustJSON(f.Get(row))
 }
 
-func marshalString(s string) ([]byte, error) {
-	b, err := json.Marshal(s)
-	if err != nil {
-		return nil, fmt.Errorf("json: %w", err)
-	}
-	return b, nil
+// mustJSON is v as JSON. It is only called with strings and lists of them, which always encode.
+func mustJSON(v any) []byte {
+	b, _ := json.Marshal(v)
+	return b
 }

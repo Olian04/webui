@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"time"
 
 	"github.com/a-h/templ"
 
@@ -32,13 +31,8 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 			view.Errors[e.Label] = e.Message
 		}
 	} else {
-		started := time.Now()
-		model, err := n.Load(ctx)
-		p.m.Load(page.PathTemplate, formKind(n), started, err)
-		if err != nil {
-			if ctx.Err() == nil {
-				p.log.Error("webui: form load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
-			}
+		model, ok := loaded(p, ctx, page, formKind(n), "form", n.At, func() (any, error) { return n.Load(ctx) })
+		if !ok {
 			view.Failed = true
 			return p.render.Form(view)
 		}

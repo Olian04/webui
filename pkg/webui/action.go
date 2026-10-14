@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -83,7 +84,7 @@ func lowerAction[M any](a Action[M]) *ir.Action {
 // lowerBulk is lowerAction for a selection. The runtime holds rows as []any,
 // so the []M the user's func wants is built here, where M is known.
 func lowerBulk[M any](a Action[[]M]) *ir.Action {
-	return lowerActionWith[[]M, M](a, func(s any) []M { return conv(s.([]any), func(r any) M { return r.(M) }) })
+	return lowerActionWith[[]M, M](a, func(s any) []M { return convert.Slice(s.([]any), func(r any) M { return r.(M) }) })
 }
 
 // validateRow checks an Action used as a table's RowClick: it has a Run, and no

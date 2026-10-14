@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/render"
 	"github.com/Olian04/webui/internal/runtime"
 )
@@ -49,11 +50,11 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 
 // joined is the problems as one error that wraps each of them.
 func joined(errs []CompileError) error {
-	return errors.Join(conv(errs, func(e CompileError) error { return e })...)
+	return errors.Join(convert.Slice(errs, func(e CompileError) error { return e })...)
 }
 
 func failure(errs []CompileError) http.Handler {
-	return runtime.FailureHandler(conv(errs, func(e CompileError) render.Problem {
+	return runtime.FailureHandler(convert.Slice(errs, func(e CompileError) render.Problem {
 		return render.Problem{Where: e.where(), Detail: e.Detail, Fix: e.Fix}
 	}))
 }

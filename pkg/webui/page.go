@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
 )
@@ -268,7 +269,7 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 			if err != nil {
 				return nil, err
 			}
-			return conv(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
+			return convert.Slice(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
 		}
 	}
 	if p.Search != nil {
@@ -277,7 +278,7 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 			if err != nil {
 				return nil, err
 			}
-			return conv(found, func(h Hit[A]) ir.Hit { return ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc} }), nil
+			return convert.Slice(found, func(h Hit[A]) ir.Hit { return ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc} }), nil
 		}
 	}
 	page.Body = p.Body.lowerBody(ir.Addr{})

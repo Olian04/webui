@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/test/util/assert"
 )
 
@@ -171,7 +172,7 @@ func TestParseListKeysKeepEveryValueAndOthersTheFirst(t *testing.T) {
 	parser := ArgParser{QueryKeys: []string{"s", "q"}, ListKeys: []string{"s"}}
 	got, err := parser.Parse(mustRequest(t, "/x", "/x?s=a&s=&s=b%2Cc&q=1&q=2"))
 	assert.NoError(t, err)
-	assert.DeepEqual(t, got, map[string]string{"s": "a" + ListSep + "b,c", "q": "1"})
+	assert.DeepEqual(t, got, map[string]string{"s": "a" + ir.ListSep + "b,c", "q": "1"})
 
 	got, err = parser.Parse(mustRequest(t, "/x", "/x?s="))
 	assert.NoError(t, err)

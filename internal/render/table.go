@@ -373,7 +373,7 @@ func carry(query map[string]string, skip ...string) []carried {
 		if slices.Contains(skip, k) || strings.HasSuffix(k, args.ViewSep+"offset") {
 			continue
 		}
-		for _, part := range strings.Split(query[k], args.ListSep) {
+		for _, part := range strings.Split(query[k], ir.ListSep) {
 			if part != "" {
 				out = append(out, carried{k, part})
 			}

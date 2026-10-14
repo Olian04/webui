@@ -7,6 +7,7 @@
 package runtime
 
 import (
+	"cmp"
 	"crypto/rand"
 	"fmt"
 	"log/slog"
@@ -46,16 +47,14 @@ type Program struct {
 	// and a nil Recorder records nothing.
 	m *metrics.Recorder
 
-	// probe matches a path against the page patterns regardless of method, so
-	// the catch-all can tell "no such page" (404) from "wrong method" (405).
-	probe *http.ServeMux
-
-	// gate is probe's twin that answers one question about an address: may this
-	// visitor open it? Each page's handler on it runs the page's argument decoding
-	// and Guard, as a real request would, and reports the verdict as a status.
+	// gate answers one question about an address: may this visitor open it? Each page's
+	// handler on it runs the page's argument decoding and Guard, as a real request would,
+	// and reports the verdict as a status. It matches a path against the page patterns
+	// regardless of method, which is also how the catch-all tells "no such page" (404) from
+	// "wrong method" (405).
 	gate *http.ServeMux
 
-	allow map[string]string // probe pattern → Allow header
+	allow map[string]string // gate pattern → Allow header
 
 	// cross refuses cross-origin POSTs, using Fetch metadata and Origin. A
 	// request from a client that sends neither is not a browser CSRF vector.
@@ -66,7 +65,7 @@ type Program struct {
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p := &Program{
 		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		mux: http.NewServeMux(), fw: http.NewServeMux(), probe: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	secret := app.Secret
@@ -90,28 +89,31 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/{file}", assets)
-	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/search", http.HandlerFunc(p.search))
-	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/monaco/{path...}", p.render.MonacoHandler())
-	p.addFramework(http.MethodGet, prefix+render.AssetDir+"/code/{name}", p.render.ContextHandler())
+	own := func(method, path string, h http.Handler) {
+		p.handle(p.fw, method, prefix+render.AssetDir+path, framework, csp, h)
+	}
+	own(http.MethodGet, "/{file}", assets)
+	own(http.MethodGet, "/search", http.HandlerFunc(p.search))
+	own(http.MethodGet, "/monaco/{path...}", p.render.MonacoHandler())
+	own(http.MethodGet, "/code/{name}", p.render.ContextHandler())
 	// Anything else under the directory is not a page, whatever a page's pattern could
 	// say of it: it is a 404 in the shell.
-	p.addFramework("", prefix+render.AssetDir+"/", http.HandlerFunc(p.missing))
-	p.addFramework("", prefix+render.AssetDir, http.HandlerFunc(p.missing))
+	own("", "/", http.HandlerFunc(p.missing))
+	own("", "", http.HandlerFunc(p.missing))
 
 	if err := p.addPages(); err != nil {
 		return nil, err
 	}
 	if app.ByPath["/"] == nil {
-		p.add(http.MethodGet, prefix+"/{$}", "/", http.HandlerFunc(p.root))
+		p.handle(p.mux, http.MethodGet, prefix+"/{$}", "/", csp, http.HandlerFunc(p.root))
 		if prefix != "" {
-			p.add(http.MethodGet, prefix, "/", http.HandlerFunc(p.root)) // mounted at "/admin" exactly
+			p.handle(p.mux, http.MethodGet, prefix, "/", csp, http.HandlerFunc(p.root)) // mounted at "/admin" exactly
 		}
 	}
 
 	// The catch-all is last in intent, not in registration: ServeMux picks the
 	// most specific pattern, so it only sees what nothing else claimed.
-	p.add("", prefix+"/", unmatched, http.HandlerFunc(p.notFound))
+	p.handle(p.mux, "", prefix+"/", unmatched, csp, http.HandlerFunc(p.notFound))
 	return p, nil
 }
 
@@ -128,15 +130,6 @@ func (p *Program) Handler() http.Handler {
 	})
 }
 
-// addFramework registers a route of the framework's own, wrapped as a page's is.
-func (p *Program) addFramework(method, path string, h http.Handler) {
-	pattern := path
-	if method != "" {
-		pattern = method + " " + path
-	}
-	p.fw.Handle(pattern, p.metered(framework, securedFor(csp, compressed(p.recovered(h)))))
-}
-
 // The page label of what no page answered, and of the framework's own routes. Neither is
 // the path template of a page, which always begins with a slash and is not reserved.
 const (
@@ -144,19 +137,16 @@ const (
 	framework = render.AssetDir
 )
 
-// add registers a route. An empty method matches any, which only the catch-all uses. page is
-// what the route is called in the metrics: the path template of the page it answers.
-func (p *Program) add(method, path, page string, h http.Handler) {
-	p.addWith(method, path, page, h, csp)
-}
-
-// addWith is add with the content security policy the route is served under.
-func (p *Program) addWith(method, path, page string, h http.Handler, policy string) {
+// handle registers a route on mux, wrapped in what every response of the app has: the metrics, the
+// headers and content security policy, compression and the recovery of a panic. An empty method
+// matches any, which only the catch-all uses. page is what the route is called in the metrics: the path
+// template of the page it answers.
+func (p *Program) handle(mux *http.ServeMux, method, path, page, policy string, h http.Handler) {
 	pattern := path
 	if method != "" {
 		pattern = method + " " + path
 	}
-	p.mux.Handle(pattern, p.metered(page, securedFor(policy, compressed(p.recovered(h)))))
+	mux.Handle(pattern, p.metered(page, securedFor(policy, compressed(p.recovered(h)))))
 }
 
 // metered counts a request and its time, under the page that answers it. The status is what
@@ -169,40 +159,10 @@ func (p *Program) metered(page string, next http.Handler) http.Handler {
 		started := time.Now()
 		done := p.m.Begin()
 		sw := &statusWriter{ResponseWriter: w}
-		defer func() { done(page, r.Method, sw.code(), started) }()
+		defer func() { done(page, r.Method, cmp.Or(sw.status, http.StatusOK), started) }() // none written is a 200
 		next.ServeHTTP(sw, r)
 	})
 }
-
-// statusWriter remembers the status written, for the metrics.
-type statusWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-func (w *statusWriter) WriteHeader(code int) {
-	if w.status == 0 {
-		w.status = code
-	}
-	w.ResponseWriter.WriteHeader(code)
-}
-
-func (w *statusWriter) Write(b []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
-	}
-	return w.ResponseWriter.Write(b) //nolint:wrapcheck // a plain pass-through
-}
-
-func (w *statusWriter) code() int {
-	if w.status == 0 {
-		return http.StatusOK
-	}
-	return w.status
-}
-
-// Unwrap lets http.ResponseController reach the writer underneath.
-func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // RouteConflict is two pages whose paths match one address, with neither more specific than
 // the other: "/{a}/x" and "/y/{b}" both match "/y/x". The router cannot choose between them.

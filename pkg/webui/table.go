@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/tablequery"
 )
@@ -339,7 +340,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			if err != nil {
 				return ir.Window{}, err
 			}
-			items := anys(all)
+			items := convert.Any(all)
 			window, total := tablequery.Apply(items, columns, q)
 			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
 		}
@@ -350,7 +351,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			if err != nil {
 				return ir.Window{}, err
 			}
-			items := anys(rows)
+			items := convert.Any(rows)
 			if q.Sort != "" {
 				// The source's order is the sequence's, so only the page in hand is ordered: the
 				// next page continues the sequence, and is ordered within itself.
@@ -364,7 +365,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		if err != nil {
 			return ir.Window{}, err
 		}
-		items := anys(rows.Items)
+		items := convert.Any(rows.Items)
 		total := rows.Total
 		if total < q.Offset+len(items) {
 			total = -1

@@ -42,11 +42,11 @@ func DecodeMark(s string) (ir.Mark, bool) {
 }
 
 // DecodeTrail reads the pages out of the values of the back parameter, which the
-// parser joins with ListSep. What is not a page, or does not fit, is dropped, the
+// parser joins with ir.ListSep. What is not a page, or does not fit, is dropped, the
 // oldest first.
 func DecodeTrail(id, joined string) []ir.Mark {
 	var out []ir.Mark
-	for _, part := range strings.Split(joined, ListSep) {
+	for _, part := range strings.Split(joined, ir.ListSep) {
 		if m, ok := DecodeMark(part); ok {
 			out = append(out, m)
 		}
@@ -66,7 +66,7 @@ func EncodeTrail(trail []ir.Mark) string {
 	for i, m := range trail {
 		parts[i] = EncodeMark(m)
 	}
-	return strings.Join(parts, ListSep)
+	return strings.Join(parts, ir.ListSep)
 }
 
 // cost is what a page adds to the address of a table: its escaped text, and the "&",
