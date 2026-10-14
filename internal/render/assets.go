@@ -75,6 +75,11 @@ func (r *Renderer) buildAssets() error {
 		}
 		add(logical, body, mime)
 	}
+	rules, err := speculationRules(r.prefix)
+	if err != nil {
+		return err
+	}
+	add(speculationName, rules, speculationMime)
 	if r.hasTheme() {
 		add("theme.css", themeCSS(r.app.Theme), "text/css; charset=utf-8")
 	}

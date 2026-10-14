@@ -77,6 +77,9 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 	parser := argParser(page)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", LeafHeader)
+		if deferred(w, r) {
+			return
+		}
 		req, ok := p.begin(w, r, page, parser)
 		if !ok {
 			return

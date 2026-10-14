@@ -97,6 +97,7 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 	}
 	doc.Toasts = append(p.takeFlash(w, r), doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Speculation-Rules", p.render.SpeculationRules())
 	doc.Built, doc.BuildTime = timing(w, r)
 	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
 		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
