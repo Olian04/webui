@@ -112,7 +112,7 @@ func (r *Renderer) contextConfig(needs CodeNeeds, workers map[string]string) *co
 	files := func(ctx *editorctx.Context) []contextFile {
 		list := make([]contextFile, len(ctx.Files))
 		for i, f := range ctx.Files {
-			list[i] = contextFile{Path: f.Path, URL: r.ContextURL(f.Name)}
+			list[i] = contextFile{Path: f.Path, URL: r.contexts[f.Name].url}
 		}
 		return list
 	}
@@ -150,17 +150,20 @@ func (r *Renderer) contextConfig(needs CodeNeeds, workers map[string]string) *co
 	return out
 }
 
-// contextKey is the key that unlocks one context file: derived from its name, so a key
-// opens that file and no other, and nothing has to be remembered per key.
-func (r *Renderer) contextKey(name string) string {
-	mac := hmac.New(sha256.New, r.secret)
-	mac.Write([]byte(name))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)[:16])
+// contextEntry is one context file as the app serves it, made once: the key that unlocks it, the address
+// a page gives for it with that key, and the file itself.
+type contextEntry struct {
+	key  string
+	url  string
+	blob *assetserve.Blob
 }
 
-// ContextURL is the address of a context file, with the key that unlocks it.
-func (r *Renderer) ContextURL(name string) string {
-	return r.prefix + AssetDir + "/code/" + name + "?k=" + url.QueryEscape(r.contextKey(name))
+// contextKey is the key that unlocks one context file: derived from its name, so a key
+// opens that file and no other, and nothing has to be remembered per key.
+func contextKey(secret []byte, name string) string {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte(name))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)[:16])
 }
 
 // ContextFile is a context file, for whoever has the key a page gave them. A file is private to the
@@ -168,11 +171,11 @@ func (r *Renderer) ContextURL(name string) string {
 // and not by a cache that other people share. A wrong key, or a file that is not there, is the same
 // answer, so it does not tell whether a file exists.
 func (r *Renderer) ContextFile(name, key string) (*assetserve.Blob, bool) {
-	body, ok := r.contexts[name]
-	if !ok || subtle.ConstantTimeCompare([]byte(key), []byte(r.contextKey(name))) != 1 {
+	e, ok := r.contexts[name]
+	if !ok || subtle.ConstantTimeCompare([]byte(key), []byte(e.key)) != 1 {
 		return nil, false
 	}
-	return &assetserve.Blob{Mime: contextType(name), Cache: "private, max-age=31536000, immutable", ETag: `"` + name + `"`, Body: body}, true
+	return e.blob, true
 }
 
 func contextType(name string) string {
@@ -182,43 +185,52 @@ func contextType(name string) string {
 	return "text/plain; charset=utf-8"
 }
 
-// collectContexts remembers the text of every context file of the app, by the name it is
-// served as, which is the hash of the text.
-func collectContexts(app *ir.App) map[string][]byte {
-	out := map[string][]byte{}
-	for _, p := range app.Pages {
+// buildContexts makes the entry of every context file of the app, by the name it is served as, which
+// is the hash of the text. They are the same for every request, so the key, the address and the file
+// are made once, here.
+func (r *Renderer) buildContexts() {
+	r.contexts = map[string]*contextEntry{}
+	for _, p := range r.app.Pages {
 		for _, f := range ir.Editors(p.Body) {
 			if f.Editor.Context == nil {
 				continue
 			}
 			for _, file := range f.Editor.Context.Files {
-				out[file.Name] = file.Text
+				key := contextKey(r.secret, file.Name)
+				r.contexts[file.Name] = &contextEntry{
+					key: key,
+					url: r.prefix + AssetDir + "/code/" + file.Name + "?k=" + url.QueryEscape(key),
+					blob: &assetserve.Blob{
+						Mime: contextType(file.Name), Cache: "private, max-age=31536000, immutable",
+						ETag: `"` + file.Name + `"`, Body: file.Text,
+					},
+				}
 			}
 		}
 	}
-	return out
 }
 
-// gzipped remembers each editor file compressed, made when it is first asked for: the
-// bundle is several megabytes and most programs never serve it.
-var gzipped sync.Map // name → []byte
+// monacoBlobs remembers each editor file as it is served, made when it is first asked for: the
+// bundle is several megabytes and most programs never serve it. A file is read, and compressed, once.
+var monacoBlobs sync.Map // name → *assetserve.Blob
 
 // MonacoFile is a file of the editor, or the worker of a language service the application imported,
 // by its name under monaco/. Every name carries a hash of its contents, so a browser keeps a file for
 // good, and a script or stylesheet is offered compressed, made when it is first asked for.
 func (r *Renderer) MonacoFile(name string) (*assetserve.Blob, bool) {
+	if b, ok := monacoBlobs.Load(name); ok {
+		return b.(*assetserve.Blob), true
+	}
 	body, ok := assets.MonacoFile(name)
 	if !ok {
 		return nil, false
 	}
 	b := &assetserve.Blob{Mime: monacoType(name), Cache: "public, max-age=31536000, immutable", ETag: `"` + path.Base(name) + `"`, Body: body}
 	if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") {
-		b.Gzip = func() []byte {
-			zipped, _ := gzipped.LoadOrStore(name, assetserve.Gzip(body)) // the bundle is several megabytes: compressed once
-			return zipped.([]byte)
-		}
+		b.Gzip = sync.OnceValue(func() []byte { return assetserve.Gzip(body) })
 	}
-	return b, true
+	shared, _ := monacoBlobs.LoadOrStore(name, b) // two first requests may race: one blob wins
+	return shared.(*assetserve.Blob), true
 }
 
 func monacoType(name string) string {

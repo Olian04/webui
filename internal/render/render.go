@@ -114,9 +114,9 @@ type Renderer struct {
 	served map[string]string
 	search bool // some table is searchable, so the page script has something to ask
 
-	// contexts is the text of every file an editor's Context holds, by the name it is
-	// served as, and secret keys the addresses that unlock them.
-	contexts map[string][]byte
+	// contexts is every file an editor's Context holds, by the name it is served as, and secret keys
+	// the addresses that unlock them.
+	contexts map[string]*contextEntry
 	secret   []byte
 
 	// monaco is the editor's entry script, stylesheet and plain worker, which a page
@@ -148,7 +148,7 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 		return nil, err
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
-	r.contexts = collectContexts(app)
+	r.buildContexts()
 	for _, p := range app.Pages {
 		r.search = r.search || p.Search != nil
 	}

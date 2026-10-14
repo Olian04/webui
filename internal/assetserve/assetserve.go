@@ -27,21 +27,26 @@ type Blob struct {
 // ServeHTTP answers a request with the file: compressed when the file offers it and the client takes it,
 // and with a 304 when the client has it already.
 func (b *Blob) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	body, etag := b.Body, b.ETag
+	etag := b.ETag
 	h := w.Header()
 	h.Set("Content-Type", b.Mime)
 	h.Set("Cache-Control", b.Cache)
+	zipped := false
 	if b.Gzip != nil {
 		h.Add("Vary", "Accept-Encoding")
-		if AcceptsGzip(req) {
+		if zipped = AcceptsGzip(req); zipped {
 			h.Set("Content-Encoding", "gzip")
-			body, etag = b.Gzip(), strings.TrimSuffix(etag, `"`)+`-gzip"`
+			etag = strings.TrimSuffix(etag, `"`) + `-gzip"`
 		}
 	}
 	h.Set("ETag", etag)
 	if req.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
-		return
+		return // a client that has the file is not sent it, and not made to compress it either
+	}
+	body := b.Body
+	if zipped {
+		body = b.Gzip()
 	}
 	_, _ = w.Write(body) //nolint:gosec // G705: a file the application embedded, never request data.
 }
