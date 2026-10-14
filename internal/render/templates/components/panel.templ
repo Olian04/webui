@@ -28,7 +28,6 @@ type PanelProps struct {
 	Grows bool
 
 	Footer templ.Component
-	Attrs  templ.Attributes
 }
 
 templ Panel(p PanelProps) {
@@ -37,7 +36,6 @@ templ Panel(p PanelProps) {
 		if p.Leaf != "" {
 			data-leaf={ p.Leaf }
 		}
-		{ p.Attrs... }
 	>
 		<div class="panel-head">
 			<h2 class="panel-title">{ p.Title }</h2>
@@ -76,7 +74,6 @@ templ Panel(p PanelProps) {
 type InfoTipProps struct {
 	Text  string
 	Lines []string
-	Attrs templ.Attributes
 }
 
 func (p InfoTipProps) name() string {
@@ -87,7 +84,7 @@ func (p InfoTipProps) name() string {
 }
 
 templ InfoTip(p InfoTipProps) {
-	<span class="tip" tabindex="0" role="note" aria-label={ p.name() } { p.Attrs... }>
+	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
 		@Icon(IconProps{Name: IconInfo, Class: "info"})
 		<span class="tip-body" aria-hidden="true">
 			if len(p.Lines) == 0 {

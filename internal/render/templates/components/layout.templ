@@ -5,24 +5,16 @@ package components
 // constrain what their children are about — a form for one model beside a
 // table of another is the ordinary case.
 
-// StackProps is a column of panels, 8px apart.
-type StackProps struct {
-	Attrs templ.Attributes
-}
-
-templ Stack(p StackProps) {
-	<div class="stack" { p.Attrs... }>
+// Stack is a column of panels, 8px apart.
+templ Stack() {
+	<div class="stack">
 		{ children... }
 	</div>
 }
 
-// SplitProps is two columns, top-aligned so unequal heights do not stretch.
-type SplitProps struct {
-	Attrs templ.Attributes
-}
-
-templ Split(p SplitProps) {
-	<div class="split" { p.Attrs... }>
+// Split is two columns, top-aligned so unequal heights do not stretch.
+templ Split() {
+	<div class="split">
 		{ children... }
 	</div>
 }
@@ -39,11 +31,10 @@ type Tab struct {
 type TabsProps struct {
 	Tabs  []Tab
 	Label string // accessible name for the strip, e.g. "Device views"
-	Attrs templ.Attributes
 }
 
 templ Tabs(p TabsProps) {
-	<nav class="tabs" aria-label={ p.Label } { p.Attrs... }>
+	<nav class="tabs" aria-label={ p.Label }>
 		for _, t := range p.Tabs {
 			<a
 				class={ "tab", templ.KV("active", t.Active) }

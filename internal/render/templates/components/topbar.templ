@@ -12,11 +12,10 @@ type Crumb struct {
 // carries the location the sidebar cannot show.
 type TopBarProps struct {
 	Crumbs []Crumb
-	Attrs  templ.Attributes
 }
 
 templ TopBar(p TopBarProps) {
-	<header class="topbar" { p.Attrs... }>
+	<header class="topbar">
 		<nav class="crumbs" aria-label="Breadcrumb">
 			for i, c := range p.Crumbs {
 				if i > 0 {

@@ -46,11 +46,10 @@ type AppShellProps struct {
 	TopBar  templ.Component
 	Status  templ.Component
 	Toasts  templ.Component
-	Attrs   templ.Attributes
 }
 
 templ AppShell(p AppShellProps) {
-	<div class="app" { p.Attrs... }>
+	<div class="app">
 		if p.Sidebar != nil {
 			@p.Sidebar
 		}

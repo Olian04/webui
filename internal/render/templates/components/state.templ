@@ -9,11 +9,10 @@ type StatePageProps struct {
 	Icon  IconName
 	Title string
 	Desc  string
-	Attrs templ.Attributes
 }
 
 templ StatePage(p StatePageProps) {
-	<div class="state-page" { p.Attrs... }>
+	<div class="state-page">
 		@Icon(IconProps{Name: p.Icon})
 		<p class="state-title">{ p.Title }</p>
 		if p.Desc != "" {
@@ -38,11 +37,10 @@ type Problem struct {
 // time.
 type CompileErrorProps struct {
 	Problems []Problem
-	Attrs    templ.Attributes
 }
 
 templ CompileError(p CompileErrorProps) {
-	<div class="compile" { p.Attrs... }>
+	<div class="compile">
 		<h2>Failed to compile</h2>
 		<p class="count">{ problemCount(len(p.Problems)) }</p>
 		for _, e := range p.Problems {

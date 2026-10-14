@@ -5,11 +5,10 @@ package components
 type BadgeProps struct {
 	Tone  Tone
 	Dot   bool
-	Attrs templ.Attributes
 }
 
 templ Badge(p BadgeProps) {
-	<span class={ "badge", p.Tone.badge() } { p.Attrs... }>
+	<span class={ "badge", p.Tone.badge() }>
 		if p.Dot {
 			<span class="dot" aria-hidden="true"></span>
 		}

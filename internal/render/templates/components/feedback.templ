@@ -22,14 +22,13 @@ type ToastProps struct {
 	// with the same Name would be one group, and choosing one would bring the other
 	// back. It must differ between the toasts of a page.
 	Name  string
-	Attrs templ.Attributes
 }
 
 // Toast is a message, with a button to dismiss it that works without script: the
 // button is a label for a visually hidden radio, and the stylesheet hides the toast
 // whose radio is chosen. It is focusable by keyboard, where Space chooses it.
 templ Toast(p ToastProps) {
-	<div class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) } { p.Attrs... }>
+	<div class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) }>
 		<div class="toast-text">
 			<div class="toast-title">{ p.Title }</div>
 			if p.Desc != "" {
@@ -50,11 +49,10 @@ type EmptyStateProps struct {
 	Icon  IconName
 	Title string
 	Desc  string
-	Attrs templ.Attributes
 }
 
 templ EmptyState(p EmptyStateProps) {
-	<div class="empty" { p.Attrs... }>
+	<div class="empty">
 		@Icon(IconProps{Name: p.Icon})
 		<div class="empty-title">{ p.Title }</div>
 		if p.Desc != "" {
@@ -72,14 +70,12 @@ templ EmptyState(p EmptyStateProps) {
 type StatusBarProps struct {
 	Method string
 	URL    string
-	Note   string
 
 	// Built is when the page's HTML was built, and BuildTime how long the server took from the
 	// request's arrival to that. A zero Built is not shown.
 	Built     time.Time
 	BuildTime time.Duration
 
-	Attrs templ.Attributes
 }
 
 func (p StatusBarProps) took() string {
@@ -91,7 +87,7 @@ func (p StatusBarProps) took() string {
 }
 
 templ StatusBar(p StatusBarProps) {
-	<div class="statusbar" { p.Attrs... }>
+	<div class="statusbar">
 		<span class="method" data-method>{ p.Method }</span>
 		<span class="url" data-url>{ p.URL }</span>
 		<span class="status-meta">
@@ -105,9 +101,9 @@ templ StatusBar(p StatusBarProps) {
 				<time class="sb-opt" data-built datetime={ p.Built.UTC().Format(time.RFC3339Nano) } title={ "The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC") }>{ "built " + p.Built.UTC().Format("15:04:05") + "Z" }</time>
 			}
 		</span>
-		<span class={ "netlog", templ.KV("on", p.Note != "") } data-netlog>
+		<span class="netlog" data-netlog>
 			<span class="spin" aria-hidden="true"></span>
-			<span data-netmsg>{ p.Note }</span>
+			<span data-netmsg></span>
 		</span>
 	</div>
 }

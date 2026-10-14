@@ -16,11 +16,10 @@ type TableProps struct {
 	// Label is the accessible name, e.g. "Devices". Required: a table with no
 	// name is unusable with a screen reader.
 	Label string
-	Attrs templ.Attributes
 }
 
 templ Table(p TableProps) {
-	<table aria-label={ p.Label } { p.Attrs... }>
+	<table aria-label={ p.Label }>
 		{ children... }
 	</table>
 }
@@ -54,7 +53,6 @@ type ColumnProps struct {
 	// Filter is placed after the name: whatever the column offers to narrow it.
 	// A slot, because the column only places it.
 	Filter templ.Component
-	Attrs  templ.Attributes
 }
 
 templ Column(p ColumnProps) {
@@ -66,7 +64,6 @@ templ Column(p ColumnProps) {
 		if p.SortHref != "" {
 			aria-sort={ ariaSort(p.SortDir) }
 		}
-		{ p.Attrs... }
 	>
 		<span class="th-in">
 			if p.SortHref != "" {
@@ -114,13 +111,11 @@ type RowProps struct {
 	// Clickable is a row that does something when clicked without an address of
 	// its own, because it holds a RowButton instead of a RowLink.
 	Clickable bool
-	Attrs     templ.Attributes
 }
 
 templ Row(p RowProps) {
 	<tr
 		class={ templ.KV("clickable", p.Href != "" || p.Clickable) }
-		{ p.Attrs... }
 	>
 		{ children... }
 	</tr>
@@ -149,7 +144,6 @@ type CellProps struct {
 	Mono    bool
 	Dim     bool
 	ColSpan int
-	Attrs   templ.Attributes
 }
 
 templ Cell(p CellProps) {
@@ -158,7 +152,6 @@ templ Cell(p CellProps) {
 		if p.ColSpan > 1 {
 			colspan={ strconv.Itoa(p.ColSpan) }
 		}
-		{ p.Attrs... }
 	>
 		{ children... }
 	</td>
@@ -178,7 +171,6 @@ type SelectCellProps struct {
 	Value   string
 	Label   string
 	Checked bool
-	Attrs   templ.Attributes
 }
 
 templ SelectCell(p SelectCellProps) {
@@ -190,7 +182,6 @@ templ SelectCell(p SelectCellProps) {
 			value={ p.Value }
 			aria-label={ p.Label }
 			checked?={ p.Checked }
-			{ p.Attrs... }
 		/>
 	</td>
 }
@@ -198,14 +189,10 @@ templ SelectCell(p SelectCellProps) {
 // ActionBarProps is the strip that appears above a table when rows are
 // selected. Selection is request state, not page state, so it never enters the
 // URL — which is why the count is rendered rather than read from an argument.
-type ActionBarProps struct {
-	Count int
-	Attrs templ.Attributes
-}
 
-templ ActionBar(p ActionBarProps) {
-	<div class="actionbar" { p.Attrs... }>
-		<strong data-selcount>{ fmt.Sprintf("%d selected", p.Count) }</strong>
+templ ActionBar() {
+	<div class="actionbar">
+		<strong data-selcount>0 selected</strong>
 		<span class="dim" aria-hidden="true">·</span>
 		{ children... }
 	</div>
@@ -219,7 +206,6 @@ type GaugeProps struct {
 	Value float64
 	Max   float64
 	Text  string
-	Attrs templ.Attributes
 }
 
 func gaugeWidth(value, max float64) string {
@@ -237,7 +223,7 @@ func gaugeWidth(value, max float64) string {
 }
 
 templ Gauge(p GaugeProps) {
-	<span class="gauge" { p.Attrs... }>
+	<span class="gauge">
 		<span>{ p.Text }</span>
 		<span class="gauge-track" aria-hidden="true">
 			<span class="gauge-fill" style={ gaugeWidth(p.Value, p.Max) }></span>
@@ -255,7 +241,6 @@ type PagerProps struct {
 	PrevHref string
 	NextHref string
 	Export   []ExportLink
-	Attrs    templ.Attributes
 }
 
 // ExportLink is a link that downloads the table's rows as a file. Label is what it says, and
@@ -339,7 +324,6 @@ type CursorPagerProps struct {
 	// Sorted says the rows on the page are in a sort of the viewer's choosing, which is of this
 	// page only: the page after it is ordered within itself, and the sequence is not.
 	Sorted bool
-	Attrs  templ.Attributes
 }
 
 func (p CursorPagerProps) info() string {

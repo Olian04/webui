@@ -170,14 +170,14 @@ templ CompileFailure(problems []Problem) {
 
 // Stack arranges children in a column, 8px apart.
 templ Stack(children []templ.Component) {
-	@c.Stack(c.StackProps{}) {
+	@c.Stack() {
 		@templ.Join(children...)
 	}
 }
 
 // Split arranges children side by side, top-aligned.
 templ Split(children []templ.Component) {
-	@c.Split(c.SplitProps{}) {
+	@c.Split() {
 		@templ.Join(children...)
 	}
 }
@@ -196,7 +196,7 @@ templ (r *Renderer) Table(v TableView) {
 		Footer: r.tableFooter(v),
 	}) {
 		if v.interactive() {
-			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Method: "post"}) {
+			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 				@r.tableContent(v, cols)
 			}
@@ -208,7 +208,7 @@ templ (r *Renderer) Table(v TableView) {
 
 templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 	if v.selectable() {
-		@c.ActionBar(c.ActionBarProps{}) {
+		@c.ActionBar() {
 			for i, a := range v.Node.Bulk {
 				@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i)}) {
 					{ a.Label }
@@ -354,7 +354,6 @@ templ (r *Renderer) Form(v FormView) {
 	}) {
 		@c.Form(c.FormProps{
 			Action: r.PageHref(v.Page, v.Path, v.Query),
-			Method: "post",
 			Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
 		}) {
 			<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
