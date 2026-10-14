@@ -10,11 +10,7 @@ import (
 )
 
 // Document is the shell around one page's content.
-func (r *Renderer) Document(d Doc) templ.Component {
-	return r.document(d)
-}
-
-templ (r *Renderer) document(d Doc) {
+templ (r *Renderer) Document(d Doc) {
 	@t.Page(t.PageProps{
 		Title:       r.title(d.Title),
 		Early:       r.early(),
@@ -146,7 +142,7 @@ func (r *Renderer) searchAttrs() templ.Attributes {
 }
 
 func (r *Renderer) logoHref() string {
-	if !r.logo {
+	if !r.hasLogo() {
 		return ""
 	}
 	return r.AssetHref("logo")
@@ -155,21 +151,11 @@ func (r *Renderer) logoHref() string {
 templ toastRegion(toasts []Toast) {
 	@c.ToastRegion() {
 		for i, x := range toasts {
-			@c.Toast(c.ToastProps{Tone: toastTone(x), Title: x.Title, Desc: x.Desc, Name: "toast-" + strconv.Itoa(i)})
+			@c.Toast(c.ToastProps{Tone: x.Tone, Title: x.Title, Desc: x.Desc, Name: "toast-" + strconv.Itoa(i)})
 		}
 	}
 }
 
-func toastTone(x Toast) c.Tone {
-	switch x.Tone {
-	case ToastWarning:
-		return c.ToneWarning
-	case ToastError:
-		return c.ToneCritical
-	case ToastOK:
-	}
-	return c.ToneOK
-}
 
 // CompileFailure replaces the whole application: no sidebar, no navigation,
 // every problem at once. It is served at every address until the app compiles.
@@ -185,18 +171,14 @@ templ CompileFailure(problems []Problem) {
 // Stack arranges children in a column, 8px apart.
 templ Stack(children []templ.Component) {
 	@c.Stack(c.StackProps{}) {
-		for _, k := range children {
-			@k
-		}
+		@templ.Join(children...)
 	}
 }
 
 // Split arranges children side by side, top-aligned.
 templ Split(children []templ.Component) {
 	@c.Split(c.SplitProps{}) {
-		for _, k := range children {
-			@k
-		}
+		@templ.Join(children...)
 	}
 }
 
@@ -208,18 +190,12 @@ templ (r *Renderer) Table(v TableView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Status: v.panelStatus(),
-		Leaf:    LeafID(v.Node.At),
-		Grows:   true,
-		Footer:  r.tableFooter(v),
+		Failed: v.Failed,
+		Leaf:   LeafID(v.Node.At),
+		Grows:  true,
+		Footer: r.tableFooter(v),
 	}) {
-		if v.Failed {
-			@c.EmptyState(c.EmptyStateProps{
-				Icon:  c.IconAlert,
-				Title: "Could not load",
-				Desc:  "The cause was logged on the server. Refresh to try again.",
-			})
-		} else if v.interactive() {
+		if v.interactive() {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Method: "post"}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 				@r.tableContent(v, cols)
@@ -314,42 +290,39 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
 
 // cell is one value. The row's single anchor lives in the first cell, because
 // the stylesheet stretches it over every other.
-templ (r *Renderer) cell(col columnView, row any, href string, button bool, value string, first bool) {
+templ (r *Renderer) cell(col columnView, row any, href string, button bool, click string, first bool) {
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
 			@c.RowLink(href) {
-				@cellValue(col, row)
+				@value(col.Field, col.Field.Shown(row), row)
 			}
 		} else if first && button {
-			@c.RowButton("_act", value) {
-				@cellValue(col, row)
+			@c.RowButton("_act", click) {
+				@value(col.Field, col.Field.Shown(row), row)
 			}
 		} else {
-			@cellValue(col, row)
+			@value(col.Field, col.Field.Shown(row), row)
 		}
 	}
 }
 
-templ cellValue(col columnView, row any) {
-	@value(col.Field, col.Field.Shown(row), momentOf(col.Field, row), linkOf(col.Field, row))
-}
-
 // value is a field's value as the field says to show it: text, a badge, or a
-// bar. A table cell and a read-only form field show it the same way.
-templ value(f ir.Field, text string, moment string, href string) {
+// bar. A table cell and a read-only form field show it the same way. text is what is
+// shown, and model what a link or a <time> element holds, which the text may not be.
+templ value(f ir.Field, text string, model any) {
 	switch f.Display {
 		case ir.DisplaySlider:
 			@c.Gauge(gauge(f, text))
 		case ir.DisplaySelect:
 			<span class="badges">
 				for _, val := range ir.SplitValues(text) {
-					@c.Badge(c.BadgeProps{Tone: toneOf(f, val), Dot: true}) {
+					@c.Badge(c.BadgeProps{Tone: c.Tone(f.ToneOf(val)), Dot: true}) {
 						{ f.LabelOf(val) }
 					}
 				}
 			</span>
 		case ir.DisplayLink:
-			if href != "" {
+			if href := linkOf(f, model); href != "" {
 				<a class="ext" href={ href } target="_blank" rel="noopener noreferrer">
 					{ text }
 					@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
@@ -359,7 +332,7 @@ templ value(f ir.Field, text string, moment string, href string) {
 				{ text }
 			}
 		case ir.DisplayTime:
-			if moment != "" {
+			if moment := momentOf(f, model); moment != "" {
 				<time datetime={ moment }>{ text }</time>
 			} else {
 				{ text }
@@ -374,55 +347,47 @@ templ value(f ir.Field, text string, moment string, href string) {
 // submit is refused (SubmitGate) they are replaced by a Back button.
 templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
-		Title:  v.title(),
+		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Status:  v.status(),
-		Leaf:    LeafID(v.Node.At),
+		Failed: v.Failed,
+		Leaf:   LeafID(v.Node.At),
 	}) {
-		if v.Failed {
-			@c.EmptyState(c.EmptyStateProps{
-				Icon:  c.IconAlert,
-				Title: "Could not load",
-				Desc:  "The cause was logged on the server. Refresh to try again.",
-			})
-		} else {
-			@c.Form(c.FormProps{
-				Action: r.PageHref(v.Page, v.Path, v.Query),
-				Method: "post",
-				Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
-			}) {
-				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
-				if v.Node.Editor != nil {
-					@r.editorBody(v)
-				} else {
-					<div class="panel-body pad">
-						for _, f := range v.Node.Fields {
-							@r.formField(v, f)
-						}
-					</div>
-				}
-				if v.Node.Submit != nil && v.SubmitGate != "" {
-					// A visitor who may not save has nothing to save or cancel: the footer
-					// offers the way back, or no footer when there is no way back.
-					if v.CancelHref != "" {
-						<div class="panel-foot end">
-							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
-								Back
-							}
-						</div>
+		@c.Form(c.FormProps{
+			Action: r.PageHref(v.Page, v.Path, v.Query),
+			Method: "post",
+			Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
+		}) {
+			<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+			if v.Node.Editor != nil {
+				@r.editorBody(v)
+			} else {
+				<div class="panel-body pad">
+					for _, f := range v.Node.Fields {
+						@r.formField(v, f)
 					}
-				} else if v.Node.Submit != nil {
+				</div>
+			}
+			if v.Node.Submit != nil && v.SubmitGate != "" {
+				// A visitor who may not save has nothing to save or cancel: the footer
+				// offers the way back, or no footer when there is no way back.
+				if v.CancelHref != "" {
 					<div class="panel-foot end">
-						if v.CancelHref != "" {
-							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
-								Cancel
-							}
-						}
-						@c.Button(c.ButtonProps{Variant: v.submitVariant(), Size: c.SizeSmall}) {
-							{ v.Node.Submit.Label }
+						@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+							Back
 						}
 					</div>
 				}
+			} else if v.Node.Submit != nil {
+				<div class="panel-foot end">
+					if v.CancelHref != "" {
+						@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+							Cancel
+						}
+					}
+					@c.Button(c.ButtonProps{Variant: variant(v.Node.Submit.Role), Size: c.SizeSmall}) {
+						{ v.Node.Submit.Label }
+					}
+				</div>
 			}
 		}
 	}
@@ -474,7 +439,7 @@ templ (r *Renderer) input(fv fieldView) {
 						<span class="dim" aria-hidden="true">—</span>
 						<span class="sr-only">empty</span>
 					} else {
-						@value(fv.Field, fv.Value, fv.Moment, fv.Href)
+						@value(fv.Field, fv.Value, fv.Model)
 					}
 				</div>
 			case fv.Field.Display == ir.DisplaySelect:
@@ -485,7 +450,7 @@ templ (r *Renderer) input(fv fieldView) {
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
+					Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
 					Rules: fv.Rules,
 				})
 		}
@@ -632,28 +597,20 @@ templ (r *Renderer) Diff(v DiffView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Status: v.status(),
+		Failed: v.Failed,
 		Leaf:   LeafID(v.Node.At),
 	}) {
-		if v.Failed {
-			@c.EmptyState(c.EmptyStateProps{
-				Icon:  c.IconAlert,
-				Title: "Could not load",
-				Desc:  "The cause was logged on the server. Refresh to try again.",
-			})
-		} else {
-			<div class="panel-body code-body">
-				<div class="code-sides" aria-hidden="true">
-					<span>{ v.Node.Original.Label }</span>
-					<span>{ v.Node.Modified.Label }</span>
-				</div>
-				<div class="code-diff" data-code-diff data-language={ v.Node.Language } data-label={ v.Node.Title }>
-					<pre hidden data-side="original">{ "\n" + v.Original }</pre>
-					<pre hidden data-side="modified">{ "\n" + v.Modified }</pre>
-					@r.unified(v)
-				</div>
+		<div class="panel-body code-body">
+			<div class="code-sides" aria-hidden="true">
+				<span>{ v.Node.Original.Label }</span>
+				<span>{ v.Node.Modified.Label }</span>
 			</div>
-		}
+			<div class="code-diff" data-code-diff data-language={ v.Node.Language } data-label={ v.Node.Title }>
+				<pre hidden data-side="original">{ "\n" + v.Original }</pre>
+				<pre hidden data-side="modified">{ "\n" + v.Modified }</pre>
+				@r.unified(v)
+			</div>
+		</div>
 	}
 }
 
@@ -664,22 +621,14 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Status: v.status(),
+		Failed: v.Failed,
 		Leaf:   LeafID(v.Node.At),
 	}) {
-		if v.Failed {
-			@c.EmptyState(c.EmptyStateProps{
-				Icon:  c.IconAlert,
-				Title: "Could not load",
-				Desc:  "The cause was logged on the server. Refresh to try again.",
-			})
-		} else {
-			<div class="panel-body pad">
-				<article class="md" aria-label={ v.Node.Content.Label }>
-					@templ.Raw(v.Result.HTML)
-				</article>
-			</div>
-		}
+		<div class="panel-body pad">
+			<article class="md" aria-label={ v.Node.Content.Label }>
+				@templ.Raw(v.Result.HTML)
+			</article>
+		</div>
 	}
 }
 
@@ -698,11 +647,11 @@ templ (r *Renderer) unified(v DiffView) {
 						<div class="udiff-gap" aria-hidden="true">⋯</div>
 					}
 					for _, line := range h.Lines {
-						{{ l := unifiedLine(line) }}
-						<div class={ "udiff-line", l.class() }>
-							<span class="udiff-n" aria-hidden="true">{ l.old() }</span>
-							<span class="udiff-n" aria-hidden="true">{ l.new() }</span>
-							<span class="udiff-m" aria-hidden="true">{ l.mark() }</span>
+						{{ class, mark := lineMark(line.Kind) }}
+						<div class={ "udiff-line", class }>
+							<span class="udiff-n" aria-hidden="true">{ lineNumber(line.Old) }</span>
+							<span class="udiff-n" aria-hidden="true">{ lineNumber(line.New) }</span>
+							<span class="udiff-m" aria-hidden="true">{ mark }</span>
 							<code>{ line.Text }</code>
 						</div>
 					}

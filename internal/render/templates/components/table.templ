@@ -301,22 +301,21 @@ func (p PagerProps) rangeLabel() string {
 	return fmt.Sprintf("%d–%d of %d", p.Offset+1, end, p.Total)
 }
 
+// pagerButton is one of a pager's buttons: a link, or disabled when there is nowhere to go.
+templ pagerButton(href string) {
+	@Button(ButtonProps{Href: href, Size: SizeSmall, Disabled: href == ""}) {
+		{ children... }
+	}
+}
+
 templ Pager(p PagerProps) {
 	<div class="pager-info">{ p.rangeLabel() }</div>
 	@exportLinks(p.Export)
 	<div class="pager">
-		@Button(ButtonProps{
-			Href:     p.PrevHref,
-			Size:     SizeSmall,
-			Disabled: p.PrevHref == "",
-		}) {
+		@pagerButton(p.PrevHref) {
 			Previous
 		}
-		@Button(ButtonProps{
-			Href:     p.NextHref,
-			Size:     SizeSmall,
-			Disabled: p.NextHref == "",
-		}) {
+		@pagerButton(p.NextHref) {
 			Next
 		}
 	</div>
@@ -369,25 +368,13 @@ templ CursorPager(p CursorPagerProps) {
 	<div class="pager-info">{ p.info() }</div>
 	@exportLinks(p.Export)
 	<div class="pager">
-		@Button(ButtonProps{
-			Href:     p.FirstHref,
-			Size:     SizeSmall,
-			Disabled: p.FirstHref == "",
-		}) {
+		@pagerButton(p.FirstHref) {
 			First page
 		}
-		@Button(ButtonProps{
-			Href:     p.PrevHref,
-			Size:     SizeSmall,
-			Disabled: p.PrevHref == "",
-		}) {
+		@pagerButton(p.PrevHref) {
 			Previous
 		}
-		@Button(ButtonProps{
-			Href:     p.NextHref,
-			Size:     SizeSmall,
-			Disabled: p.NextHref == "",
-		}) {
+		@pagerButton(p.NextHref) {
 			Next
 		}
 	</div>

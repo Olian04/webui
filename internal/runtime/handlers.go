@@ -38,7 +38,7 @@ func (p *Program) start(ctx context.Context, hide map[string]bool) string {
 			return href
 		}
 	}
-	if href, _ := p.render.FirstEntry(hide); href != "" {
+	if href := p.render.FirstEntry(hide); href != "" {
 		return href
 	}
 	for _, page := range p.App.Pages {

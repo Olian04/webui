@@ -42,35 +42,24 @@ type FormView struct {
 	Failed bool // Load failed: the panel says so, the page stands
 }
 
-func (v FormView) title() string { return v.Node.Title }
-
 // Editable is whether the visitor can change the text of a code editor: it has a Store,
 // and they may submit. A viewer, or an editor whose guard refuses them, is read.
 func (v FormView) Editable() bool {
 	return len(v.Node.Fields) > 0 && v.editable(v.Node.Fields[0])
 }
 
-func (v FormView) status() c.Tone {
-	if v.Failed {
-		return c.ToneCritical
-	}
-	return c.ToneNeutral
-}
-
 // fieldView is one input with everything the component needs resolved.
 type fieldView struct {
-	ID          string
-	Name        string // empty for a read-only input: it is never submitted
-	Field       ir.Field
-	Value       string
-	Error       string
-	RuleLines   []string
-	Placeholder string
-	Href        string // the address of a link field, "" for any other
-	Moment      string // the moment a time field holds, for its <time> element, "" for any other
-	ReadOnly    bool
-	Type        string
-	Rules       c.Rules
+	ID        string
+	Name      string // empty for a read-only input: it is never submitted
+	Field     ir.Field
+	Value     string
+	Error     string
+	RuleLines []string
+	Model     any // what the form loaded, which a link or a <time> element of the field reads
+	ReadOnly  bool
+	Type      string
+	Rules     c.Rules
 }
 
 // editable is whether the visitor can change a field: it has a Store, and the
@@ -83,15 +72,15 @@ func (v FormView) editable(f ir.Field) bool {
 func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	editable := v.editable(f)
 	fv := fieldView{
-		ID:          fieldID(v.Node.At, f.Name),
-		Name:        f.Name,
-		Field:       f,
-		Error:       v.Errors[f.Label],
-		RuleLines:   ruleLines(f, editable),
-		Placeholder: f.Placeholder,
-		ReadOnly:    !editable,
-		Type:        "text",
-		Rules:       htmlRules(f, editable),
+		ID:        fieldID(v.Node.At, f.Name),
+		Name:      f.Name,
+		Field:     f,
+		Error:     v.Errors[f.Label],
+		RuleLines: ruleLines(f, editable),
+		Model:     v.Model,
+		ReadOnly:  !editable,
+		Type:      "text",
+		Rules:     htmlRules(f, editable),
 	}
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
@@ -101,29 +90,24 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 			fv.Value = f.Shown(v.Model) // only read: as a person reads it, and not as it is held
 		}
 	}
-	if f.Get != nil {
-		fv.Moment = momentOf(f, v.Model)
-	}
 	if fv.ReadOnly {
 		fv.Name = ""
 	}
-	fv.Href = linkOf(f, v.Model)
-	// A number input shows its value in the viewer's locale ("0,67"), which is
-	// right for typing and wrong for reading. A read-only field is only read.
-	if !fv.ReadOnly && f.Display == ir.DisplayTime {
+	switch {
+	case fv.ReadOnly:
+		// A number input shows its value in the viewer's locale ("0,67"), which is
+		// right for typing and wrong for reading. A read-only field is only read.
+	case f.Display == ir.DisplayTime:
 		// A date and time picker, whose value is the moment in UTC to the second, not
 		// the text a table shows. What was typed, after a rejection, stays as it was.
 		fv.Type, fv.Rules.Step = "datetime-local", "1"
 		if _, typed := v.Values[f.Name]; !typed {
 			fv.Value = momentInput(f, v.Model)
 		}
-	} else if !fv.ReadOnly {
-		switch f.Kind {
-		case ir.KindInt:
-			fv.Type, fv.Rules.Step = "number", "1"
-		case ir.KindFloat:
-			fv.Type, fv.Rules.Step = "number", "any"
-		}
+	case f.Kind == ir.KindInt:
+		fv.Type, fv.Rules.Step = "number", "1"
+	case f.Kind == ir.KindFloat:
+		fv.Type, fv.Rules.Step = "number", "any"
 	}
 	return fv
 }
@@ -138,7 +122,7 @@ func (fv fieldView) choices() []c.SelectChoice {
 	}
 	out := make([]c.SelectChoice, len(fv.Field.Choices))
 	for i, ch := range fv.Field.Choices {
-		out[i] = c.SelectChoice{Value: ch.Value, Label: fv.Field.LabelOf(ch.Value), Selected: slices.Contains(held, ch.Value), Tone: toneOf(fv.Field, ch.Value)}
+		out[i] = c.SelectChoice{Value: ch.Value, Label: fv.Field.LabelOf(ch.Value), Selected: slices.Contains(held, ch.Value), Tone: c.Tone(fv.Field.ToneOf(ch.Value))}
 	}
 	return out
 }
@@ -227,13 +211,3 @@ func boundsRule(r ir.Rules) string {
 }
 
 func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
-
-func (v FormView) submitVariant() c.Variant {
-	switch v.Node.Submit.Role {
-	case ir.RoleDestructive:
-		return c.VariantDanger
-	case ir.RoleSecondary:
-		return c.VariantSecondary
-	}
-	return c.VariantPrimary
-}

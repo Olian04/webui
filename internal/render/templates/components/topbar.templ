@@ -7,26 +7,6 @@ type Crumb struct {
 	Href  string
 }
 
-type BreadcrumbsProps struct {
-	Items []Crumb
-	Attrs templ.Attributes
-}
-
-templ Breadcrumbs(p BreadcrumbsProps) {
-	<nav class="crumbs" aria-label="Breadcrumb" { p.Attrs... }>
-		for i, c := range p.Items {
-			if i > 0 {
-				<span class="sep" aria-hidden="true">&rsaquo;</span>
-			}
-			if c.Href != "" && i < len(p.Items)-1 {
-				<a href={ c.Href }>{ c.Label }</a>
-			} else {
-				<span class="cur" aria-current="page">{ c.Label }</span>
-			}
-		}
-	</nav>
-}
-
 // TopBarProps is the application chrome above the content. The breadcrumb
 // lives here rather than in the page because it is the sidebar's partner: it
 // carries the location the sidebar cannot show.
@@ -37,7 +17,18 @@ type TopBarProps struct {
 
 templ TopBar(p TopBarProps) {
 	<header class="topbar" { p.Attrs... }>
-		@Breadcrumbs(BreadcrumbsProps{Items: p.Crumbs})
+		<nav class="crumbs" aria-label="Breadcrumb">
+			for i, c := range p.Crumbs {
+				if i > 0 {
+					<span class="sep" aria-hidden="true">&rsaquo;</span>
+				}
+				if c.Href != "" && i < len(p.Crumbs)-1 {
+					<a href={ c.Href }>{ c.Label }</a>
+				} else {
+					<span class="cur" aria-current="page">{ c.Label }</span>
+				}
+			}
+		</nav>
 		<div class="top-right">
 			{ children... }
 		</div>

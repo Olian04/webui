@@ -112,10 +112,10 @@ func (r *Renderer) Assets() (http.Handler, error) {
 		}
 		set.add(logical, body, mime)
 	}
-	if r.hasCSS {
+	if r.hasTheme() {
 		set.add("theme.css", themeCSS(r.app.Theme), "text/css; charset=utf-8")
 	}
-	if r.logo {
+	if r.hasLogo() {
 		set.add("logo", r.app.Brand.Logo, r.app.Brand.Mime)
 	}
 	for _, f := range r.app.Brand.Favicons {

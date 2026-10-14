@@ -87,14 +87,14 @@ type Toast struct {
 }
 
 // ToastTone is what a toast says about the outcome: confirmed, to be aware of, or
-// failed. OK is the zero value.
-type ToastTone uint8
+// failed. A toast with none reads as confirmed.
+type ToastTone = c.Tone
 
 // The tones.
 const (
-	ToastOK ToastTone = iota
-	ToastWarning
-	ToastError
+	ToastOK      = c.ToneOK
+	ToastWarning = c.ToneWarning
+	ToastError   = c.ToneCritical
 )
 
 // TabLink is one entry in a tab strip.
@@ -110,15 +110,10 @@ type Renderer struct {
 	prefix string
 	nav    []navEntry
 
-	// menu is the app's own links, in the menu in the top bar.
-	links []ir.ExternalLink
-
 	// served is the name each asset is served as, with the hash of its contents in
 	// it, by the name it is known by here. It is set once, when the assets are built.
 	served map[string]string
-	hasCSS bool // theme tokens present, so theme.css is linked
 	search bool // some table is searchable, so the page script has something to ask
-	logo   bool
 
 	// contexts is the text of every file an editor's Context holds, by the name it is
 	// served as, and secret keys the addresses that unlock them.
@@ -148,8 +143,6 @@ type navEntry struct {
 func New(app *ir.App, prefix string) *Renderer {
 	r := &Renderer{
 		app: app, prefix: prefix,
-		hasCSS: app.Theme != ir.Theme{},
-		logo:   len(app.Brand.Logo) > 0,
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	r.contexts = collectContexts(app)
@@ -166,17 +159,21 @@ func New(app *ir.App, prefix string) *Renderer {
 		}
 		r.nav = append(r.nav, e)
 	}
-	r.links = app.ExternalLinks
 	return r
 }
 
-// FirstEntry is the address and name of the first navigation entry the visitor may
+// hasTheme is whether the app restyles its colours, so a stylesheet of its own is linked, and hasLogo
+// whether it has a logo, which is then an asset.
+func (r *Renderer) hasTheme() bool { return r.app.Theme != (ir.Theme{}) }
+func (r *Renderer) hasLogo() bool  { return len(r.app.Brand.Logo) > 0 }
+
+// FirstEntry is the address of the first navigation entry the visitor may
 // open, or "". hide is the paths of the entries they may not.
-func (r *Renderer) FirstEntry(hide map[string]bool) (href, name string) {
+func (r *Renderer) FirstEntry(hide map[string]bool) string {
 	if shown := r.shown(hide, nil); len(shown) > 0 {
-		return shown[0].Href, shown[0].Label // the first the sidebar lists, which sections reorder
+		return shown[0].Href // the first the sidebar lists, which sections reorder
 	}
-	return "", ""
+	return ""
 }
 
 // NavPaths is the path template of every navigation entry, in order, so the runtime
@@ -215,11 +212,7 @@ func (r *Renderer) AssetHref(name string) string {
 // Home is the first breadcrumb: the brand. Its address is the page the brand leads to, which
 // the response fills in.
 func (r *Renderer) Home() Crumb {
-	name := r.app.Brand.Name
-	if name == "" {
-		name = "Home"
-	}
-	return Crumb{Label: name, Href: r.Href("/")}
+	return Crumb{Label: r.brand(), Href: r.Href("/")}
 }
 
 func (r *Renderer) title(page string) string {
@@ -235,7 +228,7 @@ func (r *Renderer) title(page string) string {
 
 func (r *Renderer) styles() []string {
 	s := []string{r.AssetHref("fontawesome.css"), r.AssetHref("app.css")}
-	if r.hasCSS {
+	if r.hasTheme() {
 		s = append(s, r.AssetHref("theme.css"))
 	}
 	return s
@@ -253,11 +246,6 @@ func Write(ctx context.Context, w http.ResponseWriter, status int, comp templ.Co
 	w.WriteHeader(status)
 	_, err := w.Write(buf.Bytes())
 	return err
-}
-
-// Fragment is Write for a response that is not a whole document.
-func Fragment(ctx context.Context, w http.ResponseWriter, status int, comp templ.Component) error {
-	return Write(ctx, w, status, comp)
 }
 
 // NotFound is the content of a 404.
@@ -470,8 +458,8 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 // is first named, each with its caption above the first of its entries. A link to a web
 // address opens in a tab of its own; a path on this site and a mail address do not.
 func (r *Renderer) linkEntries() []c.LinkEntry {
-	out := make([]c.LinkEntry, 0, len(r.links))
-	for _, g := range bySection(r.links, func(e ir.ExternalLink) string { return e.Section }) {
+	out := make([]c.LinkEntry, 0, len(r.app.ExternalLinks))
+	for _, g := range bySection(r.app.ExternalLinks, func(e ir.ExternalLink) string { return e.Section }) {
 		for i, e := range g.items {
 			entry := c.LinkEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon), NewTab: isWebAddress(e.URL)}
 			if i == 0 {
