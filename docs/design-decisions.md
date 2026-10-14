@@ -376,6 +376,29 @@ design element.
   type when the status is written. Images and fonts are left alone, as they are
   compressed already. There is no CSRF token in a page, so compressing HTML does not
   expose one.
+- A link is fetched ahead, when the pointer rests on it, by the browser, not by the page's script.
+  Every full page carries `Speculation-Rules` naming a rules file (served like any asset, hashed
+  and immutable, built with the mount prefix) that asks for a `prefetch` at `moderate` eagerness
+  of every link under the prefix, except downloads, links that open elsewhere, and the links of
+  a panel that the script follows in place (sort, pager, filter, tabs), which lead to the page that
+  is already on screen. The click is then an ordinary navigation that uses what was fetched, so
+  Cmd/Ctrl/middle-click, back and forward, and the cross-document view transition work as
+  before, and a browser without the feature simply navigates. It is a prefetch and never a
+  prerender: a `no-store` page is not prerendered (measured: the request is sent as
+  `prefetch;prerender` and the page opens as a prefetch), and prefetch ignores `no-store`.
+  The rules are a file and not an inline `<script type="speculationrules">`, which the
+  content security policy would block without a new source in `script-src`.
+  What it costs: only Chrome and Edge have it. Firefox and Safari do not ship it, and Brave
+  disables it, so they get no speed-up. A page is built for a request that may be thrown away,
+  so a Guard, `Load` and `NavEntries` run for a link the visitor only passed over. A request
+  made ahead (`Sec-Purpose: prefetch`) is answered 503 while a toast waits in its cookie, so that
+  the visitor's own request shows it: the browser does not use a response that is not a success.
+  Decided against: a hidden iframe whose document is swapped in on the click. The policy says
+  `frame-ancestors 'none'`, a swap would be a second navigation system (history, scroll, title,
+  the view transition, and per-page scripts such as the editor's would have to be done again
+  in the parent), and a script that fetches and swaps for every browser is a larger change than
+  the gain. Revisit when Firefox or Safari ship speculation rules, or when the wait for the next page is measured to
+  matter to someone who has neither.
 
 ## The status bar
 
@@ -391,7 +414,8 @@ design element.
   probably not built for that request: a cache, a proxy or a DNS answer put a copy between
   the server and the viewer. The browser cache is detected from Navigation Timing (a
   transfer of zero bytes that is not a reload), and a page restored from the back-forward
-  cache says so. What it costs: the comparison is between the server's clock and the viewer's,
+  cache says so. A page fetched ahead that is old at the click says so too (`fetched ahead`, from
+  `deliveryType`), and is not called cached. What it costs: the comparison is between the server's clock and the viewer's,
   so a computer whose clock is a minute off shows the badge on every page, and one that is behind shows
   the time with no age; the title of the badge says this. A way to know without trusting
   either clock would need a round trip to ask the server the time, which the bar is not worth.
