@@ -9,16 +9,14 @@
 package render
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"net/http"
 	"strings"
 	"time"
 	"unicode"
 
 	"github.com/a-h/templ"
 
+	"github.com/Olian04/webui/internal/assetserve"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
 	c "github.com/Olian04/webui/internal/render/templates/components"
@@ -110,8 +108,9 @@ type Renderer struct {
 	prefix string
 	nav    []navEntry
 
-	// served is the name each asset is served as, with the hash of its contents in
-	// it, by the name it is known by here. It is set once, when the assets are built.
+	// files is each asset by the name it is served as, with the hash of its contents in it, and
+	// served is that name by the one it is known by here.
+	files  map[string]*assetserve.Blob
 	served map[string]string
 	search bool // some table is searchable, so the page script has something to ask
 
@@ -140,9 +139,13 @@ type navEntry struct {
 }
 
 // New derives the navigation and asset links from app.
-func New(app *ir.App, prefix string) *Renderer {
-	r := &Renderer{
-		app: app, prefix: prefix,
+//
+// secret keys the addresses of the files an editor is given: only a page drawn for a visitor who may edit
+// carries a key.
+func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
+	r := &Renderer{app: app, prefix: prefix, secret: secret}
+	if err := r.buildAssets(); err != nil {
+		return nil, err
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	r.contexts = collectContexts(app)
@@ -159,7 +162,7 @@ func New(app *ir.App, prefix string) *Renderer {
 		}
 		r.nav = append(r.nav, e)
 	}
-	return r
+	return r, nil
 }
 
 // hasTheme is whether the app restyles its colours, so a stylesheet of its own is linked, and hasLogo
@@ -232,20 +235,6 @@ func (r *Renderer) styles() []string {
 		s = append(s, r.AssetHref("theme.css"))
 	}
 	return s
-}
-
-// Write renders comp into a buffer first, so a template failure can still
-// produce a clean 500 instead of a half-written page, then writes it with the
-// given status.
-func Write(ctx context.Context, w http.ResponseWriter, status int, comp templ.Component) error {
-	var buf bytes.Buffer
-	if err := comp.Render(ctx, &buf); err != nil {
-		return fmt.Errorf("render: %w", err)
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	_, err := w.Write(buf.Bytes())
-	return err
 }
 
 // NotFound is the content of a 404.

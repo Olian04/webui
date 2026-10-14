@@ -6,7 +6,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/Olian04/webui/internal/render"
+	"github.com/Olian04/webui/internal/assetserve"
 )
 
 var gzipPool = sync.Pool{New: func() any { return gzip.NewWriter(nil) }}
@@ -18,7 +18,7 @@ var gzipPool = sync.Pool{New: func() any { return gzip.NewWriter(nil) }}
 // that is already encoded, has no body, or is an image or font is left alone.
 func compressed(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodHead || !render.AcceptsGzip(r) {
+		if r.Method == http.MethodHead || !assetserve.AcceptsGzip(r) {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -43,7 +43,7 @@ func (g *gzipWriter) decide(status int) {
 	if status < 200 || status == http.StatusNoContent || status == http.StatusNotModified || (status >= 300 && status < 400) {
 		return
 	}
-	if h.Get("Content-Encoding") != "" || !render.Compressible(h.Get("Content-Type")) {
+	if h.Get("Content-Encoding") != "" || !assetserve.Compressible(h.Get("Content-Type")) {
 		return
 	}
 	h.Set("Content-Encoding", "gzip")

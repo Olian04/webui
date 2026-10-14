@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Olian04/webui/internal/assetserve"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/metrics"
 	"github.com/Olian04/webui/internal/render"
@@ -63,11 +64,6 @@ type Program struct {
 
 // NewProgram derives the routes from a compiled app.
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
-	p := &Program{
-		Prefix: prefix, App: app, render: render.New(app, prefix), log: slog.Default(),
-		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
-	}
-
 	secret := app.Secret
 	if len(secret) == 0 {
 		secret = make([]byte, 32)
@@ -75,7 +71,14 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 			return nil, fmt.Errorf("webui: cannot make a secret: %w", err)
 		}
 	}
-	p.render.SetSecret(secret)
+	r, err := render.New(app, prefix, secret)
+	if err != nil {
+		return nil, err
+	}
+	p := &Program{
+		Prefix: prefix, App: app, render: r, log: slog.Default(),
+		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
+	}
 
 	if app.Metrics != nil {
 		m, err := metrics.New(app.Metrics)
@@ -85,17 +88,15 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		p.m = m
 	}
 
-	assets, err := p.render.Assets()
-	if err != nil {
-		return nil, err
-	}
 	own := func(method, path string, h http.Handler) {
 		p.handle(p.fw, method, prefix+render.AssetDir+path, framework, csp, h)
 	}
-	own(http.MethodGet, "/{file}", assets)
+	own(http.MethodGet, "/{file}", serveFile(func(req *http.Request) (*assetserve.Blob, bool) { return p.render.Asset(req.PathValue("file")) }))
 	own(http.MethodGet, "/search", http.HandlerFunc(p.search))
-	own(http.MethodGet, "/monaco/{path...}", p.render.MonacoHandler())
-	own(http.MethodGet, "/code/{name}", p.render.ContextHandler())
+	own(http.MethodGet, "/monaco/{path...}", serveFile(func(req *http.Request) (*assetserve.Blob, bool) { return p.render.MonacoFile(req.PathValue("path")) }))
+	own(http.MethodGet, "/code/{name}", serveFile(func(req *http.Request) (*assetserve.Blob, bool) {
+		return p.render.ContextFile(req.PathValue("name"), req.URL.Query().Get("k"))
+	}))
 	// Anything else under the directory is not a page, whatever a page's pattern could
 	// say of it: it is a 404 in the shell.
 	own("", "/", http.HandlerFunc(p.missing))
@@ -194,4 +195,15 @@ func (p *Program) addPages() (err error) {
 		p.addPage(page)
 	}
 	return nil
+}
+
+// serveFile is a route that answers with a file looked up in the request. A file that is not there is a 404.
+func serveFile(find func(*http.Request) (*assetserve.Blob, bool)) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if b, ok := find(req); ok {
+			b.ServeHTTP(w, req)
+			return
+		}
+		http.NotFound(w, req)
+	})
 }

@@ -1,19 +1,17 @@
 package render
 
 import (
-	"bytes"
-	"compress/gzip"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"mime"
-	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"sync"
 
+	"github.com/Olian04/webui/internal/assetserve"
 	"github.com/Olian04/webui/internal/editorctx"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
@@ -152,10 +150,6 @@ func (r *Renderer) contextConfig(needs CodeNeeds, workers map[string]string) *co
 	return out
 }
 
-// SetSecret keys the addresses of the context files. It is called once, as the program
-// is made.
-func (r *Renderer) SetSecret(secret []byte) { r.secret = secret }
-
 // contextKey is the key that unlocks one context file: derived from its name, so a key
 // opens that file and no other, and nothing has to be remembered per key.
 func (r *Renderer) contextKey(name string) string {
@@ -169,31 +163,16 @@ func (r *Renderer) ContextURL(name string) string {
 	return r.prefix + AssetDir + "/code/" + name + "?k=" + url.QueryEscape(r.contextKey(name))
 }
 
-// ContextHandler serves the context files, to whoever has the key a page gave them. A
-// file is private to the visitors a page was drawn for, but the same for all of them,
-// so it is kept for good by the browser, and not by a cache that other people share. A
-// request without the right key, or for a file that is not there, is a 404 either way,
-// so it does not tell whether a file exists.
-func (r *Renderer) ContextHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		name := req.PathValue("name")
-		body, ok := r.contexts[name]
-		key := req.URL.Query().Get("k")
-		if !ok || subtle.ConstantTimeCompare([]byte(key), []byte(r.contextKey(name))) != 1 {
-			http.NotFound(w, req)
-			return
-		}
-		h := w.Header()
-		h.Set("Content-Type", contextType(name))
-		h.Set("Cache-Control", "private, max-age=31536000, immutable")
-		etag := `"` + name + `"`
-		h.Set("ETag", etag)
-		if req.Header.Get("If-None-Match") == etag {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
-		_, _ = w.Write(body) //nolint:gosec // G705: a file the application embedded, never request data.
-	})
+// ContextFile is a context file, for whoever has the key a page gave them. A file is private to the
+// visitors a page was drawn for, but the same for all of them, so it is kept for good by the browser,
+// and not by a cache that other people share. A wrong key, or a file that is not there, is the same
+// answer, so it does not tell whether a file exists.
+func (r *Renderer) ContextFile(name, key string) (*assetserve.Blob, bool) {
+	body, ok := r.contexts[name]
+	if !ok || subtle.ConstantTimeCompare([]byte(key), []byte(r.contextKey(name))) != 1 {
+		return nil, false
+	}
+	return &assetserve.Blob{Mime: contextType(name), Cache: "private, max-age=31536000, immutable", ETag: `"` + name + `"`, Body: body}, true
 }
 
 func contextType(name string) string {
@@ -224,48 +203,22 @@ func collectContexts(app *ir.App) map[string][]byte {
 // bundle is several megabytes and most programs never serve it.
 var gzipped sync.Map // name → []byte
 
-// MonacoHandler serves the editor's files, and the workers of the language services the
-// application imported. Every name carries a hash of its contents, so a browser keeps a
-// file for good.
-func (r *Renderer) MonacoHandler() http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		name := req.PathValue("path")
-		body, ok := assets.MonacoFile(name)
-		if !ok {
-			http.NotFound(w, req)
-			return
-		}
-		h := w.Header()
-		h.Set("Content-Type", monacoType(name))
-		h.Set("Cache-Control", "public, max-age=31536000, immutable")
-		etag := `"` + path.Base(name) + `"`
-		if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") {
-			h.Add("Vary", "Accept-Encoding")
-			if AcceptsGzip(req) {
-				h.Set("Content-Encoding", "gzip")
-				etag = strings.TrimSuffix(etag, `"`) + `-gzip"`
-				body = compress(name, body)
-			}
-		}
-		h.Set("ETag", etag)
-		if req.Header.Get("If-None-Match") == etag {
-			w.WriteHeader(http.StatusNotModified)
-			return
-		}
-		_, _ = w.Write(body) //nolint:gosec // G705: an embedded file, never request data.
-	})
-}
-
-func compress(name string, body []byte) []byte {
-	if cached, ok := gzipped.Load(name); ok {
-		return cached.([]byte)
+// MonacoFile is a file of the editor, or the worker of a language service the application imported,
+// by its name under monaco/. Every name carries a hash of its contents, so a browser keeps a file for
+// good, and a script or stylesheet is offered compressed, made when it is first asked for.
+func (r *Renderer) MonacoFile(name string) (*assetserve.Blob, bool) {
+	body, ok := assets.MonacoFile(name)
+	if !ok {
+		return nil, false
 	}
-	var buf bytes.Buffer
-	zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
-	_, _ = zw.Write(body)
-	_ = zw.Close()
-	gzipped.Store(name, buf.Bytes())
-	return buf.Bytes()
+	b := &assetserve.Blob{Mime: monacoType(name), Cache: "public, max-age=31536000, immutable", ETag: `"` + path.Base(name) + `"`, Body: body}
+	if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") {
+		b.Gzip = func() []byte {
+			zipped, _ := gzipped.LoadOrStore(name, assetserve.Gzip(body)) // the bundle is several megabytes: compressed once
+			return zipped.([]byte)
+		}
+	}
+	return b, true
 }
 
 func monacoType(name string) string {

@@ -1,11 +1,15 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"time"
+
+	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -94,7 +98,7 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 	doc.Toasts = append(p.takeFlash(w, r), doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
 	doc.Built, doc.BuildTime = timing(w, r)
-	if err := render.Write(r.Context(), w, status, p.render.Document(doc)); err != nil {
+	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
 		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
@@ -105,7 +109,7 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 func FailureHandler(problems []render.Problem) http.Handler {
 	return securedFor(csp, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		if err := render.Write(r.Context(), w, http.StatusInternalServerError, render.CompileFailure(problems)); err != nil {
+		if err := writeHTML(r.Context(), w, http.StatusInternalServerError, render.CompileFailure(problems)); err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}))
@@ -251,4 +255,17 @@ func entryScore(page *ir.Page, here render.Here, active string, path, query map[
 		score++
 	}
 	return score
+}
+
+// writeHTML renders comp into a buffer first, so a template failure can still produce a clean 500 instead of
+// a half-written page, then writes it with the given status.
+func writeHTML(ctx context.Context, w http.ResponseWriter, status int, comp templ.Component) error {
+	var buf bytes.Buffer
+	if err := comp.Render(ctx, &buf); err != nil {
+		return fmt.Errorf("render: %w", err)
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(status)
+	_, err := w.Write(buf.Bytes())
+	return err
 }
