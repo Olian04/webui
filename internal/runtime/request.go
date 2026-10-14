@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"time"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -41,6 +42,12 @@ type Request struct {
 	code render.CodeNeeds
 }
 
+// reqCtx is ctx with a request for the page's arguments in it, for the application's funcs the runtime
+// calls on its own: a Guard, a search, the entries of the sidebar.
+func (p *Program) reqCtx(ctx context.Context, args any, raw map[string]string) context.Context {
+	return With(ctx, &Request{program: p, Args: args, Raw: raw})
+}
+
 type ctxKey struct{}
 
 // With returns ctx carrying req. The key is an unexported type: a string key
@@ -72,4 +79,26 @@ func (r *Request) encode(page *ir.Page) (path, query map[string]string) {
 		}
 	}
 	return path, query
+}
+
+// timed runs an application's Load, and counts and times it in the metrics, under the page and the kind
+// of panel it is for.
+func timed[T any](p *Program, page *ir.Page, kind string, load func() (T, error)) (T, error) {
+	started := time.Now()
+	v, err := load()
+	p.m.Load(page.PathTemplate, kind, started, err)
+	return v, err
+}
+
+// loaded is timed for a panel that is being drawn: a failure is logged, unless the visitor had gone, and
+// ok is false, so that the panel says it could not load and the page stays. what names the panel in the log.
+func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Addr, load func() (T, error)) (v T, ok bool) {
+	v, err := timed(p, page, kind, load)
+	if err != nil {
+		if ctx.Err() == nil {
+			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "leaf", render.LeafID(at), "err", err)
+		}
+		return v, false
+	}
+	return v, true
 }

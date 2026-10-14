@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"time"
 
 	"github.com/a-h/templ"
 
@@ -14,13 +13,8 @@ import (
 // page. A diff only ever reads, so it is only ever highlighted: it asks the page for the
 // editor and for no language service.
 func (p *Program) diff(ctx context.Context, req *Request, page *ir.Page, n *ir.Diff) templ.Component {
-	started := time.Now()
-	model, err := n.Load(ctx)
-	p.m.Load(page.PathTemplate, "diff", started, err)
-	if err != nil {
-		if ctx.Err() == nil {
-			p.log.Error("webui: diff load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
-		}
+	model, ok := loaded(p, ctx, page, "diff", "diff", n.At, func() (any, error) { return n.Load(ctx) })
+	if !ok {
 		return p.render.Diff(render.DiffView{Node: n, Failed: true})
 	}
 	req.code.Add("")

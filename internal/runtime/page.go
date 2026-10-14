@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"net/http"
@@ -47,12 +48,11 @@ func (p *Program) addPage(page *ir.Page) {
 	posts := actionable(leaves)
 	policy := policy(pictureOrigins(page.Body))
 	for _, pattern := range patterns {
-		p.addWith(http.MethodGet, pattern, page.PathTemplate, h, policy)
-		p.probe.Handle(pattern, h)
+		p.handle(p.mux, http.MethodGet, pattern, page.PathTemplate, policy, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.addWith(http.MethodPost, pattern, page.PathTemplate, p.postHandler(page, leaves), policy)
+			p.handle(p.mux, http.MethodPost, pattern, page.PathTemplate, policy, p.postHandler(page, leaves))
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}
@@ -65,24 +65,8 @@ func (p *Program) addPage(page *ir.Page) {
 func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 	parser := argParser(page)
 	return func(w http.ResponseWriter, r *http.Request) {
-		raw, err := parser.Parse(r)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		decoded, err := page.Decode(raw)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if page.Guard != nil {
-			ctx := With(r.Context(), &Request{program: p, Args: decoded, Raw: raw})
-			if page.Guard(ctx, decoded) != nil {
-				w.WriteHeader(http.StatusForbidden)
-				return
-			}
-		}
-		w.WriteHeader(http.StatusNoContent)
+		_, _, status, _ := p.admit(r, page, parser)
+		w.WriteHeader(cmp.Or(status, http.StatusNoContent))
 	}
 }
 
@@ -118,36 +102,40 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 	}
 }
 
-// begin decodes the request and runs the page Guard. It writes the response
-// and returns false when the request must not go on.
-func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, parser args.ArgParser) (*Request, bool) {
+// admit reads a request's arguments and runs the page's Guard, which is the front of every request to a
+// page and all of asking whether a visitor may open one. It installs the request in r's context, so the
+// Guard and everything after it can reach it. When the request must not go on it says why: status is 400
+// for an address that does not decode, and 403 for a Guard that refuses, with its error.
+func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (req *Request, raw map[string]string, status int, refusal error) {
 	raw, err := parser.Parse(r)
 	if err != nil {
-		p.state(w, r, http.StatusBadRequest, page, nil, render.BadRequest())
-		return nil, false
+		return nil, nil, http.StatusBadRequest, nil
 	}
 	decoded, err := page.Decode(raw)
 	if err != nil {
-		p.state(w, r, http.StatusBadRequest, page, raw, render.BadRequest())
-		return nil, false
+		return nil, raw, http.StatusBadRequest, nil
 	}
-	req := &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey])}
+	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey])}
 	*r = *r.WithContext(With(r.Context(), req))
-
 	if page.Guard != nil {
 		if err := page.Guard(r.Context(), decoded); err != nil {
-			if ctxErr(r.Context()) {
-				return nil, false
-			}
-			p.state(w, r, http.StatusForbidden, page, raw, render.Forbidden(err.Error()))
-			return nil, false
+			return req, raw, http.StatusForbidden, err
 		}
 	}
-	return req, true
+	return req, raw, 0, nil
 }
 
-func ctxErr(ctx context.Context) bool {
-	return errors.Is(ctx.Err(), context.Canceled) || errors.Is(ctx.Err(), context.DeadlineExceeded)
+// begin decodes the request and runs the page Guard. It writes the response
+// and returns false when the request must not go on.
+func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, parser args.ArgParser) (*Request, bool) {
+	req, raw, status, refusal := p.admit(r, page, parser)
+	switch {
+	case status == http.StatusBadRequest:
+		p.state(w, r, status, page, raw, render.BadRequest())
+	case status == http.StatusForbidden && r.Context().Err() == nil: // a visitor who has gone is answered nothing
+		p.state(w, r, status, page, raw, render.Forbidden(refusal.Error()))
+	}
+	return req, status == 0
 }
 
 // argParser reads the page's arguments, and the view state its tables and tabs
@@ -169,72 +157,33 @@ func argParser(page *ir.Page) args.ArgParser {
 	return parser
 }
 
-// viewNodes maps each leaf that keeps view state in the address to its ID: the
-// tables that page or sort, and every Tabs. The parser reads the parameters it
-// implies.
-func viewNodes(n ir.Node) map[string]ir.Node {
-	out := map[string]ir.Node{}
-	var walk func(ir.Node)
-	walk = func(n ir.Node) {
-		switch n := n.(type) {
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Split:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Tabs:
-			out[n.ID] = n
-			for _, t := range n.Tabs {
-				walk(t.Body)
-			}
-		case *ir.Table:
-			out[n.ID] = n
-		}
-	}
-	if n != nil {
-		walk(n)
-	}
-	return out
-}
-
-func sortable(n *ir.Table) bool {
-	for _, col := range n.Columns {
-		if col.Key != "" {
-			return true
-		}
-	}
-	return false
-}
-
 // viewKeys lists the address parameters the body's leaves keep state in, and
 // which of them may repeat: a multi-select filter is one parameter per chosen
-// option.
+// option. They are the tables that page or sort, and every Tabs.
 func viewKeys(n ir.Node) (keys, lists []string) {
-	for id, node := range viewNodes(n) {
+	ir.Walk(n, func(node ir.Node) {
 		switch node := node.(type) {
 		case *ir.Tabs:
-			keys = append(keys, args.ViewKey(id, "tab"))
+			keys = append(keys, args.ViewKey(node.ID, "tab"))
 		case *ir.Table:
+			id := node.ID
 			if node.Feed {
 				keys = append(keys, args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id))
 				lists = append(lists, args.BackKey(id))
-				if sortable(node) {
-					keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
-				}
-				continue
+			} else {
+				keys = append(keys, args.ViewKey(id, "offset"))
 			}
-			keys = append(keys, args.ViewKey(id, "offset"))
-			if sortable(node) {
+			if slices.ContainsFunc(node.Columns, func(col ir.Field) bool { return col.Key != "" }) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
+			}
+			if node.Feed {
+				return // one sequence: nothing to filter
 			}
 			for _, col := range node.Columns {
 				if col.Key == "" {
 					continue
 				}
-				if numeric(col) {
+				if col.Ranged() {
 					lo, hi := args.RangeKeys(id, col.Key)
 					keys = append(keys, lo, hi)
 					continue
@@ -246,7 +195,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 				}
 			}
 		}
-	}
+	})
 	return keys, lists
 }
 
@@ -332,7 +281,7 @@ func (p *Program) state(w http.ResponseWriter, r *http.Request, status int, page
 
 // fail is a load or render failure: the cause is logged and never shown.
 func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, err error) {
-	if ctxErr(r.Context()) {
+	if r.Context().Err() != nil {
 		return
 	}
 	p.log.Error("webui: request failed", "page", page.PathTemplate, "err", err)

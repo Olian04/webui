@@ -54,16 +54,12 @@ type Markdown[M any] struct {
 	TrustedOrigins []string
 }
 
-func (Markdown[M]) isPageBody() {}
-
 // ASSERT: Markdown implements PageBody
 var _ PageBody = Markdown[struct{}]{}
 
 func (m Markdown[M]) validateBody(v *bodyValidator) {
-	if m.Load == nil {
-		v.add("a Markdown has no Load", "Set Load to func(ctx) (M, error).")
-	}
-	validateAccessors(v, []Accessor[M]{m.Content}, accessorSite{where: "Markdown.Content", uniqueLbl: true}, map[string]bool{})
+	needLoad(v, "a Markdown", m.Load != nil)
+	validateAccessors(v, []Accessor[M]{m.Content}, accessorSite{where: "Markdown.Content", uniqueLbl: true})
 	if m.Content.Store != nil {
 		v.add("a Markdown has a Store", "A Markdown only reads: remove Store, or use an Editor to change the text.")
 	}
@@ -90,7 +86,7 @@ func (m Markdown[M]) origins() []string {
 func (m Markdown[M]) lowerBody(at ir.Addr) ir.Node {
 	return &ir.Markdown{
 		At: at, Title: m.Title, Desc: m.Desc,
-		Load:    func(ctx context.Context) (any, error) { return m.Load(ctx) },
+		Load:    eraseLoad(m.Load),
 		Content: lowerAccessor[M](m.Content, "m"),
 
 		TrustedOrigins: m.origins(),

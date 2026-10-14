@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/tablequery"
 )
@@ -200,8 +201,6 @@ type Table[M any] struct {
 	Columns []Accessor[M]
 }
 
-func (Table[M]) isPageBody() {}
-
 // ASSERT: Table implements PageBody
 var _ PageBody = Table[struct{}]{}
 
@@ -220,13 +219,13 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		v.add("a Table has more than one of Rows, Load and Feed",
 			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor, sorting only the page on screen and with no filters.")
 	}
-	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"}, map[string]bool{})
+	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"})
 
 	// Every column is sortable and filterable, and is named for that in the
 	// address by its label, so the labels must tell the columns apart.
 	names := map[string]string{}
 	for _, c := range t.Columns {
-		label := accessorLabel[M](c)
+		label := labelOf[M](c)
 		if label == "" {
 			continue // Compile said so already, or it is a Group
 		}
@@ -251,10 +250,10 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
 	}
 	for i, a := range t.Actions {
-		validateAction(v, fmt.Sprintf("Table.Actions[%d]", i), a.Label, a.Run != nil, true)
+		validateAction(v, fmt.Sprintf("Table.Actions[%d]", i), a, true)
 	}
 	for i, a := range t.BulkActions {
-		validateAction(v, fmt.Sprintf("Table.BulkActions[%d]", i), a.Label, a.Run != nil, true)
+		validateAction(v, fmt.Sprintf("Table.BulkActions[%d]", i), a, true)
 	}
 	if t.RowClick != nil {
 		t.RowClick.validateRow(v)
@@ -304,7 +303,7 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		out.RowClick, out.RowAction = t.RowClick.lowerRow()
 	}
 	for _, a := range t.Actions {
-		out.Actions = append(out.Actions, lowerAction(a, a.Label))
+		out.Actions = append(out.Actions, lowerAction(a))
 	}
 	for _, a := range t.BulkActions {
 		out.Bulk = append(out.Bulk, lowerBulk(a))
@@ -341,10 +340,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			if err != nil {
 				return ir.Window{}, err
 			}
-			items := make([]any, len(all))
-			for i, r := range all {
-				items[i] = r
-			}
+			items := convert.Any(all)
 			window, total := tablequery.Apply(items, columns, q)
 			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
 		}
@@ -355,10 +351,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 			if err != nil {
 				return ir.Window{}, err
 			}
-			items := make([]any, len(rows))
-			for i, r := range rows {
-				items[i] = r
-			}
+			items := convert.Any(rows)
 			if q.Sort != "" {
 				// The source's order is the sequence's, so only the page in hand is ordered: the
 				// next page continues the sequence, and is ordered within itself.
@@ -372,10 +365,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		if err != nil {
 			return ir.Window{}, err
 		}
-		items := make([]any, len(rows.Items))
-		for i, r := range rows.Items {
-			items[i] = r
-		}
+		items := convert.Any(rows.Items)
 		total := rows.Total
 		if total < q.Offset+len(items) {
 			total = -1

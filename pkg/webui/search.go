@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/tablequery"
 )
 
@@ -41,15 +42,7 @@ func SearchRows[M, A any](rows func(ctx context.Context) ([]M, error), hit func(
 		if err != nil {
 			return nil, err
 		}
-		items := make([]any, len(all))
-		for i, r := range all {
-			items[i] = r
-		}
-		found := tablequery.Find(items, cols, query, limit)
-		out := make([]Hit[A], len(found))
-		for i, r := range found {
-			out[i] = hit(r.(M))
-		}
-		return out, nil
+		found := tablequery.Find(convert.Any(all), cols, query, limit)
+		return convert.Slice(found, func(r any) Hit[A] { return hit(r.(M)) }), nil
 	}
 }

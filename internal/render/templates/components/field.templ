@@ -44,11 +44,10 @@ type FieldProps struct {
 	// Static is a field that shows a value and offers no control: the label sits
 	// closer to the value, which has a height of its own.
 	Static bool
-	Attrs  templ.Attributes
 }
 
 templ Field(p FieldProps) {
-	<div class={ "field", templ.KV("field-static", p.Static) } { p.Attrs... }>
+	<div class={ "field", templ.KV("field-static", p.Static) }>
 		if p.Label != "" {
 			<div class="lbl-row">
 				<label class="lbl" id={ p.For + "-label" } for={ p.For }>
@@ -90,7 +89,6 @@ type InputProps struct {
 	Mono        bool
 	Invalid     bool
 	Rules       Rules
-	Attrs       templ.Attributes
 }
 
 templ Input(p InputProps) {
@@ -134,7 +132,6 @@ templ Input(p InputProps) {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
 		}
-		{ p.Attrs... }
 	/>
 }
 
@@ -208,7 +205,6 @@ type CheckboxProps struct {
 	Value   string
 	Label   string
 	Checked bool
-	Attrs   templ.Attributes
 }
 
 templ Checkbox(p CheckboxProps) {
@@ -228,7 +224,6 @@ templ Checkbox(p CheckboxProps) {
 			aria-label={ p.Label }
 		}
 		checked?={ p.Checked }
-		{ p.Attrs... }
 	/>
 }
 
@@ -252,7 +247,6 @@ templ Switch(p SwitchProps) {
 // reads should be a link.
 type FormProps struct {
 	Action string
-	Method string
 	Attrs  templ.Attributes
 }
 
@@ -261,11 +255,7 @@ templ Form(p FormProps) {
 		if p.Action != "" {
 			action={ p.Action }
 		}
-		if p.Method != "" {
-			method={ p.Method }
-		} else {
-			method="post"
-		}
+		method="post"
 		{ p.Attrs... }
 	>
 		{ children... }

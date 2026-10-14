@@ -43,18 +43,14 @@ type Form[M any] struct {
 	Fields []Accessor[M]
 }
 
-func (Form[M]) isPageBody() {}
-
 // ASSERT: Form implements PageBody
 var _ PageBody = Form[struct{}]{}
 
 func (f Form[M]) validateBody(v *bodyValidator) {
-	if f.Load == nil {
-		v.add("a Form has no Load", "Set Load to func(ctx) (M, error).")
-	}
-	validateAccessors(v, f.Fields, accessorSite{where: "Form.Fields", allowGroup: true, uniqueLbl: true}, map[string]bool{})
+	needLoad(v, "a Form", f.Load != nil)
+	validateAccessors(v, f.Fields, accessorSite{where: "Form.Fields", allowGroup: true, uniqueLbl: true})
 	if f.Submit.Run != nil {
-		validateAction(v, "Form.Submit", f.Submit.Label, true, false)
+		validateAction(v, "Form.Submit", f.Submit, false)
 	} else if f.Submit.Guard != nil || f.Submit.Label != "" {
 		v.add("Form.Submit has a Guard or Label but no Run", "Set Run, or remove the Submit.")
 	}
@@ -64,21 +60,18 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 	fields := lowerAccessors(f.Fields, "f")
 	out := &ir.Form{
 		At: at, Title: f.Title, Desc: f.Desc, Fields: fields,
-		Load: func(ctx context.Context) (any, error) { return f.Load(ctx) },
+		Load: eraseLoad(f.Load),
 		Bind: bindFunc[M](fields),
 	}
 	if f.Submit.Run != nil {
-		label := f.Submit.Label
-		if label == "" {
-			label = "Save"
-		}
-		role := f.Submit.Role
-		if role == RoleSecondary {
-			role = RolePrimary // the one primary action of a form, by position
-		}
 		a := f.Submit
-		a.Role = role
-		out.Submit = lowerAction(a, label)
+		if a.Label == "" {
+			a.Label = "Save"
+		}
+		if a.Role == RoleSecondary {
+			a.Role = RolePrimary // the one primary action of a form, by position
+		}
+		out.Submit = lowerAction(a)
 	}
 	return out
 }
@@ -88,17 +81,11 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 // (parse → rules), applies each value that passed, and collects every failure.
 func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.FieldError) {
 	var writable []ir.Field
-	var walk func([]ir.Field)
-	walk = func(fs []ir.Field) {
-		for _, f := range fs {
-			if len(f.Group) > 0 {
-				walk(f.Group)
-			} else if f.Set != nil {
-				writable = append(writable, f)
-			}
+	for f := range ir.Leaves(fields) {
+		if f.Set != nil {
+			writable = append(writable, f)
 		}
 	}
-	walk(fields)
 
 	return func(base any, values map[string]string) (any, []ir.FieldError) {
 		m := base.(M)
@@ -106,13 +93,13 @@ func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.
 		for _, f := range writable {
 			raw := values[f.Name]
 			if f.Display == ir.DisplaySelect {
-				if v := rules.CheckSelect(f, raw); v != nil {
-					errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
+				if msg := rules.CheckSelect(f, raw); msg != "" {
+					errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
 					continue
 				}
 			}
-			if v := rules.Check(f.Rules, f.Kind, raw); v != nil {
-				errs = append(errs, ir.FieldError{Label: f.Label, Message: v.Message})
+			if msg := rules.Check(f.Rules, f.Kind, raw); msg != "" {
+				errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
 				continue
 			}
 			if raw == "" && f.Kind != ir.KindString {

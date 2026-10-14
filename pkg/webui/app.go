@@ -128,13 +128,11 @@ type Theme struct {
 
 // pageLike is Page[A] with the argument type erased so Pages can mix A.
 type pageLike interface {
-	isPage()
 	pagePath() string
-	pageNav() Nav
-	hasNavEntries() bool
+	hasNavEntry() bool
 	pageArgType() reflect.Type
 	validatePage(f *facts) []CompileError
-	lowerPage(l *appLowerer) *ir.Page
+	lowerPage(entries map[string]bool) *ir.Page
 }
 
 // Pages is the list of pages in an [App]. A [Page] differs by its argument type,

@@ -29,7 +29,6 @@ type IconProps struct {
 	Name  IconName
 	Class string
 	Title string
-	Attrs templ.Attributes
 }
 
 templ Icon(p IconProps) {
@@ -43,7 +42,6 @@ templ Icon(p IconProps) {
 				aria-label={ p.Title }
 				title={ p.Title }
 			}
-			{ p.Attrs... }
 		></i>
 	}
 }

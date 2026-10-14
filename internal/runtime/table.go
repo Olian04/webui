@@ -73,7 +73,7 @@ const maxFilterChars = 200
 func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 	var out map[string][]string
 	for _, col := range n.Columns {
-		if col.Key == "" || numeric(col) {
+		if col.Key == "" || col.Ranged() {
 			continue
 		}
 		value := raw[args.FilterKey(n.ID, col.Key)]
@@ -85,13 +85,13 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 		case col.OpenSet:
 			// The values are whatever the rows hold, which the library filters, so any
 			// value is safe to keep: one that no row has matches none.
-			for _, v := range strings.Split(value, args.ListSep) {
+			for _, v := range strings.Split(value, ir.ListSep) {
 				if v != "" && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}
 			}
 		case col.Options != nil:
-			for _, v := range strings.Split(value, args.ListSep) {
+			for _, v := range strings.Split(value, ir.ListSep) {
 				if slices.Contains(col.Options, v) && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}
@@ -115,16 +115,13 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 	return out
 }
 
-// numeric reports whether a column holds numbers, which a table filters by
-// range, not by text: "5" is not a way to ask for more than 5.
-func numeric(col ir.Field) bool { return col.Ranged() }
-
-// rangesOf reads the bounds on the numeric columns. A bound that is not a
+// rangesOf reads the bounds on the numeric columns, which a table filters by
+// range, not by text: "5" is not a way to ask for more than 5. A bound that is not a
 // finite number is dropped, so a loader never compares against NaN or infinity.
 func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 	var out map[string]ir.Range
 	for _, col := range n.Columns {
-		if col.Key == "" || !numeric(col) {
+		if col.Key == "" || !col.Ranged() {
 			continue
 		}
 		loKey, hiKey := args.RangeKeys(n.ID, col.Key)
@@ -172,13 +169,8 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
-	started := time.Now()
-	window, err := n.Load(ctx, view.Q)
-	p.m.Load(page.PathTemplate, "table", started, err)
-	if err != nil {
-		if ctx.Err() == nil {
-			p.log.Error("webui: table load failed", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
-		}
+	window, ok := loaded(p, ctx, page, "table", "table", n.At, func() (ir.Window, error) { return n.Load(ctx, view.Q) })
+	if !ok {
 		view.Failed = true
 		return p.render.Table(view)
 	}

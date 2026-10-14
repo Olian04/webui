@@ -1,11 +1,11 @@
 package runtime
 
 import (
+	"cmp"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
@@ -24,34 +24,12 @@ const maxEditorBody = 16 << 20
 // else: the id comes from position, never from anything the user typed.
 func leavesOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
-	var walk func(ir.Node)
-	walk = func(n ir.Node) {
-		switch n := n.(type) {
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Split:
-			for _, c := range n.Children {
-				walk(c)
-			}
-		case *ir.Tabs:
-			for _, t := range n.Tabs {
-				walk(t.Body)
-			}
-		case *ir.Form:
-			out[render.LeafID(n.At)] = n
-		case *ir.Table:
-			out[render.LeafID(n.At)] = n
-		case *ir.Diff:
-			out[render.LeafID(n.At)] = n
-		case *ir.Markdown:
-			out[render.LeafID(n.At)] = n
+	ir.Walk(root, func(n ir.Node) {
+		switch n.(type) {
+		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown:
+			out[render.LeafID(n.Addr())] = n
 		}
-	}
-	if root != nil {
-		walk(root)
-	}
+	})
 	return out
 }
 
@@ -121,9 +99,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 
-	started := time.Now()
-	base, err := n.Load(ctx)
-	p.m.Load(page.PathTemplate, formKind(n), started, err)
+	base, err := timed(p, page, formKind(n), func() (any, error) { return n.Load(ctx) })
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
 		return
@@ -143,71 +119,81 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	model, errs := n.Bind(base, values)
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
-		p.rerender(w, r, page, req, n, model, values, errs, render.Toast{
-			Title: "Not saved", Desc: plural(len(errs), "field needs", "fields need") + " attention.", Tone: render.ToastError,
-		})
+		p.rerender(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
 		return
 	}
-	if n.Submit.Guard != nil {
-		if err := n.Submit.Guard(ctx, model); err != nil {
-			p.m.Action(page.PathTemplate, "denied")
-			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
-			return
-		}
-	}
-	outcome, err := n.Submit.Run(ctx, model)
-	if err != nil {
-		p.m.Action(page.PathTemplate, "error")
-		p.fail(w, r, page, req, fmt.Errorf("submit: %w", err))
-		return
-	}
-	p.m.Action(page.PathTemplate, resultOf(outcome))
-	if to := outcome.Redirect; to != "" {
-		p.leave(w, r, outcome, to) // told where to go, which replaces whatever it would have done
-		return
-	}
-	if outcome.Return == ir.ReturnBack {
-		// Back leaves for where the user came from, even for an outcome that would have shown
-		// the form again: what was typed is not kept, and the message is in the toast it arrives to.
-		p.leave(w, r, outcome, p.returnTarget(r, req, page))
+	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit")
+	if !ok {
 		return
 	}
 	switch outcome.Kind {
 	case ir.OutcomeFailure:
 		// Not done, and not for one field: show the form again with what was typed,
 		// as a rejection does, with the reason for the whole form in a toast.
-		p.rerender(w, r, page, req, n, model, values, nil, toastOf(outcome, "Not saved"))
+		p.rerender(w, r, page, req, n, model, values, nil, render.Toast{Title: outcomeText(outcome), Tone: render.ToastError})
 	case ir.OutcomeReject:
 		// Understood and refused, and the user can fix it: the same event, from
 		// their side, as a rule the browser caught.
-		p.rerender(w, r, page, req, n, model, values, outcome.Fields, render.Toast{
-			Title: "Not saved", Desc: plural(len(outcome.Fields), "field needs", "fields need") + " attention.", Tone: render.ToastError,
-		})
+		p.rerender(w, r, page, req, n, model, values, outcome.Fields, fieldsToast(len(outcome.Fields)))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
-		from := req.From
+		// An accepted action that said nowhere to go returns to where the form was opened from, or
+		// stays where it is (Stay: the form again, and not where it was opened from). The toast rides
+		// a flash cookie and the browser is sent with a 303, so a reload does not repeat the POST.
+		target := cmp.Or(req.From, r.URL.RequestURI())
 		if outcome.Return == ir.ReturnStay {
-			from = "" // stay: the form again, not where it was opened from
+			target = r.URL.RequestURI()
 		}
-		p.finish(w, r, outcome, from)
+		p.leave(w, r, outcome, target)
 	}
+}
+
+// perform runs an action on its subject: its Guard, which refuses with a 403, and its Run, which
+// fails with an error page, each counted in the metrics. An outcome that was told where to go, or
+// to go Back, leaves: Back for where the user came from, even for an outcome that would have shown
+// the form again, in which case what was typed is not kept and the message is in the toast it
+// arrives to. It returns the outcome when it is for the caller to act on, and false when the
+// response has been written. what names the action in the error that is logged.
+func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, act *ir.Action, subject any, what string) (ir.Outcome, bool) {
+	ctx := r.Context()
+	if act.Guard != nil {
+		if err := act.Guard(ctx, subject); err != nil {
+			p.m.Action(page.PathTemplate, "denied")
+			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
+			return ir.Outcome{}, false
+		}
+	}
+	outcome, err := act.Run(ctx, subject)
+	if err != nil {
+		p.m.Action(page.PathTemplate, "error")
+		p.fail(w, r, page, req, fmt.Errorf("%s: %w", what, err))
+		return ir.Outcome{}, false
+	}
+	p.m.Action(page.PathTemplate, resultOf(outcome))
+	switch {
+	case outcome.Redirect != "":
+		p.leave(w, r, outcome, outcome.Redirect) // told where to go, which replaces whatever it would have done
+	case outcome.Return == ir.ReturnBack:
+		p.leave(w, r, outcome, p.returnTarget(r, req, page))
+	default:
+		return outcome, true
+	}
+	return ir.Outcome{}, false
+}
+
+// fieldsToast is the toast of a submission that the rules or the action refused for n fields.
+func fieldsToast(n int) render.Toast {
+	return render.Toast{Title: "Not saved", Desc: plural(n, "field needs", "fields need") + " attention.", Tone: render.ToastError}
 }
 
 // selectNames are the names of the form's controls that are selects, which are the ones that may be
 // sent more than once.
 func selectNames(fields []ir.Field) map[string]bool {
 	out := map[string]bool{}
-	var walk func([]ir.Field)
-	walk = func(fs []ir.Field) {
-		for _, f := range fs {
-			switch {
-			case len(f.Group) > 0:
-				walk(f.Group)
-			case f.Display == ir.DisplaySelect:
-				out[f.Name] = true
-			}
+	for f := range ir.Leaves(fields) {
+		if f.Display == ir.DisplaySelect {
+			out[f.Name] = true
 		}
 	}
-	walk(fields)
 	return out
 }
 
@@ -215,26 +201,7 @@ func selectNames(fields []ir.Field) map[string]bool {
 // from, else the breadcrumb parent, else where the user already is.
 func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) string {
 	path, _ := req.encode(page)
-	if to := p.returnHref(req, page, path); to != "" {
-		return to
-	}
-	return r.URL.RequestURI()
-}
-
-// toastOf is an outcome's message as a toast. A failure without a message still
-// says that nothing was done, so its title is the fallback.
-func toastOf(o ir.Outcome, fallback string) render.Toast {
-	switch o.Kind {
-	case ir.OutcomeFailure:
-		if o.Message == "" {
-			return render.Toast{Title: fallback, Tone: render.ToastError}
-		}
-		return render.Toast{Title: o.Message, Tone: render.ToastError}
-	case ir.OutcomeWarning:
-		return render.Toast{Title: o.Message, Tone: render.ToastWarning}
-	case ir.OutcomeSuccess, ir.OutcomeReject:
-	}
-	return render.Toast{Title: o.Message}
+	return cmp.Or(p.returnHref(req, page, path), r.URL.RequestURI())
 }
 
 // rerender shows the page again with the form that was submitted carrying what
@@ -259,22 +226,17 @@ func plural(n int, one, many string) string {
 	return strconv.Itoa(n) + " " + many
 }
 
-// finish ends an accepted action that said nowhere to go: back to where the form
-// was opened from, or where it is. The toast rides a flash cookie, and the
-// browser is sent with a 303 so a reload does not repeat the POST.
-func (p *Program) finish(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, from string) {
-	target := r.URL.RequestURI()
-	if from != "" {
-		target = from // a saved form returns to where it was opened from
-	}
-	p.leave(w, r, outcome, target)
-}
-
 // leave sends the user to target with the outcome's message as a toast on the
 // page they arrive at. It is how an accepted action ends, and how any outcome that
 // was told where to go does.
 func (p *Program) leave(w http.ResponseWriter, r *http.Request, outcome ir.Outcome, target string) {
-	p.setFlash(w, r, outcomeText(outcome), outcomeTone(outcome))
+	p.flashRedirect(w, r, target, outcomeText(outcome), outcomeTone(outcome))
+}
+
+// flashRedirect sends the user to target with a 303, so that a reload does not repeat the POST, and
+// text as a toast on the page they arrive at, which rides a flash cookie.
+func (p *Program) flashRedirect(w http.ResponseWriter, r *http.Request, target, text string, tone render.ToastTone) {
+	p.setFlash(w, r, text, tone)
 	//nolint:gosec // G710: target is this request's own path, an address Open resolved, or one local accepted.
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
@@ -340,9 +302,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		return
 	}
 
-	started := time.Now()
-	window, err := n.Load(ctx, queryOf(n, req.Raw))
-	p.m.Load(page.PathTemplate, "table", started, err)
+	window, err := timed(p, page, "table", func() (ir.Window, error) { return n.Load(ctx, queryOf(n, req.Raw)) })
 	rows := window.Rows
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table load: %w", err))
@@ -383,26 +343,8 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		subject = picked
 	}
 
-	if action.Guard != nil {
-		if err := action.Guard(ctx, subject); err != nil {
-			p.m.Action(page.PathTemplate, "denied")
-			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
-			return
-		}
-	}
-	outcome, err := action.Run(ctx, subject)
-	if err != nil {
-		p.m.Action(page.PathTemplate, "error")
-		p.fail(w, r, page, req, fmt.Errorf("action %q: %w", action.Label, err))
-		return
-	}
-	p.m.Action(page.PathTemplate, resultOf(outcome))
-	if to := outcome.Redirect; to != "" {
-		p.leave(w, r, outcome, to)
-		return
-	}
-	if outcome.Return == ir.ReturnBack {
-		p.leave(w, r, outcome, p.returnTarget(r, req, page))
+	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
+	if !ok {
 		return
 	}
 	switch outcome.Kind {
@@ -410,15 +352,13 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		// A table action has no fields to point at, so the messages are the reason.
 		p.refuse(w, r, outcomeText(outcome))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
-		p.finish(w, r, outcome, "")
+		p.leave(w, r, outcome, r.URL.RequestURI())
 	}
 }
 
 // refuse sends the user back with an error toast: nothing was changed.
 func (p *Program) refuse(w http.ResponseWriter, r *http.Request, message string) {
-	p.setFlash(w, r, message, render.ToastError)
-	//nolint:gosec // G710: the target is this request's own path.
-	http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
+	p.flashRedirect(w, r, r.URL.RequestURI(), message, render.ToastError)
 }
 
 // parseAct reads an "_act" value: "bulk:2" or "row:0:<key>". The key may

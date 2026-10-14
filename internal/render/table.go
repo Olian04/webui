@@ -2,8 +2,8 @@ package render
 
 import (
 	"fmt"
+	"maps"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -100,9 +100,6 @@ func (r *Renderer) columns(v TableView) []columnView {
 // orders the page on screen, and its cursor is the way back to it.
 func (r *Renderer) sortLink(v TableView, key string) (string, c.SortDir) {
 	id := v.Node.ID
-	query := cloneQuery(v.Query)
-	delete(query, args.ViewKey(id, "offset")) // a feed has none
-
 	current := c.SortNone
 	if v.Q.Sort == key {
 		current = c.SortAsc
@@ -111,13 +108,27 @@ func (r *Renderer) sortLink(v TableView, key string) (string, c.SortDir) {
 		}
 	}
 
-	query[args.ViewKey(id, "sort")] = key
+	set, drop := map[string]string{args.ViewKey(id, "sort"): key}, []string{args.ViewKey(id, "offset")} // a feed has no offset
 	if current == c.SortAsc {
-		query[args.ViewKey(id, "desc")] = "true"
+		set[args.ViewKey(id, "desc")] = "true"
 	} else {
-		delete(query, args.ViewKey(id, "desc"))
+		drop = append(drop, args.ViewKey(id, "desc"))
 	}
-	return r.PageHref(v.Page, v.Path, query), current
+	return r.tableHref(v, set, drop...), current
+}
+
+// tableHref is this table's address with some of its view state changed: the keys in drop are removed
+// and those in set are written, and the rest, the page's arguments and every other table's state, stays.
+func (r *Renderer) tableHref(v TableView, set map[string]string, drop ...string) string {
+	query := maps.Clone(v.Query)
+	if query == nil {
+		query = map[string]string{}
+	}
+	for _, k := range drop {
+		delete(query, k)
+	}
+	maps.Copy(query, set)
+	return r.PageHref(v.Page, v.Path, query)
 }
 
 // pagerLinks are the previous and next addresses; "" means there is none.
@@ -125,13 +136,10 @@ func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 	size := v.Node.PageSize
 	offsetKey := args.ViewKey(v.Node.ID, "offset")
 	at := func(offset int) string {
-		query := cloneQuery(v.Query)
 		if offset > 0 {
-			query[offsetKey] = strconv.Itoa(offset)
-		} else {
-			delete(query, offsetKey)
+			return r.tableHref(v, map[string]string{offsetKey: strconv.Itoa(offset)})
 		}
-		return r.PageHref(v.Page, v.Path, query)
+		return r.tableHref(v, nil, offsetKey)
 	}
 	if v.Q.Offset > 0 {
 		prev = at(max(v.Q.Offset-size, 0))
@@ -154,20 +162,17 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 	after, row, back := args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)
 	// at is this table's address at a page, with the pages before it.
 	at := func(m ir.Mark, trail []ir.Mark) string {
-		query := cloneQuery(v.Query)
-		delete(query, after)
-		delete(query, row)
-		delete(query, back)
+		set := map[string]string{}
 		if m.After != "" {
-			query[after] = m.After
+			set[after] = m.After
 			if m.Start > 0 {
-				query[row] = strconv.Itoa(m.Start)
+				set[row] = strconv.Itoa(m.Start)
 			}
 			if len(trail) > 0 {
-				query[back] = args.EncodeTrail(trail)
+				set[back] = args.EncodeTrail(trail)
 			}
 		}
-		return r.PageHref(v.Page, v.Path, query)
+		return r.tableHref(v, set, after, row, back)
 	}
 	if v.Q.After != "" {
 		first = at(ir.Mark{}, nil)
@@ -206,22 +211,10 @@ func (r *Renderer) exportLinks(v TableView) []c.ExportLink {
 	}
 	id := v.Node.ID
 	at := func(format string) string {
-		query := cloneQuery(v.Query)
-		for _, key := range []string{args.ViewKey(id, "offset"), args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)} {
-			delete(query, key)
-		}
-		query[args.ViewKey(id, "export")] = format
-		return r.PageHref(v.Page, v.Path, query)
+		return r.tableHref(v, map[string]string{args.ViewKey(id, "export"): format},
+			args.ViewKey(id, "offset"), args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id))
 	}
 	return []c.ExportLink{{Label: "CSV", Format: "CSV", Href: at("csv")}, {Label: "JSON", Format: "JSON", Href: at("json")}}
-}
-
-func cloneQuery(m map[string]string) map[string]string {
-	out := make(map[string]string, len(m)+2)
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
 }
 
 // gauge is a slider's value as a bar between its Min and Max. A value outside
@@ -231,31 +224,11 @@ func gauge(f ir.Field, text string) c.GaugeProps {
 	return c.GaugeProps{Value: x - f.Min, Max: f.Max - f.Min, Text: text}
 }
 
-// toneOf is the tone a select's value is drawn in, neutral for one it does not declare.
-func toneOf(f ir.Field, value string) c.Tone {
-	switch f.ToneOf(value) {
-	case ir.ToneOK:
-		return c.ToneOK
-	case ir.ToneWarning:
-		return c.ToneWarning
-	case ir.ToneCritical:
-		return c.ToneCritical
-	}
-	return c.ToneNeutral
-}
-
 func (v TableView) label() string {
 	if v.Node.Title != "" {
 		return v.Node.Title
 	}
 	return "Table"
-}
-
-func (v TableView) panelStatus() c.Tone {
-	if v.Failed {
-		return c.ToneCritical
-	}
-	return c.ToneNeutral
 }
 
 // interactive reports whether the table posts: it has row actions or bulk
@@ -357,23 +330,28 @@ func (v TableView) gate(row, action int) string {
 
 type carried struct{ Name, Value string }
 
+// without is the query without the keys in skip, and without every table's offset: a changed filter
+// returns every table to its first page, and the old offset may no longer exist.
+func without(query map[string]string, skip ...string) map[string]string {
+	out := make(map[string]string, len(query))
+	for k, v := range query {
+		if !slices.Contains(skip, k) && !strings.HasSuffix(k, args.ViewSep+"offset") {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // carry is the rest of the address as hidden form fields, so applying one
 // column's filter keeps everything else: the page's arguments, every sort, every
 // other filter. The keys in skip are the filter being replaced, and offsets are
 // left out, because a changed filter returns every table to its first page: the
 // old offset may no longer exist.
 func carry(query map[string]string, skip ...string) []carried {
-	keys := make([]string, 0, len(query))
-	for k := range query {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+	rest := without(query, skip...)
 	var out []carried
-	for _, k := range keys {
-		if slices.Contains(skip, k) || strings.HasSuffix(k, args.ViewSep+"offset") {
-			continue
-		}
-		for _, part := range strings.Split(query[k], args.ListSep) {
+	for _, k := range slices.Sorted(maps.Keys(rest)) {
+		for _, part := range strings.Split(rest[k], ir.ListSep) {
 			if part != "" {
 				out = append(out, carried{k, part})
 			}
@@ -439,16 +417,7 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	}
 	fv.Carry = carry(v.Query, gone...)
 	if fv.On {
-		rest := cloneQuery(v.Query)
-		for _, k := range gone {
-			delete(rest, k)
-		}
-		for k := range rest {
-			if strings.HasSuffix(k, args.ViewSep+"offset") {
-				delete(rest, k)
-			}
-		}
-		fv.Clear = r.PageHref(v.Page, v.Path, rest)
+		fv.Clear = r.PageHref(v.Page, v.Path, without(v.Query, gone...))
 	}
 	return fv
 }

@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"iter"
 	"regexp"
 	"strings"
 )
@@ -76,6 +77,26 @@ type Choice struct {
 	Value string
 	Label string // what it says; the value when it is empty
 	Tone  Tone
+}
+
+// Leaves are the fields of fs that are not groups, in order, with the fields of a group in the
+// place of the group.
+func Leaves(fs []Field) iter.Seq[Field] {
+	return func(yield func(Field) bool) {
+		for _, f := range fs {
+			if len(f.Group) == 0 {
+				if !yield(f) {
+					return
+				}
+				continue
+			}
+			for leaf := range Leaves(f.Group) {
+				if !yield(leaf) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // Shown is the text that a value is read as: Show, else Get.

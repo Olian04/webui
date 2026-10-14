@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -69,9 +68,9 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 	if err != nil {
 		return nil
 	}
-	ctx = With(ctx, &Request{program: p, Args: args, Raw: raw})
+	ctx = p.reqCtx(ctx, args, raw)
 
-	found, err := p.found(ctx, page, query)
+	found, err := guarded("search", func() ([]ir.Hit, error) { return page.Search(ctx, query, searchPerPage) })
 	if err != nil {
 		if ctx.Err() == nil || errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			p.m.SearchFailed(page.PathTemplate)
@@ -100,17 +99,6 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 		hits = append(hits, searchHit{Group: group, Title: cmp.Or(hit.Title, href), Desc: hit.Desc, Href: href})
 	}
 	return hits
-}
-
-// found is what a page's search returns, with a panic in it answered as an error: a search is
-// asked on every keystroke, and one that fails must not take the others with it.
-func (p *Program) found(ctx context.Context, page *ir.Page, query string) (hits []ir.Hit, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("panic in search: %v", r)
-		}
-	}()
-	return page.Search(ctx, query, searchPerPage) //nolint:wrapcheck // the caller logs it with the page
 }
 
 // searchGroup is what a page's results are listed under: the page's name in the navigation, or the

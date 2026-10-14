@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"runtime/debug"
 
@@ -18,7 +19,7 @@ import (
 // is passed on.
 func (p *Program) recovered(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tw := &trackedWriter{ResponseWriter: w}
+		tw := &statusWriter{ResponseWriter: w}
 		defer func() {
 			v := recover()
 			if v == nil {
@@ -28,7 +29,7 @@ func (p *Program) recovered(next http.Handler) http.Handler {
 				panic(v)
 			}
 			p.log.Error("webui: panic while serving", "method", r.Method, "path", r.URL.Path, "panic", v, "stack", string(debug.Stack()))
-			if !tw.started {
+			if tw.status == 0 {
 				p.write(tw, r, http.StatusInternalServerError, render.Doc{Title: "Error", Content: render.ServerError()})
 			}
 		}()
@@ -36,21 +37,37 @@ func (p *Program) recovered(next http.Handler) http.Handler {
 	})
 }
 
-// trackedWriter remembers whether the response has begun.
-type trackedWriter struct {
+// statusWriter remembers the status written, which is whether the response has begun, and what the
+// metrics call it.
+type statusWriter struct {
 	http.ResponseWriter
-	started bool
+	status int
 }
 
-func (w *trackedWriter) WriteHeader(code int) {
-	w.started = true
+func (w *statusWriter) WriteHeader(code int) {
+	if w.status == 0 {
+		w.status = code
+	}
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func (w *trackedWriter) Write(b []byte) (int, error) {
-	w.started = true
-	return w.ResponseWriter.Write(b) //nolint:wrapcheck // a pass-through
+func (w *statusWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return w.ResponseWriter.Write(b) //nolint:wrapcheck // a plain pass-through
 }
 
-// Unwrap lets http.ResponseController reach the underlying writer.
-func (w *trackedWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+// Unwrap lets http.ResponseController reach the writer underneath.
+func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
+
+// guarded is what an application's func returns, with a panic in it answered as an error: it runs on the
+// way of every page, or on every keystroke, and must not be what takes it down. what names the func.
+func guarded[T any](what string, f func() (T, error)) (v T, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic in %s: %v", what, r)
+		}
+	}()
+	return f() //nolint:wrapcheck // the caller logs it with the page
+}

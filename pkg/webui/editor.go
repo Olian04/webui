@@ -83,22 +83,15 @@ type Editor[M any] struct {
 	Submit Action[M]
 }
 
-func (Editor[M]) isPageBody() {}
-
 // ASSERT: Editor implements PageBody
 var _ PageBody = Editor[struct{}]{}
 
 func (e Editor[M]) editable() bool { return e.Content.Store != nil }
 
 func (e Editor[M]) validateBody(v *bodyValidator) {
-	if e.Load == nil {
-		v.add("an Editor has no Load", "Set Load to func(ctx) (M, error).")
-	}
-	validateAccessors(v, []Accessor[M]{e.Content}, accessorSite{where: "Editor.Content", uniqueLbl: true}, map[string]bool{})
-	if !e.Language.known() {
-		v.add(fmt.Sprintf("Editor.Language %q is not a language the editor highlights", string(e.Language)),
-			"Use one of the Lang constants, such as LangJSON or LangGo; there is one for each language the editor knows.")
-	}
+	needLoad(v, "an Editor", e.Load != nil)
+	validateAccessors(v, []Accessor[M]{e.Content}, accessorSite{where: "Editor.Content", uniqueLbl: true})
+	validateLanguage(v, "Editor", e.Language)
 	e.validateContext(v)
 	switch {
 	case e.editable() && e.Submit.Run == nil:
@@ -106,7 +99,7 @@ func (e Editor[M]) validateBody(v *bodyValidator) {
 	case !e.editable() && (e.Submit.Run != nil || e.Submit.Guard != nil || e.Submit.Label != ""):
 		v.add("Editor.Submit is set but Content has no Store", "A viewer saves nothing: set Content.Store to make it an editor, or remove Submit.")
 	case e.editable():
-		validateAction(v, "Editor.Submit", e.Submit.Label, true, false)
+		validateAction(v, "Editor.Submit", e.Submit, false)
 	}
 }
 

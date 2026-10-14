@@ -10,9 +10,12 @@ import "strings"
 // Footer is a slot rather than a prop because what goes in it is markup the panel
 // has no opinion about: make the common configurable, make the uncommon composable.
 type PanelProps struct {
-	Title  string
-	Desc   string
-	Status Tone
+	Title string
+	Desc  string
+
+	// Failed says the panel's Load failed: its head says so and its body is the one empty state
+	// that says it could not load, in place of its content. The page stands.
+	Failed bool
 
 	// Leaf names this panel so a link inside it can replace it on its own. A
 	// panel that cannot be replaced independently leaves it empty.
@@ -25,7 +28,6 @@ type PanelProps struct {
 	Grows bool
 
 	Footer templ.Component
-	Attrs  templ.Attributes
 }
 
 templ Panel(p PanelProps) {
@@ -34,19 +36,26 @@ templ Panel(p PanelProps) {
 		if p.Leaf != "" {
 			data-leaf={ p.Leaf }
 		}
-		{ p.Attrs... }
 	>
 		<div class="panel-head">
 			<h2 class="panel-title">{ p.Title }</h2>
 			if p.Desc != "" {
 				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
-			if p.Status == ToneCritical {
+			if p.Failed {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
 			}
 		</div>
 		<div class="panel-body">
-			{ children... }
+			if p.Failed {
+				@EmptyState(EmptyStateProps{
+					Icon:  IconAlert,
+					Title: "Could not load",
+					Desc:  "The cause was logged on the server. Refresh to try again.",
+				})
+			} else {
+				{ children... }
+			}
 		</div>
 		if p.Footer != nil {
 			<div class="panel-foot">
@@ -65,7 +74,6 @@ templ Panel(p PanelProps) {
 type InfoTipProps struct {
 	Text  string
 	Lines []string
-	Attrs templ.Attributes
 }
 
 func (p InfoTipProps) name() string {
@@ -76,7 +84,7 @@ func (p InfoTipProps) name() string {
 }
 
 templ InfoTip(p InfoTipProps) {
-	<span class="tip" tabindex="0" role="note" aria-label={ p.name() } { p.Attrs... }>
+	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
 		@Icon(IconProps{Name: IconInfo, Class: "info"})
 		<span class="tip-body" aria-hidden="true">
 			if len(p.Lines) == 0 {

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"maps"
 	"net/http"
 
 	"github.com/a-h/templ"
@@ -32,7 +33,7 @@ func (p *Program) leaf(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	timing(w, r)
-	if err := render.Fragment(r.Context(), w, http.StatusOK, body); err != nil {
+	if err := writeHTML(r.Context(), w, http.StatusOK, body); err != nil {
 		p.log.Error("webui: render failed", "path", r.URL.Path, "leaf", r.Header.Get(LeafHeader), "err", err)
 	}
 }
@@ -50,9 +51,9 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 
 	strip := make([]render.TabLink, len(n.Tabs))
 	for i, t := range n.Tabs {
-		q := make(map[string]string, len(query)+1)
-		for k, v := range query {
-			q[k] = v
+		q := maps.Clone(query)
+		if q == nil {
+			q = map[string]string{}
 		}
 		if i == 0 {
 			delete(q, args.ViewKey(n.ID, "tab")) // the default tab needs no parameter

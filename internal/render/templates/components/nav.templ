@@ -13,11 +13,10 @@ type SidebarProps struct {
 	Logo   string // image address; empty draws the default mark
 	Home   string // where the brand goes: the landing page. Empty makes it plain text
 	Footer templ.Component
-	Attrs  templ.Attributes
 }
 
 templ Sidebar(p SidebarProps) {
-	<aside class="sidebar" { p.Attrs... }>
+	<aside class="sidebar">
 		if p.Home != "" {
 			<a class="side-brand" href={ p.Home } title={ p.Brand }>
 				@brandMark(p)
@@ -85,7 +84,6 @@ type NavItemProps struct {
 	Icon   IconName
 	Letter string // the label's initial, drawn where the sidebar is a rail, for an entry with no Icon
 	Active bool
-	Attrs  templ.Attributes
 }
 
 templ NavItem(p NavItemProps) {
@@ -96,7 +94,6 @@ templ NavItem(p NavItemProps) {
 		if p.Active {
 			aria-current="page"
 		}
-		{ p.Attrs... }
 	>
 		if p.Icon != IconNone {
 			@Icon(IconProps{Name: p.Icon, Class: "ni"})

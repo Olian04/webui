@@ -21,12 +21,7 @@ var errNotMounted = errors.New("that page is not mounted in this app")
 // argv is the destination's argument struct. The address carries the page's own
 // arguments only: the destination's tables and tabs land on their defaults.
 func (r *Request) Open(pathTemplate string, argv any) (string, error) {
-	return r.program.Open(pathTemplate, argv)
-}
-
-// Open is Request.Open without a request, for the runtime's own use.
-func (p *Program) Open(pathTemplate string, argv any) (string, error) {
-	return p.open(pathTemplate, argv, "")
+	return r.program.open(pathTemplate, argv, "")
 }
 
 // open is Open, remembering where the user is coming from when the destination
@@ -108,15 +103,11 @@ func resolvesAsWritten(address string) bool {
 
 // hasForm reports whether a page body has a form anywhere in it.
 func hasForm(n ir.Node) bool {
-	switch n := n.(type) {
-	case *ir.Form:
-		return true
-	case *ir.Stack:
-		return slices.ContainsFunc(n.Children, hasForm)
-	case *ir.Split:
-		return slices.ContainsFunc(n.Children, hasForm)
-	case *ir.Tabs:
-		return slices.ContainsFunc(n.Tabs, func(t ir.Tab) bool { return hasForm(t.Body) })
-	}
-	return false
+	found := false
+	ir.Walk(n, func(n ir.Node) {
+		if _, ok := n.(*ir.Form); ok {
+			found = true
+		}
+	})
+	return found
 }

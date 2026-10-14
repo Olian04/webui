@@ -41,11 +41,16 @@ func (p *Program) setFlash(w http.ResponseWriter, r *http.Request, text string, 
 		kind = "e"
 	case render.ToastOK:
 	}
+	http.SetCookie(w, p.flash(r, base64.RawURLEncoding.EncodeToString([]byte(kind+text)), 60))
+}
+
+// flash is the cookie that carries a toast to the next page, or with a negative maxAge clears it.
+func (p *Program) flash(r *http.Request, value string, maxAge int) *http.Cookie {
 	//nolint:gosec // G124: Secure follows the request's scheme; the cookie holds one short-lived toast.
-	http.SetCookie(w, &http.Cookie{
-		Name: flashCookie, Value: base64.RawURLEncoding.EncodeToString([]byte(kind + text)),
-		Path: p.flashPath(), MaxAge: 60, HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil,
-	})
+	return &http.Cookie{
+		Name: flashCookie, Value: value, Path: p.flashPath(), MaxAge: maxAge,
+		HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil,
+	}
 }
 
 // takeFlash returns the pending toast, if any, and clears it. A cookie that
@@ -58,11 +63,7 @@ func (p *Program) takeFlash(w http.ResponseWriter, r *http.Request) []render.Toa
 	if err != nil {
 		return nil
 	}
-	//nolint:gosec // G124: clearing the cookie; Secure follows the request's scheme.
-	http.SetCookie(w, &http.Cookie{
-		Name: flashCookie, Path: p.flashPath(), MaxAge: -1, HttpOnly: true,
-		SameSite: http.SameSiteLaxMode, Secure: r.TLS != nil,
-	})
+	http.SetCookie(w, p.flash(r, "", -1))
 	raw, err := base64.RawURLEncoding.DecodeString(cookie.Value)
 	if err != nil || len(raw) < 2 || !utf8.Valid(raw) {
 		return nil

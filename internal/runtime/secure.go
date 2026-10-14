@@ -31,10 +31,7 @@ func policy(imgOrigins []string) string {
 	return strings.Replace(csp, "img-src 'self' data:", "img-src 'self' data: "+strings.Join(allowed, " "), 1)
 }
 
-// secure sets the headers every response carries.
-func secure(next http.Handler) http.Handler { return securedFor(csp, next) }
-
-// securedFor is secure with the content security policy it is given.
+// securedFor sets the headers every response carries, with the content security policy it is given.
 func securedFor(policy string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = r.WithContext(context.WithValue(r.Context(), startedKey{}, time.Now()))

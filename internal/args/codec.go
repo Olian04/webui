@@ -192,7 +192,7 @@ func Href(template string, path, query map[string]string) string {
 	}
 	q := url.Values{}
 	for k, v := range query {
-		for _, part := range strings.Split(v, ListSep) {
+		for _, part := range strings.Split(v, ir.ListSep) {
 			if part != "" {
 				q.Add(k, part) // a list is repeated parameters
 			}

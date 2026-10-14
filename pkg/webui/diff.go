@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -35,29 +34,22 @@ type Diff[M any] struct {
 	Language Language
 }
 
-func (Diff[M]) isPageBody() {}
-
 // ASSERT: Diff implements PageBody
 var _ PageBody = Diff[struct{}]{}
 
 func (d Diff[M]) validateBody(v *bodyValidator) {
-	if d.Load == nil {
-		v.add("a Diff has no Load", "Set Load to func(ctx) (M, error).")
-	}
-	validateAccessors(v, []Accessor[M]{d.Original, d.Modified}, accessorSite{where: "Diff", uniqueLbl: true}, map[string]bool{})
+	needLoad(v, "a Diff", d.Load != nil)
+	validateAccessors(v, []Accessor[M]{d.Original, d.Modified}, accessorSite{where: "Diff", uniqueLbl: true})
 	if d.Original.Store != nil || d.Modified.Store != nil {
 		v.add("a Diff has a Store", "A Diff only reads: remove Store, or use an Editor to change a text.")
 	}
-	if !d.Language.known() {
-		v.add(fmt.Sprintf("Diff.Language %q is not a language the editor highlights", string(d.Language)),
-			"Use one of the Lang constants, such as LangJSON or LangGo; there is one for each language the editor knows.")
-	}
+	validateLanguage(v, "Diff", d.Language)
 }
 
 func (d Diff[M]) lowerBody(at ir.Addr) ir.Node {
 	return &ir.Diff{
 		At: at, Title: d.Title, Desc: d.Desc, Language: d.Language.id(),
-		Load:     func(ctx context.Context) (any, error) { return d.Load(ctx) },
+		Load:     eraseLoad(d.Load),
 		Original: lowerAccessor[M](d.Original, "o"),
 		Modified: lowerAccessor[M](d.Modified, "m"),
 	}

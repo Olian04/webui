@@ -39,7 +39,7 @@ import (
 type Outcome struct {
 	kind     outcomeKind
 	message  string
-	fields   rejection
+	fields   any // the field messages of a Reject, as rejected[M], so that Outcome stays non-generic
 	redirect Target
 	back     bool
 	stay     bool
@@ -53,12 +53,6 @@ const (
 	kindFailure
 	kindReject
 )
-
-// rejection is the field messages of a Reject with the model erased, so Outcome
-// stays non-generic.
-type rejection interface {
-	isRejection()
-}
 
 // Success reports that the action was submitted and accepted. message is shown to
 // the user once, in a confirming toast; empty shows nothing.
@@ -171,11 +165,6 @@ func (o Outcome) Stay() Outcome {
 
 type rejected[M any] []FieldError[M]
 
-func (rejected[M]) isRejection() {}
-
-// ASSERT: rejected implements rejection
-var _ rejection = rejected[struct{}](nil)
-
 // lowerOutcome converts the request-time Outcome. A redirect whose Open failed,
 // or a Reject about a different model, are bugs in the user's Run, reported as an
 // error rather than silently dropped.
@@ -208,7 +197,7 @@ func lowerOutcome[M any](o Outcome) (ir.Outcome, error) {
 	case nil:
 	case rejected[M]:
 		for _, fe := range f {
-			out.Fields = append(out.Fields, ir.FieldError{Label: accessorLabel[M](fe.Field), Message: fe.Message})
+			out.Fields = append(out.Fields, ir.FieldError{Label: labelOf[M](fe.Field), Message: fe.Message})
 		}
 	default:
 		return ir.Outcome{}, fmt.Errorf("webui: Reject is about %T, not the action's model", o.fields)

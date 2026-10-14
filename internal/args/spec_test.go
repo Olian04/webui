@@ -128,9 +128,9 @@ func FuzzCodecDecode(f *testing.F) {
 func TestHrefEmitsAListAsRepeatedParameters(t *testing.T) {
 	t.Parallel()
 
-	got := Href("/p", nil, map[string]string{"t.filter.s": "a" + ListSep + "b c", "q": "x"})
+	got := Href("/p", nil, map[string]string{"t.filter.s": "a" + ir.ListSep + "b c", "q": "x"})
 	assert.Equal(t, got, "/p?q=x&t.filter.s=a&t.filter.s=b+c")
-	assert.Equal(t, Href("/p", nil, map[string]string{"k": ListSep}), "/p") // nothing left: no query at all
+	assert.Equal(t, Href("/p", nil, map[string]string{"k": ir.ListSep}), "/p") // nothing left: no query at all
 }
 
 func TestRangeKeysAreViewKeysNamedByColumn(t *testing.T) {

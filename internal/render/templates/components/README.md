@@ -55,11 +55,14 @@ The test for "should this be a prop or a slot": if the component would have to
 *know* about the thing to render it, it is a prop. If it would only have to
 *place* it, it is a slot.
 
-### 4. Every component carries `Attrs templ.Attributes`
+### 4. A component that is given attributes carries `Attrs templ.Attributes`
 
 This is why the package does not grow a prop every time a caller needs an `id`,
-a `data-`, an `hx-` or an `aria-`. One escape hatch, present everywhere, is the
-difference between a library that stays this size and one that doesn't.
+a `data-`, an `hx-` or an `aria-`. One escape hatch is the difference between a
+library that stays this size and one that doesn't. It is added to a component
+when a caller first needs it, and not before: an `Attrs` that nobody sets is a
+field to read and a spread to render for nothing. `Button`, `IconButton`,
+`Search`, `Switch` and `Form` have one today.
 
 ### 5. Absence is the configuration
 

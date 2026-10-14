@@ -39,12 +39,7 @@ func TestCheck(t *testing.T) {
 			t.Parallel()
 
 			got := Check(tt.rules, tt.kind, tt.raw)
-			if tt.wantMsg == "" {
-				assert.Nil(t, got)
-				return
-			}
-			assert.NotNil(t, got)
-			assert.Equal(t, got.Message, tt.wantMsg)
+			assert.Equal(t, got, tt.wantMsg)
 		})
 	}
 }

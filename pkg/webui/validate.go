@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -146,4 +147,24 @@ func validURL(s string) bool {
 		return u.Opaque != ""
 	}
 	return false
+}
+
+// needLoad reports a body that has no Load. what is the body as the message names it, such as "a Form".
+func needLoad(v *bodyValidator, what string, loads bool) {
+	if !loads {
+		v.add(what+" has no Load", "Set Load to func(ctx) (M, error).")
+	}
+}
+
+// validateLanguage reports a Language that is not one the editor highlights. where is the body, such as "Editor".
+func validateLanguage(v *bodyValidator, where string, l Language) {
+	if !l.known() {
+		v.add(fmt.Sprintf("%s.Language %q is not a language the editor highlights", where, string(l)),
+			"Use one of the Lang constants, such as LangJSON or LangGo; there is one for each language the editor knows.")
+	}
+}
+
+// eraseLoad is a body's Load with its model's type erased, as the IR holds it.
+func eraseLoad[M any](load func(context.Context) (M, error)) func(context.Context) (any, error) {
+	return func(ctx context.Context) (any, error) { return load(ctx) }
 }
