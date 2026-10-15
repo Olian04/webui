@@ -37,7 +37,10 @@ func streaming(ctx context.Context) bool { return ctx.Value(streamingKey{}) != n
 
 // flush sends what has been drawn so far, to a client that is being sent the page as it is built. A writer that
 // cannot flush, which is the buffer of a page that is sent whole, has nothing to do.
-func flush(w io.Writer) {
+func flush(ctx context.Context, w io.Writer) {
+	if !streaming(ctx) {
+		return
+	}
 	if f, ok := w.(interface{ Flush() error }); ok {
 		_ = f.Flush()
 	}
@@ -51,7 +54,7 @@ func (pn *panel) Render(ctx context.Context, w io.Writer) error {
 	select {
 	case <-pn.done:
 	default:
-		flush(w)
+		flush(ctx, w)
 		select {
 		case <-pn.done:
 		case <-ctx.Done():
@@ -70,7 +73,7 @@ func (pn *panel) Render(ctx context.Context, w io.Writer) error {
 	if err := pn.comp.Render(ctx, w); err != nil {
 		return err //nolint:wrapcheck // a component's own error
 	}
-	flush(w)
+	flush(ctx, w)
 	return nil
 }
 
