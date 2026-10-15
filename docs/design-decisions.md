@@ -309,6 +309,14 @@ design element.
 
 ## Navigation and links
 
+- The sidebar keeps its place when a link in it is followed. It is part of each page, so the next page draws it
+  again at the top, and a link far down a long list would send the list back up. `prefs.js`, the script that
+  runs before first paint, keeps how far the list was scrolled in `sessionStorage` when a page is left (`pagehide`)
+  and puts it back as the sidebar is parsed, each time the parser adds to the document until the list is
+  complete, so the first paint has it and a person who scrolls a page that is still arriving is not taken back.
+  What it costs: a visitor without script has the list at the top as before (a script is what remembers it), the
+  entry that is lit is not scrolled into view (the place is kept, not corrected), and one more value is kept on the
+  device, for the life of the tab and no longer.
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
   proper prefix that is a page with a `Label`, never the root). There is no field to
   declare, because the breadcrumb already derives its parents the same way.
