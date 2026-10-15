@@ -44,6 +44,10 @@ type Request struct {
 	// shell is what the page's sidebar needs, asked for beside the panels, for a page that is
 	// being drawn.
 	shell *shellInputs
+
+	// panels is every panel of the page that is being drawn, so that drawing it can wait for them all. It is nil for
+	// a request that draws one panel, or none.
+	panels *panelSet
 }
 
 // reqCtx is ctx with a request for the page's arguments in it, for the application's funcs the runtime

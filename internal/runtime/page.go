@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"runtime/debug"
 	"slices"
-	"sync"
 
 	"github.com/a-h/templ"
 
@@ -98,8 +96,9 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 		p.restore(w, r, req) // a form that was refused is drawn again with what was typed
 		path, query := p.address(page, req)
 		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
-		body, err := p.body(ctx, req, page, page.Body)
-		if err != nil {
+		req.panels = &panelSet{}
+		body := p.panel(ctx, req, page, page.Body)
+		if err := req.panels.wait(&req.code); err != nil {
 			p.fail(w, r, page, req, err)
 			return
 		}
@@ -239,52 +238,23 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 }
 
 // children builds the panels of a layout all at once, and not one after the other: a page is then as slow
-// as its slowest panel, and not as the sum of them. Each panel is built with a request of its own for what
-// it records (the editors it has), and what they recorded is put together when they are all done, so the
-// page has what it would have had in any order. A panic in one is caught where it happened, so that it
-// does not take the process down, and raised again here, where the request's own recovery answers it.
+// as its slowest panel, and not as the sum of them. Each is a [panel], drawn by waiting for it. When the page
+// keeps every panel it starts (req.panels), whoever draws the page waits for them; otherwise they are waited for here,
+// before the layout is drawn.
 func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nodes []ir.Node) ([]templ.Component, error) {
-	if len(nodes) == 1 {
-		c, err := p.body(ctx, req, page, nodes[0])
-		return []templ.Component{c}, err
-	}
-	type built struct {
-		comp   templ.Component
-		err    error
-		code   render.CodeNeeds
-		caught *workerPanic
-	}
-	results := make([]built, len(nodes))
-	var wg sync.WaitGroup
-	for i := range nodes {
-		wg.Go(func() {
-			defer func() {
-				if v := recover(); v != nil {
-					results[i].caught = &workerPanic{value: v, stack: debug.Stack()}
-				}
-			}()
-			own := *req
-			own.code = render.CodeNeeds{}
-			results[i].comp, results[i].err = p.body(ctx, &own, page, nodes[i])
-			results[i].code = own.code
-		})
-	}
-	wg.Wait()
-
 	out := make([]templ.Component, len(nodes))
-	for i := range results {
-		if results[i].caught != nil {
-			results[i].caught.raise()
+	var mine panelSet
+	for i, n := range nodes {
+		pn := p.panel(ctx, req, page, n)
+		out[i] = pn
+		if req.panels == nil {
+			mine.add(pn)
 		}
 	}
-	for i := range results {
-		if results[i].err != nil {
-			return nil, results[i].err
-		}
-		out[i] = results[i].comp
-		req.code.Merge(results[i].code)
+	if req.panels != nil {
+		return out, nil
 	}
-	return out, nil
+	return out, mine.wait(&req.code)
 }
 
 // pageDoc is the shell fields every response for a page shares.
