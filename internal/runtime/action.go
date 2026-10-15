@@ -122,7 +122,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	model, errs := n.Bind(base, values)
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
-		p.rerender(w, r, n, model, values, errs, fieldsToast(len(errs)))
+		p.returnToForm(w, r, n, model, values, errs, fieldsToast(len(errs)))
 		return
 	}
 	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit")
@@ -133,11 +133,11 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	case ir.OutcomeFailure:
 		// Not done, and not for one field: show the form again with what was typed,
 		// as a rejection does, with the reason for the whole form in a toast.
-		p.rerender(w, r, n, model, values, nil, render.Toast{Title: outcomeText(outcome), Tone: render.ToastError})
+		p.returnToForm(w, r, n, model, values, nil, render.Toast{Title: outcomeText(outcome), Tone: render.ToastError})
 	case ir.OutcomeReject:
 		// Understood and refused, and the user can fix it: the same event, from
 		// their side, as a rule the browser caught.
-		p.rerender(w, r, n, model, values, outcome.Fields, fieldsToast(len(outcome.Fields)))
+		p.returnToForm(w, r, n, model, values, outcome.Fields, fieldsToast(len(outcome.Fields)))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
 		// An accepted action that said nowhere to go returns to where the form was opened from, or
 		// stays where it is (Stay: the form again, and not where it was opened from). The toast rides
@@ -207,12 +207,12 @@ func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) str
 	return cmp.Or(p.returnHref(req, page, path), r.URL.RequestURI())
 }
 
-// rerender sends the user back to the page with the form that was submitted carrying what
+// returnToForm sends the user back to the page with the form that was submitted carrying what
 // they typed, and the toast. The POST is answered with a redirect, as every POST is, so
 // that a reload does not send it again, and what the form needs to be drawn again is kept
 // on the server for the page that the redirect leads to (see [submissions]). errs is empty
 // for a failure that is not about any field.
-func (p *Program) rerender(w http.ResponseWriter, r *http.Request, n *ir.Form,
+func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, n *ir.Form,
 	model any, values map[string]string, errs []ir.FieldError, toast render.Toast) {
 	token := p.subs.put(&kept{
 		address: r.URL.RequestURI(), leaf: render.LeafID(n.At),
