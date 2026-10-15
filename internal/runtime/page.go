@@ -5,9 +5,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"runtime/debug"
 	"slices"
-	"sync"
 
 	"github.com/a-h/templ"
 
@@ -77,6 +75,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // unauthorised page is never read.
 func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
+	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", LeafHeader)
 		req, ok := p.begin(w, r, page, parser)
@@ -96,12 +95,10 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 			return
 		}
 		p.restore(w, r, req) // a form that was refused is drawn again with what was typed
-		body, err := p.body(ctx, req, page, page.Body)
-		if err != nil {
-			p.fail(w, r, page, req, err)
-			return
-		}
-		p.writePage(w, r, http.StatusOK, page, req, body)
+		path, query := p.address(page, req)
+		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
+		req.panels = &panelSet{}
+		p.writeBuilt(w, r, page, req, p.panel(ctx, req, page, page.Body), mayStream)
 	}
 }
 
@@ -237,60 +234,28 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 }
 
 // children builds the panels of a layout all at once, and not one after the other: a page is then as slow
-// as its slowest panel, and not as the sum of them. Each panel is built with a request of its own for what
-// it records (the editors it has), and what they recorded is put together when they are all done, so the
-// page has what it would have had in any order. A panic in one is caught where it happened, so that it
-// does not take the process down, and raised again here, where the request's own recovery answers it.
+// as its slowest panel, and not as the sum of them. Each is a [panel], drawn by waiting for it. When the page
+// keeps every panel it starts (req.panels), whoever draws the page waits for them; otherwise they are waited for here,
+// before the layout is drawn.
 func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nodes []ir.Node) ([]templ.Component, error) {
-	if len(nodes) == 1 {
-		c, err := p.body(ctx, req, page, nodes[0])
-		return []templ.Component{c}, err
-	}
-	type built struct {
-		comp   templ.Component
-		err    error
-		code   render.CodeNeeds
-		caught *workerPanic
-	}
-	results := make([]built, len(nodes))
-	var wg sync.WaitGroup
-	for i := range nodes {
-		wg.Go(func() {
-			defer func() {
-				if v := recover(); v != nil {
-					results[i].caught = &workerPanic{value: v, stack: debug.Stack()}
-				}
-			}()
-			own := *req
-			own.code = render.CodeNeeds{}
-			results[i].comp, results[i].err = p.body(ctx, &own, page, nodes[i])
-			results[i].code = own.code
-		})
-	}
-	wg.Wait()
-
 	out := make([]templ.Component, len(nodes))
-	for i := range results {
-		if results[i].caught != nil {
-			results[i].caught.raise()
+	var mine panelSet
+	for i, n := range nodes {
+		pn := p.panel(ctx, req, page, n)
+		out[i] = pn
+		if req.panels == nil {
+			mine.add(pn)
 		}
 	}
-	for i := range results {
-		if results[i].err != nil {
-			return nil, results[i].err
-		}
-		out[i] = results[i].comp
-		req.code.Merge(results[i].code)
+	if req.panels != nil {
+		return out, nil
 	}
-	return out, nil
+	return out, mine.wait(&req.code)
 }
 
 // pageDoc is the shell fields every response for a page shares.
 func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
-	pathVals, query := map[string]string{}, map[string]string{}
-	if req != nil {
-		pathVals, query = req.encode(page)
-	}
+	pathVals, query := p.address(page, req)
 	crumbs := p.render.Crumbs(page, pathVals)
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
@@ -308,7 +273,20 @@ func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) 
 func (p *Program) writePage(w http.ResponseWriter, r *http.Request, status int, page *ir.Page, req *Request, content templ.Component, toasts ...render.Toast) {
 	doc := p.pageDoc(page, req, content)
 	doc.Toasts = toasts
-	p.write(w, r, status, doc)
+	var shell *shellInputs
+	if req != nil {
+		shell = req.shell
+	}
+	p.writeWith(w, r, status, doc, shell)
+}
+
+// address is the page's path arguments and query as the address has them, which are empty for a request that
+// never decoded.
+func (p *Program) address(page *ir.Page, req *Request) (path, query map[string]string) {
+	if req == nil {
+		return map[string]string{}, map[string]string{}
+	}
+	return req.encode(page)
 }
 
 // state answers with a full-page state inside the shell. raw may be nil when

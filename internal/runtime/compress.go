@@ -69,6 +69,18 @@ func (g *gzipWriter) Write(b []byte) (int, error) {
 	return g.ResponseWriter.Write(b) //nolint:wrapcheck // a pass-through
 }
 
+// FlushError sends what has been written so far: the compressed stream is flushed, so that the client can decode
+// it up to here, and then the writer below, so that a response that is sent as it is built reaches the client as
+// it is built.
+func (g *gzipWriter) FlushError() error {
+	if g.zw != nil {
+		if err := g.zw.Flush(); err != nil {
+			return err //nolint:wrapcheck // the client went away
+		}
+	}
+	return http.NewResponseController(g.ResponseWriter).Flush() //nolint:wrapcheck // as above
+}
+
 // finish ends the compressed stream and gives the writer back.
 func (g *gzipWriter) finish() {
 	if g.zw == nil {

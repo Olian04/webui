@@ -1,0 +1,175 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"flag"
+	"strconv"
+	"time"
+
+	"github.com/Olian04/webui/pkg/webui"
+)
+
+// The pages of the Loading section show what a visitor sees while a page's backends answer. Every panel here
+// has a backend that takes a known time, so what arrives when can be seen, and the pages are the cases to try:
+// a page with a panel that is slower than 50 ms is sent as it is built, in the order it has its panels, and a page
+// whose panels answer sooner is sent in one piece.
+
+var slowSidebar = flag.Duration("slow-sidebar", 0, "how long the Guard of the navigation page 'Answers at once' takes, to see a sidebar that waits on the app")
+
+// Probe is a row of a panel that says how long its backend took.
+type Probe struct{ Panel, Backend string }
+
+var (
+	ProbePanel   = webui.String[Probe]{Label: "Panel", Load: func(p Probe) string { return p.Panel }}
+	ProbeBackend = webui.String[Probe]{Label: "Backend answered after", Load: func(p Probe) string { return p.Backend }}
+)
+
+// Note is a text that a panel shows.
+type Note struct{ Text string }
+
+var (
+	NoteLook = webui.String[Note]{Label: "What to look for", Load: func(n Note) string { return n.Text }}
+	NoteText = webui.String[Note]{Label: "Text", Load: func(n Note) string { return n.Text }}
+)
+
+// wait is a backend that takes d to answer, and stops when the visitor goes.
+func wait(ctx context.Context, d time.Duration) {
+	select {
+	case <-time.After(d):
+	case <-ctx.Done():
+	}
+}
+
+// intro is the first panel of a page: it answers at once, and says what the page is for.
+func intro(text string) webui.Form[Note] {
+	return webui.Form[Note]{
+		Title:  "What this page shows",
+		Load:   func(context.Context) (Note, error) { return Note{Text: text}, nil },
+		Fields: []webui.Accessor[Note]{NoteLook},
+	}
+}
+
+// backend is a table whose backend takes d, with as many rows as it is given, so that the panels differ in height.
+func backend(title string, d time.Duration, rows int) webui.Table[Probe] {
+	return webui.Table[Probe]{
+		Title:   title,
+		Columns: []webui.Accessor[Probe]{ProbePanel, ProbeBackend},
+		Rows: func(ctx context.Context) ([]Probe, error) {
+			wait(ctx, d)
+			out := make([]Probe, rows)
+			for i := range out {
+				out[i] = Probe{Panel: title + " " + strconv.Itoa(i+1), Backend: d.String()}
+			}
+			return out, nil
+		},
+	}
+}
+
+// Panels that answer in different times, drawn in the order the page has them: the 250 ms panel is ready before the
+// 400 ms one above it and waits for it, and the sidebar and the first panels are there long before.
+var LoadingOrder = webui.Page[webui.NoArgs]{
+	Path: "/loading/order",
+	Nav:  webui.Nav{Label: "In order", Icon: "list-ol", Section: "Loading"},
+	Body: webui.Stack{
+		intro("The sidebar and the panels above the slow one are on screen at once. The 400 ms panel arrives, and the 250 ms panel, which was ready before it, is drawn after it, because the page arrives in the order it is written. The page moves down as each panel arrives. Reload to see it again."),
+		backend("Quick (10 ms)", 10*time.Millisecond, 2),
+		backend("Slow (400 ms)", 400*time.Millisecond, 4),
+		backend("Medium (250 ms)", 250*time.Millisecond, 3),
+		backend("Last (50 ms)", 50*time.Millisecond, 2),
+	},
+}
+
+// Layouts inside layouts. A layout is drawn like the page is: its panels in order, so the quick panel on the right of the
+// Split waits for the slow one on its left. Tabs build the strip with the selected tab, so they arrive together.
+var LoadingNested = webui.Page[webui.NoArgs]{
+	Path: "/loading/nested",
+	Nav:  webui.Nav{Label: "Nested layouts", Icon: "layer-group", Section: "Loading"},
+	Body: webui.Stack{
+		intro("A Split of a slow panel (300 ms) and a quick one (20 ms), then Tabs whose selected tab is slow (200 ms), then a last panel. A layout is sent in order like the page: the quick panel on the right of the Split is ready first and is drawn after the slow one on its left. The Tabs strip arrives together with the tab it selects. Each part waits for the part above it."),
+		webui.Split{
+			backend("Split, left (300 ms)", 300*time.Millisecond, 3),
+			backend("Split, right (20 ms)", 20*time.Millisecond, 3),
+		},
+		webui.Tabs{Panels: []webui.Tab{
+			{Label: "Slow tab (200 ms)", Body: backend("Selected tab (200 ms)", 200*time.Millisecond, 2)},
+			{Label: "Other tab (20 ms)", Body: backend("Other tab (20 ms)", 20*time.Millisecond, 2)},
+		}},
+		backend("After the layouts (100 ms)", 100*time.Millisecond, 2),
+	},
+}
+
+// Panels that fail. A Load that returns an error is a panel that says it could not load, wherever it is. A Load that
+// panics is a 500 for a page that is built whole; once the page has begun to be sent it cannot be, so the panel says it
+// could not load too, the cause is logged, and the panels after it are drawn.
+var LoadingFailures = webui.Page[webui.NoArgs]{
+	Path: "/loading/failures",
+	Nav:  webui.Nav{Label: "Panels that fail", Icon: "triangle-exclamation", Section: "Loading"},
+	Body: webui.Stack{
+		intro("The first panel is slow (300 ms), so the page is on its way when the others fail. A panel whose Load returns an error and a panel whose Load panics each say that they could not load, where they are, and the panel after them is drawn. The cause of each is in the server's log, and is never shown."),
+		backend("Slow (300 ms)", 300*time.Millisecond, 2),
+		webui.Table[Probe]{
+			Title:   "Load returns an error",
+			Columns: []webui.Accessor[Probe]{ProbePanel, ProbeBackend},
+			Rows: func(ctx context.Context) ([]Probe, error) {
+				wait(ctx, 50*time.Millisecond)
+				return nil, errors.New("the backend is unavailable")
+			},
+		},
+		webui.Form[Probe]{
+			Title: "Load panics",
+			Load: func(ctx context.Context) (Probe, error) {
+				wait(ctx, 100*time.Millisecond)
+				panic("this panel's backend fell over")
+			},
+			Fields: []webui.Accessor[Probe]{ProbePanel},
+		},
+		backend("After the failures (10 ms)", 10*time.Millisecond, 2),
+	},
+}
+
+// A page whose head depends on its panels is built whole: a code editor links its script and its stylesheet in the head,
+// which is sent before any panel is, so nothing of this page arrives until the slow panel has answered.
+var LoadingWhole = webui.Page[webui.NoArgs]{
+	Path: "/loading/whole",
+	Nav:  webui.Nav{Label: "Built whole (editor)", Icon: "file-code", Section: "Loading"},
+	Body: webui.Stack{
+		intro("This page has a code editor, and an editor needs its script and stylesheet in the head of the page, which is sent first. So it is not sent as it is built: nothing of it arrives until the 400 ms panel has answered, and then all of it does, as one piece. Compare with 'In order'."),
+		backend("Slow (400 ms)", 400*time.Millisecond, 3),
+		webui.Editor[Note]{
+			Title:    "A code editor",
+			Load:     func(context.Context) (Note, error) { return Note{Text: "{\n  \"built\": \"whole\"\n}\n"}, nil },
+			Content:  NoteText,
+			Language: webui.LangJSON,
+		},
+	},
+}
+
+// A Guard decides before anything is loaded, so a page that refuses is a 403 at once, whatever its panels are.
+var LoadingGuarded = webui.Page[webui.NoArgs]{
+	Path:  "/loading/guarded",
+	Nav:   webui.Nav{Label: "Guard refuses", Icon: "shield-halved", Section: "Loading"},
+	Guard: canEdit[webui.NoArgs],
+	Body: webui.Stack{
+		intro("This page is for editors. As a viewer it is the 'Not permitted' state at once, with the status 403, and its slow panels were never read. As an editor it is sent as it is built, like 'In order'."),
+		backend("Slow (300 ms)", 300*time.Millisecond, 3),
+		backend("Medium (150 ms)", 150*time.Millisecond, 2),
+	},
+}
+
+// A page whose panels answer at once is built whole and sent in one piece, as it always was. Run the demo with
+// -slow-sidebar 300ms to see what a sidebar that waits on the app does: the Guard of this page's navigation entry is
+// asked for on every page, beside the panels, so every page's first byte waits for it and for nothing else.
+var LoadingFast = webui.Page[webui.NoArgs]{
+	Path: "/loading/fast",
+	Nav:  webui.Nav{Label: "Answers at once", Icon: "bolt", Section: "Loading"},
+	Guard: func(ctx context.Context, _ webui.NoArgs) error {
+		wait(ctx, *slowSidebar)
+		return nil
+	},
+	Body: webui.Stack{
+		intro("Every panel here answers within 50 ms, so the page is built whole and sent in one piece, with nothing flushed early. Start the demo with -slow-sidebar 300ms and every page, this one included, waits 300 ms for its sidebar, because the Guard of this entry is asked for on every page, beside the panels."),
+		backend("Instant", 0, 3),
+		backend("Quick (20 ms)", 20*time.Millisecond, 2),
+	},
+}

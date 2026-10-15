@@ -77,31 +77,41 @@ func (p *Program) missing(w http.ResponseWriter, r *http.Request) {
 
 // write renders doc as a full page. Fields every page shares are filled here.
 func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc render.Doc) {
+	p.writeWith(w, r, status, doc, nil)
+}
+
+// writeWith is write for a page that has asked for its sidebar's inputs already, beside its panels.
+func (p *Program) writeWith(w http.ResponseWriter, r *http.Request, status int, doc render.Doc, shell *shellInputs) {
+	doc = p.finish(w, r, doc, shell)
+	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
+		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+// finish makes a document ready to be drawn: it waits for the sidebar's inputs (asking for them if the page has not),
+// takes the toast that waits for this visitor out of its cookie, and sets the headers that go before any of the body.
+func (p *Program) finish(w http.ResponseWriter, r *http.Request, doc render.Doc, shell *shellInputs) render.Doc {
 	if doc.Crumbs == nil {
 		home := p.render.Home()
 		home.Href = ""
 		doc.Crumbs = []render.Crumb{home}
 	}
 	doc.Method, doc.URL = r.Method, r.URL.RequestURI()
-	if doc.HideNav == nil {
-		doc.HideNav = p.hiddenNav(r.Context())
+	if shell == nil {
+		shell = p.startShell(r.Context(), doc.Here, doc.Active)
 	}
-	doc.Home = p.start(r.Context(), doc.HideNav)
+	shell.wait()
+	doc.HideNav, doc.Home, doc.NavLinks = shell.hide, shell.home, shell.links
 	if len(doc.Crumbs) > 0 && doc.Crumbs[0].Href != "" {
 		// The brand crumb leads where the sidebar's brand does, and is plain text when that is nowhere.
 		doc.Crumbs = slices.Clone(doc.Crumbs)
 		doc.Crumbs[0].Href = doc.Home
 	}
-	if doc.NavLinks == nil {
-		doc.NavLinks = p.navLinks(r.Context(), doc.Here, doc.Active)
-	}
 	doc.Toasts = append(p.takeFlash(w, r).toasts, doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
 	doc.Built, doc.BuildTime = timing(w, r)
-	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
-		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-	}
+	return doc
 }
 
 // FailureHandler serves the compile problems at every address and for every

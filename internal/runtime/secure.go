@@ -52,6 +52,14 @@ type startedKey struct{}
 // second's, so it is not the one.
 const BuiltHeader = "X-Webui-Built"
 
+// startedAt is when the request arrived.
+func startedAt(r *http.Request) time.Time {
+	if started, ok := r.Context().Value(startedKey{}).(time.Time); ok {
+		return started
+	}
+	return time.Now()
+}
+
 // timing stamps a response with when its HTML was built and how long that took from the
 // request's arrival, for the status bar and, as Server-Timing, for the browser's own tools. It
 // returns both, so a full page can say them too.

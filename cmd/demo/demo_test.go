@@ -75,6 +75,7 @@ func TestEveryPageServes(t *testing.T) {
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
+		"/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/layout/split",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -82,6 +83,41 @@ func TestEveryPageServes(t *testing.T) {
 		}
 	}
 	assert.Equal(t, get(h, "/admin/nope").Code, http.StatusNotFound)
+}
+
+// The Loading pages are the cases of a page that is sent as it is built, and each says what it is for.
+func TestTheLoadingPagesShowTheirCases(t *testing.T) {
+	h := handler(t)
+
+	// Panels are drawn in the order the page has them, whichever answered first.
+	order := get(h, "/admin/loading/order").Body.String()
+	last := -1
+	for _, panel := range []string{"Quick (10 ms) 1", "Slow (400 ms) 1", "Medium (250 ms) 1", "Last (50 ms) 1"} {
+		at := strings.Index(order, panel)
+		assert.True(t, at > last)
+		last = at
+	}
+
+	// Layouts inside layouts.
+	nested := get(h, "/admin/loading/nested").Body.String()
+	for _, panel := range []string{"Split, left (300 ms) 1", "Split, right (20 ms) 1", "Selected tab (200 ms) 1", "After the layouts (100 ms) 1"} {
+		assert.Contains(t, nested, panel)
+	}
+
+	// A panel that fails, by error or by panic, says so, and the panel after it is there.
+	failures := get(h, "/admin/loading/failures")
+	assert.Equal(t, failures.Code, http.StatusOK)
+	assert.Equal(t, strings.Count(failures.Body.String(), "Could not load"), 2)
+	assert.Contains(t, failures.Body.String(), "After the failures (10 ms) 1")
+	assert.False(t, strings.Contains(failures.Body.String(), "fell over"))
+
+	// A page with an editor is built whole.
+	assert.Contains(t, get(h, "/admin/loading/whole").Body.String(), `<script type="module" src="/admin/_webui/monaco/code-`)
+
+	// A Guard that refuses is a 403, and the page is for editors.
+	assert.Equal(t, get(handlerAs(t, Viewer), "/admin/loading/guarded").Code, http.StatusForbidden)
+	assert.Equal(t, get(h, "/admin/loading/guarded").Code, http.StatusOK)
+	assert.Contains(t, get(h, "/admin/loading/fast").Body.String(), "Instant 1")
 }
 
 func TestMustCompileAcceptsTheApp(t *testing.T) {
