@@ -119,8 +119,10 @@ func FailureHandler(problems []render.Problem) http.Handler {
 // Guard that refuses them, asked with no arguments, as a visitor who opened the
 // page bare would be. A page without a Guard costs nothing. An entry that cannot
 // be decided with no arguments is hidden too, since it could not be opened bare
-// either. The sidebar leaves these out, and the search, which reads the sidebar,
-// with it; the page itself still answers 403 to anyone who types the address.
+// either. A Guard that panics is one that cannot decide: its entry is hidden and the cause is
+// logged with the page, since this runs for every full page, the server-error page among them,
+// and must not be what takes it down. The sidebar leaves these out, and the search, which reads
+// the sidebar, with it; the page itself still answers 403 to anyone who types the address.
 func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 	var hide map[string]bool
 	for _, path := range p.render.NavPaths() {
@@ -130,13 +132,18 @@ func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 		}
 		args, err := page.Decode(map[string]string{})
 		if err == nil {
-			err = page.Guard(p.reqCtx(ctx, args, map[string]string{}), args)
+			_, err = guarded("Guard", func() (struct{}, error) {
+				return struct{}{}, page.Guard(p.reqCtx(ctx, args, map[string]string{}), args)
+			})
 		}
 		if err == nil {
 			continue
 		}
 		if ctx.Err() != nil {
 			return nil // the visitor went away: nothing to draw for
+		}
+		if pe := (*panicError)(nil); errors.As(err, &pe) {
+			p.log.Error("webui: a page's Guard panicked, so its navigation entry is hidden", "page", page.PathTemplate, "err", err)
 		}
 		if hide == nil {
 			hide = map[string]bool{}

@@ -1,7 +1,10 @@
 package webui_test
 
 import (
+	"bytes"
 	"context"
+	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"testing"
@@ -68,4 +71,48 @@ func TestThePageStillServesAfterAPanic(t *testing.T) {
 	})
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/device/a").Code, http.StatusInternalServerError)
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/device/a").Code, http.StatusOK)
+}
+
+func brokenGuardApp(guard func(context.Context, webui.NoArgs) error) http.Handler {
+	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, Body: webui.Stack{}}
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, Body: webui.Stack{}, Guard: guard}
+	return webui.App{Pages: webui.Pages{home, broken}}.MustCompile("/admin")
+}
+
+// Not parallel: the app logs to the default logger it finds when it compiles.
+func TestANavigationPageWhoseGuardPanicsIsHiddenAndTheCauseIsLogged(t *testing.T) {
+	var logged bytes.Buffer
+	before := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	defer slog.SetDefault(before)
+
+	h := brokenGuardApp(func(context.Context, webui.NoArgs) error { panic("x") })
+
+	rec := serve(h, http.MethodGet, "/admin/home")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.DeepEqual(t, sidebar(t, h, "/admin/home"), []string{"Home>/admin/home*"})
+	assert.Contains(t, logged.String(), "a page's Guard panicked")
+	assert.Contains(t, logged.String(), "/broken")
+	assert.Contains(t, logged.String(), "panic in Guard: x")
+
+	// The page itself is as broken as its Guard, and the server-error page, which draws the sidebar
+	// too, is still drawn.
+	rec = serve(h, http.MethodGet, "/admin/broken")
+	assert.Equal(t, rec.Code, http.StatusInternalServerError)
+	assert.Contains(t, rec.Body.String(), "Something went wrong")
+	assert.DeepEqual(t, sidebar(t, h, "/admin/broken"), []string{"Home>/admin/home"})
+}
+
+func TestANavigationPageWhoseGuardRefusesIsHiddenAndNothingIsLogged(t *testing.T) {
+	var logged bytes.Buffer
+	before := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
+	defer slog.SetDefault(before)
+
+	h := brokenGuardApp(func(context.Context, webui.NoArgs) error { return errors.New("no") })
+
+	assert.Equal(t, serve(h, http.MethodGet, "/admin/home").Code, http.StatusOK)
+	assert.DeepEqual(t, sidebar(t, h, "/admin/home"), []string{"Home>/admin/home*"})
+	assert.Equal(t, serve(h, http.MethodGet, "/admin/broken").Code, http.StatusForbidden)
+	assert.Equal(t, logged.String(), "")
 }
