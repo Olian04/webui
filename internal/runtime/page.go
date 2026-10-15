@@ -96,6 +96,8 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 			return
 		}
 		p.restore(w, r, req) // a form that was refused is drawn again with what was typed
+		path, query := p.address(page, req)
+		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 		body, err := p.body(ctx, req, page, page.Body)
 		if err != nil {
 			p.fail(w, r, page, req, err)
@@ -287,10 +289,7 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 
 // pageDoc is the shell fields every response for a page shares.
 func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
-	pathVals, query := map[string]string{}, map[string]string{}
-	if req != nil {
-		pathVals, query = req.encode(page)
-	}
+	pathVals, query := p.address(page, req)
 	crumbs := p.render.Crumbs(page, pathVals)
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
@@ -308,7 +307,20 @@ func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) 
 func (p *Program) writePage(w http.ResponseWriter, r *http.Request, status int, page *ir.Page, req *Request, content templ.Component, toasts ...render.Toast) {
 	doc := p.pageDoc(page, req, content)
 	doc.Toasts = toasts
-	p.write(w, r, status, doc)
+	var shell *shellInputs
+	if req != nil {
+		shell = req.shell
+	}
+	p.writeWith(w, r, status, doc, shell)
+}
+
+// address is the page's path arguments and query as the address has them, which are empty for a request that
+// never decoded.
+func (p *Program) address(page *ir.Page, req *Request) (path, query map[string]string) {
+	if req == nil {
+		return map[string]string{}, map[string]string{}
+	}
+	return req.encode(page)
 }
 
 // state answers with a full-page state inside the shell. raw may be nil when

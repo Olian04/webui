@@ -77,23 +77,26 @@ func (p *Program) missing(w http.ResponseWriter, r *http.Request) {
 
 // write renders doc as a full page. Fields every page shares are filled here.
 func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc render.Doc) {
+	p.writeWith(w, r, status, doc, nil)
+}
+
+// writeWith is write for a page that has asked for its sidebar's inputs already, beside its panels.
+func (p *Program) writeWith(w http.ResponseWriter, r *http.Request, status int, doc render.Doc, shell *shellInputs) {
 	if doc.Crumbs == nil {
 		home := p.render.Home()
 		home.Href = ""
 		doc.Crumbs = []render.Crumb{home}
 	}
 	doc.Method, doc.URL = r.Method, r.URL.RequestURI()
-	if doc.HideNav == nil {
-		doc.HideNav = p.hiddenNav(r.Context())
+	if shell == nil {
+		shell = p.startShell(r.Context(), doc.Here, doc.Active)
 	}
-	doc.Home = p.start(r.Context(), doc.HideNav)
+	shell.wait()
+	doc.HideNav, doc.Home, doc.NavLinks = shell.hide, shell.home, shell.links
 	if len(doc.Crumbs) > 0 && doc.Crumbs[0].Href != "" {
 		// The brand crumb leads where the sidebar's brand does, and is plain text when that is nowhere.
 		doc.Crumbs = slices.Clone(doc.Crumbs)
 		doc.Crumbs[0].Href = doc.Home
-	}
-	if doc.NavLinks == nil {
-		doc.NavLinks = p.navLinks(r.Context(), doc.Here, doc.Active)
 	}
 	doc.Toasts = append(p.takeFlash(w, r).toasts, doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
