@@ -82,6 +82,16 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 
 // writeWith is write for a page that has asked for its sidebar's inputs already, beside its panels.
 func (p *Program) writeWith(w http.ResponseWriter, r *http.Request, status int, doc render.Doc, shell *shellInputs) {
+	doc = p.finish(w, r, doc, shell)
+	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
+		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+// finish makes a document ready to be drawn: it waits for the sidebar's inputs (asking for them if the page has not),
+// takes the toast that waits for this visitor out of its cookie, and sets the headers that go before any of the body.
+func (p *Program) finish(w http.ResponseWriter, r *http.Request, doc render.Doc, shell *shellInputs) render.Doc {
 	if doc.Crumbs == nil {
 		home := p.render.Home()
 		home.Href = ""
@@ -101,10 +111,7 @@ func (p *Program) writeWith(w http.ResponseWriter, r *http.Request, status int, 
 	doc.Toasts = append(p.takeFlash(w, r).toasts, doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
 	doc.Built, doc.BuildTime = timing(w, r)
-	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
-		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-	}
+	return doc
 }
 
 // FailureHandler serves the compile problems at every address and for every

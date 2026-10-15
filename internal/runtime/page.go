@@ -75,6 +75,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // unauthorised page is never read.
 func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
+	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", LeafHeader)
 		req, ok := p.begin(w, r, page, parser)
@@ -97,12 +98,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 		path, query := p.address(page, req)
 		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 		req.panels = &panelSet{}
-		body := p.panel(ctx, req, page, page.Body)
-		if err := req.panels.wait(&req.code); err != nil {
-			p.fail(w, r, page, req, err)
-			return
-		}
-		p.writePage(w, r, http.StatusOK, page, req, body)
+		p.writeBuilt(w, r, page, req, p.panel(ctx, req, page, page.Body), mayStream)
 	}
 }
 

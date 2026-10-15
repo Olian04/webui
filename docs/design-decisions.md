@@ -397,6 +397,24 @@ design element.
   type when the status is written. Images and fonts are left alone, as they are
   compressed already. There is no CSRF token in a page, so compressing HTML does not
   expose one.
+- A page with a panel that is slow is sent as it is built. The panels of a layout load at the same time, and each
+  is a component that waits for its own load when the layout draws it, so a layout draws its markup, then each panel
+  in order. A page waits 50 ms (`streamAfter`) for all of them: if they are done, it is drawn into a buffer and sent
+  in one piece, exactly as it has always been (the same bytes, a real status if something fails, one write, no
+  flush). If one is not, the status and the headers are sent with the sidebar and the panels that are ready, flushed
+  through the compression and the writers that wrap the response, and then each panel as it is done, in the order
+  the page has them. The sidebar's own inputs (which entries the visitor may not open, where the brand leads, the
+  entries that pages list) are asked for at the same time as the panels, so the first byte waits for the slowest of
+  them and not for their sum. In order means no placeholders, no template and no script: it works with script off
+  and on a first visit, and a layout inside a layout streams with no change to either. What it costs: a slow panel
+  holds back the ready ones after it, which is no slower than a page that is not sent early; the page shifts as
+  panels arrive; the script (`enhance.js`, deferred) runs when the document ends, so the search waits for the last
+  panel. A reverse proxy that buffers a response only costs the gain (`X-Accel-Buffering: no` asks nginx not to).
+  What the status is, is decided before the first byte, so a Guard that refuses is still a 403; after it a panel
+  that panics or cannot be built is drawn as a panel that could not load, and logged, where it would have been a 500.
+  A page whose head depends on its panels (an editor, a diff or Markdown links its script and stylesheet) and a HEAD
+  request are built whole. The `Server-Timing` and `X-Webui-Built` headers say how long the first of the page took;
+  the status bar, drawn last, says how long all of it did.
 
 ## The status bar
 

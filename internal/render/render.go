@@ -9,7 +9,9 @@
 package render
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 	"unicode"
@@ -47,6 +49,10 @@ type Doc struct {
 	// arrival, which the status bar shows. A zero Built says nothing.
 	Built     time.Time
 	BuildTime time.Duration
+
+	// Timing, when it is set, is asked for the time of the status bar when the bar is drawn, in place of Built and
+	// BuildTime: a page that is sent as it is built draws the bar last, and says how long all of it took.
+	Timing func() (built time.Time, took time.Duration)
 
 	// Here is the page the response is for, and the arguments of its address, so an entry
 	// of a page that lists several can tell which of them is the one on screen.
@@ -465,4 +471,21 @@ func (r *Renderer) linkEntries() []c.LinkEntry {
 func isWebAddress(address string) bool {
 	a := strings.ToLower(address)
 	return strings.HasPrefix(a, "http://") || strings.HasPrefix(a, "https://")
+}
+
+// statusBar is the status bar of a page, with the time it was built at the moment it is drawn when the page says so.
+func (r *Renderer) statusBar(d Doc) templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		built, took := d.Built, d.BuildTime
+		if d.Timing != nil {
+			built, took = d.Timing()
+		}
+		return c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: built, BuildTime: took}).Render(ctx, w) //nolint:wrapcheck // a component's own error
+	})
+}
+
+// PanelFailed is a panel that could not be built, drawn in place of it once the page has begun to be sent and the
+// answer can no longer be an error page: the panel says so, and the page stands.
+func PanelFailed(title string) templ.Component {
+	return c.Panel(c.PanelProps{Title: title, Failed: true})
 }
