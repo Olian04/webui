@@ -80,12 +80,21 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 // guarded is what an application's func returns, with a panic in it answered as an error: it runs on the
-// way of every page, or on every keystroke, and must not be what takes it down. what names the func.
+// way of every page, or on every keystroke, and must not be what takes it down. what names the func. The
+// error of a panic is a *panicError, so that a caller can tell a func that broke from one that said no.
 func guarded[T any](what string, f func() (T, error)) (v T, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("panic in %s: %v", what, r)
+			err = &panicError{what: what, value: r}
 		}
 	}()
 	return f() //nolint:wrapcheck // the caller logs it with the page
 }
+
+// panicError is a panic in an application's func, as [guarded] returns it.
+type panicError struct {
+	what  string
+	value any
+}
+
+func (e *panicError) Error() string { return fmt.Sprintf("panic in %s: %v", e.what, e.value) }

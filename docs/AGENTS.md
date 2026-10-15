@@ -113,6 +113,51 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **Revisit when** Firefox and Safari ship Speculation Rules, and either a page's `Load` is declared safe to run on a GET or a page can opt out, or someone has measured that the wait for the next page matters to them.
 
+### Caching a panel's data in the library
+
+**Decision:** the library does not cache. A panel's data is cached by the app, inside the function that gets it. Decided 2026-10-15, after a design round, at the owner's call.
+
+**The need:** a page requested 100 times a minute loads its panels' backends 100 times, where once every few seconds would do.
+
+**What was designed and dropped:** a `Cache` field with a TTL on the five panel kinds (`Table`, `Form`, `Editor`, `Diff`, `Markdown`); a page default and an app default; app-level `CacheOptions` with invalidation after a POST by the model's type, for the whole app, or not at all; panels shared by every visitor, with a page that has a `Guard` refused a cache; one load shared by concurrent requests; a per-panel "4 s old" label at the top right in place of the status bar's staleness badge.
+
+**Why not**
+
+- What a cached value depends on, and when it is wrong, are the app's to know. A `Load` reads who is looking from `ctx`, which the library cannot see, so a cache shared between visitors is right only for data that is the same for all of them, and the library can only forbid it by a rule about `Guard` that is a guess. An earlier decision declined to cache `NavEntries` for the same reason.
+- Invalidation by the model's type is a guess too. The action's own `Run` knows exactly what it changed, and calls the app's own invalidation in one line.
+- A cache in the library is per process. An app that runs several instances may want a store they share, and has the cache library it already uses.
+- Rendering is cheap (about 1 ms for 50 rows of 6 columns). The cost is the backend call, so only the data would ever have been cached, which is the app's function anyway. A page's HTML cannot be cached: its sidebar depends on who is looking, it carries the toast and the build time, and gates are decided per visitor.
+- It would have been public API (a field on five types, an option type, three modes of invalidation) to keep in step with what apps do.
+
+**What the library does for apps instead:** says in the documentation how to cache in `Rows` and `Load` (the paragraph after the list of a table's sources in the package documentation, and `Example_caching`): key by everything the data depends on, join concurrent loads, do not keep errors, invalidate from `Run`, and know that `Rows` is called on every page load, sort, filter, page change, row action and search, and that a row or bulk action finds its subject through the same function.
+
+**The status bar's staleness badge stays.** It detects a page served from a browser or proxy cache, which is not about a panel's data.
+
+**Revisit when** apps keep writing the same cache, with the same bugs, around `Rows` and `Load`, and the pieces they share can be named without the library having to know what a value depends on.
+
+### A service worker that answers a slow page with a loading shell
+
+**Decision:** no service worker. Decided 2026-10-15, after a measured spike (nothing was merged).
+
+**What was tried:** a worker for the mount prefix that races the real request against a short timer (80 ms). If the page is not back, it answers with a small static shell (the brand and a skeleton, borrowing the app's stylesheets) that carries `<meta http-equiv="refresh" content="0">`. The refresh asks for the same address again, and the worker answers that second request with the real response when it arrives, so the real page is an ordinary navigation and the hand-off needs no script.
+
+**What it gave** (Chrome 155, a page with 100, 400 and 250 ms backends, medians of 6 or 7, localhost): first paint 460 ms became 130 ms (90 ms with a 40 ms race), and the real page arrived at the same time as without (431 ms against 439 ms). A page that answers at once was not slower, with the worker warm or stopped before the click (about 50 ms either way). The shell → page swap is not a view transition, and the status bar's load time starts at the second navigation, so it reads about 100 ms short.
+
+**Why it is not kept**
+
+- A worker is storage on the visitor's device (ePrivacy Article 5(3)), and a loading screen is a speed-up, not something the service needs. "One cookie and two `localStorage` values" in the README would stop being true, and an operator could be asked for consent for it. It would need an opt-in on `App`, which is a public API.
+- It helps only a visitor who ran script before: a worker is registered by script, so a first visit gets no shell, and a visitor who never runs script never does. With script off later, the refresh hand-off still works, so it is correct, but it is a loading screen for few.
+- It needs special cases that every later change has to keep: only the addresses the app's pages own (a root mount would otherwise hold the host's `/login`), an export address (a download leaves the shell on screen for good, as does any link to an attachment), a guard against a hand-off that does not match (a loop of shells and requests, seen with navigation preload), and a `try` that falls back to the network, since a worker that breaks every navigation stays on the visitor's browser until it is replaced.
+- Navigation preload cannot be used: the preload response is gone once the event has answered, so using it for a late hand-off sends the request twice, which builds the page twice and loses the toast.
+- Only Chrome 155 over localhost was tried. Safari, Firefox, a slow phone and HTTPS were not.
+
+**What else was considered**
+
+1. Streaming from the server instead. It needs no worker and no second navigation, works on a first visit and with script off, and is the next thing tried (in order: the shell at once, then each panel as it finishes, the panels loading together).
+2. Pre-fetching with Speculation Rules. See "Fetching the next page ahead when the pointer rests on a link".
+
+**Revisit when** an app has slow backends for most of its pages and the streaming from the server was tried and does not do it, and an opt-in on `App` for a device-side worker is wanted.
+
 ## Tests
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.

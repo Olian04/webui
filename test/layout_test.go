@@ -91,6 +91,18 @@ func TestLayoutsGiveLeavesPositionalIDs(t *testing.T) {
 	assert.Contains(t, body, `class="stack"`)
 }
 
+// The panels of a Split are as tall as the tallest in their row, and rows are independent: the stylesheet says
+// so with a grid that stretches its items, and a panel's body takes the room so its foot stays at the bottom.
+func TestAStretchedSplitKeepsItsPanelsFootAtTheBottom(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Body.String(), `<div class="split">`)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".split {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  align-items: stretch;\n}")
+	assert.Contains(t, css, ".split > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+}
+
 func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 	t.Parallel()
 
