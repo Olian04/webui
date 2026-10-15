@@ -93,6 +93,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 			p.leaf(w, r, page, req, leaves[id])
 			return
 		}
+		p.restore(w, r, req) // a form that was refused is drawn again with what was typed
 		body, err := p.body(ctx, req, page, page.Body)
 		if err != nil {
 			p.fail(w, r, page, req, err)
@@ -130,6 +131,11 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, parser args.ArgParser) (*Request, bool) {
 	req, raw, status, refusal := p.admit(r, page, parser)
 	switch {
+	case status != 0 && r.Method == http.MethodPost:
+		// A POST is answered with a redirect, to the page, which answers the same request with the 400 or the 403.
+		if r.Context().Err() == nil {
+			p.again(w, r)
+		}
 	case status == http.StatusBadRequest:
 		p.state(w, r, status, page, raw, render.BadRequest())
 	case status == http.StatusForbidden && r.Context().Err() == nil: // a visitor who has gone is answered nothing
@@ -285,5 +291,9 @@ func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 		return
 	}
 	p.log.Error("webui: request failed", "page", page.PathTemplate, "err", err)
+	if r.Method == http.MethodPost {
+		p.refuse(w, r, "Something went wrong. The cause was logged on the server.") // a POST is answered with a redirect
+		return
+	}
 	p.writePage(w, r, http.StatusInternalServerError, page, req, render.ServerError())
 }

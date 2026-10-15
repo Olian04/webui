@@ -95,7 +95,7 @@ func (p *Program) write(w http.ResponseWriter, r *http.Request, status int, doc 
 	if doc.NavLinks == nil {
 		doc.NavLinks = p.navLinks(r.Context(), doc.Here, doc.Active)
 	}
-	doc.Toasts = append(p.takeFlash(w, r), doc.Toasts...)
+	doc.Toasts = append(p.takeFlash(w, r).toasts, doc.Toasts...)
 	w.Header().Set("Cache-Control", "no-store")
 	doc.Built, doc.BuildTime = timing(w, r)
 	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {

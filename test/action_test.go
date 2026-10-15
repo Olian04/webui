@@ -2,6 +2,7 @@ package webui_test
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +24,31 @@ func post(h http.Handler, target string, form url.Values, mod ...func(*http.Requ
 	}
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// follow answers the redirect that rec is, as a browser does: a GET of its Location, carrying the cookies the
+// redirect set. Every POST ends in one, so that a reload does not send it again.
+func follow(h http.Handler, rec *httptest.ResponseRecorder) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, rec.Header().Get("Location"), nil)
+	for _, c := range rec.Result().Cookies() {
+		if c.MaxAge >= 0 {
+			req.AddCookie(c)
+		}
+	}
+	out := httptest.NewRecorder()
+	h.ServeHTTP(out, req)
+	return out
+}
+
+// seen is what a visitor is left looking at after rec: the response itself or, when it is the redirect of a rejected
+// submission that was kept for the page it leads to, that page, with what was typed in it.
+func seen(h http.Handler, rec *httptest.ResponseRecorder) *httptest.ResponseRecorder {
+	for _, c := range rec.Result().Cookies() {
+		if raw, err := base64.RawURLEncoding.DecodeString(c.Value); c.Name == "webui_flash" && err == nil && len(raw) > 0 && raw[0] == 's' {
+			return follow(h, rec)
+		}
+	}
 	return rec
 }
 
@@ -172,9 +198,11 @@ func TestRuleFailuresAreCollectedAndTheInputIsEchoed(t *testing.T) {
 	s := newShop()
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "not-an-ip", "f2", "500"))
 
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Equal(t, len(s.saved), 0) // Run never ran
-	body := rec.Body.String()
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // a redirect, to the page that draws the form again
+	assert.Equal(t, len(s.saved), 0)               // Run never ran
+	page := seen(s.h, rec)
+	assert.Equal(t, page.Code, http.StatusOK)
+	body := page.Body.String()
 	assert.Contains(t, body, `value="not-an-ip"`) // raw input, not the model
 	assert.Contains(t, body, `value="500"`)
 	assert.Contains(t, body, "must be a valid IPv4 address")
@@ -188,20 +216,23 @@ func TestServerSideRejectionLooksLikeARuleFailure(t *testing.T) {
 
 	s := newShop()
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.4.17", "f2", "5"))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "already in use by another device")
-	assert.Contains(t, rec.Body.String(), `value="10.0.4.17"`)
-	assert.Contains(t, rec.Body.String(), "1 field needs attention.")
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	body := seen(s.h, rec).Body.String()
+	assert.Contains(t, body, "already in use by another device")
+	assert.Contains(t, body, `value="10.0.4.17"`)
+	assert.Contains(t, body, "1 field needs attention.")
 }
 
-func TestRunErrorIs500AndNeverLeaks(t *testing.T) {
+func TestRunErrorIsARedirectThatNeverLeaks(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()
 	s.runErr = errors.New("connection refused to db.internal:5432")
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
-	assert.Equal(t, rec.Code, http.StatusInternalServerError)
-	assert.False(t, strings.Contains(rec.Body.String(), "db.internal"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // so that a reload does not run it again
+	page := follow(s.h, rec)
+	assert.Contains(t, page.Body.String(), "Something went wrong")
+	assert.False(t, strings.Contains(rec.Body.String()+rec.Header().Get("Set-Cookie")+page.Body.String(), "db.internal"))
 }
 
 func TestGuardsRejectBeforeAnythingRuns(t *testing.T) {
@@ -210,14 +241,17 @@ func TestGuardsRejectBeforeAnythingRuns(t *testing.T) {
 	s := newShop()
 	s.pageGate = errors.New("no access to this device")
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
-	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), "no access to this device")
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // to the page, which answers the same request with its 403
+	page := follow(s.h, rec)
+	assert.Equal(t, page.Code, http.StatusForbidden)
+	assert.Contains(t, page.Body.String(), "no access to this device")
 	assert.Equal(t, len(s.saved), 0)
 
 	s2 := newShop()
 	s2.subGate = errors.New("requires the editor role")
 	rec = post(s2.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
-	assert.Equal(t, rec.Code, http.StatusForbidden)
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // back to the page, with the reason in a toast
+	assert.Contains(t, follow(s2.h, rec).Body.String(), "requires the editor role")
 	assert.Equal(t, len(s2.saved), 0)
 }
 
@@ -242,11 +276,16 @@ func TestUnknownLeafAndOversizedBody(t *testing.T) {
 
 	s := newShop()
 	bad := url.Values{"_leaf": {"p.9"}}
-	assert.Equal(t, post(s.h, "/admin/device/dev1", bad).Code, http.StatusBadRequest)
-	assert.Equal(t, post(s.h, "/admin/device/dev1", url.Values{}).Code, http.StatusBadRequest)
+	rec := post(s.h, "/admin/device/dev1", bad)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(s.h, rec).Body.String(), "That request was not understood.")
+	assert.Equal(t, post(s.h, "/admin/device/dev1", url.Values{}).Code, http.StatusSeeOther)
 
 	big := formValues("f1", strings.Repeat("x", 2<<20))
-	assert.Equal(t, post(s.h, "/admin/device/dev1", big).Code, http.StatusRequestEntityTooLarge)
+	rec = post(s.h, "/admin/device/dev1", big)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(s.h, rec).Body.String(), "That submission was too large.")
+	assert.Equal(t, len(s.saved), 0)
 }
 
 func TestWrongMethodAdvertisesPost(t *testing.T) {
@@ -273,7 +312,9 @@ func TestRedirectGoesWhereOpenSays(t *testing.T) {
 	// A page that is not mounted cannot be redirected to: that is a mistake in Run.
 	const gone webui.PageID[webui.NoArgs] = "/gone"
 	s.redirect = func(ctx context.Context) webui.Target { return webui.Open(ctx, gone, webui.NoArgs{}) }
-	assert.Equal(t, post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5")).Code, http.StatusInternalServerError)
+	rec = post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // the cause is logged, and the page says something went wrong
+	assert.Contains(t, follow(s.h, rec).Body.String(), "Something went wrong")
 }
 
 func TestTableRendersSelectionBarAndGatedRowActions(t *testing.T) {
@@ -336,13 +377,15 @@ func TestRowActionFindsTheRowByKeyAndHonoursItsGuard(t *testing.T) {
 	assert.DeepEqual(t, s.deleted, []string{"a:1"})
 
 	// The guard that disabled the button also rejects the request.
-	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "row:0:locked")).Code, http.StatusForbidden)
+	rec := post(s.h, "/admin/device", formValues("_act", "row:0:locked"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(s.h, rec).Body.String(), "toast err")
 	assert.DeepEqual(t, s.deleted, []string{"a:1"})
 
 	// A row that vanished, an action that does not exist, a malformed value.
 	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "row:0:ghost")).Code, http.StatusSeeOther)
-	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "row:7:a:1")).Code, http.StatusBadRequest)
-	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "nonsense")).Code, http.StatusBadRequest)
+	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "row:7:a:1")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(s.h, "/admin/device", formValues("_act", "nonsense")).Code, http.StatusSeeOther)
 	assert.DeepEqual(t, s.deleted, []string{"a:1"})
 }
 

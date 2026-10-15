@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
@@ -63,11 +64,12 @@ type sent struct {
 
 func submitTo(h http.Handler, target, ip string) sent {
 	rec := post(h, target, url.Values{"_leaf": {"p"}, "f1": {"10.0." + ip}})
-	out := sent{code: rec.Code, location: rec.Header().Get("Location"), rerender: rec.Code == http.StatusUnprocessableEntity}
+	out := sent{code: rec.Code, location: rec.Header().Get("Location")}
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "webui_flash" {
 			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)
 			out.flash = string(raw)
+			out.rerender = strings.HasPrefix(out.flash, "s") // a submission that was kept, to draw the form again
 		}
 	}
 	return out
@@ -149,10 +151,10 @@ func TestStayChangesNothingForAnOutcomeThatAlreadyStays(t *testing.T) {
 	h := returnsApp()
 	for _, ip := range []string{"3.2", "4.2"} {
 		got := submitTo(h, openedFromLink, ip)
-		assert.True(t, got.rerender) // the form again, with what was typed and the reasons
-		assert.Equal(t, got.location, "")
+		assert.True(t, got.rerender)                  // the form again, with what was typed and the reasons
+		assert.Equal(t, got.location, openedFromLink) // at the address it was sent from, which still has where it came from
 	}
-	body := post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.4.2"}}).Body.String()
+	body := seen(h, post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.4.2"}})).Body.String()
 	assert.Contains(t, body, "Taken") // a Reject still says it beside the field
 }
 
@@ -184,8 +186,8 @@ func TestAnOutcomeCannotSayMoreThanOneThingAboutWhereToGo(t *testing.T) {
 		}}
 		h := webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, Body: webui.Stack{}}}}.MustCompile("/admin")
 		rec := post(h, "/admin/solo", url.Values{"_leaf": {"p"}, "f1": {"10.0.0.1"}})
-		if rec.Code != http.StatusInternalServerError {
-			t.Errorf("%s: status %d, want 500, a mistake in the action's Run", name, rec.Code)
+		if rec.Code != http.StatusSeeOther || !strings.Contains(follow(h, rec).Body.String(), "Something went wrong") {
+			t.Errorf("%s: status %d, want a redirect that says something went wrong, a mistake in the action's Run", name, rec.Code)
 		}
 	}
 }
