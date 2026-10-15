@@ -114,7 +114,7 @@ where to go next), links between pages, theming, errors, and security.
 
 ## What the library stores in the browser
 
-webui sets one cookie and keeps two values in `localStorage`. It uses nothing else on a
+webui sets one cookie, keeps two values in `localStorage` and one in `sessionStorage`. It uses nothing else on a
 visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and
 fonts it ships are served by your own app and call no other host.
 
@@ -123,6 +123,7 @@ fonts it ships are served by your own app and call no other host.
 | `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced), or, when a form is refused, a random token for what the server kept (below) | 60 seconds, and cleared as soon as a page shows it |
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
+| `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |
 
 When a form is refused, what the visitor typed is not put on their device. The server keeps it in
 memory for up to 60 seconds so that the form can be drawn again after the redirect that every
@@ -133,7 +134,8 @@ the form comes back as it was loaded with a note that the changes could not be k
 
 The two preferences are read by a small script before the first paint, so the page does not
 flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
-who has never touched either control has no `localStorage` entry at all.
+who has never touched either control has no `localStorage` entry at all. The scroll position is
+for the tab, not for the browser, and holds no more than a number.
 
 Two things are yours, not webui's:
 

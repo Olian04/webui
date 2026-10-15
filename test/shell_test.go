@@ -101,6 +101,25 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	assert.Equal(t, serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Code, http.StatusOK)
 }
 
+// The sidebar is drawn again by each page, so the script that runs before first paint keeps where its list was
+// scrolled when a page is left and puts it back as the next sidebar is parsed. The README says what is kept, so
+// the script and the README name the same value.
+func TestTheSidebarKeepsItsScrollPositionFromOnePageToTheNext(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	js := serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Body.String()
+	assert.Contains(t, js, "'webui.sidebar.scroll'")
+	assert.Contains(t, js, "addEventListener('pagehide'")
+	assert.Contains(t, js, "sessionStorage.setItem(KEY, String(side.scrollTop))")
+	assert.Contains(t, js, "new MutationObserver")
+	assert.Contains(t, js, "document.querySelector('.side-scroll')")
+
+	// What it looks for is the markup of the sidebar's list.
+	page := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
+	assert.Contains(t, page, `<nav class="side-scroll"`)
+}
+
 func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	t.Parallel()
 
