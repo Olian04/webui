@@ -157,6 +157,25 @@
 //     and Next, and says which rows it shows. A column can be sorted, but only the page
 //     on screen, which the footer says; the next page is ordered within itself.
 //
+// The library keeps nothing between requests, and caching is not part of it: how long a
+// value may be reused, what it depends on and what makes it wrong are for the app to say.
+// Cache inside the function that gets the data, in Rows, Load, a Form's Load or whatever
+// they call, and see Example_caching for a small one.
+//
+//   - Key it by everything the data depends on. An app's Load may read who is looking from
+//     ctx, and a value shared between visitors is right only for data that is the same
+//     for all of them. A Load is handed a [Query], so key by that too.
+//   - Rows is called on every page load, sort, filter, page change, row action and search,
+//     so a cache in Rows serves all of them from one listing, which the library then
+//     sorts and filters on its own copy.
+//   - Join the requests that arrive while the value is being loaded, so that a busy page
+//     makes one call and a visitor who leaves does not fail the others, and do not keep an
+//     error.
+//   - Forget what an action changed by calling your own invalidation from its Run.
+//   - A row action and a bulk action find their rows through the same Rows or Load, so what
+//     they act on is as old as your cache. An action's Guard and Run are given the row as
+//     it was listed, not as it is now.
+//
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Select]. A table keeps
 // its sort, filters and page in the address, named by its title, so a copied address

@@ -109,7 +109,8 @@ type Table[M any] struct {
 	//
 	// Rows is called on every request that needs the table's rows: each page load,
 	// sort, filter, page change, row action, and search. The library keeps nothing
-	// between requests, so if listing is costly, cache inside Rows, or use Load.
+	// between requests, so if listing is costly, cache it in your app (see the package
+	// documentation on a table's sources, and Example_caching), or use Load.
 	// Set exactly one of Rows, Load and Feed.
 	Rows func(ctx context.Context) ([]M, error)
 
