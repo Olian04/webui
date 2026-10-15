@@ -175,7 +175,7 @@ templ Stack(children []templ.Component) {
 	}
 }
 
-// Split arranges children side by side, top-aligned.
+// Split arranges children side by side; those in a row are as tall as the tallest of them.
 templ Split(children []templ.Component) {
 	@c.Split() {
 		@templ.Join(children...)

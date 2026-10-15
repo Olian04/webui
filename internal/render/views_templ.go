@@ -741,7 +741,7 @@ func Stack(children []templ.Component) templ.Component {
 	})
 }
 
-// Split arranges children side by side, top-aligned.
+// Split arranges children side by side; those in a row are as tall as the tallest of them.
 func Split(children []templ.Component) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
