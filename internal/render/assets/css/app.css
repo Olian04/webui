@@ -660,11 +660,32 @@ a.side-brand:hover {
   flex-direction: column;
   gap: 8px;
 }
+/* The panels of a split side by side are as tall as the tallest of them. A grid sizes each row to its
+   tallest item and stretches the others in that row, and rows are independent, so when a split wraps onto
+   more rows the heights are equal within a row and not across rows. */
 .split {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  align-items: start;
+  align-items: stretch;
+}
+/* A stretched panel's body takes the extra height, so its foot (a pager, the actions) is at the bottom of the
+   box. A form is a body of its own inside the body, with its foot after its fields, so the form is a column
+   that gives the fields the room. */
+.split > .panel > .panel-body {
+  flex: 1 1 auto;
+}
+.split > .panel > .panel-body:has(> form) {
+  display: flex;
+  flex-direction: column;
+}
+.split > .panel > .panel-body > form {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.split > .panel > .panel-body > form > .panel-body {
+  flex: 1 1 auto;
 }
 @media (max-width: 1100px) {
   .split {
