@@ -260,8 +260,13 @@ bordered group with an 11px uppercase caption instead.
 ### Arrangements
 
 - **Stacked** — panels in a column, 8px apart.
-- **Split** — two columns, 8px apart, top-aligned so unequal heights don't
-  stretch. Optionally weighted 1.6 : 1. Collapses to one column below 1100px.
+- **Split** — two columns, 8px apart. Panels side by side are as tall as the tallest
+  of them, so their borders line up; when a Split wraps onto more rows, the heights
+  are equal within a row and not across rows. A panel's foot (a pager, the actions)
+  stays at the bottom of its box. Optionally weighted 1.6 : 1. Collapses to one
+  column below 1100px, where nothing is stretched. Only panels that are direct
+  children of the Split are stretched; a layout inside it, such as Tabs, is one
+  column cell and its panel keeps its own height.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked
