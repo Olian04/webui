@@ -337,7 +337,11 @@ design element.
   a more particular one.
 - Entries and search results whose page `Guard` refuses the visitor are left out; the
   guards are asked with no arguments, as a visitor who opened the page bare would be.
-  The page still answers 403 to anyone who types the address.
+  The page still answers 403 to anyone who types the address. A `Guard` that panics
+  when asked this way hides its entry like one that refuses, and the cause is logged
+  with the page: the question is asked while every full page is drawn, the
+  server-error page included, so a panic there would take down the page that
+  reports the panic.
 - Going back is the library's. A `Link` to a page that has a form adds the address of
   the page it is on, view state included, in the reserved parameter `webui.from`. It
   rides along through the form's own links, its re-render after a rejection and its
