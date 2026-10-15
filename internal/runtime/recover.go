@@ -28,13 +28,31 @@ func (p *Program) recovered(next http.Handler) http.Handler {
 			if err, ok := v.(error); ok && errors.Is(err, http.ErrAbortHandler) {
 				panic(v)
 			}
-			p.log.Error("webui: panic while serving", "method", r.Method, "path", r.URL.Path, "panic", v, "stack", string(debug.Stack()))
+			stack := debug.Stack()
+			if w, ok := v.(*workerPanic); ok {
+				v, stack = w.value, w.stack // where it happened, and not where it was raised again
+			}
+			p.log.Error("webui: panic while serving", "method", r.Method, "path", r.URL.Path, "panic", v, "stack", string(stack))
 			if tw.status == 0 {
 				p.write(tw, r, http.StatusInternalServerError, render.Doc{Title: "Error", Content: render.ServerError()})
 			}
 		}()
 		next.ServeHTTP(tw, r)
 	})
+}
+
+// workerPanic is a panic on a goroutine that a request started, caught there so that it does not end the
+// process, and raised again on the request's own goroutine, where [Program.recovered] answers it.
+type workerPanic struct {
+	value any
+	stack []byte
+}
+
+func (w *workerPanic) raise() {
+	if err, ok := w.value.(error); ok && errors.Is(err, http.ErrAbortHandler) {
+		panic(w.value) // the server's own way to end a response, which it handles
+	}
+	panic(w)
 }
 
 // statusWriter remembers the status written, which is whether the response has begun, and what the
