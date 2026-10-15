@@ -14,7 +14,7 @@
 | `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
 | `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`Table.Rows`). |
-| `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline, POST actions, flash, `Open` resolve. |
+| `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline (lazy panels, in-order streaming), POST actions (every one ends in a 303), flash and kept submissions, export, `Open` resolve. |
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
@@ -153,10 +153,10 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **What else was considered**
 
-1. Streaming from the server instead. It needs no worker and no second navigation, works on a first visit and with script off, and is the next thing tried (in order: the shell at once, then each panel as it finishes, the panels loading together).
+1. Streaming from the server instead. It needs no worker and no second navigation, and works on a first visit and with script off. It was built (the shell at once, then each panel in order as it finishes, the panels loading together), and `design-decisions.md` says how it works and what it costs.
 2. Pre-fetching with Speculation Rules. See "Fetching the next page ahead when the pointer rests on a link".
 
-**Revisit when** an app has slow backends for most of its pages and the streaming from the server was tried and does not do it, and an opt-in on `App` for a device-side worker is wanted.
+**Revisit when** an app has slow backends for most of its pages and the streaming from the server does not do it, and an opt-in on `App` for a device-side worker is wanted.
 
 ## Tests
 

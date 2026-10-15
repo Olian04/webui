@@ -272,6 +272,53 @@ bordered group with an 11px uppercase caption instead.
   addressable: the selected tab is in the address bar, so a tab can be linked
   to and survives a reload. The strip is the control.
 
+### Code panels
+
+An editor and a diff are panels whose body is a code editor, Monaco, laid over markup that already works
+without script. The panel is the same panel (a 32px header with the title and description, a footer where
+there is something to save); the body has no padding, and the editor fills it.
+
+- **Height.** An editor or a diff is as tall as the window less the shell's chrome and 8rem, and never
+  shorter than 16rem (`100dvh` where it is supported). It is not a *grows* panel: the editor scrolls itself,
+  so a page with one does not have two scrollbars, and a taller window gives it more lines.
+- **Without script.** An editable editor is a textarea on the input surface, with the form's *Save* in the
+  panel footer. A viewer, an editor with nothing to save, is the text in a block on the panel surface. Both are
+  13px on 20px monospace (`ui-monospace`, `SFMono-Regular`, `Menlo`), tab size 2, no wrapping, and scroll by
+  themselves. When script runs Monaco mounts over them and hides them, with the colours of the app's tokens in
+its light or its dark theme.
+- **States.** Focus is an inset 2px ring in `--ring`; a refused text is an inset 2px ring in `--ring-bad`, with the
+  reason under the editor in a rule-topped strip (8px 12px), where a form would put it under a field.
+- **A diff** is the two texts side by side when the page is wide and one above the other when it is not, with a
+  header row that names each side (12px, `--text-2`, ruled below). Without script the server makes a unified
+  diff: 12.5px on 19px monospace, a grid of the old line number, the new line number, a marker and the text
+  (3.5rem, 3.5rem, 1.25rem, the rest), inserted lines on `--green-bg` and deleted lines on `--red-bg`, a summary
+  line of `+n` in green and `−m` in red, and a quiet `⋯` for each run of unchanged lines that was left out. Two
+  texts that are too large or too different to compare there say so, and two that are the same say *No
+  differences*.
+- **Language services** have no look of their own: their diagnostics are Monaco's markers, and a page that
+  imports none has highlighting only.
+
+### Text
+
+A text set as Markdown is a panel with an article in it (`.md`): 14px on 1.6, in the panel's text colour, and
+it works without script. It is markup from outside the design, so each element is given the look of its counterpart in the app,
+from the same tokens.
+
+- **Measure.** Prose holds to 84ch; code and tables use the width they are given.
+- **Headings** are no heavier than 500. h1 is 18px, h2 15.5px and h3 14px, with 22px above and 8px below; h4 to
+  h6 are captions, 11px uppercase and spaced, in `--text-2`, as the sidebar's sections are. **Strong** is 600, the one
+  place outside a full-page error where the app is heavier than 500, because in running text 500 is too close to 400
+  to tell apart.
+- **Links** are `--blue-text` and underline on hover. **Lists** are indented 20px, 3px between items, with the
+  marker in `--text-3`, and a task list has the app's checkbox in place of the bullet.
+- **Code** is 12.5px monospace and a step quieter than prose: inline on `--hover` (1px 5px), a block on the input
+  surface with a 1px rule, an 8px 10px inset and 2px corners. A block that names a language is coloured by the
+  editor, which the page then loads.
+- **A table** is the app's table, framed: a 30px header on `--hover` at 12.5px, 34px rows at 13px, a rule between
+  rows and none after the last, no lines between columns, and it scrolls by itself when it is wide.
+- **A picture** is drawn only from an origin the author trusts, no wider than the text and in line with it; any other
+  is a link, named by its alt text.
+
 ---
 
 ## 9. Controls
@@ -369,6 +416,14 @@ widths while the rest of the panel — header, filters, footer — holds still.
 **Empty** replaces them with a centred 28px icon, a 13.5/500 line naming the
 condition, and a 12.5 text-tertiary line naming the way out.
 
+### Export
+
+A table that is told to offers its rows as a file, from the left of its footer: a quiet *Export* caption (12.5px,
+`--text-3`) and two small ghost buttons, *CSV* and *JSON*, beside the range, and the pager keeps the right. The file
+is every row the sort and the filters keep, not the page on screen, and the columns the table shows. The links
+carry `download`, so the page's script, which replaces a panel when a link leads to the same page, leaves them to the
+browser; they are plain links, and work without script.
+
 ---
 
 ## 11. Feedback
@@ -447,6 +502,24 @@ never be substituted for each other.** The cross-fade says *the page moved*.
 The skeleton (§10) says *this one panel is reloading and everything else you
 can see is still current*. Fading the whole content region while one panel
 reloads would claim that all of it is stale, which is false.
+
+### A page that is still arriving
+
+A page whose panels answer within 50 ms arrives as one piece, as it always has. A page with a slower panel is sent as
+it is built, in the order it is written: the sidebar, the top bar and the panels above the slow one at once, then each
+panel as it is done, and the status bar last. There is no skeleton, no placeholder and no spinner on the page:
+what is not there yet is not drawn, so what is on screen is always what is current. Two consequences are part of the
+design and are not hidden:
+
+- **The page grows.** Content below an arriving panel moves down as it comes, because no room is kept for it. A
+  panel that is ready but follows a slower one waits for it, so the page is never drawn out of order.
+- **The status bar is the honest part.** It is drawn last, and its build time says how long all of the page took, not
+  how long the first of it did.
+
+The cross-fade of a navigation (above) still runs: it is the browser's, between two documents, and a page that is
+sent as it is built is one document. With script off the page arrives the same way, since nothing here needs script.
+A page with an editor, a diff or Markdown is built whole, because its head depends on its panels, and so arrives as one
+piece.
 
 ---
 

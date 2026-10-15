@@ -97,7 +97,7 @@ library end to end:
 
 ```sh
 git clone https://github.com/Olian04/webui && cd webui
-go run ./cmd/demo                    # http://localhost:8080/admin/ (you choose a viewer or an editor first)
+go run ./cmd/demo                    # http://localhost:7689/admin/ (you choose a viewer or an editor first)
 go run ./cmd/demo -accent '#2f9e8f'  # override the theme's accent colour
 go run ./cmd/demo -broken            # the failed-to-compile page
 ```
@@ -202,7 +202,7 @@ This half is for people changing the library.
 | `internal/args`       | Encoding and decoding a page's path and query arguments, from the struct's fields and `webui` tags.                                                                          |
 | `internal/rules`      | RE2 compilation and the server-side check of a field's constraints.                                                                                                          |
 | `internal/tablequery` | Filtering, sorting, paging and finding rows held in memory, for `Table.Rows` and `SearchRows`.                                                                                              |
-| `internal/runtime`    | The compiled app: routes, the request pipeline, actions, flash, search, and `Open`.                                                                                          |
+| `internal/runtime`    | The compiled app: routes, the request pipeline (a slow page is streamed in order), actions, flash and the kept submissions, search, export, and `Open`.                      |
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `internal/markdown`   | Markdown to HTML for `Markdown`, with goldmark: no raw HTML, links to http, https and mailto only, images as links unless the origin is trusted.                                                          |

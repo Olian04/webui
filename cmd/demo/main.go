@@ -15,7 +15,7 @@
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context
 //
-//	go run ./cmd/demo                        # http://localhost:8080/admin/
+//	go run ./cmd/demo                        # http://localhost:7689/admin/
 //	go run ./cmd/demo -accent '#2f9e8f'      # override the theme's accent colour
 //	go run ./cmd/demo -broken                # the failed-to-compile page
 package main
