@@ -88,6 +88,31 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **Revisit when** a real app needs a suffix that cannot be a query argument, a tab or a prefix. Then build option 2 first, on the design above. If `ServeMux` ever allows a rest wildcard before the end of a pattern, the dispatcher is not needed and this entry should go.
 
+### Fetching the next page ahead when the pointer rests on a link
+
+**Decision:** pages are not fetched ahead. Decided 2026-10-15, after building it (PR #31, closed, not merged).
+
+**What was built:** every full page sent a `Speculation-Rules` header naming a served rules file that asked the browser for a `prefetch` (`moderate`: about 200 ms of hover) of each link under the mount prefix, except downloads, links that open elsewhere and a panel's own sort, pager, filter and tab links. The click is an ordinary navigation that uses the response.
+
+**What it gave** (Chrome 155, the demo behind a proxy that adds latency, median of 6): a click after a rest on the link saved one round trip plus the page's build time. At 100 ms: 137 ms became 29 ms. At 250 ms, after a 1 s rest: 292 ms became 32 ms. A click with no rest saved nothing. Parsing and painting (about 30 ms) are not saved, and on localhost the gain is 5 to 9 ms.
+
+**Why it is not kept:** the gain is a round trip, and what it costs is a set of special cases that every later change has to keep in mind.
+
+- A fetch ahead runs the page's Guard, `Load` and `NavEntries` for a page nobody opens. Nothing in the library says a `Load` is free of side effects, and there is no opt-out, so an app that marks a row as read in `Load`, or models "Log out" as a page under the prefix, would act on a hover.
+- A page fetched ahead takes the toast out of its cookie (`webui_flash`) and is thrown away if another link is followed. Keeping the toast needed a rule of its own: answer a request made ahead (`Sec-Purpose: prefetch`) with a non-success while a toast waits.
+- The metrics count a request made ahead like any other, and that non-success counts as an error (a 503 as a 5xx; a 425 would not, but is one more thing to get right).
+- The status bar called a page that was old at the click "cached?", so it had a "fetched ahead" case.
+- Four selectors in the rules name the markup of the table and the tabs, with nothing to say they have fallen out of step.
+- Only Chrome and Edge have it. Firefox and Safari do not ship Speculation Rules, and Brave disables them.
+
+**What else was considered**
+
+1. A hidden iframe, swapped in on the click. Dropped: every page says `frame-ancestors 'none'`, and a swap is a second navigation system (history, scroll, title, the view transition, per-page scripts such as the editor's).
+2. `prerender` instead of `prefetch`. A `no-store` page is not prerendered (measured: the request goes out as `prefetch;prerender` and the page opens as a prefetch). Pages stay `no-store`, which the status bar's "cached?" check relies on.
+3. An inline `<script type="speculationrules">`. The content security policy would need a new source in `script-src`.
+
+**Revisit when** Firefox and Safari ship Speculation Rules, and either a page's `Load` is declared safe to run on a GET or a page can opt out, or someone has measured that the wait for the next page matters to them.
+
 ## Tests
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
