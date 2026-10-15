@@ -78,7 +78,9 @@ func TestARowClickActionIsGatedPerRowByItsGuard(t *testing.T) {
 	// The refused row is shown and does nothing; the same Guard refuses a POST for it.
 	assert.Equal(t, strings.Count(body, `class="rowlink rowbutton"`), 2)
 	assert.False(t, strings.Contains(body, `value="click:0:locked.txt"`))
-	assert.Equal(t, post(h, "/admin/entry", formValues("_act", "click:0:locked.txt")).Code, http.StatusForbidden)
+	rec := post(h, "/admin/entry", formValues("_act", "click:0:locked.txt"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(h, rec).Body.String(), "locked")
 }
 
 func TestARowClickActionNamesTheRowByKeyAndSaysSoWhenItIsGone(t *testing.T) {

@@ -32,7 +32,8 @@ func handlerAs(t *testing.T, role Role) http.Handler {
 	assert.NoError(t, err)
 	site := routes(compiled)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Header.Set("Cookie", sessionCookie+"="+sign(role))
+		//nolint:gosec // G124: a request the test makes, not a cookie the app sets.
+		r.AddCookie(&http.Cookie{Name: sessionCookie, Value: sign(role)}) // beside what the request carries, such as the flash
 		site.ServeHTTP(w, r)
 	})
 }
@@ -52,6 +53,20 @@ func post(h http.Handler, target string, form url.Values) *httptest.ResponseReco
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
+}
+
+// follow answers the redirect that rec is, as a browser does: a GET of its Location with the cookies it set. Every POST
+// is answered with one, so that a reload does not send it again.
+func follow(h http.Handler, rec *httptest.ResponseRecorder) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, rec.Header().Get("Location"), nil)
+	for _, c := range rec.Result().Cookies() {
+		if c.MaxAge >= 0 {
+			req.AddCookie(c)
+		}
+	}
+	out := httptest.NewRecorder()
+	h.ServeHTTP(out, req)
+	return out
 }
 
 func TestEveryPageServes(t *testing.T) {
@@ -211,9 +226,10 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
 	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "already in use by another device")
-	assert.Contains(t, rec.Body.String(), `value="`+taken.IP+`"`) // what was typed is kept
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // to the form, which is drawn again with what was typed
+	page := follow(h, rec)
+	assert.Contains(t, page.Body.String(), "already in use by another device")
+	assert.Contains(t, page.Body.String(), `value="`+taken.IP+`"`) // what was typed is kept
 
 	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -234,9 +250,10 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 
 	// Rules run on the server too, and every failure is reported at once.
 	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"ab"}, "f0_1": {"70000"}, "f1_0": {"2"}, "f1_1": {"150"}})
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	page := follow(h, rec)
 	for _, want := range []string{"Must be at least 3 characters.", "Must be at most 65535.", "Must be at most 1.", "Must be at most 100."} {
-		assert.Contains(t, rec.Body.String(), want)
+		assert.Contains(t, page.Body.String(), want)
 	}
 	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -399,8 +416,8 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
 	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(h, rec).Body.String(), `>Cancel</a>`)
 }
 
 func flashOf(rec *httptest.ResponseRecorder) string {
@@ -422,9 +439,10 @@ func TestIngestShowsEveryKindOfOutcome(t *testing.T) {
 
 	// Failure: not accepted, so the form is shown again with what was typed, and the reason.
 	rec := post(h, "/admin/settings", ingest("0.95", "40"))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), `value="0.95"`)
-	assert.Contains(t, rec.Body.String(), "would drop most of them")
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	page := follow(h, rec)
+	assert.Contains(t, page.Body.String(), `value="0.95"`)
+	assert.Contains(t, page.Body.String(), "would drop most of them")
 
 	// Warning: accepted, with something to be aware of.
 	rec = post(h, "/admin/settings", ingest("0.5", "10"))
@@ -507,7 +525,9 @@ func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) 
 	body = get(v, "/admin/config").Body.String()
 	assert.Contains(t, body, `<pre class="code-view"`)
 	assert.False(t, strings.Contains(body, "<textarea"))
-	assert.Equal(t, post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}}).Code, http.StatusForbidden)
+	refused := post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}})
+	assert.Equal(t, refused.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(v, refused).Body.String(), `class="toast err"`)
 }
 
 func TestTheHandbookIsMarkdownSetAsMarkupThatCannotRunAnything(t *testing.T) {
@@ -657,7 +677,9 @@ func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAVie
 	rec := post(editor, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"export const ok: number = 1;\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
-	assert.Equal(t, post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}}).Code, http.StatusForbidden)
+	refused := post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}})
+	assert.Equal(t, refused.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(viewer, refused).Body.String(), `class="toast err"`)
 }
 
 func TestTheEditorsAreGivenTheFolderOfContextTheProgramEmbeds(t *testing.T) {

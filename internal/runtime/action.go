@@ -68,11 +68,11 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		if err := r.ParseForm(); err != nil {
-			status := http.StatusBadRequest
+			message := "That submission could not be read."
 			if strings.Contains(err.Error(), "too large") {
-				status = http.StatusRequestEntityTooLarge
+				message = "That submission was too large."
 			}
-			http.Error(w, http.StatusText(status), status)
+			p.refuse(w, r, message)
 			return
 		}
 
@@ -86,16 +86,19 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		case *ir.Table:
 			p.tableAct(w, r, page, req, n)
 		default:
-			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest())
+			p.refuse(w, r, notUnderstood)
 		}
 	}
 }
+
+// notUnderstood is what a POST that names no leaf, or no action, that the page has is answered with.
+const notUnderstood = "That request was not understood."
 
 // submit binds and runs a form's Submit.
 func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form) {
 	ctx := r.Context()
 	if n.Submit == nil {
-		p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest())
+		p.refuse(w, r, notUnderstood)
 		return
 	}
 
@@ -119,7 +122,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	model, errs := n.Bind(base, values)
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
-		p.rerender(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
+		p.rerender(w, r, n, model, values, errs, fieldsToast(len(errs)))
 		return
 	}
 	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit")
@@ -130,11 +133,11 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	case ir.OutcomeFailure:
 		// Not done, and not for one field: show the form again with what was typed,
 		// as a rejection does, with the reason for the whole form in a toast.
-		p.rerender(w, r, page, req, n, model, values, nil, render.Toast{Title: outcomeText(outcome), Tone: render.ToastError})
+		p.rerender(w, r, n, model, values, nil, render.Toast{Title: outcomeText(outcome), Tone: render.ToastError})
 	case ir.OutcomeReject:
 		// Understood and refused, and the user can fix it: the same event, from
 		// their side, as a rule the browser caught.
-		p.rerender(w, r, page, req, n, model, values, outcome.Fields, fieldsToast(len(outcome.Fields)))
+		p.rerender(w, r, n, model, values, outcome.Fields, fieldsToast(len(outcome.Fields)))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
 		// An accepted action that said nowhere to go returns to where the form was opened from, or
 		// stays where it is (Stay: the form again, and not where it was opened from). The toast rides
@@ -158,7 +161,7 @@ func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page,
 	if act.Guard != nil {
 		if err := act.Guard(ctx, subject); err != nil {
 			p.m.Action(page.PathTemplate, "denied")
-			p.state(w, r, http.StatusForbidden, page, req.Raw, render.Forbidden(err.Error()))
+			p.refuse(w, r, cmp.Or(err.Error(), "Not allowed."))
 			return ir.Outcome{}, false
 		}
 	}
@@ -204,19 +207,19 @@ func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) str
 	return cmp.Or(p.returnHref(req, page, path), r.URL.RequestURI())
 }
 
-// rerender shows the page again with the form that was submitted carrying what
-// the user typed, and the toast. It is not a redirect: a redirect would lose the
-// input. errs is empty for a failure that is not about any field.
-func (p *Program) rerender(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form,
+// rerender sends the user back to the page with the form that was submitted carrying what
+// they typed, and the toast. The POST is answered with a redirect, as every POST is, so
+// that a reload does not send it again, and what the form needs to be drawn again is kept
+// on the server for the page that the redirect leads to (see [submissions]). errs is empty
+// for a failure that is not about any field.
+func (p *Program) rerender(w http.ResponseWriter, r *http.Request, n *ir.Form,
 	model any, values map[string]string, errs []ir.FieldError, toast render.Toast) {
-	req.sub, req.subLeaf = &submission{model: model, values: values, errs: errs}, render.LeafID(n.At)
-
-	body, err := p.body(r.Context(), req, page, page.Body)
-	if err != nil {
-		p.fail(w, r, page, req, err)
-		return
-	}
-	p.writePage(w, r, http.StatusUnprocessableEntity, page, req, body, toast)
+	token := p.subs.put(&kept{
+		address: r.URL.RequestURI(), leaf: render.LeafID(n.At),
+		sub: &submission{model: model, values: values, errs: errs}, toast: toast,
+	})
+	p.setKept(w, r, token)
+	p.again(w, r)
 }
 
 func plural(n int, one, many string) string {
@@ -298,7 +301,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 	case ok && kind == "bulk" && index < len(n.Bulk):
 		action = n.Bulk[index]
 	default:
-		p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest())
+		p.refuse(w, r, notUnderstood)
 		return
 	}
 
@@ -359,6 +362,13 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 // refuse sends the user back with an error toast: nothing was changed.
 func (p *Program) refuse(w http.ResponseWriter, r *http.Request, message string) {
 	p.flashRedirect(w, r, r.URL.RequestURI(), message, render.ToastError)
+}
+
+// again sends the user to the address they are at, with a 303: a POST is never answered with a page, so that
+// a reload sends nothing again, and the page that answers is the same one that a visit would.
+func (p *Program) again(w http.ResponseWriter, r *http.Request) {
+	//nolint:gosec // G710: the request's own path and query, which the router has matched to a page.
+	http.Redirect(w, r, r.URL.RequestURI(), http.StatusSeeOther)
 }
 
 // parseAct reads an "_act" value: "bulk:2" or "row:0:<key>". The key may

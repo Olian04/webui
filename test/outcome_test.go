@@ -63,7 +63,7 @@ func submitIP(h http.Handler, ip string) (code int, location, flash, body string
 			flash = string(raw)
 		}
 	}
-	return rec.Code, rec.Header().Get("Location"), flash, rec.Body.String()
+	return rec.Code, rec.Header().Get("Location"), flash, seen(h, rec).Body.String()
 }
 
 func TestSuccessIsAcceptedAndConfirmsWithAnOKToast(t *testing.T) {
@@ -87,9 +87,11 @@ func TestWarningIsAcceptedLikeSuccessButSaysSomethingToBeAwareOf(t *testing.T) {
 func TestFailureShowsTheFormAgainWithWhatWasTypedAndAnErrorToast(t *testing.T) {
 	t.Parallel()
 
-	code, _, flash, body := submitIP(outcomeApp(), "10.0.0.3")
-	assert.Equal(t, code, http.StatusUnprocessableEntity)
-	assert.Equal(t, flash, "") // a toast on this response, not a cookie for the next
+	code, location, flash, body := submitIP(outcomeApp(), "10.0.0.3")
+	assert.Equal(t, code, http.StatusSeeOther) // a POST is answered with a redirect, to the same page
+	assert.Equal(t, location, "/admin/device/a")
+	assert.Equal(t, flash[:1], "s") // the cookie names what was kept: nothing the visitor typed or read
+	assert.False(t, strings.Contains(flash, "Could not reach"))
 	assert.Contains(t, body, `value="10.0.0.3"`)
 	assert.Contains(t, body, `value="5"`)
 	assert.Contains(t, body, "Could not reach the device")
@@ -108,7 +110,7 @@ func TestRejectShowsTheFormAgainWithWhatWasTypedAndAMessageBesideEachField(t *te
 	t.Parallel()
 
 	code, _, _, body := submitIP(outcomeApp(), "10.0.0.4")
-	assert.Equal(t, code, http.StatusUnprocessableEntity)
+	assert.Equal(t, code, http.StatusSeeOther)
 	assert.Contains(t, body, `value="10.0.0.4"`) // kept, like a Failure
 	assert.Contains(t, body, "taken")
 	assert.Contains(t, body, "too many")
@@ -144,8 +146,10 @@ func TestWithoutThenEachOutcomeDoesItsDefault(t *testing.T) {
 	code, location, _, _ := submitIP(outcomeApp(), "10.0.0.1") // Success: back where it was
 	assert.Equal(t, code, http.StatusSeeOther)
 	assert.Equal(t, location, "/admin/device/a")
-	code, _, _, _ = submitIP(outcomeApp(), "10.0.0.3") // Failure: the form again
-	assert.Equal(t, code, http.StatusUnprocessableEntity)
+	code, location, flash, _ := submitIP(outcomeApp(), "10.0.0.3") // Failure: the form again, which is a redirect to the form
+	assert.Equal(t, code, http.StatusSeeOther)
+	assert.Equal(t, location, "/admin/device/a")
+	assert.Equal(t, flash[:1], "s")
 }
 
 func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing.T) {

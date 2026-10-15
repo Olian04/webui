@@ -69,9 +69,11 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 
 	// What is refused is shown back as it was typed, with the reason on the editor.
 	rec := post(h, "/admin/e", formValues("f0", strings.Repeat("x", 41)))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), strings.Repeat("x", 41))
-	assert.Contains(t, rec.Body.String(), `class="err code-error"`)
+	assert.Equal(t, rec.Code, http.StatusSeeOther) // the answer is a redirect, so that a reload does not send it again
+	page := seen(h, rec)
+	assert.Equal(t, page.Code, http.StatusOK)
+	assert.Contains(t, page.Body.String(), strings.Repeat("x", 41))
+	assert.Contains(t, page.Body.String(), `class="err code-error"`)
 	assert.Equal(t, saved, "{}")
 }
 
@@ -98,7 +100,9 @@ func TestAnEditorWhoseGuardRefusesTheVisitorIsAViewerForThem(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<pre class="code-view"`)
 	assert.False(t, strings.Contains(body, "<textarea"))
-	assert.Equal(t, post(h, "/admin/e", formValues("f0", "{}")).Code, http.StatusForbidden)
+	rec := post(h, "/admin/e", formValues("f0", "{}"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Contains(t, follow(h, rec).Body.String(), "read only for you")
 }
 
 func TestAnEditorPageIsOnlyGivenTheEditorsWorkerUnlessALanguageServiceIsImported(t *testing.T) {
@@ -140,7 +144,8 @@ func TestAnEditorPageTakesALargeBodyAndOtherPagesDoNot(t *testing.T) {
 		Load: loadSnippet, Fields: []webui.Accessor[snippet]{snippetText},
 		Submit: webui.Action[snippet]{Run: func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	})
-	assert.True(t, post(fh, "/admin/e", formValues("f0", big)).Code != http.StatusSeeOther)
+	rec := post(fh, "/admin/e", formValues("f0", big))
+	assert.Contains(t, follow(fh, rec).Body.String(), "That submission was too large.") // a page without an editor refuses it
 }
 
 func TestAFailingEditorLoadFailsThePanelAndNotThePage(t *testing.T) {

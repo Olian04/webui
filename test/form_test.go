@@ -223,10 +223,11 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 	h := formApp(f)
 
 	rec := post(h, "/admin/device/dev1", formValues("f1", "250"))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "Must be at most 100.")
-	assert.Contains(t, rec.Body.String(), `value="250"`)
-	assert.Contains(t, rec.Body.String(), `class="range-input invalid"`)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	page := seen(h, rec)
+	assert.Contains(t, page.Body.String(), "Must be at most 100.")
+	assert.Contains(t, page.Body.String(), `value="250"`)
+	assert.Contains(t, page.Body.String(), `class="range-input invalid"`)
 
 	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f1", "40")).Code, http.StatusSeeOther)
 }
