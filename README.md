@@ -120,9 +120,16 @@ fonts it ships are served by your own app and call no other host.
 
 | What | Kind | Set when | Holds | Lasts |
 | ---- | ---- | -------- | ----- | ----- |
-| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
+| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced), or, when a form is refused, a random token for what the server kept (below) | 60 seconds, and cleared as soon as a page shows it |
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
+
+When a form is refused, what the visitor typed is not put on their device. The server keeps it in
+memory for up to 60 seconds so that the form can be drawn again after the redirect that every
+POST ends in; the token above is the only thing that leaves the server, and the kept values are
+deleted when the next page takes them. They are not written to disk or logged. An app that runs on
+several instances behind a load balancer needs the second request to reach the same instance, or
+the form comes back as it was loaded with a note that the changes could not be kept.
 
 The two preferences are read by a small script before the first paint, so the page does not
 flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
