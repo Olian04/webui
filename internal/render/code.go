@@ -43,6 +43,17 @@ func (c *CodeNeeds) Add(service string) {
 	c.Services[service] = true
 }
 
+// Merge records what another set of needs, built for other panels of the page, has.
+func (c *CodeNeeds) Merge(other CodeNeeds) {
+	c.Used = c.Used || other.Used
+	for service := range other.Services {
+		c.Add(service)
+	}
+	for _, ctx := range other.Contexts {
+		c.AddContext(ctx)
+	}
+}
+
 // AddContext records the context of an editor that can be edited. It is what hands the
 // page the addresses of the files, so it is called only for a visitor who may edit.
 func (c *CodeNeeds) AddContext(ctx *editorctx.Context) {
