@@ -167,17 +167,6 @@ func (s *Service) IPTaken(ip, except string) bool {
 	return slices.ContainsFunc(s.devices, func(d Device) bool { return d.IP == ip && d.ID != except })
 }
 
-func (s *Service) SetIP(id, ip string) {
-	s.mu.Lock()
-	for i := range s.devices {
-		if s.devices[i].ID == id {
-			s.devices[i].IP = ip
-		}
-	}
-	s.mu.Unlock()
-	s.record("changed IP", id)
-}
-
 // SaveDevice is what a device's form saves: its address, status and tags.
 func (s *Service) SaveDevice(d Device) {
 	s.mu.Lock()
