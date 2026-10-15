@@ -112,6 +112,42 @@ It covers pages and their arguments, layouts, tables (paging, sorting, filters a
 search), forms and validation, outcomes (success, warning, failure, rejection and
 where to go next), links between pages, theming, errors, and security.
 
+## What the library stores in the browser
+
+webui sets one cookie and keeps two values in `localStorage`. It uses nothing else on a
+visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and
+fonts it ships are served by your own app and call no other host.
+
+| What | Kind | Set when | Holds | Lasts |
+| ---- | ---- | -------- | ----- | ----- |
+| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced), or, when a form is refused, a random token for what the server kept (below) | 60 seconds, and cleared as soon as a page shows it |
+| `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
+| `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
+
+When a form is refused, what the visitor typed is not put on their device. The server keeps it in
+memory for up to 60 seconds so that the form can be drawn again after the redirect that every
+POST ends in; the token above is the only thing that leaves the server, and the kept values are
+deleted when the next page takes them. They are not written to disk or logged. An app that runs on
+several instances behind a load balancer needs the second request to reach the same instance, or
+the form comes back as it was loaded with a note that the changes could not be kept.
+
+The two preferences are read by a small script before the first paint, so the page does not
+flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
+who has never touched either control has no `localStorage` entry at all.
+
+Two things are yours, not webui's:
+
+- **Sign-in.** webui does not authenticate, so the session or token cookie of the login you
+  mount it behind is your own to account for.
+- **Pictures from other origins.** A page that shows Markdown with `TrustedOrigins` lets the
+  visitor's browser fetch pictures from them, which tells those hosts the visitor's address.
+
+Under the EU's ePrivacy rules (Article 5(3)), storing information on a visitor's device needs
+consent unless it is strictly necessary for a service the visitor asked for. Whether the
+three items above fall under that exemption is for you to decide as the operator, since you
+are the one who deploys the app; the table is there so that you can decide it, and name them
+in your privacy notice. This is not legal advice.
+
 ## Building with an AI agent
 
 The repository ships a skill that teaches a coding agent to build with webui: the
