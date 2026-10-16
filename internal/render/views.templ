@@ -297,14 +297,14 @@ templ (r *Renderer) cell(col columnView, row any, href string, button bool, clic
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
 			@c.RowLink(href) {
-				@value(col.Field, col.Field.Shown(row), row)
+				@value(col.Field, col.Field.Shown(ctx, row), row)
 			}
 		} else if first && button {
 			@c.RowButton("_act", click) {
-				@value(col.Field, col.Field.Shown(row), row)
+				@value(col.Field, col.Field.Shown(ctx, row), row)
 			}
 		} else {
-			@value(col.Field, col.Field.Shown(row), row)
+			@value(col.Field, col.Field.Shown(ctx, row), row)
 		}
 	}
 }
@@ -401,11 +401,11 @@ templ (r *Renderer) formField(v FormView, f ir.Field) {
 	if len(f.Group) > 0 {
 		@c.FieldRow() {
 			for _, child := range f.Group {
-				@r.input(r.fieldView(v, child))
+				@r.input(r.fieldView(ctx, v, child))
 			}
 		}
 	} else {
-		@r.input(r.fieldView(v, f))
+		@r.input(r.fieldView(ctx, v, f))
 	}
 }
 
@@ -551,7 +551,7 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 // begins with one keeps it.
 templ (r *Renderer) editorBody(v FormView) {
 	{{ f := v.Node.Fields[0] }}
-	{{ fv := r.fieldView(v, f) }}
+	{{ fv := r.fieldView(ctx, v, f) }}
 	<div class="panel-body code-body">
 		<div
 			class="code-editor"

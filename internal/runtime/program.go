@@ -78,8 +78,12 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	if err != nil {
 		return nil, err
 	}
+	log := app.Logger
+	if log == nil {
+		log = ir.Discard() // an app that was not given a logger says nothing
+	}
 	p := &Program{
-		Prefix: prefix, App: app, render: r, log: slog.Default(),
+		Prefix: prefix, App: app, render: r, log: log,
 		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(), subs: newSubmissions(),
 	}
 
@@ -150,7 +154,7 @@ func (p *Program) handle(mux *http.ServeMux, method, path, page, policy string, 
 	if method != "" {
 		pattern = method + " " + path
 	}
-	mux.Handle(pattern, p.metered(page, securedFor(policy, compressed(p.recovered(h)))))
+	mux.Handle(pattern, p.metered(page, securedFor(policy, p.log, compressed(p.recovered(h)))))
 }
 
 // metered counts a request and its time, under the page that answers it. The status is what

@@ -1261,7 +1261,7 @@ func (r *Renderer) cell(col columnView, row any, href string, button bool, click
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = value(col.Field, col.Field.Shown(row), row).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = value(col.Field, col.Field.Shown(ctx, row), row).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1284,7 +1284,7 @@ func (r *Renderer) cell(col columnView, row any, href string, button bool, click
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = value(col.Field, col.Field.Shown(row), row).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = value(col.Field, col.Field.Shown(ctx, row), row).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1295,7 +1295,7 @@ func (r *Renderer) cell(col columnView, row any, href string, button bool, click
 					return templ_7745c5c3_Err
 				}
 			} else {
-				templ_7745c5c3_Err = value(col.Field, col.Field.Shown(row), row).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = value(col.Field, col.Field.Shown(ctx, row), row).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -1732,7 +1732,7 @@ func (r *Renderer) formField(v FormView, f ir.Field) templ.Component {
 				}
 				ctx = templ.InitializeContext(ctx)
 				for _, child := range f.Group {
-					templ_7745c5c3_Err = r.input(r.fieldView(v, child)).Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = r.input(r.fieldView(ctx, v, child)).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -1744,7 +1744,7 @@ func (r *Renderer) formField(v FormView, f ir.Field) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = r.input(r.fieldView(v, f)).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = r.input(r.fieldView(ctx, v, f)).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2504,7 +2504,7 @@ func (r *Renderer) editorBody(v FormView) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		f := v.Node.Fields[0]
-		fv := r.fieldView(v, f)
+		fv := r.fieldView(ctx, v, f)
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 106, "<div class=\"panel-body code-body\"><div class=\"code-editor\" data-code-editor data-language=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"context"
 	"iter"
 	"regexp"
 	"strings"
@@ -29,8 +30,9 @@ type Field struct {
 	// Show is the text a person reads where the value is only read: a table cell, a field that
 	// cannot be edited, and what the search looks in. Nil means Get. It is how an application
 	// says a size reads "1.5 GiB" while the column sorts, filters and exports on the number:
-	// nothing but what is shown reads it.
-	Show func(model any) string
+	// nothing but what is shown reads it. It is given the context of the request, which carries the app's logger
+	// (see [LoggerFrom]) for a Format that panics.
+	Show func(ctx context.Context, model any) string
 
 	Rules Rules
 
@@ -100,9 +102,9 @@ func Leaves(fs []Field) iter.Seq[Field] {
 }
 
 // Shown is the text that a value is read as: Show, else Get.
-func (f Field) Shown(row any) string {
+func (f Field) Shown(ctx context.Context, row any) string {
 	if f.Show != nil {
-		return f.Show(row)
+		return f.Show(ctx, row)
 	}
 	return f.Get(row)
 }

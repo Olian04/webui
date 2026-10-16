@@ -2,10 +2,13 @@ package runtime
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Olian04/webui/internal/ir"
 )
 
 // csp allows what the shell uses and nothing else. Inline styles stay because
@@ -32,9 +35,10 @@ func policy(imgOrigins []string) string {
 }
 
 // securedFor sets the headers every response carries, with the content security policy it is given.
-func securedFor(policy string, next http.Handler) http.Handler {
+// The context of the request carries the app's logger, for the code that is called with no more than a value.
+func securedFor(policy string, log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r = r.WithContext(context.WithValue(r.Context(), startedKey{}, time.Now()))
+		r = r.WithContext(ir.WithLogger(context.WithValue(r.Context(), startedKey{}, time.Now()), log))
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "same-origin")

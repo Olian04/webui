@@ -2,6 +2,7 @@ package webui
 
 import (
 	"image"
+	"log/slog"
 	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,6 +47,19 @@ type App struct {
 	// registry: give each its own wrapper from [prometheus.WrapRegistererWith], with a
 	// label of its own, to tell them apart.
 	Metrics prometheus.Registerer
+
+	// Logger is where the app says what went wrong that it could not tell the visitor: a Load that
+	// failed, a panic in the application's code, a table export that was cut. It is a
+	// [log/slog.Logger], so the application decides where the lines go and at what level. Left nil,
+	// the app logs nothing at all: it does not fall back to the default logger, so a library that
+	// is mounted in a program is silent until that program asks otherwise.
+	//
+	//	handler := webui.App{Logger: slog.Default(), Pages: pages}.MustCompile("/admin")
+	//
+	// Every message begins with "webui:", and names the page by its path template where it is about
+	// one. An error's cause is in the log and never on the page, since it may name what the visitor
+	// should not see.
+	Logger *slog.Logger
 
 	// Secret keys the addresses of an [Editor]'s Context files. They are served from addresses
 	// that carry a key, which a page gives only to a visitor who may edit the editor, so the

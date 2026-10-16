@@ -50,6 +50,7 @@ func (a App) lower() (*ir.App, error) {
 		Brand:         brand,
 		Theme:         lowerTheme(a.Theme),
 		ExternalLinks: lowerExternalLinks(a.ExternalLinks),
+		Logger:        a.Logger,
 		Secret:        a.Secret,
 		Metrics:       a.Metrics,
 		ByPath:        map[string]*ir.Page{},

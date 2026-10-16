@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"slices"
@@ -69,7 +70,7 @@ func (v FormView) editable(f ir.Field) bool {
 	return f.Set != nil && v.Node.Submit != nil && v.SubmitGate == ""
 }
 
-func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
+func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldView {
 	editable := v.editable(f)
 	fv := fieldView{
 		ID:        fieldID(v.Node.At, f.Name),
@@ -87,7 +88,7 @@ func (r *Renderer) fieldView(v FormView, f ir.Field) fieldView {
 	} else if f.Get != nil {
 		fv.Value = f.Get(v.Model)
 		if !editable && f.Show != nil {
-			fv.Value = f.Shown(v.Model) // only read: as a person reads it, and not as it is held
+			fv.Value = f.Shown(ctx, v.Model) // only read: as a person reads it, and not as it is held
 		}
 	}
 	if fv.ReadOnly {

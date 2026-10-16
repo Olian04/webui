@@ -10,6 +10,7 @@ package tablequery
 
 import (
 	"cmp"
+	"context"
 	"math"
 	"slices"
 	"strings"
@@ -154,10 +155,10 @@ func sortRows(rows []any, c *ir.Field, desc bool) {
 // Find returns the rows in which any column contains text, ignoring case, in their own order, and
 // at most limit of them (all of them when limit is not positive). It looks in what a column shows,
 // which is what a person typing in a search box has in front of them.
-func Find(rows []any, cols []ir.Field, text string, limit int) []any {
+func Find(ctx context.Context, rows []any, cols []ir.Field, text string, limit int) []any {
 	var out []any
 	for _, row := range rows {
-		if !found(cols, row, text) {
+		if !found(ctx, cols, row, text) {
 			continue
 		}
 		out = append(out, row)
@@ -216,10 +217,10 @@ func held(c *ir.Field, row any) []string {
 // shown is what a column shows in a row, for finding it by what was typed: for a select, each value and
 // what it says, since the values are not joined for reading; for a column with a Format, the text it
 // makes and the value's own, so "1.5 GiB" and "1572864" both find the row.
-func shown(c ir.Field, row any) string {
+func shown(ctx context.Context, c ir.Field, row any) string {
 	if c.Display != ir.DisplaySelect {
 		if c.Show != nil {
-			return c.Show(row) + " " + c.Get(row)
+			return c.Show(ctx, row) + " " + c.Get(row)
 		}
 		return c.Get(row)
 	}
@@ -232,10 +233,10 @@ func shown(c ir.Field, row any) string {
 
 // found is whether any column of a row contains what was searched for, ignoring
 // case: the global search looks in every column the row shows.
-func found(cols []ir.Field, row any, text string) bool {
+func found(ctx context.Context, cols []ir.Field, row any, text string) bool {
 	needle := strings.ToLower(text)
 	for _, c := range cols {
-		if c.Get != nil && strings.Contains(strings.ToLower(shown(c, row)), needle) {
+		if c.Get != nil && strings.Contains(strings.ToLower(shown(ctx, c, row)), needle) {
 			return true
 		}
 	}

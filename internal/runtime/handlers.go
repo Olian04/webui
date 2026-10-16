@@ -117,7 +117,7 @@ func (p *Program) finish(w http.ResponseWriter, r *http.Request, doc render.Doc,
 // FailureHandler serves the compile problems at every address and for every
 // method: the app did not compile, so there is nothing else to serve.
 func FailureHandler(problems []render.Problem) http.Handler {
-	return securedFor(csp, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return securedFor(csp, ir.Discard(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if err := writeHTML(r.Context(), w, http.StatusInternalServerError, render.CompileFailure(problems)); err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
