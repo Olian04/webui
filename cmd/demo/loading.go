@@ -80,6 +80,29 @@ var LoadingOrder = webui.Page[webui.NoArgs]{
 	},
 }
 
+// staircaseStep is how much longer each panel of the staircase takes than the one before it.
+const staircaseStep = time.Second
+
+// staircasePanels is how many panels the staircase has.
+const staircasePanels = 10
+
+// Ten panels, the first answering after a step and each next one a step later than the one before it. The panels load at
+// the same time, so the page takes as long as the last of them, and each is drawn as it is done: a panel a step apart from the
+// last, at a steady pace, with the spinner and the status bar saying that more is coming until the end.
+var LoadingStaircase = webui.Page[webui.NoArgs]{
+	Path: "/loading/staircase",
+	Nav:  webui.Nav{Label: "Staircase (10 s)", Icon: "stairs", Section: "Loading"},
+	Body: staircase(),
+}
+
+func staircase() webui.Stack {
+	body := webui.Stack{intro("Ten panels, loading at the same time: the first answers after 1 s, and each next one 1 s later than the one before it, so the last answers after 10 s. The page is sent as it is built, so each panel is drawn as it is ready, one a second, with the page growing. The spinner after the content and the \"loading\" in the status bar stay until the last panel is in, and the bar then says how long all of it took. Reload to see it again; stop it half way to see what a page that ends early says.")}
+	for i := 1; i <= staircasePanels; i++ {
+		body = append(body, backend("Panel "+strconv.Itoa(i)+" ("+strconv.Itoa(i)+" s)", time.Duration(i)*staircaseStep, 2))
+	}
+	return body
+}
+
 // Layouts inside layouts. A layout is drawn like the page is: its panels in order, so the quick panel on the right of the
 // Split waits for the slow one on its left. Tabs build the strip with the selected tab, so they arrive together.
 var LoadingNested = webui.Page[webui.NoArgs]{

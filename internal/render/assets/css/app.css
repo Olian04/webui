@@ -1947,6 +1947,20 @@ select.input[multiple] option:checked {
 
 
 /* ------------------------------ status bar ------------------------------- */
+.statusbar,
+.statusbar-late {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  background: var(--panel);
+  font:
+    11.5px ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  color: var(--text-2);
+}
 .statusbar {
   position: fixed;
   left: 0;
@@ -1954,18 +1968,28 @@ select.input[multiple] option:checked {
   bottom: 0;
   height: 26px;
   z-index: 35;
+  border-top: 1px solid var(--border);
+}
+/* A page that is sent as it is built has the bar in two parts. The request is in the shell, with a mark where the
+   rest will be, and how the page came to be is sent when all of it has, fixed over the end of the bar, where it
+   covers the mark. Under the bar's own border, so that the two read as one. */
+.statusbar-late {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  height: 25px;
+  z-index: 36;
+}
+.status-loading {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 0 12px;
-  background: var(--panel);
-  border-top: 1px solid var(--border);
-  font:
-    11.5px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  color: var(--text-2);
+  gap: 6px;
+  color: var(--text-3);
+}
+@supports selector(:has(*)) {
+  .statusbar-live:has(~ .statusbar-late) .status-loading {
+    display: none;
+  }
 }
 .method {
   border: 1px solid var(--border-2);
@@ -2038,6 +2062,40 @@ select.input[multiple] option:checked {
 @keyframes sp {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* A page that is sent as it is built has this at the end of what has arrived. It is in the markup before the
+   content, so that it is sent with the shell, and is drawn after it (the content region is a column), and what
+   ends the page, which comes after the content, hides it. Without :has() it is not shown at all. */
+.scroll-arriving {
+  display: flex;
+  flex-direction: column;
+}
+.scroll-arriving > * {
+  flex: none;
+}
+.arriving,
+.arrived {
+  display: none;
+}
+@supports selector(:has(*)) {
+  .arriving:not(:has(~ .arrived)) {
+    display: flex;
+    order: 2;
+    justify-content: center;
+    padding: 18px 0 10px;
+  }
+}
+.arriving .spin {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .arriving .spin,
+  .status-loading .spin {
+    animation-duration: 2.4s;
   }
 }
 

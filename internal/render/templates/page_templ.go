@@ -27,6 +27,13 @@ type PageProps struct {
 	TopBar  templ.Component
 	Status  templ.Component
 	Toasts  templ.Component
+
+	// Streaming is a page that is sent as it is built. It has a mark where the content is still arriving, which is
+	// drawn after the content and is hidden by what ends it, and its status bar in two parts: StatusLive with the
+	// shell, in place of Status, and StatusLate when all of the page has been sent.
+	Streaming  bool
+	StatusLive templ.Component
+	StatusLate templ.Component
 }
 
 func Page(p PageProps) templ.Component {
@@ -85,6 +92,10 @@ func Page(p PageProps) templ.Component {
 				TopBar:  p.TopBar,
 				Status:  p.Status,
 				Toasts:  p.Toasts,
+
+				Streaming:  p.Streaming,
+				StatusLive: p.StatusLive,
+				StatusLate: p.StatusLate,
 			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
