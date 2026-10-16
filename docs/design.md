@@ -505,16 +505,29 @@ reloads would claim that all of it is stale, which is false.
 
 ### A page that is still arriving
 
-A page whose panels answer within 50 ms arrives as one piece, as it always has. A page with a slower panel is sent as
-it is built, in the order it is written: the sidebar, the top bar and the panels above the slow one at once, then each
-panel as it is done, and the status bar last. There is no skeleton, no placeholder and no spinner on the page:
-what is not there yet is not drawn, so what is on screen is always what is current. Two consequences are part of the
-design and are not hidden:
+A page whose panels answer within 50 ms arrives as one piece, as it always has, with no mark that anything was waited
+for. A page with a slower panel is sent as it is built, in the order it is written: the sidebar, the top bar and the
+panels above the slow one at once, then each panel as it is done. Nothing that is not there yet is drawn as if it were
+(no skeleton, no placeholder panel), so what is on screen is always what is current. It says that more is coming in two
+places, both drawn by the stylesheet, so the page says it with script off too:
+
+- **A spinner after the content so far**, centred, 18px, in the blue of the bar's own. It is sent with the shell, before
+  the content, and drawn after it (the content region is a column when the page is arriving, and the spinner has the
+  last `order`), so it is always at the end of what has arrived. What ends the page, which is sent after the last panel,
+  hides it (`.arriving:not(:has(~ .arrived))`). Where `:has()` is not supported it is not shown at all.
+- **The status bar in two parts.** The request, the method and the address, is in the shell, with a small spinner and
+  *loading* where the rest of the bar will be. How the page came to be (the server's time, when it was built, the
+  *JS off* and *cached?* badges) is sent when the last panel is, as a bar of its own, 25px high and fixed over the end of the
+  first, which it covers. Together they read as the bar of a page that arrived whole.
+
+If the page ends without the mark that ends it, because the connection broke or the server stopped, the browser still
+says it is done; with script, the spinner goes and the bar says *incomplete* in the warning colour, since a page that is
+still waiting after it has stopped is the worse lie. Two consequences are part of the design and are not hidden:
 
 - **The page grows.** Content below an arriving panel moves down as it comes, because no room is kept for it. A
   panel that is ready but follows a slower one waits for it, so the page is never drawn out of order.
-- **The status bar is the honest part.** It is drawn last, and its build time says how long all of the page took, not
-  how long the first of it did.
+- **The status bar is the honest part.** Its build time, drawn last, says how long all of the page took, not how long
+  the first of it did.
 
 The cross-fade of a navigation (above) still runs: it is the browser's, between two documents, and a page that is
 sent as it is built is one document. With script off the page arrives the same way, since nothing here needs script.

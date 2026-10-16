@@ -168,7 +168,8 @@ func TestAPageWithASlowPanelIsSentWhileItWaitsAndThePanelsFollowInOrder(t *testi
 	assert.Equal(t, rec.header.Get("Content-Length"), "")
 }
 
-// What is sent as it is built is the page that is sent whole: the same bytes, but for the time the bar says.
+// What is sent as it is built is the page that is sent whole: the same bytes, but for the time the bar says, and what
+// says that the rest is still arriving (see TestAStreamedPageSaysThatItIsStillArrivingUntilItIsWhole).
 func TestAPageSentAsItIsBuiltIsTheSamePageAsOneSentWhole(t *testing.T) {
 	t.Parallel()
 
@@ -206,7 +207,20 @@ func TestAPageSentAsItIsBuiltIsTheSamePageAsOneSentWhole(t *testing.T) {
 		}
 		return s
 	}
-	assert.Equal(t, mask(streamed.all()), mask(whole.all()))
+	// A page that is sent as it is built has marks that it is still arriving, and its bar in two parts: the request
+	// with the shell, and how the page came to be at the end. Put back together it is the bar of the page that is whole.
+	unmarked := func(s string) string {
+		for _, re := range []string{
+			`<div class="statusbar statusbar-live">.*?</span></span></div>`,
+			`<div class="arriving"[^>]*>.*?</div>`,
+			`<i class="arrived" hidden></i>`,
+		} {
+			s = regexp.MustCompile(re).ReplaceAllString(s, "")
+		}
+		s = strings.Replace(s, `<main class="scroll scroll-arriving">`, `<main class="scroll">`, 1)
+		return strings.Replace(s, `<div class="statusbar-late">`, `<div class="statusbar"><span class="method" data-method>GET</span> <span class="url" data-url>/admin/p</span>`, 1)
+	}
+	assert.Equal(t, mask(unmarked(streamed.all())), mask(whole.all()))
 }
 
 // The bytes sent so far are a compressed stream that can be read up to there.
@@ -373,4 +387,61 @@ func atof(s string) float64 {
 		}
 	}
 	return f
+}
+
+// A page that is sent as it is built says that the rest is coming from the first byte it sends, and what ends it takes
+// that back: the spinner and the bar's "loading" are in the shell, the rest of the bar and the mark that ends the content
+// are not sent until the last panel has been.
+func TestAStreamedPageSaysThatItIsStillArrivingUntilItIsWhole(t *testing.T) {
+	t.Parallel()
+
+	slow := newGated()
+	h := streamApp(webui.Stack{quickTable("First"), slow.table("Slow")})
+	rec := newStreamRecorder()
+	done := make(chan struct{})
+	go func() { get(h, rec, "/admin/p"); close(done) }()
+	<-slow.asked
+	waitFor(t, "the first flush", func() bool { return rec.flushCount() > 0 })
+
+	sent := string(rec.sentSoFar())
+	assert.Contains(t, sent, `<div class="statusbar statusbar-live">`) // the request is on screen at once,
+	assert.Contains(t, sent, `class="status-meta status-loading"`)     // with the mark that the rest is to come
+	assert.Contains(t, sent, `<div class="arriving"`)                  // and the spinner is with the content so far
+	assert.Contains(t, sent, `class="scroll scroll-arriving"`)
+	assert.False(t, strings.Contains(sent, `class="arrived"`)) // which nothing has yet taken back
+	assert.False(t, strings.Contains(sent, `statusbar-late`))
+	assert.False(t, strings.Contains(sent, "data-build")) // the time is not known until it is all sent
+
+	close(slow.release)
+	<-done
+	body := rec.all()
+	assert.True(t, strings.Index(body, `<div class="arriving"`) < strings.Index(body, "First-row")) // before the content, which the stylesheet draws it after
+	assert.True(t, strings.Index(body, "Slow-row") < strings.Index(body, `<i class="arrived" hidden></i>`))
+	assert.True(t, strings.Index(body, `<i class="arrived" hidden></i>`) < strings.Index(body, `statusbar-late`))
+	assert.Equal(t, strings.Count(body, `class="statusbar`), 2) // live and late, and no third
+}
+
+// A page that is sent whole has none of it: it has never been waiting.
+func TestAPageSentWholeHasNoMarkThatItIsArriving(t *testing.T) {
+	t.Parallel()
+
+	body := serve(streamApp(webui.Stack{quickTable("First")}), http.MethodGet, "/admin/p").Body.String()
+	for _, s := range []string{"arriving", "arrived", "statusbar-live", "statusbar-late", "status-loading"} {
+		assert.False(t, strings.Contains(body, s))
+	}
+	assert.Equal(t, strings.Count(body, `class="statusbar"`), 1)
+}
+
+// The marks are drawn by the stylesheet alone, so a page with script off has them: the spinner is drawn after the
+// content though it is sent before it, and is hidden by the mark that ends the page, and the end of the bar covers
+// the "loading" of the live one.
+func TestTheStylesheetDrawsTheArrivingMarksWithoutScript(t *testing.T) {
+	t.Parallel()
+
+	h := streamApp(webui.Stack{quickTable("First")})
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".arriving:not(:has(~ .arrived)) {\n    display: flex;\n    order: 2;")
+	assert.Contains(t, css, ".scroll-arriving {\n  display: flex;\n  flex-direction: column;\n}")
+	assert.Contains(t, css, ".statusbar-live:has(~ .statusbar-late) .status-loading {\n    display: none;\n  }")
+	assert.Contains(t, css, ".statusbar-late {\n  position: fixed;\n  right: 0;")
 }

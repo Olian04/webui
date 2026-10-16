@@ -50,8 +50,12 @@ type Doc struct {
 	Built     time.Time
 	BuildTime time.Duration
 
+	// Streaming is a page that is sent as it is built. Its status bar comes in two parts, the request with the shell
+	// and how the page came to be when all of it has been drawn, and a mark says that the content is still arriving.
+	Streaming bool
+
 	// Timing, when it is set, is asked for the time of the status bar when the bar is drawn, in place of Built and
-	// BuildTime: a page that is sent as it is built draws the bar last, and says how long all of it took.
+	// BuildTime: a page that is sent as it is built draws the end of the bar last, and says how long all of it took.
 	Timing func() (built time.Time, took time.Duration)
 
 	// Here is the page the response is for, and the arguments of its address, so an entry
@@ -474,13 +478,14 @@ func isWebAddress(address string) bool {
 }
 
 // statusBar is the status bar of a page, with the time it was built at the moment it is drawn when the page says so.
-func (r *Renderer) statusBar(d Doc) templ.Component {
+// bar makes the bar from its props: the whole of it, or the end of it that a page which is sent as it is built draws last.
+func (r *Renderer) statusBar(d Doc, bar func(c.StatusBarProps) templ.Component) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		built, took := d.Built, d.BuildTime
 		if d.Timing != nil {
 			built, took = d.Timing()
 		}
-		return c.StatusBar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: built, BuildTime: took}).Render(ctx, w) //nolint:wrapcheck // a component's own error
+		return bar(c.StatusBarProps{Method: d.Method, URL: d.URL, Built: built, BuildTime: took}).Render(ctx, w) //nolint:wrapcheck // a component's own error
 	})
 }
 

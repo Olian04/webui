@@ -113,6 +113,23 @@
     if (dur && build) build.textContent = millis(parseFloat(dur[1]));
     loaded(took);
   }
+  // A page that is sent as it is built ends with a mark, which hides the spinner and the "loading" in the bar
+  // (see .arriving). A page that ends without it was cut short: the connection broke, or the server stopped. The
+  // browser says it is done, so what the page says must not still be waiting.
+  function endArrival() {
+    var spinner = $('.arriving');
+    if (!spinner || $('.arrived')) return;
+    spinner.remove();
+    var loading = $('.status-loading');
+    if (!loading) return;
+    var badge = document.createElement('span');
+    badge.className = 'sb-badge sb-warn';
+    badge.title = 'The page ended before all of it arrived. Refresh to try again.';
+    badge.textContent = 'incomplete';
+    loading.className = 'status-meta';
+    loading.textContent = '';
+    loading.appendChild(badge);
+  }
   function startStatus() {
     var nav = performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
     showBuilt();
@@ -1027,6 +1044,7 @@
   syncSidebarToggle();
   syncSelection(document);
   enhanceSelects(document);
+  endArrival();
   startStatus();
   dismissToasts();
 })();
