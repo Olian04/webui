@@ -12,7 +12,8 @@ templ Stack() {
 	</div>
 }
 
-// Split is two columns, top-aligned so unequal heights do not stretch.
+// Split is two columns. The panels in a row are as tall as the tallest of them, and the rows are
+// independent of one another; below 1100px it is one column and nothing is stretched.
 templ Split() {
 	<div class="split">
 		{ children... }
