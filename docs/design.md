@@ -282,7 +282,12 @@ bordered group with an 11px uppercase caption instead.
   to and survives a reload. The strip is the control. With script a tab does not load a new page: the strip and
   the tab that was chosen are asked for alone, and replace what was there, quieter (0.55) until they arrive, so the
   panels around the tabs are neither read again nor redrawn, and the page is where it was. Without script a tab is
-  a link to the page.
+  a link to the page. A strip has as many tabs as it is given. When they need more room than the strip has, because
+  there are many, their labels are long or the cell is narrow, the strip scrolls sideways (a thin bar, which a system
+  with overlay scrollbars shows while it is scrolled, and the label cut at the edge says there is more) and the tabs
+  keep their size, neither shrinking nor wrapping. With script a strip that is opened on a tab out of sight is scrolled
+  to it, and one that replaces another keeps where that was scrolled, moved only as far as the chosen tab needs. The
+  rule under the strip is a shadow inside it, since a box that scrolls clips what sticks out of it.
 
 ### Code panels
 

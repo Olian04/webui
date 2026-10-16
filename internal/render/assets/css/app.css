@@ -733,19 +733,29 @@ a.side-brand:hover {
   opacity: 0.55;
   transition: opacity 0.15s;
 }
+/* A strip has as many tabs as it is given. When they need more room than the strip has, which is a matter of how many
+   there are, how long their labels are and how wide the cell is, the strip scrolls sideways and its tabs keep their size,
+   instead of being squeezed or wrapped. The rule under the strip is a shadow inside it, and not a border that the active
+   tab overlaps, because a box that scrolls clips what sticks out of it. */
 .tabs {
   display: flex;
   gap: 0;
-  border-bottom: 1px solid var(--border);
+  position: relative; /* where the offsets of its tabs are measured from, for script that brings the active one into view */
+  box-shadow: inset 0 -1px 0 var(--border);
   margin: 2px 0 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
 }
 .tab {
+  flex: none;
   padding: 8px 13px;
   font-size: 13.5px;
+  white-space: nowrap;
   color: var(--text-2);
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
 }
 .tab:hover {
   color: var(--text);

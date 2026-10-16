@@ -317,3 +317,26 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	assert.Equal(t, serveLeaf(refused, "/admin/device/d1", "p.1").Code, http.StatusForbidden)
 	assert.Equal(t, serveLeaf(h, "/admin/device/d1", "p.9").Code, http.StatusNotFound)
 }
+
+// A Tabs has as many tabs as it is given, and a strip that has more than fit scrolls sideways with its tabs at their own size:
+// they do not shrink or wrap, and the rule under the strip does not depend on a border that a scrolling box would clip.
+func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
+	t.Parallel()
+
+	panels := make([]webui.Tab, 20)
+	for i := range panels {
+		panels[i] = webui.Tab{Label: "A tab with a label number " + strconv.Itoa(i), Body: quickTable("Panel " + strconv.Itoa(i))}
+	}
+	h := streamApp(webui.Tabs{Panels: panels})
+	body := serve(h, http.MethodGet, "/admin/p?tabs.tab=a-tab-with-a-label-number-19").Body.String()
+	assert.Equal(t, strings.Count(body, `<a class="tab`), 20)
+	assert.Contains(t, body, `<a class="tab active" href="/admin/p?tabs.tab=a-tab-with-a-label-number-19" aria-current="page">`)
+	assert.Contains(t, body, "Panel 19-row")
+	assert.False(t, strings.Contains(body, "Panel 0-row"))
+
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "box-shadow: inset 0 -1px 0 var(--border);")
+	assert.Contains(t, css, "overflow-x: auto;\n  overflow-y: hidden;")
+	assert.Contains(t, css, ".tab {\n  flex: none;")
+	assert.Contains(t, css, "white-space: nowrap;\n  color: var(--text-2);")
+}

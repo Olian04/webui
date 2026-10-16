@@ -213,3 +213,35 @@ var LayoutRunbook = webui.Page[webui.NoArgs]{
 		},
 	},
 }
+
+// tabsOf is a Tabs with a tab for each label, each showing a small table that says which tab it is.
+func tabsOf(prefix string, labels ...string) webui.Tabs {
+	tabs := make([]webui.Tab, len(labels))
+	for i, label := range labels {
+		tabs[i] = webui.Tab{Label: label, Body: backend(prefix+" / "+label, 0, i%3+1)}
+	}
+	return webui.Tabs{Panels: tabs}
+}
+
+// A Tabs has as many tabs as it is given. Three, which fit; six in each half of a Split, which do not, and the strips scroll
+// sideways with their tabs at their own size; and sixteen with long labels, in a strip as wide as the page. A strip that was
+// scrolled keeps where it was when a tab is followed, and one that is opened on a tab out of sight is scrolled to it.
+var LayoutManyTabs = webui.Page[webui.NoArgs]{
+	Path: "/layout/many-tabs",
+	Nav:  webui.Nav{Label: "Many tabs", Icon: "folder-tree", Section: "Layout"},
+	Body: webui.Stack{
+		intro("Tabs with three tabs, which fit; two Tabs of six in a Split, each half the width of the page, which do not fit until the window is wide; and a Tabs of sixteen with long labels. When the tabs need more room than the strip has it scrolls sideways, with a thin bar, and the tabs keep their size. Choose a tab far to the right and follow it: the strip stays where it was scrolled and the tab you chose is brought into view. Open the address of a tab out of sight and the strip is scrolled to it."),
+		webui.Tabs{Panels: []webui.Tab{
+			{Label: "Devices", Body: compactDevices("Three tabs: devices", 5)},
+			{Label: "Alerts", Body: compactAlerts("Three tabs: alerts")},
+			{Label: "Sites", Body: SitesTable},
+		}},
+		webui.Split{
+			tabsOf("Left", "Overview", "Devices", "Alerts", "Sites", "Configuration", "Audit log"),
+			tabsOf("Right", "Metrics", "Retention", "Ingest", "Paging rules", "Handbook", "Runbook"),
+		},
+		tabsOf("Sixteen",
+			"Overview", "Devices and their addresses", "Open alerts", "Sites", "Configuration", "Retention policy", "Ingest settings",
+			"Paging rule", "Audit log", "Files", "Handbook", "Incidents", "Sinks", "Glossary", "Metrics", "System status"),
+	},
+}
