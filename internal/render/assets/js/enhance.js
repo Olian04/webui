@@ -361,6 +361,23 @@
     });
   }
 
+  // Brings the active tab of a strip that scrolls into view: in the middle of it when the strip is new, and, when it
+  // replaces one that was scrolled, where that was, moved only as far as the active tab needs.
+  function showActiveTab(set, scrolled) {
+    var strip = $('.tabs', set);
+    var active = strip && $('.tab.active', strip);
+    if (!active || strip.scrollWidth <= strip.clientWidth) return;
+    var left = active.offsetLeft;
+    var right = left + active.offsetWidth;
+    if (scrolled === undefined) {
+      strip.scrollLeft = left - (strip.clientWidth - active.offsetWidth) / 2;
+      return;
+    }
+    strip.scrollLeft = scrolled;
+    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth + 8;
+  }
+
   async function selectTab(set, link) {
     var id = set.getAttribute('data-tabs');
     var key = set.getAttribute('data-tabkey');
@@ -375,6 +392,7 @@
     set.setAttribute('aria-busy', 'true');
     status('GET', href, 'tab ' + id);
     var focused = document.activeElement === link;
+    var scrolled = $('.tabs', set) ? $('.tabs', set).scrollLeft : 0;
     try {
       var started = performance.now();
       var res = await fetch(href, {
@@ -392,6 +410,7 @@
       if (next.querySelector(CODE_BLOCKS) && !document.getElementById('webui-code')) throw new Error('needs the editor to colour code');
       noteResponse(res, performance.now() - started);
       set.replaceWith(next);
+      showActiveTab(next, scrolled);
       history.pushState(null, '', href);
       var refresh = $('[data-refresh]');
       if (refresh) refresh.setAttribute('href', href);
@@ -1153,6 +1172,9 @@
   syncSelection(document);
   enhanceSelects(document);
   endArrival();
+  $$('[data-tabs]').forEach(function (set) {
+    showActiveTab(set);
+  });
   startStatus();
   dismissToasts();
 })();
