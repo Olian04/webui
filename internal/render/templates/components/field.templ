@@ -89,6 +89,13 @@ type InputProps struct {
 	Mono        bool
 	Invalid     bool
 	Rules       Rules
+
+	// Validity is what the browser says for each way the value can fail a constraint, as JSON by the name of the
+	// property of the control's ValidityState (valueMissing, patternMismatch, ...), for script to give to
+	// setCustomValidity. Title is what a value that matches the pattern looks like, which a browser says after its own
+	// words when script is off.
+	Validity string
+	Title    string
 }
 
 templ Input(p InputProps) {
@@ -128,6 +135,12 @@ templ Input(p InputProps) {
 		if p.Rules.Pattern != "" {
 			pattern={ p.Rules.Pattern }
 		}
+		if p.Title != "" {
+			title={ p.Title }
+		}
+		if p.Validity != "" {
+			data-validity={ p.Validity }
+		}
 		if p.Invalid {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
@@ -157,6 +170,7 @@ type SelectProps struct {
 	Multi    bool
 	Required bool
 	Invalid  bool
+	Validity string // as for an Input
 }
 
 // size is how many options a list shows before it scrolls.
@@ -175,6 +189,9 @@ templ Select(p SelectProps) {
 			name={ p.Name }
 		}
 		required?={ p.Required }
+		if p.Validity != "" {
+			data-validity={ p.Validity }
+		}
 		if p.Multi {
 			multiple
 			size={ p.size() }

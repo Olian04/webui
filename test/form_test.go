@@ -74,7 +74,7 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	for _, rule := range []string{"7–15 characters", "must be a valid IPv4 address"} {
 		assert.Contains(t, body, `<span class="tip-item">`+rule+`</span>`)
 	}
-	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 2)           // the popover, and its accessible name
+	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 4)           // the popover, its accessible name, the title, and what the browser says
 	assert.False(t, strings.Contains(body, `<span class="tip-item">Required</span>`)) // the asterisk says it
 
 	// A number is a number input with its bounds; zero is a real bound.
@@ -89,6 +89,30 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	// Submit is the primary button; Cancel goes to the parent in the breadcrumb.
 	assert.Contains(t, body, `class="btn btn-primary btn-sm" type="submit">Save</button>`)
 	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Cancel</a>`)
+}
+
+// A field tells the browser what to say when it refuses a value, in the words the server uses beneath the field, by the
+// names of the properties of the control's ValidityState; and what a matching value looks like, as its title, which a
+// browser says after its own words when there is no script. A field that is only read says nothing.
+func TestAFieldTellsTheBrowserWhatToSayWhenItRefusesAValue(t *testing.T) {
+	t.Parallel()
+
+	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
+
+	ip := `data-validity="{&#34;patternMismatch&#34;:&#34;must be a valid IPv4 address&#34;,&#34;tooLong&#34;:&#34;Must be at most 15 characters.&#34;,&#34;tooShort&#34;:&#34;Must be at least 7 characters.&#34;,&#34;valueMissing&#34;:&#34;This field is required.&#34;}"`
+	assert.Contains(t, body, ip)
+	assert.Contains(t, body, `title="must be a valid IPv4 address"`)
+
+	count := `data-validity="{&#34;badInput&#34;:&#34;Must be a whole number.&#34;,&#34;rangeOverflow&#34;:&#34;Must be at most 100.&#34;,&#34;rangeUnderflow&#34;:&#34;Must be at least 0.&#34;,&#34;stepMismatch&#34;:&#34;Must be a whole number.&#34;}"`
+	assert.Contains(t, body, count)
+
+	// The ID has no Store: it is not a control, and has nothing to say.
+	assert.Equal(t, strings.Count(body, "data-validity="), 2)
+
+	// A form that cannot be submitted has no controls to refuse anything.
+	f := okForm()
+	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
+	assert.False(t, strings.Contains(serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String(), "data-validity"))
 }
 
 func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.T) {
