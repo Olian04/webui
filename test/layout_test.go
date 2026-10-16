@@ -185,3 +185,16 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
 	assert.True(t, strings.Index(body, "Beside-row") > end)
 }
+
+// A diff names its two sides above it. In one column, which it is without script and when its panel is narrow, they are
+// not sides but a change, and the header says "Deployed → Saved"; only a diff that is side by side has a name over each
+// side. The script says which it is on the panel's body (data-diff).
+func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
+}

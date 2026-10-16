@@ -288,8 +288,11 @@ there is something to save); the body has no padding, and the editor fills it.
 its light or its dark theme.
 - **States.** Focus is an inset 2px ring in `--ring`; a refused text is an inset 2px ring in `--ring-bad`, with the
   reason under the editor in a rule-topped strip (8px 12px), where a form would put it under a field.
-- **A diff** is the two texts side by side when the page is wide and one above the other when it is not, with a
-  header row that names each side (12px, `--text-2`, ruled below). Without script the server makes a unified
+- **A diff** is the two texts side by side when its panel is 900px wide or more, and in one column, the lines of
+  both interleaved, when it is not, following the panel as it is resized. Above it is a header row (12px,
+  `--text-2`, ruled below) that names the sides: over each side when they are side by side, and as one line, *Deployed →
+  Saved*, when they are not, because in one column they are not sides but a change from one text to the other.
+  Without script the server makes a unified
   diff: 12.5px on 19px monospace, a grid of the old line number, the new line number, a marker and the text
   (3.5rem, 3.5rem, 1.25rem, the rest), inserted lines on `--green-bg` and deleted lines on `--red-bg`, a summary
   line of `+n` in green and `−m` in red, and a quiet `⋯` for each run of unchanged lines that was left out. Two

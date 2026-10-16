@@ -271,6 +271,11 @@ function mountEditor(el) {
   };
 }
 
+// A diff is side by side from this width of its panel, and one column, the lines of each side interleaved, below it.
+// The panel says which on its body (data-diff), because the header above it names the two sides, and in one column
+// they are not sides any more.
+const SIDE_BY_SIDE_FROM = 900;
+
 function mountDiff(el) {
   const language = el.dataset.language || 'plaintext';
   const side = (name) => {
@@ -281,13 +286,30 @@ function mountDiff(el) {
     ...OPTIONS,
     readOnly: true,
     originalEditable: false,
-    renderSideBySide: el.clientWidth >= 900,
+    renderSideBySide: el.clientWidth >= SIDE_BY_SIDE_FROM,
+    // Monaco would also fall back to one column on its own when it thinks it is short of room, with the
+    // header still naming two sides: the mode is ours, and follows the width of the panel as it changes.
+    useInlineViewWhenSpaceIsLimited: false,
     ariaLabel: el.dataset.label || 'Changes',
   });
+  const body = el.closest('.code-body');
+  let sideBySide;
+  const follow = () => {
+    const wide = el.clientWidth >= SIDE_BY_SIDE_FROM;
+    if (wide === sideBySide) return;
+    sideBySide = wide;
+    editor.updateOptions({ renderSideBySide: wide });
+    if (body) body.dataset.diff = wide ? 'split' : 'inline';
+  };
+  follow();
+  const watch = new ResizeObserver(follow);
+  watch.observe(el);
   const original = monaco.editor.createModel(side('original'), language);
   const modified = monaco.editor.createModel(side('modified'), language);
   editor.setModel({ original, modified });
   return () => {
+    watch.disconnect();
+    if (body) delete body.dataset.diff;
     editor.dispose();
     original.dispose();
     modified.dispose();
