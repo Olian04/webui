@@ -88,7 +88,7 @@ var LayoutRail = webui.Page[webui.NoArgs]{
 	Path: "/layout/rail",
 	Nav:  webui.Nav{Label: "Main and rail", Icon: "table-cells-large", Section: "Layout"},
 	Body: webui.Stack{
-		intro("A table of devices, and beside it a rail of three panels: the collector's status, the open alerts and the sites. The rail is a Stack inside a Split, so it is one column of the grid. The table is as tall as the rail needs or its own rows do, whichever is more. The rail's panels are as tall as they are and are not stretched, so there is room under them when the table is taller. Below 1100 px the rail goes under the table."),
+		intro("A table of devices, and beside it a rail of three panels: the collector's status, the open alerts and the sites. The rail is a Stack inside a Split, so it is one column of the grid. The table is as tall as the rail needs or its own rows do, whichever is more. The rail's table takes the height the table beside it has, so the two end together with their pagers at the bottom, and the status panel keeps its own height. Below 1100 px the rail goes under the table."),
 		webui.Split{
 			compactDevices("Devices", 14),
 			webui.Stack{

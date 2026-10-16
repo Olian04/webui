@@ -104,6 +104,9 @@
 /* Rings and tints are made from the accent and the critical colour, so they follow
    a webui.Theme and both modes instead of being the default blue and red. */
 :root {
+  /* The separator between the things of a row, such as the status bar's figures: a middle dot, in the quiet
+     text colour. */
+  --sep: '\00b7';
   --ring: color-mix(in srgb, var(--blue) 25%, transparent);
   --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
   --tint: color-mix(in srgb, var(--blue) 10%, transparent);
@@ -669,22 +672,34 @@ a.side-brand:hover {
   gap: 8px;
   align-items: stretch;
 }
+/* A column of panels beside a taller one, or under tabs beside one, has height to give. It goes to its tables,
+   which share it, and to its last panel when it has none, so that the column ends where the row does and a
+   panel's foot is at the bottom of its box. A Stack that is as tall as its content has none to give, so
+   none of this does anything there. */
+.stack > .panel.grows {
+  flex: 1 1 auto;
+}
+@supports selector(:has(*)) {
+  .stack:not(:has(> .panel.grows)) > .panel:last-child {
+    flex: 1 1 auto;
+  }
+}
 /* A stretched panel's body takes the extra height, so its foot (a pager, the actions) is at the bottom of the
    box. A form is a body of its own inside the body, with its foot after its fields, so the form is a column
    that gives the fields the room. */
-.split > .panel > .panel-body {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-.split > .panel > .panel-body:has(> form) {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body:has(> form) {
   display: flex;
   flex-direction: column;
 }
-.split > .panel > .panel-body > form {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
-.split > .panel > .panel-body > form > .panel-body {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
   flex: 1 1 auto;
 }
 @media (max-width: 1100px) {
@@ -697,6 +712,21 @@ a.side-brand:hover {
    other panel; a layout inside the panel is a column of its own. */
 .tabset {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* The selected tab's panel, or the layout that is in it, has the height the tabs have: a Split puts a Tabs in a
+   cell as tall as the row, and the panel under the strip fills what is left of it. */
+[data-tabbody] {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+[data-tabbody] > .panel,
+[data-tabbody] > .stack,
+[data-tabbody] > .split {
+  flex: 1 1 auto;
 }
 .tabs {
   display: flex;
@@ -1616,6 +1646,9 @@ select.input[multiple] option:checked {
 .code-diff.mounted > .udiff {
   display: none;
 }
+/* The two sides of a diff are named above it. In one column, which a diff is without script and when its panel is
+   narrow, they are not sides but a change from one to the other, so the header says "Deployed → Saved". Only a diff
+   that is side by side has a name over each side. */
 .code-sides {
   display: flex;
   gap: 0;
@@ -1624,8 +1657,15 @@ select.input[multiple] option:checked {
   font-size: 12px;
   color: var(--text-2);
 }
-.code-sides span {
+.code-sides span + span::before {
+  content: '\2192';
+  margin: 0 0.6em;
+}
+.code-body[data-diff='split'] .code-sides span {
   flex: 1;
+}
+.code-body[data-diff='split'] .code-sides span + span::before {
+  content: none;
 }
 /* The unified diff, for a page without script. */
 .udiff {
@@ -2016,6 +2056,10 @@ select.input[multiple] option:checked {
 .sb-opt {
   color: var(--text-3);
 }
+.sb-opt + .sb-opt::before {
+  content: var(--sep);
+  margin-right: 8px;
+}
 .sb-badge {
   display: inline-flex;
   align-items: center;
@@ -2107,9 +2151,31 @@ html[data-sidebar='collapsed'] .sidebar {
   flex: 0 0 56px;
 }
 html[data-sidebar='collapsed'] .side-brand b,
-html[data-sidebar='collapsed'] .nav-section,
 html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
 html[data-sidebar='collapsed'] .side-row > span {
+  display: none;
+}
+/* A section's caption is a short dash in the rail, so the groups can be told apart: 21px of height for each
+   group, with the caption in a tooltip, and none above the first group, which has nothing before it. It is
+   short and thick where the line under the brand is the width of the rail and thin, so the two are not
+   taken for each other: one is an edge, the other says that the icons around it are a group. It is as quiet as
+   a border, so that it is not taken for another icon. */
+html[data-sidebar='collapsed'] .nav-section {
+  height: 21px;
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+}
+html[data-sidebar='collapsed'] .nav-section::before {
+  content: '';
+  display: block;
+  width: 32px;
+  height: 3px;
+  margin: 9px auto 0;
+  border-radius: 2px;
+  background: var(--border-2);
+}
+html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
   display: none;
 }
 html[data-sidebar='collapsed'] .side-brand {
@@ -2142,9 +2208,26 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
     flex: 0 0 56px;
   }
   .side-brand b,
-  .nav-section,
   .nav-item span:not(.ni-letter),
   .side-row > span {
+    display: none;
+  }
+  .nav-section {
+    height: 21px;
+    padding: 0;
+    overflow: hidden;
+    font-size: 0;
+  }
+  .nav-section::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 3px;
+    margin: 9px auto 0;
+    border-radius: 2px;
+    background: var(--border-2);
+  }
+  .side-scroll > .nav-section:first-child {
     display: none;
   }
   .side-brand {

@@ -317,6 +317,13 @@ design element.
   What it costs: a visitor without script has the list at the top as before (a script is what remembers it), the
   entry that is lit is not scrolled into view (the place is kept, not corrected), and one more value is kept on the
   device, for the life of the tab and no longer.
+- The content keeps its place when a link goes to the same page: a tab, a sort, a filter or a page of a table is a
+  whole-page navigation to the same path, and it would send a reader who had scrolled back to the top. `prefs.js`
+  keeps `{path, top}` in `sessionStorage` when a page is left, and the next page puts `top` back only if its path is
+  the same, as the content arrives (the same observer as the sidebar's, which stops at the first wheel, key, touch or
+  click so that a page that is still being sent does not fight the reader, and at the end of the document). A link to
+  another page starts at its top. What it costs: one more value on the device for the life of the tab, the path
+  of the page it is for; and a page that is shorter than it was ends at its own end, as a scroll does.
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
   proper prefix that is a page with a `Label`, never the root). There is no field to
   declare, because the breadcrumb already derives its parents the same way.

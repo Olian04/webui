@@ -35,7 +35,7 @@ func TestPageRendersNavBreadcrumbAndTheAncestorsEntry(t *testing.T) {
 	body := rec.Body.String()
 
 	// The detail page has no entry; the list's lights up, as its ancestor.
-	assert.Contains(t, body, `<div class="nav-section">Platform</div>`)
+	assert.Contains(t, body, `<div class="nav-section" title="Platform">Platform</div>`)
 	assert.Contains(t, body, `<a class="nav-item active" href="/admin/device"`)
 	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)
 

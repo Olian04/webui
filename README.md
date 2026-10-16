@@ -114,7 +114,7 @@ where to go next), links between pages, theming, errors, and security.
 
 ## What the library stores in the browser
 
-webui sets one cookie, keeps two values in `localStorage` and one in `sessionStorage`. It uses nothing else on a
+webui sets one cookie, keeps two values in `localStorage` and two in `sessionStorage`. It uses nothing else on a
 visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and
 fonts it ships are served by your own app and call no other host.
 
@@ -124,6 +124,7 @@ fonts it ships are served by your own app and call no other host.
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
 | `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |
+| `webui.content.scroll` | `sessionStorage` | A visitor leaves a page | The path of the page (never its query) and how far its content was scrolled, in pixels, so that a tab, a sort or a page of a table that is followed on the same page does not take the reader back to the top. It is put back only on a page with the same path | Until the tab is closed |
 
 When a form is refused, what the visitor typed is not put on their device. The server keeps it in
 memory for up to 60 seconds so that the form can be drawn again after the redirect that every
@@ -135,7 +136,7 @@ the form comes back as it was loaded with a note that the changes could not be k
 The two preferences are read by a small script before the first paint, so the page does not
 flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
 who has never touched either control has no `localStorage` entry at all. The scroll position is
-for the tab, not for the browser, and holds no more than a number.
+for the tab, not for the browser, and each holds no more than a number, with the path of the page the content's is for.
 
 Two things are yours, not webui's:
 

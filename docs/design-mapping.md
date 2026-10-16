@@ -301,8 +301,9 @@ files by an address that carries a key that only such a page gives out (`App.Sec
 ### `Diff` → a panel with a diff
 
 One panel. Header as above; the body is `Original` and `Modified` with what changed between them,
-side by side when the page is wide and stacked when it is not, with a header that names each side by
-its accessor's `Label` (which must differ). A `Diff` only reads, so there is no footer and an accessor with a
+side by side when its panel is wide (900px) and in one column when it is not, with a header that names each side by
+its accessor's `Label` (which must differ): over each side, or as one line, *Original → Modified*, when there are no
+sides to name. A `Diff` only reads, so there is no footer and an accessor with a
 `Store` is a compile error; it never loads a language service, so only highlighting is shipped for it.
 Without script the server makes a unified diff, bounded: two texts too large or too different to compare
 there say so, and two that are the same say *No differences*.

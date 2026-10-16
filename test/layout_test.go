@@ -5,6 +5,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -100,7 +102,20 @@ func TestAStretchedSplitKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Body.String(), `<div class="split">`)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".split {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  align-items: stretch;\n}")
-	assert.Contains(t, css, ".split > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ":is(.split, .stack, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+}
+
+// A column of panels in a Split, and the panel under a tab strip in one, take the height the row has: the tables of a
+// column share it, a column without one gives it to its last panel, and the panel in a tab fills what is left of its cell.
+func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
+	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
+	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split {\n  flex: 1 1 auto;\n}")
 }
 
 func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
@@ -184,4 +199,83 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	end := strings.Index(body, `</div></div><div class="panel grows"`)
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
 	assert.True(t, strings.Index(body, "Beside-row") > end)
+}
+
+// The sidebar as a rail has no room for a section's caption: it is a short, thick dash between the groups, in both places the
+// stylesheet makes a rail, with the caption as the tooltip of the element. It is not a line the width of the rail, which is
+// the edge under the brand, and not the middle dot (--sep), which separates the figures of the status bar.
+func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADot(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	dash := "content: '';\n  display: block;\n  width: 32px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: 2px;\n  background: var(--border-2);"
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .nav-section::before {\n  "+dash)
+	assert.Contains(t, css, "  .nav-section::before {\n    "+strings.ReplaceAll(dash, "\n  ", "\n    "))
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n  display: none;\n}")
+	assert.False(t, strings.Contains(css, "linear-gradient(var(--border-2), var(--border-2))"))
+	assert.Contains(t, css, "--sep: '\\00b7';")
+	assert.Contains(t, css, ".sb-opt + .sb-opt::before {\n  content: var(--sep);")
+}
+
+// A diff names its two sides above it. In one column, which it is without script and when its panel is narrow, they are
+// not sides but a change, and the header says "Deployed → Saved"; only a diff that is side by side has a name over each
+// side. The script says which it is on the panel's body (data-diff).
+func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
+}
+
+// The columns of a table are as wide as what they are, and not as what is in them: a table sizes its columns by its rows, so
+// two tables of the same columns, one above the other, would have them in different places. Each column is given the room
+// it needs from its declaration, and the table is shared in those proportions.
+func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T) {
+	t.Parallel()
+
+	widths := func(body string) [][]float64 {
+		tight := strings.ReplaceAll(body, "> <", "><")
+		var out [][]float64
+		for _, group := range regexp.MustCompile(`<colgroup>.*?</colgroup>`).FindAllString(tight, -1) {
+			var ws []float64
+			for _, m := range regexp.MustCompile(`width:([0-9.]+)%`).FindAllStringSubmatch(group, -1) {
+				f, err := strconv.ParseFloat(m[1], 64)
+				assert.NoError(t, err)
+				ws = append(ws, f)
+			}
+			out = append(out, ws)
+		}
+		return out
+	}
+
+	// The same columns with different rows, stacked: the same widths.
+	same := widths(serve(streamApp(webui.Stack{quickTable("First"), quickTable("A second table with a longer title")}), http.MethodGet, "/admin/p").Body.String())
+	assert.Equal(t, len(same), 2)
+	assert.DeepEqual(t, same[0], same[1])
+	assert.DeepEqual(t, same[0], []float64{100})
+
+	// A column of badges that can hold several, with the room for two of them, is wider than one of a single value, which is
+	// wider than the header it has; a number is not given more than it needs; and the shares are the whole of the table.
+	tags := webui.Select[blob]{Label: "Tags", Load: func(blob) []string { return nil }, Multi: true,
+		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy"}, {Value: "staging"}}}
+	state := webui.Select[blob]{Label: "State", Load: func(blob) []string { return nil },
+		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
+	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
+		Title:   "Blobs",
+		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+		Key:     func(b blob) string { return b.Name },
+		Columns: []webui.Accessor[blob]{blobName, state, tags, blobSize},
+	}}}}.MustCompile("/admin")
+	got := widths(serve(mixed, http.MethodGet, "/admin/m").Body.String())[0]
+	assert.Equal(t, len(got), 4)
+	name, st, multi, size := got[0], got[1], got[2], got[3]
+	assert.True(t, multi > st)   // a column of several badges is wider than a column of one
+	assert.True(t, multi > name) // and than a text
+	assert.True(t, size < name)  // a number is not given more than a text
+	assert.True(t, st > size)    // and a badge is given more than a number
+	assert.True(t, name+st+multi+size > 99.9 && name+st+multi+size < 100.1)
 }

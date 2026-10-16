@@ -181,7 +181,14 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
 capitalised initial in the rail). Groups carry an 11px uppercase caption above
-them. The active item takes the Active background, full-strength text, weight
+them. In the rail the caption has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
+centred in 21px of height for each group, and the caption is its tooltip. Nothing is drawn above the first
+group. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
+whose groups were marked by the same kind of line would have two things that look alike and mean different
+things, an edge and *these belong together*. A line across the rail, a dot, a short thin rule, the caption's
+first letters (clipped, "CONFIGU") and space alone were tried. The status bar separates its figures with a
+middle dot (token `--sep`, *0.3 ms · loaded 32 ms · built 10:14:18 · just now*), which is a separator between
+things in a row, not between groups in a column. The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
 
@@ -259,14 +266,16 @@ bordered group with an 11px uppercase caption instead.
 
 ### Arrangements
 
-- **Stacked** — panels in a column, 8px apart.
+- **Stacked** — panels in a column, 8px apart. A stack that has height to give, because it is a cell of a
+  Split beside something taller or the body of a tab in one, gives it to its tables, which share it, and to its last
+  panel when it has none, so the column ends where the row does.
 - **Split** — two columns, 8px apart. Panels side by side are as tall as the tallest
   of them, so their borders line up; when a Split wraps onto more rows, the heights
   are equal within a row and not across rows. A panel's foot (a pager, the actions)
   stays at the bottom of its box. Optionally weighted 1.6 : 1. Collapses to one
   column below 1100px, where nothing is stretched. Only panels that are direct
   children of the Split are stretched; a layout inside it, such as Tabs, is one
-  column cell and its panel keeps its own height.
+  column cell, and what is under its strip (a panel, or a stack of them) fills what is left of the cell.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked
@@ -288,8 +297,11 @@ there is something to save); the body has no padding, and the editor fills it.
 its light or its dark theme.
 - **States.** Focus is an inset 2px ring in `--ring`; a refused text is an inset 2px ring in `--ring-bad`, with the
   reason under the editor in a rule-topped strip (8px 12px), where a form would put it under a field.
-- **A diff** is the two texts side by side when the page is wide and one above the other when it is not, with a
-  header row that names each side (12px, `--text-2`, ruled below). Without script the server makes a unified
+- **A diff** is the two texts side by side when its panel is 900px wide or more, and in one column, the lines of
+  both interleaved, when it is not, following the panel as it is resized. Above it is a header row (12px,
+  `--text-2`, ruled below) that names the sides: over each side when they are side by side, and as one line, *Deployed →
+  Saved*, when they are not, because in one column they are not sides but a change from one text to the other.
+  Without script the server makes a unified
   diff: 12.5px on 19px monospace, a grid of the old line number, the new line number, a marker and the text
   (3.5rem, 3.5rem, 1.25rem, the rest), inserted lines on `--green-bg` and deleted lines on `--red-bg`, a summary
   line of `+n` in green and `−m` in red, and a quiet `⋯` for each run of unchanged lines that was left out. Two
@@ -393,6 +405,16 @@ be selected, which is the right trade for a row whose purpose is to be followed.
 
 Cells: 10px horizontal padding. Numeric columns right-align with tabular
 figures. Identifiers are monospace text-secondary.
+
+Column widths follow what a column is, not what is in it. A table sizes its columns by its rows, so two tables of the
+same columns, one above the other, would have had their columns in different places for no reason a reader could
+see. Each column is given the room it needs from its declaration: the letters of its header and the sort and filter
+beside them, a text or a link about sixteen letters, a number the width of "520.6 KiB", a moment or a bar a little more,
+and a select the longest of its choices in a badge, with room for two of them side by side when it holds several. The
+table is shared between its columns in those proportions at whatever width it has, so a column of badges is wider
+than a column of numbers, a long header is never cut, and two tables of the same columns have them in the same
+place. The selection and the row actions are left to what is in them. A cell whose content does not fit in its share
+still makes its column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did.
 
 **Badges** sit in status columns: 19px tall, 2px radius, lowercase 11.5/500,
 built from a semantic family's 14% background and 30% border. A status badge

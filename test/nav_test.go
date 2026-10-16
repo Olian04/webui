@@ -249,7 +249,7 @@ func TestASectionCaptionStaysAboveWhatIsStillShownAndGoesWithAnEmptySection(t *t
 	refuse := guardedNavApp(func(context.Context) error { return errors.New("no") })
 	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
 	// Audit log, first in Operations, is hidden; the caption goes to System, the first one shown.
-	assert.Contains(t, body, `<div class="nav-section">Operations</div> <a class="nav-item" href="/admin/system"`)
+	assert.Contains(t, body, `<div class="nav-section" title="Operations">Operations</div> <a class="nav-item" href="/admin/system"`)
 	// A section with every entry hidden has no caption.
 	assert.False(t, strings.Contains(body, "Hidden section"))
 }
@@ -285,7 +285,7 @@ func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 
-	assert.Equal(t, strings.Count(body, `class="nav-section"`), 2) // one caption for each section
+	assert.Equal(t, strings.Count(body, `class="nav-section" title=`), 2) // one caption for each section
 	at := func(s string) int { return strings.Index(body, s) }
 	// No Section: first, in the order given, under no caption.
 	assert.True(t, at(">Home</span>") < at(">About</span>"))
