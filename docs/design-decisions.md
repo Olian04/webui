@@ -147,28 +147,32 @@ design element.
   with no `Store`) are intact for `Guard` and `Run`. Parse failures
   short-circuit, so a form with both a malformed number and a duplicate value
   shows the parse error first and the duplicate only on the next submit.
-- Every POST is answered with a `303`, so that a reload of the page it leaves the visitor on
+- An accepted POST is answered with a `303`, so that a reload of the page it leaves the visitor on
   never sends it again (the browser would ask, and for an action that already ran, a yes
-  would run it twice). An accepted action carries its toast in a short-lived `HttpOnly`
-  cookie. A refusal, a `Failure`, a `Reject` or an error in `Run`, an action `Guard` that
-  refuses, a request that is not understood and a body that is too large each go back to the
-  page with a toast; a page `Guard` or argument error on a POST goes to the same address, whose
-  GET draws the real 400 or 403. The one exception is a cross-origin POST, which stays a
-  plain 403: a forged request is never redirected. POSTs are checked with
-  `http.CrossOriginProtection` (Fetch metadata and `Origin`); behind a proxy that rewrites
-  `Host`, wrap the handler and allow the public origin.
-- A form that is refused has to be drawn again with what was typed, and a redirect would lose
-  it, so the server keeps it: the model as bound so far, the values, the field messages and the
-  toast, in memory (`internal/runtime/submissions.go`), for 60 seconds, under a random 128-bit
-  token. The flash cookie carries only the token (the kind byte `s`), never anything the visitor
-  typed. The page at the address the redirect names takes it, once, draws the form from it as a
-  normal 200, and the cookie is cleared with it. What costs: the store is per process, so behind
-  a load balancer without stickiness the second request can reach an instance that does not have
-  it, and the page then says that the changes could not be kept; it is bounded (64 MiB of what was
-  typed, the oldest dropped first); and a refused POST shows in the HTTP metrics as a 303, while
-  failures stay visible in `webui_actions_total{result}` and the load error counters. A kept
-  submission is for the address it was sent to and is used up by the first load of any address
-  that reads the cookie.
+  would run it twice). Its toast rides a short-lived `HttpOnly` cookie. The same goes for what
+  is not about the form's fields: an error in `Run`, an action `Guard` that refuses, a request
+  that is not understood and a body that is too large each go back to the page with a toast, and
+  a page `Guard` or argument error on a POST goes to the same address, whose GET draws the real 400
+  or 403. The one exception is a cross-origin POST, which stays a plain 403: a forged request is
+  never redirected. POSTs are checked with `http.CrossOriginProtection` (Fetch metadata and
+  `Origin`); behind a proxy that rewrites `Host`, wrap the handler and allow the public origin.
+- A refused form is answered with the page and a `422`, not redirected. A `Reject`, a `Failure` and
+  a rule that the input fails mean that nothing was done, so a reload that sends the POST again
+  does no harm, and the browser's own question about it is the right one. The response draws the
+  form with the model as bound so far, the values as typed, the field messages and the toast, as
+  the answer to the POST, so nothing is kept on the server or put in a cookie. Every other way to carry
+  them across a redirect is a convention of its own, and was weighed and dropped: the address (it
+  would put what was typed in history and logs), a cookie (it goes with every request to the mount, is
+  limited to a few kilobytes while an editor takes 16 MiB, and sends what was typed to the server again
+  and again), and a store on the server, which is what this replaced (in memory for 60 seconds under a
+  token in the flash cookie): it is per process, so behind a load balancer without stickiness the second
+  request could reach another instance, it needed a bound and a timer, and it made a refusal show as a 303
+  in the metrics, where it is a 422 now, and failures also stay visible in `webui_actions_total{result}`.
+  What it costs: the browser asks "send the form again?" when the page it answered with is reloaded,
+  which is its standard behaviour for a response to a POST, and with script there is no workaround for it
+  on purpose. A table action that is refused has no fields to draw again, so it keeps the redirect and a
+  toast. A `Then` or a `Back` that leaves the form still takes the user there, with the message as a
+  toast, and what was typed is not kept, as before.
 - The re-render after a rejection must echo the raw submitted input, not the
   model value, or the user's bad input disappears and the form looks like it
   reset.

@@ -60,9 +60,6 @@ type Program struct {
 	// cross refuses cross-origin POSTs, using Fetch metadata and Origin. A
 	// request from a client that sends neither is not a browser CSRF vector.
 	cross *http.CrossOriginProtection
-
-	// subs are the rejected submissions waiting for the page that draws them again.
-	subs *submissions
 }
 
 // NewProgram derives the routes from a compiled app.
@@ -84,7 +81,7 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	}
 	p := &Program{
 		Prefix: prefix, App: app, render: r, log: log,
-		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(), subs: newSubmissions(),
+		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
 	if app.Metrics != nil {

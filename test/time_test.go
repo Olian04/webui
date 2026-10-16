@@ -163,8 +163,8 @@ func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
 	var stored object
 	h := editMoments(&stored)
 	rec := post(h, "/edit", formValues("f0", "next tuesday", "f1", "2026-10-10T08:15"))
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	body := seen(h, rec).Body.String()
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	body := rec.Body.String()
 	assert.Contains(t, body, `value="next tuesday"`)
 	assert.Contains(t, body, "Could not read this value.")
 	assert.Equal(t, stored.Modified, "") // nothing was saved

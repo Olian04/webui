@@ -10,21 +10,17 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// The flash is how a toast survives the redirect after a POST without any
+// The flash is how a toast survives the redirect after an accepted POST without any
 // script and without putting anything in the URL: a short-lived cookie, read
 // and cleared by the next full page. It only ever holds text the user's own
 // action produced, and the text is escaped when it is rendered, so a forged
-// value can show its forger a message and nothing else.
-//
-// It also carries a token for a rejected submission that the server keeps (see
-// [submissions]), so that the form can be drawn again with what was typed after a
-// redirect, and not as the answer to the POST. The cookie then holds nothing the
-// visitor typed.
+// value can show its forger a message and nothing else. A submission that was
+// refused is not redirected (see returnToForm), so nothing the visitor typed is in
+// the cookie or on the server.
 const (
 	flashCookie  = "webui_flash"
 	flashMax     = 300 // bytes of message kept
 	flashSeconds = 60  // how long the cookie lives
-	flashKept    = 's' // the kind of a cookie that names a kept submission, where the others are tones
 )
 
 func (p *Program) flashPath() string {
@@ -61,15 +57,9 @@ func (p *Program) flash(r *http.Request, value string, maxAge int) *http.Cookie 
 	}
 }
 
-// setKept names a kept submission in the cookie, for the page the visitor is sent to.
-func (p *Program) setKept(w http.ResponseWriter, r *http.Request, token string) {
-	http.SetCookie(w, p.flash(r, base64.RawURLEncoding.EncodeToString([]byte(string(rune(flashKept))+token)), flashSeconds))
-}
-
-// pending is what the flash cookie carries to this page: toasts, and a submission that was kept for it.
+// pending is what the flash cookie carries to this page: its toasts.
 type pending struct {
 	toasts []render.Toast
-	kept   *kept
 }
 
 type pendingKey struct{}
@@ -97,15 +87,6 @@ func (p *Program) decodeFlash(value string) *pending {
 	if err != nil || len(raw) < 2 || !utf8.Valid(raw) {
 		return &pending{}
 	}
-	if raw[0] == flashKept {
-		k := p.subs.take(string(raw[1:]))
-		if k == nil {
-			// It expired, was dropped to make room, or went to another instance: the page is drawn as it
-			// was loaded, and says so.
-			return &pending{toasts: []render.Toast{{Title: "Your changes could not be kept", Desc: "Please enter them again.", Tone: render.ToastWarning}}}
-		}
-		return &pending{toasts: []render.Toast{k.toast}, kept: k}
-	}
 	tone := render.ToastOK
 	switch raw[0] {
 	case 'w':
@@ -114,19 +95,4 @@ func (p *Program) decodeFlash(value string) *pending {
 		tone = render.ToastError
 	}
 	return &pending{toasts: []render.Toast{{Title: string(raw[1:]), Tone: tone}}}
-}
-
-// restore puts a submission that was kept for this address back into the request, so that its form is drawn with what
-// was typed and what was refused. A submission kept for another address is dropped with its toast: it is what some
-// other page, or the same page with other arguments, was sent.
-func (p *Program) restore(w http.ResponseWriter, r *http.Request, req *Request) {
-	got := p.takeFlash(w, r)
-	if got.kept == nil {
-		return
-	}
-	if got.kept.address != req.Address {
-		got.toasts, got.kept = nil, nil
-		return
-	}
-	req.sub, req.subLeaf = got.kept.sub, got.kept.leaf
 }

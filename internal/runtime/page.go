@@ -99,7 +99,6 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 			p.leaf(w, r, page, req, leaves[id])
 			return
 		}
-		p.restore(w, r, req) // a form that was refused is drawn again with what was typed
 		path, query := p.address(page, req)
 		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 		req.panels = &panelSet{}

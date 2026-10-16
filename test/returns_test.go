@@ -69,9 +69,9 @@ func submitTo(h http.Handler, target, ip string) sent {
 		if c.Name == "webui_flash" {
 			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)
 			out.flash = string(raw)
-			out.rerender = strings.HasPrefix(out.flash, "s") // a submission that was kept, to draw the form again
 		}
 	}
+	out.rerender = rec.Code == http.StatusUnprocessableEntity // the form drawn again, as the answer
 	return out
 }
 
@@ -151,10 +151,12 @@ func TestStayChangesNothingForAnOutcomeThatAlreadyStays(t *testing.T) {
 	h := returnsApp()
 	for _, ip := range []string{"3.2", "4.2"} {
 		got := submitTo(h, openedFromLink, ip)
-		assert.True(t, got.rerender)                  // the form again, with what was typed and the reasons
-		assert.Equal(t, got.location, openedFromLink) // at the address it was sent from, which still has where it came from
+		assert.True(t, got.rerender)      // the form again, with what was typed and the reasons
+		assert.Equal(t, got.location, "") // as the answer, with no redirect
+		page := post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0." + ip}}).Body.String()
+		assert.Contains(t, page, "webui.from=%2Fadmin%2Felsewhere") // and it still posts to the address that has where it came from
 	}
-	body := seen(h, post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.4.2"}})).Body.String()
+	body := post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.4.2"}}).Body.String()
 	assert.Contains(t, body, "Taken") // a Reject still says it beside the field
 }
 

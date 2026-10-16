@@ -166,8 +166,8 @@ func TestARejectedSubmissionKeepsTheCancelItHad(t *testing.T) {
 
 	h := cancelApp(false)
 	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_leaf": {"p.0"}, "f1": {"not-an-ip"}})
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	page := seen(h, rec)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	page := rec
 	assert.Contains(t, page.Body.String(), `href="/admin/other">Cancel`)
 	// And it still posts to an address that remembers it, so a second try does too.
 	assert.Contains(t, page.Body.String(), `webui.from=%2Fadmin%2Fother`)

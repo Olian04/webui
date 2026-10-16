@@ -14,7 +14,7 @@
 | `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
 | `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`Table.Rows`). |
-| `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline (lazy panels, in-order streaming), POST actions (every one ends in a 303), flash and kept submissions, export, `Open` resolve. |
+| `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline (lazy panels, in-order streaming), POST actions (an accepted one ends in a 303, a refused form is answered with the page and a 422), flash, export, `Open` resolve. |
 | `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |

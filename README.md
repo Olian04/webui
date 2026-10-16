@@ -120,18 +120,18 @@ fonts it ships are served by your own app and call no other host.
 
 | What | Kind | Set when | Holds | Lasts |
 | ---- | ---- | -------- | ----- | ----- |
-| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced), or, when a form is refused, a random token for what the server kept (below) | 60 seconds, and cleared as soon as a page shows it |
+| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
 | `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |
 | `webui.content.scroll` | `sessionStorage` | A visitor leaves a page | The path of the page (never its query) and how far its content was scrolled, in pixels, so that a tab, a sort or a page of a table that is followed on the same page does not take the reader back to the top. It is put back only on a page with the same path | Until the tab is closed |
 
-When a form is refused, what the visitor typed is not put on their device. The server keeps it in
-memory for up to 60 seconds so that the form can be drawn again after the redirect that every
-POST ends in; the token above is the only thing that leaves the server, and the kept values are
-deleted when the next page takes them. They are not written to disk or logged. An app that runs on
-several instances behind a load balancer needs the second request to reach the same instance, or
-the form comes back as it was loaded with a note that the changes could not be kept.
+A form that is refused is not redirected: the POST is answered with the page, the form drawn again with what the
+visitor typed and what was refused, with the status 422. What was typed is in that response and nowhere else: it is not
+in a cookie, not in the address, and not kept on the server, so there is nothing to lose behind a load balancer and
+nothing to expire. The browser asks "send the form again?" if the page is reloaded, which is right, since a refusal
+did nothing. An accepted action is redirected with a 303 so that a reload does not repeat it, and its toast
+rides the cookie above.
 
 The two preferences are read by a small script before the first paint, so the page does not
 flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
@@ -203,7 +203,7 @@ This half is for people changing the library.
 | `internal/args`       | Encoding and decoding a page's path and query arguments, from the struct's fields and `webui` tags.                                                                          |
 | `internal/rules`      | RE2 compilation and the server-side check of a field's constraints.                                                                                                          |
 | `internal/tablequery` | Filtering, sorting, paging and finding rows held in memory, for `Table.Rows` and `SearchRows`.                                                                                              |
-| `internal/runtime`    | The compiled app: routes, the request pipeline (a slow page is streamed in order), actions, flash and the kept submissions, search, export, and `Open`.                      |
+| `internal/runtime`    | The compiled app: routes, the request pipeline (a slow page is streamed in order), actions (an accepted one is redirected, a refused form is answered with the page and a 422), flash, search, export, and `Open`.                      |
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
 | `internal/markdown`   | Markdown to HTML for `Markdown`, with goldmark: no raw HTML, links to http, https and mailto only, images as links unless the origin is trusted.                                                          |

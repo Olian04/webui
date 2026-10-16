@@ -52,7 +52,7 @@ func taskApp(start task, saved *task) http.Handler {
 
 func submitTask(h http.Handler, values url.Values) (code int, body string) {
 	values.Set("_leaf", "p")
-	rec := seen(h, post(h, "/admin/t", values)) // a refused one is the form again, with what was typed
+	rec := post(h, "/admin/t", values) // a refused one is the form again, with what was typed
 	return rec.Code, rec.Body.String()
 }
 
@@ -117,7 +117,7 @@ func TestARequiredSelectWithNothingChosenIsRefused(t *testing.T) {
 
 	var saved task
 	code, body := submitTask(taskApp(task{Name: "a"}, &saved), url.Values{"f1": {""}})
-	assert.Equal(t, code, http.StatusOK) // the form again, not a redirect on
+	assert.Equal(t, code, http.StatusUnprocessableEntity) // the form again, not a redirect on
 	assert.Contains(t, body, "This field is required.")
 	assert.Equal(t, len(saved.Status), 0)
 }
@@ -136,8 +136,8 @@ func TestASelectRefusesWhatItDidNotOffer(t *testing.T) {
 		"a list separator in a value":     {"f1": {"open\x1fdone"}},
 	} {
 		code, _ := submitTask(h, values)
-		if code != http.StatusOK {
-			t.Errorf("%s: status %d, want 200, the form again", name, code)
+		if code != http.StatusUnprocessableEntity {
+			t.Errorf("%s: status %d, want 422, the form again", name, code)
 		}
 	}
 	assert.Equal(t, len(saved.Status), 0) // none of them was saved
