@@ -260,9 +260,9 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 
 	// A column of badges that can hold several, with the room for two of them, is wider than one of a single value, which is
 	// wider than the header it has; a number is not given more than it needs; and the shares are the whole of the table.
-	tags := webui.Select[blob]{Label: "Tags", Load: func(b blob) []string { return nil }, Multi: true,
+	tags := webui.Select[blob]{Label: "Tags", Load: func(blob) []string { return nil }, Multi: true,
 		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy"}, {Value: "staging"}}}
-	state := webui.Select[blob]{Label: "State", Load: func(b blob) []string { return nil },
+	state := webui.Select[blob]{Label: "State", Load: func(blob) []string { return nil },
 		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
 	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
 		Title:   "Blobs",
