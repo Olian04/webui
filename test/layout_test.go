@@ -207,7 +207,7 @@ func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADo
 
 	h, _ := layoutApp(nil)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	dash := "content: '';\n  display: block;\n  width: 16px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: 2px;\n  background: var(--text-3);"
+	dash := "content: '';\n  display: block;\n  width: 16px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: 2px;\n  background: var(--border-2);"
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .nav-section::before {\n  "+dash)
 	assert.Contains(t, css, "  .nav-section::before {\n    "+strings.ReplaceAll(dash, "\n  ", "\n    "))
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n  display: none;\n}")

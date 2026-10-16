@@ -181,7 +181,7 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
 capitalised initial in the rail). Groups carry an 11px uppercase caption above
-them. In the rail the caption has no room, so it becomes a short, thick dash (16px by 3px, rounded, `--text-3`)
+them. In the rail the caption has no room, so it becomes a short, thick dash (16px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
 centred in 21px of height for each group, and the caption is its tooltip. Nothing is drawn above the first
 group. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
 whose groups were marked by the same kind of line would have two things that look alike and mean different

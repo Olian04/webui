@@ -2158,7 +2158,8 @@ html[data-sidebar='collapsed'] .side-row > span {
 /* A section's caption is a short dash in the rail, so the groups can be told apart: 21px of height for each
    group, with the caption in a tooltip, and none above the first group, which has nothing before it. It is
    short and thick where the line under the brand is the width of the rail and thin, so the two are not
-   taken for each other: one is an edge, the other says that the icons around it are a group. */
+   taken for each other: one is an edge, the other says that the icons around it are a group. It is as quiet as
+   a border, so that it is not taken for another icon. */
 html[data-sidebar='collapsed'] .nav-section {
   height: 21px;
   padding: 0;
@@ -2172,7 +2173,7 @@ html[data-sidebar='collapsed'] .nav-section::before {
   height: 3px;
   margin: 9px auto 0;
   border-radius: 2px;
-  background: var(--text-3);
+  background: var(--border-2);
 }
 html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
   display: none;
@@ -2224,7 +2225,7 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
     height: 3px;
     margin: 9px auto 0;
     border-radius: 2px;
-    background: var(--text-3);
+    background: var(--border-2);
   }
   .side-scroll > .nav-section:first-child {
     display: none;
