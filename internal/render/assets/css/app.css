@@ -104,8 +104,8 @@
 /* Rings and tints are made from the accent and the critical colour, so they follow
    a webui.Theme and both modes instead of being the default blue and red. */
 :root {
-  /* The separator: a middle dot, in the quiet text colour, between the things of a row (the status bar's
-     figures) and between the groups of a rail. Lines are for edges, such as the one under the brand. */
+  /* The separator between the things of a row, such as the status bar's figures: a middle dot, in the quiet
+     text colour. */
   --sep: '\00b7';
   --ring: color-mix(in srgb, var(--blue) 25%, transparent);
   --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
@@ -2155,22 +2155,24 @@ html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
 html[data-sidebar='collapsed'] .side-row > span {
   display: none;
 }
-/* A section's caption is the separator in the rail, so the groups can be told apart: 17px of height for each
-   group, with the caption in a tooltip, and none above the first group, which has nothing before it. */
+/* A section's caption is a short dash in the rail, so the groups can be told apart: 21px of height for each
+   group, with the caption in a tooltip, and none above the first group, which has nothing before it. It is
+   short and thick where the line under the brand is the width of the rail and thin, so the two are not
+   taken for each other: one is an edge, the other says that the icons around it are a group. */
 html[data-sidebar='collapsed'] .nav-section {
-  height: 17px;
+  height: 21px;
   padding: 0;
   overflow: hidden;
   font-size: 0;
-  text-align: center;
 }
 html[data-sidebar='collapsed'] .nav-section::before {
-  content: var(--sep);
+  content: '';
   display: block;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 17px;
-  color: var(--text-3);
+  width: 16px;
+  height: 3px;
+  margin: 9px auto 0;
+  border-radius: 2px;
+  background: var(--text-3);
 }
 html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
   display: none;
@@ -2210,19 +2212,19 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
     display: none;
   }
   .nav-section {
-    height: 17px;
+    height: 21px;
     padding: 0;
     overflow: hidden;
     font-size: 0;
-    text-align: center;
   }
   .nav-section::before {
-    content: var(--sep);
+    content: '';
     display: block;
-    font-size: 18px;
-    font-weight: 700;
-    line-height: 17px;
-    color: var(--text-3);
+    width: 16px;
+    height: 3px;
+    margin: 9px auto 0;
+    border-radius: 2px;
+    background: var(--text-3);
   }
   .side-scroll > .nav-section:first-child {
     display: none;
