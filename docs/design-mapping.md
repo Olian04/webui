@@ -31,10 +31,17 @@ into existence, and nothing is configured twice.
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
-| `Split` | Two columns, top-aligned, 8px apart |
+| `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
+| `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
+| `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
+| `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
+| `Editor.Language`, `Diff.Language` | The highlighting of the text, and for an editor that can be edited the language service that may be loaded for it |
+| `Editor.Context` | What an editable editor's language service is given besides the text, as files the page names by address and the browser fetches |
+| `Markdown.TrustedOrigins` | The origins a picture in the text is drawn from, and the only ones the page's content security policy lets the browser fetch from; any other picture is a link |
+| `Table.Export` | *Export* with two small links, CSV and JSON, in the footer: every row the sort and the filters keep, not the page on screen |
 | `Form.Title` / `Table.Title`, `Desc` | The panel header text, and an information icon whose popover shows the description on hover and on focus |
 | accessor (`String`, `Int`, `Float`) in a `Form` | A labelled input |
 | accessor in a `Table` | A column |
@@ -225,12 +232,17 @@ A column of panels, 8px apart.
 
 ### `Split`
 
-Two columns, top-aligned so unequal heights do not stretch. A `Split`
-constrains nothing about what its children are *about* — a form for one model
-beside a table of another is the ordinary case, and the design has to hold two
-panels of different heights and different content next to each other without
-implying a relationship between them. Top alignment and identical panel chrome
-do that work.
+Two columns. The panels of a row are as tall as the tallest of them, so their borders
+line up, and a panel's footer (a pager, a *Save*) stays at the bottom of its box. The rows
+are independent: five panels in a `Split` are three rows, each as tall as its tallest
+panel and not as the rows around it, and a row with one panel leaves that panel as tall as
+it is. Below 1100px it is one column and nothing is stretched. A `Split` constrains
+nothing about what its children are *about* — a form for one model beside a table of
+another is the ordinary case, and the design has to hold two panels of different content
+next to each other without implying a relationship between them. Identical panel chrome
+and a shared height do that work; the height says only *these are side by side*. Only
+panels that are direct children of the `Split` are stretched: a layout inside it, such as
+`Tabs`, is one cell, and its panel keeps its own height.
 
 ### `Tabs` and `Tab.Label`
 
@@ -268,12 +280,62 @@ A `Load` that returns a `Total` smaller than what it has shown (a `Rows` table a
 knows its total) means the total is unknown, which is a real design state: the footer
 shows the range without a total and the *Next* button cannot be pre-disabled.
 
+### `Editor` → a panel with a code editor
+
+One panel. Header carries the title and description. The body is a code editor with the
+`Language`'s highlighting, line numbers and search; with a `Store` on `Content` the editor edits
+the text and the footer carries *Save*, as a `Form`'s does, and without one it is a viewer and
+has no footer. The text is saved through the same pipeline as a form: parse, `Rules`, `Store`,
+`Guard`, `Run`. `Content`'s `MaxLen` is the bound on the text, and a refused text is shown back as it
+was typed, with the reason in a strip under the editor.
+
+Everything works without script: an editable editor is a textarea and a viewer is the text in a monospace
+block, and Monaco, which the page then loads, mounts over them. A page with an editor
+links its script and stylesheet in the head.
+
+A language service (diagnostics, completion) is an optional import for a few languages, one worker each, and goes only to
+an editor that can be edited by a visitor who may edit it: a viewer is only ever highlighted. `Context` is what
+the service is given besides the text, a folder of declarations and schemas, which the page does not hold: it names the
+files by an address that carries a key that only such a page gives out (`App.Secret`), so a browser keeps them.
+
+### `Diff` → a panel with a diff
+
+One panel. Header as above; the body is `Original` and `Modified` with what changed between them,
+side by side when the page is wide and stacked when it is not, with a header that names each side by
+its accessor's `Label` (which must differ). A `Diff` only reads, so there is no footer and an accessor with a
+`Store` is a compile error; it never loads a language service, so only highlighting is shipped for it.
+Without script the server makes a unified diff, bounded: two texts too large or too different to compare
+there say so, and two that are the same say *No differences*.
+
+### `Markdown` → a panel with an article
+
+One panel. Header as above; the body is one text of the model, set as CommonMark with GitHub's tables,
+task lists, strikethrough and bare links, in the app's own type and colours (see
+the design's *Text*). It only reads. The text is trusted no further than any other text of the model: raw
+HTML is never rendered, and a link goes only to an http or https address, a mailto or a path in the
+application. A path is an address in the application whatever it is mounted at, so it is given the prefix and
+opens in the same tab; any other link opens in a tab of its own. A picture is a link to it, named by its alt text,
+unless its origin is one of `TrustedOrigins`, which the page's content security policy then allows for this
+page and no other. It needs no script; a fenced block that names a language is coloured by the editor, which the page
+then loads, and is plain text in a monospace block without script.
+
+### `Table.Export` → two download links
+
+A table does not export unless it says so, since an export is a way to take every row at once. Where it does, the
+footer carries a quiet *Export* and two small links, *CSV* and *JSON*, beside the range. The file is every row that the
+table's sort and filters keep (a `Load` table is asked for them a batch at a time, a `Feed` is followed from its first
+page to its last, and a file is cut at 100,000 rows, which the response says in a header), the columns the table shows
+with their labels as the header, and no row actions or links. It runs the page's `Guard`, as any request for the page
+does. A CSV cell is the text the table shows, except that a number is a number and a text that a spreadsheet would run
+as a formula is quoted; JSON is a list of objects keyed by label, with numbers, moments (RFC 3339, UTC) and selects
+as their own kinds. The links carry `download`, so the page's script leaves them to the browser.
+
 ---
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Int`, `Float`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`) appears in both leaves and
-renders differently in each, from the same declaration:
+An accessor (`String`, `Int`, `Float`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`) appears in a `Form` and in a `Table`
+and renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
 |---|---|---|
@@ -399,8 +461,8 @@ time.
 Four things in the original design mock were not expressible. Three are now closed;
 one is deferred on purpose.
 
-1. **Panel titles and descriptions — closed.** `Form` and `Table` carry `Title`
-   and `Desc`. A panel's title is part of what the panel *is* — the name of the
+1. **Panel titles and descriptions — closed.** Every panel (`Form`, `Table`,
+   `Editor`, `Diff`, `Markdown`) carries `Title` and `Desc`. A panel's title is part of what the panel *is* — the name of the
    thing being shown — and the alternative was that the runtime invents one.
 2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
    a `Label` without becoming a struct. A long page is scannable with `Tabs`
@@ -412,8 +474,8 @@ one is deferred on purpose.
    alongside `String`, `Int` and `Float`, not a display mode bolted on top: a
    status is a select, drawn as a badge, and a quantity is a slider — read-only it is the progress
    bar, with a `Store` it is the control. They are the pressure-release valve
-   for visual richness in a table, so `Form` and `Table` stay the only two
-   leaves. Monospace identifiers are not covered: no accessor says "show this in
+   for visual richness in a table, so a table and a form do not grow a display mode
+   of their own. Monospace identifiers are not covered: no accessor says "show this in
    the monospace face".
 
 ---
@@ -426,9 +488,11 @@ Three absences that are choices, not gaps:
   concepts. A control plane refreshes a leaf on demand; it does not poll. If
   this ever changes it should change as a declaration on a leaf, not as global
   chrome.
-- **No chart or statistic leaf.** Two leaves — one that shows a model, one that
-  shows a list of models — cover admin panels. A third would be the first
-  feature bolted on rather than generated by the existing ideas. `Select` and
+- **No chart or statistic leaf.** A leaf shows a model (`Form`, `Editor`, `Diff`,
+  `Markdown`: one text of it) or a list of models (`Table`), and each of the later
+  ones was a kind of text a model has, which no accessor could draw. A chart is
+  not a kind of text, and would be the first feature bolted on rather than
+  generated by the existing ideas. `Select` and
   `Slider` exist so that the pressure for one has somewhere cheaper to go.
 - **No per-panel menu.** A panel's header carries a title, a description and a
   status. Reloading is the page's Refresh, so a panel is replaced only by
