@@ -2044,10 +2044,8 @@ select.input[multiple] option:checked {
   content: var(--sep);
   margin-right: 8px;
 }
-/* Where the time went: the server's time to build the page, a bar of its share of the whole, and what the rest took.
-   The bar is the server's share in the accent and the rest, the network and the browser, in the quiet colour, so a
-   page that waits on its backends and one that waits on the network look different at a glance. The words are
-   labels, since two bare numbers do not say which is which. */
+/* Where the time went: the server's time to build the page, and what the rest took until it was loaded, which add up to the
+   whole. They are labelled, since two bare numbers do not say which is which, and the separator is between them. */
 .sb-timing {
   display: inline-flex;
   align-items: center;
@@ -2061,22 +2059,8 @@ select.input[multiple] option:checked {
   color: var(--text-3);
 }
 .sb-timing [data-loaded]::before {
-  content: 'delivery ';
+  content: var(--sep) ' delivery ';
   color: var(--text-3);
-}
-.sb-split {
-  display: inline-block;
-  width: 44px;
-  height: 5px;
-  border-radius: 3px;
-  overflow: hidden;
-  background: var(--border-2);
-}
-.sb-split i {
-  display: block;
-  height: 100%;
-  width: var(--render, 100%);
-  background: var(--blue);
 }
 .sb-timing [hidden] {
   display: none;

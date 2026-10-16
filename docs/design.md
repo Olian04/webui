@@ -236,15 +236,13 @@ request behind what is on screen, and a spinner with a short label while
 something is in flight. It is the honesty bar: if the screen changed, this says
 what changed and how much of it.
 
-On the right it says how the page came to be, in the muted text colour, as two parts
-of one whole that are labelled and drawn: the **render** time, how long the server took to
-build the page (`render 0.1 ms`), and the **delivery** time, what the rest took until the
-page was loaded (`delivery 53 ms`): the network and the browser. They add up, which they did not
-when the second was "loaded" and counted from the request, so the render time was in both. Between them is a
-bar of 44px with each one's share of the whole, the render time in the accent and the delivery in the quiet
-colour, so a page that waits on its backends and one that waits on the network look different at a glance; each part
-that is not nothing is at least a sliver. Its title says all of it in words. Without script only the render time
-is known and it stands alone. Where script is off it also says when the HTML was built (`built 14:49:31Z`), since nothing
+On the right it says how the page came to be, in the muted text colour, as two parts of one whole that are
+labelled: the **render** time, how long the server took to build the page (`render 0.1 ms`), and the **delivery**
+time, what the rest took until the page was loaded (`· delivery 53 ms`): the network, the assets and the browser.
+They add up, which they did not when the second was "loaded" and counted from the request, so the render time was in
+both. The middle dot between them is the design's separator, and a title on the pair says it all in words. A bar of
+each one's share of the whole was tried and dropped: the two numbers already say where the time went. Without
+script only the render time is known and it stands alone. Where script is off it also says when the HTML was built (`built 14:49:31Z`), since nothing
 else there can say that a page is old. With script that time is not shown: what it was for is knowing that a page was
 not built for the request that brought it, which a small uppercase badge in the warning colours says when it is so,
 **stale page**, with the reason as its title (the browser showed it from its own cache, a cache or a proxy

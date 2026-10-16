@@ -374,23 +374,24 @@ func TestWhenThePageWasBuiltIsShownOnlyWhereScriptIsOffAndTheBadgeSaysWhenItIsSt
 }
 
 // The render time and the delivery time are not two measures of one thing: the page is loaded when the request has been
-// answered and shown, which the server's time to build it is part of. The bar says each by name, with the server's share
-// of the whole as a bar, and the script works out the delivery as the rest. Without script only the render time is known.
-func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAreAndTheirShares(t *testing.T) {
+// answered and shown, which the server's time to build it is part of. The bar says each by name, with the separator between
+// them, and the script works out the delivery as the rest. Without script only the render time is known.
+func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAre(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
 	page := serve(h, http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, page, `<span class="sb-timing" data-timing>`)
 	assert.True(t, regexp.MustCompile(`<span class="sb-opt" data-build title="[^"]*">\d+(\.\d)? ms</span>`).MatchString(page))
-	assert.Contains(t, page, `<span class="sb-split" data-split hidden aria-hidden="true"><i></i></span>`) // for script to show
-	assert.Contains(t, page, `<span class="sb-opt" data-loaded hidden></span>`)
+	assert.Contains(t, page, `<span class="sb-opt" data-loaded hidden></span>`) // for script to fill in
+	assert.False(t, strings.Contains(page, "sb-split"))                         // no bar: the numbers say it
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".sb-timing [data-build]::before {\n  content: 'render ';")
-	assert.Contains(t, css, ".sb-timing [data-loaded]::before {\n  content: 'delivery ';")
-	assert.Contains(t, css, "width: var(--render, 100%);")
+	assert.Contains(t, css, ".sb-timing [data-loaded]::before {\n  content: var(--sep) ' delivery ';")
+	assert.False(t, strings.Contains(css, "sb-split"))
 
 	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
 	assert.Contains(t, js, "Math.max(ms - render, 0)") // the delivery is what is left of the whole
+	assert.False(t, strings.Contains(js, "data-split"))
 }
