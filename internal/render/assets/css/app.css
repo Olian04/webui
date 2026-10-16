@@ -693,7 +693,11 @@ a.side-brand:hover {
   }
 }
 
-/* tabs — links carrying an argument */
+/* tabs — links carrying an argument. The strip and the selected panel are one element, a cell of a Split like any
+   other panel; a layout inside the panel is a column of its own. */
+.tabset {
+  min-width: 0;
+}
 .tabs {
   display: flex;
   gap: 0;
