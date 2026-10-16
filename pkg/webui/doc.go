@@ -296,11 +296,14 @@
 // decides the toast, its colour, and the response:
 //
 //   - [Success] and [Warning] are accepted: the action was done, and the user is
-//     sent back to the page they came from. A Warning says something the user should
-//     be aware of.
-//   - [Failure] and [Reject] are not accepted: nothing was done, and the form is
-//     shown again with what the user typed kept. A Failure speaks for the whole form,
-//     and a Reject for fields, with [Field].
+//     sent back to the page they came from, with a 303 so that a reload does not do
+//     it again. A Warning says something the user should be aware of.
+//   - [Failure] and [Reject] are not accepted: nothing was done, and the POST is
+//     answered with the page, the form drawn again with what the user typed kept, and
+//     the status 422. Nothing is kept on the server or in a cookie, and a reload makes
+//     the browser ask whether to send the form again, which is harmless since nothing
+//     was done. A Failure speaks for the whole form, and a Reject for fields, with
+//     [Field].
 //
 // Those are the defaults, and an outcome can replace them, for any of the four kinds.
 // [Outcome.Then] takes the user to another page. [Outcome.Back] takes them back to the

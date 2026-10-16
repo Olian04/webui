@@ -263,10 +263,10 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
 	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
-	assert.Equal(t, rec.Code, http.StatusSeeOther) // to the form, which is drawn again with what was typed
-	page := follow(h, rec)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the form, drawn again with what was typed, as the answer
+	page := rec
 	assert.Contains(t, page.Body.String(), "already in use by another device")
-	assert.Contains(t, page.Body.String(), `value="`+taken.IP+`"`) // what was typed is kept
+	assert.Contains(t, page.Body.String(), `value="`+taken.IP+`"`) // what was typed
 
 	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -287,8 +287,8 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 
 	// Rules run on the server too, and every failure is reported at once.
 	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"ab"}, "f0_1": {"70000"}, "f1_0": {"2"}, "f1_1": {"150"}})
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	page := follow(h, rec)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	page := rec
 	for _, want := range []string{"Must be at least 3 characters.", "Must be at most 65535.", "Must be at most 1.", "Must be at most 100."} {
 		assert.Contains(t, page.Body.String(), want)
 	}
@@ -453,8 +453,8 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
 	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(h, rec).Body.String(), `>Cancel</a>`)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
 }
 
 func flashOf(rec *httptest.ResponseRecorder) string {
@@ -476,8 +476,8 @@ func TestIngestShowsEveryKindOfOutcome(t *testing.T) {
 
 	// Failure: not accepted, so the form is shown again with what was typed, and the reason.
 	rec := post(h, "/admin/settings", ingest("0.95", "40"))
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	page := follow(h, rec)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	page := rec
 	assert.Contains(t, page.Body.String(), `value="0.95"`)
 	assert.Contains(t, page.Body.String(), "would drop most of them")
 
