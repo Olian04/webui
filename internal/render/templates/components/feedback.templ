@@ -88,22 +88,56 @@ func (p StatusBarProps) took() string {
 
 templ StatusBar(p StatusBarProps) {
 	<div class="statusbar">
-		<span class="method" data-method>{ p.Method }</span>
-		<span class="url" data-url>{ p.URL }</span>
-		<span class="status-meta">
-			<noscript>
-				<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: there is no search box, no code editor, and a panel reloads the page.">JS off</span>
-			</noscript>
-			<span class="sb-badge sb-warn" data-stale hidden></span>
-			if !p.Built.IsZero() {
-				<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>
-				<span class="sb-opt" data-loaded hidden title="How long the browser took to get and show this page"></span>
-				<time class="sb-opt" data-built datetime={ p.Built.UTC().Format(time.RFC3339Nano) } title={ "The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC") }>{ "built " + p.Built.UTC().Format("15:04:05") + "Z" }</time>
-			}
-		</span>
-		<span class="netlog" data-netlog>
+		@statusRequest(p)
+		@statusMeta(p)
+		@statusNetlog()
+	</div>
+}
+
+// StatusBarLive is the bar of a page that is sent as it is built, in the part of it that is known when the page
+// begins: the request, and a mark that the rest, which is how the page came to be, is still to come. StatusBarLate
+// follows it when the page is whole, and covers the mark.
+templ StatusBarLive(p StatusBarProps) {
+	<div class="statusbar statusbar-live">
+		@statusRequest(p)
+		<span class="status-meta status-loading" role="status">
 			<span class="spin" aria-hidden="true"></span>
-			<span data-netmsg></span>
+			<span>loading</span>
 		</span>
 	</div>
+}
+
+// StatusBarLate is what a page that is sent as it is built says of how it came to be, drawn when all of it has been
+// sent. It is a bar of its own, fixed over the end of the live one, so the two read as one.
+templ StatusBarLate(p StatusBarProps) {
+	<div class="statusbar-late">
+		@statusMeta(p)
+		@statusNetlog()
+	</div>
+}
+
+templ statusRequest(p StatusBarProps) {
+	<span class="method" data-method>{ p.Method }</span>
+	<span class="url" data-url>{ p.URL }</span>
+}
+
+templ statusMeta(p StatusBarProps) {
+	<span class="status-meta">
+		<noscript>
+			<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: there is no search box, no code editor, and a panel reloads the page.">JS off</span>
+		</noscript>
+		<span class="sb-badge sb-warn" data-stale hidden></span>
+		if !p.Built.IsZero() {
+			<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>
+			<span class="sb-opt" data-loaded hidden title="How long the browser took to get and show this page"></span>
+			<time class="sb-opt" data-built datetime={ p.Built.UTC().Format(time.RFC3339Nano) } title={ "The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC") }>{ "built " + p.Built.UTC().Format("15:04:05") + "Z" }</time>
+		}
+	</span>
+}
+
+templ statusNetlog() {
+	<span class="netlog" data-netlog>
+		<span class="spin" aria-hidden="true"></span>
+		<span data-netmsg></span>
+	</span>
 }

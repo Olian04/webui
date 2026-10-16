@@ -64,6 +64,7 @@ func (p *Program) stream(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	doc := p.finish(w, r, p.pageDoc(page, req, body), req.shell)
 	started := startedAt(r)
 	// The headers say how long it took to send the first of it. The bar, which is drawn last, says how long all of it took.
+	doc.Streaming = true
 	doc.Timing = func() (time.Time, time.Duration) { return time.Now().UTC(), time.Since(started) }
 
 	h := w.Header()
