@@ -1,8 +1,8 @@
 package webui
 
 import (
+	"context"
 	"fmt"
-	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -672,17 +672,17 @@ func labelOf[M any](acc Accessor[M]) string {
 
 // shown is how a field reads where it is only read, from the application's Format, or nil when it
 // has none. value reads the field's value in the form Format takes, and says whether there is
-// one: a value that is not one is shown as it is without a Format. A Format that panics is logged
-// and the value is shown that way too, so a bug in a formatter is a plain value and not a page
+// one: a value that is not one is shown as it is without a Format. A Format that panics is logged,
+// to the logger of the app that is answering, and the value is shown that way too, so a bug in a formatter is a plain value and not a page
 // that cannot be drawn.
-func shown[T any](label string, plain func(any) string, format func(T) string, value func(any) (T, bool)) func(any) string {
+func shown[T any](label string, plain func(any) string, format func(T) string, value func(any) (T, bool)) func(context.Context, any) string {
 	if format == nil {
 		return nil
 	}
-	return func(m any) (text string) {
+	return func(ctx context.Context, m any) (text string) {
 		defer func() {
 			if r := recover(); r != nil {
-				slog.Error("webui: a Format panicked, so the value is shown as it is", "column", label, "panic", r)
+				ir.LoggerFrom(ctx).Error("webui: a Format panicked, so the value is shown as it is", "column", label, "panic", r)
 				text = plain(m)
 			}
 		}()

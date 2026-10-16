@@ -23,6 +23,7 @@ package main
 import (
 	"flag"
 	"log"
+	"log/slog"
 	"net/http"
 	"slices"
 	"time"
@@ -41,6 +42,8 @@ var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
 	// -accent flag overrides the accent colour (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
+	// Where the app says what went wrong that it could not tell the visitor. Left out, it logs nothing.
+	Logger: slog.Default(),
 	// The app's links to places outside it, behind their own button in the top bar. An
 	// ExternalLink is a Nav entry (a Label, an Icon and a Section) with a URL, used as
 	// written: a web address opens in a tab of its own, a path such as /login in this one.

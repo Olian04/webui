@@ -1,6 +1,7 @@
 package tablequery
 
 import (
+	"context"
 	"slices"
 	"strconv"
 	"testing"
@@ -143,25 +144,25 @@ func TestAColumnTheTableDoesNotHaveIsIgnoredAndRowsAreNotChanged(t *testing.T) {
 
 func TestFindReturnsTheRowsWithTheTextInAnyColumnIgnoringCaseInTheirOwnOrder(t *testing.T) {
 	// "ap" is in two names, and "degraded" is only in a status; "100" only in a number.
-	if got := Find(rows(), cols, "AP", 0); !slices.Equal(names(got), []string{"Apple", "apple"}) {
+	if got := Find(context.Background(), rows(), cols, "AP", 0); !slices.Equal(names(got), []string{"Apple", "apple"}) {
 		t.Fatalf("by name: %v", names(got))
 	}
-	if got := Find(rows(), cols, "degrad", 0); !slices.Equal(names(got), []string{"Apple"}) {
+	if got := Find(context.Background(), rows(), cols, "degrad", 0); !slices.Equal(names(got), []string{"Apple"}) {
 		t.Fatalf("by status: %v", names(got))
 	}
-	if got := Find(rows(), cols, "100", 0); !slices.Equal(names(got), []string{"apple"}) {
+	if got := Find(context.Background(), rows(), cols, "100", 0); !slices.Equal(names(got), []string{"apple"}) {
 		t.Fatalf("by number: %v", names(got))
 	}
-	if got := Find(rows(), cols, "nothing like this", 0); len(got) != 0 {
+	if got := Find(context.Background(), rows(), cols, "nothing like this", 0); len(got) != 0 {
 		t.Fatalf("no match: %v", names(got))
 	}
 }
 
 func TestFindStopsAtTheLimit(t *testing.T) {
-	if got := Find(rows(), cols, "a", 2); len(got) != 2 { // every row has an "a"
+	if got := Find(context.Background(), rows(), cols, "a", 2); len(got) != 2 { // every row has an "a"
 		t.Fatalf("limit: %v", names(got))
 	}
-	if got := Find(rows(), cols, "a", 0); len(got) != 4 {
+	if got := Find(context.Background(), rows(), cols, "a", 0); len(got) != 4 {
 		t.Fatalf("no limit: %v", names(got))
 	}
 }

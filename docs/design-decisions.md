@@ -576,6 +576,19 @@ design element.
 - A nil recorder does nothing, so the code that counts does not ask whether metrics are on,
   and an app with no registry pays one nil check.
 
+## Logging
+
+- The app logs to the `*slog.Logger` it is given (`App.Logger`), and to nothing when it is given none.
+  It does not fall back to `slog.Default()`: a library that writes to a global that the program never
+  handed it is output the program did not ask for, and it cannot be turned off for one app and left on for
+  another. What it costs: a program that wants the lines passes `slog.Default()`, one line, and one that
+  forgot hears nothing from a panel that could not load, which the page still says in words.
+- The logger is reached two ways. The runtime holds it (`Program.log`), and the request's context carries
+  it (`ir.LoggerFrom`) for the code that is called with no more than a value, which is a column's `Format`:
+  its panic is recovered where the value is turned into text, and it is logged there. A context with no
+  logger gives one that says nothing, so the code that logs does not ask whether it is on.
+- The compile-failure page has no logger, since there is no app to give it one.
+
 ## Compiling and errors
 
 - `Compile(prefix)` replaces a separate validate step and handler constructor. It is the one

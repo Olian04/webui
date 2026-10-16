@@ -203,13 +203,11 @@ func TestALoadTableShowsTheFormatAndIsHandedTheValuesSort(t *testing.T) {
 }
 
 func TestAFormatThatPanicsIsLoggedAndTheValueIsShownAsItIs(t *testing.T) {
-	var logged bytes.Buffer
-	before := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
-	defer slog.SetDefault(before)
+	t.Parallel()
 
+	var logged bytes.Buffer
 	broken := webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: func(int) string { panic("boom") }}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[blob]{
+	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logged, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[blob]{
 		Title:   "Broken",
 		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
 		Key:     func(b blob) string { return b.Name },

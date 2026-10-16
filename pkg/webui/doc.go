@@ -378,6 +378,16 @@
 // diagnose in the browser. [App.MustCompile] panics instead, for a process that
 // should refuse to start.
 //
+// # Logging
+//
+// An app says what went wrong that it could not tell the visitor (a Load that failed, a panic in
+// the application's code, a table export that was cut, a Format that panicked) to the
+// [log/slog.Logger] it is given: [App.Logger]. The program decides where the lines go and at what
+// level, and an app that is given none logs nothing at all. It does not fall back to
+// [log/slog.Default], so mounting the library adds no output until the program asks for it.
+//
+//	handler := webui.App{Logger: slog.Default(), Pages: pages}.MustCompile("/admin")
+//
 // # Metrics
 //
 // An app can count what it does, as Prometheus metrics, by being given the registry to put

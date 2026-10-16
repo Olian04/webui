@@ -73,20 +73,17 @@ func TestThePageStillServesAfterAPanic(t *testing.T) {
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/device/a").Code, http.StatusOK)
 }
 
-func brokenGuardApp(guard func(context.Context, webui.NoArgs) error) http.Handler {
+func brokenGuardApp(log *slog.Logger, guard func(context.Context, webui.NoArgs) error) http.Handler {
 	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, Body: webui.Stack{}}
 	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, Body: webui.Stack{}, Guard: guard}
-	return webui.App{Pages: webui.Pages{home, broken}}.MustCompile("/admin")
+	return webui.App{Logger: log, Pages: webui.Pages{home, broken}}.MustCompile("/admin")
 }
 
-// Not parallel: the app logs to the default logger it finds when it compiles.
 func TestANavigationPageWhoseGuardPanicsIsHiddenAndTheCauseIsLogged(t *testing.T) {
-	var logged bytes.Buffer
-	before := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
-	defer slog.SetDefault(before)
+	t.Parallel()
 
-	h := brokenGuardApp(func(context.Context, webui.NoArgs) error { panic("x") })
+	var logged bytes.Buffer
+	h := brokenGuardApp(slog.New(slog.NewTextHandler(&logged, nil)), func(context.Context, webui.NoArgs) error { panic("x") })
 
 	rec := serve(h, http.MethodGet, "/admin/home")
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -104,12 +101,10 @@ func TestANavigationPageWhoseGuardPanicsIsHiddenAndTheCauseIsLogged(t *testing.T
 }
 
 func TestANavigationPageWhoseGuardRefusesIsHiddenAndNothingIsLogged(t *testing.T) {
-	var logged bytes.Buffer
-	before := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&logged, nil)))
-	defer slog.SetDefault(before)
+	t.Parallel()
 
-	h := brokenGuardApp(func(context.Context, webui.NoArgs) error { return errors.New("no") })
+	var logged bytes.Buffer
+	h := brokenGuardApp(slog.New(slog.NewTextHandler(&logged, nil)), func(context.Context, webui.NoArgs) error { return errors.New("no") })
 
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/home").Code, http.StatusOK)
 	assert.DeepEqual(t, sidebar(t, h, "/admin/home"), []string{"Home>/admin/home*"})

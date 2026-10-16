@@ -42,7 +42,7 @@ func SearchRows[M, A any](rows func(ctx context.Context) ([]M, error), hit func(
 		if err != nil {
 			return nil, err
 		}
-		found := tablequery.Find(convert.Any(all), cols, query, limit)
+		found := tablequery.Find(ctx, convert.Any(all), cols, query, limit)
 		return convert.Slice(found, func(r any) Hit[A] { return hit(r.(M)) }), nil
 	}
 }

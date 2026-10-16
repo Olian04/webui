@@ -1,6 +1,10 @@
 package ir
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"log/slog"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 // App is one compiled program. It carries no mount prefix: where the app is
 // mounted is a transport concern, passed to the runtime separately.
@@ -16,6 +20,9 @@ type App struct {
 
 	// Metrics is where the runtime registers what it counts, or nil for nothing counted.
 	Metrics prometheus.Registerer
+
+	// Logger is where the runtime says what went wrong that it could not tell the visitor, or nil to say nothing.
+	Logger *slog.Logger
 
 	// Secret keys the addresses of the files the application hands only to the visitors it
 	// has shown an editor to. Empty: the runtime makes a random one.
