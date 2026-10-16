@@ -215,3 +215,16 @@ func TestTheSeparatorIsOneTokenInTheStatusBarAndTheRail(t *testing.T) {
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n  display: none;\n}")
 	assert.False(t, strings.Contains(css, "linear-gradient(var(--border-2), var(--border-2))")) // no line: that is for an edge
 }
+
+// A diff names its two sides above it. In one column, which it is without script and when its panel is narrow, they are
+// not sides but a change, and the header says "Deployed → Saved"; only a diff that is side by side has a name over each
+// side. The script says which it is on the panel's body (data-diff).
+func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
+	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
+}
