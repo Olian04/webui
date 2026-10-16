@@ -352,3 +352,23 @@ func TestThePageDoesNotOptInToACrossDocumentViewTransition(t *testing.T) {
 	assert.False(t, strings.Contains(css, "view-transition-name"))
 	assert.False(t, strings.Contains(css, "::view-transition"))
 }
+
+// When the HTML was built is shown where script is off, and with script it is not: the page says "stale page" when it is
+// wrong for the request, and nothing else a reader would use it for. The stylesheet hides it under the class that script
+// sets before first paint, so it never shows and goes.
+func TestWhenThePageWasBuiltIsShownOnlyWhereScriptIsOffAndTheBadgeSaysWhenItIsStale(t *testing.T) {
+	t.Parallel()
+
+	h := streamApp(webui.Stack{quickTable("First")})
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "html.js .status-meta [data-built] {\n  display: none;\n}")
+
+	page := serve(h, http.MethodGet, "/admin/p").Body.String()
+	assert.Contains(t, page, `<time class="sb-opt" data-built datetime="`) // the server says it, for the page without script
+	assert.Contains(t, page, `data-stale hidden`)                          // and the badge is there for script to show
+
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	assert.Contains(t, js, "'stale page'")
+	assert.False(t, strings.Contains(js, "cached?"))
+	assert.False(t, strings.Contains(js, "showBuilt")) // nothing writes the time or its age into the bar
+}

@@ -2064,6 +2064,11 @@ select.input[multiple] option:checked {
 .status-meta [hidden] {
   display: none;
 }
+/* When the HTML was built is shown only where script is off. With script the page says "stale page" when that time is
+   wrong for the request, which is the one thing a reader would have used it for. */
+html.js .status-meta [data-built] {
+  display: none;
+}
 @media (max-width: 720px) {
   .sb-opt {
     display: none;
