@@ -19,8 +19,11 @@ templ (r *Renderer) Document(d Doc) {
 		Head:        r.head(d.Code),
 		Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 		TopBar:      r.topbar(d.Crumbs, d.URL),
-		Status:      r.statusBar(d),
+		Status:      r.statusBar(d, c.StatusBar),
 		Toasts:      toastRegion(d.Toasts),
+		Streaming:   d.Streaming,
+		StatusLive:  r.statusBar(d, c.StatusBarLive),
+		StatusLate:  r.statusBar(d, c.StatusBarLate),
 	}) {
 		if d.Content != nil {
 			@d.Content

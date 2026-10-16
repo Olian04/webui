@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -786,4 +787,21 @@ func TestAFormattedColumnReadsAsItsFormatAndSortsAndFiltersByItsValue(t *testing
 	assert.Contains(t, big, ">1 GiB<")
 	assert.False(t, strings.Contains(big, ">512 MiB<"))
 	assert.Contains(t, get(h, "/admin/device?devices.export=csv").Body.String(), ",1073761364,") // dev 20: 2^30 + 20*977 bytes
+}
+
+// The staircase has ten panels, the first after a second and each next one a second later, so a visitor who goes
+// after a second and a half has the first of them and the spinner, and none of the rest.
+func TestTheStaircaseArrivesOnePanelAtATime(t *testing.T) {
+	h := handler(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/loading/staircase", nil).WithContext(ctx))
+
+	body := rec.Body.String()
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Contains(t, body, `<div class="arriving"`)
+	assert.Contains(t, body, "Panel 1 (1 s) 1")
+	assert.False(t, strings.Contains(body, "Panel 2 (2 s)"))
+	assert.False(t, strings.Contains(body, `class="arrived"`))
 }
