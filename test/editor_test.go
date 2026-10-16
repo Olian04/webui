@@ -69,9 +69,8 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 
 	// What is refused is shown back as it was typed, with the reason on the editor.
 	rec := post(h, "/admin/e", formValues("f0", strings.Repeat("x", 41)))
-	assert.Equal(t, rec.Code, http.StatusSeeOther) // the answer is a redirect, so that a reload does not send it again
-	page := seen(h, rec)
-	assert.Equal(t, page.Code, http.StatusOK)
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the page, with the text as it was typed
+	page := rec
 	assert.Contains(t, page.Body.String(), strings.Repeat("x", 41))
 	assert.Contains(t, page.Body.String(), `class="err code-error"`)
 	assert.Equal(t, saved, "{}")

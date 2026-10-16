@@ -430,7 +430,8 @@ so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
 
 An action says how it ended and the library draws it. Accepted outcomes redirect
 (a 303, so a reload does not repeat the POST) and carry their toast across the
-redirect; refused ones show the form again, in place, with what the user typed.
+redirect; refused ones are answered with the page, a 422 whose form is drawn again with
+what the user typed, since a refusal did nothing and a reload may send it again.
 
 | Constructor | Accepted? | Visual |
 |---|---|---|

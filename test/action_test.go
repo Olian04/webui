@@ -2,7 +2,6 @@ package webui_test
 
 import (
 	"context"
-	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -39,17 +38,6 @@ func follow(h http.Handler, rec *httptest.ResponseRecorder) *httptest.ResponseRe
 	out := httptest.NewRecorder()
 	h.ServeHTTP(out, req)
 	return out
-}
-
-// seen is what a visitor is left looking at after rec: the response itself or, when it is the redirect of a rejected
-// submission that was kept for the page it leads to, that page, with what was typed in it.
-func seen(h http.Handler, rec *httptest.ResponseRecorder) *httptest.ResponseRecorder {
-	for _, c := range rec.Result().Cookies() {
-		if raw, err := base64.RawURLEncoding.DecodeString(c.Value); c.Name == "webui_flash" && err == nil && len(raw) > 0 && raw[0] == 's' {
-			return follow(h, rec)
-		}
-	}
-	return rec
 }
 
 // shop is the README's two pages with every action kind, recording what ran.
@@ -198,11 +186,9 @@ func TestRuleFailuresAreCollectedAndTheInputIsEchoed(t *testing.T) {
 	s := newShop()
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "not-an-ip", "f2", "500"))
 
-	assert.Equal(t, rec.Code, http.StatusSeeOther) // a redirect, to the page that draws the form again
-	assert.Equal(t, len(s.saved), 0)               // Run never ran
-	page := seen(s.h, rec)
-	assert.Equal(t, page.Code, http.StatusOK)
-	body := page.Body.String()
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the page, with the form drawn again: not a redirect
+	assert.Equal(t, len(s.saved), 0)                          // Run never ran
+	body := rec.Body.String()
 	assert.Contains(t, body, `value="not-an-ip"`) // raw input, not the model
 	assert.Contains(t, body, `value="500"`)
 	assert.Contains(t, body, "must be a valid IPv4 address")
@@ -216,8 +202,8 @@ func TestServerSideRejectionLooksLikeARuleFailure(t *testing.T) {
 
 	s := newShop()
 	rec := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.4.17", "f2", "5"))
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	body := seen(s.h, rec).Body.String()
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	body := rec.Body.String()
 	assert.Contains(t, body, "already in use by another device")
 	assert.Contains(t, body, `value="10.0.4.17"`)
 	assert.Contains(t, body, "1 field needs attention.")
