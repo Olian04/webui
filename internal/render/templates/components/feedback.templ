@@ -128,8 +128,11 @@ templ statusMeta(p StatusBarProps) {
 		</noscript>
 		<span class="sb-badge sb-warn" data-stale hidden></span>
 		if !p.Built.IsZero() {
-			<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>
-			<span class="sb-opt" data-loaded hidden title="How long the browser took to get and show this page"></span>
+			<span class="sb-timing" data-timing>
+				<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>
+				<span class="sb-split" data-split hidden aria-hidden="true"><i></i></span>
+				<span class="sb-opt" data-loaded hidden></span>
+			</span>
 			<time class="sb-opt" data-built datetime={ p.Built.UTC().Format(time.RFC3339Nano) } title={ "The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC") }>{ "built " + p.Built.UTC().Format("15:04:05") + "Z" }</time>
 		}
 	</span>

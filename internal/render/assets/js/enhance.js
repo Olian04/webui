@@ -82,11 +82,31 @@
   function millis(ms) {
     return (ms < 10 ? ms.toFixed(1) : Math.round(ms)) + ' ms';
   }
+  // The page took ms from the request to being loaded, which the server's render time is part of: the delivery is the
+  // rest (the network and the browser), and the bar is each one's share of the whole.
   function loaded(ms) {
     var el = $('[data-loaded]');
+    var build = $('[data-build]');
     if (!el) return;
-    el.textContent = 'loaded ' + millis(ms);
+    var render = build ? parseFloat(build.textContent) : 0;
+    if (isNaN(render)) render = 0;
+    var delivery = Math.max(ms - render, 0);
+    el.textContent = millis(delivery);
     el.hidden = false;
+    var split = $('[data-split]');
+    if (split) {
+      var share = render + delivery > 0 ? (render / (render + delivery)) * 100 : 100;
+      // Each part that is not nothing is at least a sliver, so the bar says that it was there.
+      if (render > 0 && delivery > 0) share = Math.min(Math.max(share, 4), 96);
+      split.style.setProperty('--render', share + '%');
+      split.hidden = false;
+    }
+    var group = $('[data-timing]');
+    if (group) {
+      group.title =
+        'The server took ' + millis(render) + ' to build this page. Delivery took ' + millis(delivery) +
+        ': the network and the browser, until the page was loaded. ' + millis(render + delivery) + ' in all.';
+    }
   }
   // A panel that was fetched again has its own build time, and the status bar says the latest.
   function noteResponse(res, took) {
