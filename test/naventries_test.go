@@ -77,7 +77,7 @@ func TestAPageWithNavEntriesHasAnEntryForEachOfThemInTheSidebarInOrder(t *testin
 	})
 	body := serve(h, http.MethodGet, "/admin/home").Body.String()
 	assert.Equal(t, strings.Count(body, `fa-location-dot`), 3)
-	assert.Equal(t, strings.Count(body, `class="nav-section"`), 1) // one caption: they are one group
+	assert.Equal(t, strings.Count(body, `class="nav-section" title=`), 1) // one caption: they are one group
 }
 
 func TestTheEntryOfThePageOnScreenIsLitAndSoIsTheEntryOfThePageThatBorrowsItsPlace(t *testing.T) {

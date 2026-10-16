@@ -129,7 +129,7 @@ func TestNavigationHasSectionsAndTheSitePageLightsItsOwnEntry(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm").Body.String()
 	for _, caption := range []string{"Platform", "Sites", "Configuration", "Operations"} {
-		assert.Contains(t, body, `<div class="nav-section">`+caption+`</div>`)
+		assert.Contains(t, body, `<div class="nav-section" title="`+caption+`">`+caption+`</div>`)
 	}
 	// SiteDetail lists an entry for each site, loaded when the page is drawn, and lights the one
 	// that is on screen; the list of sites, which is another page, is not lit.

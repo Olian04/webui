@@ -100,7 +100,20 @@ func TestAStretchedSplitKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Body.String(), `<div class="split">`)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".split {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  align-items: stretch;\n}")
-	assert.Contains(t, css, ".split > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ":is(.split, .stack, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+}
+
+// A column of panels in a Split, and the panel under a tab strip in one, take the height the row has: the tables of a
+// column share it, a column without one gives it to its last panel, and the panel in a tab fills what is left of its cell.
+func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
+	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
+	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split {\n  flex: 1 1 auto;\n}")
 }
 
 func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
@@ -184,4 +197,17 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	end := strings.Index(body, `</div></div><div class="panel grows"`)
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
 	assert.True(t, strings.Index(body, "Beside-row") > end)
+}
+
+// The sidebar as a rail, by choice or on a narrow screen, has no room for a section's caption: it is a hairline, in both
+// places the stylesheet makes a rail, and the caption is the tooltip of the element, so the groups can be told apart.
+func TestTheRailSeparatesTheSectionsWithAHairlineAndNamesThemInATooltip(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	hairline := "height: 17px;\n  padding: 0;\n  overflow: hidden;\n  font-size: 0;\n  background: linear-gradient(var(--border-2), var(--border-2)) center / 100% 1px no-repeat;"
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .nav-section {\n  "+hairline)
+	assert.Contains(t, css, "  .nav-section {\n    "+strings.ReplaceAll(hairline, "\n  ", "\n    "))
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n  display: none;\n}")
 }

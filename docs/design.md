@@ -181,7 +181,10 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
 capitalised initial in the rail). Groups carry an 11px uppercase caption above
-them. The active item takes the Active background, full-strength text, weight
+them. In the rail the caption has no room, so it becomes a hairline across the rail with 8px above and
+below it: 17px of height for each group, and the caption in a tooltip. Nothing is drawn above the first
+group. Of the ways tried (a short rule, the caption's first letters, a dot) the hairline was the one that
+read at once as "these belong together" without a legend. The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
 
@@ -259,14 +262,16 @@ bordered group with an 11px uppercase caption instead.
 
 ### Arrangements
 
-- **Stacked** — panels in a column, 8px apart.
+- **Stacked** — panels in a column, 8px apart. A stack that has height to give, because it is a cell of a
+  Split beside something taller or the body of a tab in one, gives it to its tables, which share it, and to its last
+  panel when it has none, so the column ends where the row does.
 - **Split** — two columns, 8px apart. Panels side by side are as tall as the tallest
   of them, so their borders line up; when a Split wraps onto more rows, the heights
   are equal within a row and not across rows. A panel's foot (a pager, the actions)
   stays at the bottom of its box. Optionally weighted 1.6 : 1. Collapses to one
   column below 1100px, where nothing is stretched. Only panels that are direct
   children of the Split are stretched; a layout inside it, such as Tabs, is one
-  column cell and its panel keeps its own height.
+  column cell, and what is under its strip (a panel, or a stack of them) fills what is left of the cell.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked
