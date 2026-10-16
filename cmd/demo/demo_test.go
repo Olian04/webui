@@ -75,7 +75,7 @@ func TestEveryPageServes(t *testing.T) {
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
-		"/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/layout/split",
+		"/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/layout/split", "/admin/layout/rail", "/admin/layout/columns", "/admin/layout/tabs", "/admin/layout/deep", "/admin/layout/review", "/admin/layout/runbook",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -786,4 +786,37 @@ func TestAFormattedColumnReadsAsItsFormatAndSortsAndFiltersByItsValue(t *testing
 	assert.Contains(t, big, ">1 GiB<")
 	assert.False(t, strings.Contains(big, ">512 MiB<"))
 	assert.Contains(t, get(h, "/admin/device?devices.export=csv").Body.String(), ",1073761364,") // dev 20: 2^30 + 20*977 bytes
+}
+
+// The Layout pages are combinations that no other page of the demo has, and each is the layout it says.
+func TestTheLayoutPagesAreTheCombinationsTheySay(t *testing.T) {
+	h := handler(t)
+
+	// A rail: a Stack in a Split, beside a table.
+	rail := get(h, "/admin/layout/rail").Body.String()
+	assert.Contains(t, rail, `<div class="split"><div class="panel grows"`)
+	assert.Contains(t, rail, `</div><div class="stack">`)
+
+	// Columns in columns: a Split that is the first child of a Split.
+	assert.Contains(t, get(h, "/admin/layout/columns").Body.String(), `<div class="split"><div class="split">`)
+
+	// Tabs each have a name of their own in the address, and only the selected tab of each is built.
+	tabs := get(h, "/admin/layout/tabs?tabs-2.tab=status").Body.String()
+	for _, name := range []string{"tabs.tab=", "tabs-2.tab=", "tabs-3.tab="} {
+		assert.Contains(t, tabs, name)
+	}
+	assert.Contains(t, tabs, "Open alerts")
+	assert.False(t, strings.Contains(tabs, "Mean rate"))
+
+	// Five layouts down, and the choice of an inner Tabs is in the address.
+	deep := get(h, "/admin/layout/deep?tabs-2.tab=status-and-a-form").Body.String()
+	assert.Contains(t, deep, "A note")
+	assert.False(t, strings.Contains(deep, "Mean rate"))
+
+	// A page with an editor, a diff and Markdown links what they need in its head.
+	review := get(h, "/admin/layout/review").Body.String()
+	assert.Contains(t, review, `<script type="module" src="/admin/_webui/monaco/code-`)
+	assert.Contains(t, review, "Collector configuration")
+	assert.Contains(t, review, "Changes since the last deploy")
+	assert.Contains(t, get(h, "/admin/layout/runbook").Body.String(), `<article class="md"`)
 }
