@@ -503,35 +503,20 @@ Nothing slides, nothing bounces, nothing animates on first paint.
 
 ### Navigation
 
-A whole-page navigation cross-fades, and the cross-fade is **entirely CSS**:
+A whole-page navigation is an ordinary one. The browser keeps the page that is on screen until the next has
+something to paint, and the shell (sidebar, top bar, status bar) is the same on every page, so it does not appear to
+move: only the content changes. This is what making every control a real link buys, and it costs no script.
 
-```css
-@view-transition { navigation: auto; }
+There is no cross-fade. A cross-document view transition (`@view-transition { navigation: auto; }` with the shell's
+regions named) was in the design and was taken out: its first frames are white, in dark mode too, because the
+browser shows its default background while it makes the transition, and nothing a page can say reaches it. A
+background on the transition, on its root, hiding the root images and animating none of them were each tried, and
+the white came as often. It was measured with Chrome 155 as a white frame in about 3 of 8 navigations with the
+transition, and in none of 8 with it skipped. A page that says its canvas is dark must not be white at any frame of
+a navigation, so the cross-fade went.
 
-.sidebar   { view-transition-name: wui-sidebar; }
-.topbar    { view-transition-name: wui-topbar; }
-.content   { view-transition-name: wui-content; }
-```
-
-The browser snapshots the old document, loads the new one, and animates each
-named region independently. The sidebar is its own snapshot and is identical on
-every page, so it does not appear to move — the shell stays put and only the
-content changes. This is the visual reward for making every control a real
-link, and it costs no script at all.
-
-Duration is 180ms, eased. `prefers-reduced-motion: reduce` sets
-`navigation: none` and zeroes the region animations.
-
-Support is Chrome 126+ and Safari 18.2+; Firefox has same-document view
-transitions and the cross-document form is pending. Where it is unsupported the
-navigation is an ordinary one — which is what it would have been anyway, so
-there is nothing to fall back to.
-
-**A whole-page cross-fade and a panel skeleton mean different things and must
-never be substituted for each other.** The cross-fade says *the page moved*.
-The skeleton (§10) says *this one panel is reloading and everything else you
-can see is still current*. Fading the whole content region while one panel
-reloads would claim that all of it is stale, which is false.
+**A panel that reloads and a page that moved still mean different things.** The skeleton (§10) says *this one panel
+is reloading and everything else you can see is still current*, and it is the only motion a navigation has.
 
 ### A page that is still arriving
 
@@ -559,8 +544,7 @@ still waiting after it has stopped is the worse lie. Two consequences are part o
 - **The status bar is the honest part.** Its build time, drawn last, says how long all of the page took, not how long
   the first of it did.
 
-The cross-fade of a navigation (above) still runs: it is the browser's, between two documents, and a page that is
-sent as it is built is one document. With script off the page arrives the same way, since nothing here needs script.
+With script off the page arrives the same way, since nothing here needs script.
 A page with an editor, a diff or Markdown is built whole, because its head depends on its panels, and so arrives as one
 piece.
 

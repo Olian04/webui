@@ -309,6 +309,18 @@ design element.
 
 ## Navigation and links
 
+- No cross-document view transition. The shell's regions were named and the page opted in
+  (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white,
+  in dark mode too: while the browser makes the transition it shows its own default background, which no rule of the
+  page reaches. Measured by capturing the frames of a followed link in Chrome 155 (with a headed browser, since the
+  headless one never showed it): a white frame in about 3 of 8 navigations, and 255 of 255 in the brightest; with the
+  transition skipped from script, in 0 of 8. A background on the transition, on the root group, hiding the root images
+  and giving them no animation were each tried, with the style in the page and checked to be there, and none
+  changed how often it came. The page that is on screen is held until the next has something to paint, as for any
+  navigation, which does not flash, and a shell that is the same on every page does not appear to move. What it
+  costs: the 180ms fade of the content, which the design had as the sign that the page moved. A browser that fixes the
+  transition's first frames could have it back, with one rule and the names of the regions.
+
 - A tab, with script, is read alone. Following one was a navigation to the same page with another `tabs.tab`, which read
   every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the leaf
   header a panel's refresh uses (`X-Webui-Leaf`, the id of the `Tabs` in the form of a panel's, which the page carries

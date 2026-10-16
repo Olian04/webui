@@ -616,46 +616,15 @@ a.side-brand:hover {
 }
 
 /* ---------------------------------------------------------------------------
-   Whole-page navigation. This is the entire mechanism — no script is involved.
-   The browser snapshots the old document, loads the new one, and cross-fades
-   only the named regions. The sidebar is its own snapshot and, being identical
-   across pages, does not appear to move.
-   Chrome 126+ and Safari 18.2+. Where it is unsupported the navigation is an
-   ordinary one, which is what it would have been anyway.
+   Whole-page navigation. A followed link is an ordinary navigation: the browser holds the page that is on screen
+   until the next one has something to paint, so a shell that is the same on every page does not move, and nothing
+   here asks for more. The page does not opt in to a cross-document view transition. One was here, and it fades the
+   regions of the page into each other in 180ms, but its first frames are white, in dark mode too, whatever the page
+   says its background is: the browser shows its default background while it makes the transition, and no rule of
+   the page reaches it (a background on the transition, on its root, hiding the root images, and no animation
+   on them were each tried and did not change how often it happened). Without it the white frame never came: it was
+   measured in 8 navigations in 8 with the transition skipped, and in about 3 in 8 with it.
    --------------------------------------------------------------------------- */
-@view-transition {
-  navigation: auto;
-}
-.sidebar {
-  view-transition-name: wui-sidebar;
-}
-.topbar {
-  view-transition-name: wui-topbar;
-}
-.scroll {
-  view-transition-name: wui-content;
-}
-.statusbar {
-  view-transition-name: wui-status;
-}
-.toasts {
-  view-transition-name: wui-toasts;
-}
-::view-transition-group(*) {
-  animation-duration: 180ms;
-  animation-timing-function: ease;
-}
-@media (prefers-reduced-motion: reduce) {
-  @view-transition {
-    navigation: none;
-  }
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none;
-  }
-}
-
 
 /* layouts */
 .stack {

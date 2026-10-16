@@ -340,3 +340,15 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 	assert.Contains(t, css, ".tab {\n  flex: none;")
 	assert.Contains(t, css, "white-space: nowrap;\n  color: var(--text-2);")
 }
+
+// A followed link is an ordinary navigation. The page does not opt in to a cross-document view transition, whose first frames
+// are white whatever the page says its background is: neither the opt-in nor a name for a region of the shell is in the stylesheet.
+func TestThePageDoesNotOptInToACrossDocumentViewTransition(t *testing.T) {
+	t.Parallel()
+
+	h := streamApp(webui.Stack{quickTable("First")})
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.False(t, strings.Contains(css, "@view-transition"))
+	assert.False(t, strings.Contains(css, "view-transition-name"))
+	assert.False(t, strings.Contains(css, "::view-transition"))
+}

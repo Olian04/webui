@@ -3,8 +3,7 @@
 // page a followed link replaces, and adds a few conveniences that need script.
 //
 // The rule that decides what a click does: a link to a DIFFERENT path is a
-// navigation and is left alone (the browser handles it, and the CSS view
-// transition cross-fades it). A link to the SAME path with different arguments,
+// navigation and is left alone (the browser handles it). A link to the SAME path with different arguments,
 // inside a panel, belongs to that panel, so only that panel is replaced.
 (function () {
   'use strict';

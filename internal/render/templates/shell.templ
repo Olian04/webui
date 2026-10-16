@@ -40,7 +40,7 @@ templ Document(p DocumentProps) {
 
 // AppShellProps is the four fixed regions. Only the content region scrolls,
 // and each region is a slot because the shell has no opinion about what goes
-// in them — it owns the geometry and the view-transition names, nothing else.
+// in them — it owns the geometry, nothing else.
 type AppShellProps struct {
 	Sidebar templ.Component
 	TopBar  templ.Component
