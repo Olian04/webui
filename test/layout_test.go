@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -231,26 +232,50 @@ func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
 }
 
 // The columns of a table are as wide as what they are, and not as what is in them: a table sizes its columns by its rows, so
-// two tables of the same columns, one above the other, would have them in different places. A text takes twice the share of a
-// number, a badge, a bar or a moment, and a table that has a selection or row actions leaves those columns to their content.
+// two tables of the same columns, one above the other, would have them in different places. Each column is given the room
+// it needs from its declaration, and the table is shared in those proportions.
 func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T) {
 	t.Parallel()
 
-	// The same columns with different rows, stacked: the same widths.
-	h := streamApp(webui.Stack{quickTable("First"), quickTable("A second table with a longer title")})
-	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	tight := func(s string) string { return strings.ReplaceAll(s, "> <", "><") }
-	colgroups := regexp.MustCompile(`<colgroup>.*?</colgroup>`).FindAllString(tight(body), -1)
-	assert.Equal(t, len(colgroups), 2)
-	assert.Equal(t, colgroups[0], colgroups[1])
-	assert.Equal(t, colgroups[0], `<colgroup><col style="width:100.00%;"></colgroup>`)
+	widths := func(body string) [][]float64 {
+		tight := strings.ReplaceAll(body, "> <", "><")
+		var out [][]float64
+		for _, group := range regexp.MustCompile(`<colgroup>.*?</colgroup>`).FindAllString(tight, -1) {
+			var ws []float64
+			for _, m := range regexp.MustCompile(`width:([0-9.]+)%`).FindAllStringSubmatch(group, -1) {
+				f, err := strconv.ParseFloat(m[1], 64)
+				assert.NoError(t, err)
+				ws = append(ws, f)
+			}
+			out = append(out, ws)
+		}
+		return out
+	}
 
-	// A text and a number: two thirds and one third.
+	// The same columns with different rows, stacked: the same widths.
+	same := widths(serve(streamApp(webui.Stack{quickTable("First"), quickTable("A second table with a longer title")}), http.MethodGet, "/admin/p").Body.String())
+	assert.Equal(t, len(same), 2)
+	assert.DeepEqual(t, same[0], same[1])
+	assert.DeepEqual(t, same[0], []float64{100})
+
+	// A column of badges that can hold several, with the room for two of them, is wider than one of a single value, which is
+	// wider than the header it has; a number is not given more than it needs; and the shares are the whole of the table.
+	tags := webui.Select[blob]{Label: "Tags", Load: func(b blob) []string { return nil }, Multi: true,
+		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy"}, {Value: "staging"}}}
+	state := webui.Select[blob]{Label: "State", Load: func(b blob) []string { return nil },
+		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
 	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
 		Title:   "Blobs",
 		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
 		Key:     func(b blob) string { return b.Name },
-		Columns: []webui.Accessor[blob]{blobName, blobSize},
+		Columns: []webui.Accessor[blob]{blobName, state, tags, blobSize},
 	}}}}.MustCompile("/admin")
-	assert.Contains(t, tight(serve(mixed, http.MethodGet, "/admin/m").Body.String()), `<colgroup><col style="width:66.67%;"><col style="width:33.33%;"></colgroup>`)
+	got := widths(serve(mixed, http.MethodGet, "/admin/m").Body.String())[0]
+	assert.Equal(t, len(got), 4)
+	name, st, multi, size := got[0], got[1], got[2], got[3]
+	assert.True(t, multi > st)   // a column of several badges is wider than a column of one
+	assert.True(t, multi > name) // and than a text
+	assert.True(t, size < name)  // a number is not given more than a text
+	assert.True(t, st > size)    // and a badge is given more than a number
+	assert.True(t, name+st+multi+size > 99.9 && name+st+multi+size < 100.1)
 }

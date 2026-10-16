@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/a-h/templ"
 
@@ -442,23 +443,71 @@ func (f filterView) text() string {
 }
 
 // columnWidths is the width of each column of a table, as a share of the table, from what the columns are and not from
-// what is in them. A table sizes its columns by its content, so two tables of the same columns, one above the other, would
-// have them in different places as their rows differ. A text or a link takes twice the share of the rest, which are a
-// number, a badge, a bar or a moment: short, but not so short that a header cannot say what they are.
+// what is in them. A table sizes its columns by its rows, so two tables of the same columns, one above the other, would
+// have them in different places as their rows differ. Each column is given the room that it needs, worked out from its
+// declaration (its header, the choices of a select and whether it holds several, a bar, a moment), and the table is shared
+// between them in those proportions, so a column with badges is wider than one with a number, at any width of the table.
 func columnWidths(cols []columnView) []string {
-	weight := func(f ir.Field) float64 {
-		if f.Kind == ir.KindString && (f.Display == ir.DisplayText || f.Display == ir.DisplayLink) {
-			return 2
-		}
-		return 1
-	}
+	need := make([]float64, len(cols))
 	total := 0.0
-	for _, col := range cols {
-		total += weight(col.Field)
+	for i, col := range cols {
+		need[i] = columnNeed(col.Field)
+		total += need[i]
 	}
 	out := make([]string, len(cols))
-	for i, col := range cols {
-		out[i] = strconv.FormatFloat(weight(col.Field)/total*100, 'f', 2, 64) + "%"
+	for i := range cols {
+		out[i] = strconv.FormatFloat(need[i]/total*100, 'f', 2, 64) + "%"
 	}
 	return out
+}
+
+// The room a column needs, in pixels of a 13px table: a letter of text, the padding of a cell, the room for the sort link
+// and the filter beside a header, and what is in the cell that no row can say.
+const (
+	letterPx  = 7.2
+	cellPx    = 20 // the padding of a cell
+	headerPx  = 24 // the sort caret and the filter button, which a header with a key makes room for
+	badgePx   = 34 // the dot and the padding of a badge
+	badgeGap  = 6
+	textPx    = 120 // a text or a link: about sixteen letters
+	numberPx  = 90  // a number as it is formatted, such as "520.6 KiB"
+	momentPx  = 110
+	barPx     = 140 // the bar and the number beside it
+	unknownPx = 110 // a select whose values are whatever its rows hold
+)
+
+// columnNeed is what one column needs: the more of what its header takes and what its cell takes.
+func columnNeed(f ir.Field) float64 {
+	header := float64(utf8.RuneCountInString(f.Label))*letterPx + cellPx
+	if f.Key != "" {
+		header += headerPx
+	}
+	cell := float64(textPx)
+	switch {
+	case f.Display == ir.DisplaySelect:
+		cell = unknownPx
+		if len(f.Choices) > 0 {
+			longest, second := 0, 0
+			for _, c := range f.Choices {
+				n := utf8.RuneCountInString(f.LabelOf(c.Value))
+				if n > longest {
+					longest, second = n, longest
+				} else if n > second {
+					second = n
+				}
+			}
+			cell = float64(longest)*letterPx + badgePx + cellPx
+			if f.Multi && len(f.Choices) > 1 {
+				// room for two badges side by side, which is what a value of several looks like before it wraps
+				cell += float64(second)*letterPx + badgePx + badgeGap
+			}
+		}
+	case f.Display == ir.DisplaySlider:
+		cell = barPx
+	case f.Display == ir.DisplayTime:
+		cell = momentPx
+	case f.Kind == ir.KindInt || f.Kind == ir.KindFloat:
+		cell = numberPx
+	}
+	return max(header, cell)
 }

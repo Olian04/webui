@@ -408,10 +408,13 @@ figures. Identifiers are monospace text-secondary.
 
 Column widths follow what a column is, not what is in it. A table sizes its columns by its rows, so two tables of the
 same columns, one above the other, would have had their columns in different places for no reason a reader could
-see. A text or a link takes twice the share of the others (a number, a badge, a bar, a moment), so *Panel* and *Backend
-answered after* are half and half and *Name* and *Size* are two thirds and one third, in every table of them; the
-selection and the row actions are left to what is in them. A cell whose content does not fit in its share still makes its
-column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did.
+see. Each column is given the room it needs from its declaration: the letters of its header and the sort and filter
+beside them, a text or a link about sixteen letters, a number the width of "520.6 KiB", a moment or a bar a little more,
+and a select the longest of its choices in a badge, with room for two of them side by side when it holds several. The
+table is shared between its columns in those proportions at whatever width it has, so a column of badges is wider
+than a column of numbers, a long header is never cut, and two tables of the same columns have them in the same
+place. The selection and the row actions are left to what is in them. A cell whose content does not fit in its share
+still makes its column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did.
 
 **Badges** sit in status columns: 19px tall, 2px radius, lowercase 11.5/500,
 built from a semantic family's 14% background and 30% border. A status badge
