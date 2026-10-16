@@ -103,6 +103,44 @@ func staircase() webui.Stack {
 	return body
 }
 
+// Stamp is a row that says when it was read, so that a panel that was read again can be told from one that was not.
+type Stamp struct{ Panel, ReadAt string }
+
+var (
+	StampPanel  = webui.String[Stamp]{Label: "Panel", Load: func(s Stamp) string { return s.Panel }}
+	StampReadAt = webui.String[Stamp]{Label: "Read at", Load: func(s Stamp) string { return s.ReadAt }}
+)
+
+// stamped is a table whose backend takes d and says when it answered, to the millisecond.
+func stamped(title string, d time.Duration) webui.Table[Stamp] {
+	return webui.Table[Stamp]{
+		Title:   title,
+		Columns: []webui.Accessor[Stamp]{StampPanel, StampReadAt},
+		Rows: func(ctx context.Context) ([]Stamp, error) {
+			wait(ctx, d)
+			return []Stamp{{Panel: title, ReadAt: time.Now().Format("15:04:05.000")}}, nil
+		},
+	}
+}
+
+// Tabs that load only the tab that is shown. With script a tab is followed by asking for the Tabs alone, so the panel
+// outside it keeps the moment it was read at, and only the tab that was chosen is read. Without script a tab is a link to
+// the page, as it always was.
+var LoadingTabs = webui.Page[webui.NoArgs]{
+	Path: "/loading/tabs",
+	Nav:  webui.Nav{Label: "Tabs read one tab", Icon: "window-restore", Section: "Loading"},
+	Body: webui.Stack{
+		intro("Follow a tab. The panels above and below the Tabs keep the moment they were read at, because only the Tabs is asked for, and only the tab that you chose is read: its panels say when, and the tab you left is read again only if you come back. Each tab takes 500 ms. Reload the page, which reads all of it, to see the difference. Without script a tab is a link to the page, and the whole page is read."),
+		stamped("Above the tabs (read with the page)", 0),
+		webui.Tabs{Panels: []webui.Tab{
+			{Label: "First", Body: webui.Split{stamped("First, left (500 ms)", 500*time.Millisecond), stamped("First, right (500 ms)", 500*time.Millisecond)}},
+			{Label: "Second", Body: stamped("Second (500 ms)", 500*time.Millisecond)},
+			{Label: "Third", Body: stamped("Third (500 ms)", 500*time.Millisecond)},
+		}},
+		stamped("Below the tabs (read with the page)", 0),
+	},
+}
+
 // Layouts inside layouts. A layout is drawn like the page is: its panels in order, so the quick panel on the right of the
 // Split waits for the slow one on its left. Tabs build the strip with the selected tab, so they arrive together.
 var LoadingNested = webui.Page[webui.NoArgs]{

@@ -52,7 +52,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutDeep, LayoutReview, LayoutRunbook},
+	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutDeep, LayoutReview, LayoutRunbook},
 }
 
 var (

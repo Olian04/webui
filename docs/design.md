@@ -279,7 +279,10 @@ bordered group with an 11px uppercase caption instead.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked
-  to and survives a reload. The strip is the control.
+  to and survives a reload. The strip is the control. With script a tab does not load a new page: the strip and
+  the tab that was chosen are asked for alone, and replace what was there, quieter (0.55) until they arrive, so the
+  panels around the tabs are neither read again nor redrawn, and the page is where it was. Without script a tab is
+  a link to the page.
 
 ### Code panels
 

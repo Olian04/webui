@@ -40,7 +40,7 @@ func pictureOrigins(body ir.Node) []string {
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
 	leaves := leavesOf(page.Body)
-	h := http.HandlerFunc(p.pageHandler(page, leaves))
+	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Body)))
 	patterns := []string{p.pagePattern(page.PathTemplate)}
 	if page.PathTemplate == "/" && p.Prefix != "" {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
@@ -73,7 +73,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // pageHandler is the request pipeline of one page. The order is the contract:
 // decode the arguments, run the page Guard, and only then load anything, so an
 // unauthorised page is never read.
-func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(http.ResponseWriter, *http.Request) {
+func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map[string]*ir.Tabs) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
 	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -91,6 +91,11 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node) func(htt
 			return
 		}
 		if id := r.Header.Get(LeafHeader); id != "" {
+			// A panel, or a Tabs: a request for one of them loads that and nothing else of the page.
+			if t, ok := tabs[id]; ok {
+				p.leaf(w, r, page, req, t)
+				return
+			}
 			p.leaf(w, r, page, req, leaves[id])
 			return
 		}

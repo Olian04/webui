@@ -67,5 +67,5 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	if err != nil {
 		return nil, err
 	}
-	return render.Tabs("Views", strip, content), nil
+	return render.Tabs("Views", strip, content, render.LeafID(n.At), args.ViewKey(n.ID, "tab")), nil
 }

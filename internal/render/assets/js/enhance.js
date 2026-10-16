@@ -311,6 +311,114 @@
     refreshLeaf(leaf.getAttribute('data-leaf'), dest.pathname + dest.search, true);
   });
 
+  /* ---------------------------------- tabs --------------------------------- */
+
+  // A tab is a link to the same page with another tab selected, and followed with script it asks for the Tabs alone:
+  // its strip and the tab that is selected, so only what the new tab shows is read, and the rest of the page, which
+  // has nothing new to say, is left as it is. The Tabs is replaced, the address moves, and the links of the page that
+  // carry the selection (a sort, a pager, the other strips) are put right in place, where a panel that moved would have
+  // had the panels around it asked for again. Anything that is not an answer with the Tabs in it, or that needs what the
+  // page was not sent with, is a plain navigation, which is what the link was all along: a tab with an editor or a diff,
+  // whose language service and files are told to the page as it is made, and a text with code in it, when the page has
+  // no editor to colour it with.
+  var EDITORS = '[data-code-editor], [data-code-diff]';
+  var CODE_BLOCKS = '.md pre > code[class*="language-"]';
+
+  // Puts the selection right in the address of every link and form of the page that is not in `except`.
+  function retarget(except, key, value) {
+    $$('a[href]').forEach(function (a) {
+      if (except.contains(a)) return;
+      var url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || url.pathname !== location.pathname) return;
+      if (value === null) url.searchParams.delete(key);
+      else url.searchParams.set(key, value);
+      a.setAttribute('href', url.pathname + url.search);
+    });
+    $$('form').forEach(function (f) {
+      if (except.contains(f)) return;
+      var action = new URL(f.getAttribute('action') || location.href, location.href);
+      if (action.pathname !== location.pathname) return;
+      if (f.method === 'post') {
+        // Where a form posts, and so where it comes back to, has the selection in it.
+        if (value === null) action.searchParams.delete(key);
+        else action.searchParams.set(key, value);
+        f.setAttribute('action', action.pathname + action.search);
+        return;
+      }
+      // A filter carries the rest of the address in fields.
+      var field = f.querySelector('input[type="hidden"][name="' + CSS.escape(key) + '"]');
+      if (value === null) {
+        if (field) field.remove();
+      } else if (field) {
+        field.value = value;
+      } else {
+        field = document.createElement('input');
+        field.type = 'hidden';
+        field.name = key;
+        field.value = value;
+        f.appendChild(field);
+      }
+    });
+  }
+
+  async function selectTab(set, link) {
+    var id = set.getAttribute('data-tabs');
+    var key = set.getAttribute('data-tabkey');
+    var dest = new URL(link.href, location.href);
+    var href = dest.pathname + dest.search;
+
+    var previous = inflight.get(id);
+    if (previous) previous.abort();
+    var ctl = new AbortController();
+    inflight.set(id, ctl);
+
+    set.setAttribute('aria-busy', 'true');
+    status('GET', href, 'tab ' + id);
+    var focused = document.activeElement === link;
+    try {
+      var started = performance.now();
+      var res = await fetch(href, {
+        headers: { [LEAF_HEADER]: id, Accept: 'text/html' },
+        credentials: 'same-origin',
+        signal: ctl.signal,
+      });
+      var type = res.headers.get('Content-Type') || '';
+      if (!res.ok || res.redirected || type.indexOf('text/html') !== 0) throw new Error('unexpected response');
+      var tpl = document.createElement('template');
+      tpl.innerHTML = await res.text(); // our own markup, from our own origin
+      var next = tpl.content.firstElementChild;
+      if (!next || next.getAttribute('data-tabs') !== id) throw new Error('not that tabs');
+      if (next.querySelector(EDITORS)) throw new Error('needs the editor the page was made with');
+      if (next.querySelector(CODE_BLOCKS) && !document.getElementById('webui-code')) throw new Error('needs the editor to colour code');
+      noteResponse(res, performance.now() - started);
+      set.replaceWith(next);
+      history.pushState(null, '', href);
+      var refresh = $('[data-refresh]');
+      if (refresh) refresh.setAttribute('href', href);
+      retarget(next, key, dest.searchParams.get(key));
+      status('GET', href);
+      var active = $('.tab.active', next);
+      if (focused && active) active.focus();
+    } catch (err) {
+      if (err && err.name === 'AbortError') return; // a newer request took over
+      location.href = href;
+    } finally {
+      if (inflight.get(id) === ctl) inflight.delete(id);
+      set.removeAttribute('aria-busy');
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest('.tabs a[href]');
+    var set = a && a.closest('[data-tabs]');
+    if (!set || a.target || a.hasAttribute('download')) return;
+    var dest = new URL(a.href, location.href);
+    if (dest.origin !== location.origin || dest.pathname !== location.pathname) return;
+    e.preventDefault();
+    selectTab(set, a);
+  });
+
   // The address is the truth. Going back or forward to a panel state reloads
   // the page, which is correct and needs no history bookkeeping.
   window.addEventListener('popstate', function () {

@@ -76,7 +76,7 @@ func TestEveryPageServes(t *testing.T) {
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
-		"/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/layout/split", "/admin/layout/rail", "/admin/layout/columns", "/admin/layout/tabs", "/admin/layout/deep", "/admin/layout/review", "/admin/layout/runbook",
+		"/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/loading/tabs", "/admin/layout/split", "/admin/layout/rail", "/admin/layout/columns", "/admin/layout/tabs", "/admin/layout/deep", "/admin/layout/review", "/admin/layout/runbook",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -837,4 +837,25 @@ func TestTheStaircaseArrivesOnePanelAtATime(t *testing.T) {
 	assert.Contains(t, body, "Panel 1 (1 s) 1")
 	assert.False(t, strings.Contains(body, "Panel 2 (2 s)"))
 	assert.False(t, strings.Contains(body, `class="arrived"`))
+}
+
+// The tabs page is read with its tab, and a request for the Tabs alone is read without the rest: the stamp of a panel outside
+// it is the moment that panel was read, and only the panels of the tab that was asked for have a new one.
+func TestTheTabsPageReadsOnlyTheTabThatIsAskedFor(t *testing.T) {
+	h := handler(t)
+	page := get(h, "/admin/loading/tabs").Body.String()
+	assert.Contains(t, page, "Above the tabs (read with the page)")
+	assert.Contains(t, page, "Below the tabs (read with the page)")
+	assert.Contains(t, page, "First, left (500 ms)")
+
+	req := httptest.NewRequest(http.MethodGet, "/admin/loading/tabs?tabs.tab=second", nil)
+	req.Header.Set("X-Webui-Leaf", "p.2")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.2"`))
+	assert.Contains(t, body, "Second (500 ms)")
+	assert.False(t, strings.Contains(body, "Above the tabs"))
+	assert.False(t, strings.Contains(body, "First, left"))
 }

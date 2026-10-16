@@ -728,6 +728,11 @@ a.side-brand:hover {
 [data-tabbody] > .split {
   flex: 1 1 auto;
 }
+/* While a tab that was followed with script is on its way, what is shown stays, quieter, until the new tab replaces it. */
+.tabset[aria-busy='true'] > [data-tabbody] {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
 .tabs {
   display: flex;
   gap: 0;
