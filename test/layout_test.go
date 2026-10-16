@@ -199,15 +199,19 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	assert.True(t, strings.Index(body, "Beside-row") > end)
 }
 
-// The sidebar as a rail, by choice or on a narrow screen, has no room for a section's caption: it is a hairline, in both
-// places the stylesheet makes a rail, and the caption is the tooltip of the element, so the groups can be told apart.
-func TestTheRailSeparatesTheSectionsWithAHairlineAndNamesThemInATooltip(t *testing.T) {
+// The separator of the design is a middle dot, one token (--sep), in the quiet text colour: between the figures of the status
+// bar and, in the sidebar as a rail, between the groups, where there is no room for a section's caption. The caption is
+// the tooltip of the element. A line is for an edge, and the rail has one under the brand.
+func TestTheSeparatorIsOneTokenInTheStatusBarAndTheRail(t *testing.T) {
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	hairline := "height: 17px;\n  padding: 0;\n  overflow: hidden;\n  font-size: 0;\n  background: linear-gradient(var(--border-2), var(--border-2)) center / 100% 1px no-repeat;"
-	assert.Contains(t, css, "html[data-sidebar='collapsed'] .nav-section {\n  "+hairline)
-	assert.Contains(t, css, "  .nav-section {\n    "+strings.ReplaceAll(hairline, "\n  ", "\n    "))
+	assert.Contains(t, css, "--sep: '\\00b7';")
+	assert.Contains(t, css, ".sb-opt + .sb-opt::before {\n  content: var(--sep);")
+	dot := "content: var(--sep);\n  display: block;\n  font-size: 18px;\n  font-weight: 700;\n  line-height: 17px;\n  color: var(--text-3);"
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .nav-section::before {\n  "+dot)
+	assert.Contains(t, css, "  .nav-section::before {\n    "+strings.ReplaceAll(dot, "\n  ", "\n    "))
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n  display: none;\n}")
+	assert.False(t, strings.Contains(css, "linear-gradient(var(--border-2), var(--border-2))")) // no line: that is for an edge
 }

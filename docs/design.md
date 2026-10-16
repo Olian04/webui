@@ -181,10 +181,12 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
 capitalised initial in the rail). Groups carry an 11px uppercase caption above
-them. In the rail the caption has no room, so it becomes a hairline across the rail with 8px above and
-below it: 17px of height for each group, and the caption in a tooltip. Nothing is drawn above the first
-group. Of the ways tried (a short rule, the caption's first letters, a dot) the hairline was the one that
-read at once as "these belong together" without a legend. The active item takes the Active background, full-strength text, weight
+them. In the rail the caption has no room, so it becomes the design's separator, a middle dot (`·`, token
+`--sep`, 18px, `--text-3`) centred in 17px of height for each group, and the caption is its tooltip. Nothing is
+drawn above the first group. A line was tried first and dropped: the rail already has one under the brand, and
+a line says *edge* where a group says *these belong together*. The same dot separates the figures of the status
+bar (*0.3 ms · loaded 32 ms · built 10:14:18 · just now*), so the design has one separator and lines are for
+edges. The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
 
