@@ -488,27 +488,27 @@ func statusMeta(p StatusBarProps) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !p.Built.IsZero() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"sb-opt\" data-build title=\"How long the server took to build this page from the request's arrival\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<span class=\"sb-timing\" data-timing><span class=\"sb-opt\" data-build title=\"How long the server took to build this page from the request's arrival\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(p.took())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 131, Col: 124}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 132, Col: 125}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> <span class=\"sb-opt\" data-loaded hidden title=\"How long the browser took to get and show this page\"></span> <time class=\"sb-opt\" data-built datetime=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</span> <span class=\"sb-split\" data-split hidden aria-hidden=\"true\"><i></i></span> <span class=\"sb-opt\" data-loaded hidden></span></span> <time class=\"sb-opt\" data-built datetime=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var19 string
 			templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Built.UTC().Format(time.RFC3339Nano))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 133, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 136, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 			if templ_7745c5c3_Err != nil {
@@ -521,7 +521,7 @@ func statusMeta(p StatusBarProps) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue("The HTML was built " + p.Built.UTC().Format("2006-01-02 15:04:05 UTC"))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 133, Col: 166}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 136, Col: 166}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {
@@ -534,7 +534,7 @@ func statusMeta(p StatusBarProps) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs("built " + p.Built.UTC().Format("15:04:05") + "Z")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 133, Col: 220}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/feedback.templ`, Line: 136, Col: 220}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {

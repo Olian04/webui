@@ -187,7 +187,7 @@ group. It is short and thick on purpose: the line under the brand is the width o
 whose groups were marked by the same kind of line would have two things that look alike and mean different
 things, an edge and *these belong together*. A line across the rail, a dot, a short thin rule, the caption's
 first letters (clipped, "CONFIGU") and space alone were tried. The status bar separates its figures with a
-middle dot (token `--sep`, *0.3 ms · loaded 32 ms · built 10:14:18 · just now*), which is a separator between
+middle dot (token `--sep`, *render 0.1 ms · built 14:49:31Z* where script is off), which is a separator between
 things in a row, not between groups in a column. The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
@@ -236,13 +236,22 @@ request behind what is on screen, and a spinner with a short label while
 something is in flight. It is the honesty bar: if the screen changed, this says
 what changed and how much of it.
 
-On the right it says how the page came to be, in the muted text colour: how long the
-server took to build it (`0.1 ms`), how long the browser took to get and show it
-(`loaded 53 ms`), and when its HTML was built, in the viewer's time with its age
-(`built 14:49:31 · just now`). Two small uppercase badges in the warning colours say what
-the viewer should know: **JS off**, drawn only where script is off, and **cached?**, shown by
-script when the page was not built for the request that brought it. The timings are
-hidden below 720px; the badges are not. A panel fetched again updates all of it.
+On the right it says how the page came to be, in the muted text colour, as two parts
+of one whole that are labelled and drawn: the **render** time, how long the server took to
+build the page (`render 0.1 ms`), and the **delivery** time, what the rest took until the
+page was loaded (`delivery 53 ms`): the network and the browser. They add up, which they did not
+when the second was "loaded" and counted from the request, so the render time was in both. Between them is a
+bar of 44px with each one's share of the whole, the render time in the accent and the delivery in the quiet
+colour, so a page that waits on its backends and one that waits on the network look different at a glance; each part
+that is not nothing is at least a sliver. Its title says all of it in words. Without script only the render time
+is known and it stands alone. Where script is off it also says when the HTML was built (`built 14:49:31Z`), since nothing
+else there can say that a page is old. With script that time is not shown: what it was for is knowing that a page was
+not built for the request that brought it, which a small uppercase badge in the warning colours says when it is so,
+**stale page**, with the reason as its title (the browser showed it from its own cache, a cache or a proxy
+answered, a page restored as it was left, or a clock that differs from the server's); and how long ago it was built
+was dropped, since a page that is old but was built for the request has nothing to be told. The other badge is **JS
+off**, drawn only where script is off. The timings are hidden below 720px; the badges are not. A panel fetched again
+updates all of it.
 
 ---
 
@@ -532,7 +541,7 @@ places, both drawn by the stylesheet, so the page says it with script off too:
   hides it (`.arriving:not(:has(~ .arrived))`). Where `:has()` is not supported it is not shown at all.
 - **The status bar in two parts.** The request, the method and the address, is in the shell, with a small spinner and
   *loading* where the rest of the bar will be. How the page came to be (the server's time, when it was built, the
-  *JS off* and *cached?* badges) is sent when the last panel is, as a bar of its own, 25px high and fixed over the end of the
+  *JS off* and *stale page* badges) is sent when the last panel is, as a bar of its own, 25px high and fixed over the end of the
   first, which it covers. Together they read as the bar of a page that arrived whole.
 
 If the page ends without the mark that ends it, because the connection broke or the server stopped, the browser still
