@@ -2,6 +2,7 @@ package render
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	c "github.com/Olian04/webui/internal/render/templates/components"
+	"github.com/Olian04/webui/internal/rules"
 )
 
 // FormView is a form with its model loaded. The runtime fills it.
@@ -61,6 +63,10 @@ type fieldView struct {
 	ReadOnly  bool
 	Type      string
 	Rules     c.Rules
+
+	// Validity and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
+	Validity string
+	Title    string
 }
 
 // editable is whether the visitor can change a field: it has a Store, and the
@@ -83,6 +89,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		Type:      "text",
 		Rules:     htmlRules(f, editable),
 	}
+	fv.Validity, fv.Title = validity(f, editable)
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
 	} else if f.Get != nil {
@@ -144,6 +151,35 @@ func momentInput(f ir.Field, model any) string {
 // fieldID is unique in the document: a page may hold several forms.
 func fieldID(at ir.Addr, name string) string {
 	return strings.ReplaceAll(LeafID(at), ".", "-") + "-" + name
+}
+
+// validity is the words that a field is refused in, for the browser to say, and what a matching value looks like: the
+// same as the server says beneath it (see [rules.Validity]), so a value that the browser refuses reads as one that the
+// server would. A read-only field has none, and a moment is only ever missing.
+func validity(f ir.Field, editable bool) (messages, title string) {
+	if !editable {
+		return "", ""
+	}
+	kind := f.Kind
+	if f.Display == ir.DisplayTime || f.Display == ir.DisplaySelect {
+		kind = ir.KindString
+	}
+	m := rules.Validity(f.Rules, kind)
+	if f.Display == ir.DisplayTime || f.Display == ir.DisplaySelect {
+		m = map[string]string{"valueMissing": m["valueMissing"]}
+		if m["valueMissing"] == "" {
+			m = nil
+		}
+	}
+	if len(m) > 0 {
+		if b, err := json.Marshal(m); err == nil {
+			messages = string(b)
+		}
+	}
+	if p := f.Rules.Pattern; p != nil {
+		title = p.Message
+	}
+	return messages, title
 }
 
 // htmlRules is the one place ir.Rules becomes HTML constraint attributes. A

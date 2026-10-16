@@ -310,6 +310,48 @@
     refreshLeaf(leaf.getAttribute('data-leaf'), dest.pathname + dest.search, true);
   });
 
+  /* ------------------------------- validation ------------------------------ */
+
+  // The browser checks a form's constraints before it sends it, and says what it found in words of its own: "Please
+  // match the format requested." The page knows what it means, and says it in the words the server uses beneath the
+  // field, through the Constraint Validation API. The server writes what to say for each way a value can fail, by the
+  // name of the ValidityState property that reports it, in data-validity; when a control reports itself invalid, the
+  // first of them that is true goes to setCustomValidity, and it is taken back when the value changes, since a
+  // custom message keeps a control invalid until it is. Without script the browser says its own words, and the
+  // pattern's message, which is the control's title.
+  // The server's order: missing, then unreadable, then the length, the pattern, and the bounds.
+  var VALIDITY_ORDER = ['valueMissing', 'typeMismatch', 'badInput', 'stepMismatch', 'tooShort', 'tooLong', 'patternMismatch', 'rangeUnderflow', 'rangeOverflow'];
+
+  document.addEventListener(
+    'invalid',
+    function (e) {
+      var el = e.target;
+      var raw = el.getAttribute && el.getAttribute('data-validity');
+      if (!raw) return;
+      var messages;
+      try {
+        messages = JSON.parse(raw);
+      } catch (err) {
+        return;
+      }
+      for (var i = 0; i < VALIDITY_ORDER.length; i++) {
+        var reason = VALIDITY_ORDER[i];
+        if (el.validity[reason] && messages[reason]) {
+          el.setCustomValidity(messages[reason]);
+          return;
+        }
+      }
+    },
+    true,
+  );
+
+  function takeBackValidity(e) {
+    var el = e.target;
+    if (el.hasAttribute && el.hasAttribute('data-validity') && el.validity && el.validity.customError) el.setCustomValidity('');
+  }
+  document.addEventListener('input', takeBackValidity, true);
+  document.addEventListener('change', takeBackValidity, true);
+
   /* ---------------------------------- tabs --------------------------------- */
 
   // A tab is a link to the same page with another tab selected, and followed with script it asks for the Tabs alone:

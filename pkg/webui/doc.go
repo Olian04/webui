@@ -204,8 +204,10 @@
 //
 // A [Form] loads one model and shows its Fields. An accessor with a Store is an input,
 // and its Rules (required, length, pattern, bounds) are rendered as HTML constraint
-// attributes and checked again on the server before the action runs. Submit is an
-// [Action], and its Run says how it ended. A Form with no Submit is the detail view:
+// attributes and checked again on the server before the action runs. When the browser
+// refuses a value it says what the server would say beneath the field ("Must be at most
+// 100.", a Pattern's message), and not its own "Please match the format requested."
+// Submit is an [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
 //
 // # Code editors

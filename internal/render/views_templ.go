@@ -1990,7 +1990,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 			case fv.Field.Display == ir.DisplaySelect:
 				templ_7745c5c3_Err = c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
-					Required: fv.Rules.Required, Invalid: fv.Error != "",
+					Required: fv.Rules.Required, Invalid: fv.Error != "", Validity: fv.Validity,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -1999,7 +1999,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 				templ_7745c5c3_Err = c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
 					Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules,
+					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

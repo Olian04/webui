@@ -28,13 +28,73 @@ func Compile(expr, message string) (*ir.Pattern, error) {
 	return &ir.Pattern{Expr: re, Source: expr, Message: message}, nil
 }
 
+// The words of each violation, in one place: Check says them beneath a field, and Validity hands them to the browser,
+// so that a field refused on the page says what it says when it is refused by the server.
+const (
+	msgRequired    = "This field is required."
+	msgWholeNumber = "Must be a whole number."
+	msgNumber      = "Must be a number."
+	msgFormat      = "Does not match the required format."
+)
+
+func msgMinLen(n int) string  { return fmt.Sprintf("Must be at least %d characters.", n) }
+func msgMaxLen(n int) string  { return fmt.Sprintf("Must be at most %d characters.", n) }
+func msgMin(x float64) string { return "Must be at least " + format(x) + "." }
+func msgMax(x float64) string { return "Must be at most " + format(x) + "." }
+
+func msgPattern(p *ir.Pattern) string {
+	if p.Message == "" {
+		return msgFormat
+	}
+	return p.Message
+}
+
+// Validity is what the browser says for a field that fails a constraint, by the names of the properties of the
+// [ValidityState] that it reports it by (valueMissing, tooShort, patternMismatch, rangeUnderflow, ...), for the
+// constraints the field has: the same words as Check, so that the page and the server agree. It is for the
+// Constraint Validation API's setCustomValidity, which is how a page says what it means in place of "Please match the
+// format requested." A field that has no constraint has no entry, and one that is not a number, a text or a choice
+// is given the kind of a text.
+func Validity(r ir.Rules, kind ir.ValueKind) map[string]string {
+	out := map[string]string{}
+	if r.Required {
+		out["valueMissing"] = msgRequired
+	}
+	switch kind {
+	case ir.KindString:
+		if r.MinLen > 0 {
+			out["tooShort"] = msgMinLen(r.MinLen)
+		}
+		if r.MaxLen > 0 {
+			out["tooLong"] = msgMaxLen(r.MaxLen)
+		}
+		if r.Pattern != nil {
+			out["patternMismatch"] = msgPattern(r.Pattern)
+		}
+	case ir.KindInt, ir.KindFloat:
+		bad := msgNumber
+		if kind == ir.KindInt {
+			bad = msgWholeNumber
+			out["stepMismatch"] = msgWholeNumber // a number with a fraction, for a whole number
+		}
+		out["badInput"] = bad
+		if r.Min != nil {
+			out["rangeUnderflow"] = msgMin(*r.Min)
+		}
+		if r.Max != nil {
+			out["rangeOverflow"] = msgMax(*r.Max)
+		}
+	}
+	return out
+}
+
 // Check applies rules to one raw submitted value of the given kind and returns
 // the first violation, or "". A violation is user-facing, and goes beneath the field. An empty value passes every constraint except
 // Required, matching what the browser enforces.
 func Check(r ir.Rules, kind ir.ValueKind, raw string) string {
 	if strings.TrimSpace(raw) == "" {
 		if r.Required {
-			return "This field is required."
+			return msgRequired
 		}
 		return ""
 	}
@@ -44,13 +104,13 @@ func Check(r ir.Rules, kind ir.ValueKind, raw string) string {
 	case ir.KindInt:
 		n, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
 		if err != nil {
-			return "Must be a whole number."
+			return msgWholeNumber
 		}
 		return checkNumber(r, float64(n))
 	case ir.KindFloat:
 		x, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
 		if err != nil {
-			return "Must be a number."
+			return msgNumber
 		}
 		return checkNumber(r, x)
 	}
@@ -83,27 +143,23 @@ func CheckSelect(f ir.Field, raw string) string {
 func checkString(r ir.Rules, s string) string {
 	n := utf8.RuneCountInString(s)
 	if r.MinLen > 0 && n < r.MinLen {
-		return fmt.Sprintf("Must be at least %d characters.", r.MinLen)
+		return msgMinLen(r.MinLen)
 	}
 	if r.MaxLen > 0 && n > r.MaxLen {
-		return fmt.Sprintf("Must be at most %d characters.", r.MaxLen)
+		return msgMaxLen(r.MaxLen)
 	}
 	if r.Pattern != nil && !r.Pattern.Expr.MatchString(s) {
-		msg := r.Pattern.Message
-		if msg == "" {
-			msg = "Does not match the required format."
-		}
-		return msg
+		return msgPattern(r.Pattern)
 	}
 	return ""
 }
 
 func checkNumber(r ir.Rules, x float64) string {
 	if r.Min != nil && x < *r.Min {
-		return "Must be at least " + format(*r.Min) + "."
+		return msgMin(*r.Min)
 	}
 	if r.Max != nil && x > *r.Max {
-		return "Must be at most " + format(*r.Max) + "."
+		return msgMax(*r.Max)
 	}
 	return ""
 }

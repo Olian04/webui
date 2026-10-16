@@ -97,6 +97,21 @@ design element.
   because a zero bound is a real constraint and Go will not let you write `&0`.
   The set is closed: a rule the framework does not define cannot be added
   without writing client code, so anything beyond it goes in `Run`.
+- The browser says what the server says. The browser checks the constraint attributes before it sends a form, and
+  says what it found in words of its own: "Please match the format requested.", "Please fill out this field." A refused
+  value reads the same whoever refuses it, so the words are written once, in `internal/rules`, which `Check`
+  (the server, beneath the field) and `Validity` (the browser) both use, and a test keeps them equal. `Validity` is a map
+  by the names of the properties of the control's `ValidityState` (`valueMissing`, `tooShort`, `tooLong`,
+  `patternMismatch`, `rangeUnderflow`, `rangeOverflow`, `badInput`, `stepMismatch`), the standard
+  vocabulary of the Constraint Validation API, put in a `data-validity` attribute of each editable input and select.
+  With script, when a control reports itself invalid (the `invalid` event), the first reason that is true, in the order
+  the server checks, goes to `setCustomValidity`, which the browser then shows in its own bubble; it is taken back
+  when the value changes, since a custom message keeps a control invalid until it is. Nothing is drawn by the page
+  and nothing is reinvented: the bubble, the focus and the blocking of the submission are the browser's. Without
+  script the browser says its own words, and a pattern's message follows them as the control's `title`, which is what
+  the attribute is for. Left as they were: a moment's own parse errors, and the range slider, which cannot leave its
+  bounds. What it costs: a `tooShort` or `tooLong` message is only given for a value the visitor edited, which is the
+  browser's rule for those two, so a value that was loaded too long is caught by the server.
 - `Store` is pure assignment with no error return, and no `ctx`. The ordering
   problem came from `Store` seeing `*M`; rules see only their own value, so
   inter-field dependencies are not expressible and need no ordering.
