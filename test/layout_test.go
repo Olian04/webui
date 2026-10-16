@@ -167,3 +167,21 @@ func TestOnlyATablePanelGrowsToTheHeightThereIsAndAFormKeepsItsOwn(t *testing.T)
 	assert.Contains(t, body, `<div class="panel grows" data-leaf="p.0.1">`)
 	assert.Contains(t, body, `<div class="panel" data-leaf="p.0.0">`)
 }
+
+// Tabs is one child of the Split it is in: the strip and the selected panel are one element, so a Split, which puts
+// its children in a grid, does not give the strip a cell of its own.
+func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
+	t.Parallel()
+
+	h := streamApp(webui.Split{
+		webui.Tabs{Panels: []webui.Tab{{Label: "One", Body: quickTable("In tabs")}, {Label: "Two", Body: quickTable("Other")}}},
+		quickTable("Beside"),
+	})
+	body := serve(h, http.MethodGet, "/admin/p").Body.String()
+	assert.Contains(t, body, `<div class="split"><div class="tabset"><nav class="tabs"`)
+	assert.Equal(t, strings.Count(body, `<div class="tabset">`), 1)
+	// The strip and the panel it selects are inside the one element, which ends before the next child begins.
+	end := strings.Index(body, `</div></div><div class="panel grows"`)
+	assert.True(t, end > strings.Index(body, "In tabs-row"))
+	assert.True(t, strings.Index(body, "Beside-row") > end)
+}

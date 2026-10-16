@@ -456,13 +456,15 @@ templ (r *Renderer) input(fv fieldView) {
 	}
 }
 
-// Tabs is the strip and the selected panel. The strip is links, because the
-// selected tab is a page argument: it is in the address, survives a reload,
-// and works without script.
+// Tabs is the strip and the selected panel, in one element, so that a layout that arranges its children (a Split puts
+// them in a grid) sees one child. The strip is links, because the selected tab is a page argument: it is in the
+// address, survives a reload, and works without script.
 templ Tabs(label string, strip []c.Tab, content templ.Component) {
-	@c.Tabs(c.TabsProps{Tabs: strip, Label: label})
-	<div data-tabbody>
-		@content
+	<div class="tabset">
+		@c.Tabs(c.TabsProps{Tabs: strip, Label: label})
+		<div data-tabbody>
+			@content
+		</div>
 	</div>
 }
 
