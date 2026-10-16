@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -227,4 +228,29 @@ func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
 	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
 	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
 	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
+}
+
+// The columns of a table are as wide as what they are, and not as what is in them: a table sizes its columns by its rows, so
+// two tables of the same columns, one above the other, would have them in different places. A text takes twice the share of a
+// number, a badge, a bar or a moment, and a table that has a selection or row actions leaves those columns to their content.
+func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T) {
+	t.Parallel()
+
+	// The same columns with different rows, stacked: the same widths.
+	h := streamApp(webui.Stack{quickTable("First"), quickTable("A second table with a longer title")})
+	body := serve(h, http.MethodGet, "/admin/p").Body.String()
+	tight := func(s string) string { return strings.ReplaceAll(s, "> <", "><") }
+	colgroups := regexp.MustCompile(`<colgroup>.*?</colgroup>`).FindAllString(tight(body), -1)
+	assert.Equal(t, len(colgroups), 2)
+	assert.Equal(t, colgroups[0], colgroups[1])
+	assert.Equal(t, colgroups[0], `<colgroup><col style="width:100.00%;"></colgroup>`)
+
+	// A text and a number: two thirds and one third.
+	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
+		Title:   "Blobs",
+		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+		Key:     func(b blob) string { return b.Name },
+		Columns: []webui.Accessor[blob]{blobName, blobSize},
+	}}}}.MustCompile("/admin")
+	assert.Contains(t, tight(serve(mixed, http.MethodGet, "/admin/m").Body.String()), `<colgroup><col style="width:66.67%;"><col style="width:33.33%;"></colgroup>`)
 }

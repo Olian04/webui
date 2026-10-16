@@ -220,6 +220,17 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 		}
 	}
 	@c.Table(c.TableProps{Label: v.label()}) {
+		<colgroup>
+			if v.selectable() {
+				<col class="pick"/>
+			}
+			for _, w := range columnWidths(cols) {
+				<col style={ "width:" + w }/>
+			}
+			if v.hasRowActions() {
+				<col class="actions"/>
+			}
+		</colgroup>
 		@c.TableHead() {
 			if v.selectable() {
 				@c.SelectAllColumn()

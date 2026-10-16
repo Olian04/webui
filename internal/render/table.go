@@ -440,3 +440,25 @@ func (f filterView) text() string {
 	}
 	return f.Chosen[0]
 }
+
+// columnWidths is the width of each column of a table, as a share of the table, from what the columns are and not from
+// what is in them. A table sizes its columns by its content, so two tables of the same columns, one above the other, would
+// have them in different places as their rows differ. A text or a link takes twice the share of the rest, which are a
+// number, a badge, a bar or a moment: short, but not so short that a header cannot say what they are.
+func columnWidths(cols []columnView) []string {
+	weight := func(f ir.Field) float64 {
+		if f.Kind == ir.KindString && (f.Display == ir.DisplayText || f.Display == ir.DisplayLink) {
+			return 2
+		}
+		return 1
+	}
+	total := 0.0
+	for _, col := range cols {
+		total += weight(col.Field)
+	}
+	out := make([]string, len(cols))
+	for i, col := range cols {
+		out[i] = strconv.FormatFloat(weight(col.Field)/total*100, 'f', 2, 64) + "%"
+	}
+	return out
+}

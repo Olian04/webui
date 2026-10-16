@@ -406,6 +406,13 @@ be selected, which is the right trade for a row whose purpose is to be followed.
 Cells: 10px horizontal padding. Numeric columns right-align with tabular
 figures. Identifiers are monospace text-secondary.
 
+Column widths follow what a column is, not what is in it. A table sizes its columns by its rows, so two tables of the
+same columns, one above the other, would have had their columns in different places for no reason a reader could
+see. A text or a link takes twice the share of the others (a number, a badge, a bar, a moment), so *Panel* and *Backend
+answered after* are half and half and *Name* and *Size* are two thirds and one third, in every table of them; the
+selection and the row actions are left to what is in them. A cell whose content does not fit in its share still makes its
+column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did.
+
 **Badges** sit in status columns: 19px tall, 2px radius, lowercase 11.5/500,
 built from a semantic family's 14% background and 30% border. A status badge
 may carry a 6px leading dot in the same colour. A select that holds several values
