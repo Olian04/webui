@@ -51,19 +51,24 @@ func handbookPage(path webui.PageID[webui.NoArgs], label, icon, file, desc strin
 	return webui.Page[webui.NoArgs]{
 		Path: path,
 		Nav:  webui.Nav{Label: label, Icon: icon, Section: "Handbook"},
-		Body: webui.Markdown[Handbook]{
-			Title: "Handbook",
-			Desc:  desc,
-			Load: func(context.Context) (Handbook, error) {
-				text, err := handbookFiles.ReadFile("handbook/" + file)
-				if err != nil {
-					return Handbook{}, fmt.Errorf("handbook: %w", err)
-				}
-				return Handbook{Text: string(text)}, nil
-			},
-			Content: HandbookText,
+		Body: handbookPanel("Handbook", file, desc),
+	}
+}
 
-			TrustedOrigins: []string{"https://raw.githubusercontent.com", "https://pkg.go.dev"},
+// handbookPanel is the text of a file of the handbook, in a Markdown that any page can hold.
+func handbookPanel(title, file, desc string) webui.Markdown[Handbook] {
+	return webui.Markdown[Handbook]{
+		Title: title,
+		Desc:  desc,
+		Load: func(context.Context) (Handbook, error) {
+			text, err := handbookFiles.ReadFile("handbook/" + file)
+			if err != nil {
+				return Handbook{}, fmt.Errorf("handbook: %w", err)
+			}
+			return Handbook{Text: string(text)}, nil
 		},
+		Content: HandbookText,
+
+		TrustedOrigins: []string{"https://raw.githubusercontent.com", "https://pkg.go.dev"},
 	}
 }
