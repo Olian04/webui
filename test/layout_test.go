@@ -116,6 +116,7 @@ func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
 	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
 	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
 	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ".tabset[aria-busy='true'] > [data-tabbody] {\n  opacity: 0.55;")
 }
 
 func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
@@ -193,8 +194,8 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 		quickTable("Beside"),
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, body, `<div class="split"><div class="tabset"><nav class="tabs"`)
-	assert.Equal(t, strings.Count(body, `<div class="tabset">`), 1)
+	assert.Contains(t, body, `<div class="split"><div class="tabset" data-tabs="p.0" data-tabkey="tabs.tab"><nav class="tabs"`)
+	assert.Equal(t, strings.Count(body, `<div class="tabset" `), 1)
 	// The strip and the panel it selects are inside the one element, which ends before the next child begins.
 	end := strings.Index(body, `</div></div><div class="panel grows"`)
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
@@ -278,4 +279,41 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 	assert.True(t, size < name)  // a number is not given more than a text
 	assert.True(t, st > size)    // and a badge is given more than a number
 	assert.True(t, name+st+multi+size > 99.9 && name+st+multi+size < 100.1)
+}
+
+func serveLeaf(h http.Handler, target, leaf string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req.Header.Set("X-Webui-Leaf", leaf)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// A tab is followed, with script, by asking for the Tabs alone: its strip and the tab that is selected. Nothing else of the
+// page is read, which is the point: a tab is not a new page, and the panels around it have nothing new to say.
+func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
+	t.Parallel()
+
+	h, loads := layoutApp(nil)
+	rec := serveLeaf(h, "/admin/device/d1?tabs.tab=raw", "p.1")
+	body := rec.Body.String()
+
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.1" data-tabkey="tabs.tab">`))
+	assert.Contains(t, body, "Raw-row")
+	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
+	assert.False(t, strings.Contains(body, "Overview-row"))
+	assert.False(t, strings.Contains(body, `class="sidebar"`)) // not the page
+	for i, want := range []int32{0, 0, 0, 1} {                 // the form, the events, and the other tab were not read
+		assert.Equal(t, loads[i].Load(), want)
+	}
+
+	// The page carries what script needs to ask: the id, and the argument that selects a tab.
+	page := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
+	assert.Contains(t, page, `<div class="tabset" data-tabs="p.1" data-tabkey="tabs.tab">`)
+
+	// It is the page's own request: the Guard runs, and an id that is not a Tabs or a panel is a 404.
+	refused, _ := layoutApp(func(context.Context, layoutArgs) error { return errors.New("no") })
+	assert.Equal(t, serveLeaf(refused, "/admin/device/d1", "p.1").Code, http.StatusForbidden)
+	assert.Equal(t, serveLeaf(h, "/admin/device/d1", "p.9").Code, http.StatusNotFound)
 }

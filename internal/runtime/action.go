@@ -33,6 +33,19 @@ func leavesOf(root ir.Node) map[string]ir.Node {
 	return out
 }
 
+// tabsOf maps the id of each Tabs to its node, so that a request can ask for one alone, the strip and the tab that is
+// selected, which is how a tab is followed with script. The id is in the form of a leaf's, from position and nothing the
+// user typed.
+func tabsOf(root ir.Node) map[string]*ir.Tabs {
+	out := map[string]*ir.Tabs{}
+	ir.Walk(root, func(n ir.Node) {
+		if t, ok := n.(*ir.Tabs); ok {
+			out[render.LeafID(t.Addr())] = t
+		}
+	})
+	return out
+}
+
 // actionable reports whether any leaf under root posts.
 func actionable(leaves map[string]ir.Node) bool {
 	for _, n := range leaves {

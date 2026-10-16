@@ -473,8 +473,12 @@ templ (r *Renderer) input(fv fieldView) {
 // Tabs is the strip and the selected panel, in one element, so that a layout that arranges its children (a Split puts
 // them in a grid) sees one child. The strip is links, because the selected tab is a page argument: it is in the
 // address, survives a reload, and works without script.
-templ Tabs(label string, strip []c.Tab, content templ.Component) {
-	<div class="tabset">
+//
+// With script a tab is followed by asking for this element alone (see LeafHeader), which loads only the tab that is
+// selected: data-tabs is its id, in the same form as a panel's, and data-tabkey is the argument that selects the tab,
+// which the page's other links carry and script puts right.
+templ Tabs(label string, strip []c.Tab, content templ.Component, id, key string) {
+	<div class="tabset" data-tabs={ id } data-tabkey={ key }>
 		@c.Tabs(c.TabsProps{Tabs: strip, Label: label})
 		<div data-tabbody>
 			@content

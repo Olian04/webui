@@ -309,6 +309,22 @@ design element.
 
 ## Navigation and links
 
+- A tab, with script, is read alone. Following one was a navigation to the same page with another `tabs.tab`, which read
+  every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the leaf
+  header a panel's refresh uses (`X-Webui-Leaf`, the id of the `Tabs` in the form of a panel's, which the page carries
+  as `data-tabs`), and the answer, the strip and the selected tab, replaces it; the address moves with
+  `pushState`, and back and forward reload the page as they do for a panel. It is the page's own request, so the Guard
+  runs and an id that names nothing is a 404. What it costs, and how it is paid:
+  - the other panels' links, forms and the Refresh button carry the selection in their addresses, and a panel that
+    moved has the panels around it asked for again (`settle`); that would read them all, which is what this is to
+    avoid, so the selection (`data-tabkey`, `tabs.tab`) is put right in place in every link, post form and filter of
+    the page instead, and the strips of other `Tabs` with it;
+  - a tab that has an editor or a diff is a plain navigation, since the language service and the files an editor is given
+    are told to the page as it is made, from the panels it was made with, and a text with code in it is too when the page
+    has no editor to colour it with; a tab that does not, and any answer that is not the `Tabs`, is the same, which is
+    what the link was before;
+  - a tab that was read is read again when it is chosen again: there is no cache, which is the app's.
+
 - The sidebar keeps its place when a link in it is followed. It is part of each page, so the next page draws it
   again at the top, and a link far down a long list would send the list back up. `prefs.js`, the script that
   runs before first paint, keeps how far the list was scrolled in `sessionStorage` when a page is left (`pagehide`)
