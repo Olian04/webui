@@ -51,7 +51,7 @@ func TestValidateReportsEveryProblemAtOnce(t *testing.T) {
 	t.Parallel()
 
 	type bad struct {
-		When []int
+		When map[string]int
 		A    string `webui:"x"`
 		B    string `webui:"x"`
 	}
@@ -60,8 +60,8 @@ func TestValidateReportsEveryProblemAtOnce(t *testing.T) {
 	}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 3)
-	assert.Equal(t, errs[0].Error(), `page "/event/{id}" (bad): field When has unsupported type []int
-  Fix: Arguments must be string, bool, int, int64 or float64, or a []string for the {name...} that takes the rest of a path: a URL carries one value per name.`)
+	assert.Equal(t, errs[0].Error(), `page "/event/{id}" (bad): field When has unsupported type map[string]int
+  Fix: Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a query parameter that repeats (?tag=a&tag=b), or a []string for the {name...} that takes the rest of a path.`)
 	assert.Contains(t, errs[1].Detail, `two fields both map to the argument "x"`)
 	assert.Equal(t, errs[2].Detail, "the path declares {id} but bad has no field for it")
 }

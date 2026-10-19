@@ -85,8 +85,7 @@ func Name(f reflect.StructField) string {
 	return strings.ToLower(f.Name)
 }
 
-// KindOf maps a Go type to its argument kind. ok is false for anything a URL
-// cannot carry as one value.
+// KindOf maps a Go type to its argument kind, for one value. ok is false for anything a URL cannot carry as one value.
 func KindOf(t reflect.Type) (kind ir.ValueKind, ok bool) {
 	switch t.Kind() {
 	case reflect.String:
@@ -99,14 +98,20 @@ func KindOf(t reflect.Type) (kind ir.ValueKind, ok bool) {
 		return ir.KindInt64, true
 	case reflect.Float64:
 		return ir.KindFloat, true
-	case reflect.Slice:
-		if t.Elem().Kind() == reflect.String {
-			return ir.KindStrings, true
-		}
-		return 0, false
 	default:
 		return 0, false
 	}
+}
+
+// fieldKind is the kind of a field's value, and whether it is a list of them: a slice of any of the scalar types is
+// a parameter that repeats, or, for a []string at the {name...} of a path, the rest of it.
+func fieldKind(t reflect.Type) (kind ir.ValueKind, list, ok bool) {
+	if t.Kind() == reflect.Slice {
+		kind, ok = KindOf(t.Elem())
+		return kind, true, ok
+	}
+	kind, ok = KindOf(t)
+	return kind, false, ok
 }
 
 // restMark follows the name in a placeholder that takes the rest of the path,
@@ -162,6 +167,10 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		specs    []ir.ArgSpec
 		problems []Problem
 		owner    = map[string]string{}
+
+		// declared is every name that a field maps to, whatever is wrong with the field: the path is not also said to
+		// have no field for a name that has one, which is a problem of its own.
+		declared = map[string]bool{}
 	)
 	inPath := map[string]bool{}
 	for _, name := range Placeholders(template) {
@@ -174,20 +183,26 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		if name == "" {
 			continue
 		}
-		kind, ok := KindOf(f.Type)
+		declared[name] = true
+		kind, list, ok := fieldKind(f.Type)
 		if !ok {
 			problems = append(problems, Problem{
 				Detail: fmt.Sprintf("field %s has unsupported type %s", f.Name, f.Type),
-				Fix:    "Arguments must be string, bool, int, int64 or float64, or a []string for the {name...} that takes the rest of a path: a URL carries one value per name.",
+				Fix:    "Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a query parameter that repeats (?tag=a&tag=b), or a []string for the {name...} that takes the rest of a path.",
 			})
 			continue
 		}
-		if kind == ir.KindStrings && name != RestPlaceholder(template) {
+		rest := RestPlaceholder(template)
+		switch {
+		case list && inPath[name] && name != rest:
 			problems = append(problems, Problem{
-				Detail: fmt.Sprintf("field %s is a []string, but the path has no {%s...} for it to take", f.Name, name),
-				Fix:    "A []string is only for the last segment of the path written as {name...}, which takes the rest of the address, one element for each segment. Other arguments are one value.",
+				Detail: fmt.Sprintf("field %s is a %s, but {%s} is one segment of the path", f.Name, f.Type, name),
+				Fix: fmt.Sprintf("A path segment is one value. Write {%s...} as the last segment to take the rest of the address, one element for each segment, "+
+					"or drop {%s} from the path so that %s is a query parameter that repeats.", name, name, f.Name),
 			})
 			continue
+		case list && name == rest && kind == ir.KindString:
+			kind, list = ir.KindStrings, false // the rest of the path: a list of its segments, which is its own kind
 		}
 		if strings.Contains(name, ViewSep) {
 			problems = append(problems, Problem{
@@ -204,7 +219,7 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 			continue
 		}
 		owner[name] = f.Name
-		specs = append(specs, ir.ArgSpec{Name: name, Field: f.Name, Kind: kind, InPath: inPath[name]})
+		specs = append(specs, ir.ArgSpec{Name: name, Field: f.Name, Kind: kind, InPath: inPath[name], List: list})
 	}
 
 	if rest := RestPlaceholder(template); rest != "" {
@@ -218,7 +233,7 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		}
 	}
 	for _, name := range Placeholders(template) {
-		if _, ok := owner[name]; ok {
+		if declared[name] {
 			continue
 		}
 		problems = append(problems, Problem{

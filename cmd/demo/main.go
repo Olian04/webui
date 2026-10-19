@@ -17,10 +17,11 @@
 //
 //	go run ./cmd/demo                        # http://localhost:7689/admin/
 //	go run ./cmd/demo -accent '#2f9e8f'      # override the theme's accent colour
-//	go run ./cmd/demo -broken                # the failed-to-compile page
+//	go run ./cmd/demo -broken                # the failed-to-compile page: three pages, broken in three ways
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	"log/slog"
@@ -52,19 +53,51 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
+	Pages: webui.Pages{Overview, Devices, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
 }
 
 var (
-	broken = flag.Bool("broken", false, "declare an invalid page, to see the compile error page")
+	broken = flag.Bool("broken", false, "declare three invalid pages, each broken in its own way, to see the compile error page")
 	accent = flag.String("accent", "", "override the theme's accent colour, such as '#2f9e8f'")
 )
 
-// Arguments must be string, bool, int, int64 or float64, so a slice is a mistake
-// Compile reports, with the page and a fix, rather than a panic.
-type brokenArgs struct{ When []int }
+// Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a
+// query parameter that repeats, so a map is a mistake that Compile reports, with the page
+// and a fix, rather than a panic. The one field is also the one in the path, so the page
+// has the one problem.
+type brokenArgs struct{ When map[string]int }
 
-var Broken = webui.Page[brokenArgs]{Path: "/event/{id}", Body: webui.Stack{}}
+var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", Body: webui.Stack{}}
+
+// A Table is given one source of its rows, and this one is given two: Compile says so, with what each is for.
+var BrokenTable = webui.Page[webui.NoArgs]{
+	Path: "/broken/source",
+	Body: webui.Table[Device]{
+		Title:   "Events",
+		Rows:    func(context.Context) ([]Device, error) { return nil, nil },
+		Load:    func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil },
+		Columns: []webui.Accessor[Device]{DeviceID},
+	},
+}
+
+// A pattern is RE2, which has no lookahead, and this one has: Compile says so, and what to write instead.
+var BrokenPattern = webui.Page[webui.NoArgs]{
+	Path: "/broken/pattern",
+	Body: webui.Form[Note]{
+		Title: "A code",
+		Load:  func(context.Context) (Note, error) { return Note{}, nil },
+		Fields: []webui.Accessor[Note]{webui.String[Note]{
+			Label: "Code",
+			Load:  func(n Note) string { return n.Text },
+			Store: func(n *Note, v string) { n.Text = v },
+			Rules: webui.StringRules{Pattern: &webui.PatternRule{Expr: `(?=.*\d)[a-z0-9]+`, Message: "letters, with a digit somewhere"}},
+		}},
+		Submit: webui.Action[Note]{Run: func(context.Context, Note) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
+	},
+}
+
+// brokenPages are the pages that -broken adds, each broken in a way of its own.
+var brokenPages = webui.Pages{Broken, BrokenTable, BrokenPattern}
 
 // themeFor overrides the accent. A Theme is four colours (Accent, OK, Warning,
 // Critical); the library derives the rest and tunes it for light and dark, which
@@ -85,7 +118,7 @@ func main() {
 	a.Theme = themeFor(*accent)
 	a.Metrics = registry // what the app counts, to be served below with the program's own
 	if *broken {
-		a.Pages = append(slices.Clone(a.Pages), Broken)
+		a.Pages = append(slices.Clone(a.Pages), brokenPages...)
 	}
 
 	// Compile never returns a nil handler: a broken app serves its own errors.

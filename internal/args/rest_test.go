@@ -82,26 +82,28 @@ func TestAStringIsNotARestPlaceholdersType(t *testing.T) {
 	assert.Contains(t, problems[0].Fix, "one element for each")
 }
 
-func TestAListIsOnlyForTheRestPlaceholder(t *testing.T) {
+func TestAListThatIsNotTheRestIsAQueryParameterOrAnError(t *testing.T) {
 	t.Parallel()
 
 	type tags struct {
 		ID   string
 		Tags []string
 	}
-	for _, template := range []string{"/device/{id}", "/device/{id}/{tags}", "/device/{id}/{tags...}/more"} {
+	// Not in the path: a query parameter that repeats.
+	_, problems := Spec(reflect.TypeOf(tags{}), "/device/{id}")
+	assert.Equal(t, len(problems), 0)
+	// In the path, but one segment, or not the last: there is nothing for it to take.
+	for _, template := range []string{"/device/{id}/{tags}", "/device/{id}/{tags...}/more"} {
 		_, problems := Spec(reflect.TypeOf(tags{}), template)
 		if len(problems) == 0 {
 			t.Errorf("%s accepted a list that is not the rest", template)
 		}
 	}
-	_, problems := Spec(reflect.TypeOf(tags{}), "/device/{id}")
-	assert.Contains(t, problems[0].Detail, "a []string, but the path has no {tags...}")
-	// Not a query argument either: a URL carries one value per name.
-	assert.Contains(t, problems[0].Fix, "only for the last segment")
+	_, problems = Spec(reflect.TypeOf(tags{}), "/device/{id}/{tags}")
+	assert.Contains(t, problems[0].Detail, "is one segment of the path")
 
-	type ints struct{ N []int }
-	_, problems = Spec(reflect.TypeOf(ints{}), "/x")
+	type maps struct{ N map[string]int }
+	_, problems = Spec(reflect.TypeOf(maps{}), "/x")
 	assert.Contains(t, problems[0].Detail, "unsupported type")
 }
 

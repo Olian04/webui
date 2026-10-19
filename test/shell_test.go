@@ -22,7 +22,7 @@ func serve(h http.Handler, method, target string) *httptest.ResponseRecorder {
 func TestCompileFailureServesEveryPathAndMethod(t *testing.T) {
 	t.Parallel()
 
-	type bad struct{ When []int }
+	type bad struct{ When map[string]int }
 	app := webui.App{Pages: webui.Pages{
 		webui.Page[bad]{Path: "/event/{id}", Body: webui.Stack{}},
 	}}
@@ -40,7 +40,7 @@ func TestCompileFailureServesEveryPathAndMethod(t *testing.T) {
 		body := rec.Body.String()
 		assert.Contains(t, body, "Failed to compile")
 		assert.Contains(t, body, `page &#34;/event/{id}&#34; (bad)`)
-		assert.Contains(t, body, "field When has unsupported type []int")
+		assert.Contains(t, body, "field When has unsupported type map[string]int")
 		assert.Contains(t, body, "the path declares {id} but bad has no field for it")
 		assert.Contains(t, body, "<style>") // self-contained: no asset route to depend on
 		assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")

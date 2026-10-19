@@ -52,7 +52,7 @@
 //
 //	var Details = webui.Page[DeviceArgs]{Path: "/device/{id}", Body: ...}
 //
-// Arguments may be string, bool, int, int64 or float64, and one more, below. A field
+// Arguments may be string, bool, int, int64 or float64, and a slice of any of them, below. A field
 // left at its zero value is absent from the address. A page's Guard runs before anything is loaded,
 // on every request, and a page it refuses is answered with 403. Inside any closure
 // that serves the page, [ArgsOf] returns the arguments.
@@ -102,7 +102,26 @@
 // page. An element is one whole segment, so an empty one, or one that contains a slash,
 // cannot be made into an address, and a doubled slash in an address is refused.
 // Only the last segment may be a rest, because [net/http.ServeMux], which routes the
-// pages, only allows it there, and no other argument may be a []string.
+// pages, only allows it there, and no other segment of the path may be a slice.
+//
+// # Arguments that repeat
+//
+// A slice that is not the rest of a path is a query parameter that repeats: the
+// parameter once for each element, in the order they are given, which is how a URL has always
+// carried a list. Its elements may be any of the argument types.
+//
+//	type CompareArgs struct {
+//		Device []string // ?device=a&device=b
+//		Rating []int    // ?rating=3&rating=5
+//	}
+//
+// The address /compare?device=a&device=b gives Device as ["a", "b"], and [Open] and a
+// [Link] build an address the same way, so the page's own links keep every element. A list
+// with no element is absent from the address, as a zero field is, and so is an element
+// that is an empty string, which a URL cannot tell from none. An address with a value that
+// is not of the element's type, "?rating=three", is a 400, as a scalar is. An element
+// cannot hold the control character U+001F, which would be read back as two, and
+// building an address from one is an error.
 //
 // # Layouts
 //

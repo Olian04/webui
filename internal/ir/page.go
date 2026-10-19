@@ -50,14 +50,18 @@ type ArgSpec struct {
 	Field  string // Go field name, for diagnostics
 	Kind   ValueKind
 	InPath bool // path segment, else query parameter
+
+	// List says a query parameter holds any number of values, the parameter repeated once for each ("?tag=a&tag=b"),
+	// and Kind is that of one of them. The rest of a path, "{name...}", is the other list, and is KindStrings.
+	List bool
 }
 
 // ValueKind is the set of argument and accessor value types.
 type ValueKind uint8
 
-// Supported value kinds. A URL carries one value per name, so these are scalar, except
-// KindStrings, which only the rest of a path, "{name...}", takes: one element for each
-// of its segments.
+// Supported value kinds. These are scalar, since a path segment is one value, except KindStrings, which only the
+// rest of a path, "{name...}", takes: one element for each of its segments. A query parameter may repeat, which is
+// [ArgSpec.List], and its Kind is that of one element.
 const (
 	KindString ValueKind = iota
 	KindBool
