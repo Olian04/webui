@@ -64,7 +64,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], err
 					Options: []webui.Option{{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 				},
 				webui.Int[Device]{Label: "Occurrences", Load: func(d Device) int { return d.Count }},
-				webui.Slider[Device]{Label: "Rate", Max: 4, Precision: 2, Load: func(d Device) float64 { return float64(d.Count) / 3 }},
+				webui.Slider[Device]{Label: "Rate", Max: 4, StepSize: 0.01, Load: func(d Device) float64 { return float64(d.Count) / 3 }},
 			},
 		},
 	}

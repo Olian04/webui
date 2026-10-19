@@ -2319,15 +2319,11 @@ td.actions .gate:hover::after,
 .range-input.invalid {
   accent-color: var(--red);
 }
-.range-value {
-  min-width: 36px;
+/* The number beside the range: a narrow input, with the digits at its right as the value was. */
+.range-number {
+  flex: none;
+  width: 92px;
   text-align: right;
-  font:
-    12.5px ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-  color: var(--text-2);
 }
 /* A link a page declared: it opens in a new tab, which the arrow says. In a table it
    sits above the row's own link, so it stays clickable. */

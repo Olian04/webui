@@ -33,7 +33,7 @@ var (
 		Options: []webui.Option{{Value: "ok", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 	}
 	SiteRate = webui.Slider[SiteSummary]{
-		Label: "Mean rate / s", Max: 15, Precision: 2,
+		Label: "Mean rate / s", Max: 15, StepSize: 0.01,
 		Load: func(s SiteSummary) float64 { return s.Rate },
 	}
 )

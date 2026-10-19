@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -335,8 +336,9 @@ func (a Timestamp[M]) label() string { return a.Label }
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
 // Store a form shows a range input, and the server rejects a value outside the
-// range. Precision is the number of decimals shown; zero shows the shortest
-// exact representation.
+// range. A writable slider moves in steps of StepSize, from Min: it has a range input to
+// drag and a number input to type in, and holds only the values that are a step apart. The
+// value is shown with the decimals of the step.
 type Slider[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
 	// column in the address and in a [Query].
@@ -355,9 +357,12 @@ type Slider[M any] struct {
 	// Max is the value at the end of the range, and must be greater than Min.
 	Max float64
 
-	// Precision is the number of decimals shown. Zero shows the shortest exact
-	// representation.
-	Precision int
+	// StepSize is the distance between the values the slider holds, counted from Min: 1
+	// is whole numbers, 0.1 is tenths, 5 is every fifth. It is also how many decimals the
+	// value is shown with, since a value cannot have more than its step does. Zero is a
+	// power of ten that makes a hundred steps or more of the range (1 for 0 to 100, 0.01
+	// for 0 to 1), and, for a slider that is only read, the value in its shortest exact form.
+	StepSize float64
 }
 
 func (a Slider[M]) label() string { return a.Label }
@@ -481,7 +486,12 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if !(a.Max > a.Min) {
 			v.add(at+" has no range", "Set Max greater than Min; the slider is drawn between them.")
 		}
-		validatePrecision(v, at, a.Precision)
+		switch {
+		case a.StepSize < 0 || math.IsNaN(a.StepSize) || math.IsInf(a.StepSize, 0):
+			v.add(at+" has a StepSize that is not a positive number", "Use 0 for a step that is chosen from the range, or the distance between the values: 1 for whole numbers, 0.1 for tenths.")
+		case a.Max > a.Min && a.StepSize > a.Max-a.Min:
+			v.add(at+" has a StepSize larger than its range", "The slider could hold only Min. Use a step that fits the range, or 0.")
+		}
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
 			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider or Group.")
@@ -624,7 +634,16 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		lo, hi := a.Min, a.Max
 		f := head(name, a.Label, ir.KindFloat)
 		f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
-		f.Get, f.Num = floatReads(a.Load, a.Precision)
+		step := a.StepSize
+		if step == 0 && a.Store != nil {
+			// A range input moves in steps, and without one of its own submits whatever the pointer was
+			// over, 81.6719540426991, which is not a value anyone chose.
+			step = defaultStep(lo, hi)
+		}
+		f.Get, f.Num = sliderReads(a.Load, lo, step)
+		if a.Store != nil {
+			f.Rules.Step = step
+		}
 		f.Set = setter(a.Store, parseFloat)
 		return f
 	}
@@ -664,6 +683,29 @@ func floatReads[M any](load func(M) float64, precision int) (get func(any) strin
 		prec = precision
 	}
 	return func(m any) string { return strconv.FormatFloat(load(m.(M)), 'f', prec, 64) },
+		func(m any) float64 { return load(m.(M)) }
+}
+
+// defaultStep is the step of a slider that has none: the power of ten that makes at least a hundred steps of its range.
+func defaultStep(lo, hi float64) float64 { return math.Pow10(int(math.Floor(math.Log10(hi-lo))) - 2) }
+
+// sliderReads are the Get and Num of a slider: the value as the nearest step from lo, which is where a range input
+// puts it, with the decimals of the step, or in its shortest exact form for no step.
+func sliderReads[M any](load func(M) float64, lo, step float64) (get func(any) string, num func(any) float64) {
+	decimals := -1
+	if step > 0 {
+		decimals = 0
+		if s := strconv.FormatFloat(step, 'f', -1, 64); strings.Contains(s, ".") {
+			decimals = len(s) - strings.IndexByte(s, '.') - 1
+		}
+	}
+	return func(m any) string {
+			v := load(m.(M))
+			if step > 0 {
+				v = lo + math.Round((v-lo)/step)*step
+			}
+			return strconv.FormatFloat(v, 'f', decimals, 64)
+		},
 		func(m any) float64 { return load(m.(M)) }
 }
 

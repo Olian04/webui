@@ -190,6 +190,9 @@ type Rules struct {
 	Min *float64 // numbers; nil means unbounded
 	Max *float64 // numbers; nil means unbounded
 
+	// Step is a number that is one of a step from its minimum, such as a slider's, or 0 for any number.
+	Step float64
+
 	Pattern *Pattern
 }
 

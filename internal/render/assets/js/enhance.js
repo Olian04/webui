@@ -671,11 +671,23 @@
     }
   });
 
-  // A range shows its value while it moves, not only when it is let go.
+  // A slider is a number input with a range beside it, which only moves the number: the number is what is submitted. The
+  // range shows the number while it moves, with the decimals of its step, which is how the server shows a value that was
+  // loaded; and the number moves the range when it is typed in.
   document.addEventListener('input', function (e) {
-    if (!e.target.matches('input[type="range"]')) return;
-    var out = e.target.parentNode.querySelector('[data-range-value]');
-    if (out) out.textContent = e.target.value;
+    var box = e.target.closest && e.target.closest('[data-range]');
+    if (!box) return;
+    var range = box.querySelector('input[type="range"]');
+    var number = box.querySelector('input[type="number"]');
+    if (!range || !number) return;
+    if (e.target === range) {
+      var dot = range.step.indexOf('.');
+      var value = parseFloat(range.value);
+      number.value = isNaN(value) ? range.value : value.toFixed(dot < 0 ? 0 : range.step.length - dot - 1);
+      number.setCustomValidity(''); // what it said of the value before it moved is not about this one
+    } else if (e.target === number && number.value !== '' && !number.validity.badInput) {
+      range.value = number.value;
+    }
   });
 
   /* -------------------------------- palette ------------------------------- */
