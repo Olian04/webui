@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -336,7 +337,10 @@ func (a Timestamp[M]) label() string { return a.Label }
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
 // Store a form shows a range input, and the server rejects a value outside the
 // range. Precision is the number of decimals shown; zero shows the shortest
-// exact representation.
+// exact representation. A range input moves in steps, and a writable slider's step is one
+// unit of its last decimal: Precision 1 moves by 0.1. With no Precision the step is a power
+// of ten that gives a hundred steps or more over the range (1 for 0 to 100, 0.01 for 0 to 1),
+// and the value is shown with that many decimals, since it can hold no more.
 type Slider[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
 	// column in the address and in a [Query].
@@ -356,7 +360,8 @@ type Slider[M any] struct {
 	Max float64
 
 	// Precision is the number of decimals shown. Zero shows the shortest exact
-	// representation.
+	// representation, and for a slider with a Store the decimals of its step, which
+	// the range chooses (see [Slider]).
 	Precision int
 }
 
@@ -625,6 +630,17 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		f := head(name, a.Label, ir.KindFloat)
 		f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
 		f.Get, f.Num = floatReads(a.Load, a.Precision)
+		if a.Store != nil {
+			// A range input moves in steps, and without one of its own submits whatever the pointer was
+			// over, 81.6719540426991, which is not a value anyone chose: so a writable slider has a step,
+			// and shows the value as the nearest step, which is where the range input puts it.
+			step, decimals := sliderStep(lo, hi, a.Precision)
+			f.Step = step
+			f.Get = func(m any) string {
+				v := lo + math.Round((a.Load(m.(M))-lo)/step)*step
+				return strconv.FormatFloat(v, 'f', decimals, 64)
+			}
+		}
 		f.Set = setter(a.Store, parseFloat)
 		return f
 	}
@@ -665,6 +681,16 @@ func floatReads[M any](load func(M) float64, precision int) (get func(any) strin
 	}
 	return func(m any) string { return strconv.FormatFloat(load(m.(M)), 'f', prec, 64) },
 		func(m any) float64 { return load(m.(M)) }
+}
+
+// sliderStep is how far a writable slider moves, and the decimals that has: Precision decimals when it has one, and
+// otherwise the power of ten that makes at least a hundred steps of the range, which is 1 for 0 to 100.
+func sliderStep(lo, hi float64, precision int) (step float64, decimals int) {
+	exp := -precision
+	if precision <= 0 {
+		exp = int(math.Floor(math.Log10(hi-lo))) - 2
+	}
+	return math.Pow10(exp), max(0, -exp)
 }
 
 func lowerStringRules(r StringRules) ir.Rules {

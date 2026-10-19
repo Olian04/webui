@@ -675,7 +675,11 @@
   document.addEventListener('input', function (e) {
     if (!e.target.matches('input[type="range"]')) return;
     var out = e.target.parentNode.querySelector('[data-range-value]');
-    if (out) out.textContent = e.target.value;
+    if (!out) return;
+    // With the decimals of its step, which is how the server shows the value that was loaded.
+    var dot = e.target.step.indexOf('.');
+    var value = parseFloat(e.target.value);
+    out.textContent = isNaN(value) ? e.target.value : value.toFixed(dot < 0 ? 0 : e.target.step.length - dot - 1);
   });
 
   /* -------------------------------- palette ------------------------------- */

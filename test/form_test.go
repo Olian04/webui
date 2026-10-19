@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -231,12 +232,40 @@ func TestFormShowsBadgesAndSlidersByWhetherTheyCanBeChanged(t *testing.T) {
 	assert.False(t, strings.Contains(body, `name="f0"`))
 
 	// A slider with a Store is a range input over its range, submitting its value.
-	assert.Contains(t, body, `type="range" name="f1" value="70.0" min="0" max="100" step="any"`)
+	assert.Contains(t, body, `type="range" name="f1" value="70.0" min="0" max="100" step="0.1"`)
 	assert.Contains(t, body, `<output class="range-value" for="p-f1" data-range-value>70.0</output>`)
 
 	// One without is a bar, and submits nothing.
 	assert.Contains(t, body, `class="gauge-fill" style="width:88%;"`)
 	assert.False(t, strings.Contains(body, `name="f2"`))
+}
+
+// A range input with no step submits whatever the pointer was over, 81.6719540426991, and a slider with no Precision showed
+// that as it was. A writable slider has a step, and shows its value with the decimals of it.
+func TestAWritableSliderMovesInStepsAndShowsNoMoreDecimalsThanThat(t *testing.T) {
+	t.Parallel()
+
+	ratio := 0.6719540426991
+	for name, tc := range map[string]struct {
+		slider      webui.Slider[Device]
+		value, step string
+	}{
+		"a hundred":   {webui.Slider[Device]{Label: "Load", Max: 100}, "67", "1"},
+		"one":         {webui.Slider[Device]{Label: "Load", Max: 1}, "0.67", "0.01"},
+		"a thousand":  {webui.Slider[Device]{Label: "Load", Max: 1000}, "670", "10"},
+		"a precision": {webui.Slider[Device]{Label: "Load", Max: 100, Precision: 2}, "67.20", "0.01"},
+	} {
+		s := tc.slider
+		scale := s.Max
+		s.Load = func(Device) float64 { return ratio * scale }
+		s.Store = func(*Device, float64) {}
+		f := okForm()
+		f.Fields = []webui.Accessor[Device]{s}
+		body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+		assert.Contains(t, body, `value="`+tc.value+`" min="0" max="`+strconv.FormatFloat(s.Max, 'f', -1, 64)+`" step="`+tc.step+`"`)
+		assert.Contains(t, body, `data-range-value>`+tc.value+`</output>`)
+		_ = name
+	}
 }
 
 func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {

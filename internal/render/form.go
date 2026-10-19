@@ -268,3 +268,12 @@ func boundsRule(r ir.Rules) string {
 }
 
 func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// stepOf is the step of a writable slider's range input; "any" for one that has none, which submits whatever the
+// pointer was over.
+func stepOf(f ir.Field) string {
+	if f.Step <= 0 {
+		return "any"
+	}
+	return num(f.Step)
+}

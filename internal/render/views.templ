@@ -436,7 +436,7 @@ templ (r *Renderer) input(fv fieldView) {
 						value={ fv.Value }
 						min={ num(*fv.Rules.Min) }
 						max={ num(*fv.Rules.Max) }
-						step="any"
+						step={ stepOf(fv.Field) }
 						if fv.Error != "" {
 							aria-invalid="true"
 							aria-describedby={ fv.ID + "-error" }
