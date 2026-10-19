@@ -196,7 +196,8 @@
 //     it was listed, not as it is now.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
-// and maximum for a number, or a choice among the values of a [Select]. A table keeps
+// and maximum for a number, or a choice among the values of a [Select]. A column that
+// has no use for one says NoSort or NoFilter. A table keeps
 // its sort, filters and page in the address, named by its title, so a copied address
 // reproduces the view. A table pages, 25 rows at a time unless it says otherwise. A
 // column is named by its Label.

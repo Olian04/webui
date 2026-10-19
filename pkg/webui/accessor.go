@@ -19,6 +19,9 @@ import (
 type Accessor[M any] interface {
 	// label is the accessor's label, which names a column and resolves a FieldError. A Group has none.
 	label() string
+
+	// exclusions are what the column is left out of: its header's sort link, and its filter. A Group has none.
+	exclusions() (noSort, noFilter bool)
 }
 
 // String projects a string field of M.
@@ -39,9 +42,18 @@ type String[M any] struct {
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a String[M]) label() string { return a.Label }
+
+func (a String[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // StringRules is declarative validation for a string value.
 // Scalar zero means "no constraint". Pattern is a pointer because the
@@ -125,9 +137,18 @@ type Int[M any] struct {
 	// If Format panics, the panic is logged and the value is shown as it would be without
 	// Format, so a bug in a formatter is a plain number and not a page that does not load.
 	Format func(int) string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Int[M]) label() string { return a.Label }
+
+func (a Int[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
@@ -178,15 +199,26 @@ type Float[M any] struct {
 	// If Format panics, the panic is logged and the value is shown as it would be without
 	// Format, so a bug in a formatter is a plain number and not a page that does not load.
 	Format func(float64) string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Float[M]) label() string { return a.Label }
+
+func (a Float[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Group composes accessors inside a form. It is not a table column;
 // Compile rejects Group listed in Columns.
 type Group[M any] []Accessor[M]
 
 func (Group[M]) label() string { return "" }
+
+func (Group[M]) exclusions() (noSort, noFilter bool) { return false, false }
 
 // Select is a choice from a list of options: the values of a field of M that holds some
 // of a set of known words, such as a status, a size or a few tags. Read, in a table or in
@@ -250,9 +282,18 @@ type Select[M any] struct {
 
 	// Required refuses a submission with nothing chosen. It is for a field that is edited.
 	Required bool
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Select[M]) label() string { return a.Label }
+
+func (a Select[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Option is one value a [Select] can hold.
 type Option struct {
@@ -287,9 +328,18 @@ type URL[M any] struct {
 	// Text is what the link says, the same on every row, such as "Download". Leave
 	// it empty to show the address itself.
 	Text string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a URL[M]) label() string { return a.Label }
+
+func (a URL[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
@@ -319,9 +369,18 @@ type Datetime[M any] struct {
 	// moment, and its <time> element and the export still hold it. A value that is empty or is
 	// not a moment is not handed to Format: it shows as it does without one.
 	Format func(time.Time) string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Datetime[M]) label() string { return a.Label }
+
+func (a Datetime[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
 // and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
@@ -343,9 +402,18 @@ type Timestamp[M any] struct {
 	// is handed the moment in UTC, and is not handed zero, which is "not set" and shows as
 	// nothing.
 	Format func(time.Time) string
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Timestamp[M]) label() string { return a.Label }
+
+func (a Timestamp[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
@@ -377,9 +445,18 @@ type Slider[M any] struct {
 	// power of ten that makes a hundred steps or more of the range (1 for 0 to 100, 0.01
 	// for 0 to 1), and, for a slider that is only read, the value in its shortest exact form.
 	StepSize float64
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
 }
 
 func (a Slider[M]) label() string { return a.Label }
+
+func (a Slider[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
 // Tone is the semantic meaning of a badge.
 type Tone string
@@ -563,6 +640,14 @@ func lowerAccessors[M any](accs []Accessor[M], prefix string) []ir.Field {
 // lowerAccessor is the one place Store becomes Set. validate has run, so a nil
 // Load or an unknown accessor cannot reach here.
 func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
+	f := lowerOne[M](acc, name)
+	if acc != nil {
+		f.NoSort, f.NoFilter = acc.exclusions()
+	}
+	return f
+}
+
+func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := head(name, a.Label, ir.KindString)

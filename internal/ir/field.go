@@ -66,6 +66,10 @@ type Field struct {
 	Choices []Choice
 	Multi   bool
 
+	// NoSort and NoFilter leave a column out of the table's sort and of its filters: its header has no sort link or
+	// no filter, and the address cannot ask for one. A form ignores them.
+	NoSort, NoFilter bool
+
 	// ChoicesFor, when a select has it, reads Choices (and Options, the values of them) when a request is
 	// answered, from whatever the app keeps them in: until it has been read there are none, and Options is
 	// the empty set, so that the column is known to have a fixed one. A field is shared by every request, so

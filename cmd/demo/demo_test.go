@@ -308,6 +308,19 @@ func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Choose from the options offered.")
 }
 
+// A column that has no use for a sort leaves it out: the devices' tags are a list of words, and an event's detail is read.
+func TestTheDemoLeavesSortingOutOfTheColumnsThatHaveNoUseForIt(t *testing.T) {
+	h := handler(t)
+	devices := get(h, "/admin/device").Body.String()
+	assert.Contains(t, devices, `href="/admin/device?devices.sort=ip"`)
+	assert.False(t, strings.Contains(devices, "devices.sort=tags"))
+	assert.Contains(t, devices, `aria-label="Filter Tags"`) // it still filters
+
+	events := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.Contains(t, events, "events.sort=kind")
+	assert.False(t, strings.Contains(events, "events.sort=detail"))
+}
+
 func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/settings").Body.String()

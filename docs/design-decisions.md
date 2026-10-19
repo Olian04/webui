@@ -255,7 +255,8 @@ design element.
 
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
-  grow without bound, and every column is sortable and filterable. A table says where
+  grow without bound, and every column is sortable and filterable unless its accessor says `NoSort` or
+  `NoFilter` (below). A table says where
   its rows come from with one of three fields. `Rows` returns every row and the
   library filters, sorts and pages them from the columns' own accessors, a number
   as a number and text as text, so a table over a slice has no query code at all.
@@ -279,6 +280,17 @@ design element.
   its own, not a mode of `Query`, so a table can never carry both a cursor and an
   offset. Exactly one of the three is set, which `Compile` checks. Setting a filter
   returns every table to its first page.
+- **A column can leave itself out of sorting or filtering** (`NoSort`, `NoFilter` on each accessor that is a column).
+  The default stays "every column does both", since that is what a table of rows is for and an app that says nothing
+  gets it. A column that is left out has no sort link, or no filter menu, in its header, and a header with neither is
+  only its name; and the address cannot ask for what it left out: a sort by it is dropped like a sort by a column the table
+  does not have, and its filter or range never reaches `Load` (nor the library's own filtering, for `Rows`), so the
+  address, which is the visitor's to edit, is no way round it. The parameters of a column that left a part out
+  are not kept on the table's other links either. The two are separate because they are: free text is worth
+  filtering and not ordering, a list of words the reverse. It is a flag on the accessor, with the `Label` that names
+  the column, since an accessor already describes its own column; the same accessor in a form says nothing of it.
+  Not done: a rule for the whole table (`Table.NoSort`), which a table of nothing but filterable columns does not need.
+
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
   without script. A column with a fixed set of options — a `Select`, whose options
