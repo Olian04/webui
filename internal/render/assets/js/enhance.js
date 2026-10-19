@@ -671,6 +671,23 @@
     }
   });
 
+  // The inputs of a toolbar are the page's arguments: each belongs to a form of its own, which goes back to the page with what
+  // was given, and is applied when an input changes, as the Apply button does without script. A control that was just edited by
+  // script, such as a slider's number, does not say it changed, so the range that moved it does.
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    var form = el.form;
+    if (form && form.hasAttribute('data-toolbar-form') && el.name) {
+      if (form.reportValidity()) form.requestSubmit();
+      return;
+    }
+    var box = el.closest && el.closest('[data-toolbar] [data-range]');
+    var number = box && box.querySelector('input[type="number"]');
+    if (number && el.type === 'range' && number.form && number.form.hasAttribute('data-toolbar-form') && number.form.reportValidity()) {
+      number.form.requestSubmit();
+    }
+  });
+
   // A slider is a number input with a range beside it, which only moves the number: the number is what is submitted. The
   // range shows the number while it moves, with the decimals of its step, which is how the server shows a value that was
   // loaded; and the number moves the range when it is typed in.
@@ -1227,6 +1244,32 @@
     $$('select[data-select]:not([data-enhanced])', root).forEach(enhanceSelect);
   }
 
+  // A toolbar has its left controls at its left edge and its right ones at its right when there is room for all of them in a
+  // row, and when there is not it has them flow from the left in rows, as one group: the gap between the two groups is
+  // gone. Whether there is room is the width of the controls as they are, whatever the rows they are in, so it does not
+  // change with the layout that it chooses.
+  function fitToolbar(tb) {
+    var form = tb.querySelector(':scope > form');
+    if (!form || !tb.querySelector('.toolbar-gap')) return;
+    var gap = parseFloat(getComputedStyle(tb).columnGap) || 0;
+    var need = 0;
+    var n = 0;
+    for (var i = 0; i < form.children.length; i++) {
+      var el = form.children[i];
+      if (el.classList.contains('toolbar-gap') || el.type === 'hidden') continue;
+      need += el.offsetWidth;
+      n++;
+    }
+    tb.classList.toggle('wrapped', need + gap * n > tb.clientWidth);
+  }
+  function enhanceToolbars(root) {
+    $$('[data-toolbar]:not([data-fitted])', root).forEach(function (tb) {
+      tb.setAttribute('data-fitted', '');
+      fitToolbar(tb);
+      if (window.ResizeObserver) new ResizeObserver(function () { fitToolbar(tb); }).observe(tb);
+    });
+  }
+
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.msel')) closeSelects(null);
   });
@@ -1234,7 +1277,9 @@
   // A panel that is fetched again brings its selects as plain ones.
   new MutationObserver(function () {
     enhanceSelects(document);
+    enhanceToolbars(document);
   }).observe(document.body, { childList: true, subtree: true });
+  enhanceToolbars(document);
 
   /* --------------------------------- start -------------------------------- */
 

@@ -237,6 +237,49 @@ design element.
   gating happens at execution rather than per-row at render. Row actions are
   gated at render, per row, by the same `Guard` that authorises the POST.
 
+- **A `Toolbar` is a row of controls for the page, and its type is the page's arguments** (`Toolbar[A]`, items of `A`).
+  It is a leaf and not a panel (no frame), in a `Stack` with what it is for. What the controls are about is what a page
+  is: its arguments. A `Page` has no model of its own, and an `Action[M]` is a mutation of an `M`, so the subject of a
+  toolbar's `Action` is the arguments, whose `Guard` can gate by them and whose `Run` reads them, and `ArgsOf(ctx)`
+  gives the same. `Link[A, B]` is the existing `Link` with a `Label` and a `Role`, built from the arguments instead of
+  a row. The type is checked: a `Toolbar[X]` on a page of `Y` is a compile error, so nothing is asserted wrongly at run time.
+  The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and every accessor that can have a `Store` satisfy
+  by a method that takes `A`, so an accessor of another type does not fit.
+- **The inputs of a toolbar are accessors of the arguments, applied by the server through `Store`.** The page's arguments are the
+  model, so the same `Load` and `Store` that a form's fields have are what an input is, with their rules, formats and
+  `LoadOptions`, and no second kind of input for the page. Each input is named by its position (`t0`), not by the
+  argument it is for, which a `Store` does not say; the form that applies them is a GET to the page, with the rest of the
+  current address as hidden fields and `_toolbar=<id>`; the server decodes the arguments from the address, applies the
+  inputs to them with `Store`, and redirects (303) to the page those arguments encode to. It is the arguments that are
+  encoded, so an argument in the path and one in the query are alike, a list repeats, and a zero argument is not in the
+  address. Not done, as they cost more than they give: inputs named by their argument, which a GET form could submit
+  as it is but would tie an accessor to a field by a string; and a pointer-returning accessor, which finds the field by address.
+- **What an input does with what it is given.** An empty input sets its argument to nothing, by `ir.Field.Unset`, the zero
+  value of the type that `Store` takes, since "I cleared it" is the only way to take a filter off and an `Int` has no
+  empty value to parse. The rules of the accessor are checked as a form does (`Required`, bounds, a select's options,
+  text rules), and every failure is reported: none of the inputs is applied, and the visitor is where they were, with the
+  messages in a toast. A toast rides the flash cookie, as the failure of a table action does, because the answer is
+  a redirect. Every table keeps its sort and filters, and loses its offset, which the hidden fields leave out as a
+  changed filter does: what it shows may no longer have a second page. Without script each input has an
+  *Apply* button of its own, joined to it in a group (a grid of the input and the button), so that a toolbar of several has a
+  button at each and not one apart from all of them; each submits the whole form, since the inputs belong to one. Script
+  hides them; with script a change applies it (`change`, and a slider's range, which the number
+  beside it does not hear), after the browser has checked its constraints.
+- **A toolbar has two groups, `Left` and `Right`, and they are one row.** A gap between the groups takes what the page has
+  to spare, so the right ones are at the right edge. When there is no room for every control in a row the gap goes and
+  the controls flow from the left in rows, the left ones first, as one group; the right group does not wrap as a unit onto a line
+  of its own. CSS cannot ask whether the content fits, so a few lines of script measure the controls as they are (their widths
+  and the gaps between them, which do not depend on the layout, so the answer does not flip with it) against the toolbar's width, and
+  set a class that removes the gap; the toolbar is watched as it resizes. Without script the gap stays, which wraps a little less
+  well and works. Not done: a breakpoint in CSS, which would be right for the toolbars of one app only.
+
+- **A toolbar's buttons post, as every action does.** `_leaf` names the toolbar, `_act` the position of the item, and
+  the same `perform` runs the `Guard` and the `Run`, so a button that the `Guard` refuses is disabled with the reason, and the request is
+  refused with it. A failure, or a reject, is a toast, as for a table action, since there are no fields to point at; a
+  success returns to the address it was at, with the toast. Not done: buttons that take input of their own (a popover with fields over a new model),
+  which `Form` on a page of its own already is, and which the toolbar's `Link` leads to. Also not done: a `Toolbar` field of
+  `Table`, which would put the same items in a table's header beside its title.
+
 ## Tables, filters and view state
 
 - An accessor says how its value reads with `Format`, a function the application writes, on

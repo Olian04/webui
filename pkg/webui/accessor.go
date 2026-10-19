@@ -55,6 +55,8 @@ func (a String[M]) label() string { return a.Label }
 
 func (a String[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
+func (String[M]) toolbarItem(M) {}
+
 // StringRules is declarative validation for a string value.
 // Scalar zero means "no constraint". Pattern is a pointer because the
 // expression needs a user-facing message.
@@ -150,6 +152,8 @@ func (a Int[M]) label() string { return a.Label }
 
 func (a Int[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
+func (Int[M]) toolbarItem(M) {}
+
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
 type NumberRules[T int | float64] struct {
@@ -211,6 +215,8 @@ type Float[M any] struct {
 func (a Float[M]) label() string { return a.Label }
 
 func (a Float[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+
+func (Float[M]) toolbarItem(M) {}
 
 // Group composes accessors inside a form. It is not a table column;
 // Compile rejects Group listed in Columns.
@@ -294,6 +300,8 @@ type Select[M any] struct {
 func (a Select[M]) label() string { return a.Label }
 
 func (a Select[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+
+func (Select[M]) toolbarItem(M) {}
 
 // Option is one value a [Select] can hold.
 type Option struct {
@@ -382,6 +390,8 @@ func (a Datetime[M]) label() string { return a.Label }
 
 func (a Datetime[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
 
+func (Datetime[M]) toolbarItem(M) {}
+
 // Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
 // and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
 // Zero is "not set": it shows as nothing, and clearing the picker stores it. For a
@@ -414,6 +424,8 @@ type Timestamp[M any] struct {
 func (a Timestamp[M]) label() string { return a.Label }
 
 func (a Timestamp[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+
+func (Timestamp[M]) toolbarItem(M) {}
 
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
@@ -457,6 +469,8 @@ type Slider[M any] struct {
 func (a Slider[M]) label() string { return a.Label }
 
 func (a Slider[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+
+func (Slider[M]) toolbarItem(M) {}
 
 // Tone is the semantic meaning of a badge.
 type Tone string
@@ -654,6 +668,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Rules, f.Placeholder = lowerStringRules(a.Rules), a.Placeholder
 		f.Get = func(m any) string { return a.Load(m.(M)) }
 		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
+		f.Unset = unsetter(a.Store)
 		return f
 	case Int[M]:
 		f := head(name, a.Label, ir.KindInt)
@@ -662,6 +677,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
 		f.Set = setter(a.Store, func(raw string) (int, error) { return strconv.Atoi(strings.TrimSpace(raw)) })
+		f.Unset = unsetter(a.Store)
 		return f
 	case Float[M]:
 		f := head(name, a.Label, ir.KindFloat)
@@ -669,6 +685,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Get, f.Num = floatReads(a.Load, a.Precision)
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
 		f.Set = setter(a.Store, parseFloat)
+		f.Unset = unsetter(a.Store)
 		return f
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
@@ -692,6 +709,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		}
 		f.Get = func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) }
 		f.Set = setter(a.Store, func(raw string) ([]string, error) { return ir.SplitValues(raw), nil })
+		f.Unset = unsetter(a.Store)
 		return f
 	case URL[M]:
 		f := head(name, a.Label, ir.KindString)
@@ -725,6 +743,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			}
 			return t.Format(time.RFC3339), nil
 		})
+		f.Unset = unsetter(a.Store)
 		return f
 	case Timestamp[M]:
 		f := head(name, a.Label, ir.KindString)
@@ -742,6 +761,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			}
 			return int(t.Unix()), nil
 		})
+		f.Unset = unsetter(a.Store)
 		return f
 	case Slider[M]:
 		lo, hi := a.Min, a.Max
@@ -758,6 +778,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			f.Rules.Step = step
 		}
 		f.Set = setter(a.Store, parseFloat)
+		f.Unset = unsetter(a.Store)
 		return f
 	}
 	return ir.Field{Name: name}
@@ -783,6 +804,17 @@ func setter[M, T any](store func(*M, T), parse func(string) (T, error)) func(any
 		}
 		store(m.(*M), v)
 		return nil
+	}
+}
+
+// unsetter is the Unset of a field: the zero value of its type, stored. It is what an input that was emptied means.
+func unsetter[M, T any](store func(*M, T)) func(any) {
+	if store == nil {
+		return nil
+	}
+	return func(m any) {
+		var zero T
+		store(m.(*M), zero)
 	}
 }
 

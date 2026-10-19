@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -26,7 +27,7 @@ func leavesOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
 	ir.Walk(root, func(n ir.Node) {
 		switch n.(type) {
-		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown:
+		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Toolbar:
 			out[render.LeafID(n.Addr())] = n
 		}
 	})
@@ -56,6 +57,10 @@ func actionable(leaves map[string]ir.Node) bool {
 			}
 		case *ir.Table:
 			if len(n.Actions)+len(n.Bulk) > 0 || n.RowAction != nil {
+				return true
+			}
+		case *ir.Toolbar:
+			if slices.ContainsFunc(n.Items, func(it ir.ToolbarItem) bool { return it.Action != nil }) {
 				return true
 			}
 		}
@@ -98,6 +103,8 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			p.submit(w, r, page, req, n)
 		case *ir.Table:
 			p.tableAct(w, r, page, req, n)
+		case *ir.Toolbar:
+			p.toolbarAct(w, r, page, req, n)
 		default:
 			p.refuse(w, r, notUnderstood)
 		}

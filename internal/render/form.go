@@ -64,6 +64,9 @@ type fieldView struct {
 	Type      string
 	Rules     c.Rules
 
+	// FormID is the form the control belongs to, when it is not the one it is inside of.
+	FormID string
+
 	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
 	Parts    string

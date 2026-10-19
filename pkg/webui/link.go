@@ -31,8 +31,13 @@ type Link[M, A any] struct {
 	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]
 
-	// Args builds the destination's arguments from a row.
+	// Args builds the destination's arguments from a row, or, in a [Toolbar], from the page's arguments.
 	Args func(ctx context.Context, m M) A
+
+	// Label and Role are the button's text and style, in a [Toolbar], where a link is a button. A table's
+	// RowClick has no button, and ignores them.
+	Label string
+	Role  Role
 }
 
 // ASSERT: Link and Action implement RowClick
@@ -61,6 +66,20 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 			path, typeName(got), typeName(want)),
 			"Point the link at the page the mount list contains, not a copy with other arguments.")
 	}
+}
+
+func (Link[M, A]) toolbarItem(M) {}
+
+func (l Link[M, A]) validateButton(v *bodyValidator, at string) {
+	if l.Label == "" {
+		v.add(at+" has no Label", "Set Label; it is the button text.")
+	}
+	l.validateRow(v)
+}
+
+func (l Link[M, A]) toolbarButton() ir.ToolbarItem {
+	link, _ := l.lowerRow()
+	return ir.ToolbarItem{Label: l.Label, Role: ir.Role(l.Role), Link: link}
 }
 
 func (l Link[M, A]) lowerRow() (*ir.Link, *ir.Action) {

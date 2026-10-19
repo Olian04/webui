@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
 
 // The device id is a path argument, so each device has its own address. The query
-// arguments have no control on the page; they arrive in the address:
+// argument has a control on the page, a Toolbar, and also arrives in the address:
 //
-//   - Minutes narrows what Events shows (the alerts link here with ?minutes=15)
+//   - Minutes narrows what the Raw events tab shows (the alerts link here with ?minutes=15)
 //
 // This page is reached from the device list, from a site and from the alerts. It
 // does not say where Cancel goes: the library remembers which page's link the user
@@ -124,32 +125,85 @@ const DevicesPath webui.PageID[webui.NoArgs] = "/device"
 var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
-	Body: webui.Table[Device]{
-		Title: "Devices",
-		Desc:  "One Table leaf. Sort, page and row links are all URLs.",
-		// The table's state is kept in the address under its title: ?devices.offset,
-		// ?devices.sort, ?devices.desc, a ?devices.filter.<column> per filtered
-		// column, and ?devices.min.<column> and ?devices.max.<column> for the
-		// numeric ones.
-		PageSize: 10,
-		// Export adds CSV and JSON links to the footer. A Load table is asked for every row
-		// the sort and filters keep, 500 at a time from Offset 0, so a download is not a page.
-		Export: true,
-		// Load, not Rows: the source pages itself, as a database would, so it is
-		// handed the window, the sort and the filters and does that work. Every
-		// other table in the demo says only what its rows are, with Rows, and
-		// leaves the rest to the library.
-		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
-			// A column is named by its Label. The numeric columns, Occurrences and
-			// Rate / s, arrive as bounds.
-			devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
-			return webui.Window[Device]{Items: devices, Total: total}, nil
+	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device, a button
+	// that does something, and, on the Raw events tab of a device, an input for the page's arguments.
+	Body: webui.Stack{DevicesToolbar, DevicesTable},
+}
+
+// DevicesToolbar is the controls of the list, which are of the page's arguments, here none. A Link to another page is at the
+// left edge, and an Action, a button that posts and says how it ended, as every action does, is at the right. When the page
+// is too narrow for both at the edges they flow together from the left.
+var DevicesToolbar = webui.Toolbar[webui.NoArgs]{
+	Left: []webui.ToolbarItem[webui.NoArgs]{
+		webui.Link[webui.NoArgs, webui.NoArgs]{
+			Label: "Create device", Role: webui.RolePrimary, Page: NewDevicePage,
+			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 		},
-		RowClick: webui.Link[Device, DeviceArgs]{
-			Page: Details,
-			Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
+	},
+	Right: []webui.ToolbarItem[webui.NoArgs]{
+		webui.Action[webui.NoArgs]{
+			Label: "Sync now",
+			Guard: canEdit[webui.NoArgs],
+			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
+				return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
+			},
 		},
-		Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate},
+	},
+}
+
+// DevicesTable is the list.
+var DevicesTable = webui.Table[Device]{
+	Title: "Devices",
+	Desc:  "One Table leaf. Sort, page and row links are all URLs.",
+	// The table's state is kept in the address under its title: ?devices.offset,
+	// ?devices.sort, ?devices.desc, a ?devices.filter.<column> per filtered
+	// column, and ?devices.min.<column> and ?devices.max.<column> for the
+	// numeric ones.
+	PageSize: 10,
+	// Export adds CSV and JSON links to the footer. A Load table is asked for every row
+	// the sort and filters keep, 500 at a time from Offset 0, so a download is not a page.
+	Export: true,
+	// Load, not Rows: the source pages itself, as a database would, so it is
+	// handed the window, the sort and the filters and does that work. Every
+	// other table in the demo says only what its rows are, with Rows, and
+	// leaves the rest to the library.
+	Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+		// A column is named by its Label. The numeric columns, Occurrences and
+		// Rate / s, arrive as bounds.
+		devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
+		return webui.Window[Device]{Items: devices, Total: total}, nil
+	},
+	RowClick: webui.Link[Device, DeviceArgs]{
+		Page: Details,
+		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
+	},
+	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate},
+}
+
+// NewDevicePage is the form that makes a device: a Form of a model that is new, so what it loads is a zero Device. The
+// list's Link leads here, and a Cancel or a save returns to the list.
+var NewDevicePage = webui.Page[webui.NoArgs]{
+	Path: "/device/new",
+	Body: webui.Form[Device]{
+		Title: "New device",
+		Desc:  "The same fields as a device's own form, over a device that does not exist yet.",
+		Load:  func(context.Context) (Device, error) { return Device{Status: "healthy"}, nil },
+		Fields: []webui.Accessor[Device]{
+			IP,
+			webui.Group[Device]{Status, SiteChoice},
+			Tags,
+		},
+		Submit: webui.Action[Device]{
+			Label: "Create",
+			Guard: canEdit[Device],
+			Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
+				if service.IPTaken(d.IP, "") {
+					return webui.Reject(webui.Field[Device](IP, "already in use by another device")), nil
+				}
+				created := service.AddDevice(d)
+				return webui.Success("Device created").Then(webui.Open(ctx, Details, DeviceArgs{ID: created.ID})), nil
+			},
+		},
 	},
 }
 
@@ -176,9 +230,33 @@ var Details = webui.Page[DeviceArgs]{
 	// The selected tab is ?tabs.tab=raw-events, named by its label; the first tab,
 	// Overview, needs no parameter.
 	Body: webui.Tabs{Panels: []webui.Tab{
-		{Label: "Overview", Body: webui.Split{DeviceForm, Events}},
-		{Label: "Raw events", Body: Events},
+		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
+		// The page's Minutes, which only a link could set, as an input of a toolbar that is inside the tab it is for: Load reads
+		// it from the arguments and Store writes the visitor's to them, and the page that comes of it is the visitor's
+		// address, which they can copy, with this tab still selected.
+		{Label: "Raw events", Body: webui.Stack{
+			webui.Toolbar[DeviceArgs]{Left: []webui.ToolbarItem[DeviceArgs]{EventWindow}},
+			RawEvents,
+		}},
 	}},
+}
+
+// EventWindow is an input for an argument of the page: the minutes that the events cover. Nothing chosen is all of them.
+var EventWindow = webui.Select[DeviceArgs]{
+	Label: "Events from",
+	Load: func(a DeviceArgs) []string {
+		if a.Minutes == 0 {
+			return nil
+		}
+		return []string{strconv.Itoa(a.Minutes)}
+	},
+	Store: func(a *DeviceArgs, v []string) {
+		a.Minutes = 0
+		if len(v) == 1 {
+			a.Minutes, _ = strconv.Atoi(v[0])
+		}
+	},
+	Options: []webui.Option{{Value: "15", Label: "The last 15 minutes"}, {Value: "30", Label: "The last 30 minutes"}, {Value: "60", Label: "The last hour"}},
 }
 
 var DeviceForm = webui.Form[Device]{
@@ -216,13 +294,19 @@ var SaveDevice = webui.Action[Device]{
 	},
 }
 
-// Events is a table of a different model, beside the form. Split constrains
-// nothing about what its children are about. The same table is also the Raw
-// tab: it is one var used twice, and its sort and filters are shared because the
-// panels of one Tabs may share an ID.
-var Events = webui.Table[Event]{
-	Title: "Recent events",
-	Desc:  "Opened with ?minutes=15 (as the alerts do), only the last 15 minutes are shown.",
+// RecentEvents is a table of a different model, beside the form. Split constrains nothing about what its children are about.
+// It is always the last 15 minutes, whatever the Raw events tab is narrowed to.
+var RecentEvents = webui.Table[Event]{
+	Title:   "Recent events",
+	Desc:    "The last 15 minutes, whatever the Raw events tab shows.",
+	Rows:    func(context.Context) ([]Event, error) { return service.Events(15), nil },
+	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
+}
+
+// RawEvents is the events as far back as the page's Minutes says, which the input above it sets, and all of them when it is empty.
+var RawEvents = webui.Table[Event]{
+	Title: "Raw events",
+	Desc:  "Narrowed by ?minutes= (as the alerts' links do, and as the input above sets it): all of them without.",
 	Rows: func(ctx context.Context) ([]Event, error) {
 		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), nil
 	},

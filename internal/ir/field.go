@@ -76,6 +76,10 @@ type Field struct {
 	// it is not filled in: see [ResolveChoices].
 	ChoicesFor func(ctx context.Context) ([]Choice, error)
 
+	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
+	// Set: what an input that was emptied means. Nil for a field that is read-only.
+	Unset func(model any)
+
 	Min float64 // DisplaySlider: the range, also in Rules for a writable one
 	Max float64
 }

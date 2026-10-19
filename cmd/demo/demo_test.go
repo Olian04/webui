@@ -158,16 +158,20 @@ func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `there is no site &#34;Nowhere&#34;`)
 }
 
-func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
+func TestAQueryArgumentNarrowsTheRawEventsAndNotTheRecentOnes(t *testing.T) {
 	h := handler(t)
-	rows := func(target string) int {
+	rows := func(target, title string) int {
 		body := get(h, target).Body.String()
-		body = body[strings.Index(body, "Recent events"):]
+		body = body[strings.Index(body, title):]
 		return strings.Count(body[:strings.Index(body, "</table>")], `<tr class="">`) // body rows; the header has none
 	}
-	assert.Equal(t, rows("/admin/device/dev_27c38b"), 8)                                // every event
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15"), 3)                     // the last 15 minutes
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events"), 3) // the Raw tab: the same table
+	// The recent events are the last 15 minutes, whatever the page is narrowed to.
+	assert.Equal(t, rows("/admin/device/dev_27c38b", "Recent events"), 3)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=60", "Recent events"), 3)
+	// The raw ones are as far back as the argument says, and all of them without it.
+	assert.Equal(t, rows("/admin/device/dev_27c38b?tabs.tab=raw-events", "Raw events"), 8)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events", "Raw events"), 3)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events", "Raw events"), 5)
 }
 
 func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
@@ -317,8 +321,76 @@ func TestTheDemoLeavesSortingOutOfTheColumnsThatHaveNoUseForIt(t *testing.T) {
 	assert.Contains(t, devices, `aria-label="Filter Tags"`) // it still filters
 
 	events := get(h, "/admin/device/dev_27c38b").Body.String()
-	assert.Contains(t, events, "events.sort=kind")
-	assert.False(t, strings.Contains(events, "events.sort=detail"))
+	assert.Contains(t, events, "recent-events.sort=kind")
+	assert.False(t, strings.Contains(events, "recent-events.sort=detail"))
+}
+
+// The device list has a toolbar: a link to the page that makes a device, and a button that does something. An editor may
+// press it, and a viewer sees it disabled with the reason.
+func TestTheDeviceListHasAToolbarOfALinkAndAnAction(t *testing.T) {
+	editor := get(handler(t), "/admin/device").Body.String()
+	// The page it leads to has a form, so it is told where the visitor came from, and Cancel and a save return there.
+	assert.Contains(t, editor, `<a class="btn btn-primary btn-sm" href="/admin/device/new?webui.from=%2Fadmin%2Fdevice">Create device</a>`)
+	assert.Contains(t, editor, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1">Sync now</button>`)
+
+	rec := post(handler(t), "/admin/device", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), fmt.Sprintf("oSynced %d devices", len(service.devices)))
+
+	viewer := get(handlerAs(t, Viewer), "/admin/device").Body.String()
+	assert.Contains(t, viewer, `<span class="gate" data-guard="requires the editor role">`)
+	rec = post(handlerAs(t, Viewer), "/admin/device", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	assert.Equal(t, flashOf(rec), "erequires the editor role")
+}
+
+// The page that makes a device is a form over a device that is new, and saving it opens the device it made.
+func TestTheDeviceThatIsCreatedHasAnAddressOfItsOwn(t *testing.T) {
+	h := handler(t)
+	before := len(service.devices)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.devices = service.devices[:before]
+		service.mu.Unlock()
+	})
+
+	form := get(h, "/admin/device/new").Body.String()
+	assert.Contains(t, form, "New device")
+	assert.Contains(t, form, `>Create</button>`)
+
+	taken, _ := service.Device("dev_27c75c")
+	rec := post(h, "/admin/device/new", url.Values{"_leaf": {"p"}, "f0": {taken.IP}, "f1_0": {"healthy"}, "f1_1": {"Malmö"}})
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), "already in use by another device")
+
+	rec = post(h, "/admin/device/new", url.Values{"_leaf": {"p"}, "f0": {"10.7.7.7"}, "f1_0": {"quiet"}, "f1_1": {"Malmö"}, "f2": {"edge", "gpu"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, len(service.devices), before+1)
+	created := service.devices[before]
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/"+created.ID)
+	assert.Equal(t, created.IP, "10.7.7.7")
+	assert.Equal(t, created.Site, "Malmö")
+	assert.DeepEqual(t, created.Tags, []string{"edge", "gpu"})
+	assert.Equal(t, get(h, rec.Header().Get("Location")).Code, http.StatusOK)
+}
+
+// A page's argument that only a link could set has an input on the page: it is applied, and the visitor is sent to the page
+// that the arguments make, with the events narrowed.
+func TestTheEventsOfADeviceAreNarrowedByAnInputForTheMinutesArgument(t *testing.T) {
+	h := handler(t)
+	// The input is in the Raw events tab, which it is for, and not on the page.
+	overview := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.False(t, strings.Contains(overview, "Events from"))
+	raw := get(h, "/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events").Body.String()
+	assert.Contains(t, raw, `<option value="30" data-badge="badge-mute" selected>The last 30 minutes</option>`)
+
+	// Applying it keeps the tab, since the address does.
+	rec := get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=15")
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events")
+	rec = get(h, "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events&_toolbar=p.1.0&t0=")
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // nothing chosen is all of them
+	rec = get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=7")
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // not an option: refused, and where they were
 }
 
 func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
