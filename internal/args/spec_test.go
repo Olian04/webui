@@ -188,3 +188,36 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 	assert.Contains(t, problems[0].Detail, "is one segment of the path")
 	assert.Contains(t, problems[0].Fix, "{tags...}")
 }
+
+// A field that is wrong is one problem. The path is not also said to have no field for it, which both cannot be: the field
+// is there, and its type, its name or its place is what is wrong with it.
+func TestAFieldThatIsWrongIsNotAlsoMissing(t *testing.T) {
+	t.Parallel()
+
+	type unsupported struct{ When map[string]int }
+	type dotted struct {
+		Page string `webui:"a.b"`
+	}
+	type segment struct{ Tags []string }
+	for name, c := range map[string]struct {
+		typ      reflect.Type
+		template string
+		want     string
+	}{
+		"an unsupported type in the path": {reflect.TypeOf(unsupported{}), "/event/{when}", "field When has unsupported type map[string]int"},
+		"a reserved name in the path":     {reflect.TypeOf(dotted{}), "/x/{a.b}", `maps to the argument "a.b"`},
+		"a slice for one segment":         {reflect.TypeOf(segment{}), "/x/{tags}", "is one segment of the path"},
+	} {
+		_, problems := Spec(c.typ, c.template)
+		if len(problems) != 1 {
+			t.Errorf("%s: %d problems, want 1: %v", name, len(problems), problems)
+			continue
+		}
+		assert.Contains(t, problems[0].Detail, c.want)
+	}
+
+	// A path that really has no field for a placeholder still says so, beside a field that is wrong.
+	_, problems := Spec(reflect.TypeOf(unsupported{}), "/event/{id}")
+	assert.Equal(t, len(problems), 2)
+	assert.Contains(t, problems[1].Detail, "the path declares {id} but unsupported has no field for it")
+}

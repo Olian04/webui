@@ -396,6 +396,9 @@ func TestABrokenAppServesItsOwnErrors(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 	assert.Contains(t, rec.Body.String(), "Failed to compile")
 	assert.Contains(t, rec.Body.String(), "field When has unsupported type map[string]int")
+	// One problem: the field is in the path, so the path is not also said to have no field for it.
+	assert.Contains(t, rec.Body.String(), "1 problem in this app")
+	assert.False(t, strings.Contains(rec.Body.String(), "the path declares"))
 }
 
 func cancelHref(t *testing.T, h http.Handler, target string) string {

@@ -167,6 +167,10 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		specs    []ir.ArgSpec
 		problems []Problem
 		owner    = map[string]string{}
+
+		// declared is every name that a field maps to, whatever is wrong with the field: the path is not also said to
+		// have no field for a name that has one, which is a problem of its own.
+		declared = map[string]bool{}
 	)
 	inPath := map[string]bool{}
 	for _, name := range Placeholders(template) {
@@ -179,6 +183,7 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		if name == "" {
 			continue
 		}
+		declared[name] = true
 		kind, list, ok := fieldKind(f.Type)
 		if !ok {
 			problems = append(problems, Problem{
@@ -190,7 +195,6 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		rest := RestPlaceholder(template)
 		switch {
 		case list && inPath[name] && name != rest:
-			owner[name] = f.Name // so the path is not said to have no field for it as well
 			problems = append(problems, Problem{
 				Detail: fmt.Sprintf("field %s is a %s, but {%s} is one segment of the path", f.Name, f.Type, name),
 				Fix: fmt.Sprintf("A path segment is one value. Write {%s...} as the last segment to take the rest of the address, one element for each segment, "+
@@ -229,7 +233,7 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		}
 	}
 	for _, name := range Placeholders(template) {
-		if _, ok := owner[name]; ok {
+		if declared[name] {
 			continue
 		}
 		problems = append(problems, Problem{
