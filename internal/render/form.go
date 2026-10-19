@@ -43,6 +43,9 @@ type FormView struct {
 	CancelHref string
 
 	Failed bool // Load failed: the panel says so, the page stands
+
+	// Refusal is what the Load said the visitor may be told, when it was a refusal and not a failure.
+	Refusal *ir.Refusal
 }
 
 // Editable is whether the visitor can change the text of a code editor: it has a Store,

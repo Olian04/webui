@@ -162,7 +162,7 @@ var FilesAt = webui.Page[FileArgs]{
 	// No Nav: it lights Files, the page at "/files".
 	Guard: func(_ context.Context, a FileArgs) error {
 		if _, ok := lookup(a.Path); !ok {
-			return fmt.Errorf("there is nothing at /%s", strings.Join(a.Path, "/"))
+			return webui.NotFound(fmt.Sprintf("There is nothing at /%s.", strings.Join(a.Path, "/")))
 		}
 		return nil
 	},

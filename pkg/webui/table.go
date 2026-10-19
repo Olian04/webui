@@ -341,7 +341,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 			all, err := t.Rows(ctx)
 			if err != nil {
-				return ir.Window{}, err
+				return ir.Window{}, refused(err)
 			}
 			items := convert.Any(all)
 			window, total := tablequery.Apply(items, columns, q)
@@ -352,7 +352,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 			rows, next, err := t.Feed(ctx, q.After, q.Limit)
 			if err != nil {
-				return ir.Window{}, err
+				return ir.Window{}, refused(err)
 			}
 			items := convert.Any(rows)
 			if q.Sort != "" {
@@ -366,7 +366,7 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 	return func(ctx context.Context, q ir.Query) (ir.Window, error) {
 		rows, err := t.Load(ctx, queryOf(q, labels))
 		if err != nil {
-			return ir.Window{}, err
+			return ir.Window{}, refused(err)
 		}
 		items := convert.Any(rows.Items)
 		total := rows.Total

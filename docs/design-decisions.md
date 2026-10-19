@@ -100,6 +100,20 @@ design element.
   `Compile`. `Open` remains for programmatic navigation, such as
   `Outcome.Then`.
 
+- **What a visitor may be told is a `Refusal`, a typed error with a status.** A `Guard`'s error was always a 403 with its text, and a
+  `Load`'s was "Could not load" with the cause hidden, since either may name what a visitor should not see; so an app that
+  wanted a 404 for a record that is not there, or a 401 with a link to set up a credential, had no way to say so. `NotFound`,
+  `Unauthorized` and `Forbidden` make a `Refusal`, `Then(label, target)` gives it a link (the `Target` that `Open` builds, read
+  inside `pkg/webui`, since it has no parts to read outside), and it is found with `errors.As`, so a wrapped one counts.
+  They are made into `ir.Refusal` where the closures are lowered (the page `Guard`, and the loads of a table, a form, a diff, a
+  markdown and an editor), which is the one place a type assertion belongs. In a `Guard` the status is the page's: `admit` returns
+  it, and `begin` draws the state of that status (the nav, search and gate paths only ask whether there is an error, so they are
+  unchanged, and a POST to a refused page is redirected to the page that says it, as before). In a panel's `Load` the page has
+  its status by then (a page that streams has sent it, `streamAfter`), so the panel says the message and its link in place of
+  "Could not load", and the page stays 200: said in the documentation and not hidden. A refusal is the visitor's matter and
+  not the app's failure, so it is not logged; an error that is anything else is as it was. Not done: a status for a panel's refusal,
+  which would make a page that has begun to be sent a lie, or buffering every page to be able to.
+
 ## Validation and rules
 
 - Validation is declarative. `Rules` is a per-value-type struct of data, not

@@ -62,8 +62,10 @@ type Page[A any] struct {
 
 	// Guard decides whether the visitor may open the page. It runs before anything
 	// is loaded, on every request to the page, with the decoded arguments. A
-	// non-nil error answers 403, and its text is shown as the reason. The pages a
-	// Guard refuses are also left out of the sidebar and the search.
+	// non-nil error answers 403, and its text is shown as the reason, unless it is
+	// a [Refusal], which answers with its own status (404, 401 or 403) and says what it
+	// says, with a link on if it has one. The pages a Guard refuses are also left out
+	// of the sidebar and the search.
 	Guard func(ctx context.Context, a A) error
 
 	// NavEntries gives a page with arguments entries of its own in the sidebar: one for each
@@ -261,7 +263,7 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 		Encode:       codec.Encode,
 	}
 	if p.Guard != nil {
-		page.Guard = func(ctx context.Context, a any) error { return p.Guard(ctx, a.(A)) }
+		page.Guard = func(ctx context.Context, a any) error { return refused(p.Guard(ctx, a.(A))) }
 	}
 	if p.NavEntries != nil {
 		page.NavEntries = func(ctx context.Context) ([]ir.NavEntry, error) {

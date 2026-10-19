@@ -154,8 +154,8 @@ func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	assert.Contains(t, body, `name="open-alerts.filter.device"`)
 
 	rec := get(h, "/admin/site/Nowhere")
-	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `there is no site &#34;Nowhere&#34;`)
+	assert.Equal(t, rec.Code, http.StatusNotFound)
+	assert.Contains(t, rec.Body.String(), `There is no site &#34;Nowhere&#34;.`)
 }
 
 func TestAQueryArgumentNarrowsTheRawEventsAndNotTheRecentOnes(t *testing.T) {
@@ -207,7 +207,7 @@ func TestAnAlertHasItsOwnPageAndItsRowsOpenIt(t *testing.T) {
 	assert.Contains(t, page, `class="nav-item active" href="/admin/alert"`)
 	assert.Equal(t, cancelHref(t, h, "/admin/alert/alt_000"), "/admin/alert")
 
-	assert.Equal(t, get(h, "/admin/alert/nope").Code, http.StatusForbidden) // the Guard: no such alert
+	assert.Equal(t, get(h, "/admin/alert/nope").Code, http.StatusNotFound) // the Guard: no such alert
 }
 
 func TestTheAlertPageLinksToItsDeviceWithAQueryArgument(t *testing.T) {
@@ -432,6 +432,16 @@ func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 		assert.Contains(t, rec.Body.String(), want)
 	}
+}
+
+// A device that is not there is a 404 that says so, with a way back to the list.
+func TestAnUnknownDeviceIsA404WithALinkBack(t *testing.T) {
+	rec := get(handler(t), "/admin/device/dev_nope")
+	assert.Equal(t, rec.Code, http.StatusNotFound)
+	body := rec.Body.String()
+	assert.Contains(t, body, `<p class="state-title">Not found</p>`)
+	assert.Contains(t, body, `There is no device &#34;dev_nope&#34;.`)
+	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm" href="/admin/device">Back to the devices</a>`)
 }
 
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
@@ -812,7 +822,7 @@ func TestAPathThatTakesTheRestOfTheAddressIsAListOfSegmentsWithACrumbForEach(t *
 	assert.Contains(t, body, `<a href="/admin/files">all files</a>`)
 
 	// Nothing at the path: the page's Guard says so, before anything is loaded.
-	assert.Equal(t, get(h, "/admin/files/logs/nope").Code, http.StatusForbidden)
+	assert.Equal(t, get(h, "/admin/files/logs/nope").Code, http.StatusNotFound)
 	// A doubled slash is not a path of this page.
 	assert.Equal(t, get(h, "/admin/files/logs//2026").Code, http.StatusTemporaryRedirect) // cleaned by the mux
 }

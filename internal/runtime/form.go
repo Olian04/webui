@@ -42,9 +42,9 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 			view.Errors[e.Label] = e.Message
 		}
 	} else {
-		model, ok := loaded(p, ctx, page, formKind(n), "form", n.At, func() (any, error) { return n.Load(ctx) })
+		model, ok, refusal := loaded(p, ctx, page, formKind(n), "form", n.At, func() (any, error) { return n.Load(ctx) })
 		if !ok {
-			view.Failed = true
+			view.Failed, view.Refusal = true, refusal
 			return p.render.Form(view)
 		}
 		view.Model = model

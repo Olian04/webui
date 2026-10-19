@@ -15,6 +15,9 @@ type DiffView struct {
 
 	Failed bool // Load failed: the panel says so, the page stands
 
+	// Refusal is what the Load said the visitor may be told, when it was a refusal and not a failure.
+	Refusal *ir.Refusal
+
 	// Hunks, Added and Removed are the changes between the two texts, and Compared is
 	// false when they were too large or too different to compare here.
 	Hunks          []textdiff.Hunk

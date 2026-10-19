@@ -167,5 +167,8 @@ func validateLanguage(v *bodyValidator, where string, l Language) {
 
 // eraseLoad is a body's Load with its model's type erased, as the IR holds it.
 func eraseLoad[M any](load func(context.Context) (M, error)) func(context.Context) (any, error) {
-	return func(ctx context.Context) (any, error) { return load(ctx) }
+	return func(ctx context.Context) (any, error) {
+		model, err := load(ctx)
+		return model, refused(err)
+	}
 }

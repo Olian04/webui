@@ -89,7 +89,7 @@ var AlertDetails = webui.Page[AlertArgs]{
 	// No Nav: it lights Alerts, the page at "/alert".
 	Guard: func(_ context.Context, a AlertArgs) error {
 		if _, ok := service.Alert(a.ID); !ok {
-			return fmt.Errorf("there is no alert %q", a.ID)
+			return webui.NotFound(fmt.Sprintf("There is no alert %q.", a.ID))
 		}
 		return nil
 	},

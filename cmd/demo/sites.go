@@ -84,7 +84,7 @@ var SiteDetail = webui.Page[SiteArgs]{
 	),
 	Guard: func(_ context.Context, a SiteArgs) error {
 		if _, ok := service.Site(a.Name); !ok {
-			return fmt.Errorf("there is no site %q", a.Name)
+			return webui.NotFound(fmt.Sprintf("There is no site %q.", a.Name))
 		}
 		return nil
 	},

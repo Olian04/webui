@@ -13,9 +13,9 @@ import (
 // page. A diff only ever reads, so it is only ever highlighted: it asks the page for the
 // editor and for no language service.
 func (p *Program) diff(ctx context.Context, req *Request, page *ir.Page, n *ir.Diff) templ.Component {
-	model, ok := loaded(p, ctx, page, "diff", "diff", n.At, func() (any, error) { return n.Load(ctx) })
+	model, ok, refusal := loaded(p, ctx, page, "diff", "diff", n.At, func() (any, error) { return n.Load(ctx) })
 	if !ok {
-		return p.render.Diff(render.DiffView{Node: n, Failed: true})
+		return p.render.Diff(render.DiffView{Node: n, Failed: true, Refusal: refusal})
 	}
 	req.code.Add("")
 	return p.render.Diff(render.NewDiffView(n, n.Original.Get(model), n.Modified.Get(model)))

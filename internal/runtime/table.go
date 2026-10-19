@@ -181,9 +181,9 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
-	window, ok := loaded(p, ctx, page, "table", "table", n.At, func() (ir.Window, error) { return n.Load(ctx, view.Q) })
+	window, ok, refusal := loaded(p, ctx, page, "table", "table", n.At, func() (ir.Window, error) { return n.Load(ctx, view.Q) })
 	if !ok {
-		view.Failed = true
+		view.Failed, view.Refusal = true, refusal
 		return p.render.Table(view)
 	}
 	rows := window.Rows

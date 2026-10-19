@@ -13,9 +13,9 @@ import (
 // not the page. The page is given the editor only when the text has a fenced block
 // that names a language, which is all it would colour.
 func (p *Program) markdown(ctx context.Context, req *Request, page *ir.Page, n *ir.Markdown) templ.Component {
-	model, ok := loaded(p, ctx, page, "markdown", "markdown", n.At, func() (any, error) { return n.Load(ctx) })
+	model, ok, refusal := loaded(p, ctx, page, "markdown", "markdown", n.At, func() (any, error) { return n.Load(ctx) })
 	if !ok {
-		return p.render.Markdown(render.MarkdownView{Node: n, Failed: true})
+		return p.render.Markdown(render.MarkdownView{Node: n, Failed: true, Refusal: refusal})
 	}
 	view := p.render.MarkdownView(n, n.Content.Get(model))
 	if view.Result.Highlight {

@@ -13,6 +13,9 @@ type MarkdownView struct {
 	Result markdown.Result
 
 	Failed bool // Load failed: the panel says so, the page stands
+
+	// Refusal is what the Load said the visitor may be told, when it was a refusal and not a failure.
+	Refusal *ir.Refusal
 }
 
 // MarkdownView renders the text of a markdown leaf. A link in it to a path in the app is

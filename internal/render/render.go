@@ -494,3 +494,30 @@ func (r *Renderer) statusBar(d Doc, bar func(c.StatusBarProps) templ.Component) 
 func PanelFailed(title string) templ.Component {
 	return c.Panel(c.PanelProps{Title: title, Failed: true})
 }
+
+// refusalTitle is what a refusal is called, by its status.
+func refusalTitle(status int) string {
+	switch status {
+	case 404:
+		return "Not found"
+	case 401:
+		return "Not signed in"
+	}
+	return "Not permitted"
+}
+
+// refusedOf is a panel's refusal as the panel says it, or nil.
+func refusedOf(ref *ir.Refusal) *c.Refused {
+	if ref == nil {
+		return nil
+	}
+	return &c.Refused{Title: refusalTitle(ref.Status), Desc: ref.Message, Label: ref.Label, Href: ref.Href}
+}
+
+// refusalIcon is the icon of a refusal: a search for what is not found, and a lock for what is not allowed.
+func refusalIcon(status int) c.IconName {
+	if status == 404 {
+		return c.IconSearch
+	}
+	return c.IconLock
+}
