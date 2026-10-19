@@ -76,6 +76,10 @@ type Field struct {
 	// it is not filled in: see [ResolveChoices].
 	ChoicesFor func(ctx context.Context) ([]Choice, error)
 
+	// Secret says the value is never read back: Get returns "", the form never echoes what was typed, and an empty
+	// submission leaves what is stored as it is.
+	Secret bool
+
 	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
 	// Set: what an input that was emptied means. Nil for a field that is read-only.
 	Unset func(model any)

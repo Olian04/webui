@@ -366,6 +366,7 @@ Each rule has exactly one visual form:
 | `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
+| `String.Secret` | `type="password"`, `autocomplete="new-password"` | "Leave empty to keep the current value", in the popover; the stored value is never in the page |
 | `StartsWith`, `EndsWith`, `Contains` and their `Not` forms | `pattern`, with the field's own | What each requires ("Starts with "https://""), in the popover, and as its message beneath a refused value |
 
 Nothing is printed beneath a control while its value is good. Beside the label of an

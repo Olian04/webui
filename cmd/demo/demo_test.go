@@ -434,6 +434,30 @@ func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 	}
 }
 
+// The collector's API key is a secret: it is replaced and never read back.
+func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
+	h := handler(t)
+	service.mu.Lock()
+	service.settings.APIKey = "sk-live-0123456789"
+	service.mu.Unlock()
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.settings.APIKey = ""
+		service.mu.Unlock()
+	})
+
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `type="password"`)
+	assert.False(t, strings.Contains(body, "sk-live-0123456789"))
+
+	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {""}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, service.Settings().APIKey, "sk-live-0123456789") // empty leaves it
+	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {"sk-new-abcdefghij"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, service.Settings().APIKey, "sk-new-abcdefghij")
+}
+
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	body := get(handler(t), "/admin/system").Body.String()
 	assert.False(t, strings.Contains(body, `type="submit"`))

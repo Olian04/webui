@@ -42,6 +42,14 @@ type String[M any] struct {
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
+
+	// Secret makes the field a password input for a value that is never read back, such as an API key. The stored value is
+	// not in the page, not even in the form that answers a refused submission, and what Load returns is never used for
+	// anything but to be stored. A submission that leaves it empty leaves the stored value as it is, so only a
+	// value that is typed is stored. A Secret must have a Store and is not Required, which would contradict the empty
+	// submission, and it is for a form: not for a table, a toolbar or an editor.
+	Secret bool
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -555,6 +563,20 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {
 			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
 		}
+		if a.Secret {
+			switch {
+			case a.Store == nil:
+				v.add(at+" is a Secret but has no Store", "A secret is a value to be typed and stored, never read back: set Store, or remove Secret.")
+			case a.Rules.Required:
+				v.add(at+" is a Secret and Required", "An empty submission leaves a secret as it is, so it cannot be required: remove Required.")
+			case site.where == "Table.Columns":
+				v.add(at+" is a Secret in a table", "A secret is never shown, and a column would be empty: put it in a form.")
+			case site.where == "Editor.Content":
+				v.add(at+" is a Secret in an editor", "An editor shows its text: use a Form with the secret as a field.")
+			case site.where == "Toolbar":
+				v.add(at+" is a Secret in a toolbar", "The inputs of a toolbar are the page's arguments, which are in the address: a secret does not belong there.")
+			}
+		}
 		for _, p := range rules.Unsatisfiable(lowerStringRules(a.Rules)) {
 			v.add(at+": "+p[0], p[1])
 		}
@@ -669,6 +691,21 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Get = func(m any) string { return a.Load(m.(M)) }
 		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
 		f.Unset = unsetter(a.Store)
+		if a.Secret {
+			// Everything that reads a field reads Get, so the stored value is nowhere: not in the input, a cell, a file,
+			// a search or a sort. What is typed is stored, and nothing typed leaves it as it is.
+			f.Secret = true
+			f.Get = func(any) string { return "" }
+			if store := a.Store; store != nil {
+				f.Set = func(m any, raw string) error {
+					if raw != "" {
+						store(m.(*M), raw)
+					}
+					return nil
+				}
+				f.Unset = func(any) {}
+			}
+		}
 		return f
 	case Int[M]:
 		f := head(name, a.Label, ir.KindInt)

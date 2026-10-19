@@ -67,6 +67,10 @@ type fieldView struct {
 	// FormID is the form the control belongs to, when it is not the one it is inside of.
 	FormID string
 
+	// Autocomplete is what the browser may fill the control in with: "new-password" for a secret, so it does not offer a
+	// password that it has saved.
+	Autocomplete string
+
 	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
 	Parts    string
@@ -105,6 +109,9 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	if fv.ReadOnly {
 		fv.Name = ""
 	}
+	if f.Secret {
+		fv.Value = "" // not even what was typed, in the form that answers a refusal
+	}
 	switch {
 	case fv.ReadOnly:
 		// A number input shows its value in the viewer's locale ("0,67"), which is
@@ -116,6 +123,8 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		if _, typed := v.Values[f.Name]; !typed {
 			fv.Value = momentInput(f, v.Model)
 		}
+	case f.Secret:
+		fv.Type, fv.Autocomplete = "password", "new-password"
 	case f.Kind == ir.KindInt:
 		fv.Type, fv.Rules.Step = "number", "1"
 	case f.Display == ir.DisplaySlider:
@@ -236,6 +245,9 @@ func ruleLines(f ir.Field, editable bool) []string {
 	}
 	if f.Display == ir.DisplaySelect && f.Multi {
 		out = append(out, "Hold Ctrl or ⌘ to choose more than one")
+	}
+	if f.Secret {
+		out = append(out, "Leave empty to keep the current value")
 	}
 	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules), stepRule(f)} {
 		if s != "" {
