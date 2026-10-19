@@ -13,7 +13,13 @@ var (
 		Label: "Collector name",
 		Load:  func(s Settings) string { return s.Name },
 		Store: func(s *Settings, v string) { s.Name = v },
-		Rules: webui.StringRules{Required: true, MinLen: 3, MaxLen: 32},
+		// The text rules and the pattern are all one pattern to the browser, which says which of them a value fails, in
+		// the words that the server uses. A pattern is written in the syntax that Go and a browser both read.
+		Rules: webui.StringRules{
+			Required: true, MinLen: 3, MaxLen: 32,
+			NotStartsWith: "-", NotEndsWith: "-", NotContains: "--",
+			Pattern: &webui.PatternRule{Expr: `[a-z0-9\-]+`, Message: "must be lowercase letters, digits and dashes"},
+		},
 		// Shown in the input while it is empty.
 		Placeholder: "eu-north-1",
 	}

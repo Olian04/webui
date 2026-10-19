@@ -296,6 +296,26 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 }
 
+// The collector name has text rules and a pattern, which the browser holds as one pattern and the page tells apart.
+func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `data-parts="`)
+	for _, line := range []string{`Does not start with &#34;-&#34;`, `Does not end with &#34;-&#34;`, `Does not contain &#34;--&#34;`, "must be lowercase letters, digits and dashes"} {
+		assert.Contains(t, body, `<span class="tip-item">`+line+`</span>`)
+	}
+	for value, want := range map[string]string{
+		"-eu-north":  `Must not start with &#34;-&#34;.`,
+		"eu-north-":  `Must not end with &#34;-&#34;.`,
+		"eu--north":  `Must not contain &#34;--&#34;.`,
+		"EU-north-1": "must be lowercase letters, digits and dashes",
+	} {
+		rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {value}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
+		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+		assert.Contains(t, rec.Body.String(), want)
+	}
+}
+
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	body := get(handler(t), "/admin/system").Body.String()
 	assert.False(t, strings.Contains(body, `type="submit"`))

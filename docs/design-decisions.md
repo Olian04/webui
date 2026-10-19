@@ -129,11 +129,38 @@ design element.
 - `Store` is pure assignment with no error return, and no `ctx`. The ordering
   problem came from `Store` seeing `*M`; rules see only their own value, so
   inter-field dependencies are not expressible and need no ordering.
-- `Pattern` is not portable: Go's RE2 rejects the lookahead and backreference
-  syntax people copy from JavaScript examples. `Compile` compiles every
-  `Pattern` at startup and the error says RE2, not "regex". The expression is
-  anchored on both sides, because an HTML `pattern` attribute must match the
-  whole value and the server has to reach the same verdict as the browser.
+- A `Pattern` runs twice, in Go on the server and in the browser as the `pattern` attribute, and the two regular
+  expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and the claim that it was is what
+  this entry used to say. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (`internal/rules/testdata`,
+  made by `gen.mjs`): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
+  in the page; both accept some patterns and read them differently (`.` and `\s` match more characters in a
+  browser; `[a&&b]` is an intersection under `v`); and Go reads a great deal that a browser refuses (`\pL`, `\A`, `\z`,
+  `\Q..\E`, `(?i)`, `(?P<n>)`, `\_`, `\-`, `[a-]`, `[(]`, `[/]`, a loose `]` or `}`, `\x{41}`, POSIX classes).
+  So `Compile` reads the pattern itself (`portable.go`) and accepts only a subset, listed in "Text rules and patterns" in the package
+  documentation, each part of which was held against both engines: the corpus, 380 patterns by 110 inputs, is
+  recorded in `portable.json` and the Go tests hold the library to it without a browser; a random search of 60,000
+  accepted patterns against V8 found no difference. What the engines read differently is written for Go as the
+  browser reads it, not refused: `.` becomes `[^\n\r\x{2028}\x{2029}]` and `\s` the white space of a browser, tested
+  against every code point. Left out on purpose and listed in the test: named groups, flags in a group (not in the
+  browsers that have `v`), the long names of a property, and the C categories (what is unassigned is the Unicode
+  version of the engine, which is also why a category added to Unicode lately may differ; they agree today).
+  Costs: an app with a pattern outside the subset fails to compile with a message that says what to write; the
+  subset has no lookahead, so "has a digit somewhere" is not a pattern; Firefox and Safari have engines of their own,
+  and the corpus holds only what the specification settles. The expression is anchored on both sides, because an HTML
+  `pattern` attribute must match the whole value and the server has to reach the same verdict as the browser, and
+  the pattern is compiled alone first so that `a)|(b` cannot close the group it is put in.
+- **Text rules** (`StartsWith`, `EndsWith`, `Contains`, `NotStartsWith`, `NotEndsWith`, `NotContains`) are plain
+  strings, since their zero value is no constraint and their message is derivable. The server tests them with the
+  `strings` package; the browser has no attribute for them, so each is a JavaScript expression that the whole value
+  matches when it holds the rule, and the input's one `pattern` is all of them and the field's own as lookaheads
+  (`(?=(?:...)$)`), which is the browser's alone: the server never runs them as patterns, which is why a
+  pattern may have no lookahead and a text rule may. When the field has more than one condition on its text, the
+  browser can only say that the pattern does not match, so `data-parts` carries each condition with its words and
+  `enhance.js` gives `setCustomValidity` the first that the value fails (the order the server tests them), which
+  keeps the page and the server saying the same thing; without script the browser says its own words and the title,
+  which holds every message. Case is exact. A text no value can hold (a line break, `StartsWith` with a
+  `NotContains` in it, a text longer than `MaxLen`) is a compile error. Not done: case-insensitive rules, a list
+  of texts for one rule, and a rule on a number or an enum.
 - Any struct a user fills with an unkeyed literal from another package trips
   `go vet`'s composites check, so nested literals in the API must expect keyed
   fields; `Reject` takes `webui.Field[Device](IP, "...")` messages, which are keyed.

@@ -182,19 +182,24 @@ type Rules struct {
 	MinLen int // strings; 0 means no minimum
 	MaxLen int // strings; 0 means no maximum
 
+	// What the text of a string must, or must not, start with, end with and contain; "" means no constraint. A value
+	// holds them all, and case matters.
+	StartsWith, EndsWith, Contains          string
+	NotStartsWith, NotEndsWith, NotContains string
+
 	Min *float64 // numbers; nil means unbounded
 	Max *float64 // numbers; nil means unbounded
 
 	Pattern *Pattern
 }
 
-// Pattern is an RE2 expression with the message shown when it fails. RE2 is
-// the intersection of Go's regexp and JavaScript's, so the same expression
-// runs on both sides. pkg/webui compiled it while lowering; it is valid here.
+// Pattern is an expression with the message shown when it fails. It runs twice, in Go on the server and in the
+// browser as the pattern attribute, and Go's regexp and JavaScript's differ, so it is written in the syntax that both
+// read alike (see rules.Compile). pkg/webui compiled it while lowering; it is valid here.
 //
-// Expr is anchored: the whole value must match, which is what an HTML pattern
-// attribute does, so the browser and the server agree. Source is the
-// expression as the user wrote it, for the attribute.
+// Expr is for Go: anchored, because the whole value must match, which is what an HTML pattern attribute does, so that
+// the browser and the server agree, and with what a browser reads differently written as the browser reads it. Source is
+// the expression as the user wrote it, for the attribute.
 type Pattern struct {
 	Expr    *regexp.Regexp
 	Source  string

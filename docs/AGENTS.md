@@ -7,7 +7,7 @@
 | `pkg/webui`        | Public API. Declaration AST, split by file. `Compile` lowers to internal runtime. |
 | `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
-| `internal/rules`   | RE2 compile, constraint check, HTML attrs from `Rules`.                           |
+| `internal/rules`   | Pattern syntax both engines read, text rules, constraint check, HTML attrs from `Rules`.                           |
 | `internal/favicon` | Scale `Brand.Logo` to the favicon PNGs (stdlib only).                             |
 | `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links unless from a trusted origin; the only place that decides what text may do on a page. |
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |

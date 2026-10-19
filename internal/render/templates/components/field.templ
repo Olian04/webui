@@ -96,6 +96,11 @@ type InputProps struct {
 	// words when script is off.
 	Validity string
 	Title    string
+
+	// Parts is, for a field that has more than one condition on its text, each of them as a JavaScript regular
+	// expression with what to say when a value does not match it, as JSON: [["expression", "message"], ...]. Script
+	// uses it to say which one a value fails when the browser reports the pattern. It has no effect without script.
+	Parts string
 }
 
 templ Input(p InputProps) {
@@ -140,6 +145,9 @@ templ Input(p InputProps) {
 		}
 		if p.Validity != "" {
 			data-validity={ p.Validity }
+		}
+		if p.Parts != "" {
+			data-parts={ p.Parts }
 		}
 		if p.Invalid {
 			aria-invalid="true"

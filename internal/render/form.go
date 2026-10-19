@@ -64,8 +64,9 @@ type fieldView struct {
 	Type      string
 	Rules     c.Rules
 
-	// Validity and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
+	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
+	Parts    string
 	Title    string
 }
 
@@ -89,7 +90,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		Type:      "text",
 		Rules:     htmlRules(f, editable),
 	}
-	fv.Validity, fv.Title = validity(f, editable)
+	fv.Validity, fv.Parts, fv.Title = validity(f, editable)
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
 	} else if f.Get != nil {
@@ -156,9 +157,13 @@ func fieldID(at ir.Addr, name string) string {
 // validity is the words that a field is refused in, for the browser to say, and what a matching value looks like: the
 // same as the server says beneath it (see [rules.Validity]), so a value that the browser refuses reads as one that the
 // server would. A read-only field has none, and a moment is only ever missing.
-func validity(f ir.Field, editable bool) (messages, title string) {
+//
+// A field that has more than one condition on what the value is, the text rules and the pattern, has them as parts too: a
+// pattern attribute is one expression, so the browser cannot say which of them a value fails, and script, given each
+// with the words that the server says for it, finds the first that fails and says that one.
+func validity(f ir.Field, editable bool) (messages, parts, title string) {
 	if !editable {
-		return "", ""
+		return "", "", ""
 	}
 	kind := f.Kind
 	if f.Display == ir.DisplayTime || f.Display == ir.DisplaySelect {
@@ -176,10 +181,26 @@ func validity(f ir.Field, editable bool) (messages, title string) {
 			messages = string(b)
 		}
 	}
-	if p := f.Rules.Pattern; p != nil {
+	text := kind == ir.KindString && f.Display != ir.DisplayTime && f.Display != ir.DisplaySelect
+	if ps := rules.Parts(f.Rules); text && rules.HasText(f.Rules) {
+		msgs := make([]string, len(ps))
+		for i, p := range ps {
+			msgs[i] = p.Message
+		}
+		title = strings.Join(msgs, " ")
+		if len(ps) > 1 {
+			pairs := make([][2]string, len(ps))
+			for i, p := range ps {
+				pairs[i] = [2]string{p.Expr, p.Message}
+			}
+			if b, err := json.Marshal(pairs); err == nil {
+				parts = string(b)
+			}
+		}
+	} else if p := f.Rules.Pattern; p != nil {
 		title = p.Message
 	}
-	return messages, title
+	return messages, parts, title
 }
 
 // htmlRules is the one place ir.Rules becomes HTML constraint attributes. A
@@ -190,9 +211,7 @@ func htmlRules(f ir.Field, editable bool) c.Rules {
 		return c.Rules{}
 	}
 	out := c.Rules{Required: f.Rules.Required, MinLen: f.Rules.MinLen, MaxLen: f.Rules.MaxLen, Min: f.Rules.Min, Max: f.Rules.Max}
-	if f.Rules.Pattern != nil {
-		out.Pattern = f.Rules.Pattern.Source
-	}
+	out.Pattern = rules.BrowserPattern(f.Rules)
 	return out
 }
 
@@ -217,6 +236,7 @@ func ruleLines(f ir.Field, editable bool) []string {
 			out = append(out, s)
 		}
 	}
+	out = append(out, rules.TextLines(f.Rules)...)
 	if p := f.Rules.Pattern; p != nil && p.Message != "" {
 		out = append(out, p.Message)
 	}

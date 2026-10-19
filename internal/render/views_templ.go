@@ -1999,7 +1999,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 				templ_7745c5c3_Err = c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
 					Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
+					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

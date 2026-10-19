@@ -316,6 +316,35 @@
   // first of them that is true goes to setCustomValidity, and it is taken back when the value changes, since a
   // custom message keeps a control invalid until it is. Without script the browser says its own words, and the
   // pattern's message, which is the control's title.
+  // A pattern attribute is one expression, and a field that has more than one condition on its text (the text rules, which
+  // are patterns to the browser, and the pattern) has them all in it, so the browser only says that the value does not
+  // match. data-parts has each condition as an expression with the words for it, in the order the server tests them,
+  // and the first that the value does not match is the one said. An expression that this browser cannot read leaves the
+  // words for the pattern as a whole.
+  function failedPart(raw, value) {
+    var parts;
+    try {
+      parts = JSON.parse(raw);
+    } catch (err) {
+      return '';
+    }
+    for (var i = 0; i < parts.length; i++) {
+      var re = null;
+      // The v flag is what the HTML specification compiles a pattern with, and u what a browser without it does.
+      try {
+        re = new RegExp('^(?:' + parts[i][0] + ')$', 'v');
+      } catch (err) {
+        try {
+          re = new RegExp('^(?:' + parts[i][0] + ')$', 'u');
+        } catch (err2) {
+          return '';
+        }
+      }
+      if (!re.test(value)) return parts[i][1];
+    }
+    return '';
+  }
+
   // The server's order: missing, then unreadable, then the length, the pattern, and the bounds.
   var VALIDITY_ORDER = ['valueMissing', 'typeMismatch', 'badInput', 'stepMismatch', 'tooShort', 'tooLong', 'patternMismatch', 'rangeUnderflow', 'rangeOverflow'];
 
@@ -334,7 +363,8 @@
       for (var i = 0; i < VALIDITY_ORDER.length; i++) {
         var reason = VALIDITY_ORDER[i];
         if (el.validity[reason] && messages[reason]) {
-          el.setCustomValidity(messages[reason]);
+          var parts = reason === 'patternMismatch' && el.getAttribute('data-parts');
+          el.setCustomValidity((parts && failedPart(parts, el.value)) || messages[reason]);
           return;
         }
       }
