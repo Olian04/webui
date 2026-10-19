@@ -281,8 +281,8 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 	assert.Contains(t, body, `placeholder="eu-north-1"`)  // Placeholder
 	assert.Contains(t, body, `name="f1_0" type="number"`) // Float
 	assert.Contains(t, body, `step="any"`)                //
-	assert.Contains(t, body, `type="range" name="f1_1"`)  // a Slider with a Store
-	assert.Contains(t, body, `class="range-value"`)       //
+	assert.Contains(t, body, `name="f1_1" type="number"`) // a Slider with a Store: a number, with a range to drag
+	assert.Contains(t, body, `class="range-input"`)       //
 	assert.Contains(t, body, `minlength="3" maxlength="32"`)
 
 	// Rules run on the server too, and every failure is reported at once.

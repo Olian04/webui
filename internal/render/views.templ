@@ -427,22 +427,26 @@ templ (r *Renderer) input(fv fieldView) {
 	}) {
 		switch {
 			case fv.Field.Display == ir.DisplaySlider && !fv.ReadOnly:
-				<div class="range">
-					<input
-						id={ fv.ID }
-						class={ "range-input", templ.KV("invalid", fv.Error != "") }
-						type="range"
-						name={ fv.Name }
-						value={ fv.Value }
-						min={ num(*fv.Rules.Min) }
-						max={ num(*fv.Rules.Max) }
-						step={ stepOf(fv.Field) }
-						if fv.Error != "" {
-							aria-invalid="true"
-							aria-describedby={ fv.ID + "-error" }
-						}
-					/>
-					<output class="range-value" for={ fv.ID } data-range-value>{ fv.Value }</output>
+				// The number is the control: it is what is submitted, and it has the rules, so it works without script. With
+				// script there is a range beside it to drag, which holds no name and is only a way to move the number, so it
+				// is out of the tab order and hidden from a screen reader, which has the number.
+				<div class="range" data-range>
+					<span class="js-only">
+						<input
+							class={ "range-input", templ.KV("invalid", fv.Error != "") }
+							type="range"
+							value={ fv.Value }
+							min={ num(*fv.Rules.Min) }
+							max={ num(*fv.Rules.Max) }
+							step={ fv.Rules.Step }
+							tabindex="-1"
+							aria-hidden="true"
+						/>
+					</span>
+					@c.Input(c.InputProps{
+						ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type, Mono: true, Class: "range-number",
+						Invalid: fv.Error != "", Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
+					})
 				</div>
 			case fv.ReadOnly:
 				// A value that cannot be changed, a badge and a bar among them: shown as

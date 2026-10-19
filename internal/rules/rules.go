@@ -8,6 +8,7 @@ package rules
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -52,6 +53,36 @@ const (
 func msgMinLen(n int) string  { return fmt.Sprintf("Must be at least %d characters.", n) }
 func msgMaxLen(n int) string  { return fmt.Sprintf("Must be at most %d characters.", n) }
 func msgMin(x float64) string { return "Must be at least " + format(x) + "." }
+
+// msgStep says what a value that is not a step from the minimum should be: a multiple of the step, or the minimum and
+// that many steps.
+func msgStep(r ir.Rules) string {
+	if r.Step == 1 && stepBase(r) == 0 {
+		return msgWholeNumber
+	}
+	if base := stepBase(r); base != 0 {
+		return "Must be " + format(base) + " plus a multiple of " + format(r.Step) + "."
+	}
+	return "Must be a multiple of " + format(r.Step) + "."
+}
+
+// stepBase is where the steps are counted from, as for an HTML input: its minimum.
+func stepBase(r ir.Rules) float64 {
+	if r.Min != nil {
+		return *r.Min
+	}
+	return 0
+}
+
+// offStep is whether a number is not a whole number of steps from the base. The browser counts in decimals, so a
+// little room is left for the binary ones: 0.3 is three steps of 0.1.
+func offStep(r ir.Rules, x float64) bool {
+	if r.Step <= 0 {
+		return false
+	}
+	n := (x - stepBase(r)) / r.Step
+	return math.Abs(n-math.Round(n)) > 1e-9*math.Max(1, math.Abs(n))
+}
 func msgMax(x float64) string { return "Must be at most " + format(x) + "." }
 
 func msgPattern(p *ir.Pattern) string {
@@ -96,6 +127,9 @@ func Validity(r ir.Rules, kind ir.ValueKind) map[string]string {
 			out["stepMismatch"] = msgWholeNumber // a number with a fraction, for a whole number
 		}
 		out["badInput"] = bad
+		if r.Step > 0 && kind == ir.KindFloat {
+			out["stepMismatch"] = msgStep(r)
+		}
 		if r.Min != nil {
 			out["rangeUnderflow"] = msgMin(*r.Min)
 		}
@@ -176,6 +210,9 @@ func checkString(r ir.Rules, s string) string {
 }
 
 func checkNumber(r ir.Rules, x float64) string {
+	if offStep(r, x) { // the browser says it before the bounds
+		return msgStep(r)
+	}
 	if r.Min != nil && x < *r.Min {
 		return msgMin(*r.Min)
 	}

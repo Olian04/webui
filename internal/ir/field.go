@@ -67,9 +67,6 @@ type Field struct {
 
 	Min float64 // DisplaySlider: the range, also in Rules for a writable one
 	Max float64
-
-	// Step is how far a writable DisplaySlider moves at a time, which is also how many decimals its value has.
-	Step float64
 }
 
 // ListSep joins the values of a field that holds several, and of a parameter that may repeat,
@@ -192,6 +189,9 @@ type Rules struct {
 
 	Min *float64 // numbers; nil means unbounded
 	Max *float64 // numbers; nil means unbounded
+
+	// Step is a number that is one of a step from its minimum, such as a slider's, or 0 for any number.
+	Step float64
 
 	Pattern *Pattern
 }

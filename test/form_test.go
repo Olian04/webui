@@ -209,7 +209,7 @@ var (
 		Options: []webui.Option{{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}},
 	}
 	formLoad = webui.Slider[Device]{
-		Label: "Load", Min: 0, Max: 100, Precision: 1,
+		Label: "Load", Min: 0, Max: 100, StepSize: 0.1,
 		Load:  func(d Device) float64 { return float64(d.Count) * 10 },
 		Store: func(d *Device, v float64) { d.Count = int(v / 10) },
 	}
@@ -231,17 +231,17 @@ func TestFormShowsBadgesAndSlidersByWhetherTheyCanBeChanged(t *testing.T) {
 	assert.Contains(t, body, `<span class="badge badge-ok"><span class="dot" aria-hidden="true"></span>healthy</span>`)
 	assert.False(t, strings.Contains(body, `name="f0"`))
 
-	// A slider with a Store is a range input over its range, submitting its value.
-	assert.Contains(t, body, `type="range" name="f1" value="70.0" min="0" max="100" step="0.1"`)
-	assert.Contains(t, body, `<output class="range-value" for="p-f1" data-range-value>70.0</output>`)
+	// A slider with a Store is a number input over its range, submitting its value, with a range beside it to drag.
+	assert.Contains(t, body, `name="f1" type="number" value="70.0" min="0" max="100" step="0.1"`)
+	assert.Contains(t, body, `<input class="range-input" type="range" value="70.0" min="0" max="100" step="0.1" tabindex="-1" aria-hidden="true">`)
 
 	// One without is a bar, and submits nothing.
 	assert.Contains(t, body, `class="gauge-fill" style="width:88%;"`)
 	assert.False(t, strings.Contains(body, `name="f2"`))
 }
 
-// A range input with no step submits whatever the pointer was over, 81.6719540426991, and a slider with no Precision showed
-// that as it was. A writable slider has a step, and shows its value with the decimals of it.
+// A range input with no step submits whatever the pointer was over, 81.6719540426991, and a slider showed that as it was. A
+// writable slider has a step, which is the distance between the values it holds, and shows a value with the decimals of it.
 func TestAWritableSliderMovesInStepsAndShowsNoMoreDecimalsThanThat(t *testing.T) {
 	t.Parallel()
 
@@ -250,22 +250,67 @@ func TestAWritableSliderMovesInStepsAndShowsNoMoreDecimalsThanThat(t *testing.T)
 		slider      webui.Slider[Device]
 		value, step string
 	}{
-		"a hundred":   {webui.Slider[Device]{Label: "Load", Max: 100}, "67", "1"},
-		"one":         {webui.Slider[Device]{Label: "Load", Max: 1}, "0.67", "0.01"},
-		"a thousand":  {webui.Slider[Device]{Label: "Load", Max: 1000}, "670", "10"},
-		"a precision": {webui.Slider[Device]{Label: "Load", Max: 100, Precision: 2}, "67.20", "0.01"},
+		"a hundred":      {webui.Slider[Device]{Label: "Load", Max: 100}, "67", "1"},
+		"one":            {webui.Slider[Device]{Label: "Load", Max: 1}, "0.67", "0.01"},
+		"a thousand":     {webui.Slider[Device]{Label: "Load", Max: 1000}, "670", "10"},
+		"whole numbers":  {webui.Slider[Device]{Label: "Load", Max: 100, StepSize: 1}, "67", "1"},
+		"tenths":         {webui.Slider[Device]{Label: "Load", Max: 100, StepSize: 0.1}, "67.2", "0.1"},
+		"quarters":       {webui.Slider[Device]{Label: "Load", Max: 100, StepSize: 0.25}, "67.25", "0.25"},
+		"every fifth":    {webui.Slider[Device]{Label: "Load", Max: 100, StepSize: 5}, "65", "5"},
+		"from a minimum": {webui.Slider[Device]{Label: "Load", Min: 2, Max: 102, StepSize: 5}, "67", "5"},
 	} {
 		s := tc.slider
-		scale := s.Max
-		s.Load = func(Device) float64 { return ratio * scale }
+		high := s.Max
+		s.Load = func(Device) float64 { return ratio * high }
 		s.Store = func(*Device, float64) {}
 		f := okForm()
 		f.Fields = []webui.Accessor[Device]{s}
 		body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
-		assert.Contains(t, body, `value="`+tc.value+`" min="0" max="`+strconv.FormatFloat(s.Max, 'f', -1, 64)+`" step="`+tc.step+`"`)
-		assert.Contains(t, body, `data-range-value>`+tc.value+`</output>`)
-		_ = name
+		lowest := strconv.FormatFloat(s.Min, 'f', -1, 64)
+		highest := strconv.FormatFloat(s.Max, 'f', -1, 64)
+		// The number is the control, with the rules and the step; the range beside it is for script, and is not submitted.
+		assert.Contains(t, body, `name="f0" type="number" value="`+tc.value+`" min="`+lowest+`" max="`+highest+`" step="`+tc.step+`"`)
+		assert.Contains(t, body, `<input class="range-input" type="range" value="`+tc.value+`" min="`+lowest+`" max="`+highest+`" step="`+tc.step+`" tabindex="-1" aria-hidden="true">`)
+		assert.Equal(t, strings.Count(body, `name="f0"`), 1)
+		if name == "" {
+			t.Fatal("unnamed")
+		}
 	}
+}
+
+// A value that is not a step from the minimum is refused, in the words that the browser says it in.
+func TestAWritableSliderHoldsOnlyTheValuesAStepApart(t *testing.T) {
+	t.Parallel()
+
+	s := webui.Slider[Device]{Label: "Load", Min: 2, Max: 102, StepSize: 5, Load: func(Device) float64 { return 7 }, Store: func(*Device, float64) {}}
+	f := okForm()
+	f.Fields = []webui.Accessor[Device]{s}
+	h := formApp(f)
+
+	body := serve(h, http.MethodGet, "/admin/device/dev1").Body.String()
+	assert.Contains(t, body, `&#34;stepMismatch&#34;:&#34;Must be 2 plus a multiple of 5.&#34;`)
+	assert.Contains(t, body, `<span class="tip-item">In steps of 5</span>`)
+
+	for value, want := range map[string]int{"7": http.StatusSeeOther, "102": http.StatusSeeOther, "2": http.StatusSeeOther, "8": http.StatusUnprocessableEntity, "7.5": http.StatusUnprocessableEntity, "0": http.StatusUnprocessableEntity} {
+		rec := post(h, "/admin/device/dev1", formValues("f0", value))
+		assert.Equal(t, rec.Code, want)
+		if want != http.StatusSeeOther {
+			assert.Contains(t, rec.Body.String(), "Must be 2 plus a multiple of 5.")
+		}
+	}
+
+	// Whole numbers say so, and not "a multiple of 1".
+	whole := webui.Slider[Device]{Label: "Load", Max: 100, StepSize: 1, Load: func(Device) float64 { return 0 }, Store: func(*Device, float64) {}}
+	f.Fields = []webui.Accessor[Device]{whole}
+	assert.Contains(t, post(formApp(f), "/admin/device/dev1", formValues("f0", "4.5")).Body.String(), "Must be a whole number.")
+
+	// Tenths are three steps of a tenth, whatever floating point says.
+	tenths := webui.Slider[Device]{Label: "Load", Max: 1, StepSize: 0.1, Load: func(Device) float64 { return 0 }, Store: func(*Device, float64) {}}
+	f.Fields = []webui.Accessor[Device]{tenths}
+	h = formApp(f)
+	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f0", "0.3")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f0", "0.7")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f0", "0.35")).Code, http.StatusUnprocessableEntity)
 }
 
 func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {

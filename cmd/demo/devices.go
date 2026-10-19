@@ -83,7 +83,7 @@ var (
 		Load:  func(d Device) int { return d.LastSeen },
 	}
 	Rate = webui.Slider[Device]{
-		Label: "Rate / s", Max: 15, Precision: 2,
+		Label: "Rate / s", Max: 15, StepSize: 0.01,
 		Load: func(d Device) float64 { return d.Rate() },
 	}
 )

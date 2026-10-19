@@ -24,7 +24,7 @@ var (
 		Load:  func(s SystemInfo) string { return s.Uptime },
 	}
 	DiskUsed = webui.Slider[SystemInfo]{
-		Label: "Disk used (%)", Min: 0, Max: 100, Precision: 0,
+		Label: "Disk used (%)", Min: 0, Max: 100,
 		Load: func(s SystemInfo) float64 { return s.DiskUsed },
 	}
 	Queue = webui.Int[SystemInfo]{

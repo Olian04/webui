@@ -115,6 +115,9 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		}
 	case f.Kind == ir.KindInt:
 		fv.Type, fv.Rules.Step = "number", "1"
+	case f.Display == ir.DisplaySlider:
+		// What the range beside it moves in, and what the server holds a value to.
+		fv.Type, fv.Rules.Step = "number", num(f.Rules.Step)
 	case f.Kind == ir.KindFloat:
 		fv.Type, fv.Rules.Step = "number", "any"
 	}
@@ -231,7 +234,7 @@ func ruleLines(f ir.Field, editable bool) []string {
 	if f.Display == ir.DisplaySelect && f.Multi {
 		out = append(out, "Hold Ctrl or ⌘ to choose more than one")
 	}
-	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules)} {
+	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules), stepRule(f)} {
 		if s != "" {
 			out = append(out, s)
 		}
@@ -241,6 +244,14 @@ func ruleLines(f ir.Field, editable bool) []string {
 		out = append(out, p.Message)
 	}
 	return out
+}
+
+// stepRule is what a slider moves in, when that is not already clear from the bounds.
+func stepRule(f ir.Field) string {
+	if f.Display != ir.DisplaySlider || f.Rules.Step <= 0 {
+		return ""
+	}
+	return "In steps of " + num(f.Rules.Step)
 }
 
 func lengthRule(r ir.Rules) string {
@@ -268,12 +279,3 @@ func boundsRule(r ir.Rules) string {
 }
 
 func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
-
-// stepOf is the step of a writable slider's range input; "any" for one that has none, which submits whatever the
-// pointer was over.
-func stepOf(f ir.Field) string {
-	if f.Step <= 0 {
-		return "any"
-	}
-	return num(f.Step)
-}
