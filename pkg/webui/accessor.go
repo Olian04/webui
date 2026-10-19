@@ -45,6 +45,9 @@ func (a String[M]) label() string { return a.Label }
 // StringRules is declarative validation for a string value.
 // Scalar zero means "no constraint". Pattern is a pointer because the
 // expression needs a user-facing message.
+//
+// Like every rule but Required, they are not checked on an empty value: a value that is not there is not one that
+// fails them.
 type StringRules struct {
 	// Required refuses an empty value.
 	Required bool
@@ -55,14 +58,32 @@ type StringRules struct {
 	// MaxLen is the most characters, or zero for no maximum.
 	MaxLen int
 
+	// StartsWith, EndsWith and Contains are text that the value must start with, end with or contain, or "" for none.
+	// Case matters. They are checked with the strings package on the server, and in the browser as a part of the
+	// input's pattern, so that a value is refused in the page by the same rule: where the need is one of these, they
+	// are the way to say it, and a [PatternRule] is for what they cannot say. The message names the text: Must start
+	// with "https://".
+	StartsWith, EndsWith, Contains string
+
+	// NotStartsWith, NotEndsWith and NotContains are text that the value must not start with, end with or contain, or ""
+	// for none. They say what a pattern cannot say without a lookahead, which is not part of what a pattern may use.
+	NotStartsWith, NotEndsWith, NotContains string
+
 	// Pattern is a regular expression the whole value must match.
 	Pattern *PatternRule
 }
 
-// PatternRule is an RE2 expression plus the message shown when it fails.
+// PatternRule is a regular expression plus the message shown when it fails.
+//
+// A pattern is run twice, by Go on the server and by the browser as the pattern attribute of the input, and the two
+// regular expressions are not the same: Go's is RE2, a browser's is JavaScript's, and what one does not read the other
+// may ignore without a word, so that the field is not checked in the page at all, or read otherwise. So a pattern is
+// written in the syntax that both read alike, which is what has been tried against both, and anything else is an error
+// when the app starts, with what to write instead. See "Text rules and patterns" in the package documentation for the syntax.
 type PatternRule struct {
-	// Expr is the expression, in RE2 syntax, so without lookahead or backreferences.
-	// It must match the whole value.
+	// Expr is the expression, in the syntax that Go and a browser both read: see "Text rules and patterns" in the package
+	// documentation. It must match the whole value, and is matched against it as a whole: ab|cd is not ab or cd
+	// anywhere in the value, but the value ab or the value cd. There are no lookaheads or backreferences, and no flags.
 	Expr string
 
 	// Message is shown beneath the field when the value does not match. It says
@@ -424,6 +445,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {
 			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
 		}
+		for _, p := range rules.Unsatisfiable(lowerStringRules(a.Rules)) {
+			v.add(at+": "+p[0], p[1])
+		}
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -644,7 +668,11 @@ func floatReads[M any](load func(M) float64, precision int) (get func(any) strin
 }
 
 func lowerStringRules(r StringRules) ir.Rules {
-	out := ir.Rules{Required: r.Required, MinLen: r.MinLen, MaxLen: r.MaxLen}
+	out := ir.Rules{
+		Required: r.Required, MinLen: r.MinLen, MaxLen: r.MaxLen,
+		StartsWith: r.StartsWith, EndsWith: r.EndsWith, Contains: r.Contains,
+		NotStartsWith: r.NotStartsWith, NotEndsWith: r.NotEndsWith, NotContains: r.NotContains,
+	}
 	if r.Pattern != nil {
 		// Recompiled rather than threaded through from validate: it may repeat
 		// work, but it never repeats a decision. validate proved it compiles.

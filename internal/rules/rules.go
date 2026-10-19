@@ -25,9 +25,15 @@ func Compile(expr, message string) (*ir.Pattern, error) {
 	if _, err := regexp.Compile(expr); err != nil {
 		return nil, explain(expr, err)
 	}
+	// Then in the syntax that a browser reads too, since the pattern is also the input's pattern attribute, and what it
+	// does not read is ignored without a word. What Go is given is the pattern written as the browser reads it.
+	gx, pe := portable(expr)
+	if pe != nil {
+		return nil, pe
+	}
 	// Anchored, because an HTML pattern attribute must match the whole value
 	// and the server has to reach the same verdict as the browser.
-	re, err := regexp.Compile(`^(?:` + expr + `)$`)
+	re, err := regexp.Compile(`^(?:` + gx + `)$`)
 	if err != nil {
 		return nil, explain(expr, err)
 	}
@@ -74,8 +80,14 @@ func Validity(r ir.Rules, kind ir.ValueKind) map[string]string {
 		if r.MaxLen > 0 {
 			out["tooLong"] = msgMaxLen(r.MaxLen)
 		}
-		if r.Pattern != nil {
-			out["patternMismatch"] = msgPattern(r.Pattern)
+		// The text rules and the pattern are all the pattern attribute. When there is more than one the browser cannot say
+		// which a value fails, and this says all of them; the page tells them apart with Parts.
+		if parts := Parts(r); len(parts) > 0 {
+			msgs := make([]string, len(parts))
+			for i, p := range parts {
+				msgs[i] = p.Message
+			}
+			out["patternMismatch"] = strings.Join(msgs, " ")
 		}
 	case ir.KindInt, ir.KindFloat:
 		bad := msgNumber
@@ -153,6 +165,9 @@ func checkString(r ir.Rules, s string) string {
 	}
 	if r.MaxLen > 0 && n > r.MaxLen {
 		return msgMaxLen(r.MaxLen)
+	}
+	if msg := checkText(r, s); msg != "" {
+		return msg
 	}
 	if r.Pattern != nil && !r.Pattern.Expr.MatchString(s) {
 		return msgPattern(r.Pattern)

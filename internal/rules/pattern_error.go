@@ -32,7 +32,7 @@ func quote(s string) string {
 
 const (
 	whyRE2 = "RE2 matches in time that grows with the length of the value, which is why a pattern may not have it. "
-	other  = "If the condition is about the whole value (a digit somewhere, a length), check it with another rule, such as MinLen and MaxLen, or in Run."
+	other  = "If the condition is about the whole value, say it with another rule: MinLen and MaxLen for a length, Contains, NotContains and the other text rules for a text that must, or must not, be in it, or check it in Run."
 )
 
 // explain says what Go's error means for the pattern, for the mistakes that are known, and falls back to Go's own words.

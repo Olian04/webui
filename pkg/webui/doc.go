@@ -229,6 +229,61 @@
 // Submit is an [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
 //
+// # Text rules and patterns
+//
+// A string field says what its text starts with, ends with and contains, and what it must not:
+//
+//	Rules: webui.StringRules{
+//		StartsWith:  "https://",
+//		EndsWith:    ".example.com",
+//		NotContains: " ",
+//	}
+//
+// These are [StringRules.StartsWith], [StringRules.EndsWith], [StringRules.Contains] and their negations,
+// NotStartsWith, NotEndsWith and NotContains. Case matters, and each says what it requires in its own message ("Must
+// start with "https://"."). The server tests them with the strings package, and in the browser they are part of the
+// input's pattern, together with the field's own, so that the page refuses the values that the server refuses, and says
+// which rule it was. Where the need is one of these they are the way to say it: a pattern cannot say what a value must
+// not contain without a lookahead, which a pattern may not have.
+//
+// A [PatternRule] is for what they cannot say. A pattern is run twice, by Go on the server and by the browser, as the
+// pattern attribute of the input, and a regular expression is not the same in the two: Go's is RE2 and a browser's is
+// JavaScript's. A pattern that Go accepts and a browser does not is ignored by the browser without a word, so that the
+// field is not checked in the page at all, and one that both accept can match different values. So a pattern is
+// written in the syntax that both read alike, which has been tried against both, and anything else is an error
+// when [App.Compile] runs, with what to write instead. The syntax is:
+//
+//   - A character stands for itself, except the ones with a meaning, \ ^ $ . | ? * + ( ) [ ] { }, which are written with a
+//     backslash when they are meant as themselves: \. for a dot, \( for a parenthesis. A slash and a dash are written as they are.
+//   - A dot is any character but a line end, which in a browser is \n, \r, U+2028 and U+2029.
+//   - \d, \D, \w, \W, \b and \B are ASCII, in both. For the letters of any language, \p{L}.
+//   - \s and \S are the white space of a browser, which has more of it than Go has: no-break and other spaces too.
+//   - \t, \n, \r, \f, \v, and \xHH, a character by two hexadecimal digits.
+//   - \p{L} and \P{L}, a letter and what is not one, and the other general categories by their short names: Lu, Ll,
+//     Lt, Lm, Lo, M, Mn, Mc, Me, N, Nd, Nl, No, P, Pc, Pd, Ps, Pe, Pi, Pf, Po, S, Sm, Sc, Sk, So, Z, Zs, Zl, Zp, Cc and Cf. They
+//     are the Unicode of each engine, so a character added to Unicode lately may be in one and not yet in the other.
+//   - A class, [abc], [^abc] or [a-z], that holds characters, ranges of two characters, and \d, \w, \s and \p{L} and their
+//     capitals. In a class a ( ) [ ] { } / | or - that is meant as itself is written with a backslash, and none of
+//     & ! # $ % * + , . : ; < = > ? @ ^ ~ is written twice in a row.
+//   - A group, (...) or (?:...), alternation, |, repetition, * + ? {n} {n,} {n,m}, and the ? after it for as few as possible.
+//   - ^ and $, which are the start and the end of the value, and which a pattern does not need, since it has to match
+//     the whole value: ab|cd is the value ab or the value cd.
+//
+// What is left out, and what to write instead:
+//
+//   - A lookahead or lookbehind, a backreference, an atomic group: Go does not have them, and what they check for
+//     is nearly always a text rule above.
+//   - Flags, such as (?i): write [Aa] for a letter of either case. A pattern is matched against the whole value, so
+//     (?m) and (?s) have nothing to do.
+//   - \A, \z and \Q...\E: write ^ and $, and a backslash before each character that has a meaning.
+//   - Named groups, (?P<name>...) and (?<name>...): write (?:...), or (...) for one that is kept.
+//   - \pL, which a browser does not read: write \p{L}. A script, such as \p{Greek}, is named differently in each, so
+//     write its characters as a class.
+//   - \x{41}, \u0041 and octal escapes: write \x41, or the character itself.
+//   - A backslash before anything that is not a character with a meaning: write \_ as _ and \- as -.
+//   - A { } or ] that stands alone, and {,3}: write \{ \} and \].
+//   - [[:alpha:]] and the other POSIX classes: write [a-zA-Z].
+//
 // # Code editors
 //
 // An [Editor] shows one text of a model in a code editor, Monaco, the editor of VS
