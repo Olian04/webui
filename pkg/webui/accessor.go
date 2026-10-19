@@ -210,6 +210,12 @@ func (Group[M]) label() string { return "" }
 //     is told: Options is then the whole set, a multi-select of exactly those values.
 //     List a neutral value too, as an Option with no Tone, for it to be filterable. With no
 //     Options the column's filter is text.
+//
+// When the options are not known until the program runs, such as the teams of an organisation, the
+// labels in a database or the values that others have used, LoadOptions reads them from wherever
+// they are kept, and takes the place of Options everywhere it is used: the list that is chosen from,
+// the values that a submission is checked against, what each value says and the tone it is drawn in,
+// and, in a table with Load, the options of the filter.
 type Select[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [Query].
@@ -218,8 +224,16 @@ type Select[M any] struct {
 	// Options are the values it can hold, in the order they are listed, with what each says
 	// and the tone it is drawn in. They are required with a Store, since they are what the
 	// visitor chooses from, and a value that is not among them is refused on the server.
-	// See Select for what they mean to a table's filter.
+	// See Select for what they mean to a table's filter. Set Options, or LoadOptions, and not both.
 	Options []Option
+
+	// LoadOptions reads the options when a request is answered, in place of Options. It is called for each
+	// request that draws the select, checks what was submitted for it, filters by it, exports its table
+	// or searches it, so a source that is slow is worth keeping a copy of, in the app, which knows how
+	// long it may be old. An error fails what it was asked for, as a failed Load does; a value that is empty,
+	// is listed twice, or holds a control character is an error of the source. The options it returns are
+	// as they are for Options: a value is what is stored, and a Label and a Tone are how it reads.
+	LoadOptions func(ctx context.Context) ([]Option, error)
 
 	// Load reads the values from the model. Without Multi it returns at most one; a select
 	// that was handed several shows them all when it is read, and the first when it is edited.
@@ -519,8 +533,11 @@ func validateSelect[M any](v *bodyValidator, at string, a Select[M]) {
 		}
 		seen[o.Value] = true
 	}
-	if a.Store != nil && len(a.Options) == 0 {
-		v.add(at+" has a Store but no Options", "A select that is edited chooses from Options: list them, or remove Store to make it read-only.")
+	if a.Options != nil && a.LoadOptions != nil {
+		v.add(at+" has both Options and LoadOptions", "Set one: Options lists the values here, and LoadOptions reads them when a request is answered.")
+	}
+	if a.Store != nil && len(a.Options) == 0 && a.LoadOptions == nil {
+		v.add(at+" has a Store but no Options", "A select that is edited chooses from Options, or from LoadOptions: list them, or remove Store to make it read-only.")
 	}
 	if a.Required && a.Store == nil {
 		v.add(at+" is Required but has no Store", "Required is about a submission, and a read-only select has none: remove it, or add a Store.")
@@ -576,6 +593,17 @@ func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 		for _, o := range a.Options {
 			f.Choices = append(f.Choices, ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)})
 			f.Options = append(f.Options, o.Value)
+		}
+		if a.LoadOptions != nil {
+			f.Options = []string{} // a fixed set, which is read for each request
+			f.ChoicesFor = func(ctx context.Context) ([]ir.Choice, error) {
+				options, err := a.LoadOptions(ctx)
+				choices := make([]ir.Choice, len(options))
+				for i, o := range options {
+					choices[i] = ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)}
+				}
+				return choices, err
+			}
 		}
 		f.Get = func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) }
 		f.Set = setter(a.Store, func(raw string) ([]string, error) { return ir.SplitValues(raw), nil })

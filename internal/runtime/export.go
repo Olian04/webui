@@ -75,6 +75,11 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	defer cancel()
 
 	started := time.Now()
+	n, err := resolve(p, page, n, func() (*ir.Table, error) { return n.Resolved(ctx) }) // a filter by a select is held to the options it has now, and a cell says what its value says
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("table options: %w", err))
+		return
+	}
 	rows, truncated, err := p.exportRows(ctx, n, queryOf(n, req.Raw))
 	p.m.Load(page.PathTemplate, "export", started, err)
 	if err != nil {

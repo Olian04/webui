@@ -21,6 +21,17 @@ type submission struct {
 // A failed Load fails that panel, not the page.
 func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.Form, sub *submission) templ.Component {
 	view := render.FormView{Node: n, Page: page}
+	// A select that reads its options has them as they are for this request. A source that fails fails the panel.
+	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) })
+	if err != nil {
+		if ctx.Err() == nil {
+			p.log.Error("webui: the options of a form could not be read", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
+		}
+		view.Failed = true
+		return p.render.Form(view)
+	}
+	n = resolved
+	view.Node = n
 	view.Path, view.Query = req.encode(page)
 	view.CancelHref = p.returnHref(req, page, view.Path)
 

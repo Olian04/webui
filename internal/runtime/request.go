@@ -98,6 +98,18 @@ func timed[T any](p *Program, page *ir.Page, kind string, load func() (T, error)
 	return v, err
 }
 
+// resolve reads the options of the selects of a form or a table, for the request that is being answered, and counts and times
+// it as a load of the kind "options" when there was something to read: a node that has no select that reads its options is
+// returned as it is, and nothing is counted.
+func resolve[T any](p *Program, page *ir.Page, node *T, read func() (*T, error)) (*T, error) {
+	started := time.Now()
+	out, err := read()
+	if err != nil || out != node {
+		p.m.Load(page.PathTemplate, "options", started, err)
+	}
+	return out, err
+}
+
 // loaded is timed for a panel that is being drawn: a failure is logged, unless the visitor had gone, and
 // ok is false, so that the panel says it could not load and the page stays. what names the panel in the log.
 func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Addr, load func() (T, error)) (v T, ok bool) {
