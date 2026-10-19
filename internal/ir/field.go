@@ -2,6 +2,7 @@ package ir
 
 import (
 	"context"
+	"fmt"
 	"iter"
 	"regexp"
 	"strings"
@@ -64,6 +65,12 @@ type Field struct {
 	// returns the values joined by ListSep, and Set is handed them joined the same way.
 	Choices []Choice
 	Multi   bool
+
+	// ChoicesFor, when a select has it, reads Choices (and Options, the values of them) when a request is
+	// answered, from whatever the app keeps them in: until it has been read there are none, and Options is
+	// the empty set, so that the column is known to have a fixed one. A field is shared by every request, so
+	// it is not filled in: see [ResolveChoices].
+	ChoicesFor func(ctx context.Context) ([]Choice, error)
 
 	Min float64 // DisplaySlider: the range, also in Rules for a writable one
 	Max float64
@@ -207,4 +214,62 @@ type Pattern struct {
 	Expr    *regexp.Regexp
 	Source  string
 	Message string
+}
+
+// ResolveChoices returns the fields with the choices of each select that reads them, as they are now. It copies what it
+// changes, and returns fields itself when no field reads its choices, which is nearly always. A source that fails, or
+// that names a value that is empty, holds the separator or is named twice, fails the request: it is the app's.
+func ResolveChoices(ctx context.Context, fields []Field) ([]Field, error) {
+	var out []Field
+	for i, f := range fields {
+		r, err := f.resolved(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if r == nil {
+			continue
+		}
+		if out == nil {
+			out = append([]Field(nil), fields...)
+		}
+		out[i] = *r
+	}
+	if out == nil {
+		return fields, nil
+	}
+	return out, nil
+}
+
+// resolved is the field with its choices read, or nil when it has nothing to read.
+func (f Field) resolved(ctx context.Context) (*Field, error) {
+	if len(f.Group) > 0 {
+		group, err := ResolveChoices(ctx, f.Group)
+		if err != nil || len(group) == 0 || &group[0] == &f.Group[0] {
+			return nil, err
+		}
+		f.Group = group
+		return &f, nil
+	}
+	if f.ChoicesFor == nil {
+		return nil, nil
+	}
+	choices, err := f.ChoicesFor(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("the options of %q: %w", f.Label, err)
+	}
+	seen := make(map[string]bool, len(choices))
+	f.Choices, f.Options = choices, make([]string, 0, len(choices))
+	for i, c := range choices {
+		switch {
+		case c.Value == "":
+			return nil, fmt.Errorf("the options of %q: option %d has no Value", f.Label, i)
+		case strings.Contains(c.Value, ListSep):
+			return nil, fmt.Errorf("the options of %q: option %d, %q, has a control character in its Value", f.Label, i, c.Value)
+		case seen[c.Value]:
+			return nil, fmt.Errorf("the options of %q: %q is listed twice", f.Label, c.Value)
+		}
+		seen[c.Value] = true
+		f.Options = append(f.Options, c.Value)
+	}
+	return &f, nil
 }

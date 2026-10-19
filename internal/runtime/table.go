@@ -166,6 +166,18 @@ func bound(s string) *float64 {
 // table loads a table leaf. A failed Load fails that panel, not the page: the
 // rest of the screen is still current, and says so.
 func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.Table) templ.Component {
+	// A select column that reads its options has them as they are for this request: its filter offers them, and
+	// keeps only them from the address. A source that fails fails the panel.
+	resolved, err := resolve(p, page, n, func() (*ir.Table, error) { return n.Resolved(ctx) })
+	if err != nil {
+		if ctx.Err() == nil {
+			p.log.Error("webui: the options of a table could not be read", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
+		}
+		view := render.TableView{Node: n, Page: page, Failed: true}
+		view.Path, view.Query = req.encode(page)
+		return p.render.Table(view)
+	}
+	n = resolved
 	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 

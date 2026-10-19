@@ -61,7 +61,7 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 	out := &ir.Form{
 		At: at, Title: f.Title, Desc: f.Desc, Fields: fields,
 		Load: eraseLoad(f.Load),
-		Bind: bindFunc[M](fields),
+		Bind: bindFunc[M],
 	}
 	if f.Submit.Run != nil {
 		a := f.Submit
@@ -76,39 +76,33 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 	return out
 }
 
-// bindFunc builds, once, the function that applies a submission. It starts
-// from a copy of the loaded model, checks every writable field's rules
+// bindFunc applies a submission to the fields as they are for the request, with the choices of its selects read. It
+// starts from a copy of the loaded model, checks every writable field's rules
 // (parse → rules), applies each value that passed, and collects every failure.
-func bindFunc[M any](fields []ir.Field) func(any, map[string]string) (any, []ir.FieldError) {
-	var writable []ir.Field
+func bindFunc[M any](fields []ir.Field, base any, values map[string]string) (any, []ir.FieldError) {
+	m := base.(M)
+	var errs []ir.FieldError
 	for f := range ir.Leaves(fields) {
-		if f.Set != nil {
-			writable = append(writable, f)
+		if f.Set == nil {
+			continue
 		}
-	}
-
-	return func(base any, values map[string]string) (any, []ir.FieldError) {
-		m := base.(M)
-		var errs []ir.FieldError
-		for _, f := range writable {
-			raw := values[f.Name]
-			if f.Display == ir.DisplaySelect {
-				if msg := rules.CheckSelect(f, raw); msg != "" {
-					errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
-					continue
-				}
-			}
-			if msg := rules.Check(f.Rules, f.Kind, raw); msg != "" {
+		raw := values[f.Name]
+		if f.Display == ir.DisplaySelect {
+			if msg := rules.CheckSelect(f, raw); msg != "" {
 				errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
 				continue
 			}
-			if raw == "" && f.Kind != ir.KindString {
-				continue // optional and empty: leave the loaded value alone
-			}
-			if err := f.Set(&m, raw); err != nil {
-				errs = append(errs, ir.FieldError{Label: f.Label, Message: "Could not read this value."})
-			}
 		}
-		return m, errs
+		if msg := rules.Check(f.Rules, f.Kind, raw); msg != "" {
+			errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
+			continue
+		}
+		if raw == "" && f.Kind != ir.KindString {
+			continue // optional and empty: leave the loaded value alone
+		}
+		if err := f.Set(&m, raw); err != nil {
+			errs = append(errs, ir.FieldError{Label: f.Label, Message: "Could not read this value."})
+		}
 	}
+	return m, errs
 }

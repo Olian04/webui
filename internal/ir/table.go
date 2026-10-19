@@ -99,3 +99,18 @@ type Table struct {
 
 // Addr reports the node's position in the body tree.
 func (t *Table) Addr() Addr { return t.At }
+
+// Resolved is the table with the choices of its columns read, for the request being answered: a copy when a column reads
+// them, and the table itself when none does.
+func (t *Table) Resolved(ctx context.Context) (*Table, error) {
+	columns, err := ResolveChoices(ctx, t.Columns)
+	if err != nil {
+		return nil, err
+	}
+	if len(columns) == 0 || len(t.Columns) == 0 || &columns[0] == &t.Columns[0] {
+		return t, nil
+	}
+	out := *t
+	out.Columns = columns
+	return &out, nil
+}

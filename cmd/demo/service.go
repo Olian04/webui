@@ -167,12 +167,12 @@ func (s *Service) IPTaken(ip, except string) bool {
 	return slices.ContainsFunc(s.devices, func(d Device) bool { return d.IP == ip && d.ID != except })
 }
 
-// SaveDevice is what a device's form saves: its address, status and tags.
+// SaveDevice is what a device's form saves: its address, status, tags and site.
 func (s *Service) SaveDevice(d Device) {
 	s.mu.Lock()
 	for i := range s.devices {
 		if s.devices[i].ID == d.ID {
-			s.devices[i].IP, s.devices[i].Status, s.devices[i].Tags = d.IP, d.Status, slices.Clone(d.Tags)
+			s.devices[i].IP, s.devices[i].Status, s.devices[i].Tags, s.devices[i].Site = d.IP, d.Status, slices.Clone(d.Tags), d.Site
 		}
 	}
 	s.mu.Unlock()

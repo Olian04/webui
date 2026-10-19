@@ -31,7 +31,10 @@ type Form struct {
 	// Run. It checks every writable field's rules and applies every value it
 	// can, returning every failure rather than stopping at the first, so one
 	// round trip shows the user all of them.
-	Bind func(base any, values map[string]string) (model any, errs []FieldError)
+	//
+	// fields are the form's Fields as they are for this request, with the choices of its selects read (see
+	// [ResolveChoices]), which a select's values are checked against.
+	Bind func(fields []Field, base any, values map[string]string) (model any, errs []FieldError)
 }
 
 // Editor is what makes a Form a code editor.
@@ -50,3 +53,18 @@ type Editor struct {
 
 // Addr reports the node's position in the body tree.
 func (f *Form) Addr() Addr { return f.At }
+
+// Resolved is the form with the choices of its selects read, for the request being answered: a copy when a select
+// reads them, and the form itself when none does.
+func (f *Form) Resolved(ctx context.Context) (*Form, error) {
+	fields, err := ResolveChoices(ctx, f.Fields)
+	if err != nil {
+		return nil, err
+	}
+	if len(fields) == 0 || len(f.Fields) == 0 || &fields[0] == &f.Fields[0] {
+		return f, nil
+	}
+	out := *f
+	out.Fields = fields
+	return &out, nil
+}

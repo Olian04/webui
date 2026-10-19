@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -273,6 +274,38 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // opened directly: nowhere to return to
 	device, _ := service.Device("dev_27c38b")
 	assert.Equal(t, device.IP, "10.9.9.9")
+}
+
+// The sites to choose from are read when the page is asked for, from where the program keeps them: with how many
+// devices each has now, and a device that is moved changes them.
+func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
+	h := handler(t)
+	device, _ := service.Device("dev_27c38b")
+	var other string
+	counts := map[string]int{}
+	for _, s := range service.Sites() {
+		counts[s.Name] = s.Devices
+		if s.Name != device.Site {
+			other = s.Name
+		}
+	}
+	body := get(h, "/admin/device/dev_27c38b").Body.String()
+	for name, n := range counts {
+		assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", name, n))
+	}
+
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {other}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	moved, _ := service.Device("dev_27c38b")
+	assert.Equal(t, moved.Site, other)
+	body = get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", other, counts[other]+1))
+	assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", device.Site, counts[device.Site]-1))
+
+	// A site that is not one of them is refused.
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {"Atlantis"}})
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), "Choose from the options offered.")
 }
 
 func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {

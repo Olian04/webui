@@ -65,6 +65,29 @@ var (
 		Label: "Site",
 		Load:  func(d Device) string { return d.Site },
 	}
+	// LoadOptions reads the options of a Select when a request is answered, from where the program keeps them: here,
+	// the sites that there are devices at, with how many, so a site that has none is not offered and the counts
+	// change when a device is moved.
+	SiteChoice = webui.Select[Device]{
+		Label: "Site",
+		Load:  func(d Device) []string { return []string{d.Site} },
+		Store: func(d *Device, v []string) {
+			if len(v) == 1 {
+				d.Site = v[0]
+			}
+		},
+		LoadOptions: func(context.Context) ([]webui.Option, error) {
+			var options []webui.Option
+			for _, s := range service.Sites() {
+				noun := "devices"
+				if s.Devices == 1 {
+					noun = "device"
+				}
+				options = append(options, webui.Option{Value: s.Name, Label: fmt.Sprintf("%s (%d %s)", s.Name, s.Devices, noun)})
+			}
+			return options, nil
+		},
+	}
 	Occurrences = webui.Int[Device]{
 		Label: "Occurrences",
 		Load:  func(d Device) int { return d.Count },
@@ -168,9 +191,9 @@ var DeviceForm = webui.Form[Device]{
 	Fields: []webui.Accessor[Device]{
 		// A Group puts its fields side by side; it is layout, with no frame.
 		webui.Group[Device]{DeviceID, IP},
-		webui.Group[Device]{Status, Site}, // a choice from a list, and a plain field that is read-only
-		Tags,                              // a list to tick several of
-		Rate,                              // a slider with no Store is a bar
+		webui.Group[Device]{Status, SiteChoice}, // choices from a list: one that is written out, and one that is read when the page is asked for
+		Tags,                                    // a list to tick several of
+		Rate,                                    // a slider with no Store is a bar
 		LastSeen,
 	},
 	Submit: SaveDevice,

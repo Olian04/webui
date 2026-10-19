@@ -169,6 +169,22 @@ design element.
 - A nested `Table` inside a form's `Fields` stays out of scope. If it turns out
   to be wanted, it is solved then.
 
+- **A `Select`'s options may be the app's, read when a request is answered** (`Select.LoadOptions`, in place of
+  `Options`; both is a compile error). A select that is edited chooses from what there is now, and a submission is held
+  to it, so a value that someone added is accepted at once and one that was taken away is refused, and a form that
+  was opened before the change is told so (the 422 draws it again with the options as they are). The same
+  options give a table with `Load` its filter (the source filters, so the library can only offer what it is told) and
+  say, in every table, form, export and page search, what a value reads and the tone it is drawn in. With `Rows` the
+  filter stays the values the rows hold, as for `Options`. How: the field carries a function (`ir.Field.ChoicesFor`)
+  and each request that needs the options asks for a copy of the form or the table with them read
+  (`Form.Resolved`, `Table.Resolved`); nothing is kept between requests, since fields are shared, and the app knows
+  how long its options may be old, so a slow source is cached by the app, as for `NavEntries`. A source that fails
+  fails the panel as a failed `Load` does (a POST is answered with the toast); a value that is empty, listed twice or
+  holds the separator is the source's mistake and fails the same way. Counted in the metrics as a load of the kind
+  `options`, only when there was a source to read. Not done: letting the visitor enter a value that is not among the
+  options (`Open`), which a `<select>` cannot take and which would be a combobox for one value and a tag input for several; a
+  select of several values that grows with what was entered is the case that would need it.
+
 ## Actions and outcomes
 
 - `Run` says how it ended with an `Outcome`, by intent, not by assembling a

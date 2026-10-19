@@ -132,7 +132,12 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		}
 	}
 
-	model, errs := n.Bind(base, values)
+	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) }) // what its selects' values are checked against
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("form options: %w", err))
+		return
+	}
+	model, errs := n.Bind(resolved.Fields, base, values)
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
 		p.returnToForm(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
@@ -324,7 +329,12 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		return
 	}
 
-	window, err := timed(p, page, "table", func() (ir.Window, error) { return n.Load(ctx, queryOf(n, req.Raw)) })
+	resolved, err := resolve(p, page, n, func() (*ir.Table, error) { return n.Resolved(ctx) }) // a filter by a select is held to the options it has now
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("table options: %w", err))
+		return
+	}
+	window, err := timed(p, page, "table", func() (ir.Window, error) { return n.Load(ctx, queryOf(resolved, req.Raw)) })
 	rows := window.Rows
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("table load: %w", err))
