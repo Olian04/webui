@@ -152,14 +152,19 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 // smuggle state into a leaf the page does not have.
 func argParser(page *ir.Page) args.ArgParser {
 	var parser args.ArgParser
+	var lists []string
 	for _, a := range page.Args {
 		if a.InPath {
 			parser.PathKeys = append(parser.PathKeys, a.Name)
 		} else {
 			parser.QueryKeys = append(parser.QueryKeys, a.Name)
+			if a.List {
+				lists = append(lists, a.Name) // a parameter that repeats keeps every value it is given
+			}
 		}
 	}
-	view, lists := viewKeys(page.Body)
+	view, viewLists := viewKeys(page.Body)
+	lists = append(lists, viewLists...)
 	parser.QueryKeys = append(parser.QueryKeys, args.FromKey)
 	parser.QueryKeys = append(parser.QueryKeys, view...)
 	parser.ListKeys = lists

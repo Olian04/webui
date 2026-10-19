@@ -74,9 +74,9 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 		Name string
 		Tags []string
 	}
-	list := webui.Page[tagged]{Path: "/bucket/{name}", Body: webui.Stack{}}
+	list := webui.Page[tagged]{Path: "/bucket/{name}/{tags}", Body: webui.Stack{}}
 	errs = compileErrors(t, webui.App{Pages: webui.Pages{list}})
-	assert.Contains(t, errs[0].Detail, "is a []string, but the path has no {tags...}")
+	assert.Contains(t, errs[0].Detail, "is one segment of the path")
 }
 
 func TestARestPlaceholderArrivesAsAListOfSegments(t *testing.T) {
@@ -132,4 +132,67 @@ func TestALinkToARestPlaceholderBuildsTheAddressFromTheList(t *testing.T) {
 	}}
 	h = webui.App{Pages: webui.Pages{bad, object}}.MustCompile("/admin")
 	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/bad").Body.String(), `rowlink`))
+}
+
+type pickArgs struct {
+	Name string
+	Tags []string
+	Ids  []int
+}
+
+// A slice that is not the rest of the path is a query parameter that repeats: the parameter once for each element,
+// in the order they were given.
+func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
+	t.Parallel()
+
+	var seen pickArgs
+	picked := webui.Page[pickArgs]{Path: "/pick/{name}", Body: webui.Table[Device]{
+		Title: "Picked",
+		Rows: func(ctx context.Context) ([]Device, error) {
+			seen = webui.ArgsOf[pickArgs](ctx)
+			return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, nil
+		},
+		PageSize: 2,
+		Columns:  []webui.Accessor[Device]{formID},
+	}}
+	h := webui.App{Pages: webui.Pages{picked}}.MustCompile("/admin")
+
+	rec := serve(h, http.MethodGet, "/admin/pick/x?tags=red&tags=blue+green&ids=3&ids=1&other=ignored")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.DeepEqual(t, seen, pickArgs{Name: "x", Tags: []string{"red", "blue green"}, Ids: []int{3, 1}})
+
+	// The page's own links keep what it was asked for: a pager and a sort carry every element, in order.
+	body := rec.Body.String()
+	assert.Contains(t, body, `href="/admin/pick/x?ids=3&amp;ids=1&amp;picked.sort=id&amp;tags=red&amp;tags=blue+green"`)
+	assert.Contains(t, body, `href="/admin/pick/x?ids=3&amp;ids=1&amp;picked.offset=2&amp;tags=red&amp;tags=blue+green"`)
+
+	// Nothing given is nothing: a nil slice, and an address with no parameter.
+	serve(h, http.MethodGet, "/admin/pick/x")
+	assert.True(t, seen.Tags == nil && seen.Ids == nil)
+
+	// A value that is not a number is a 400, not a missing element.
+	assert.Equal(t, serve(h, http.MethodGet, "/admin/pick/x?ids=1&ids=two").Code, http.StatusBadRequest)
+}
+
+// A link to a page that takes a list builds the address with the parameter repeated, each value escaped on its own.
+func TestALinkToAPageThatTakesAListRepeatsTheParameter(t *testing.T) {
+	t.Parallel()
+
+	var picked webui.Page[pickArgs]
+	picked.Path = "/pick/{name}"
+	picked.Body = webui.Stack{}
+	from := webui.Page[webui.NoArgs]{Path: "/from", Body: webui.Table[Device]{
+		Title:   "Devices",
+		Rows:    func(context.Context) ([]Device, error) { return []Device{{Id: "a"}}, nil },
+		Columns: []webui.Accessor[Device]{formID},
+		RowClick: webui.Link[Device, pickArgs]{
+			Page: picked,
+			Args: func(_ context.Context, d Device) pickArgs {
+				return pickArgs{Name: "x", Tags: []string{d.Id, "a b", "c&d"}, Ids: []int{2, 1}}
+			},
+		},
+	}}
+	h := webui.App{Pages: webui.Pages{from, picked}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/from").Body.String()
+	assert.Contains(t, body, `href="/admin/pick/x?ids=2&amp;ids=1&amp;tags=a&amp;tags=a+b&amp;tags=c%26d"`)
 }

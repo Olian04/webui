@@ -51,6 +51,12 @@ func (c *Codec) Decode(raw map[string]string) (any, error) {
 		if s == "" {
 			continue
 		}
+		if f.spec.List {
+			if err := setList(v.Field(f.index), f.spec.Kind, s); err != nil {
+				errs = append(errs, fmt.Errorf("invalid argument %q: %w", f.spec.Name, err))
+			}
+			continue
+		}
 		if err := setValue(v.Field(f.index), f.spec.Kind, s); err != nil {
 			errs = append(errs, fmt.Errorf("invalid argument %q: %w", f.spec.Name, err))
 		}
@@ -73,7 +79,8 @@ func (c *Codec) Encode(args any) (path, query map[string]string, err error) {
 	for _, f := range c.fields {
 		fv := v.Field(f.index)
 		// An empty list is as absent as a nil one, though only the nil one is the zero value.
-		if fv.IsZero() || (f.spec.Kind == ir.KindStrings && fv.Len() == 0) {
+		isList := f.spec.Kind == ir.KindStrings || f.spec.List
+		if fv.IsZero() || (isList && fv.Len() == 0) {
 			if f.spec.InPath {
 				return nil, nil, fmt.Errorf("path argument %q is empty", f.spec.Name)
 			}
@@ -83,6 +90,16 @@ func (c *Codec) Encode(args any) (path, query map[string]string, err error) {
 			if err := checkSegments(f.spec.Name, fv); err != nil {
 				return nil, nil, err
 			}
+		}
+		if f.spec.List {
+			s, err := formatList(f.spec.Name, fv, f.spec.Kind)
+			if err != nil {
+				return nil, nil, err
+			}
+			if s != "" {
+				query[f.spec.Name] = s
+			}
+			continue
 		}
 		s := formatValue(fv, f.spec.Kind)
 		if f.spec.InPath {
@@ -107,6 +124,48 @@ func checkSegments(name string, fv reflect.Value) error {
 		}
 	}
 	return nil
+}
+
+// setList reads a parameter that repeats: its values joined by ListSep, each parsed as one. An empty value is not
+// one, as a URL cannot tell "?tag=" from none.
+func setList(fv reflect.Value, kind ir.ValueKind, joined string) error {
+	var parts []string
+	for _, part := range strings.Split(joined, ir.ListSep) {
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	if len(parts) == 0 {
+		return nil
+	}
+	list := reflect.MakeSlice(fv.Type(), len(parts), len(parts))
+	var errs []error
+	for i, part := range parts {
+		if err := setValue(list.Index(i), kind, part); err != nil {
+			errs = append(errs, fmt.Errorf("%q: %w", part, err))
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	fv.Set(list)
+	return nil
+}
+
+// formatList writes a parameter that repeats as its values joined by ListSep, which [Href] makes repeated parameters.
+// An empty string is not a value, so it is left out, and one that holds ListSep would be read back as two.
+func formatList(name string, fv reflect.Value, kind ir.ValueKind) (string, error) {
+	parts := make([]string, 0, fv.Len())
+	for i := range fv.Len() {
+		part := formatValue(fv.Index(i), kind)
+		if strings.Contains(part, ir.ListSep) {
+			return "", fmt.Errorf("argument %q: element %d holds the list separator %q, which would make it two", name, i+1, ir.ListSep)
+		}
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return strings.Join(parts, ir.ListSep), nil
 }
 
 func setValue(fv reflect.Value, kind ir.ValueKind, s string) error {

@@ -28,12 +28,26 @@ design element.
   split it and made a slash inside a name ambiguous; a slice says what the segments
   are, and the codec refuses what a slice cannot say (an empty element, or one that
   holds a slash, which would be read back as two). The address holds the joined
-  segments, escaped one by one. A `[]string` is accepted nowhere else, because a URL
-  carries one value per name and the rest of a path is the one place a list is the
-  address itself. It is the last segment only because `net/http.ServeMux`, which
+  segments, escaped one by one. A path segment is one value, so a slice is refused for
+  `{name}` and for any `{name...}` that is not the last segment (a query parameter that repeats
+  is the other list, below). It is the last segment only because `net/http.ServeMux`, which
   routes the pages, allows a rest wildcard only there; a route of our own to lift that
   would have had to re-implement what the mux gives for nothing (cleaning, escaped
   segments, `HEAD`, `405` with `Allow`).
+- A slice that is not the rest of a path is a query parameter that repeats. It was refused ("a URL
+  carries one value per name") for as long as the only list was the rest of a path, but a repeated
+  key (`?tag=a&tag=b`) is how URLs, HTML forms and `URLSearchParams.getAll` have always carried a list, and
+  the machinery was there already: a table's multi-select filter keeps every value of a parameter, joined
+  by the unit separator in the request's arguments, and the address builder writes such a value back as
+  repeated parameters. The spec says which fields are lists (`ArgSpec.List`, with the kind of one element, so
+  `[]string`, `[]int`, `[]int64`, `[]float64`, `[]bool` and slices of defined types of them all work), the
+  parser keeps every value of those keys, and the codec parses each element on its own and reports each that
+  fails (a 400, with the value). What it leaves out on purpose: an empty string, which a URL cannot tell from none
+  (so `[]string{""}` is as absent as `nil`), and an empty list, which is as absent as a nil one; and what it
+  refuses: an element holding U+001F (the separator, which would be read back as two), and a slice of
+  anything but the five types (a `[]byte` is a mistake, not a list of numbers). A slice for `{name}` is a compile
+  error with a fix that says to write `{name...}` or to drop the segment so that it is a query parameter. The one
+  limit is the address's own: a long list is a long URL.
 - Optionality: a zero field means absent and stays out of the URL. A field
   where zero is meaningful needs a pointer — the same trade as `Rules`.
 - Argument names come from the lower-cased field name, overridable with a

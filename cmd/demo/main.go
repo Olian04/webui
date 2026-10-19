@@ -52,7 +52,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, Details, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
+	Pages: webui.Pages{Overview, Devices, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
 }
 
 var (
@@ -60,11 +60,13 @@ var (
 	accent = flag.String("accent", "", "override the theme's accent colour, such as '#2f9e8f'")
 )
 
-// Arguments must be string, bool, int, int64 or float64, so a slice is a mistake
-// Compile reports, with the page and a fix, rather than a panic.
-type brokenArgs struct{ When []int }
+// Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a
+// query parameter that repeats, so a map is a mistake that Compile reports, with the page
+// and a fix, rather than a panic. The one field is also the one in the path, so the page
+// has the one problem.
+type brokenArgs struct{ When map[string]int }
 
-var Broken = webui.Page[brokenArgs]{Path: "/event/{id}", Body: webui.Stack{}}
+var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", Body: webui.Stack{}}
 
 // themeFor overrides the accent. A Theme is four colours (Accent, OK, Warning,
 // Critical); the library derives the rest and tunes it for light and dark, which
