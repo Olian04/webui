@@ -76,6 +76,10 @@ type Field struct {
 	// it is not filled in: see [ResolveChoices].
 	ChoicesFor func(ctx context.Context) ([]Choice, error)
 
+	// Multiline says the text is of more than one line: a text area, and a cell that shows the first lines. A line break in
+	// what is submitted is "\n", whatever the browser sent.
+	Multiline bool
+
 	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
 	// Set: what an input that was emptied means. Nil for a field that is read-only.
 	Unset func(model any)

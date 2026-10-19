@@ -265,6 +265,10 @@
 // Submit is an [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
 //
+// A [String] with Multiline set is a text area, for text of more than one line. Its rules are Required, MinLen and MaxLen;
+// a Pattern and the text rules are one line's and are refused, and a line break is one "\n" character whatever the browser
+// sent, so MaxLen counts what the browser's maxlength counts. In a table the cell shows the first lines.
+//
 // # Text rules and patterns
 //
 // A string field says what its text starts with, ends with and contains, and what it must not:
