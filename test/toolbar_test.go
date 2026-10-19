@@ -71,7 +71,7 @@ func newToolShop(items ...webui.ToolbarItem[toolArgs]) *toolShop {
 		}
 	}
 	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Stack{
-		webui.Toolbar[toolArgs]{Items: items},
+		webui.Toolbar[toolArgs]{Left: items[:2], Right: items[2:]},
 		webui.Table[Device]{
 			Title: "Devices",
 			Rows: func(context.Context) ([]Device, error) {
@@ -119,7 +119,34 @@ func TestAToolbarIsARowOfButtonsAndInputsForThePagesArguments(t *testing.T) {
 	assert.Contains(t, form, `name="_toolbar" value="p.0"`)
 	assert.Contains(t, form, `name="minutes" value="15"`)
 	assert.Contains(t, form, `name="site" value="north"`)
-	assert.Contains(t, body, `class="btn btn-ghost btn-sm toolbar-apply" type="submit" form="p-0-args">Apply</button>`)
+	// The left controls and the right ones are one row with a gap between them, which takes what is left over.
+	assert.Equal(t, strings.Count(body, `<span class="toolbar-gap" aria-hidden="true"></span>`), 1)
+	assert.True(t, strings.Index(body, ">Sync now</button>") < strings.Index(body, `class="toolbar-gap"`))
+	assert.True(t, strings.Index(body, `class="toolbar-gap"`) < strings.Index(body, `<label class="lbl" id="p-0-t2-label"`))
+	// Without script each input has a button of its own, joined to it, that applies them all.
+	assert.Equal(t, strings.Count(body, `<button class="btn btn-secondary btn-sm toolbar-apply" type="submit" form="p-0-args">Apply</button>`), 3)
+	field := body[strings.Index(body, `<label class="lbl" id="p-0-t2-label"`):]
+	field = field[:strings.Index(field, `</button>`)]
+	assert.True(t, strings.Contains(field, `name="t2"`) && strings.Contains(field, `toolbar-apply`)) // the button follows its input, in the same field
+	assert.False(t, strings.Contains(field, `id="p-0-t3-label"`))
+}
+
+func TestAToolbarWithControlsAtOneEdgeHasTheGapOnTheOtherSide(t *testing.T) {
+	t.Parallel()
+
+	run := func(context.Context, toolArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }
+	item := webui.Action[toolArgs]{Label: "Go", Run: run}
+	gap := `<span class="toolbar-gap" aria-hidden="true"></span>`
+	pageOf := func(tb webui.Toolbar[toolArgs]) string {
+		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: tb}}}.MustCompile("/admin")
+		return serve(h, http.MethodGet, "/admin/tools").Body.String()
+	}
+	both := pageOf(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{item}, Right: []webui.ToolbarItem[toolArgs]{item}})
+	assert.Equal(t, strings.Count(both, gap), 1)
+	onlyRight := pageOf(webui.Toolbar[toolArgs]{Right: []webui.ToolbarItem[toolArgs]{item}})
+	assert.True(t, strings.Index(onlyRight, gap) < strings.Index(onlyRight, ">Go</button>")) // the right ones start with it
+	onlyLeft := pageOf(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{item}})
+	assert.Equal(t, strings.Count(onlyLeft, gap), 0)
 }
 
 func TestAnActionOfAToolbarIsDoneToThePagesArguments(t *testing.T) {
@@ -210,7 +237,7 @@ func TestAnInputOfAToolbarCanChangeAPathArgument(t *testing.T) {
 	t.Parallel()
 
 	type pathArgs struct{ Id string }
-	page := webui.Page[pathArgs]{Path: "/thing/{id}", Body: webui.Toolbar[pathArgs]{Items: []webui.ToolbarItem[pathArgs]{
+	page := webui.Page[pathArgs]{Path: "/thing/{id}", Body: webui.Toolbar[pathArgs]{Left: []webui.ToolbarItem[pathArgs]{
 		webui.String[pathArgs]{Label: "Id", Load: func(a pathArgs) string { return a.Id }, Store: func(a *pathArgs, v string) { a.Id = v }},
 	}}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
@@ -229,7 +256,7 @@ func TestASelectInAToolbarMayReadItsOptions(t *testing.T) {
 		Label: "Team", Load: func(a toolArgs) []string { return []string{a.Site} },
 		Store: func(a *toolArgs, v []string) { a.Site = strings.Join(v, "") }, LoadOptions: s.load,
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{team}}}
+	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{team}}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/tools").Body.String(), `>Blue team</option>`)
@@ -253,16 +280,18 @@ func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 		return all
 	}
 	run := func(context.Context, toolArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{}), "a Toolbar has no Items")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Run: run}}}), "Toolbar.Items[0] has no Label")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "Go"}}}), "Toolbar.Items[0] has no Run")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{}), "a Toolbar has no controls")
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Run: run}}}), "Toolbar.Left[0] has no Label")
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "Go"}}}), "Toolbar.Left[0] has no Run")
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{
 		webui.Link[toolArgs, newArgs]{Page: newDevice, Args: func(context.Context, toolArgs) newArgs { return newArgs{} }},
-	}}), "Toolbar.Items[0] has no Label")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{
+	}}), "Toolbar.Left[0] has no Label")
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{
 		webui.String[toolArgs]{Label: "Site", Load: func(a toolArgs) string { return a.Site }},
-	}}), "Toolbar.Items[0] has no Store")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Items: []webui.ToolbarItem[toolArgs]{siteInput, siteInput}}), `label "Site" is used twice`)
-	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Items: []webui.ToolbarItem[webui.NoArgs]{webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}}}),
+	}}), "Toolbar.Left[0] has no Store")
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{siteInput, siteInput}}), `label "Site" is used twice`)
+	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Right: []webui.ToolbarItem[webui.NoArgs]{webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}}}),
 		"A Toolbar is about the arguments of the page it is on")
+	// Where a control is said to be follows the group it is in.
+	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{siteInput}, Right: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "Go"}}}), "Toolbar.Right[0] has no Run")
 }

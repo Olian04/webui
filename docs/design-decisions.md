@@ -260,9 +260,19 @@ design element.
   text rules), and every failure is reported: none of the inputs is applied, and the visitor is where they were, with the
   messages in a toast. A toast rides the flash cookie, as the failure of a table action does, because the answer is
   a redirect. Every table keeps its sort and filters, and loses its offset, which the hidden fields leave out as a
-  changed filter does: what it shows may no longer have a second page. Without script an input is applied with its
-  *Apply* button, which script hides; with script a change applies it (`change`, and a slider's range, which the number
+  changed filter does: what it shows may no longer have a second page. Without script each input has an
+  *Apply* button of its own, joined to it in a group (a grid of the input and the button), so that a toolbar of several has a
+  button at each and not one apart from all of them; each submits the whole form, since the inputs belong to one. Script
+  hides them; with script a change applies it (`change`, and a slider's range, which the number
   beside it does not hear), after the browser has checked its constraints.
+- **A toolbar has two groups, `Left` and `Right`, and they are one row.** A gap between the groups takes what the page has
+  to spare, so the right ones are at the right edge. When there is no room for every control in a row the gap goes and
+  the controls flow from the left in rows, the left ones first, as one group; the right group does not wrap as a unit onto a line
+  of its own. CSS cannot ask whether the content fits, so a few lines of script measure the controls as they are (their widths
+  and the gaps between them, which do not depend on the layout, so the answer does not flip with it) against the toolbar's width, and
+  set a class that removes the gap; the toolbar is watched as it resizes. Without script the gap stays, which wraps a little less
+  well and works. Not done: a breakpoint in CSS, which would be right for the toolbars of one app only.
+
 - **A toolbar's buttons post, as every action does.** `_leaf` names the toolbar, `_act` the position of the item, and
   the same `perform` runs the `Guard` and the `Run`, so a button that the `Guard` refuses is disabled with the reason, and the request is
   refused with it. A failure, or a reject, is a toast, as for a table action, since there are no fields to point at; a

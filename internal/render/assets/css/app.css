@@ -1279,9 +1279,41 @@ html:not(.js) .actionbar .dim {
 .toolbar-args {
   display: none;
 }
-/* With script an input applies itself when it changes, so the button is only for a page without. */
+/* The left controls and the right ones are one row with a gap between them that takes what is left over, so the right ones
+   are at the right edge. When there is no room for them all in a row (script says so, with .wrapped), the gap is gone and
+   they flow from the left in rows, as one group. */
+.toolbar-gap {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.toolbar.wrapped .toolbar-gap {
+  display: none;
+}
+/* With script an input applies itself when it changes, so its button is only for a page without. */
 html.js .toolbar-apply {
   display: none;
+}
+/* Without script the button is joined to the input it belongs to, in a group: the input, and the button at its right, as
+   one control, so that several inputs each have their own. */
+html:not(.js) .toolbar .field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: stretch;
+}
+html:not(.js) .toolbar .field > .lbl-row,
+html:not(.js) .toolbar .field > .err {
+  grid-column: 1 / -1;
+}
+html:not(.js) .toolbar .field > .input,
+html:not(.js) .toolbar .field > .range .input {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+html:not(.js) .toolbar .field > .toolbar-apply {
+  height: auto;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 @media (max-width: 760px) {
   .field-row {

@@ -471,14 +471,19 @@ templ (r *Renderer) input(fv fieldView) {
 					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID,
 				})
 		}
+		if fv.FormID != "" {
+			// An input of a toolbar is applied with a button of its own without script, joined to it (see .toolbar .field).
+			<button class="btn btn-secondary btn-sm toolbar-apply" type="submit" form={ fv.FormID }>Apply</button>
+		}
 	}
 }
 
 // Toolbar is a row of controls: buttons, and inputs for the page's arguments. It is not a panel. The buttons post, in one
 // form, by their position. An input belongs, by its form attribute, to a form of its own that goes back to the page with
 // what was given and the rest of the address, which the server turns into the page's arguments and sends the visitor on
-// to, so the controls can be in any order. Without script an input is applied with its Apply button; with script, when it
-// changes.
+// to, so the controls can be in any order. Without script an input is applied with an Apply button joined to it; with script,
+// when it changes. The controls for the left and the right are one row, with a gap between the two groups that takes what
+// is left over; script says when there is not room for them all in a row, and then the gap is gone and they flow as one.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
 		@c.Panel(c.PanelProps{Failed: true, Leaf: LeafID(v.Node.At)}) {
@@ -489,6 +494,9 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 				for i, it := range v.Node.Items {
+					if i == v.Node.RightFrom {
+						<span class="toolbar-gap" aria-hidden="true"></span>
+					}
 					switch {
 						case it.Action != nil:
 							@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i]}) {
@@ -510,7 +518,6 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 						<input type="hidden" name={ k.Name } value={ k.Value }/>
 					}
 				</form>
-				<button class="btn btn-ghost btn-sm toolbar-apply" type="submit" form={ formID }>Apply</button>
 			}
 		</div>
 	}

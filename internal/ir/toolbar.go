@@ -5,8 +5,11 @@ import "context"
 // Toolbar is a leaf that is a row of controls for the page it is on: buttons, and inputs for the page's arguments.
 // What each is about is the page's arguments, as they are for the request.
 type Toolbar struct {
-	At    Addr
-	Items []ToolbarItem
+	At Addr
+
+	// Items are the controls: the ones for the left, and then the ones for the right, which start at RightFrom.
+	Items     []ToolbarItem
+	RightFrom int
 
 	// Bind applies the submitted values of the inputs, keyed by Field.Name, to a copy of the page's arguments, and
 	// returns it for the runtime to encode. An input that was emptied sets its argument to nothing. fields are the

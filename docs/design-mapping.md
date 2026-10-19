@@ -395,7 +395,10 @@ A button is the same button as a form's, in the same three roles, small, with th
 refuses. A `Link` in a toolbar is the same button as an anchor. An input is the accessor's own input under its label, with
 the rules in the popover beside it; the inputs of a toolbar are not in the form of the buttons but have a form of their own, by
 the `form` attribute, so that they can be in any order among them. That form is a GET to the page with the rest of the
-address, so without script the visitor has an *Apply* button, and with script a change is applied by itself.
+address, so without script each input has an *Apply* button joined to it, at its right, as one control, and with script a change is
+applied by itself and the buttons are gone. `Left` and `Right` are one row with a gap between the groups that takes what is left
+over; when there is not room for every control in a row, which script measures, the gap goes and the controls flow from the left in
+rows, as one group.
 
 ### `Table.BulkActions` → checkboxes that only exist when declared
 

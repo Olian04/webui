@@ -158,16 +158,20 @@ func TestSiteDetailHasTwoTablesWithTheirOwnState(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), `there is no site &#34;Nowhere&#34;`)
 }
 
-func TestAQueryArgumentNarrowsTheEvents(t *testing.T) {
+func TestAQueryArgumentNarrowsTheRawEventsAndNotTheRecentOnes(t *testing.T) {
 	h := handler(t)
-	rows := func(target string) int {
+	rows := func(target, title string) int {
 		body := get(h, target).Body.String()
-		body = body[strings.Index(body, "Recent events"):]
+		body = body[strings.Index(body, title):]
 		return strings.Count(body[:strings.Index(body, "</table>")], `<tr class="">`) // body rows; the header has none
 	}
-	assert.Equal(t, rows("/admin/device/dev_27c38b"), 8)                                // every event
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15"), 3)                     // the last 15 minutes
-	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events"), 3) // the Raw tab: the same table
+	// The recent events are the last 15 minutes, whatever the page is narrowed to.
+	assert.Equal(t, rows("/admin/device/dev_27c38b", "Recent events"), 3)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=60", "Recent events"), 3)
+	// The raw ones are as far back as the argument says, and all of them without it.
+	assert.Equal(t, rows("/admin/device/dev_27c38b?tabs.tab=raw-events", "Raw events"), 8)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events", "Raw events"), 3)
+	assert.Equal(t, rows("/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events", "Raw events"), 5)
 }
 
 func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
@@ -263,13 +267,13 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	h := handler(t)
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.1.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the form, drawn again with what was typed, as the answer
 	page := rec
 	assert.Contains(t, page.Body.String(), "already in use by another device")
 	assert.Contains(t, page.Body.String(), `value="`+taken.IP+`"`) // what was typed
 
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.1.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // opened directly: nowhere to return to
 	device, _ := service.Device("dev_27c38b")
@@ -294,7 +298,7 @@ func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
 		assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", name, n))
 	}
 
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.1.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {other}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {other}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	moved, _ := service.Device("dev_27c38b")
 	assert.Equal(t, moved.Site, other)
@@ -303,7 +307,7 @@ func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
 	assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", device.Site, counts[device.Site]-1))
 
 	// A site that is not one of them is refused.
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.1.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {"Atlantis"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {"Atlantis"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "Choose from the options offered.")
 }
@@ -317,8 +321,8 @@ func TestTheDemoLeavesSortingOutOfTheColumnsThatHaveNoUseForIt(t *testing.T) {
 	assert.Contains(t, devices, `aria-label="Filter Tags"`) // it still filters
 
 	events := get(h, "/admin/device/dev_27c38b").Body.String()
-	assert.Contains(t, events, "events.sort=kind")
-	assert.False(t, strings.Contains(events, "events.sort=detail"))
+	assert.Contains(t, events, "recent-events.sort=kind")
+	assert.False(t, strings.Contains(events, "recent-events.sort=detail"))
 }
 
 // The device list has a toolbar: a link to the page that makes a device, and a button that does something. An editor may
@@ -373,16 +377,20 @@ func TestTheDeviceThatIsCreatedHasAnAddressOfItsOwn(t *testing.T) {
 // that the arguments make, with the events narrowed.
 func TestTheEventsOfADeviceAreNarrowedByAnInputForTheMinutesArgument(t *testing.T) {
 	h := handler(t)
-	page := get(h, "/admin/device/dev_27c38b?minutes=30").Body.String()
-	assert.Contains(t, page, `<option value="30" data-badge="badge-mute" selected>The last 30 minutes</option>`)
+	// The input is in the Raw events tab, which it is for, and not on the page.
+	overview := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.False(t, strings.Contains(overview, "Events from"))
+	raw := get(h, "/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events").Body.String()
+	assert.Contains(t, raw, `<option value="30" data-badge="badge-mute" selected>The last 30 minutes</option>`)
 
-	rec := get(h, "/admin/device/dev_27c38b?_toolbar=p.0&t0=15")
+	// Applying it keeps the tab, since the address does.
+	rec := get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=15")
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?minutes=15")
-	rec = get(h, "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events&_toolbar=p.0&t0=")
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events")
+	rec = get(h, "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events&_toolbar=p.1.0&t0=")
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // nothing chosen is all of them
-	rec = get(h, "/admin/device/dev_27c38b?_toolbar=p.0&t0=7")
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // not an option: refused, and where they were
+	rec = get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=7")
+	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // not an option: refused, and where they were
 }
 
 func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
@@ -583,7 +591,7 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
 	from := "/admin/site/Malm\u00f6?open-alerts.sort=severity"
-	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.1.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
+	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
@@ -592,7 +600,7 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
-	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.1.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
+	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
 }

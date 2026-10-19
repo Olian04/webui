@@ -145,13 +145,21 @@
 // type, and everything in it is about the page's arguments as they are for the request:
 //
 //	Body: webui.Stack{
-//		webui.Toolbar[DevicesArgs]{Items: []webui.ToolbarItem[DevicesArgs]{
-//			webui.Link[DevicesArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: newDeviceArgs},
-//			webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
-//			webui.Select[DevicesArgs]{Label: "Site", Load: loadSite, Store: storeSite, Options: sites},
-//		}},
+//		webui.Toolbar[DevicesArgs]{
+//			Left: []webui.ToolbarItem[DevicesArgs]{
+//				webui.Link[DevicesArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: newDeviceArgs},
+//				webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
+//			},
+//			Right: []webui.ToolbarItem[DevicesArgs]{
+//				webui.Select[DevicesArgs]{Label: "Site", Load: loadSite, Store: storeSite, Options: sites},
+//			},
+//		},
 //		DevicesTable,
 //	}
+//
+// The controls are in two groups. With room, the Left ones are at the left edge and the Right ones at the right, with what the
+// page has to spare between them; when there is no longer room for them all in a row, they flow from the left in rows,
+// as one group, the Left ones first.
 //
 // An [Action] is a button that posts, and its Run is handed the page's arguments and says how it ended with an
 // [Outcome], as any action does. Its Guard decides whether the visitor may, and the same check disables the button, with
@@ -161,7 +169,7 @@
 // writes the visitor's, after which the visitor is sent to the page those arguments make, an address that can be
 // copied. It does not matter whether the argument is in the path or the query. The rules of the accessor apply, in the
 // browser and again on the server, and a [Select] may read its options with LoadOptions. An input applies itself when it
-// changes with script, and with an Apply button without. An input that is emptied is set to nothing: Store is handed
+// changes with script, and without it with an Apply button joined to the input, so that each has its own. An input that is emptied is set to nothing: Store is handed
 // the zero value. Every table of the page keeps its sort and filters and returns to its first page.
 //
 // # Tables

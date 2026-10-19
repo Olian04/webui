@@ -11,7 +11,7 @@ import (
 // The device id is a path argument, so each device has its own address. The query
 // argument has a control on the page, a Toolbar, and also arrives in the address:
 //
-//   - Minutes narrows what Events shows (the alerts link here with ?minutes=15)
+//   - Minutes narrows what the Raw events tab shows (the alerts link here with ?minutes=15)
 //
 // This page is reached from the device list, from a site and from the alerts. It
 // does not say where Cancel goes: the library remembers which page's link the user
@@ -126,25 +126,30 @@ var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
 	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device, a button
-	// that does something, and, on the device page, an input for the page's arguments.
+	// that does something, and, on the Raw events tab of a device, an input for the page's arguments.
 	Body: webui.Stack{DevicesToolbar, DevicesTable},
 }
 
-// DevicesToolbar is the controls of the list. Its items are of the page's arguments, here none: a link to another page,
-// and an Action, which is a button that posts and says how it ended, as every action does.
-var DevicesToolbar = webui.Toolbar[webui.NoArgs]{Items: []webui.ToolbarItem[webui.NoArgs]{
-	webui.Link[webui.NoArgs, webui.NoArgs]{
-		Label: "Create device", Role: webui.RolePrimary, Page: NewDevicePage,
-		Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
-	},
-	webui.Action[webui.NoArgs]{
-		Label: "Sync now",
-		Guard: canEdit[webui.NoArgs],
-		Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
-			return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
+// DevicesToolbar is the controls of the list, which are of the page's arguments, here none. A Link to another page is at the
+// left edge, and an Action, a button that posts and says how it ended, as every action does, is at the right. When the page
+// is too narrow for both at the edges they flow together from the left.
+var DevicesToolbar = webui.Toolbar[webui.NoArgs]{
+	Left: []webui.ToolbarItem[webui.NoArgs]{
+		webui.Link[webui.NoArgs, webui.NoArgs]{
+			Label: "Create device", Role: webui.RolePrimary, Page: NewDevicePage,
+			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 		},
 	},
-}}
+	Right: []webui.ToolbarItem[webui.NoArgs]{
+		webui.Action[webui.NoArgs]{
+			Label: "Sync now",
+			Guard: canEdit[webui.NoArgs],
+			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
+				return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
+			},
+		},
+	},
+}
 
 // DevicesTable is the list.
 var DevicesTable = webui.Table[Device]{
@@ -224,15 +229,16 @@ var Details = webui.Page[DeviceArgs]{
 	},
 	// The selected tab is ?tabs.tab=raw-events, named by its label; the first tab,
 	// Overview, needs no parameter.
-	Body: webui.Stack{
-		// The page's Minutes, which only a link could set, as an input: Load reads it from the arguments and Store writes the
-		// visitor's to them, and the page that comes of it is the visitor's address, which they can copy.
-		webui.Toolbar[DeviceArgs]{Items: []webui.ToolbarItem[DeviceArgs]{EventWindow}},
-		webui.Tabs{Panels: []webui.Tab{
-			{Label: "Overview", Body: webui.Split{DeviceForm, Events}},
-			{Label: "Raw events", Body: Events},
+	Body: webui.Tabs{Panels: []webui.Tab{
+		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
+		// The page's Minutes, which only a link could set, as an input of a toolbar that is inside the tab it is for: Load reads
+		// it from the arguments and Store writes the visitor's to them, and the page that comes of it is the visitor's
+		// address, which they can copy, with this tab still selected.
+		{Label: "Raw events", Body: webui.Stack{
+			webui.Toolbar[DeviceArgs]{Left: []webui.ToolbarItem[DeviceArgs]{EventWindow}},
+			RawEvents,
 		}},
-	},
+	}},
 }
 
 // EventWindow is an input for an argument of the page: the minutes that the events cover. Nothing chosen is all of them.
@@ -288,13 +294,19 @@ var SaveDevice = webui.Action[Device]{
 	},
 }
 
-// Events is a table of a different model, beside the form. Split constrains
-// nothing about what its children are about. The same table is also the Raw
-// tab: it is one var used twice, and its sort and filters are shared because the
-// panels of one Tabs may share an ID.
-var Events = webui.Table[Event]{
-	Title: "Recent events",
-	Desc:  "Opened with ?minutes=15 (as the alerts do), only the last 15 minutes are shown.",
+// RecentEvents is a table of a different model, beside the form. Split constrains nothing about what its children are about.
+// It is always the last 15 minutes, whatever the Raw events tab is narrowed to.
+var RecentEvents = webui.Table[Event]{
+	Title:   "Recent events",
+	Desc:    "The last 15 minutes, whatever the Raw events tab shows.",
+	Rows:    func(context.Context) ([]Event, error) { return service.Events(15), nil },
+	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
+}
+
+// RawEvents is the events as far back as the page's Minutes says, which the input above it sets, and all of them when it is empty.
+var RawEvents = webui.Table[Event]{
+	Title: "Raw events",
+	Desc:  "Narrowed by ?minutes= (as the alerts' links do, and as the input above sets it): all of them without.",
 	Rows: func(ctx context.Context) ([]Event, error) {
 		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), nil
 	},

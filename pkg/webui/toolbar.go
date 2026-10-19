@@ -14,13 +14,22 @@ import (
 // toolbar is about the page's arguments as they are for the request: that is what a button's Guard and Run are
 // handed, what a link builds its destination from, and what an input shows and changes.
 //
-//	webui.Toolbar[DevicesArgs]{Items: []webui.ToolbarItem[DevicesArgs]{
-//		webui.Link[DevicesArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: ...},
-//		webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
-//		webui.Select[DevicesArgs]{Label: "Window", Load: ..., Store: ..., Options: ...},
-//	}}
+//	webui.Toolbar[DevicesArgs]{
+//		Left: []webui.ToolbarItem[DevicesArgs]{
+//			webui.Link[DevicesArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: ...},
+//			webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
+//		},
+//		Right: []webui.ToolbarItem[DevicesArgs]{
+//			webui.Select[DevicesArgs]{Label: "Window", Load: ..., Store: ..., Options: ...},
+//		},
+//	}
 //
-// The items are, in the order they are drawn:
+// The controls are in two groups, Left and Right, in the order they are given. With room, the left ones are at the left
+// edge and the right ones at the right, and the space between them is what the page has to spare. When there is no longer room for
+// both, there is no longer a left and a right: all the controls, the left ones first, flow from the left in rows, as a
+// grid does, and the space between them is the same. A toolbar with controls in one of them only is fine.
+//
+// The items are:
 //
 //   - An [Action] is a button that does something. It posts, and its Run says how it ended with an [Outcome], as
 //     any action does. Its Guard decides whether the visitor may, and disables the button, with the reason, when
@@ -36,8 +45,16 @@ import (
 //
 // A toolbar is not a panel: it has no frame, so it sits on the page, in a [Stack] with what it is for.
 type Toolbar[A any] struct {
-	// Items are the controls, in the order they are drawn: a toolbar with nothing in it is a mistake.
-	Items []ToolbarItem[A]
+	// Left are the controls at the left edge, in order.
+	Left []ToolbarItem[A]
+
+	// Right are the controls at the right edge, in order. A toolbar with nothing in either is a mistake.
+	Right []ToolbarItem[A]
+}
+
+// items are the controls, the left ones first, with where the right ones start.
+func (t Toolbar[A]) items() []ToolbarItem[A] {
+	return append(append([]ToolbarItem[A](nil), t.Left...), t.Right...)
 }
 
 // ToolbarItem is a control of a [Toolbar] of arguments A: an [Action] or a [Link] of A, or an accessor of A with a
@@ -56,21 +73,24 @@ type toolbarButton interface {
 var _ PageBody = Toolbar[struct{}]{}
 
 func (t Toolbar[A]) validateBody(v *bodyValidator) {
-	if len(t.Items) == 0 {
-		v.add("a Toolbar has no Items", "List the controls it is for: an Action, a Link, or an accessor with a Store.")
+	if len(t.Left)+len(t.Right) == 0 {
+		v.add("a Toolbar has no controls", "Put the controls it is for in Left or in Right: an Action, a Link, or an accessor with a Store.")
 	}
 	if v.argType != nil && v.argType != reflect.TypeFor[A]() {
 		v.add(fmt.Sprintf("a Toolbar of %s is on a page that takes %s", typeName(reflect.TypeFor[A]()), v.args),
 			"A Toolbar is about the arguments of the page it is on: declare it as a Toolbar of that type.")
 	}
 	seen := map[string]bool{}
-	for i, item := range t.Items {
-		at := fmt.Sprintf("Toolbar.Items[%d]", i)
+	for i, item := range t.items() {
+		at := fmt.Sprintf("Toolbar.Left[%d]", i)
+		if i >= len(t.Left) {
+			at = fmt.Sprintf("Toolbar.Right[%d]", i-len(t.Left))
+		}
 		switch it := any(item).(type) {
 		case toolbarButton:
 			it.validateButton(v, at)
 		case Accessor[A]:
-			validateAccessor[A](v, it, at, accessorSite{where: "Toolbar.Items", uniqueLbl: true}, seen)
+			validateAccessor[A](v, it, at, accessorSite{where: "Toolbar", uniqueLbl: true}, seen)
 			if lowerAccessor[A](it, "t").Set == nil {
 				v.add(at+" has no Store", "An input in a toolbar changes the page's arguments: set Store to write the value to them.")
 			}
@@ -81,8 +101,8 @@ func (t Toolbar[A]) validateBody(v *bodyValidator) {
 }
 
 func (t Toolbar[A]) lowerBody(at ir.Addr) ir.Node {
-	out := &ir.Toolbar{At: at, Bind: bindToolbar[A]}
-	for i, item := range t.Items {
+	out := &ir.Toolbar{At: at, Bind: bindToolbar[A], RightFrom: len(t.Left)}
+	for i, item := range t.items() {
 		switch it := any(item).(type) {
 		case toolbarButton:
 			out.Items = append(out.Items, it.toolbarButton())
