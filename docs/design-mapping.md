@@ -33,6 +33,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
+| `Toolbar` | A row of controls with no frame: buttons, links and inputs for the page's arguments, wrapping, with the buttons and the inputs' bottoms aligned |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
@@ -387,6 +388,14 @@ integer.
 `Form.Submit` renders as the primary button in the panel footer.
 `Table.BulkActions` render in the selection action bar. Destructive actions take the
 critical role.
+
+### `Toolbar` → controls for the page
+
+A button is the same button as a form's, in the same three roles, small, with the same disabled-with-a-reason when its `Guard`
+refuses. A `Link` in a toolbar is the same button as an anchor. An input is the accessor's own input under its label, with
+the rules in the popover beside it; the inputs of a toolbar are not in the form of the buttons but have a form of their own, by
+the `form` attribute, so that they can be in any order among them. That form is a GET to the page with the rest of the
+address, so without script the visitor has an *Apply* button, and with script a change is applied by itself.
 
 ### `Table.BulkActions` → checkboxes that only exist when declared
 

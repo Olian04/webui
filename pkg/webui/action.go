@@ -77,6 +77,14 @@ func lowerActionWith[S, M any](a Action[S], arg func(any) S) *ir.Action {
 	return out
 }
 
+func (Action[M]) toolbarItem(M) {}
+
+func (a Action[M]) validateButton(v *bodyValidator, at string) { validateAction(v, at, a, true) }
+
+func (a Action[M]) toolbarButton() ir.ToolbarItem {
+	return ir.ToolbarItem{Label: a.Label, Role: ir.Role(a.Role), Action: lowerAction(a)}
+}
+
 func lowerAction[M any](a Action[M]) *ir.Action {
 	return lowerActionWith[M, M](a, func(s any) M { return s.(M) })
 }

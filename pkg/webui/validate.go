@@ -69,9 +69,10 @@ func (a App) collectFacts() *facts {
 // bodyValidator carries one page's coordinates so every error from anywhere in
 // its body names the page.
 type bodyValidator struct {
-	page  string // Path
-	args  string // argument type name
-	facts *facts
+	page    string // Path
+	args    string // argument type name
+	argType reflect.Type
+	facts   *facts
 
 	errs []CompileError
 

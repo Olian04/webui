@@ -164,7 +164,7 @@ var (
 func (p Page[A]) validatePage(f *facts) []CompileError {
 	typ := reflect.TypeFor[A]()
 	path := string(p.Path)
-	v := &bodyValidator{page: path, args: typeName(typ), facts: f}
+	v := &bodyValidator{page: path, args: typeName(typ), argType: typ, facts: f}
 
 	if detail, fix := validatePath(path); detail != "" {
 		v.add(detail, fix)

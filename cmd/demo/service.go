@@ -143,6 +143,26 @@ func newService() *Service {
 	return s
 }
 
+// AddDevice is what the form that creates a device saves: it gets an id of its own, and has seen nothing yet.
+func (s *Service) AddDevice(d Device) Device {
+	s.mu.Lock()
+	d.ID = fmt.Sprintf("dev_new%02d", len(s.devices)-36)
+	d.Duration, d.LastSeen = 60, int(epoch.Unix())
+	s.devices = append(s.devices, d)
+	s.mu.Unlock()
+	s.record("created device", d.ID)
+	return d
+}
+
+// Sync is what a toolbar's button does: it asks every device for what it has, which is nothing to wait for here.
+func (s *Service) Sync() int {
+	s.mu.Lock()
+	n := len(s.devices)
+	s.mu.Unlock()
+	s.record("synced devices", fmt.Sprintf("%d devices", n))
+	return n
+}
+
 // record adds to the audit trail, newest first. The caller holds no lock.
 func (s *Service) record(action, target string) {
 	s.mu.Lock()

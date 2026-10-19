@@ -93,6 +93,9 @@ type InputProps struct {
 	// Class is a class of the caller's own, besides the input's.
 	Class string
 
+	// Form is the id of the form the input belongs to, when it is not the one it is inside of.
+	Form string
+
 	// Validity is what the browser says for each way the value can fail a constraint, as JSON by the name of the
 	// property of the control's ValidityState (valueMissing, patternMismatch, ...), for script to give to
 	// setCustomValidity. Title is what a value that matches the pattern looks like, which a browser says after its own
@@ -152,6 +155,9 @@ templ Input(p InputProps) {
 		if p.Parts != "" {
 			data-parts={ p.Parts }
 		}
+		if p.Form != "" {
+			form={ p.Form }
+		}
 		if p.Invalid {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
@@ -182,6 +188,7 @@ type SelectProps struct {
 	Required bool
 	Invalid  bool
 	Validity string // as for an Input
+	Form     string // as for an Input
 }
 
 // size is how many options a list shows before it scrolls.
@@ -206,6 +213,9 @@ templ Select(p SelectProps) {
 		if p.Multi {
 			multiple
 			size={ p.size() }
+		}
+		if p.Form != "" {
+			form={ p.Form }
 		}
 		if p.Invalid {
 			aria-invalid="true"

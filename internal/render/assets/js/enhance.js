@@ -671,6 +671,23 @@
     }
   });
 
+  // The inputs of a toolbar are the page's arguments: each belongs to a form of its own, which goes back to the page with what
+  // was given, and is applied when an input changes, as the Apply button does without script. A control that was just edited by
+  // script, such as a slider's number, does not say it changed, so the range that moved it does.
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    var form = el.form;
+    if (form && form.hasAttribute('data-toolbar-form') && el.name) {
+      if (form.reportValidity()) form.requestSubmit();
+      return;
+    }
+    var box = el.closest && el.closest('[data-toolbar] [data-range]');
+    var number = box && box.querySelector('input[type="number"]');
+    if (number && el.type === 'range' && number.form && number.form.hasAttribute('data-toolbar-form') && number.form.reportValidity()) {
+      number.form.requestSubmit();
+    }
+  });
+
   // A slider is a number input with a range beside it, which only moves the number: the number is what is submitted. The
   // range shows the number while it moves, with the decimals of its step, which is how the server shows a value that was
   // loaded; and the number moves the range when it is typed in.

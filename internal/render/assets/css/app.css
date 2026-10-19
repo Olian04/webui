@@ -1260,6 +1260,29 @@ html:not(.js) .actionbar .dim {
 .panel-foot.end {
   justify-content: flex-end;
 }
+/* A toolbar is a row of controls with no frame: its buttons, links and inputs wrap, with the baseline of the inputs'
+   bottoms, since an input has a label above it and a button has none. The form that posts its buttons is only a wrapper,
+   and the one that applies its inputs is drawn by them, from wherever they are. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+}
+.toolbar > form {
+  display: contents;
+}
+.toolbar .field {
+  margin-bottom: 0;
+  min-width: 200px;
+}
+.toolbar-args {
+  display: none;
+}
+/* With script an input applies itself when it changes, so the button is only for a page without. */
+html.js .toolbar-apply {
+  display: none;
+}
 @media (max-width: 760px) {
   .field-row {
     grid-template-columns: 1fr;
