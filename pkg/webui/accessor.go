@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -412,8 +413,12 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) string")
 		if p := a.Rules.Pattern; p != nil {
 			if _, err := rules.Compile(p.Expr, p.Message); err != nil {
-				v.add(fmt.Sprintf("%s: %v", at, err),
-					"Rewrite the pattern in RE2 syntax; Go does not support lookahead or backreferences.")
+				fix := "Rewrite the pattern in RE2 syntax."
+				var pe *rules.PatternError
+				if errors.As(err, &pe) {
+					fix = pe.Fix
+				}
+				v.add(fmt.Sprintf("%s: %v", at, err), fix)
 			}
 		}
 		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {

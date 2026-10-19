@@ -17,13 +17,19 @@ import (
 )
 
 // Compile builds an anchored Pattern. Go's regexp is RE2: lookahead and backreferences
-// are rejected, which the error says rather than "invalid regex".
+// are rejected, and so is anything else it cannot read, which the error, a [PatternError], says in terms of the pattern
+// and what to write instead, rather than "invalid regex".
 func Compile(expr, message string) (*ir.Pattern, error) {
+	// The pattern alone first, so that what is reported is about what was written, and so that a pattern that is
+	// not balanced cannot close the group it is put in and change what is anchored ("a)|(b" is not a pattern).
+	if _, err := regexp.Compile(expr); err != nil {
+		return nil, explain(expr, err)
+	}
 	// Anchored, because an HTML pattern attribute must match the whole value
 	// and the server has to reach the same verdict as the browser.
 	re, err := regexp.Compile(`^(?:` + expr + `)$`)
 	if err != nil {
-		return nil, fmt.Errorf("pattern %q is not valid RE2 (no lookahead or backreferences): %w", expr, err)
+		return nil, explain(expr, err)
 	}
 	return &ir.Pattern{Expr: re, Source: expr, Message: message}, nil
 }
