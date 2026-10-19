@@ -59,6 +59,7 @@ var (
 		Load:    func(d Device) []string { return d.Tags },
 		Store:   func(d *Device, v []string) { d.Tags = v },
 		Multi:   true,
+		NoSort:  true, // a list of words has no order to sort by
 		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy", Tone: webui.ToneWarning}, {Value: "staging"}},
 	}
 	Site = webui.String[Device]{
@@ -229,9 +230,11 @@ var Events = webui.Table[Event]{
 }
 
 var (
-	EventTime   = webui.String[Event]{Label: "Time", Load: func(e Event) string { return e.At }}
-	EventKind   = webui.String[Event]{Label: "Kind", Load: func(e Event) string { return e.Kind }}
-	EventDetail = webui.String[Event]{Label: "Detail", Load: func(e Event) string { return e.Detail }}
+	EventTime = webui.String[Event]{Label: "Time", Load: func(e Event) string { return e.At }}
+	EventKind = webui.String[Event]{Label: "Kind", Load: func(e Event) string { return e.Kind }}
+	// NoSort leaves a column out of the table's sorting, and NoFilter out of its filters: free text that is read and not
+	// ordered by has no use for a sort link.
+	EventDetail = webui.String[Event]{Label: "Detail", NoSort: true, Load: func(e Event) string { return e.Detail }}
 )
 
 // boundsOf is a table's numeric filters as the service takes them.

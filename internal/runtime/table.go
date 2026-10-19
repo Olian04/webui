@@ -51,7 +51,7 @@ func queryOf(n *ir.Table, raw map[string]string) ir.Query {
 // column the table does not have is no sort.
 func sortOf(n *ir.Table, raw map[string]string) (key string, desc bool) {
 	key = raw[args.ViewKey(n.ID, "sort")]
-	if key == "" || !slices.ContainsFunc(n.Columns, func(col ir.Field) bool { return col.Key == key }) {
+	if key == "" || !slices.ContainsFunc(n.Columns, func(col ir.Field) bool { return col.Key == key && !col.NoSort }) {
 		return "", false
 	}
 	return key, raw[args.ViewKey(n.ID, "desc")] == "true"
@@ -73,7 +73,7 @@ const maxFilterChars = 200
 func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 	var out map[string][]string
 	for _, col := range n.Columns {
-		if col.Key == "" || col.Ranged() {
+		if col.Key == "" || col.NoFilter || col.Ranged() {
 			continue
 		}
 		value := raw[args.FilterKey(n.ID, col.Key)]
@@ -121,7 +121,7 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 func rangesOf(n *ir.Table, raw map[string]string) map[string]ir.Range {
 	var out map[string]ir.Range
 	for _, col := range n.Columns {
-		if col.Key == "" || !col.Ranged() {
+		if col.Key == "" || col.NoFilter || !col.Ranged() {
 			continue
 		}
 		loKey, hiKey := args.RangeKeys(n.ID, col.Key)

@@ -187,14 +187,14 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 			} else {
 				keys = append(keys, args.ViewKey(id, "offset"))
 			}
-			if slices.ContainsFunc(node.Columns, func(col ir.Field) bool { return col.Key != "" }) {
+			if slices.ContainsFunc(node.Columns, func(col ir.Field) bool { return col.Key != "" && !col.NoSort }) {
 				keys = append(keys, args.ViewKey(id, "sort"), args.ViewKey(id, "desc"))
 			}
 			if node.Feed {
 				return // one sequence: nothing to filter
 			}
 			for _, col := range node.Columns {
-				if col.Key == "" {
+				if col.Key == "" || col.NoFilter {
 					continue
 				}
 				if col.Ranged() {

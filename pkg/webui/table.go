@@ -67,7 +67,9 @@ type Window[M any] struct {
 
 // Table is a leaf that lists rows of a model M, one row to a line.
 //
-// Every column header sorts the table and has a filter beside it. Where the rows
+// Every column header sorts the table and has a filter beside it, unless the column says NoSort or NoFilter, which
+// leave it out of the sorting or the filters: its header has no link or no menu, and an address that asks for
+// one is ignored, so [Query] never carries it. Where the rows
 // come from is Rows, Load or Feed, one of the three. Rows suits a set small enough to
 // list in full. Load and Feed suit a set too large for that, which the source pages:
 // Load when it pages by offset and can sort and filter on request, and Feed when it

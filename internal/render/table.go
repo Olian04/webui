@@ -83,11 +83,11 @@ func (r *Renderer) columns(v TableView) []columnView {
 		if (f.Kind == ir.KindInt || f.Kind == ir.KindFloat) && f.Display != ir.DisplayTime {
 			col.Align = c.AlignEnd
 		}
-		if f.Key != "" {
+		if f.Key != "" && !f.NoSort {
 			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
-			if !v.Node.Feed { // a feed is one sequence, which there is nothing to filter
-				col.Filter = r.filterMenu(v, f)
-			}
+		}
+		if f.Key != "" && !f.NoFilter && !v.Node.Feed { // a feed is one sequence, which there is nothing to filter
+			col.Filter = r.filterMenu(v, f)
 		}
 		out[i] = col
 	}
@@ -479,7 +479,7 @@ const (
 // columnNeed is what one column needs: the more of what its header takes and what its cell takes.
 func columnNeed(f ir.Field) float64 {
 	header := float64(utf8.RuneCountInString(f.Label))*letterPx + cellPx
-	if f.Key != "" {
+	if f.Key != "" && (!f.NoSort || !f.NoFilter) {
 		header += headerPx
 	}
 	cell := float64(textPx)
