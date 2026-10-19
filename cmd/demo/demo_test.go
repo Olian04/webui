@@ -389,16 +389,22 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 
 func TestABrokenAppServesItsOwnErrors(t *testing.T) {
 	a := app
-	a.Pages = append(append(webui.Pages{}, a.Pages...), Broken)
+	a.Pages = append(append(webui.Pages{}, a.Pages...), brokenPages...)
 	h, err := a.Compile("/admin")
 	assert.Error(t, err)
 	rec := get(h, "/admin/anything")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 	assert.Contains(t, rec.Body.String(), "Failed to compile")
 	assert.Contains(t, rec.Body.String(), "field When has unsupported type map[string]int")
-	// One problem: the field is in the path, so the path is not also said to have no field for it.
-	assert.Contains(t, rec.Body.String(), "1 problem in this app")
-	assert.False(t, strings.Contains(rec.Body.String(), "the path declares"))
+	// One problem for each of the three pages, each for a reason of its own: the first field is in the path, so the
+	// path is not also said to have no field for it.
+	body := rec.Body.String()
+	assert.Contains(t, body, "3 problems in this app")
+	assert.False(t, strings.Contains(body, "the path declares"))
+	assert.Contains(t, body, `page &#34;/broken/source&#34;`)
+	assert.Contains(t, body, "a Table has more than one of Rows, Load and Feed")
+	assert.Contains(t, body, `page &#34;/broken/pattern&#34;`)
+	assert.Contains(t, body, "is not valid RE2 (no lookahead or backreferences)")
 }
 
 func cancelHref(t *testing.T, h http.Handler, target string) string {

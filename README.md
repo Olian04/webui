@@ -99,7 +99,7 @@ library end to end:
 git clone https://github.com/Olian04/webui && cd webui
 go run ./cmd/demo                    # http://localhost:7689/admin/ (you choose a viewer or an editor first)
 go run ./cmd/demo -accent '#2f9e8f'  # override the theme's accent colour
-go run ./cmd/demo -broken            # the failed-to-compile page
+go run ./cmd/demo -broken            # the failed-to-compile page: three pages, broken in three ways
 ```
 
 ## Documentation
