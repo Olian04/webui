@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -138,4 +139,41 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s = service.Settings()
 	assert.True(t, s.Burst == nil && s.Quota == nil && s.Paused == nil)
+}
+
+// Input gives a String the input of its kind, and the server holds the value to it; DateOnly makes a moment a day.
+func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *testing.T) {
+	h := handler(t)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.settings.Contact, service.settings.OnCall, service.settings.Webhook, service.settings.Label, service.settings.CertEnds = "oncall@example.com", "", "", "#2f9e8f", int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())
+		service.mu.Unlock()
+	})
+
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `type="email" value="oncall@example.com"`)
+	assert.Contains(t, body, `type="tel"`)
+	assert.Contains(t, body, `type="url"`)
+	assert.Contains(t, body, `type="color" value="#2f9e8f"`)
+	assert.Contains(t, body, `type="date" value="2027-01-15"`)
+
+	form := func(contact, webhook string) url.Values {
+		v := ingest("0.5", "60")
+		v.Set("f6_0", contact)
+		v.Set("f7_0", webhook)
+		v.Set("f7_1", "#336699")
+		v.Set("f8", "2027-03-01")
+		return v
+	}
+	rec := post(h, "/admin/settings", form("not an email", "javascript:alert(1)"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), "Enter an email address.")
+	assert.Contains(t, rec.Body.String(), "Enter a web address that starts with http:// or https://.")
+
+	rec = post(h, "/admin/settings", form("ops@example.com", "https://hooks.example.com/x"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	s := service.Settings()
+	assert.Equal(t, s.Contact, "ops@example.com")
+	assert.Equal(t, s.Label, "#336699")
+	assert.Equal(t, s.CertEnds, int(time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 }

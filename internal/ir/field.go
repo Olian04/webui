@@ -88,6 +88,10 @@ type Field struct {
 	// what is submitted is "\n", whatever the browser sent.
 	Multiline bool
 
+	// DateOnly says a moment is a date: the input picks a day, and not a time, and the day is read, shown and stored as midnight
+	// UTC. It is set only for DisplayTime.
+	DateOnly bool
+
 	// Nullable says the value may be absent: Get is "" for none, Num is NaN, an emptied input is set to nothing and not left
 	// as it was, and where it is only read it says so with a dash. A Bool, which is held as a select, is one.
 	Nullable bool
@@ -227,8 +231,23 @@ type Rules struct {
 	// Step is a number that is one of a step from its minimum, such as a slider's, or 0 for any number.
 	Step float64
 
+	// Format is what kind of text a string is, which the browser draws an input of its own for and the server checks, or ""
+	// for text of any kind.
+	Format Format
+
 	Pattern *Pattern
 }
+
+// Format is a kind of text that has an input of its own: its value is the type attribute of the input.
+type Format string
+
+// The formats.
+const (
+	FormatEmail Format = "email"
+	FormatURL   Format = "url"
+	FormatTel   Format = "tel"
+	FormatColor Format = "color"
+)
 
 // Pattern is an expression with the message shown when it fails. It runs twice, in Go on the server and in the
 // browser as the pattern attribute, and Go's regexp and JavaScript's differ, so it is written in the syntax that both

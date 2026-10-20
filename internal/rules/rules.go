@@ -105,6 +105,10 @@ func Validity(r ir.Rules, kind ir.ValueKind) map[string]string {
 	}
 	switch kind {
 	case ir.KindString:
+		// The browser flags a value of an email or a web address input that is not one; the others it does not check.
+		if r.Format == ir.FormatEmail || r.Format == ir.FormatURL {
+			out["typeMismatch"] = formatMessage(r.Format)
+		}
 		if r.MinLen > 0 {
 			out["tooShort"] = msgMinLen(r.MinLen)
 		}
@@ -193,6 +197,9 @@ func CheckSelect(f ir.Field, raw string) string {
 }
 
 func checkString(r ir.Rules, s string) string {
+	if msg := checkFormat(r.Format, s); msg != "" {
+		return msg
+	}
 	n := utf8.RuneCountInString(s)
 	if r.MinLen > 0 && n < r.MinLen {
 		return msgMinLen(r.MinLen)

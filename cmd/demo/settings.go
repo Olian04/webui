@@ -76,6 +76,36 @@ var (
 		Load:  func(s Settings) *bool { return s.Paused },
 		Store: func(s *Settings, v *bool) { s.Paused = v },
 	}
+	// Input says what kind of text a String is, which gives it an input of its own (the right keyboard on a phone, a picker for
+	// a color) and is checked again on the server. An email is held to what the browser holds it to; a web address to more, an
+	// http or https address, since what is stored will be linked.
+	Contact = webui.String[Settings]{
+		Label: "Contact email", Input: webui.InputEmail,
+		Load:  func(s Settings) string { return s.Contact },
+		Store: func(s *Settings, v string) { s.Contact = v },
+	}
+	OnCall = webui.String[Settings]{
+		Label: "On-call phone", Input: webui.InputTel,
+		Load:  func(s Settings) string { return s.OnCall },
+		Store: func(s *Settings, v string) { s.OnCall = v },
+	}
+	Webhook = webui.String[Settings]{
+		Label: "Alert webhook", Input: webui.InputURL, Placeholder: "https://hooks.example.com/…",
+		Load:  func(s Settings) string { return s.Webhook },
+		Store: func(s *Settings, v string) { s.Webhook = v },
+	}
+	// A color is picked, and is "#rrggbb".
+	Label = webui.String[Settings]{
+		Label: "Graph colour", Input: webui.InputColor,
+		Load:  func(s Settings) string { return s.Label },
+		Store: func(s *Settings, v string) { s.Label = v },
+	}
+	// DateOnly makes a moment a date: the input picks a day, and it is stored as midnight UTC.
+	CertEnds = webui.Timestamp[Settings]{
+		Label: "Certificate ends", DateOnly: true,
+		Load:  func(s Settings) int { return s.CertEnds },
+		Store: func(s *Settings, v int) { s.CertEnds = v },
+	}
 	// A Timestamp with a Store is a date and time picker, in UTC, that stores Unix
 	// seconds. A Datetime stores an ISO 8601 string the same way.
 	Maintenance = webui.Timestamp[Settings]{
@@ -105,6 +135,9 @@ var Ingest = webui.Page[webui.NoArgs]{
 			APIKey,
 			webui.Group[Settings]{Burst, Quota},
 			Paused,
+			webui.Group[Settings]{Contact, OnCall},
+			webui.Group[Settings]{Webhook, Label},
+			CertEnds,
 		},
 		Submit: SaveIngest,
 	},
