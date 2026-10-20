@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/rules"
@@ -87,6 +88,11 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string) (any
 			continue
 		}
 		raw := values[f.Name]
+		if f.Multiline {
+			// A browser sends a line break of a text area as CRLF, which counts as two characters where its own
+			// maxlength counts one: the text is what it reads as, and is stored so.
+			raw = strings.ReplaceAll(raw, "\r\n", "\n")
+		}
 		if f.Display == ir.DisplaySelect {
 			if msg := rules.CheckSelect(f, raw); msg != "" {
 				errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})

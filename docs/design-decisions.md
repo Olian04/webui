@@ -200,6 +200,17 @@ design element.
   options (`Open`), which a `<select>` cannot take and which would be a combobox for one value and a tag input for several; a
   select of several values that grows with what was entered is the case that would need it.
 
+- **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
+  type, so its rules, placeholder and `Store` come with it. What a text area cannot do is refused when the app compiles:
+  it has no `pattern` attribute, and the text rules reach the browser as one, so a `Pattern` or a text rule on a multiline
+  field is an error (check the text in `Run`), and so is one in a toolbar, whose inputs are one line each in the address.
+  `Required`, `MinLen` and `MaxLen` stay and are the browser's too. A browser sends a line break of a text area as CRLF, which
+  its own `maxlength` counts as one character and `utf8.RuneCountInString` as two, so a text that the page accepted could be
+  refused by the server; `bindFunc` reads CRLF as `\n` before it checks and stores, which is also what an app wants to
+  handle. A text that wants highlighting, a language service or a schema is an `Editor`, not this. In a table the cell
+  keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
+  read the text as it is.
+
 ## Actions and outcomes
 
 - `Run` says how it ended with an `Outcome`, by intent, not by assembling a

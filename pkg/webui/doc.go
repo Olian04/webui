@@ -265,6 +265,10 @@
 // Submit is an [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
 //
+// A [String] with Multiline set is a text area, for text of more than one line. Its rules are Required, MinLen and MaxLen;
+// a Pattern and the text rules are one line's and are refused, and a line break is one "\n" character whatever the browser
+// sent, so MaxLen counts what the browser's maxlength counts. In a table the cell shows the first lines.
+//
 // # Text rules and patterns
 //
 // A string field says what its text starts with, ends with and contains, and what it must not:
@@ -287,7 +291,8 @@
 // JavaScript's. A pattern that Go accepts and a browser does not is ignored by the browser without a word, so that the
 // field is not checked in the page at all, and one that both accept can match different values. So a pattern is
 // written in the syntax that both read alike, which has been tried against both, and anything else is an error
-// when [App.Compile] runs, with what to write instead. The syntax is:
+// when [App.Compile] runs, with what to write instead. A program that gets its patterns from somewhere else, such as
+// a schema, asks [ValidatePattern] about each one, and leaves out the ones that are refused. The syntax is:
 //
 //   - A character stands for itself, except the ones with a meaning, \ ^ $ . | ? * + ( ) [ ] { }, which are written with a
 //     backslash when they are meant as themselves: \. for a dot, \( for a parenthesis. A slash and a dash are written as they are.

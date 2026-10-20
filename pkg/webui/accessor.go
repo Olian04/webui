@@ -42,6 +42,13 @@ type String[M any] struct {
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
+
+	// Multiline makes the field a text area, for text of more than one line, such as a description or some JSON. Its
+	// rules are Required, MinLen and MaxLen, which the browser checks too; a Pattern and the text rules are one line's, a
+	// text area has no pattern attribute, and they are a compile error here. A line break is a "\n" whatever the
+	// browser sent. In a table the cell shows the first lines. For a text that wants a code editor, use an [Editor].
+	Multiline bool
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -555,6 +562,16 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {
 			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
 		}
+		if a.Multiline {
+			switch {
+			case a.Rules.Pattern != nil:
+				v.add(at+" is Multiline and has a Pattern", "A text area has no pattern attribute, and a pattern matches one line: remove it, or check the text in Run.")
+			case a.Rules.StartsWith != "" || a.Rules.EndsWith != "" || a.Rules.Contains != "" || a.Rules.NotStartsWith != "" || a.Rules.NotEndsWith != "" || a.Rules.NotContains != "":
+				v.add(at+" is Multiline and has a text rule", "The text rules are checked by the browser as a pattern, which a text area has not: remove them, or check the text in Run.")
+			case site.where == "Toolbar":
+				v.add(at+" is Multiline in a toolbar", "The inputs of a toolbar are the page's arguments, which are one line each in the address.")
+			}
+		}
 		for _, p := range rules.Unsatisfiable(lowerStringRules(a.Rules)) {
 			v.add(at+": "+p[0], p[1])
 		}
@@ -665,7 +682,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := head(name, a.Label, ir.KindString)
-		f.Rules, f.Placeholder = lowerStringRules(a.Rules), a.Placeholder
+		f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules), a.Placeholder, a.Multiline
 		f.Get = func(m any) string { return a.Load(m.(M)) }
 		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
 		f.Unset = unsetter(a.Store)
