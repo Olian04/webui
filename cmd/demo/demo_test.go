@@ -434,6 +434,28 @@ func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 	}
 }
 
+// A device has notes, in a text area: its lines are kept, and a line break is one character whatever the browser sent.
+func TestADevicesNotesAreATextAreaThatKeepsItsLines(t *testing.T) {
+	h := handler(t)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		for i := range service.devices {
+			if service.devices[i].ID == "dev_27c38b" {
+				service.devices[i].Notes = ""
+			}
+		}
+		service.mu.Unlock()
+	})
+	assert.Contains(t, get(h, "/admin/device/dev_27c38b").Body.String(), `<textarea id="p-0-0-f3" class="input textarea" name="f3"`)
+
+	device, _ := service.Device("dev_27c38b")
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f3": {"Looked after by Ines.\r\nCall before a restart."}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	device, _ = service.Device("dev_27c38b")
+	assert.Equal(t, device.Notes, "Looked after by Ines.\nCall before a restart.")
+	assert.Contains(t, get(h, "/admin/device/dev_27c38b").Body.String(), ">\nLooked after by Ines.\nCall before a restart.</textarea>")
+}
+
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	body := get(handler(t), "/admin/system").Body.String()
 	assert.False(t, strings.Contains(body, `type="submit"`))

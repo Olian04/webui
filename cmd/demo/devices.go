@@ -63,6 +63,16 @@ var (
 		NoSort:  true, // a list of words has no order to sort by
 		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy", Tone: webui.ToneWarning}, {Value: "staging"}},
 	}
+	// Multiline is a text area, for text of more than one line: its rules are Required, MinLen and MaxLen, and a line break
+	// is one character whatever the browser sent.
+	Notes = webui.String[Device]{
+		Label:       "Notes",
+		Load:        func(d Device) string { return d.Notes },
+		Store:       func(d *Device, v string) { d.Notes = v },
+		Multiline:   true,
+		Rules:       webui.StringRules{MaxLen: 500},
+		Placeholder: "Who looks after it, and what to know",
+	}
 	Site = webui.String[Device]{
 		Label: "Site",
 		Load:  func(d Device) string { return d.Site },
@@ -192,6 +202,7 @@ var NewDevicePage = webui.Page[webui.NoArgs]{
 			IP,
 			webui.Group[Device]{Status, SiteChoice},
 			Tags,
+			Notes,
 		},
 		Submit: webui.Action[Device]{
 			Label: "Create",
@@ -272,6 +283,7 @@ var DeviceForm = webui.Form[Device]{
 		webui.Group[Device]{DeviceID, IP},
 		webui.Group[Device]{Status, SiteChoice}, // choices from a list: one that is written out, and one that is read when the page is asked for
 		Tags,                                    // a list to tick several of
+		Notes,                                   // a text area
 		Rate,                                    // a slider with no Store is a bar
 		LastSeen,
 	},
