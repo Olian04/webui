@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"time"
 
 	"github.com/a-h/templ"
 
@@ -281,9 +282,9 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 }
 
 // pageDoc is the shell fields every response for a page shares.
-func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) render.Doc {
+func (p *Program) pageDoc(ctx context.Context, page *ir.Page, req *Request, content templ.Component) render.Doc {
 	pathVals, query := p.address(page, req)
-	crumbs := p.render.Crumbs(page, pathVals)
+	crumbs := p.render.Crumbs(page, pathVals, p.crumbLabels(ctx, page, req, pathVals))
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
@@ -298,7 +299,7 @@ func (p *Program) pageDoc(page *ir.Page, req *Request, content templ.Component) 
 }
 
 func (p *Program) writePage(w http.ResponseWriter, r *http.Request, status int, page *ir.Page, req *Request, content templ.Component, toasts ...render.Toast) {
-	doc := p.pageDoc(page, req, content)
+	doc := p.pageDoc(r.Context(), page, req, content)
 	doc.Toasts = toasts
 	var shell *shellInputs
 	if req != nil {
@@ -326,7 +327,7 @@ func (p *Program) state(w http.ResponseWriter, r *http.Request, status int, page
 			req = &Request{program: p, Args: decoded, Raw: raw}
 		}
 	}
-	p.write(w, r, status, p.pageDoc(page, req, content))
+	p.write(w, r, status, p.pageDoc(r.Context(), page, req, content))
 }
 
 // fail is a load or render failure: the cause is logged and never shown.
@@ -340,4 +341,49 @@ func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 		return
 	}
 	p.writePage(w, r, http.StatusInternalServerError, page, req, render.ServerError())
+}
+
+// crumbTimeout bounds the Crumb funcs of one page, all of them together: they are on the way of every full page.
+const crumbTimeout = 2 * time.Second
+
+// crumbLabels asks the pages that are crumbs of this one, and have a Crumb, what theirs say: the page itself
+// with the arguments it was opened with, a parent with the arguments the path gives it. A Crumb that fails, panics,
+// is too slow or says nothing leaves the segment's own words, since a breadcrumb must not be what takes a page
+// down. A parent whose Guard would refuse the visitor says nothing either: what a Crumb knows is not for them.
+// It is nil when no page of the app has a Crumb.
+func (p *Program) crumbLabels(ctx context.Context, page *ir.Page, req *Request, path map[string]string) func(prefix string) string {
+	if !p.hasCrumbs {
+		return nil
+	}
+	deadline := time.Now().Add(crumbTimeout)
+	return func(prefix string) string {
+		target := p.App.ByPath[prefix]
+		if target == nil || target.Crumb == nil {
+			return ""
+		}
+		var (
+			a   any
+			raw = path
+		)
+		if target == page && req != nil {
+			a, raw = req.Args, req.Raw
+		} else {
+			decoded, err := target.Decode(path)
+			if err != nil {
+				return ""
+			}
+			a = decoded
+		}
+		ctx, cancel := context.WithDeadline(ctx, deadline)
+		defer cancel()
+		rc := p.reqCtx(ctx, a, raw)
+		if target.Guard != nil && target.Guard(rc, a) != nil {
+			return ""
+		}
+		label, err := guarded("Crumb", func() (string, error) { return target.Crumb(rc, a), nil })
+		if err != nil {
+			p.log.Error("webui: a page's Crumb failed, so its crumb says what its path does", "page", target.PathTemplate, "err", err)
+		}
+		return label
+	}
 }

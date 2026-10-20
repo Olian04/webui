@@ -204,3 +204,13 @@ func TestSearchAsksTheDetailPagesThatOfferThemselves(t *testing.T) {
 	assert.True(t, len(alert["Alerts"]) > 0)
 	assert.True(t, strings.HasPrefix(alert["Alerts"][0], "/admin/alert/alt_"))
 }
+
+// A device's crumb is its address, and not the id that the path has; so is the tab title, and a page below it names it so.
+func TestADevicesCrumbIsItsAddressAndNotItsID(t *testing.T) {
+	h := handler(t)
+	d, _ := service.Device("dev_27c38b")
+	body := get(h, "/admin/device/dev_27c38b").Body.String()
+	assert.Contains(t, body, `<span class="cur" aria-current="page">`+d.IP+`</span>`)
+	assert.Contains(t, body, "<title>"+d.IP+" — ")
+	assert.False(t, strings.Contains(body, `aria-current="page">dev_27c38b</span>`))
+}

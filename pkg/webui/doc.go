@@ -76,6 +76,13 @@
 // arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
 // a failure leaves the page drawn without them.
 //
+// A path says its arguments as they are: "/device/dev_27c38b" reads "dev_27c38b" in the breadcrumb and the
+// tab title. A page whose argument is not what a person knows the thing by sets Crumb, a function of its arguments,
+// to say what the crumb reads, such as the device's name. It is also what the page reads as the parent of a page below
+// it, "/device/{id}/log", whose path has all of its arguments. It is called whenever a page is drawn, with a deadline of two seconds for all
+// the crumbs of a page together, and is not called for a parent whose Guard refuses the visitor; a failure, a panic or an empty answer
+// leaves the words of the path.
+//
 // A page whose path is "/" is the landing page, and the brand in the sidebar and the first
 // breadcrumb link to it. Without one they link to where the root would go: the first entry in
 // the navigation the visitor may open, or failing that the first page whose path has no

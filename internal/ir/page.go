@@ -30,6 +30,11 @@ type Page struct {
 	// calls it when it draws a page, so it is bounded and must not be trusted to be quick.
 	NavEntries func(ctx context.Context) ([]NavEntry, error)
 
+	// Crumb is what the page's crumb says for the arguments it has, where the segments of the path would say
+	// them as they are. Nil leaves the crumb to the path. It is called when a page is drawn, so it is bounded and
+	// must not be trusted to be quick; an empty answer is no answer.
+	Crumb func(ctx context.Context, args any) string
+
 	// Search finds the things this page is the page of, by what the visitor typed in the
 	// global search: at most limit of them. Nil means the page is not searched. A hit is checked
 	// against this page's Guard, with the hit's own arguments, before it is offered.

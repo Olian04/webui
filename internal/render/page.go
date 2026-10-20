@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"maps"
 	"strings"
 
@@ -32,11 +33,19 @@ func (r *Renderer) Active(page *ir.Page) string {
 // value it took. A {name...} placeholder, which takes the rest of the path, is a
 // crumb for each of its segments, each linking to this page at that prefix, so a
 // nested folder reads as the folders on the way to it.
-func (r *Renderer) Crumbs(page *ir.Page, path map[string]string) []Crumb {
+//
+// label, when it is given, says what the crumb of a page mounted at a prefix of the path reads, for the
+// pages that have a Crumb, or "" for the segment's own words; it is asked only for a page whose arguments
+// the path has all of, since it could not be asked for the others.
+func (r *Renderer) Crumbs(page *ir.Page, path map[string]string, label func(prefix string) string) []Crumb {
 	crumbs := []Crumb{r.Home()}
 	if page.PathTemplate == "/" {
-		if page.Nav.Label != "" {
-			return append(crumbs, Crumb{Label: page.Nav.Label})
+		words := page.Nav.Label
+		if label != nil {
+			words = cmp.Or(label("/"), words)
+		}
+		if words != "" {
+			return append(crumbs, Crumb{Label: words})
 		}
 		crumbs[0].Href = ""
 		return crumbs
@@ -53,6 +62,9 @@ func (r *Renderer) Crumbs(page *ir.Page, path map[string]string) []Crumb {
 			crumb.Label = path[name]
 		} else if parent := r.app.ByPath[prefix]; parent != nil && parent.Nav.Label != "" {
 			crumb.Label = parent.Nav.Label
+		}
+		if parent := r.app.ByPath[prefix]; parent != nil && label != nil && parent.Crumb != nil && hasAll(prefix, path) {
+			crumb.Label = cmp.Or(label(prefix), crumb.Label)
 		}
 		if parent := r.app.ByPath[prefix]; parent != nil && i < len(segs)-1 && hasAll(prefix, path) {
 			crumb.Href = r.prefix + args.Href(prefix, path, nil)
