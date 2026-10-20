@@ -48,9 +48,9 @@ func showMoment(t time.Time, dateOnly bool) string {
 // datetimeText and datetimeNum are what a Datetime is to the table: the text it
 // shows, and the number it sorts and filters by. Text that is not a moment is shown
 // as written and sorts first.
-func datetimeText(s string) string {
+func datetimeText(s string, day bool) string {
 	if t, dateOnly, ok := readDatetime(s); ok {
-		return showMoment(t, dateOnly)
+		return showMoment(t, dateOnly || day)
 	}
 	return s
 }
@@ -73,11 +73,11 @@ func timestampNum(seconds int) float64 {
 
 // timestampText is a Unix time in seconds as shown. Zero is "not set", and shows as
 // nothing, as an empty Datetime does.
-func timestampText(seconds int) string {
+func timestampText(seconds int, day bool) string {
 	if seconds == 0 {
 		return ""
 	}
-	return showMoment(time.Unix(int64(seconds), 0), false)
+	return showMoment(time.Unix(int64(seconds), 0), day)
 }
 
 // pickedMoment reads what a date and time picker submitted, in UTC. blank is true

@@ -51,6 +51,11 @@ type Settings struct {
 	Burst      *int     // events a second that are let through at once: nil is no limit, which is not the same as none
 	Quota      *float64 // percent of the plan that this collector may use: nil is all of it
 	Paused     *bool    // yes, no, or nil to follow the maintenance window
+	Contact    string   // who is told when something breaks
+	OnCall     string   // the number they are reached on
+	Webhook    string   // where alerts are posted
+	Label      string   // the colour its graphs are drawn in, "#rrggbb"
+	CertEnds   int      // Unix seconds: midnight UTC of the day the certificate stops being valid
 }
 
 type RetentionPolicy struct{ Days int }
@@ -106,9 +111,10 @@ var service = newService()
 
 func newService() *Service {
 	s := &Service{
-		config:    Config{Current: seedConfig, Deployed: seedConfig},
-		rule:      seedRule,
-		settings:  Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix())},
+		config: Config{Current: seedConfig, Deployed: seedConfig},
+		rule:   seedRule,
+		settings: Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix()),
+			Contact: "oncall@example.com", Label: "#2f9e8f", CertEnds: int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
 	}

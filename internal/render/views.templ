@@ -603,11 +603,11 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 				<div class="filter-range moment">
 					<label>
 						<span>From</span>
-						<input class="input" type="datetime-local" name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
+						<input class="input" type={ fv.boundType() } name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
 					</label>
 					<label>
 						<span>To</span>
-						<input class="input" type="datetime-local" name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
+						<input class="input" type={ fv.boundType() } name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
 					</label>
 					<span class="filter-note">UTC</span>
 				</div>

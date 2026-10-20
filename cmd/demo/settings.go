@@ -76,6 +76,36 @@ var (
 		Load:  func(s Settings) *bool { return s.Paused },
 		Store: func(s *Settings, v *bool) { s.Paused = v },
 	}
+	// Email, Phone, Website and ColorPicker are strings of a kind that has an input of its own (the right keyboard on a phone,
+	// a picker for a colour), checked again on the server. An email is held to what the browser holds it to; a web address
+	// to more, an http or https address, since what is stored will be linked.
+	Contact = webui.Email[Settings]{
+		Label: "Contact email",
+		Load:  func(s Settings) string { return s.Contact },
+		Store: func(s *Settings, v string) { s.Contact = v },
+	}
+	OnCall = webui.Phone[Settings]{
+		Label: "On-call phone",
+		Load:  func(s Settings) string { return s.OnCall },
+		Store: func(s *Settings, v string) { s.OnCall = v },
+	}
+	Webhook = webui.Website[Settings]{
+		Label: "Alert webhook", Placeholder: "https://hooks.example.com/…",
+		Load:  func(s Settings) string { return s.Webhook },
+		Store: func(s *Settings, v string) { s.Webhook = v },
+	}
+	// A color is picked, and is "#rrggbb". It has no rules: a picker cannot be empty or be of any other shape.
+	Label = webui.ColorPicker[Settings]{
+		Label: "Graph colour",
+		Load:  func(s Settings) string { return s.Label },
+		Store: func(s *Settings, v string) { s.Label = v },
+	}
+	// DateOnly makes a moment a date: the input picks a day, and it is stored as midnight UTC.
+	CertEnds = webui.Timestamp[Settings]{
+		Label: "Certificate ends", DateOnly: true,
+		Load:  func(s Settings) int { return s.CertEnds },
+		Store: func(s *Settings, v int) { s.CertEnds = v },
+	}
 	// A Timestamp with a Store is a date and time picker, in UTC, that stores Unix
 	// seconds. A Datetime stores an ISO 8601 string the same way.
 	Maintenance = webui.Timestamp[Settings]{
@@ -105,6 +135,9 @@ var Ingest = webui.Page[webui.NoArgs]{
 			APIKey,
 			webui.Group[Settings]{Burst, Quota},
 			Paused,
+			webui.Group[Settings]{Contact, OnCall},
+			webui.Group[Settings]{Webhook, Label},
+			CertEnds,
 		},
 		Submit: SaveIngest,
 	},

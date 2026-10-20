@@ -55,6 +55,8 @@ into existence, and nothing is configured twice.
 | accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it, unless the accessor says `NoSort` or `NoFilter` |
 | `Select.Options` | The values a select can hold, in order, each with what it says and its tone. In a `Rows` table a select column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Options`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
+| `Email`, `Phone`, `Website`, `ColorPicker` | A string of a kind that has an input of its own: `type="email"`, `"tel"`, `"url"` or `"color"`. The browser flags an email or a web address that is not one (`typeMismatch`, in the server's words, through `setCustomValidity`); the server checks all four. They have a `String`'s rules and `Placeholder`; a `ColorPicker` has neither, since it is the browser's picker, and an empty one shows black. A `Website` says "A web address, http or https" in the rules popover, since the server is stricter than the browser. Read, they are text: `URL` is the link |
+| `Datetime.DateOnly`, `Timestamp.DateOnly` | A date: `type="date"` with no `step`, "Date in UTC" in the rules popover, shown in a table and a form as "2026-10-09", and a table's filter bounds are date inputs. The stored value is midnight UTC (Unix seconds, or the date alone for a `Datetime`) |
 | `Rules` | HTML validation attributes on the input, and the hint beneath it |
 | `Select` | A choice from a list of options. Read, in a status column or beside its label in a form, it is a badge for each value, in its option's tone. With a `Store` it is a drop-down list (a `<select>`, so it needs no script), or with `Multi` a list to choose several from; `Required` refuses nothing chosen, and a value that is not one of the options is refused on the server |
 | `URL` | A link, only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
@@ -341,7 +343,7 @@ as their own kinds. The links carry `download`, so the page's script leaves them
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Int`, `Float`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`, `OptionalInt`, `OptionalFloat`, `OptionalSlider`, `Bool`) appears in a `Form` and in a `Table`
+An accessor (`String`, `Email`, `Phone`, `Website`, `ColorPicker`, `Int`, `Float`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`, `OptionalInt`, `OptionalFloat`, `OptionalSlider`, `Bool`) appears in a `Form` and in a `Table`
 and renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |

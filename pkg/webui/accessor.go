@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -382,7 +381,7 @@ type Datetime[M any] struct {
 	// Load reads the ISO 8601 string from the model. An empty string is no value.
 	Load func(M) string
 
-	// Store writes the chosen moment to the model, as RFC 3339 in UTC. Without it the
+	// Store writes the chosen moment to the model, as RFC 3339 in UTC (or the date, with DateOnly). Without it the
 	// field is read-only.
 	Store func(*M, string)
 
@@ -392,6 +391,12 @@ type Datetime[M any] struct {
 	// moment, and its <time> element and the export still hold it. A value that is empty or is
 	// not a moment is not handed to Format: it shows as it does without one.
 	Format func(time.Time) string
+
+	// DateOnly makes the field a date: the input picks a day, with no time of day, and it is shown and filtered as one. A
+	// day is midnight UTC, so what is stored is that moment as "2006-01-02", the date alone. A value that Load returns with a time of day
+	// is shown as the day it is on.
+	DateOnly bool
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -427,6 +432,12 @@ type Timestamp[M any] struct {
 	// is handed the moment in UTC, and is not handed zero, which is "not set" and shows as
 	// nothing.
 	Format func(time.Time) string
+
+	// DateOnly makes the field a date: the input picks a day, with no time of day, and it is shown and filtered as one. A
+	// day is midnight UTC, so what is stored is that moment in Unix seconds. A value that Load returns with a time of day
+	// is shown as the day it is on.
+	DateOnly bool
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -520,6 +531,10 @@ var (
 	_ Accessor[struct{}] = OptionalFloat[struct{}]{}
 	_ Accessor[struct{}] = OptionalSlider[struct{}]{}
 	_ Accessor[struct{}] = Bool[struct{}]{}
+	_ Accessor[struct{}] = Email[struct{}]{}
+	_ Accessor[struct{}] = Phone[struct{}]{}
+	_ Accessor[struct{}] = Website[struct{}]{}
+	_ Accessor[struct{}] = ColorPicker[struct{}]{}
 )
 
 // ---------------------------------------------------------------- validate
@@ -561,19 +576,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		v.add(at+" is nil", "Remove it or declare an accessor.")
 	case String[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
-		if p := a.Rules.Pattern; p != nil {
-			if _, err := rules.Compile(p.Expr, p.Message); err != nil {
-				fix := "Rewrite the pattern in RE2 syntax."
-				var pe *rules.PatternError
-				if errors.As(err, &pe) {
-					fix = pe.Fix
-				}
-				v.add(fmt.Sprintf("%s: %v", at, err), fix)
-			}
-		}
-		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {
-			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
-		}
+		validateTextRules(v, at, a.Rules)
 		if a.Secret {
 			switch {
 			case a.Store == nil:
@@ -598,9 +601,17 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 				v.add(at+" is Multiline in a toolbar", "The inputs of a toolbar are the page's arguments, which are one line each in the address.")
 			}
 		}
-		for _, p := range rules.Unsatisfiable(lowerStringRules(a.Rules)) {
-			v.add(at+": "+p[0], p[1])
-		}
+	case Email[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case Phone[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case Website[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case ColorPicker[M]:
+		common(a.Label, a.Load == nil, "func(M) string, returning \"#rrggbb\"")
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -649,7 +660,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
+			"Use String, Email, Phone, Website, ColorPicker, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
 	}
 }
 
@@ -808,8 +819,8 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Datetime[M]:
 		f := head(name, a.Label, ir.KindString)
-		f.Display = ir.DisplayTime
-		f.Get = func(m any) string { return datetimeText(a.Load(m.(M))) }
+		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly
+		f.Get = func(m any) string { return datetimeText(a.Load(m.(M)), a.DateOnly) }
 		f.Num = func(m any) float64 { return datetimeNum(a.Load(m.(M))) }
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
 			t, _, ok := readDatetime(a.Load(m.(M))) // not a moment: as written
@@ -820,14 +831,17 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			if err != nil || blank {
 				return "", err // cleared: stored as nothing
 			}
+			if a.DateOnly {
+				return t.Format(dayLayout), nil
+			}
 			return t.Format(time.RFC3339), nil
 		})
 		f.Unset = unsetter(a.Store)
 		return f
 	case Timestamp[M]:
 		f := head(name, a.Label, ir.KindString)
-		f.Display = ir.DisplayTime
-		f.Get = func(m any) string { return timestampText(a.Load(m.(M))) }
+		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly
+		f.Get = func(m any) string { return timestampText(a.Load(m.(M)), a.DateOnly) }
 		f.Num = func(m any) float64 { return timestampNum(a.Load(m.(M))) }
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
 			seconds := a.Load(m.(M)) // zero is not set: shown as nothing
@@ -838,10 +852,21 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			if err != nil || blank {
 				return 0, err // cleared: stored as not set
 			}
+			if a.DateOnly {
+				t = t.Truncate(24 * time.Hour) // a day is its midnight, whatever time of day was sent by hand
+			}
 			return int(t.Unix()), nil
 		})
 		f.Unset = unsetter(a.Store)
 		return f
+	case Email[M]:
+		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Rules, a.Placeholder, a.Load, a.Store)
+	case Phone[M]:
+		return lowerFormatted(name, a.Label, ir.FormatTel, a.Rules, a.Placeholder, a.Load, a.Store)
+	case Website[M]:
+		return lowerFormatted(name, a.Label, ir.FormatURL, a.Rules, a.Placeholder, a.Load, a.Store)
+	case ColorPicker[M]:
+		return lowerFormatted(name, a.Label, ir.FormatColor, StringRules{}, "", a.Load, a.Store)
 	case OptionalInt[M]:
 		return lowerOptionalInt(a, name)
 	case OptionalFloat[M]:

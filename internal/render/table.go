@@ -381,6 +381,7 @@ type filterView struct {
 
 	Numeric bool
 	Moment  bool // the bounds are moments in UTC: date and time inputs
+	Day     bool // ... or dates, for a column that holds days: date inputs
 	MinKey  string
 	MaxKey  string
 	Min     string
@@ -402,10 +403,11 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	if f.Ranged() {
 		fv.Numeric = true
 		fv.Moment = f.Display == ir.DisplayTime
+		fv.Day = fv.Moment && f.DateOnly
 		fv.MinKey, fv.MaxKey = args.RangeKeys(id, f.Key)
 		gone = append(gone, fv.MinKey, fv.MaxKey)
 		if rng, ok := v.Q.Ranges[f.Key]; ok {
-			fv.Min, fv.Max = formatBound(rng.Min, fv.Moment), formatBound(rng.Max, fv.Moment)
+			fv.Min, fv.Max = formatBound(rng.Min, fv.Moment, fv.Day), formatBound(rng.Max, fv.Moment, fv.Day)
 		}
 		fv.On = fv.Min != "" || fv.Max != ""
 	} else {
@@ -434,14 +436,25 @@ func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 
 // formatBound is a bound as the filter's input holds it: a number, or for a moment
 // the date and time input's "2026-10-09T11:27", in UTC.
-func formatBound(x *float64, moment bool) string {
+func formatBound(x *float64, moment, day bool) string {
 	if x == nil {
 		return ""
+	}
+	if moment && day {
+		return time.Unix(int64(*x), 0).UTC().Format("2006-01-02")
 	}
 	if moment {
 		return time.Unix(int64(*x), 0).UTC().Format("2006-01-02T15:04")
 	}
 	return strconv.FormatFloat(*x, 'f', -1, 64)
+}
+
+// boundType is the input a moment's bounds are written in: a date for a column that holds days, and a date and time for the rest.
+func (f filterView) boundType() string {
+	if f.Day {
+		return "date"
+	}
+	return "datetime-local"
 }
 
 func (f filterView) text() string {

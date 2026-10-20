@@ -134,11 +134,19 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		// A date and time picker, whose value is the moment in UTC to the second, not
 		// the text a table shows. What was typed, after a rejection, stays as it was.
 		fv.Type, fv.Rules.Step = "datetime-local", "1"
+		if f.DateOnly {
+			fv.Type, fv.Rules.Step = "date", ""
+		}
 		if _, typed := v.Values[f.Name]; !typed {
 			fv.Value = momentInput(f, v.Model)
 		}
 	case f.Secret:
 		fv.Type, fv.Autocomplete = "password", "new-password"
+	case f.Rules.Format != "":
+		fv.Type = string(f.Rules.Format)
+		if f.Rules.Format == ir.FormatColor && fv.Value == "" {
+			fv.Value = "#000000" // a picker cannot be empty: a field with no color is black
+		}
 	case f.Kind == ir.KindInt:
 		fv.Type, fv.Rules.Step = "number", "1"
 	case f.Display == ir.DisplaySlider:
@@ -174,6 +182,9 @@ func momentInput(f ir.Field, model any) string {
 	seconds := f.Num(model)
 	if math.IsInf(seconds, 0) || math.IsNaN(seconds) {
 		return ""
+	}
+	if f.DateOnly {
+		return time.Unix(int64(seconds), 0).UTC().Format("2006-01-02")
 	}
 	return time.Unix(int64(seconds), 0).UTC().Format("2006-01-02T15:04:05")
 }
@@ -256,6 +267,12 @@ func ruleLines(f ir.Field, editable bool) []string {
 	var out []string
 	if f.Display == ir.DisplayTime {
 		out = append(out, "Date and time in UTC")
+		if f.DateOnly {
+			out[len(out)-1] = "Date in UTC"
+		}
+	}
+	if f.Rules.Format == ir.FormatURL {
+		out = append(out, "A web address, http or https")
 	}
 	if f.Display == ir.DisplaySelect && f.Multi {
 		out = append(out, "Hold Ctrl or ⌘ to choose more than one")
