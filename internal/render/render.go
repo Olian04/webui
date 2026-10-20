@@ -272,14 +272,13 @@ func NoStart() templ.Component {
 	})
 }
 
-// Forbidden is the content of a guard rejection. The wording matters: the check
-// ran before anything was loaded, so nothing was read.
+// Forbidden is the content of a guard rejection: what the guard said, which is for the visitor to read, or, when it
+// said nothing, that they may not open the page. How the check was made is not for them.
 func Forbidden(reason string) templ.Component {
-	desc := "The guard for this page ran before anything was loaded, so no data was read."
-	if reason != "" {
-		desc += " " + reason
+	if reason == "" {
+		reason = "You do not have access to this page."
 	}
-	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: desc})
+	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: reason})
 }
 
 // BadRequest is the content of a 400: an argument that did not parse.
@@ -493,4 +492,31 @@ func (r *Renderer) statusBar(d Doc, bar func(c.StatusBarProps) templ.Component) 
 // answer can no longer be an error page: the panel says so, and the page stands.
 func PanelFailed(title string) templ.Component {
 	return c.Panel(c.PanelProps{Title: title, Failed: true})
+}
+
+// refusalTitle is what a refusal is called, by its status.
+func refusalTitle(status int) string {
+	switch status {
+	case 404:
+		return "Not found"
+	case 401:
+		return "Not signed in"
+	}
+	return "Not permitted"
+}
+
+// refusedOf is a panel's refusal as the panel says it, or nil.
+func refusedOf(ref *ir.Refusal) *c.Refused {
+	if ref == nil {
+		return nil
+	}
+	return &c.Refused{Title: refusalTitle(ref.Status), Desc: ref.Message, Label: ref.Label, Href: ref.Href}
+}
+
+// refusalIcon is the icon of a refusal: a search for what is not found, and a lock for what is not allowed.
+func refusalIcon(status int) c.IconName {
+	if status == 404 {
+		return c.IconSearch
+	}
+	return c.IconLock
 }

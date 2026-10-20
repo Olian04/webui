@@ -17,6 +17,9 @@ type PanelProps struct {
 	// that says it could not load, in place of its content. The page stands.
 	Failed bool
 
+	// Refused is, for a panel whose Load said what the visitor may be told, in place of "Could not load".
+	Refused *Refused
+
 	// Leaf names this panel so a link inside it can replace it on its own. A
 	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
@@ -28,6 +31,12 @@ type PanelProps struct {
 	Grows bool
 
 	Footer templ.Component
+}
+
+// Refused is what a panel says in place of "Could not load" when its Load returned a refusal: a title for the status, the
+// message, and a link on, when there is one.
+type Refused struct {
+	Title, Desc, Label, Href string
 }
 
 templ Panel(p PanelProps) {
@@ -48,11 +57,21 @@ templ Panel(p PanelProps) {
 		</div>
 		<div class="panel-body">
 			if p.Failed {
-				@EmptyState(EmptyStateProps{
-					Icon:  IconAlert,
-					Title: "Could not load",
-					Desc:  "The cause was logged on the server. Refresh to try again.",
-				})
+				if p.Refused != nil {
+					@EmptyState(EmptyStateProps{Icon: IconAlert, Title: p.Refused.Title, Desc: p.Refused.Desc}) {
+						if p.Refused.Href != "" {
+							@Button(ButtonProps{Href: p.Refused.Href, Variant: VariantGhost, Size: SizeSmall}) {
+								{ p.Refused.Label }
+							}
+						}
+					}
+				} else {
+					@EmptyState(EmptyStateProps{
+						Icon:  IconAlert,
+						Title: "Could not load",
+						Desc:  "The cause was logged on the server. Refresh to try again.",
+					})
+				}
 			} else {
 				{ children... }
 			}

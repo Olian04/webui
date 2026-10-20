@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/Olian04/webui/internal/args"
@@ -111,14 +112,18 @@ func resolve[T any](p *Program, page *ir.Page, node *T, read func() (*T, error))
 }
 
 // loaded is timed for a panel that is being drawn: a failure is logged, unless the visitor had gone, and
-// ok is false, so that the panel says it could not load and the page stays. what names the panel in the log.
-func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Addr, load func() (T, error)) (v T, ok bool) {
+// ok is false, so that the panel says it could not load and the page stays. what names the panel in the log. A load
+// that returns a [ir.Refusal] is not a failure to log: the visitor is told what it says, and it is returned for the panel to say.
+func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Addr, load func() (T, error)) (v T, ok bool, refused *ir.Refusal) {
 	v, err := timed(p, page, kind, load)
 	if err != nil {
+		if errors.As(err, &refused) {
+			return v, false, refused
+		}
 		if ctx.Err() == nil {
 			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "leaf", render.LeafID(at), "err", err)
 		}
-		return v, false
+		return v, false, nil
 	}
-	return v, true
+	return v, true, nil
 }

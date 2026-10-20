@@ -63,6 +63,9 @@ type TableView struct {
 	Gates [][]string
 
 	Failed bool // Load failed: the panel says so, the page stands
+
+	// Refusal is what the Load said the visitor may be told, when it was a refusal and not a failure.
+	Refusal *ir.Refusal
 }
 
 type columnView struct {

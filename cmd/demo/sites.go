@@ -38,8 +38,11 @@ var (
 	}
 )
 
+// SitesPath is the list of sites, a constant for the reason that AlertsPath is.
+const SitesPath webui.PageID[webui.NoArgs] = "/site"
+
 var Sites = webui.Page[webui.NoArgs]{
-	Path: "/site",
+	Path: SitesPath,
 	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot", Section: "Platform"},
 	Body: SitesTable,
 }
@@ -82,9 +85,10 @@ var SiteDetail = webui.Page[SiteArgs]{
 		},
 		SiteName, SiteHealth,
 	),
-	Guard: func(_ context.Context, a SiteArgs) error {
+	Guard: func(ctx context.Context, a SiteArgs) error {
 		if _, ok := service.Site(a.Name); !ok {
-			return fmt.Errorf("there is no site %q", a.Name)
+			return webui.NotFound(fmt.Sprintf("There is no site %q.", a.Name)).
+				WithLink("Back to the sites", webui.Open(ctx, SitesPath, webui.NoArgs{}))
 		}
 		return nil
 	},

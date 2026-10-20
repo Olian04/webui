@@ -115,7 +115,8 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 // admit reads a request's arguments and runs the page's Guard, which is the front of every request to a
 // page and all of asking whether a visitor may open one. It installs the request in r's context, so the
 // Guard and everything after it can reach it. When the request must not go on it says why: status is 400
-// for an address that does not decode, and 403 for a Guard that refuses, with its error.
+// for an address that does not decode, and for a Guard that refuses 403, or the status of the [ir.Refusal] it
+// returns, with its error.
 func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (req *Request, raw map[string]string, status int, refusal error) {
 	raw, err := parser.Parse(r)
 	if err != nil {
@@ -129,6 +130,10 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 	*r = *r.WithContext(With(r.Context(), req))
 	if page.Guard != nil {
 		if err := page.Guard(r.Context(), decoded); err != nil {
+			var ref *ir.Refusal
+			if errors.As(err, &ref) {
+				return req, raw, ref.Status, err // its own: not found, not signed in, or not permitted
+			}
 			return req, raw, http.StatusForbidden, err
 		}
 	}
@@ -147,7 +152,12 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 		}
 	case status == http.StatusBadRequest:
 		p.state(w, r, status, page, raw, render.BadRequest())
-	case status == http.StatusForbidden && r.Context().Err() == nil: // a visitor who has gone is answered nothing
+	case status != 0 && r.Context().Err() == nil: // a visitor who has gone is answered nothing
+		var ref *ir.Refusal
+		if errors.As(refusal, &ref) {
+			p.state(w, r, status, page, raw, render.Refused(ref))
+			return req, false
+		}
 		p.state(w, r, status, page, raw, render.Forbidden(refusal.Error()))
 	}
 	return req, status == 0

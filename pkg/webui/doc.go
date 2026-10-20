@@ -496,6 +496,13 @@
 //
 // # Errors
 //
+// What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden], with the message to show and,
+// from [Refusal.WithLink], a link on. A page's Guard that returns one answers with its status (a 404 for a record that is not
+// there, a 401 for a credential that is missing, with a link to set it up), and any other error from a Guard is a 403 with its
+// text, as before. A panel's Load that returns one says it in the panel with its link, and the page stays as it is, because a
+// page that has begun to be sent has its status already; any other error from a Load is "Could not load", with the cause
+// logged and never shown. A Refusal is not logged: it is not a failure.
+//
 // [App.Compile] collects every problem in the declaration and reports them together
 // in one error that wraps a [CompileError] for each, naming the page, the argument
 // type, what is wrong and how to fix it. The handler it returns is never nil: after a failed compile it serves

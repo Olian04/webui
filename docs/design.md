@@ -485,8 +485,9 @@ they look the same.
 ## 12. Full-page states
 
 **Not permitted.** Centred, 480px: a 34px icon, a 17/600 title, a 13.5
-text-secondary line explaining that the check ran *before anything was loaded*,
-and a secondary button back. No data is shown, because none was read.
+text-secondary line with the reason the guard gave (or, with none, that the visitor has no access),
+and, when there is one, a secondary button on. No data is shown, because none was read; the page does not say so, since how
+the check was made is not for the visitor.
 
 **Failed to compile.** The whole application is replaced, at every address,
 until it is fixed — modelled on a build tool's error overlay rather than a

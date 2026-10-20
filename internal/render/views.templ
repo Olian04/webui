@@ -193,7 +193,7 @@ templ (r *Renderer) Table(v TableView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal),
 		Leaf:   LeafID(v.Node.At),
 		Grows:  true,
 		Footer: r.tableFooter(v),
@@ -367,7 +367,7 @@ templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal),
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		@c.Form(c.FormProps{
@@ -483,6 +483,18 @@ templ (r *Renderer) input(fv fieldView) {
 		if fv.FormID != "" {
 			// An input of a toolbar is applied with a button of its own without script, joined to it (see .toolbar .field).
 			<button class="btn btn-secondary btn-sm toolbar-apply" type="submit" form={ fv.FormID }>Apply</button>
+		}
+	}
+}
+
+// Refused is the content of a page that a Guard refused with a status of its own, with what it said and, when it gave one,
+// a link on from there.
+templ Refused(ref *ir.Refusal) {
+	@c.StatePage(c.StatePageProps{Icon: refusalIcon(ref.Status), Title: refusalTitle(ref.Status), Desc: ref.Message}) {
+		if ref.Href != "" {
+			@c.Button(c.ButtonProps{Href: ref.Href, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+				{ ref.Label }
+			}
 		}
 	}
 }
@@ -678,7 +690,7 @@ templ (r *Renderer) Diff(v DiffView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal),
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body code-body">
@@ -702,7 +714,7 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal),
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body pad">

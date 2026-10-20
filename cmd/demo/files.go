@@ -145,8 +145,11 @@ func fileNotePanel(path func(context.Context) []string) webui.Markdown[FileNote]
 	}
 }
 
+// FilesPath is the root of the files, a constant for the reason that AlertsPath is.
+const FilesPath webui.PageID[webui.NoArgs] = "/files"
+
 var FilesRoot = webui.Page[webui.NoArgs]{
-	Path: "/files",
+	Path: FilesPath,
 	Nav:  webui.Nav{Label: "Files", Icon: "folder-open", Section: "Operations"},
 	Body: webui.Stack{
 		fileTable("Files", func(context.Context) []string { return nil }),
@@ -160,9 +163,10 @@ func pathOf(ctx context.Context) []string { return webui.ArgsOf[FileArgs](ctx).P
 var FilesAt = webui.Page[FileArgs]{
 	Path: FilesAtPath,
 	// No Nav: it lights Files, the page at "/files".
-	Guard: func(_ context.Context, a FileArgs) error {
+	Guard: func(ctx context.Context, a FileArgs) error {
 		if _, ok := lookup(a.Path); !ok {
-			return fmt.Errorf("there is nothing at /%s", strings.Join(a.Path, "/"))
+			return webui.NotFound(fmt.Sprintf("There is nothing at /%s.", strings.Join(a.Path, "/"))).
+				WithLink("Back to the files", webui.Open(ctx, FilesPath, webui.NoArgs{}))
 		}
 		return nil
 	},

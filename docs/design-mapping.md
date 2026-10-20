@@ -23,7 +23,7 @@ into existence, and nothing is configured twice.
 | `Page` | One address, one screen |
 | `Page.Path` | The address; its segments are the breadcrumb trail. A last segment written `{name...}` takes the rest of the address as a `[]string`, and each of its elements is a crumb that links to the page at that depth |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
-| `Page.Guard` | The **Not permitted** full-page state |
+| `Page.Guard` | The **Not permitted** full-page state; a `Refusal` it returns is the **Not found**, **Not signed in** or **Not permitted** state of its status, with its message and, when it has one, a link on |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
 | `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
 | `Page.Search` | The page's things as a group of results in the top bar's search, beneath the app's pages: each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
@@ -432,9 +432,9 @@ so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
 
 `Guard` has two visual forms and they are the same rule:
 
-1. **On the page** — the **Not permitted** state. The wording matters: *"the
-   guard ran before anything was loaded, so this device was never read."* The
-   page shows nothing, because nothing was fetched.
+1. **On the page** — the **Not permitted** state, with the reason the `Guard`
+   gave, which is for the visitor to read. The page shows nothing, because
+   nothing was fetched, and does not say how the check was made.
 2. **On a control** — the *gated* treatment: 45% opacity plus a tooltip giving
    the reason. The same check that would reject the request also disables the
    button, so there is no second authorisation rule to keep in sync and no

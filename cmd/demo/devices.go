@@ -231,10 +231,12 @@ var Details = webui.Page[DeviceArgs]{
 		return hits, nil
 	},
 	// No Nav, so no sidebar entry of its own: it lights Devices, the page at "/device".
-	// Guard runs before anything is loaded, so an unknown device is never read.
-	Guard: func(_ context.Context, a DeviceArgs) error {
+	// Guard runs before anything is loaded, so an unknown device is never read. A Refusal is what the visitor may be told:
+	// a 404, which says so, with a link on, in place of a bare 403.
+	Guard: func(ctx context.Context, a DeviceArgs) error {
 		if _, ok := service.Device(a.ID); !ok {
-			return fmt.Errorf("there is no device %q", a.ID)
+			return webui.NotFound(fmt.Sprintf("There is no device %q.", a.ID)).
+				WithLink("Back to the devices", webui.Open(ctx, DevicesPath, webui.NoArgs{}))
 		}
 		return nil
 	},
