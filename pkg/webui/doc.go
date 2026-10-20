@@ -191,12 +191,14 @@
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC; with DateOnly it is a date picker, and a day
 // is midnight UTC.
 //
-// A [String] says what kind of text it holds with Input: [InputEmail], [InputURL], [InputTel] or [InputColor]. The browser
+// A kind of text that has an input of its own is an accessor of its own: [Email], [Phone], [Website] and [ColorPicker]. The browser
 // draws the input of that kind (the right keyboard on a phone, a picker for a color) and refuses an email or a
 // web address that is not one, in the words the server uses; the server checks all four again. An email is held to what the
 // browser holds it to; a web address to more, an http or https address with a host, since a browser accepts "javascript:" and
 // what is stored will be linked. A phone number is digits with the punctuation numbers are written with, which a browser
-// does not check. A color is "#rrggbb", and a picker cannot be empty, so a field with no value shows black.
+// does not check. A color is "#rrggbb", and a picker cannot be empty, so a field with no value shows black. They have
+// the rules of a [String], except the color, which has none; a [String] is the accessor for any other text, and for a
+// password or a text area. [URL] is the one that links, and has no Store.
 //
 // A number or a choice that may be absent has an accessor of its own, since a Go int cannot say it:
 // [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer, and [Bool] is a yes, a no, or neither.

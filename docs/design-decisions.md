@@ -238,19 +238,23 @@ design element.
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
   state costs. None of them is a `Toolbar` input, since a page's arguments are strings, numbers and bools that cannot be
   nil, and an absent argument is spelt by leaving it out of the address.
-- **A string says what kind of text it is with `Input`, and the server checks it.** `type="email"`, `"url"`, `"tel"` and
-  `"color"` give the right keyboard and a picker for nothing but a declaration, but `type=` is not trusted: it is a hint to a
-  browser, and the server is the check. An email is held to the HTML standard's own grammar, which is what the browser does, so the
-  two agree (it is looser than the RFCs, and "a@b" is one); `net/mail` was weighed and dropped for that, since it accepts
-  display names and quoted forms that an email input refuses. A web address is held to more than the browser holds it to: a
-  browser accepts any address with a scheme, `javascript:` among them, and what a string field stores is likely to be
-  linked, so the server wants an http or https address with a host, and says so in the rules popover, since the browser would
-  not. That is a disagreement, and it is the safe one: the page accepts "ftp://x" and the server refuses it, with the
-  same words beneath the field. A phone number is checked only for being digits and the punctuation of one, since there is no
-  grammar for them. A color is a picker, which cannot be empty, so an empty `Load` shows black, and it has no length, pattern or
-  text rule (a compile error). `Input` is a typed string, not a flag for each, since they exclude each other, and not
-  combined with `Secret` or `Multiline`, which are inputs of their own. The rest of a string's rules apply to the kinds
-  that can have them.
+- **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a
+  type on `String`. The first version was a typed `String.Input`, and it needed a compile error for every field of `String` that
+  it could not be combined with: `Secret` and `Multiline` (inputs of their own), and for a color `MinLen`, `MaxLen`, `Pattern`
+  and the text rules. Rules that a type has to forbid by an error are rules it should not have: the accessors have only
+  the fields that make sense for them, so those combinations cannot be written, and a `ColorPicker` has no `Rules` and no
+  `Placeholder` at all. What they share with `String` (the rules, the placeholder, sorting and filtering as text) is one
+  helper, and they are text in a table. `type=` is not trusted: it is a hint to a browser, and the server is the check. An
+  email is held to the HTML standard's own grammar, which is what the browser does, so the two agree (it is looser than the
+  RFCs, and "a@b" is one); `net/mail` was weighed and dropped for that, since it accepts display names and quoted forms that an
+  email input refuses. A web address is held to more than the browser holds it to: a browser accepts any address with a scheme,
+  `javascript:` among them, and what is stored is likely to be linked, so the server wants an http or https address with a host,
+  and says so in the rules popover, since the browser would not. That is a disagreement, and it is the safe one: the page
+  accepts "ftp://x" and the server refuses it, with the same words beneath the field. It is `Website` and not `URL` because
+  `URL` is the link, which has no `Store`, reads site paths and `mailto:` too, and is a different thing from a web
+  address to type; one name for both would have made a field with a `Store` allow what a link allows. `Color` was taken by
+  the theme's, so the picker is `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since
+  there is no grammar for them. A color picker cannot be empty, so an empty `Load` shows black.
 - **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline
   does not have, and a `Timestamp` of midnight shown as "00:00" is noise. `DateOnly` is a flag on `Datetime` and `Timestamp`, not
   a type, since all else about them is the same: it is `type="date"`, shown and filtered as a date, and a day is midnight

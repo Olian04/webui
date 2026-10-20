@@ -18,15 +18,11 @@ type contact struct {
 	Day                       string
 }
 
-func contactField(label string, input webui.InputType, rules webui.StringRules, get func(contact) string, set func(*contact, string)) webui.String[contact] {
-	return webui.String[contact]{Label: label, Input: input, Rules: rules, Load: get, Store: set}
-}
-
 var (
-	contactEmail = contactField("Email", webui.InputEmail, webui.StringRules{}, func(c contact) string { return c.Email }, func(c *contact, v string) { c.Email = v })
-	contactSite  = contactField("Site", webui.InputURL, webui.StringRules{}, func(c contact) string { return c.Site }, func(c *contact, v string) { c.Site = v })
-	contactPhone = contactField("Phone", webui.InputTel, webui.StringRules{}, func(c contact) string { return c.Phone }, func(c *contact, v string) { c.Phone = v })
-	contactColor = contactField("Color", webui.InputColor, webui.StringRules{}, func(c contact) string { return c.Color }, func(c *contact, v string) { c.Color = v })
+	contactEmail = webui.Email[contact]{Label: "Email", Load: func(c contact) string { return c.Email }, Store: func(c *contact, v string) { c.Email = v }}
+	contactSite  = webui.Website[contact]{Label: "Site", Load: func(c contact) string { return c.Site }, Store: func(c *contact, v string) { c.Site = v }}
+	contactPhone = webui.Phone[contact]{Label: "Phone", Load: func(c contact) string { return c.Phone }, Store: func(c *contact, v string) { c.Phone = v }}
+	contactColor = webui.ColorPicker[contact]{Label: "Color", Load: func(c contact) string { return c.Color }, Store: func(c *contact, v string) { c.Color = v }}
 )
 
 func contactApp(start contact, fields ...webui.Accessor[contact]) (http.Handler, func() contact) {
@@ -97,8 +93,8 @@ func TestTheServerHoldsAValueToTheKindOfItsInput(t *testing.T) {
 func TestAnInputKindIsHeldToTheOtherRulesToo(t *testing.T) {
 	t.Parallel()
 
-	email := contactField("Email", webui.InputEmail, webui.StringRules{Required: true, MaxLen: 20, EndsWith: ".com"},
-		func(c contact) string { return c.Email }, func(c *contact, v string) { c.Email = v })
+	email := webui.Email[contact]{Label: "Email", Rules: webui.StringRules{Required: true, MaxLen: 20, EndsWith: ".com"},
+		Load: func(c contact) string { return c.Email }, Store: func(c *contact, v string) { c.Email = v }}
 	h, saved := contactApp(contact{}, email)
 	body := serve(h, http.MethodGet, "/admin/c").Body.String()
 	assert.Contains(t, body, `type="email"`)
@@ -111,10 +107,10 @@ func TestAnInputKindIsHeldToTheOtherRulesToo(t *testing.T) {
 	assert.Equal(t, saved().Email, "me@example.com")
 }
 
-func TestAnInputKindIsCheckedWhenTheAppCompiles(t *testing.T) {
+func TestTheRulesOfAFormattedAccessorAreCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	problems := func(field webui.String[contact]) string {
+	problems := func(field webui.Accessor[contact]) string {
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: webui.Form[contact]{
 			Load:   func(context.Context) (contact, error) { return contact{}, nil },
@@ -125,13 +121,13 @@ func TestAnInputKindIsCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 		return all
 	}
-	load, store := func(c contact) string { return c.Email }, func(*contact, string) {}
-	assert.Contains(t, problems(webui.String[contact]{Label: "E", Input: "emial", Load: load, Store: store}), `has the unknown Input "emial"`)
-	assert.Contains(t, problems(webui.String[contact]{Label: "E", Input: webui.InputEmail, Secret: true, Load: load, Store: store}), "has an Input and is a Secret")
-	assert.Contains(t, problems(webui.String[contact]{Label: "E", Input: webui.InputEmail, Multiline: true, Load: load, Store: store}), "has an Input and is Multiline")
-	for _, rules := range []webui.StringRules{{MinLen: 3}, {MaxLen: 7}, {Contains: "a"}, {Pattern: &webui.PatternRule{Expr: "#.*", Message: "x"}}} {
-		assert.Contains(t, problems(webui.String[contact]{Label: "C", Input: webui.InputColor, Rules: rules, Load: load, Store: store}), "is a color and has a length, a pattern or a text rule")
-	}
+	load := func(c contact) string { return c.Email }
+	assert.Contains(t, problems(webui.Email[contact]{Label: "E"}), "has no Load")
+	assert.Contains(t, problems(webui.Phone[contact]{Label: "P"}), "has no Load")
+	assert.Contains(t, problems(webui.Website[contact]{Label: "W"}), "has no Load")
+	assert.Contains(t, problems(webui.ColorPicker[contact]{Label: "C"}), "has no Load")
+	assert.Contains(t, problems(webui.Email[contact]{Label: "E", Load: load, Rules: webui.StringRules{MinLen: 9, MaxLen: 3}}), "inconsistent length rules")
+	assert.Contains(t, problems(webui.Website[contact]{Label: "W", Load: load, Rules: webui.StringRules{Pattern: &webui.PatternRule{Expr: "(?=a)", Message: "x"}}}), "pattern")
 }
 
 func TestAnInputKindIsATableCellAsText(t *testing.T) {

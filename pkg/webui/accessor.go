@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -57,13 +56,6 @@ type String[M any] struct {
 	// browser sent. In a table the cell shows the first lines. For a text that wants a code editor, use an [Editor].
 	Multiline bool
 
-	// Input is the kind of text the field holds, which gives it an input of its own on a phone and in a browser (the right
-	// keyboard, and for a color a picker) and is checked again on the server, in the words the browser uses, or for an input
-	// it does not check, in words of the page's own. Empty is text of any kind. It cannot be set with Secret or Multiline,
-	// which are inputs of their own. MinLen, MaxLen and Pattern still apply, except to a color, which is a "#" and six hex
-	// digits and has none.
-	Input InputType
-
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -71,39 +63,6 @@ type String[M any] struct {
 	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
 	// and a filter on it in the address is ignored. It does nothing in a form.
 	NoFilter bool
-}
-
-// InputType is a kind of text that a [String] may be, and the input that it is edited in.
-type InputType string
-
-// The input types.
-const (
-	// InputText is text of any kind, which is what an empty InputType is.
-	InputText InputType = ""
-
-	// InputEmail is an email address. The browser refuses a value that is not one, and the server holds it to the same
-	// rule, the one the HTML standard gives (which is looser than the RFCs: "a@b" is one).
-	InputEmail InputType = "email"
-
-	// InputURL is a web address. The browser accepts any address with a scheme, "javascript:" included, and what is stored is
-	// likely to be linked, so the server is stricter: an http or https address with a host.
-	InputURL InputType = "url"
-
-	// InputTel is a phone number. A browser checks none, and the server only that it is digits with the punctuation that
-	// numbers are written with, and at least one digit.
-	InputTel InputType = "tel"
-
-	// InputColor is a color, "#rrggbb", chosen with the browser's picker. A picker cannot be empty: a field that
-	// has no value shows black, and a submission always holds a color, so it is not Required in any way that matters.
-	InputColor InputType = "color"
-)
-
-func (t InputType) valid() bool {
-	switch t {
-	case InputText, InputEmail, InputURL, InputTel, InputColor:
-		return true
-	}
-	return false
 }
 
 func (a String[M]) label() string { return a.Label }
@@ -572,6 +531,10 @@ var (
 	_ Accessor[struct{}] = OptionalFloat[struct{}]{}
 	_ Accessor[struct{}] = OptionalSlider[struct{}]{}
 	_ Accessor[struct{}] = Bool[struct{}]{}
+	_ Accessor[struct{}] = Email[struct{}]{}
+	_ Accessor[struct{}] = Phone[struct{}]{}
+	_ Accessor[struct{}] = Website[struct{}]{}
+	_ Accessor[struct{}] = ColorPicker[struct{}]{}
 )
 
 // ---------------------------------------------------------------- validate
@@ -613,19 +576,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		v.add(at+" is nil", "Remove it or declare an accessor.")
 	case String[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
-		if p := a.Rules.Pattern; p != nil {
-			if _, err := rules.Compile(p.Expr, p.Message); err != nil {
-				fix := "Rewrite the pattern in RE2 syntax."
-				var pe *rules.PatternError
-				if errors.As(err, &pe) {
-					fix = pe.Fix
-				}
-				v.add(fmt.Sprintf("%s: %v", at, err), fix)
-			}
-		}
-		if a.Rules.MinLen < 0 || a.Rules.MaxLen < 0 || (a.Rules.MaxLen > 0 && a.Rules.MinLen > a.Rules.MaxLen) {
-			v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
-		}
+		validateTextRules(v, at, a.Rules)
 		if a.Secret {
 			switch {
 			case a.Store == nil:
@@ -640,18 +591,6 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 				v.add(at+" is a Secret in a toolbar", "The inputs of a toolbar are the page's arguments, which are in the address: a secret does not belong there.")
 			}
 		}
-		if !a.Input.valid() {
-			v.add(fmt.Sprintf("%s has the unknown Input %q", at, string(a.Input)), "Use InputEmail, InputURL, InputTel or InputColor, or leave Input empty.")
-		} else if a.Input != InputText {
-			switch {
-			case a.Secret:
-				v.add(at+" has an Input and is a Secret", "A secret is a password input of its own: remove Input, or remove Secret.")
-			case a.Multiline:
-				v.add(at+" has an Input and is Multiline", "A text area is an input of its own: remove Input, or remove Multiline.")
-			case a.Input == InputColor && (a.Rules.MinLen != 0 || a.Rules.MaxLen != 0 || a.Rules.Pattern != nil || hasTextRule(a.Rules)):
-				v.add(at+" is a color and has a length, a pattern or a text rule", "A color is a \"#\" and six hex digits, and a picker holds nothing else: remove the rule.")
-			}
-		}
 		if a.Multiline {
 			switch {
 			case a.Rules.Pattern != nil:
@@ -662,9 +601,17 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 				v.add(at+" is Multiline in a toolbar", "The inputs of a toolbar are the page's arguments, which are one line each in the address.")
 			}
 		}
-		for _, p := range rules.Unsatisfiable(lowerStringRules(a.Rules)) {
-			v.add(at+": "+p[0], p[1])
-		}
+	case Email[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case Phone[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case Website[M]:
+		common(a.Label, a.Load == nil, "func(M) string")
+		validateTextRules(v, at, a.Rules)
+	case ColorPicker[M]:
+		common(a.Label, a.Load == nil, "func(M) string, returning \"#rrggbb\"")
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -713,7 +660,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
+			"Use String, Email, Phone, Website, ColorPicker, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
 	}
 }
 
@@ -793,7 +740,6 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 	case String[M]:
 		f := head(name, a.Label, ir.KindString)
 		f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules), a.Placeholder, a.Multiline
-		f.Rules.Format = ir.Format(a.Input)
 		f.Get = func(m any) string { return a.Load(m.(M)) }
 		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
 		f.Unset = unsetter(a.Store)
@@ -913,6 +859,14 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		})
 		f.Unset = unsetter(a.Store)
 		return f
+	case Email[M]:
+		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Rules, a.Placeholder, a.Load, a.Store)
+	case Phone[M]:
+		return lowerFormatted(name, a.Label, ir.FormatTel, a.Rules, a.Placeholder, a.Load, a.Store)
+	case Website[M]:
+		return lowerFormatted(name, a.Label, ir.FormatURL, a.Rules, a.Placeholder, a.Load, a.Store)
+	case ColorPicker[M]:
+		return lowerFormatted(name, a.Label, ir.FormatColor, StringRules{}, "", a.Load, a.Store)
 	case OptionalInt[M]:
 		return lowerOptionalInt(a, name)
 	case OptionalFloat[M]:
@@ -1010,10 +964,6 @@ func sliderReads[M any](load func(M) float64, lo, step float64) (get func(any) s
 			return strconv.FormatFloat(v, 'f', decimals, 64)
 		},
 		func(m any) float64 { return load(m.(M)) }
-}
-
-func hasTextRule(r StringRules) bool {
-	return r.StartsWith != "" || r.EndsWith != "" || r.Contains != "" || r.NotStartsWith != "" || r.NotEndsWith != "" || r.NotContains != ""
 }
 
 func lowerStringRules(r StringRules) ir.Rules {

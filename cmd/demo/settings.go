@@ -76,27 +76,27 @@ var (
 		Load:  func(s Settings) *bool { return s.Paused },
 		Store: func(s *Settings, v *bool) { s.Paused = v },
 	}
-	// Input says what kind of text a String is, which gives it an input of its own (the right keyboard on a phone, a picker for
-	// a color) and is checked again on the server. An email is held to what the browser holds it to; a web address to more, an
-	// http or https address, since what is stored will be linked.
-	Contact = webui.String[Settings]{
-		Label: "Contact email", Input: webui.InputEmail,
+	// Email, Phone, Website and ColorPicker are strings of a kind that has an input of its own (the right keyboard on a phone,
+	// a picker for a colour), checked again on the server. An email is held to what the browser holds it to; a web address
+	// to more, an http or https address, since what is stored will be linked.
+	Contact = webui.Email[Settings]{
+		Label: "Contact email",
 		Load:  func(s Settings) string { return s.Contact },
 		Store: func(s *Settings, v string) { s.Contact = v },
 	}
-	OnCall = webui.String[Settings]{
-		Label: "On-call phone", Input: webui.InputTel,
+	OnCall = webui.Phone[Settings]{
+		Label: "On-call phone",
 		Load:  func(s Settings) string { return s.OnCall },
 		Store: func(s *Settings, v string) { s.OnCall = v },
 	}
-	Webhook = webui.String[Settings]{
-		Label: "Alert webhook", Input: webui.InputURL, Placeholder: "https://hooks.example.com/…",
+	Webhook = webui.Website[Settings]{
+		Label: "Alert webhook", Placeholder: "https://hooks.example.com/…",
 		Load:  func(s Settings) string { return s.Webhook },
 		Store: func(s *Settings, v string) { s.Webhook = v },
 	}
-	// A color is picked, and is "#rrggbb".
-	Label = webui.String[Settings]{
-		Label: "Graph colour", Input: webui.InputColor,
+	// A color is picked, and is "#rrggbb". It has no rules: a picker cannot be empty or be of any other shape.
+	Label = webui.ColorPicker[Settings]{
+		Label: "Graph colour",
 		Load:  func(s Settings) string { return s.Label },
 		Store: func(s *Settings, v string) { s.Label = v },
 	}
