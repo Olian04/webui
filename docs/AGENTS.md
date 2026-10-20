@@ -24,6 +24,8 @@
 
 `pkg/webui` files: `app`, `page`, `table`, `form`, `editor`, `diff`, `markdown`, `language`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
+The demo's tests (`cmd/demo/*_test.go`) are one file for each part of the demo, named for it (`devices_test.go`, `alerts_test.go`, `settings_test.go`, `guards_test.go`, ...), and `helpers_test.go` has what they share (`handler`, `get`, `post`, `follow`, `flashOf`). A test for a new or changed feature goes in the file of the page it is about, or in a file of its own for a new page, so that two changes to the demo do not edit one file. They share the demo's one in-memory service, so none runs in parallel.
+
 The runnable `Example` functions in `pkg/webui` are the documentation's tests, and are what pkg.go.dev shows. Unit tests are `*_test.go` next to the source they cover, same package. Internal packages export concrete funcs so those tests can call them. Prefer integration tests for the public API.
 
 ## Design
