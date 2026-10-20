@@ -2412,6 +2412,25 @@ td.actions .gate:hover::after,
   gap: 10px;
   height: 32px;
 }
+/* A phone number with script: the country calling code is a segment joined to the input that holds the number. */
+.phone {
+  display: flex;
+  min-width: 0;
+}
+.phone .phone-cc {
+  flex: none;
+  width: 9.5em;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  text-overflow: ellipsis;
+}
+.phone .input:not(.phone-cc) {
+  flex: 1;
+  min-width: 0;
+  border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
 .range-input {
   flex: 1;
   min-width: 0;

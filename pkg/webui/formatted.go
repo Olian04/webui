@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/internal/rules"
 )
 
@@ -47,7 +48,10 @@ func (Email[M]) toolbarItem(M) {}
 // Phone projects a string field of M that holds a phone number. The browser draws a telephone input, which has a keypad on a phone and
 // checks nothing; the server checks that it is digits with the punctuation that numbers are written with ("+46 8 123 45", "(08) 123-45",
 // "0701234567 x12"), and at least one digit. There is no grammar for phone numbers, so it is not stricter than that.
-// Otherwise it is a [String].
+// A number written with a country code ("+46 70 123 45 67") is stored as E.164, "+46701234567", with no spaces: one
+// form of each number to search, compare and dial. A number without one is stored as it was typed. With script the input is
+// split in two: a selector of the country calling code, and the national number, which is spaced for reading as it is
+// typed (see DefaultCountry), and the value that is sent is E.164. Otherwise it is a [String].
 type Phone[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
 	// column in the address and in a [Query].
@@ -59,11 +63,18 @@ type Phone[M any] struct {
 	// Store writes the submitted number to the model. Without it the field is read-only.
 	Store func(*M, string)
 
-	// Rules are checked in the browser and again on the server.
+	// Rules are checked in the browser and again on the server, on the number as it is sent. With script that is E.164,
+	// which has no spaces and starts with "+", and the browser leaves the length and the pattern to the server: what is
+	// typed there is the national number.
 	Rules StringRules
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
+
+	// DefaultCountry is the country that the selector starts at when the field has no number, by its ISO 3166 alpha-2
+	// code ("SE"). Without it script takes the country of the browser's language, when that is in the list, and otherwise
+	// leaves it to the visitor. A number that is there is shown with the country its code says.
+	DefaultCountry string
 
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
@@ -172,7 +183,11 @@ func lowerFormatted[M any](name, label string, format ir.Format, r StringRules, 
 	f.Rules, f.Placeholder = lowerStringRules(r), placeholder
 	f.Rules.Format = format
 	f.Get = func(m any) string { return load(m.(M)) }
-	f.Set = setter(store, func(raw string) (string, error) { return raw, nil })
+	parse := func(raw string) (string, error) { return raw, nil }
+	if format == ir.FormatTel {
+		parse = func(raw string) (string, error) { return phone.Normalize(raw), nil } // E.164 for a number with a code
+	}
+	f.Set = setter(store, parse)
 	f.Unset = unsetter(store)
 	return f
 }

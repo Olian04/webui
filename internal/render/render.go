@@ -69,6 +69,9 @@ type Doc struct {
 
 	// Code is what the page's editors and diffs need loaded.
 	Code CodeNeeds
+
+	// Phone is whether the page has a phone number to be edited, which script splits into a country and a number.
+	Phone bool
 }
 
 // Here is a page and the arguments of the address it was asked at, by name: the path ones,
@@ -124,6 +127,10 @@ type Renderer struct {
 	served map[string]string
 	search bool // some table is searchable, so the page script has something to ask
 
+	// phones is, for each page by its path template, whether it has a phone number that can be edited, so the page links the script that
+	// splits it, which the pages that have none do not.
+	phones map[string]bool
+
 	// contexts is every file an editor's Context holds, by the name it is served as, and secret keys
 	// the addresses that unlock them.
 	contexts map[string]*contextEntry
@@ -158,6 +165,10 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 		return nil, err
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
+	r.phones = map[string]bool{}
+	for _, p := range app.Pages {
+		r.phones[p.PathTemplate] = editsPhone(p.Body)
+	}
 	r.buildContexts()
 	for _, p := range app.Pages {
 		r.search = r.search || p.Search != nil

@@ -84,8 +84,10 @@ var (
 		Load:  func(s Settings) string { return s.Contact },
 		Store: func(s *Settings, v string) { s.Contact = v },
 	}
+	// A Phone is stored as E.164, "+46701234567", whatever it is typed as. With script it is a selector of the country calling
+	// code and the national number, spaced as it is typed; DefaultCountry is where the selector starts.
 	OnCall = webui.Phone[Settings]{
-		Label: "On-call phone",
+		Label: "On-call phone", DefaultCountry: "SE",
 		Load:  func(s Settings) string { return s.OnCall },
 		Store: func(s *Settings, v string) { s.OnCall = v },
 	}
