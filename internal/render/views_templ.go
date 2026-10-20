@@ -1947,7 +1947,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 			default:
 				templ_7745c5c3_Err = c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
+					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
 					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID, Autocomplete: fv.Autocomplete,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {

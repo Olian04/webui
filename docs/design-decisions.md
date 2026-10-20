@@ -195,6 +195,11 @@ design element.
   both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
   secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (whose inputs are in the address).
   The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
+  That there *is* a value is shown, since an empty box reads as "nothing is stored": the input's placeholder is a row of
+  bullets, always eight (`storedBullets`), so that neither the value nor its length is in the page, in place of the
+  accessor's own `Placeholder`, which is shown when nothing is stored. It is a placeholder and not a `value` made of
+  bullets, which would be submitted and stored, and the standard way to show text in an empty input. The only thing the page
+  learns of a secret is a yes or no (`ir.Field.Stored`, which asks `Load` whether it returned something).
 
 ## Actions and outcomes
 

@@ -61,11 +61,35 @@ func TestASecretIsAPasswordInputThatNeverHoldsTheStoredValue(t *testing.T) {
 
 	assert.Contains(t, body, `type="password"`)
 	assert.Contains(t, body, `autocomplete="new-password"`)
+	// That there is one is shown, as the same bullets whatever it is, and not what it is.
+	assert.Contains(t, body, `placeholder="••••••••"`)
 	assert.False(t, strings.Contains(body, "sk-live-1234567890"))
 	assert.Contains(t, body, `<span class="tip-item">Leave empty to keep the current value</span>`)
 	assert.Contains(t, body, `minlength="8"`) // its rules are the browser's too
 	// The one that is not a secret is as it was.
 	assert.Contains(t, body, `name="f0" type="text" value="prod"`)
+}
+
+// With nothing stored there is nothing to show but the field's own placeholder, and the bullets are the same for a short value and a long one.
+func TestASecretShowsBulletsOnlyWhenThereIsOneAndTheSameWhateverItsLength(t *testing.T) {
+	t.Parallel()
+
+	none, _ := credentialApp(credential{Name: "prod"})
+	assert.False(t, strings.Contains(serve(none, http.MethodGet, "/admin/c").Body.String(), "••••"))
+
+	short, _ := credentialApp(credential{Name: "prod", Key: "k"})
+	long, _ := credentialApp(credential{Name: "prod", Key: strings.Repeat("sk-live-", 20)})
+	for _, h := range []http.Handler{short, long} {
+		body := serve(h, http.MethodGet, "/admin/c").Body.String()
+		assert.Equal(t, strings.Count(body, "••••••••"), 1)
+		assert.False(t, strings.Contains(body, "••••••••••"))
+	}
+
+	// After a refusal the form is drawn again, and still says that there is one.
+	h, _ := credentialApp(credential{Name: "prod", Key: "sk-live-1234567890"})
+	rec := post(h, "/admin/c", formValues("f0", "a name that is far too long to be accepted", "f1", ""))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), `placeholder="••••••••"`)
 }
 
 func TestAnEmptySubmissionLeavesASecretAndATypedOneStoresIt(t *testing.T) {

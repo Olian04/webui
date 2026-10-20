@@ -80,6 +80,10 @@ type Field struct {
 	// submission leaves what is stored as it is.
 	Secret bool
 
+	// Stored says whether a Secret has a value, for a model: the one thing about it that the page is told, so that it can say
+	// there is one (as a row of bullets) without saying what it is. Nil for a field that is not a Secret.
+	Stored func(model any) bool
+
 	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
 	// Set: what an input that was emptied means. Nil for a field that is read-only.
 	Unset func(model any)

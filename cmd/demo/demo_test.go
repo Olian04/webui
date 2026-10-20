@@ -448,6 +448,7 @@ func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
 
 	body := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, body, `type="password"`)
+	assert.Contains(t, body, `placeholder="••••••••"`) // there is one, and that is all that is said
 	assert.False(t, strings.Contains(body, "sk-live-0123456789"))
 
 	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {""}})

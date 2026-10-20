@@ -267,7 +267,8 @@
 //
 // A [String] with Secret set is a password input for a value that is never read back, such as an API key. The stored
 // value is not in the page, in a table, in a file or in a search, and not in the form that answers a refused submission;
-// a submission that leaves it empty leaves it as it is, so only a key that is typed is stored.
+// the input shows a row of bullets, the same whatever the value is, when there is one. A submission that leaves it empty
+// leaves it as it is, so only a key that is typed is stored.
 //
 // # Text rules and patterns
 //

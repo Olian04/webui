@@ -51,6 +51,10 @@ func (v FormView) Editable() bool {
 	return len(v.Node.Fields) > 0 && v.editable(v.Node.Fields[0])
 }
 
+// storedBullets is what a secret that has a value shows in its empty input: the same row of bullets whatever the value is, so
+// that neither the value nor its length is in the page.
+const storedBullets = "••••••••"
+
 // fieldView is one input with everything the component needs resolved.
 type fieldView struct {
 	ID        string
@@ -66,6 +70,9 @@ type fieldView struct {
 
 	// FormID is the form the control belongs to, when it is not the one it is inside of.
 	FormID string
+
+	// Placeholder is what the input shows while it is empty: the field's own, or for a secret that has a value the bullets.
+	Placeholder string
 
 	// Autocomplete is what the browser may fill the control in with: "new-password" for a secret, so it does not offer a
 	// password that it has saved.
@@ -109,8 +116,12 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	if fv.ReadOnly {
 		fv.Name = ""
 	}
+	fv.Placeholder = f.Placeholder
 	if f.Secret {
 		fv.Value = "" // not even what was typed, in the form that answers a refusal
+		if f.Stored != nil && f.Stored(v.Model) {
+			fv.Placeholder = storedBullets // that there is one, and not what it is, nor how long
+		}
 	}
 	switch {
 	case fv.ReadOnly:

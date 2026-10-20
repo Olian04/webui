@@ -44,8 +44,9 @@ type String[M any] struct {
 	Placeholder string
 
 	// Secret makes the field a password input for a value that is never read back, such as an API key. The stored value is
-	// not in the page, not even in the form that answers a refused submission, and what Load returns is never used for
-	// anything but to be stored. A submission that leaves it empty leaves the stored value as it is, so only a
+	// not in the page, not even in the form that answers a refused submission. Whether there is one is: Load is asked only
+	// whether it returns something, and the input then shows a row of bullets, the same however long the value is, in
+	// place of the Placeholder. A submission that leaves it empty leaves the stored value as it is, so only a
 	// value that is typed is stored. A Secret must have a Store and is not Required, which would contradict the empty
 	// submission, and it is for a form: not for a table, a toolbar or an editor.
 	Secret bool
@@ -696,6 +697,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			// a search or a sort. What is typed is stored, and nothing typed leaves it as it is.
 			f.Secret = true
 			f.Get = func(any) string { return "" }
+			f.Stored = func(m any) bool { return a.Load(m.(M)) != "" }
 			if store := a.Store; store != nil {
 				f.Set = func(m any, raw string) error {
 					if raw != "" {
