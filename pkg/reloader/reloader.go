@@ -9,8 +9,7 @@
 //	// later, when the backend's resources changed:
 //	if err := h.Compile(discover(), "/admin"); err != nil { log.Println(err) } // the app that was serving still is
 //
-// It is a package of its own because few programs need it, and because what it needs of the app is one internal hook,
-// so the API of [webui] does not grow for it.
+// It is a package of its own because few programs need it. What it needs of the app is [webui.App.CompileCounting].
 package reloader
 
 import (
@@ -23,8 +22,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Olian04/webui/internal/metrics"
-	"github.com/Olian04/webui/internal/reload"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -43,7 +40,7 @@ type Handler struct {
 	mu       sync.Mutex // one Compile at a time
 	handler  atomic.Pointer[http.Handler]
 	good     bool                  // a compile has succeeded, so a failure no longer replaces what serves
-	recorder *metrics.Recorder     // what the apps count into, once there is one
+	counters *webui.Counters       // what the apps count into, once there is one
 	registry prometheus.Registerer // where it was registered
 }
 
@@ -57,8 +54,8 @@ func (r *Handler) Compile(app webui.App, prefix string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var rec *metrics.Recorder
-	if app.Metrics != nil && r.recorder != nil {
+	var counters *webui.Counters
+	if app.Metrics != nil && r.counters != nil {
 		same, err := sameRegistry(r.registry, app.Metrics)
 		switch {
 		case err != nil:
@@ -66,18 +63,18 @@ func (r *Handler) Compile(app webui.App, prefix string) error {
 		case !same:
 			return fmt.Errorf("reloader: Compile: App.Metrics is not the registry that the first app was given, so what is counted could not go on; give each reload the same one")
 		}
-		rec = r.recorder
+		counters = r.counters
 	}
 
-	h, got, err := reload.Compile(app, prefix, rec)
+	h, got, err := app.CompileCounting(prefix, counters)
 	if err != nil {
 		if !r.good {
 			r.handler.Store(&h) // nothing has served yet: say what is wrong
 		}
 		return err
 	}
-	if app.Metrics != nil && r.recorder == nil && got != nil {
-		r.recorder, r.registry = got, app.Metrics
+	if app.Metrics != nil && r.counters == nil && got != nil {
+		r.counters, r.registry = got, app.Metrics
 	}
 	r.good = true
 	r.handler.Store(&h)

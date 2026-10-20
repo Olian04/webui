@@ -798,7 +798,8 @@ design element.
   is answered by the app it began with. What it does not do: watch for a change (the program says when), keep anything
   of the old app (its sessions are the program's, and `App.Secret` is the program's to keep the same if links should
   survive a reload: an empty one is a new random secret for each compile), or serve two prefixes. It is a package of its own, like the editor's language packs, since few programs need it:
-  it reaches the app's compile through `internal/reload`, which `pkg/webui` sets from `init`, so `webui`'s own API did not grow.
+  it reaches the app through `App.CompileCounting`, which takes the counters of the app it replaces as an opaque `*webui.Counters`
+  (nothing in it is readable, and no `init` registers anything: the package imports `webui` and calls it).
 
 ## Logging
 

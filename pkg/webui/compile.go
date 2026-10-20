@@ -8,7 +8,6 @@ import (
 
 	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/metrics"
-	"github.com/Olian04/webui/internal/reload"
 	"github.com/Olian04/webui/internal/render"
 	"github.com/Olian04/webui/internal/runtime"
 )
@@ -31,7 +30,7 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 	return h, err
 }
 
-// compile is Compile counting into rec when it is given one, which the reloader package does so that a second compile does not register
+// compile is Compile counting into rec when it is given one, which the reloader package does, through CompileCounting, so that a second compile does not register
 // the metrics again, and saying what it counts into.
 func (a App) compile(prefix string, rec *metrics.Recorder) (http.Handler, *metrics.Recorder, error) {
 	errs := a.validate()
@@ -57,10 +56,24 @@ func (a App) compile(prefix string, rec *metrics.Recorder) (http.Handler, *metri
 	return program.Handler(), program.Recorder(), nil
 }
 
-func init() {
-	reload.Compile = func(app any, prefix string, rec *metrics.Recorder) (http.Handler, *metrics.Recorder, error) {
-		return app.(App).compile(prefix, rec)
+// Counters is what a compiled app counts its metrics into, for an app that replaces it to count into too. It holds nothing
+// a program can read: it is handed from one [App.CompileCounting] to the next by the reloader package.
+type Counters struct{ rec *metrics.Recorder }
+
+// CompileCounting is [App.Compile] for an app that replaces another in the same process: given the [Counters] of the first it
+// counts into them, and the metrics are not registered a second time, which a second Compile of the same [App.Metrics] would
+// fail on. Given nil it registers its own, as Compile does. It returns the counters of the app it compiled, nil when that has
+// no [App.Metrics]. A program that recompiles uses the reloader package, which does this and swaps the handler.
+func (a App) CompileCounting(prefix string, c *Counters) (http.Handler, *Counters, error) {
+	var rec *metrics.Recorder
+	if c != nil {
+		rec = c.rec
 	}
+	h, got, err := a.compile(prefix, rec)
+	if got == nil {
+		return h, nil, err
+	}
+	return h, &Counters{rec: got}, err
 }
 
 // joined is the problems as one error that wraps each of them.
