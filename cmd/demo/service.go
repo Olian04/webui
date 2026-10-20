@@ -47,6 +47,7 @@ type Settings struct {
 	SampleRate float64 // 0 to 1: the share of events kept
 	MaxLoad    float64 // percent: where ingest starts shedding
 	Maintain   int     // Unix seconds: when the next maintenance window starts
+	APIKey     string  // what the collector signs in with: never shown, only replaced
 }
 
 type RetentionPolicy struct{ Days int }

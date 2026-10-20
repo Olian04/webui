@@ -54,6 +54,10 @@ func (v FormView) Editable() bool {
 	return len(v.Node.Fields) > 0 && v.editable(v.Node.Fields[0])
 }
 
+// storedBullets is what a secret that has a value shows in its empty input: the same row of bullets whatever the value is, so
+// that neither the value nor its length is in the page.
+const storedBullets = "••••••••"
+
 // fieldView is one input with everything the component needs resolved.
 type fieldView struct {
 	ID        string
@@ -69,6 +73,13 @@ type fieldView struct {
 
 	// FormID is the form the control belongs to, when it is not the one it is inside of.
 	FormID string
+
+	// Placeholder is what the input shows while it is empty: the field's own, or for a secret that has a value the bullets.
+	Placeholder string
+
+	// Autocomplete is what the browser may fill the control in with: "new-password" for a secret, so it does not offer a
+	// password that it has saved.
+	Autocomplete string
 
 	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
@@ -108,6 +119,13 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	if fv.ReadOnly {
 		fv.Name = ""
 	}
+	fv.Placeholder = f.Placeholder
+	if f.Secret {
+		fv.Value = "" // not even what was typed, in the form that answers a refusal
+		if f.Stored != nil && f.Stored(v.Model) {
+			fv.Placeholder = storedBullets // that there is one, and not what it is, nor how long
+		}
+	}
 	switch {
 	case fv.ReadOnly:
 		// A number input shows its value in the viewer's locale ("0,67"), which is
@@ -119,6 +137,8 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		if _, typed := v.Values[f.Name]; !typed {
 			fv.Value = momentInput(f, v.Model)
 		}
+	case f.Secret:
+		fv.Type, fv.Autocomplete = "password", "new-password"
 	case f.Kind == ir.KindInt:
 		fv.Type, fv.Rules.Step = "number", "1"
 	case f.Display == ir.DisplaySlider:
@@ -239,6 +259,9 @@ func ruleLines(f ir.Field, editable bool) []string {
 	}
 	if f.Display == ir.DisplaySelect && f.Multi {
 		out = append(out, "Hold Ctrl or ⌘ to choose more than one")
+	}
+	if f.Secret {
+		out = append(out, "Leave empty to keep the current value")
 	}
 	for _, s := range []string{lengthRule(f.Rules), boundsRule(f.Rules), stepRule(f)} {
 		if s != "" {

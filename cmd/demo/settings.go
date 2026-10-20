@@ -23,6 +23,16 @@ var (
 		// Shown in the input while it is empty.
 		Placeholder: "eu-north-1",
 	}
+	// A Secret is a password input for a value that is never read back: the stored key is not in the page, and
+	// submitting it empty leaves it as it is, so only a key that is typed is stored.
+	APIKey = webui.String[Settings]{
+		Label:       "API key",
+		Load:        func(s Settings) string { return s.APIKey },
+		Store:       func(s *Settings, v string) { s.APIKey = v },
+		Secret:      true,
+		Rules:       webui.StringRules{MinLen: 8, MaxLen: 128},
+		Placeholder: "Leave empty to keep it",
+	}
 	Port = webui.Int[Settings]{
 		Label: "Port",
 		Load:  func(s Settings) int { return s.Port },
@@ -71,6 +81,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 			webui.Group[Settings]{CollectorName, Port},
 			webui.Group[Settings]{SampleRate, MaxLoad},
 			Maintenance,
+			APIKey,
 		},
 		Submit: SaveIngest,
 	},

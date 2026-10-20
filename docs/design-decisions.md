@@ -200,6 +200,22 @@ design element.
   options (`Open`), which a `<select>` cannot take and which would be a combobox for one value and a tag input for several; a
   select of several values that grows with what was entered is the case that would need it.
 
+- **A `String` can be a `Secret`** (a value that is typed and never read back, such as an API key). It is a flag on the
+  accessor, not a type, so its rules and placeholder come with it. The stored value is kept out of the page at one place:
+  its `Get` returns `""`, which is what the input, a table cell, search, sort, filters and the CSV and JSON files all read, so
+  there is no second place to forget. The form that answers a refused submission would still echo what was typed, which
+  it does for every field so that the value does not look reset, so a secret is left out of the echo too (`fieldView`).
+  An empty submission leaves the stored value (its setter ignores `""`), since the page cannot show the value and the
+  visitor cannot be asked to type it again to change something else; so a `Secret` cannot be `Required`, which would say
+  both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
+  secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (whose inputs are in the address).
+  The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
+  That there *is* a value is shown, since an empty box reads as "nothing is stored": the input's placeholder is a row of
+  bullets, always eight (`storedBullets`), so that neither the value nor its length is in the page, in place of the
+  accessor's own `Placeholder`, which is shown when nothing is stored. It is a placeholder and not a `value` made of
+  bullets, which would be submitted and stored, and the standard way to show text in an empty input. The only thing the page
+  learns of a secret is a yes or no (`ir.Field.Stored`, which asks `Load` whether it returned something).
+
 - **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
   type, so its rules, placeholder and `Store` come with it. What a text area cannot do is refused when the app compiles:
   it has no `pattern` attribute, and the text rules reach the browser as one, so a `Pattern` or a text rule on a multiline
