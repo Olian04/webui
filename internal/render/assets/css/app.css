@@ -1089,6 +1089,29 @@ th.pick {
   background: #fff;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
+/* The question that a button asks before it acts: a native dialog, in the top layer, over a dimmed page. */
+dialog.confirm {
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 16px 18px;
+  background: var(--raise);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+dialog.confirm::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+.confirm-text {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.confirm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 .actionbar strong {
   font-weight: 500;
 }

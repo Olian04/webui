@@ -21,6 +21,10 @@ const (
 type Action struct {
 	Label string
 	Role  Role
+
+	// Confirm is a question to be answered yes to before the action is done, "" for none.
+	Confirm string
+
 	Guard func(ctx context.Context, subject any) error
 	Run   func(ctx context.Context, subject any) (Outcome, error)
 }
