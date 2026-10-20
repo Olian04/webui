@@ -8,6 +8,7 @@ import (
 
 	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/metrics"
+	"github.com/Olian04/webui/internal/reload"
 	"github.com/Olian04/webui/internal/render"
 	"github.com/Olian04/webui/internal/runtime"
 )
@@ -30,7 +31,7 @@ func (a App) Compile(prefix string) (http.Handler, error) {
 	return h, err
 }
 
-// compile is Compile counting into rec when it is given one, which a [Reloader] does so that a second compile does not register
+// compile is Compile counting into rec when it is given one, which the reloader package does so that a second compile does not register
 // the metrics again, and saying what it counts into.
 func (a App) compile(prefix string, rec *metrics.Recorder) (http.Handler, *metrics.Recorder, error) {
 	errs := a.validate()
@@ -54,6 +55,12 @@ func (a App) compile(prefix string, rec *metrics.Recorder) (http.Handler, *metri
 		return failure(errs), nil, joined(errs)
 	}
 	return program.Handler(), program.Recorder(), nil
+}
+
+func init() {
+	reload.Compile = func(app any, prefix string, rec *metrics.Recorder) (http.Handler, *metrics.Recorder, error) {
+		return app.(App).compile(prefix, rec)
+	}
 }
 
 // joined is the problems as one error that wraps each of them.

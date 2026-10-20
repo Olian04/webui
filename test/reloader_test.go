@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/Olian04/webui/pkg/reloader"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -23,13 +24,13 @@ func reloadApp(reg prometheus.Registerer, path webui.PageID[webui.NoArgs], word 
 func TestAReloaderAnswers503UntilItHasAnApp(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, serve(webui.NewReloader(), http.MethodGet, "/admin/a").Code, http.StatusServiceUnavailable)
+	assert.Equal(t, serve(reloader.New(), http.MethodGet, "/admin/a").Code, http.StatusServiceUnavailable)
 }
 
 func TestAReloaderServesTheAppItWasLastGivenAndTheOldOneIsGone(t *testing.T) {
 	t.Parallel()
 
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(nil, "/a", "alpha"), "/admin"))
 	assert.Contains(t, serve(r, http.MethodGet, "/admin/a").Body.String(), "alpha")
 	assert.Equal(t, serve(r, http.MethodGet, "/admin/b").Code, http.StatusNotFound)
@@ -48,7 +49,7 @@ func TestAReloaderServesTheAppItWasLastGivenAndTheOldOneIsGone(t *testing.T) {
 func TestAReloadThatFailsKeepsTheAppThatWasServing(t *testing.T) {
 	t.Parallel()
 
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(nil, "/a", "alpha"), "/admin"))
 
 	err := r.Compile(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/bad", Body: webui.Table[Device]{}}}}, "/admin")
@@ -65,7 +66,7 @@ func TestAReloadThatFailsKeepsTheAppThatWasServing(t *testing.T) {
 func TestAReloaderThatHasOnlyFailedServesTheFailureUntilAnAppWorks(t *testing.T) {
 	t.Parallel()
 
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.Error(t, r.Compile(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/bad", Body: webui.Table[Device]{}}}}, "/admin"))
 	rec := serve(r, http.MethodGet, "/admin/anything")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
@@ -84,7 +85,7 @@ func TestTheMetricsOfAReloaderGoOnAcrossAReload(t *testing.T) {
 	t.Parallel()
 
 	reg := prometheus.NewRegistry()
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(reg, "/a", "alpha"), "/admin"))
 	serve(r, http.MethodGet, "/admin/a")
 	serve(r, http.MethodGet, "/admin/a")
@@ -110,7 +111,7 @@ func TestAReloadWithAnotherRegistryIsRefused(t *testing.T) {
 	t.Parallel()
 
 	one, two := prometheus.NewRegistry(), prometheus.NewRegistry()
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(one, "/a", "alpha"), "/admin"))
 
 	err := r.Compile(reloadApp(two, "/b", "beta"), "/admin")
@@ -121,7 +122,7 @@ func TestAReloadWithAnotherRegistryIsRefused(t *testing.T) {
 
 	// The same wrapped registry, made once and given again, is the same registry.
 	wrapped := prometheus.WrapRegistererWith(prometheus.Labels{"app": "admin"}, prometheus.NewRegistry())
-	w := webui.NewReloader()
+	w := reloader.New()
 	assert.NoError(t, w.Compile(reloadApp(wrapped, "/a", "alpha"), "/admin"))
 	assert.NoError(t, w.Compile(reloadApp(wrapped, "/b", "beta"), "/admin"))
 }
@@ -131,7 +132,7 @@ func TestAReloaderMayStartWithoutMetricsAndGainThem(t *testing.T) {
 	t.Parallel()
 
 	reg := prometheus.NewRegistry()
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(nil, "/a", "alpha"), "/admin"))
 	assert.NoError(t, r.Compile(reloadApp(reg, "/b", "beta"), "/admin"))
 	serve(r, http.MethodGet, "/admin/b")
@@ -146,7 +147,7 @@ func TestARequestDuringAReloadIsAnsweredByOneAppOrTheOther(t *testing.T) {
 	t.Parallel()
 
 	reg := prometheus.NewRegistry()
-	r := webui.NewReloader()
+	r := reloader.New()
 	assert.NoError(t, r.Compile(reloadApp(reg, "/a", "alpha"), "/admin"))
 
 	var wg sync.WaitGroup

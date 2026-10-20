@@ -536,7 +536,7 @@
 // The app serves none of it. The program registers its own registry and serves it with
 // promhttp where it serves the rest of its metrics, so where they are, and who may read them,
 // are the program's decisions. A program whose declaration changes as it runs compiles the app again with a
-// [Reloader], which keeps the one registry and the counts across the reload.
+// reloader.Handler (package github.com/Olian04/webui/pkg/reloader), which keeps the one registry and the counts across the reload.
 //
 // # Security
 //
