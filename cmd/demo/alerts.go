@@ -46,8 +46,12 @@ var (
 	}
 )
 
+// AlertsPath is the list of alerts, named by a constant so that a refusal on an alert's own page can lead back to it: the list
+// reaches that page through its rows, and naming the variable Alerts from there would be an initialization cycle.
+const AlertsPath webui.PageID[webui.NoArgs] = "/alert"
+
 var Alerts = webui.Page[webui.NoArgs]{
-	Path: "/alert",
+	Path: AlertsPath,
 	Nav:  webui.Nav{Label: "Alerts", Icon: "bell", Section: "Platform"},
 	Body: webui.Table[Alert]{
 		Title: "Alerts",
@@ -87,9 +91,10 @@ var AlertDetails = webui.Page[AlertArgs]{
 		AlertID, Severity, AlertDevice, Message,
 	),
 	// No Nav: it lights Alerts, the page at "/alert".
-	Guard: func(_ context.Context, a AlertArgs) error {
+	Guard: func(ctx context.Context, a AlertArgs) error {
 		if _, ok := service.Alert(a.ID); !ok {
-			return webui.NotFound(fmt.Sprintf("There is no alert %q.", a.ID))
+			return webui.NotFound(fmt.Sprintf("There is no alert %q.", a.ID)).
+				Then("Back to the alerts", webui.Open(ctx, AlertsPath, webui.NoArgs{}))
 		}
 		return nil
 	},
