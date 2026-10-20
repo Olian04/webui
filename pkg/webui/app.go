@@ -43,9 +43,12 @@ type App struct {
 	//	handler := webui.App{Metrics: reg, Pages: pages}.MustCompile("/admin")
 	//	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	//
-	// Compile fails if the registry already has a webui metric, which is two apps given one
-	// registry: give each its own wrapper from [prometheus.WrapRegistererWith], with a
-	// label of its own, to tell them apart.
+	// Compiling again, or compiling another app with the same registry, is not an error: the
+	// metrics that the registry already has are counted into, so an app that replaces the one that was
+	// serving keeps its counts. Two different apps then add their counts together where a page has
+	// the same path template: give each its own wrapper from [prometheus.WrapRegistererWith], with a
+	// label of its own, to tell them apart. A metric of another kind with the name of a webui one
+	// is an error.
 	Metrics prometheus.Registerer
 
 	// Logger is where the app says what went wrong that it could not tell the visitor: a Load that

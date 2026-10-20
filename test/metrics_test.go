@@ -197,22 +197,49 @@ func TestSearchesAndExportsAreCounted(t *testing.T) {
 	assert.Equal(t, gathered(t, reg, "webui_exports_total")["format=csv,page=/things"], 1.0)
 }
 
-func TestTwoAppsGivenOneRegistryIsACompileError(t *testing.T) {
+// An app compiled again, or another given the same registry, counts into the metrics that are there, and none of it fails.
+func TestAnAppCompiledAgainOrAnotherGivenTheSameRegistryCountsIntoTheSameMetrics(t *testing.T) {
 	t.Parallel()
 
 	reg := prometheus.NewRegistry()
-	metricsApp(reg, nil, nil)
+	first := metricsApp(reg, nil, nil)
+	serve(first, http.MethodGet, "/admin/thing/a")
+	second := metricsApp(reg, nil, nil) // the same app again
+	serve(second, http.MethodGet, "/admin/thing/a")
+	serve(first, http.MethodGet, "/admin/thing/a") // and the first goes on counting too
+	other, err := webui.App{Metrics: reg, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
+	assert.NoError(t, err)
+	serve(other, http.MethodGet, "/admin/")
+
+	requests := gathered(t, reg, "webui_http_requests_total")
+	assert.Equal(t, requests["code=200,method=GET,page=/thing/{id}"], 3.0)
+	assert.Equal(t, requests["code=200,method=GET,page=/"], 1.0)
+	assert.Equal(t, len(gathered(t, reg, "webui_build_info")), 1)
+}
+
+// Wrapping the registry for each, with a label of its own, keeps apps apart.
+func TestWrappingTheRegistryForEachAppKeepsTheirCountsApart(t *testing.T) {
+	t.Parallel()
+
+	one := prometheus.NewRegistry()
+	for _, name := range []string{"a", "b"} {
+		wrapped := prometheus.WrapRegistererWith(prometheus.Labels{"app": name}, one)
+		h, err := webui.App{Metrics: wrapped, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/" + name)
+		assert.NoError(t, err)
+		serve(h, http.MethodGet, "/"+name+"/")
+	}
+	requests := gathered(t, one, "webui_http_requests_total")
+	assert.Equal(t, requests["app=a,code=200,method=GET,page=/"], 1.0)
+	assert.Equal(t, requests["app=b,code=200,method=GET,page=/"], 1.0)
+}
+
+// A metric of the same name that is not the same is a clash, and is still refused.
+func TestAMetricOfTheNameOfAWebuiOneThatIsNotTheSameIsRefused(t *testing.T) {
+	t.Parallel()
+
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(prometheus.NewCounter(prometheus.CounterOpts{Namespace: "webui", Name: "exports_total", Help: "the program's own"}))
 	_, err := webui.App{Metrics: reg, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "App.Metrics")
-
-	// Wrapping the registry for each tells them apart.
-	one := prometheus.NewRegistry()
-	for name, wrapped := range map[string]prometheus.Registerer{
-		"a": prometheus.WrapRegistererWith(prometheus.Labels{"app": "a"}, one),
-		"b": prometheus.WrapRegistererWith(prometheus.Labels{"app": "b"}, one),
-	} {
-		_, err = webui.App{Metrics: wrapped, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/" + name)
-		assert.NoError(t, err)
-	}
 }

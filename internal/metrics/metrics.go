@@ -37,9 +37,11 @@ type Recorder struct {
 	navFails    *prometheus.CounterVec
 }
 
-// New makes the metrics and registers them with reg. It fails if reg already has one of
-// the same name, which is two apps registering with one registry: give each its own, or
-// wrap reg with prometheus.WrapRegistererWith to tell them apart.
+// New makes the metrics and registers them with reg. A metric that reg already has, the same
+// in name, labels and help, is the one that is counted into: an app compiled again, or another
+// app given the same registry, adds to the counts that are there, and none of them fails. Wrap
+// reg with prometheus.WrapRegistererWith, with a label of its own, to keep apps apart. It fails
+// only for a metric that has the name of one of these and is not the same, which is a clash.
 func New(reg prometheus.Registerer) (*Recorder, error) {
 	r := &Recorder{
 		requests: prometheus.NewCounterVec(prometheus.CounterOpts{
@@ -92,14 +94,37 @@ func New(reg prometheus.Registerer) (*Recorder, error) {
 	}, []string{"version"})
 	info.WithLabelValues(version()).Set(1)
 
-	for _, c := range []prometheus.Collector{
-		r.requests, r.duration, r.inFlight, r.loads, r.loadErrors, r.actions, r.exports, r.search, r.searchFails, r.navFails, info,
-	} {
-		if err := reg.Register(c); err != nil {
-			return nil, err
-		}
+	a := adopter{reg: reg}
+	r.requests, r.duration, r.inFlight = adopt(&a, r.requests), adopt(&a, r.duration), adopt(&a, r.inFlight)
+	r.loads, r.loadErrors, r.actions, r.exports = adopt(&a, r.loads), adopt(&a, r.loadErrors), adopt(&a, r.actions), adopt(&a, r.exports)
+	r.search, r.searchFails, r.navFails = adopt(&a, r.search), adopt(&a, r.searchFails), adopt(&a, r.navFails)
+	adopt(&a, info)
+	if a.err != nil {
+		return nil, a.err
 	}
 	return r, nil
+}
+
+// adopter registers collectors with a registry and keeps the first error, so that a list of them is not a list of checks.
+type adopter struct {
+	reg prometheus.Registerer
+	err error
+}
+
+// adopt registers c, or when the registry already has one the same, says that one is to be used: what it counts is what
+// the first app counted too.
+func adopt[C prometheus.Collector](a *adopter, c C) C {
+	err := a.reg.Register(c)
+	var already prometheus.AlreadyRegisteredError
+	if errors.As(err, &already) {
+		if existing, ok := already.ExistingCollector.(C); ok {
+			return existing
+		}
+	}
+	if err != nil && a.err == nil {
+		a.err = err
+	}
+	return c
 }
 
 // version is the library's version as the program that uses it was built, or "unknown".
