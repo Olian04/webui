@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/Olian04/webui/internal/phone"
 	"path"
 	"strconv"
 	"strings"
@@ -75,6 +76,12 @@ func (r *Renderer) buildAssets() error {
 		}
 		add(logical, body, mime)
 	}
+	phoneJS, err := read("js/phone.js")
+	if err != nil {
+		return err
+	}
+	// The countries are the server's, so that what the script offers is what it accepts: they are the first line of the script.
+	add("phone.js", append([]byte("self.webuiPhoneCountries="+string(phone.JSON())+";\n"), phoneJS...), "text/javascript; charset=utf-8")
 	if r.hasTheme() {
 		add("theme.css", themeCSS(r.app.Theme), "text/css; charset=utf-8")
 	}

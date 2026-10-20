@@ -110,6 +110,9 @@ type InputProps struct {
 	// expression with what to say when a value does not match it, as JSON: [["expression", "message"], ...]. Script
 	// uses it to say which one a value fails when the browser reports the pattern. It has no effect without script.
 	Parts string
+
+	// Attrs are attributes of the caller's own, such as the data attributes that script reads.
+	Attrs templ.Attributes
 }
 
 templ Input(p InputProps) {
@@ -168,6 +171,7 @@ templ Input(p InputProps) {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
 		}
+		{ p.Attrs... }
 	/>
 }
 

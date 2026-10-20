@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/phone"
 )
 
 // The words of a value that is not the format of its input.
@@ -20,10 +21,6 @@ const (
 // by, so that the server and the browser agree. It is looser than the RFCs on purpose (it allows "a@b"), and stricter
 // than nothing.
 var emailAddress = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
-
-// telNumber is a permissive phone number: digits with the punctuation that numbers are written with, an extension's "x",
-// and at least one digit. A browser checks none, so only the server does, and loosely.
-var telNumber = regexp.MustCompile(`^[0-9 +().x/-]*[0-9][0-9 +().x/-]*$`)
 
 // colorValue is what a color input holds: a "#" and six hex digits.
 var colorValue = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
@@ -56,7 +53,7 @@ func checkFormat(f ir.Format, s string) string {
 		u, err := url.Parse(s)
 		ok = err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Hostname() != "" && !strings.ContainsAny(s, " \t\r\n")
 	case ir.FormatTel:
-		ok = telNumber.MatchString(s)
+		ok = phone.Valid(s)
 	case ir.FormatColor:
 		ok = colorValue.MatchString(s)
 	}

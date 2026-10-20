@@ -63,7 +63,7 @@ func (r *Renderer) Document(d Doc) templ.Component {
 			Title:       r.title(d.Title),
 			Early:       r.early(),
 			Stylesheets: r.styles(),
-			Scripts:     []string{r.AssetHref("enhance.js")},
+			Scripts:     r.scripts(d),
 			Head:        r.head(d.Code),
 			Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
 			TopBar:      r.topbar(d.Crumbs, d.URL),
@@ -2053,7 +2053,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 				templ_7745c5c3_Err = c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
 					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID, Autocomplete: fv.Autocomplete,
+					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID, Autocomplete: fv.Autocomplete, Attrs: fv.Attrs,
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

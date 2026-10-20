@@ -255,6 +255,20 @@ design element.
   address to type; one name for both would have made a field with a `Store` allow what a link allows. `Color` was taken by
   the theme's, so the picker is `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since
   there is no grammar for them. A color picker cannot be empty, so an empty `Load` shows black.
+- **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
+  script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
+  spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores
+  as it is (a number written with a code is normalised to the same form with no script too). E.164 was chosen over keeping the
+  spaces: one number then has one form, so it can be compared, searched and dialled, and the spacing is only how it is shown.
+  The spacing is data, not code: groupings for about twenty countries where the national format is known, and threes for the
+  rest, which is approximate and says so; `libphonenumber` metadata would be right for every country and is 80 to 150 kB and a
+  licence to carry. The countries are a Go table, `internal/phone`, which is also what the server validates `DefaultCountry`
+  with and what the script is given (as the first line of `phone.js`, generated with it), so what the script offers is what the
+  server accepts. The costs: the numbering plan of `+1` has more countries than the US and Canada, which are not listed (a number
+  of one of them is typed as `+1 242 …`, and is still the right number); a number that is already stored without a code, or with an
+  extension, is not split, since doing so would change it, and stays the plain input until it is cleared; and the length and
+  pattern rules of the field are not the browser's with script, because what is typed there is the national part and the rule is
+  about the number that is sent: the server holds it to them, in a page that says so beneath the field.
 - **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline
   does not have, and a `Timestamp` of midnight shown as "00:00" is noise. `DateOnly` is a flag on `Datetime` and `Timestamp`, not
   a type, since all else about them is the same: it is `type="date"`, shown and filtered as a date, and a day is midnight

@@ -114,7 +114,7 @@ func newService() *Service {
 		config: Config{Current: seedConfig, Deployed: seedConfig},
 		rule:   seedRule,
 		settings: Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix()),
-			Contact: "oncall@example.com", Label: "#2f9e8f", CertEnds: int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())},
+			Contact: "oncall@example.com", OnCall: "+46701234567", Label: "#2f9e8f", CertEnds: int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
 	}

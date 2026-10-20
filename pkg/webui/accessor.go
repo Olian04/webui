@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/internal/rules"
 )
 
@@ -607,6 +608,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 	case Phone[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
 		validateTextRules(v, at, a.Rules)
+		if a.DefaultCountry != "" && !phone.Known(a.DefaultCountry) {
+			v.add(fmt.Sprintf("%s has the unknown DefaultCountry %q", at, a.DefaultCountry), "Use the ISO 3166 alpha-2 code of a country, such as \"SE\" or \"US\", or leave it empty.")
+		}
 	case Website[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
 		validateTextRules(v, at, a.Rules)
@@ -862,7 +866,9 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 	case Email[M]:
 		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Rules, a.Placeholder, a.Load, a.Store)
 	case Phone[M]:
-		return lowerFormatted(name, a.Label, ir.FormatTel, a.Rules, a.Placeholder, a.Load, a.Store)
+		f := lowerFormatted(name, a.Label, ir.FormatTel, a.Rules, a.Placeholder, a.Load, a.Store)
+		f.Country = a.DefaultCountry
+		return f
 	case Website[M]:
 		return lowerFormatted(name, a.Label, ir.FormatURL, a.Rules, a.Placeholder, a.Load, a.Store)
 	case ColorPicker[M]:

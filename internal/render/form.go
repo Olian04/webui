@@ -13,6 +13,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 	c "github.com/Olian04/webui/internal/render/templates/components"
 	"github.com/Olian04/webui/internal/rules"
+	"github.com/a-h/templ"
 )
 
 // FormView is a form with its model loaded. The runtime fills it.
@@ -81,6 +82,9 @@ type fieldView struct {
 	// password that it has saved.
 	Autocomplete string
 
+	// Attrs are attributes for the input that script reads, such as the mark of a phone number.
+	Attrs templ.Attributes
+
 	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
 	Parts    string
@@ -144,6 +148,13 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		fv.Type, fv.Autocomplete = "password", "new-password"
 	case f.Rules.Format != "":
 		fv.Type = string(f.Rules.Format)
+		if f.Rules.Format == ir.FormatTel {
+			// Script splits the number in a country and the rest, which is why it is marked, and which country it starts at.
+			fv.Attrs = templ.Attributes{"data-phone": true}
+			if f.Country != "" {
+				fv.Attrs["data-country"] = f.Country
+			}
+		}
 		if f.Rules.Format == ir.FormatColor && fv.Value == "" {
 			fv.Value = "#000000" // a picker cannot be empty: a field with no color is black
 		}

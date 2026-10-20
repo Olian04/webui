@@ -88,6 +88,9 @@ type Field struct {
 	// what is submitted is "\n", whatever the browser sent.
 	Multiline bool
 
+	// Country is the country a phone number is taken to be of when none is chosen, by its ISO code, or "" for none.
+	Country string
+
 	// DateOnly says a moment is a date: the input picks a day, and not a time, and the day is read, shown and stored as midnight
 	// UTC. It is set only for DisplayTime.
 	DateOnly bool
