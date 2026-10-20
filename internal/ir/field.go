@@ -88,7 +88,7 @@ type Field struct {
 	// what is submitted is "\n", whatever the browser sent.
 	Multiline bool
 
-	// Help is what the field is for, behind a question-mark icon beside its label in a form; "" for none.
+	// Help is what the field is for, in the popover beside its label in a form; "" for none.
 	Help string
 
 	// Country is the country a phone number is taken to be of when none is chosen, by its ISO code, or "" for none.

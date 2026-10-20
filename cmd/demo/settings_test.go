@@ -178,11 +178,11 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 	assert.Equal(t, s.CertEnds, int(time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
 }
 
-// Help is the question-mark tip beside a label that says what the field is for.
-func TestAFieldsHelpIsAQuestionMarkTipBesideItsLabel(t *testing.T) {
+// Help is a section of the popover beside a label that says what the field is for.
+func TestAFieldsHelpIsInThePopoverBesideItsLabel(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `aria-label="The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow."`)
-	assert.Contains(t, body, `fa-circle-question`)
-	assert.Contains(t, body, `aria-label="Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through."`)
+	assert.Contains(t, body, `aria-label="Help: The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.`)
+	assert.Contains(t, body, `<span class="tip-title">Help:</span>`)
+	assert.Contains(t, body, `aria-label="Help: Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.`)
 }

@@ -90,29 +90,33 @@ templ Panel(p PanelProps) {
 //
 // Lines is a list in the popover in place of Text, each an item; the icon's
 // accessible name is the lines, after Text if there is one.
+//
+// Help is what the thing is for, in its own section above the rest, under the heading "Help:".
 type InfoTipProps struct {
 	Text  string
 	Lines []string
-
-	// Icon is the icon, the information icon when it is empty.
-	Icon IconName
+	Help  string
 }
 
 func (p InfoTipProps) name() string {
-	if len(p.Lines) == 0 {
-		return p.Text
+	name := p.Text
+	if len(p.Lines) > 0 {
+		name = strings.TrimSpace(p.Text + " " + strings.Join(p.Lines, "; "))
 	}
-	return strings.TrimSpace(p.Text + " " + strings.Join(p.Lines, "; "))
+	if p.Help != "" {
+		return strings.TrimSpace("Help: " + p.Help + " " + name)
+	}
+	return name
 }
 
 templ InfoTip(p InfoTipProps) {
 	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
-		if p.Icon != "" {
-			@Icon(IconProps{Name: p.Icon, Class: "info"})
-		} else {
-			@Icon(IconProps{Name: IconInfo, Class: "info"})
-		}
+		@Icon(IconProps{Name: IconInfo, Class: "info"})
 		<span class="tip-body" aria-hidden="true">
+			if p.Help != "" {
+				<span class="tip-title">Help:</span>
+				<span class="tip-text">{ p.Help }</span>
+			}
 			if len(p.Lines) == 0 {
 				{ p.Text }
 			} else {

@@ -43,7 +43,7 @@ var (
 	// A Float has a Precision (decimals shown) and rules like any number. The
 	// bounds are pointers, because a zero bound is a real constraint.
 	SampleRate = webui.Float[Settings]{
-		// Help is what the field is for, behind a question-mark icon beside its label: the label and the rules cannot say that
+		// Help is what the field is for, in the popover beside its label, above the rules: the label and the rules cannot say that
 		// 0.25 keeps one event in four.
 		Label: "Sample rate", Precision: 2, Help: "The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.",
 		Load:  func(s Settings) float64 { return s.SampleRate },

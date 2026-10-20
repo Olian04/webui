@@ -35,9 +35,9 @@ type OptionalInt[M any] struct {
 	Format func(int) string
 
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
-	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
-	// table it is not shown, as a placeholder is not. It is text, not markup.
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
 	Help string
 
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
@@ -81,9 +81,9 @@ type OptionalFloat[M any] struct {
 	Format func(float64) string
 
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
-	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
-	// table it is not shown, as a placeholder is not. It is text, not markup.
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
 	Help string
 
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
@@ -125,9 +125,9 @@ type OptionalSlider[M any] struct {
 	StepSize float64
 
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
-	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
-	// table it is not shown, as a placeholder is not. It is text, not markup.
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
 	Help string
 
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
@@ -163,9 +163,9 @@ type Bool[M any] struct {
 	Required bool
 
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
-	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
-	// table it is not shown, as a placeholder is not. It is text, not markup.
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
 	Help string
 
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
