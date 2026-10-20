@@ -19,6 +19,12 @@ import (
 // LeafID is the address of a leaf as it appears in the document and in the
 // header of a refresh request: "p" for a body that is itself a leaf, then one
 // index per level, such as "p.0.1". It comes from position only.
+// confirmID is the id of the dialog that a button of a leaf asks in: the leaf, the kind of place the button is in, and its place
+// there. It is a position and never a key, so it holds nothing that a row says.
+func confirmID(at ir.Addr, kind string, n int) string {
+	return "confirm-" + LeafID(at) + "-" + kind + strconv.Itoa(n)
+}
+
 func LeafID(at ir.Addr) string {
 	var b strings.Builder
 	b.WriteString("p")

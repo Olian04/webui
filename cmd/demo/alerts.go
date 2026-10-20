@@ -156,9 +156,12 @@ var AlertDeviceTable = webui.Table[Device]{
 	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Site},
 }
 
+// Confirm asks before it acts: the button opens a dialog with the question, and only its own button goes on. It is a native
+// <dialog> opened by an invoker command, so it needs no script.
 var Dismiss = webui.Action[Alert]{
-	Label: "Dismiss",
-	Guard: canEdit[Alert],
+	Label:   "Dismiss",
+	Confirm: "Dismiss this alert? It stops counting as open for everyone.",
+	Guard:   canEdit[Alert],
 	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
 		service.Acknowledge(a.ID)
 		return webui.Success("Dismissed " + a.ID), nil
@@ -188,9 +191,10 @@ var Acknowledge = webui.Action[[]Alert]{
 // A destructive action is drawn in the critical colour. Like every action it is
 // gated by its Guard: as a viewer it is disabled, with the reason.
 var Delete = webui.Action[[]Alert]{
-	Label: "Delete",
-	Role:  webui.RoleDestructive,
-	Guard: canEdit[[]Alert],
+	Label:   "Delete",
+	Role:    webui.RoleDestructive,
+	Confirm: "Delete the selected alerts? This cannot be undone.",
+	Guard:   canEdit[[]Alert],
 	Run: func(_ context.Context, alerts []Alert) (webui.Outcome, error) {
 		ids := make([]string, len(alerts))
 		for i, a := range alerts {

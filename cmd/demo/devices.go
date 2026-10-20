@@ -152,8 +152,9 @@ var DevicesToolbar = webui.Toolbar[webui.NoArgs]{
 	},
 	Right: []webui.ToolbarItem[webui.NoArgs]{
 		webui.Action[webui.NoArgs]{
-			Label: "Sync now",
-			Guard: canEdit[webui.NoArgs],
+			Label:   "Sync now",
+			Confirm: "Sync every device now? It reads each one and may take a while.",
+			Guard:   canEdit[webui.NoArgs],
 			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
 				return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
 			},

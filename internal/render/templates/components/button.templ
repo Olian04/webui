@@ -22,6 +22,11 @@ type ButtonProps struct {
 	Disabled bool
 	Guard    string
 
+	// Confirm is a question to answer before the button submits: the button then opens a dialog, with ConfirmID, that says it
+	// and has the button that submits and one to cancel. ConfirmID must be unique in the page.
+	Confirm   string
+	ConfirmID string
+
 	Attrs templ.Attributes
 }
 
@@ -37,6 +42,38 @@ templ Button(p ButtonProps) {
 				{ children... }
 			}
 		</span>
+	} else if p.Confirm != "" && p.Href == "" && !p.Disabled {
+		// A native dialog, opened by a button with an invoker command, so it needs no script. The dialog is inside the form
+		// that the button is in, so the button in it submits that form, with the name and the value the button had.
+		<button
+			class={ "btn", p.Variant.btn(), p.Size.btn() }
+			type="button"
+			commandfor={ p.ConfirmID }
+			command="show-modal"
+			aria-haspopup="dialog"
+			data-confirm-open
+			{ p.Attrs... }
+		>
+			{ children... }
+		</button>
+		<dialog id={ p.ConfirmID } class="confirm" closedby="any" aria-labelledby={ p.ConfirmID + "-text" }>
+			<p class="confirm-text" id={ p.ConfirmID + "-text" }>{ p.Confirm }</p>
+			<div class="confirm-foot">
+				<button class="btn btn-ghost btn-sm" type="button" commandfor={ p.ConfirmID } command="close" autofocus>Cancel</button>
+				<button
+					class={ "btn", p.Variant.btn(), "btn-sm" }
+					type="submit"
+					if p.Name != "" {
+						name={ p.Name }
+					}
+					if p.Value != "" {
+						value={ p.Value }
+					}
+				>
+					{ children... }
+				</button>
+			</div>
+		</dialog>
 	} else if p.Href != "" && !p.Disabled {
 		<a
 			class={ "btn", p.Variant.btn(), p.Size.btn() }

@@ -213,7 +213,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 	if v.selectable() {
 		@c.ActionBar() {
 			for i, a := range v.Node.Bulk {
-				@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i)}) {
+				@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i), Confirm: a.Confirm, ConfirmID: confirmID(v.Node.At, "b", i)}) {
 					{ a.Label }
 				}
 			}
@@ -293,6 +293,7 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
 					@c.Button(c.ButtonProps{
 						Variant: variant(act.Role), Size: c.SizeSmall,
 						Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a),
+						Confirm: act.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
 					}) {
 						{ act.Label }
 					}
@@ -416,7 +417,15 @@ templ (r *Renderer) Form(v FormView) {
 							Cancel
 						}
 					}
-					@c.Button(c.ButtonProps{Variant: variant(v.Node.Submit.Role), Size: c.SizeSmall}) {
+					if v.Node.Submit.Confirm != "" {
+						// Pressing Enter in a field clicks the first submit button of the form, which would be the one in the dialog and
+						// would not ask. This one is disabled, which makes Enter do nothing: the way to save is the button.
+						<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
+					}
+					@c.Button(c.ButtonProps{
+						Variant: variant(v.Node.Submit.Role), Size: c.SizeSmall,
+						Confirm: v.Node.Submit.Confirm, ConfirmID: confirmID(v.Node.At, "submit", 0),
+					}) {
 						{ v.Node.Submit.Label }
 					}
 				</div>
@@ -534,7 +543,7 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 					}
 					switch {
 						case it.Action != nil:
-							@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i]}) {
+							@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i], Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
 								{ it.Label }
 							}
 						case it.Link != nil:

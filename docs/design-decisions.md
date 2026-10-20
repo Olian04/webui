@@ -333,6 +333,18 @@ design element.
   success returns to the address it was at, with the toast. Not done: buttons that take input of their own (a popover with fields over a new model),
   which `Form` on a page of its own already is, and which the toolbar's `Link` leads to. Also not done: a `Toolbar` field of
   `Table`, which would put the same items in a table's header beside its title.
+- **An action may ask first, with a native `<dialog>`.** `Action.Confirm` puts a question between the click and the
+  request. A `<dialog>` opened by an invoker command (`commandfor`, `command="show-modal"`) needs no script, which is the rule
+  for everything here, and gives focus handling, Escape, the top layer and a backdrop for free; the confirming button is
+  a submit button inside the dialog, which sits in the form that the action's button was in, so the request is the one
+  the button would have made, with its `_act` and nothing else new on the server. `window.confirm()` was weighed and
+  dropped: it needs script, cannot be styled, and is blocked in some embeds. The costs, in the docs: invoker commands
+  need Chrome and Edge 135, Firefox 144, Safari 26.2, so `enhance.js` adds a small click handler for an older browser, and an
+  older one with no script cannot open the dialog, and so cannot do the action (it fails closed, which is the safe way);
+  a form whose Save asks is not submitted by Enter in a field, because Enter clicks the form's first submit button, which
+  would be the one in the closed dialog, so a disabled one is put ahead of it; and it asks the visitor, not the server, so
+  a hand-made request is not asked and a Guard is what refuses. A row action's dialog is named by the row's position and the
+  action's, never the key, so nothing a row says is in an id. A `RowClick` action has no button and may not have one.
 
 ## Tables, filters and view state
 

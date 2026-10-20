@@ -141,7 +141,9 @@ var SaveIngest = webui.Action[Settings]{
 }
 
 var SaveRetention = webui.Action[RetentionPolicy]{
-	Guard: canEdit[RetentionPolicy],
+	// On a form, the question is asked when Save is clicked, and pressing Enter in a field does not save.
+	Confirm: "Save the retention policy? Events older than it are deleted.",
+	Guard:   canEdit[RetentionPolicy],
 	Run: func(ctx context.Context, r RetentionPolicy) (webui.Outcome, error) {
 		service.SetRetention(r)
 		// Then says where to go next, in place of staying on the form: the system

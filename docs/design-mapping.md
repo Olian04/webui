@@ -70,6 +70,7 @@ into existence, and nothing is configured twice.
 | `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
 | `Action` | A button; its `Role` decides primary / secondary / destructive |
+| `Action.Confirm` | A question asked before the action is done: the button opens a native `<dialog>` (an invoker command, `command="show-modal"`, so no script is needed in a current browser) with the question, **Cancel** and a button that is the action's own, with its `name` and `value`, inside the same form, so the request is the one the button would have made. Backdrop click and Escape close it (`closedby="any"`); Cancel has focus. In a table, one dialog for each row and action, by position and never by key. A button refused by its `Guard` is the disabled one with its reason and has no dialog. A form's Save that asks is not submitted by Enter in a field (a disabled button ahead of the dialog's is the form's default button). Not a check: a request made by hand is not asked |
 | `Success`, `Warning` | A toast, bottom-right (carried across the redirect by a flash cookie), green or amber; the action was accepted |
 | `Failure` | A red toast over the form shown again, with what was typed kept |
 | `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |

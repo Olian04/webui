@@ -610,6 +610,26 @@
     refreshLeaf(leaf.getAttribute('data-leaf'), href, true);
   });
 
+  /* ------------------------------- confirm -------------------------------- */
+
+  // A button that asks before it acts opens a <dialog> with an invoker command, which a current browser does without script.
+  // For one that does not know the commands, a click does the same, and a click on the backdrop closes the dialog, as the
+  // attribute closedby="any" says.
+  if (!('commandForElement' in HTMLButtonElement.prototype)) {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest && e.target.closest('button[command][commandfor]');
+      if (btn && !btn.disabled) {
+        var dialog = document.getElementById(btn.getAttribute('commandfor'));
+        if (dialog && dialog.tagName === 'DIALOG') {
+          if (btn.getAttribute('command') === 'show-modal' && !dialog.open) dialog.showModal();
+          else if (btn.getAttribute('command') === 'close') dialog.close();
+        }
+        return;
+      }
+      if (e.target.tagName === 'DIALOG' && e.target.classList.contains('confirm')) e.target.close();
+    });
+  }
+
   /* ------------------------------- selection ------------------------------ */
 
   function syncSelection(scope) {
@@ -621,7 +641,7 @@
       }).length;
       var count = $('[data-selcount]', bar);
       if (count) count.textContent = n + ' selected';
-      $$('button[name="_act"]', bar).forEach(function (b) {
+      $$('button[name="_act"], button[data-confirm-open]', bar).forEach(function (b) {
         b.disabled = n === 0; // a bulk action over nothing is not an action
       });
     });

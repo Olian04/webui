@@ -283,10 +283,20 @@
 // value is not in the page, in a table, in a file or in a search, and not in the form that answers a refused submission;
 // the input shows a row of bullets, the same whatever the value is, when there is one. A submission that leaves it empty
 // leaves it as it is, so only a key that is typed is stored.
-
+//
 // A [String] with Multiline set is a text area, for text of more than one line. Its rules are Required, MinLen and MaxLen;
 // a Pattern and the text rules are one line's and are refused, and a line break is one "\n" character whatever the browser
 // sent, so MaxLen counts what the browser's maxlength counts. In a table the cell shows the first lines.
+//
+// An action that cannot be taken back asks first, with Confirm: its button opens a dialog with the question, and only the
+// button in the dialog goes on.
+//
+//	webui.Action[[]Alert]{Label: "Delete", Role: webui.RoleDestructive, Confirm: "Delete the selected alerts?", ...}
+//
+// It is a native dialog, opened by an invoker command, so it needs no script in a current browser (Chrome and Edge 135,
+// Firefox 144, Safari 26.2); script supplies the same for an older one, and an older one with no script cannot open
+// it, and so cannot do the action. It is a question for the visitor and not a check: a request made by hand is not asked,
+// and what must not happen is refused by the Guard. A form whose Save asks is not saved by Enter in a field.
 //
 // # Text rules and patterns
 //

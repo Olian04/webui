@@ -35,6 +35,17 @@ type Action[M any] struct {
 	// Role is the button's style.
 	Role Role
 
+	// Confirm is a question that the visitor must answer before the action is done, such as
+	// "Delete this device? This cannot be undone." The button opens a dialog that says it, with the action's
+	// Label to go on and Cancel to leave; nothing is sent until they go on. It is a native <dialog> opened
+	// by the button, which needs no script in a current browser (Chrome and Edge 135, Firefox 144, Safari 26.2); script
+	// supplies the same for an older one, and an older one with no script cannot open it, and so cannot
+	// do the action. It asks the visitor and no one else: a request made by hand is not asked, and an action
+	// that must not happen is refused by its Guard. A form that has one is not submitted by pressing Enter in a
+	// field, which would not ask. A button that is refused by its Guard is disabled with its reason, and has no
+	// dialog. It cannot be set on a Table's RowClick, which has no button.
+	Confirm string
+
 	// Guard decides whether the visitor may do this. It receives the action's
 	// subject, and the same check disables the button, with its reason shown, and
 	// authorises the request, so there is no control that looks available and then
@@ -63,7 +74,7 @@ func validateAction[S any](v *bodyValidator, at string, a Action[S], needLabel b
 // lowerActionWith wraps the typed closures with the single assertion each needs. arg turns the
 // runtime's subject into what the user's funcs take, and M is the model a Reject is about.
 func lowerActionWith[S, M any](a Action[S], arg func(any) S) *ir.Action {
-	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role)}
+	out := &ir.Action{Label: a.Label, Role: ir.Role(a.Role), Confirm: a.Confirm}
 	if a.Guard != nil {
 		out.Guard = func(ctx context.Context, s any) error { return a.Guard(ctx, arg(s)) }
 	}
@@ -97,6 +108,12 @@ func lowerBulk[M any](a Action[[]M]) *ir.Action {
 
 // validateRow checks an Action used as a table's RowClick: it has a Run, and no
 // Label is needed, since the row is what is clicked.
-func (a Action[M]) validateRow(v *bodyValidator) { validateAction(v, "Table.RowClick", a, false) }
+func (a Action[M]) validateRow(v *bodyValidator) {
+	validateAction(v, "Table.RowClick", a, false)
+	if a.Confirm != "" {
+		v.add("Table.RowClick has a Confirm, but a click on a row has no button to ask from",
+			"Remove Confirm, or make the action one of Table.Actions, which has a button for each row.")
+	}
+}
 
 func (a Action[M]) lowerRow() (*ir.Link, *ir.Action) { return nil, lowerAction(a) }
