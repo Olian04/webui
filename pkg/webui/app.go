@@ -45,7 +45,9 @@ type App struct {
 	//
 	// Compile fails if the registry already has a webui metric, which is two apps given one
 	// registry: give each its own wrapper from [prometheus.WrapRegistererWith], with a
-	// label of its own, to tell them apart.
+	// label of its own, to tell them apart. An app that is compiled again as it changes,
+	// and replaces the one that was serving, is not a second app: a [Reloader] does that
+	// with the same registry, and the counts go on.
 	Metrics prometheus.Registerer
 
 	// Logger is where the app says what went wrong that it could not tell the visitor: a Load that

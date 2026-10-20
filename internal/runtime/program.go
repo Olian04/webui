@@ -64,6 +64,13 @@ type Program struct {
 
 // NewProgram derives the routes from a compiled app.
 func NewProgram(app *ir.App, prefix string) (*Program, error) {
+	return NewProgramWith(app, prefix, nil)
+}
+
+// NewProgramWith is NewProgram that counts into rec, the recorder of an earlier program, when it is given one: a program
+// that replaces another in the same process counts into the same metrics, which cannot be registered twice. With none it
+// registers its own in app.Metrics, as NewProgram does.
+func NewProgramWith(app *ir.App, prefix string, rec *metrics.Recorder) (*Program, error) {
 	secret := app.Secret
 	if len(secret) == 0 {
 		secret = make([]byte, 32)
@@ -84,7 +91,10 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 
-	if app.Metrics != nil {
+	switch {
+	case rec != nil:
+		p.m = rec
+	case app.Metrics != nil:
 		m, err := metrics.New(app.Metrics)
 		if err != nil {
 			return nil, fmt.Errorf("webui: App.Metrics: %w", err)
@@ -121,6 +131,9 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	p.handle(p.mux, "", prefix+"/", unmatched, csp, http.HandlerFunc(p.notFound))
 	return p, nil
 }
+
+// Recorder is what the program counts into, nil when it counts nothing, for the program that replaces it to count into too.
+func (p *Program) Recorder() *metrics.Recorder { return p.m }
 
 // Handler is the whole app, for the mount prefix it was built with: what is under the
 // asset directory is the framework's, and the rest is the pages'.
