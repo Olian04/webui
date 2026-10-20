@@ -76,6 +76,14 @@ type Field struct {
 	// it is not filled in: see [ResolveChoices].
 	ChoicesFor func(ctx context.Context) ([]Choice, error)
 
+	// Secret says the value is never read back: Get returns "", the form never echoes what was typed, and an empty
+	// submission leaves what is stored as it is.
+	Secret bool
+
+	// Stored says whether a Secret has a value, for a model: the one thing about it that the page is told, so that it can say
+	// there is one (as a row of bullets) without saying what it is. Nil for a field that is not a Secret.
+	Stored func(model any) bool
+
 	// Multiline says the text is of more than one line: a text area, and a cell that shows the first lines. A line break in
 	// what is submitted is "\n", whatever the browser sent.
 	Multiline bool

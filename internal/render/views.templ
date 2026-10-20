@@ -476,8 +476,8 @@ templ (r *Renderer) input(fv fieldView) {
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID,
+					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
+					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID, Autocomplete: fv.Autocomplete,
 				})
 		}
 		if fv.FormID != "" {
