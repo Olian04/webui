@@ -19,6 +19,7 @@ type Device struct {
 	Duration             float64
 	LastSeen             int // Unix seconds
 	Tags                 []string
+	Notes                string // a few lines, by whoever looks after it
 }
 
 // epoch is "now" for the seed data, fixed so the demo and its tests read the same
@@ -188,12 +189,12 @@ func (s *Service) IPTaken(ip, except string) bool {
 	return slices.ContainsFunc(s.devices, func(d Device) bool { return d.IP == ip && d.ID != except })
 }
 
-// SaveDevice is what a device's form saves: its address, status, tags and site.
+// SaveDevice is what a device's form saves: its address, status, tags, site and notes.
 func (s *Service) SaveDevice(d Device) {
 	s.mu.Lock()
 	for i := range s.devices {
 		if s.devices[i].ID == d.ID {
-			s.devices[i].IP, s.devices[i].Status, s.devices[i].Tags, s.devices[i].Site = d.IP, d.Status, slices.Clone(d.Tags), d.Site
+			s.devices[i].IP, s.devices[i].Status, s.devices[i].Tags, s.devices[i].Site, s.devices[i].Notes = d.IP, d.Status, slices.Clone(d.Tags), d.Site, d.Notes
 		}
 	}
 	s.mu.Unlock()

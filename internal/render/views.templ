@@ -352,7 +352,11 @@ templ value(f ir.Field, text string, model any) {
 				{ text }
 			}
 		default:
-			{ text }
+			if f.Multiline {
+				<span class="multiline">{ text }</span>
+			} else {
+				{ text }
+			}
 	}
 }
 
@@ -459,6 +463,11 @@ templ (r *Renderer) input(fv fieldView) {
 						@value(fv.Field, fv.Value, fv.Model)
 					}
 				</div>
+			case fv.Field.Multiline:
+				@c.Textarea(c.TextareaProps{
+					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
+					Rules: fv.Rules, Validity: fv.Validity, Form: fv.FormID,
+				})
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,

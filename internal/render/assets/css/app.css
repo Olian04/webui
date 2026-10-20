@@ -1352,6 +1352,29 @@ select.input {
     border-color 0.11s,
     box-shadow 0.11s;
 }
+/* A text area is as tall as its rows, and its text begins at the top. */
+textarea.input {
+  height: auto;
+  min-height: 32px;
+  padding: 6px 9px;
+  line-height: 1.45;
+  font-family: inherit;
+  resize: vertical;
+}
+/* The lines of a text, kept: a value that is only read, and a cell, which shows the first of them. */
+.multiline {
+  white-space: pre-line;
+}
+.static .multiline {
+  white-space: pre-wrap;
+}
+td .multiline {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .input::placeholder {
   color: var(--text-3);
 }

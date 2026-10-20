@@ -367,6 +367,7 @@ Each rule has exactly one visual form:
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
 | `String.Secret` | `type="password"`, `autocomplete="new-password"` | "Leave empty to keep the current value", in the popover; the stored value is never in the page, and a row of bullets (the input's placeholder, always eight) says that there is one |
+| `String.Multiline` | `<textarea>` with `required`, `minlength`, `maxlength` (no `pattern`) | Five rows, as tall as the visitor drags it; a cell shows the first three lines |
 | `StartsWith`, `EndsWith`, `Contains` and their `Not` forms | `pattern`, with the field's own | What each requires ("Starts with "https://""), in the popover, and as its message beneath a refused value |
 
 Nothing is printed beneath a control while its value is good. Beside the label of an
