@@ -135,7 +135,7 @@ func TestAMomentWithAStoreIsADateAndTimePickerInUTC(t *testing.T) {
 	// The native picker, holding the moment in UTC to the second: not the text a table shows.
 	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T11:27:00" step="1"`)
 	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T10:00:00" step="1"`) // 1791540000
-	assert.Equal(t, strings.Count(body, "<time"), 1) // the status bar's build time, and no moment of the form
+	assert.Equal(t, strings.Count(body, "<time"), 1)                                       // the status bar's build time, and no moment of the form
 	// What the picker means is said once, beside the label.
 	assert.Contains(t, body, `<span class="tip-item">Date and time in UTC</span>`)
 }
