@@ -28,9 +28,9 @@ func refusalApp(log *slog.Logger) http.Handler {
 			back := webui.Open(ctx, recordsPath, webui.NoArgs{})
 			switch a.ID {
 			case "missing":
-				return webui.NotFound("There is no record missing.").Then("Back to the records", back)
+				return webui.NotFound("There is no record missing.").WithLink("Back to the records", back)
 			case "credential":
-				return webui.Unauthorized("A credential is needed to read this.").Then("Set one up", back)
+				return webui.Unauthorized("A credential is needed to read this.").WithLink("Set one up", back)
 			case "closed":
 				return webui.Forbidden("This record is closed.")
 			case "wrapped":
@@ -134,7 +134,7 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 		webui.Table[Device]{
 			Title: "Gone",
 			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{}, webui.NotFound("This device was deleted.").Then("See the others", webui.Open(ctx, recordsPath, webui.NoArgs{}))
+				return webui.Window[Device]{}, webui.NotFound("This device was deleted.").WithLink("See the others", webui.Open(ctx, recordsPath, webui.NoArgs{}))
 			},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},

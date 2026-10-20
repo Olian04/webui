@@ -487,7 +487,7 @@
 // # Errors
 //
 // What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden], with the message to show and,
-// from [Refusal.Then], a link on. A page's Guard that returns one answers with its status (a 404 for a record that is not
+// from [Refusal.WithLink], a link on. A page's Guard that returns one answers with its status (a 404 for a record that is not
 // there, a 401 for a credential that is missing, with a link to set it up), and any other error from a Guard is a 403 with its
 // text, as before. A panel's Load that returns one says it in the panel with its link, and the page stays as it is, because a
 // page that has begun to be sent has its status already; any other error from a Load is "Could not load", with the cause

@@ -225,7 +225,7 @@ var Details = webui.Page[DeviceArgs]{
 	Guard: func(ctx context.Context, a DeviceArgs) error {
 		if _, ok := service.Device(a.ID); !ok {
 			return webui.NotFound(fmt.Sprintf("There is no device %q.", a.ID)).
-				Then("Back to the devices", webui.Open(ctx, DevicesPath, webui.NoArgs{}))
+				WithLink("Back to the devices", webui.Open(ctx, DevicesPath, webui.NoArgs{}))
 		}
 		return nil
 	},

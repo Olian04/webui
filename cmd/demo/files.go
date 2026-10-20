@@ -166,7 +166,7 @@ var FilesAt = webui.Page[FileArgs]{
 	Guard: func(ctx context.Context, a FileArgs) error {
 		if _, ok := lookup(a.Path); !ok {
 			return webui.NotFound(fmt.Sprintf("There is nothing at /%s.", strings.Join(a.Path, "/"))).
-				Then("Back to the files", webui.Open(ctx, FilesPath, webui.NoArgs{}))
+				WithLink("Back to the files", webui.Open(ctx, FilesPath, webui.NoArgs{}))
 		}
 		return nil
 	},

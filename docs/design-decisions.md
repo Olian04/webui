@@ -103,8 +103,9 @@ design element.
 - **What a visitor may be told is a `Refusal`, a typed error with a status.** A `Guard`'s error was always a 403 with its text, and a
   `Load`'s was "Could not load" with the cause hidden, since either may name what a visitor should not see; so an app that
   wanted a 404 for a record that is not there, or a 401 with a link to set up a credential, had no way to say so. `NotFound`,
-  `Unauthorized` and `Forbidden` make a `Refusal`, `Then(label, target)` gives it a link (the `Target` that `Open` builds, read
-  inside `pkg/webui`, since it has no parts to read outside), and it is found with `errors.As`, so a wrapped one counts.
+  `Unauthorized` and `Forbidden` make a `Refusal`, `WithLink(label, target)` gives it a link (the `Target` that `Open` builds, read
+  inside `pkg/webui`, since it has no parts to read outside; not called `Then`, which on an `Outcome` redirects the user
+  and here would only offer a link that they choose to follow), and it is found with `errors.As`, so a wrapped one counts.
   They are made into `ir.Refusal` where the closures are lowered (the page `Guard`, and the loads of a table, a form, a diff, a
   markdown and an editor), which is the one place a type assertion belongs. In a `Guard` the status is the page's: `admit` returns
   it, and `begin` draws the state of that status (the nav, search and gate paths only ask whether there is an error, so they are

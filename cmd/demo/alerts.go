@@ -94,7 +94,7 @@ var AlertDetails = webui.Page[AlertArgs]{
 	Guard: func(ctx context.Context, a AlertArgs) error {
 		if _, ok := service.Alert(a.ID); !ok {
 			return webui.NotFound(fmt.Sprintf("There is no alert %q.", a.ID)).
-				Then("Back to the alerts", webui.Open(ctx, AlertsPath, webui.NoArgs{}))
+				WithLink("Back to the alerts", webui.Open(ctx, AlertsPath, webui.NoArgs{}))
 		}
 		return nil
 	},

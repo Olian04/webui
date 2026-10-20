@@ -13,7 +13,7 @@ import (
 //
 //	Guard: func(ctx context.Context, a DeviceArgs) error {
 //		if _, ok := service.Device(a.ID); !ok {
-//			return webui.NotFound("There is no device "+a.ID).Then("Back to the devices", webui.Open(ctx, DevicesPath, webui.NoArgs{}))
+//			return webui.NotFound("There is no device "+a.ID).WithLink("Back to the devices", webui.Open(ctx, DevicesPath, webui.NoArgs{}))
 //		}
 //		return nil
 //	}
@@ -33,7 +33,7 @@ type Refusal struct {
 func NotFound(message string) Refusal { return Refusal{status: http.StatusNotFound, message: message} }
 
 // Unauthorized is a Refusal that says the visitor is not signed in, or not as someone who may: a 401, with the message
-// for the visitor. A link to where they sign in, or to the page that sets up what is missing, goes with [Refusal.Then].
+// for the visitor. A link to where they sign in, or to the page that sets up what is missing, goes with [Refusal.WithLink].
 func Unauthorized(message string) Refusal {
 	return Refusal{status: http.StatusUnauthorized, message: message}
 }
@@ -44,9 +44,10 @@ func Forbidden(message string) Refusal {
 	return Refusal{status: http.StatusForbidden, message: message}
 }
 
-// Then adds a link to the Refusal, with the words it says and where it leads, which [Open] builds. A destination that Open could not
-// resolve leaves the Refusal without a link.
-func (r Refusal) Then(label string, to Target) Refusal {
+// WithLink adds a link to the Refusal, with the words it says and where it leads, which [Open] builds. The visitor follows it
+// if they choose to: unlike [Outcome.Then], which takes the user to another page when an action has ended, nothing here
+// redirects. A destination that Open could not resolve leaves the Refusal without a link.
+func (r Refusal) WithLink(label string, to Target) Refusal {
 	r.label, r.to = label, to
 	return r
 }
