@@ -516,6 +516,10 @@ var (
 	_ Accessor[struct{}] = Datetime[struct{}]{}
 	_ Accessor[struct{}] = Timestamp[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
+	_ Accessor[struct{}] = OptionalInt[struct{}]{}
+	_ Accessor[struct{}] = OptionalFloat[struct{}]{}
+	_ Accessor[struct{}] = OptionalSlider[struct{}]{}
+	_ Accessor[struct{}] = Bool[struct{}]{}
 )
 
 // ---------------------------------------------------------------- validate
@@ -627,18 +631,38 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) int, returning a Unix time in seconds")
 	case Slider[M]:
 		common(a.Label, a.Load == nil, "func(M) float64")
-		if !(a.Max > a.Min) {
-			v.add(at+" has no range", "Set Max greater than Min; the slider is drawn between them.")
-		}
-		switch {
-		case a.StepSize < 0 || math.IsNaN(a.StepSize) || math.IsInf(a.StepSize, 0):
-			v.add(at+" has a StepSize that is not a positive number", "Use 0 for a step that is chosen from the range, or the distance between the values: 1 for whole numbers, 0.1 for tenths.")
-		case a.Max > a.Min && a.StepSize > a.Max-a.Min:
-			v.add(at+" has a StepSize larger than its range", "The slider could hold only Min. Use a step that fits the range, or 0.")
-		}
+		validateSlider(v, at, a.Min, a.Max, a.StepSize)
+	case OptionalInt[M]:
+		common(a.Label, a.Load == nil, "func(M) *int")
+		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+		validateOptional(v, at, a.Rules.Required, a.Store != nil)
+	case OptionalFloat[M]:
+		common(a.Label, a.Load == nil, "func(M) *float64")
+		validatePrecision(v, at, a.Precision)
+		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+		validateOptional(v, at, a.Rules.Required, a.Store != nil)
+	case OptionalSlider[M]:
+		common(a.Label, a.Load == nil, "func(M) *float64")
+		validateSlider(v, at, a.Min, a.Max, a.StepSize)
+	case Bool[M]:
+		common(a.Label, a.Load == nil, "func(M) *bool")
+		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider or Group.")
+			"Use String, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
+	}
+}
+
+// validateSlider checks a slider's range and step.
+func validateSlider(v *bodyValidator, at string, lo, hi, step float64) {
+	if !(hi > lo) {
+		v.add(at+" has no range", "Set Max greater than Min; the slider is drawn between them.")
+	}
+	switch {
+	case step < 0 || math.IsNaN(step) || math.IsInf(step, 0):
+		v.add(at+" has a StepSize that is not a positive number", "Use 0 for a step that is chosen from the range, or the distance between the values: 1 for whole numbers, 0.1 for tenths.")
+	case hi > lo && step > hi-lo:
+		v.add(at+" has a StepSize larger than its range", "The slider could hold only Min. Use a step that fits the range, or 0.")
 	}
 }
 
@@ -818,6 +842,14 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		})
 		f.Unset = unsetter(a.Store)
 		return f
+	case OptionalInt[M]:
+		return lowerOptionalInt(a, name)
+	case OptionalFloat[M]:
+		return lowerOptionalFloat(a, name)
+	case OptionalSlider[M]:
+		return lowerOptionalSlider(a, name)
+	case Bool[M]:
+		return lowerBool(a, name)
 	case Slider[M]:
 		lo, hi := a.Min, a.Max
 		f := head(name, a.Label, ir.KindFloat)

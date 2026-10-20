@@ -258,10 +258,21 @@ func exportJSON(columns []ir.Field, rows []any) []byte {
 }
 
 // jsonCell is one value as JSON: a moment as an RFC 3339 time in UTC, or null when there is none; a
-// number as a number; a select as the list of its values; and anything else, an address included, as a
+// number as a number; a value that is not there, in a field that may have none, as null; a select as the list of its values; and anything else, an address included, as a
 // string.
 func jsonCell(f ir.Field, row any) []byte {
 	switch {
+	case f.Bool:
+		// true, false, or null for neither, which is what the three of them are.
+		switch f.Get(row) {
+		case "true":
+			return []byte("true")
+		case "false":
+			return []byte("false")
+		}
+		return []byte("null")
+	case f.Nullable && f.Get(row) == "":
+		return []byte("null")
 	case f.Display == ir.DisplaySelect:
 		// A list of the values it holds, which is what it is, and not their labels: a value is what
 		// the model stores and what a program reads. A select that holds none is an empty list.

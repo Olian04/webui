@@ -2397,6 +2397,10 @@ td.actions .gate:hover::after,
 .range-input.invalid {
   accent-color: var(--red);
 }
+/* A slider with no value, whose number is empty and shows its dash, does not seem to hold one where its thumb rests. */
+.range:has(.range-number:placeholder-shown) .range-input {
+  opacity: 0.4;
+}
 /* The number beside the range: a narrow input, with the digits at its right as the value was. */
 .range-number {
   flex: none;

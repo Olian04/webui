@@ -55,6 +55,27 @@ var (
 		Load:  func(s Settings) float64 { return s.MaxLoad },
 		Store: func(s *Settings, v float64) { s.MaxLoad = v },
 	}
+	// An OptionalInt is a number that may be absent: emptied, it is stored as nil, which here means no limit, and
+	// that is not the same as a limit of zero. The same holds for an OptionalFloat and an OptionalSlider.
+	Burst = webui.OptionalInt[Settings]{
+		Label: "Burst limit (events/s)",
+		Load:  func(s Settings) *int { return s.Burst },
+		Store: func(s *Settings, v *int) { s.Burst = v },
+		Rules: webui.NumberRules[int]{Min: ptr(0), Max: ptr(100000)},
+		// Shown in the input while it is empty.
+		Placeholder: "No limit",
+	}
+	Quota = webui.OptionalSlider[Settings]{
+		Label: "Quota (%)", Min: 0, Max: 100, StepSize: 5,
+		Load:  func(s Settings) *float64 { return s.Quota },
+		Store: func(s *Settings, v *float64) { s.Quota = v },
+	}
+	// A Bool is yes, no, or not set, which a checkbox cannot say: it is a choice with an empty one.
+	Paused = webui.Bool[Settings]{
+		Label: "Paused",
+		Load:  func(s Settings) *bool { return s.Paused },
+		Store: func(s *Settings, v *bool) { s.Paused = v },
+	}
 	// A Timestamp with a Store is a date and time picker, in UTC, that stores Unix
 	// seconds. A Datetime stores an ISO 8601 string the same way.
 	Maintenance = webui.Timestamp[Settings]{
@@ -82,6 +103,8 @@ var Ingest = webui.Page[webui.NoArgs]{
 			webui.Group[Settings]{SampleRate, MaxLoad},
 			Maintenance,
 			APIKey,
+			webui.Group[Settings]{Burst, Quota},
+			Paused,
 		},
 		Submit: SaveIngest,
 	},

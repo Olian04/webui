@@ -88,6 +88,13 @@ type Field struct {
 	// what is submitted is "\n", whatever the browser sent.
 	Multiline bool
 
+	// Nullable says the value may be absent: Get is "" for none, Num is NaN, an emptied input is set to nothing and not left
+	// as it was, and where it is only read it says so with a dash. A Bool, which is held as a select, is one.
+	Nullable bool
+
+	// Bool says the select holds a bool, which a file of it writes as true, false or null, and not as a list of words.
+	Bool bool
+
 	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
 	// Set: what an input that was emptied means. Nil for a field that is read-only.
 	Unset func(model any)
