@@ -226,6 +226,18 @@ design element.
   handle. A text that wants highlighting, a language service or a schema is an `Editor`, not this. In a table the cell
   keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
   read the text as it is.
+- **A value that may be absent is an accessor of its own** (`OptionalInt`, `OptionalFloat`, `OptionalSlider`, `Bool`), not a
+  flag on `Int`: the Go type differs (`*int`), so `Load` and `Store` do, and a flag could not make `func(M) int` say
+  "none". They are four types and not one generic, since the accessors are one type for each Go type already and a generic
+  `Optional[T]` would need a constraint that names which of them to draw. Absent is not zero in any place that matters:
+  the input is empty and says so, an emptied one is stored as nil (`bindFunc` calls `Unset` for a nullable field, where
+  for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
+  sorts it first and leaves it out of a range as it does a missing moment (`Num` is NaN), and an export leaves a CSV cell
+  empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
+  unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
+  server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
+  state costs. None of them is a `Toolbar` input, since a page's arguments are strings, numbers and bools that cannot be
+  nil, and an absent argument is spelt by leaving it out of the address.
 
 ## Actions and outcomes
 

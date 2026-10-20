@@ -44,10 +44,13 @@ type Event struct {
 type Settings struct {
 	Name       string
 	Port       int
-	SampleRate float64 // 0 to 1: the share of events kept
-	MaxLoad    float64 // percent: where ingest starts shedding
-	Maintain   int     // Unix seconds: when the next maintenance window starts
-	APIKey     string  // what the collector signs in with: never shown, only replaced
+	SampleRate float64  // 0 to 1: the share of events kept
+	MaxLoad    float64  // percent: where ingest starts shedding
+	Maintain   int      // Unix seconds: when the next maintenance window starts
+	APIKey     string   // what the collector signs in with: never shown, only replaced
+	Burst      *int     // events a second that are let through at once: nil is no limit, which is not the same as none
+	Quota      *float64 // percent of the plan that this collector may use: nil is all of it
+	Paused     *bool    // yes, no, or nil to follow the maintenance window
 }
 
 type RetentionPolicy struct{ Days int }

@@ -113,3 +113,29 @@ func TestSavingRetentionGoesOnToTheSystemPage(t *testing.T) {
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/system") // Then, in place of staying on the form
 	assert.Equal(t, flashOf(rec), "oSaved")
 }
+
+// A value that may be absent is stored as nothing when its input is emptied, which is not a zero.
+func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
+	h := handler(t)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.settings.Burst, service.settings.Quota, service.settings.Paused = nil, nil, nil
+		service.mu.Unlock()
+	})
+
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `placeholder="No limit"`)
+	assert.Contains(t, body, `<option value="">—</option>`)
+
+	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5": {"true"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	s := service.Settings()
+	assert.True(t, s.Burst != nil && *s.Burst == 0) // a limit of zero, which is one
+	assert.True(t, s.Quota != nil && *s.Quota == 25)
+	assert.True(t, s.Paused != nil && *s.Paused)
+
+	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {""}, "f4_1": {""}, "f5": {""}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	s = service.Settings()
+	assert.True(t, s.Burst == nil && s.Quota == nil && s.Paused == nil)
+}

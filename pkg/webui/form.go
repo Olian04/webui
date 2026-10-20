@@ -104,6 +104,9 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string) (any
 			continue
 		}
 		if raw == "" && f.Kind != ir.KindString {
+			if f.Nullable && f.Unset != nil {
+				f.Unset(&m) // an input that was emptied is no value, for a field that may have none
+			}
 			continue // optional and empty: leave the loaded value alone
 		}
 		if err := f.Set(&m, raw); err != nil {

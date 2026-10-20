@@ -183,6 +183,13 @@
 // choose several from.
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC.
 //
+// A number or a choice that may be absent has an accessor of its own, since a Go int cannot say it:
+// [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer, and [Bool] is a yes, a no, or neither.
+// Absent is not zero. It reads as a dash, an input that is emptied is stored as nil (and a Required one refuses it), a table
+// sorts it before every number and leaves it out of a filter by range, a CSV leaves it empty and a JSON export has null.
+// A [Bool] is a choice of Yes and No with an empty one, as a [Select] is, and not a checkbox, which cannot be none of them
+// and sends nothing when it is off. A page's arguments and so a [Toolbar]'s inputs cannot be absent, so none of these is one.
+//
 // An Int, a Float, a Datetime and a Timestamp have a Format, a function the application
 // writes that says how the value reads where it is only read, such as a size as "1.5 GiB":
 //
