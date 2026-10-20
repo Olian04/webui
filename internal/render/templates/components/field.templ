@@ -41,6 +41,9 @@ type FieldProps struct {
 	// takes no room beneath the control.
 	Rules []string
 
+	// Help is what the field is for, behind a question-mark icon beside the label, ahead of the rules.
+	Help string
+
 	// Static is a field that shows a value and offers no control: the label sits
 	// closer to the value, which has a height of its own.
 	Static bool
@@ -56,6 +59,9 @@ templ Field(p FieldProps) {
 						<span class="req" aria-hidden="true">*</span>
 					}
 				</label>
+				if p.Help != "" {
+					@InfoTip(InfoTipProps{Text: p.Help, Icon: IconHelp})
+				}
 				if len(p.Rules) > 0 {
 					@InfoTip(InfoTipProps{Text: "Rules:", Lines: p.Rules})
 				}

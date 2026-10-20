@@ -93,6 +93,9 @@ templ Panel(p PanelProps) {
 type InfoTipProps struct {
 	Text  string
 	Lines []string
+
+	// Icon is the icon, the information icon when it is empty.
+	Icon IconName
 }
 
 func (p InfoTipProps) name() string {
@@ -104,7 +107,11 @@ func (p InfoTipProps) name() string {
 
 templ InfoTip(p InfoTipProps) {
 	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
-		@Icon(IconProps{Name: IconInfo, Class: "info"})
+		if p.Icon != "" {
+			@Icon(IconProps{Name: p.Icon, Class: "info"})
+		} else {
+			@Icon(IconProps{Name: IconInfo, Class: "info"})
+		}
 		<span class="tip-body" aria-hidden="true">
 			if len(p.Lines) == 0 {
 				{ p.Text }

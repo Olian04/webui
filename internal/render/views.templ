@@ -451,7 +451,7 @@ templ (r *Renderer) formField(v FormView, f ir.Field) {
 templ (r *Renderer) input(fv fieldView) {
 	@c.Field(c.FieldProps{
 		For: fv.ID, Label: fv.Field.Label, Required: fv.Rules.Required,
-		Error: fv.Error, Rules: fv.RuleLines, Static: fv.ReadOnly,
+		Error: fv.Error, Rules: fv.RuleLines, Help: fv.Field.Help, Static: fv.ReadOnly,
 	}) {
 		switch {
 			case fv.Field.Display == ir.DisplaySlider && !fv.ReadOnly:

@@ -20,8 +20,15 @@ type Accessor[M any] interface {
 	// label is the accessor's label, which names a column and resolves a FieldError. A Group has none.
 	label() string
 
-	// exclusions are what the column is left out of: its header's sort link, and its filter. A Group has none.
-	exclusions() (noSort, noFilter bool)
+	// meta is what an accessor says besides its value: what the column is left out of (its header's sort link, and its
+	// filter) and its help. A Group has none.
+	meta() accessorMeta
+}
+
+// accessorMeta is what every accessor has that is not about its value.
+type accessorMeta struct {
+	NoSort, NoFilter bool
+	Help             string
 }
 
 // String projects a string field of M.
@@ -57,6 +64,12 @@ type String[M any] struct {
 	// browser sent. In a table the cell shows the first lines. For a text that wants a code editor, use an [Editor].
 	Multiline bool
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -68,7 +81,9 @@ type String[M any] struct {
 
 func (a String[M]) label() string { return a.Label }
 
-func (a String[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a String[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (String[M]) toolbarItem(M) {}
 
@@ -154,6 +169,12 @@ type Int[M any] struct {
 	// If Format panics, the panic is logged and the value is shown as it would be without
 	// Format, so a bug in a formatter is a plain number and not a page that does not load.
 	Format func(int) string
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -165,7 +186,9 @@ type Int[M any] struct {
 
 func (a Int[M]) label() string { return a.Label }
 
-func (a Int[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Int[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Int[M]) toolbarItem(M) {}
 
@@ -218,6 +241,12 @@ type Float[M any] struct {
 	// If Format panics, the panic is logged and the value is shown as it would be without
 	// Format, so a bug in a formatter is a plain number and not a page that does not load.
 	Format func(float64) string
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -229,7 +258,9 @@ type Float[M any] struct {
 
 func (a Float[M]) label() string { return a.Label }
 
-func (a Float[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Float[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Float[M]) toolbarItem(M) {}
 
@@ -239,7 +270,7 @@ type Group[M any] []Accessor[M]
 
 func (Group[M]) label() string { return "" }
 
-func (Group[M]) exclusions() (noSort, noFilter bool) { return false, false }
+func (Group[M]) meta() accessorMeta { return accessorMeta{} }
 
 // Select is a choice from a list of options: the values of a field of M that holds some
 // of a set of known words, such as a status, a size or a few tags. Read, in a table or in
@@ -303,6 +334,12 @@ type Select[M any] struct {
 
 	// Required refuses a submission with nothing chosen. It is for a field that is edited.
 	Required bool
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -314,7 +351,9 @@ type Select[M any] struct {
 
 func (a Select[M]) label() string { return a.Label }
 
-func (a Select[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Select[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Select[M]) toolbarItem(M) {}
 
@@ -351,6 +390,12 @@ type URL[M any] struct {
 	// Text is what the link says, the same on every row, such as "Download". Leave
 	// it empty to show the address itself.
 	Text string
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -362,7 +407,9 @@ type URL[M any] struct {
 
 func (a URL[M]) label() string { return a.Label }
 
-func (a URL[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a URL[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
@@ -398,6 +445,12 @@ type Datetime[M any] struct {
 	// is shown as the day it is on.
 	DateOnly bool
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -409,7 +462,9 @@ type Datetime[M any] struct {
 
 func (a Datetime[M]) label() string { return a.Label }
 
-func (a Datetime[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Datetime[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Datetime[M]) toolbarItem(M) {}
 
@@ -439,6 +494,12 @@ type Timestamp[M any] struct {
 	// is shown as the day it is on.
 	DateOnly bool
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -450,7 +511,9 @@ type Timestamp[M any] struct {
 
 func (a Timestamp[M]) label() string { return a.Label }
 
-func (a Timestamp[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Timestamp[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Timestamp[M]) toolbarItem(M) {}
 
@@ -484,6 +547,12 @@ type Slider[M any] struct {
 	// power of ten that makes a hundred steps or more of the range (1 for 0 to 100, 0.01
 	// for 0 to 1), and, for a slider that is only read, the value in its shortest exact form.
 	StepSize float64
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is behind a question-mark icon beside the label, in a popover on hover and on keyboard focus,
+	// and is the icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a
+	// table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -495,7 +564,9 @@ type Slider[M any] struct {
 
 func (a Slider[M]) label() string { return a.Label }
 
-func (a Slider[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Slider[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Slider[M]) toolbarItem(M) {}
 
@@ -734,7 +805,8 @@ func lowerAccessors[M any](accs []Accessor[M], prefix string) []ir.Field {
 func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
 	f := lowerOne[M](acc, name)
 	if acc != nil {
-		f.NoSort, f.NoFilter = acc.exclusions()
+		m := acc.meta()
+		f.NoSort, f.NoFilter, f.Help = m.NoSort, m.NoFilter, m.Help
 	}
 	return f
 }

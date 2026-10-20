@@ -242,6 +242,9 @@ func Panel(p PanelProps) templ.Component {
 type InfoTipProps struct {
 	Text  string
 	Lines []string
+
+	// Icon is the icon, the information icon when it is empty.
+	Icon IconName
 }
 
 func (p InfoTipProps) name() string {
@@ -279,7 +282,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.name())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 106, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 109, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -289,9 +292,16 @@ func InfoTip(p InfoTipProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconProps{Name: IconInfo, Class: "info"}).Render(ctx, templ_7745c5c3_Buffer)
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
+		if p.Icon != "" {
+			templ_7745c5c3_Err = Icon(IconProps{Name: p.Icon, Class: "info"}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = Icon(IconProps{Name: IconInfo, Class: "info"}).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span class=\"tip-body\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
@@ -301,7 +311,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(p.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 110, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 117, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -315,7 +325,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(p.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 112, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 119, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -333,7 +343,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(line)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 114, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 121, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
