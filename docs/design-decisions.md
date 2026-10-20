@@ -768,8 +768,15 @@ design element.
   A `/_webui/metrics` was proposed and dropped: what is exposed, at which address and to
   whom are the host's decisions, and the metrics name every page template and how much
   each is used, which should not be public by default. What it costs: one line more for
-  the program, and two apps given one registry fail to compile (their metrics have the
-  same names), unless each is wrapped with `prometheus.WrapRegistererWith`.
+  the program. Compiling the app again, or compiling a second app with the same registry, works: a metric the registry
+  already has, the same in name, labels and help, is the one that is counted into (the `AlreadyRegisteredError` carries
+  it), so a program that replaces its app as it changes keeps its counts, and nothing fails. Failing was the first
+  design, as the safe choice, and was dropped: it made the one common case of a second compile (a program that recompiles)
+  an error to work around, in exchange for telling the program about a mistake that is not one. The cost is that two
+  *different* apps in one registry add their counts together where a page has the same path template, which is
+  right for a replacement and wrong for two apps: the program wraps the registry with `prometheus.WrapRegistererWith`
+  and a label of its own for each, to tell them apart. A metric that has the name of one of these and is not the same
+  is still an error, since it would be a clash and not a second app.
 - Only webui's own metrics, `webui_...`, on a registry the program supplies, so the Go
   runtime and process collectors are the program's to add or not. `prometheus/client_golang`
   is a dependency of the library for this: it was weighed against writing the text format
@@ -783,23 +790,6 @@ design element.
   an error.
 - A nil recorder does nothing, so the code that counts does not ask whether metrics are on,
   and an app with no registry pays one nil check.
-- **`reloader.Handler` compiles the app again while it serves**, for a program whose declaration changes as it runs (pages that
-  follow what a backend says it has). Two things were wanted, and they are one: swapping the handler without a moment of
-  none, which the program had written by hand with an atomic pointer, and compiling a second time against the same
-  `Metrics`, which fails because the names are registered. The failure is the right one for two *apps* in one registry, which
-  would add their counts together and could not be told apart, and `TestTwoAppsGivenOneRegistryIsACompileError` pins it, so
-  it is not made to succeed (reusing the collector on `AlreadyRegisteredError` would also have made it succeed for two
-  apps). A `reloader.Handler` is the identity that tells a replacement from a second app: it registers the metrics when it first
-  compiles an app that has them (`NewProgramWith` is handed the recorder, and the runtime uses it in place of making
-  one), and every app after it counts into the same, so the counts go on across a reload. The registry must be the same
-  value as the first (a registry, or one wrapper made once and given again), which is checked, and a reload that gives
-  another is refused and changes nothing. A compile that fails keeps the app that was serving; before the first that
-  works, the failure is what is served, as for `Compile`, and before any compile the answer is 503. A request in flight
-  is answered by the app it began with. What it does not do: watch for a change (the program says when), keep anything
-  of the old app (its sessions are the program's, and `App.Secret` is the program's to keep the same if links should
-  survive a reload: an empty one is a new random secret for each compile), or serve two prefixes. It is a package of its own, like the editor's language packs, since few programs need it:
-  it reaches the app through `App.CompileCounting`, which takes the counters of the app it replaces as an opaque `*webui.Counters`
-  (nothing in it is readable, and no `init` registers anything: the package imports `webui` and calls it).
 
 ## Logging
 
