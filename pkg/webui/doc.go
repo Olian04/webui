@@ -188,6 +188,10 @@
 // A [Select] is a choice from a list of options. Read, it is a badge for each value it holds,
 // coloured by its option's [Tone]; edited, it is a drop-down list, or with Multi a list to
 // choose several from.
+// Every accessor has a Help, a line or two on what the field is for, which a form and a toolbar show in the popover
+// beside the label that lists the rules, under a heading of its own and above them (on hover and on keyboard focus, and in the icon's
+// accessible name), where the label and the rules cannot say it: "The share of events that are kept: 0.25 keeps one in four." A table does not show it.
+//
 // A Datetime or a Timestamp with a Store is a date and time picker, in UTC; with DateOnly it is a date picker, and a day
 // is midnight UTC.
 //

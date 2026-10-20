@@ -437,6 +437,17 @@ design element.
   filtering and not ordering, a list of words the reverse. It is a flag on the accessor, with the `Label` that names
   the column, since an accessor already describes its own column; the same accessor in a form says nothing of it.
   Not done: a rule for the whole table (`Table.NoSort`), which a table of nothing but filterable columns does not need.
+- **A field may say what it is for, with `Help`.** A label names a field and its rules say what a value may be, and neither says what
+  it is for or what to put in it ("0.25 keeps one event in four"). `Help` is a field of every accessor, beside `NoSort` and
+  `NoFilter`, and so is one method on the accessor interface (`meta`) in place of one for each. It goes in the popover that is
+  already beside the label, the information icon that lists the rules, as a section of its own: the heading "Help:" and the
+  text, above "Rules:" and its list. A second icon was tried first (a question mark beside the information icon) and dropped: two
+  icons on one label is more to see and to tell apart for what is one question, what the visitor should know about the field, and
+  one popover has one place for a keyboard and a screen reader to land and read all of it. The popover is the panel's
+  `Desc` popover, so it needs no script. A `Placeholder` was not stretched to it: it disappears when the visitor types and is only for text. A read-only field
+  shows it too, since what a value is for is as true when it is only read. A table does not: a column header is a name and
+  a sort, and a `Placeholder` is not there either. It is text, not markup, so a popover is never a way into the page. The
+  cost is that the help and the rules are in one popover that the visitor must hover for, which is the reason to keep a `Help` to a line or two.
 
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works

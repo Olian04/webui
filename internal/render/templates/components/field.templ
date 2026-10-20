@@ -41,9 +41,20 @@ type FieldProps struct {
 	// takes no room beneath the control.
 	Rules []string
 
+	// Help is what the field is for, in the same popover as the rules, under a heading of its own and above them.
+	Help string
+
 	// Static is a field that shows a value and offers no control: the label sits
 	// closer to the value, which has a height of its own.
 	Static bool
+}
+
+// rulesTitle is the heading of the rules in the popover, and nothing when there are none and it holds the help alone.
+func (p FieldProps) rulesTitle() string {
+	if len(p.Rules) == 0 {
+		return ""
+	}
+	return "Rules:"
 }
 
 templ Field(p FieldProps) {
@@ -56,8 +67,8 @@ templ Field(p FieldProps) {
 						<span class="req" aria-hidden="true">*</span>
 					}
 				</label>
-				if len(p.Rules) > 0 {
-					@InfoTip(InfoTipProps{Text: "Rules:", Lines: p.Rules})
+				if p.Help != "" || len(p.Rules) > 0 {
+					@InfoTip(InfoTipProps{Help: p.Help, Text: p.rulesTitle(), Lines: p.Rules})
 				}
 			</div>
 		}

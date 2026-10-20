@@ -31,7 +31,7 @@ var (
 		Load:  func(d Device) string { return d.ID },
 	}
 	IP = webui.String[Device]{
-		Label: "IP",
+		Label: "IP", Help: "The address the device reports from. Two devices cannot share one.",
 		Load:  func(d Device) string { return d.IP },
 		Store: func(d *Device, v string) { d.IP = v },
 		Rules: webui.StringRules{

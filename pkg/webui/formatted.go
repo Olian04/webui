@@ -30,6 +30,12 @@ type Email[M any] struct {
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -41,7 +47,9 @@ type Email[M any] struct {
 
 func (a Email[M]) label() string { return a.Label }
 
-func (a Email[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Email[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Email[M]) toolbarItem(M) {}
 
@@ -76,6 +84,12 @@ type Phone[M any] struct {
 	// leaves it to the visitor. A number that is there is shown with the country its code says.
 	DefaultCountry string
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -87,7 +101,9 @@ type Phone[M any] struct {
 
 func (a Phone[M]) label() string { return a.Label }
 
-func (a Phone[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Phone[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Phone[M]) toolbarItem(M) {}
 
@@ -112,6 +128,12 @@ type Website[M any] struct {
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -123,7 +145,9 @@ type Website[M any] struct {
 
 func (a Website[M]) label() string { return a.Label }
 
-func (a Website[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a Website[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (Website[M]) toolbarItem(M) {}
 
@@ -141,6 +165,12 @@ type ColorPicker[M any] struct {
 	// Store writes the chosen color to the model. Without it the field is read-only.
 	Store func(*M, string)
 
+	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
+	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
+	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
+	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
+	Help string
+
 	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
 	// and a sort by it in the address is ignored. It does nothing in a form.
 	NoSort bool
@@ -152,7 +182,9 @@ type ColorPicker[M any] struct {
 
 func (a ColorPicker[M]) label() string { return a.Label }
 
-func (a ColorPicker[M]) exclusions() (noSort, noFilter bool) { return a.NoSort, a.NoFilter }
+func (a ColorPicker[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
 
 func (ColorPicker[M]) toolbarItem(M) {}
 

@@ -43,7 +43,9 @@ var (
 	// A Float has a Precision (decimals shown) and rules like any number. The
 	// bounds are pointers, because a zero bound is a real constraint.
 	SampleRate = webui.Float[Settings]{
-		Label: "Sample rate", Precision: 2,
+		// Help is what the field is for, in the popover beside its label, above the rules: the label and the rules cannot say that
+		// 0.25 keeps one event in four.
+		Label: "Sample rate", Precision: 2, Help: "The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.",
 		Load:  func(s Settings) float64 { return s.SampleRate },
 		Store: func(s *Settings, v float64) { s.SampleRate = v },
 		Rules: webui.NumberRules[float64]{Required: true, Min: ptr(0.01), Max: ptr(1.0)},
@@ -51,14 +53,14 @@ var (
 	// A Slider with a Store is a range input in a form, held to its range by the
 	// server too; without a Store it is a bar, as the System page shows.
 	MaxLoad = webui.Slider[Settings]{
-		Label: "Shed load above (%)", Min: 0, Max: 100,
+		Label: "Shed load above (%)", Min: 0, Max: 100, Help: "Above this load, ingest starts dropping the events that are not marked critical.",
 		Load:  func(s Settings) float64 { return s.MaxLoad },
 		Store: func(s *Settings, v float64) { s.MaxLoad = v },
 	}
 	// An OptionalInt is a number that may be absent: emptied, it is stored as nil, which here means no limit, and
 	// that is not the same as a limit of zero. The same holds for an OptionalFloat and an OptionalSlider.
 	Burst = webui.OptionalInt[Settings]{
-		Label: "Burst limit (events/s)",
+		Label: "Burst limit (events/s)", Help: "Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.",
 		Load:  func(s Settings) *int { return s.Burst },
 		Store: func(s *Settings, v *int) { s.Burst = v },
 		Rules: webui.NumberRules[int]{Min: ptr(0), Max: ptr(100000)},

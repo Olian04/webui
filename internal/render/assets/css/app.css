@@ -808,6 +808,13 @@ a.side-brand:hover {
   font-weight: 500;
   color: var(--text);
 }
+.tip-text {
+  display: block;
+  margin-top: 2px;
+}
+.tip-text + .tip-title {
+  margin-top: 7px;
+}
 .tip-item {
   display: block;
   margin-top: 2px;

@@ -2086,7 +2086,7 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 		})
 		templ_7745c5c3_Err = c.Field(c.FieldProps{
 			For: fv.ID, Label: fv.Field.Label, Required: fv.Rules.Required,
-			Error: fv.Error, Rules: fv.RuleLines, Static: fv.ReadOnly,
+			Error: fv.Error, Rules: fv.RuleLines, Help: fv.Field.Help, Static: fv.ReadOnly,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var76), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
