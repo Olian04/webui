@@ -85,6 +85,19 @@ type Page[A any] struct {
 	// as it is.
 	NavEntries func(ctx context.Context) ([]NavEntry[A], error)
 
+	// Crumb is what the page's crumb says in the breadcrumb and the tab title, for the arguments it was opened with,
+	// where the path would say the value it took: a page at "/device/{id}" that returns the device's name reads
+	// "Stockholm gateway" and not "dev_0041". It also names the page where it is a parent in another page's
+	// breadcrumb, such as "/device/{id}/log", whose arguments the path then has all of. A page whose parent has an
+	// argument the path does not have, such as one in the query, is asked with the argument empty.
+	//
+	// It is called whenever a full page is drawn, so it must be quick and may not rely on what the page's Guard
+	// would refuse: the library calls it with a deadline of two seconds for all the crumbs of a page together, does
+	// not call it for a parent whose Guard refuses the visitor, and a failure, a panic or an empty answer leaves
+	// the words of the path as they were. It cannot be set on a page whose path ends in a {name...}, whose crumbs
+	// are the segments of that value.
+	Crumb func(ctx context.Context, a A) string
+
 	// Search makes the things this page is the page of findable from the search box in
 	// the top bar. It is handed what the visitor typed and the most it should return, and
 	// returns the matches: each a [Hit], the arguments of this page that lead to it, and
@@ -193,6 +206,13 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		v.add(fmt.Sprintf("the page has NavEntries and the navigation label %q", p.Nav.Label),
 			"Each entry says its own words, in NavEntry.Label. Remove Nav.Label; Nav.Icon and Nav.Section are the icon and the group of all the entries.")
 	}
+	if p.Crumb != nil {
+		segs := strings.Split(strings.Trim(path, "/"), "/")
+		if _, rest, ok := args.Placeholder(segs[len(segs)-1]); ok && rest {
+			v.add("the page has a Crumb and its path ends in a {name...}",
+				"The crumbs of a path that takes the rest are its segments, one for each. Remove Crumb, or end the path in a placeholder that takes one segment.")
+		}
+	}
 	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
 		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
 		if strings.HasPrefix(p.Nav.Icon, "fa-") {
@@ -273,6 +293,9 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 			}
 			return convert.Slice(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
 		}
+	}
+	if p.Crumb != nil {
+		page.Crumb = func(ctx context.Context, a any) string { return p.Crumb(ctx, a.(A)) }
 	}
 	if p.Search != nil {
 		page.Search = func(ctx context.Context, query string, limit int) ([]ir.Hit, error) {

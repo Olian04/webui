@@ -61,7 +61,7 @@ func (p *Program) writeBuilt(w http.ResponseWriter, r *http.Request, page *ir.Pa
 // make it an error page, so a panel that fails says so where it is (see [panel.Render]).
 func (p *Program) stream(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, body *panel) {
 	ctx := context.WithValue(r.Context(), streamingKey{}, true)
-	doc := p.finish(w, r, p.pageDoc(page, req, body), req.shell)
+	doc := p.finish(w, r, p.pageDoc(ctx, page, req, body), req.shell)
 	started := startedAt(r)
 	// The headers say how long it took to send the first of it. The bar, which is drawn last, says how long all of it took.
 	doc.Streaming = true

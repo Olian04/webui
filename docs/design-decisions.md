@@ -599,6 +599,18 @@ design element.
   because one colour cannot be right on both a dark and a light surface. Surfaces and
   text are not themeable: they are what makes the modes differ, and the mode is the
   viewer's choice.
+- **The breadcrumb is derived from the path, and a page may say its own crumb.** A path has the value of an argument,
+  such as an opaque id, and a person knows the thing by something else, its name. `Page.Crumb func(ctx, A) string` is
+  asked for it, and not `Nav.Label`, which names an *entry* and stays refused on a page with arguments (an entry is one
+  address). It names the page in its own last crumb, which is also the tab title, and as a parent in the trail of a page
+  below it, where the arguments come from the path (`Decode`), so a parent whose arguments are not all in the path keeps
+  the path's words, as it keeps its link. It is a function and not a field of the arguments because what it needs is
+  loaded: it costs a call for each page drawn, so it has the deadline of `NavEntries` (two seconds, for the crumbs of a
+  page together), and a failure, a panic or an empty answer falls back to the path's words and is logged, since a
+  breadcrumb must not take a page down. It is not asked of a parent whose `Guard` refuses the visitor: what the Crumb
+  knows is not theirs, and the page itself, when its Guard refuses, is drawn with the path's words. The cost is that
+  the `Guard` runs once more for each page with a Crumb. A path that takes the rest, `{name...}`, has the segments for
+  crumbs and may not have one (a parent above it may).
 
 ## Assets and transport
 

@@ -78,7 +78,7 @@ func (p *Program) returnHref(req *Request, page *ir.Page, path map[string]string
 	if req.From != "" {
 		return req.From
 	}
-	crumbs := p.render.Crumbs(page, path)
+	crumbs := p.render.Crumbs(page, path, nil) // only where they lead
 	if len(crumbs) < 3 {
 		return ""
 	}

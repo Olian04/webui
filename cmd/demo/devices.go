@@ -230,6 +230,14 @@ var Details = webui.Page[DeviceArgs]{
 		}
 		return hits, nil
 	},
+	// Crumb is what the breadcrumb and the tab title say of this page: the device's address, which a person
+	// knows it by, and not the opaque id in the path. It reads "10.0.0.12", where the path says "dev_27c38b".
+	Crumb: func(_ context.Context, a DeviceArgs) string {
+		if d, ok := service.Device(a.ID); ok {
+			return d.IP
+		}
+		return "" // the path's own words
+	},
 	// No Nav, so no sidebar entry of its own: it lights Devices, the page at "/device".
 	// Guard runs before anything is loaded, so an unknown device is never read. A Refusal is what the visitor may be told:
 	// a 404, which says so, with a link on, in place of a bare 403.
