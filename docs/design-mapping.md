@@ -430,9 +430,9 @@ so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
 
 `Guard` has two visual forms and they are the same rule:
 
-1. **On the page** — the **Not permitted** state. The wording matters: *"the
-   guard ran before anything was loaded, so this device was never read."* The
-   page shows nothing, because nothing was fetched.
+1. **On the page** — the **Not permitted** state, with the reason the `Guard`
+   gave, which is for the visitor to read. The page shows nothing, because
+   nothing was fetched, and does not say how the check was made.
 2. **On a control** — the *gated* treatment: 45% opacity plus a tooltip giving
    the reason. The same check that would reject the request also disables the
    button, so there is no second authorisation rule to keep in sync and no

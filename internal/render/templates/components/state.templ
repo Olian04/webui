@@ -2,9 +2,8 @@ package components
 
 import "strconv"
 
-// StatePageProps replaces the whole content region. The wording matters: a
-// guard rejection says the check ran BEFORE anything was loaded, because
-// nothing was fetched and the page should not imply otherwise.
+// StatePageProps replaces the whole content region with one thing to say: an icon, a title and what the visitor needs to
+// know, and, as a child, a way on.
 type StatePageProps struct {
 	Icon  IconName
 	Title string

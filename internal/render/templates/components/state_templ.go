@@ -10,9 +10,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import "strconv"
 
-// StatePageProps replaces the whole content region. The wording matters: a
-// guard rejection says the check ran BEFORE anything was loaded, because
-// nothing was fetched and the page should not imply otherwise.
+// StatePageProps replaces the whole content region with one thing to say: an icon, a title and what the visitor needs to
+// know, and, as a child, a way on.
 type StatePageProps struct {
 	Icon  IconName
 	Title string
@@ -55,7 +54,7 @@ func StatePage(p StatePageProps) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 17, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 16, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -73,7 +72,7 @@ func StatePage(p StatePageProps) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.Desc)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 19, Col: 33}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 18, Col: 33}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -141,7 +140,7 @@ func CompileError(p CompileErrorProps) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(problemCount(len(p.Problems)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 45, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 44, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -159,7 +158,7 @@ func CompileError(p CompileErrorProps) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(e.Where)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 48, Col: 32}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 47, Col: 32}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -172,7 +171,7 @@ func CompileError(p CompileErrorProps) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(e.Detail)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 49, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 48, Col: 19}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -190,7 +189,7 @@ func CompileError(p CompileErrorProps) templ.Component {
 				var templ_7745c5c3_Var8 string
 				templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(e.Fix)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 51, Col: 39}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/state.templ`, Line: 50, Col: 39}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 				if templ_7745c5c3_Err != nil {

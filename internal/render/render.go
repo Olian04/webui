@@ -272,14 +272,13 @@ func NoStart() templ.Component {
 	})
 }
 
-// Forbidden is the content of a guard rejection. The wording matters: the check
-// ran before anything was loaded, so nothing was read.
+// Forbidden is the content of a guard rejection: what the guard said, which is for the visitor to read, or, when it
+// said nothing, that they may not open the page. How the check was made is not for them.
 func Forbidden(reason string) templ.Component {
-	desc := "The guard for this page ran before anything was loaded, so no data was read."
-	if reason != "" {
-		desc += " " + reason
+	if reason == "" {
+		reason = "You do not have access to this page."
 	}
-	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: desc})
+	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: reason})
 }
 
 // BadRequest is the content of a 400: an argument that did not parse.

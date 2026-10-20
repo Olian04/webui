@@ -86,8 +86,8 @@ func TestGuardRunsBeforeAnythingAndRejectsWith403(t *testing.T) {
 	rec := serve(h, http.MethodGet, "/admin/device/locked")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), "Not permitted")
-	assert.Contains(t, rec.Body.String(), "ran before anything was loaded")
 	assert.Contains(t, rec.Body.String(), "requires the editor role")
+	assert.False(t, strings.Contains(rec.Body.String(), "ran before anything was loaded")) // how the check was made is not for the visitor
 }
 
 func TestBadArgumentIs400(t *testing.T) {

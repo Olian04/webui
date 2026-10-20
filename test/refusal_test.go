@@ -77,8 +77,8 @@ func TestAGuardThatRefusesWithAStatusAnswersWithIt(t *testing.T) {
 		body := rec.Body.String()
 		assert.Contains(t, body, `<p class="state-title">`+want.title+`</p>`)
 		assert.Contains(t, body, want.text)
-		assert.False(t, strings.Contains(body, "ran before anything was loaded")) // that is for an error that says nothing of its own
-		assert.False(t, strings.Contains(body, `class="panel`))                   // and nothing was read
+		assert.False(t, strings.Contains(body, "ran before anything was loaded"))
+		assert.False(t, strings.Contains(body, `class="panel`)) // and nothing was read
 	}
 
 	// The link on is a real link to a page of the app.
@@ -87,14 +87,20 @@ func TestAGuardThatRefusesWithAStatusAnswersWithIt(t *testing.T) {
 	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/records/closed").Body.String(), `class="btn btn-ghost btn-sm"`))
 }
 
-// Any other error is as it was: a 403 that says the check ran before anything was read, with its text.
+// Any other error is as it was: a 403 with its text, and not how the check was made.
 func TestAGuardThatReturnsAnyOtherErrorStillAnswers403(t *testing.T) {
 	t.Parallel()
 
 	rec := serve(refusalApp(nil), http.MethodGet, "/admin/records/plain")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), "only for editors")
-	assert.Contains(t, rec.Body.String(), "ran before anything was loaded")
+	assert.Contains(t, rec.Body.String(), `<p class="state-desc">only for editors</p>`)
+	assert.False(t, strings.Contains(rec.Body.String(), "ran before anything was loaded"))
+
+	// An error with no words of its own says that there is no access, and nothing else.
+	page := webui.Page[webui.NoArgs]{Path: "/quiet", Body: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("") }}
+	rec = serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/quiet")
+	assert.Equal(t, rec.Code, http.StatusForbidden)
+	assert.Contains(t, rec.Body.String(), `<p class="state-desc">You do not have access to this page.</p>`)
 }
 
 // A POST to a page that refuses is answered, as any is, with a redirect to the page, which says it.
