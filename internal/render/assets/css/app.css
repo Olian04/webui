@@ -2449,6 +2449,12 @@ td.actions .gate:hover::after,
   width: 92px;
   text-align: right;
 }
+/* Without script there is no range beside it: the number is the whole control, and fills the field as any input does. */
+html:not(.js) .range-number {
+  flex: 1;
+  width: auto;
+  text-align: left;
+}
 /* A link a page declared: it opens in a new tab, which the arrow says. In a table it
    sits above the row's own link, so it stays clickable. */
 a.ext {

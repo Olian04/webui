@@ -340,3 +340,14 @@ func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 10px 14px;")
 }
+
+// With script a slider's number is a narrow box beside the range; without it there is no range, and the number is the whole
+// control and fills the field like any input. The stylesheet says so for a page that script has not marked.
+func TestASlidersNumberFillsTheFieldWhenThereIsNoScript(t *testing.T) {
+	t.Parallel()
+
+	h := formApp(sliderForm())
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "html:not(.js) .range-number {\n  flex: 1;\n  width: auto;\n  text-align: left;\n}")
+	assert.Contains(t, css, ".range-number {\n  flex: none;\n  width: 92px;")
+}
