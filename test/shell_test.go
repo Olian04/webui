@@ -155,6 +155,16 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assert.False(t, strings.Contains(plainPage, "/_webui/logo"))
 }
 
+// The results of the search are a box that scrolls when there are more of them than the window has room for, and not a box that
+// runs out of the window.
+func TestTheSearchResultsScrollWhenThereAreMoreThanTheWindowHasRoomFor(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{}.MustCompile("/admin")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "max-height: calc(100vh - var(--topbar-h) - 26px - 24px);\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.palette.open {")
+}
+
 // A label that is wider than the sidebar is cut short with an ellipsis, in the entry, the brand and the caption, and is the
 // whole of it in the title; the stylesheet says so, and the icon that keeps its size beside the label is not one of them.
 func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) {
