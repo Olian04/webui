@@ -131,24 +131,24 @@ design element.
   problem came from `Store` seeing `*M`; rules see only their own value, so
   inter-field dependencies are not expressible and need no ordering.
 - A `Pattern` runs twice, in Go on the server and in the browser as the `pattern` attribute, and the two regular
-  expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and the claim that it was is what
-  this entry used to say. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (a corpus that is kept with the tests): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
+  expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and it is not. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (a corpus that is kept with the tests): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
   in the page; both accept some patterns and read them differently (`.` and `\s` match more characters in a
   browser; `[a&&b]` is an intersection under `v`); and Go reads a great deal that a browser refuses (`\pL`, `\A`, `\z`,
   `\Q..\E`, `(?i)`, `(?P<n>)`, `\_`, `\-`, `[a-]`, `[(]`, `[/]`, a loose `]` or `}`, `\x{41}`, POSIX classes).
-  So `Compile` reads the pattern itself and accepts only a subset, listed in "Text rules and patterns" in the package
-  documentation, each part of which was held against both engines: the corpus, 380 patterns by 110 inputs, is
-  recorded as data and the Go tests hold the library to it without a browser; a random search of 60,000
-  accepted patterns against V8 found no difference. What the engines read differently is written for Go as the
-  browser reads it, not refused: `.` becomes `[^\n\r\x{2028}\x{2029}]` and `\s` the white space of a browser, tested
-  against every code point. Left out on purpose and listed in the test: named groups, flags in a group (not in the
-  browsers that have `v`), the long names of a property, and the C categories (what is unassigned is the Unicode
-  version of the engine, which is also why a category added to Unicode lately may differ; they agree today).
-  Costs: an app with a pattern outside the subset fails to compile with a message that says what to write; the
-  subset has no lookahead, so "has a digit somewhere" is not a pattern; Firefox and Safari have engines of their own,
-  and the corpus holds only what the specification settles. The expression is anchored on both sides, because an HTML
-  `pattern` attribute must match the whole value and the server has to reach the same verdict as the browser, and
-  the pattern is compiled alone first so that `a)|(b` cannot close the group it is put in.
+- **`Compile` accepts only a subset of patterns, and writes the rest as the browser reads it.** So `Compile` reads the pattern
+  itself and accepts only a subset, listed in "Text rules and patterns" in the package documentation, each part of which was
+  held against both engines: the corpus, 380 patterns by 110 inputs, is recorded as data and the Go tests hold the library to it
+  without a browser; a random search of 60,000 accepted patterns against V8 found no difference. What the engines read
+  differently is written for Go as the browser reads it, not refused: `.` becomes `[^\n\r\x{2028}\x{2029}]` and `\s` the white
+  space of a browser, tested against every code point. Left out on purpose and listed in the test: named groups, flags in a
+  group (not in the browsers that have `v`), the long names of a property, and the C categories (what is unassigned is the
+  Unicode version of the engine, which is also why a category added to Unicode lately may differ; they agree today).
+- **What the subset of patterns costs.** An app with a pattern outside the subset fails to compile with a message that says what to write; the subset has no
+  lookahead, so "has a digit somewhere" is not a pattern; Firefox and Safari have engines of their own, and the corpus holds
+  only what the specification settles. The expression is anchored on both sides, because an HTML `pattern` attribute must match
+  the whole value and the server has to reach the same verdict as the browser, and the pattern is compiled alone first so that
+  `a)|(b` cannot close the group it is put in.
+
 - **Text rules** (`StartsWith`, `EndsWith`, `Contains`, `NotStartsWith`, `NotEndsWith`, `NotContains`) are plain
   strings, since their zero value is no constraint and their message is derivable. The server tests them with the
   `strings` package; the browser has no attribute for them, so each is a JavaScript expression that the whole value
@@ -167,19 +167,16 @@ design element.
 
 ## Accessors
 
-- An accessor says how its value reads with `Format`, a function the application writes, on
-  `Int`, `Float`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
+- An accessor says how its value reads with `Format`, a function the application writes, on `Int`, `Float`, `OptionalInt`, `OptionalFloat`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
   field with no Store, and what the search looks in): sorting, filters, the range bounds, an
   editable input and the export keep the value, so a size can read "1.5 GiB" and sort as
-  bytes. Considered and dropped: formats the library ships as constants (`FormatBytes`,
-  `FormatDuration`), which is less API to write and less to get wrong, but a list that grows
-  with every unit someone needs, and a way for an application to say anything else; and a
-  second accessor that shows what another sorts by, which is a second declaration of one
-  column. What it costs: each application writes its bytes formatter; the range filter of a
-  number is typed in the number and not in what Format shows; a moment's Format is not
-  handed an empty or unparsable value, which shows as it did. A Format that panics is
-  logged and the value shown as it is, so one bug is a plain number and not every page that
-  has the column.
+  bytes.
+- **The library ships no formats.** Considered and dropped: formats as constants (`FormatBytes`, `FormatDuration`), which is less API to write and less to get wrong, but a list that grows with every unit someone needs, and
+  a way for an application to say anything else; and a second accessor that shows what another sorts by, which is a second
+  declaration of one column. What it costs: each application writes its bytes formatter; the range filter of a number is typed
+  in the number and not in what Format shows; a moment's Format is not handed an empty or unparsable value, which shows as it
+  did. A Format that panics is logged and the value shown as it is, so one bug is a plain number and not every page that has the
+  column.
 
 - **A column can leave itself out of sorting or filtering** (`NoSort`, `NoFilter` on each accessor that is a column).
   The default stays "every column does both", since that is what a table of rows is for and an app that says nothing
@@ -249,7 +246,7 @@ design element.
   field is an error (check the text in `Run`), and so is one in a toolbar, which shows one line for each value.
   `Required`, `MinLen` and `MaxLen` stay and are the browser's too. A browser sends a line break of a text area as CRLF, which
   its own `maxlength` counts as one character and `utf8.RuneCountInString` as two, so a text that the page accepted could be
-  refused by the server; `bindFunc` reads CRLF as `\n` before it checks and stores, which is also what an app wants to
+  refused by the server; the form's binding reads CRLF as `\n` before it checks and stores, which is also what an app wants to
   handle. A text that wants highlighting, a language service or a schema is an `Editor`, not this. In a table the cell
   keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
   read the text as it is.
@@ -258,9 +255,8 @@ design element.
   flag on `Int`: the Go type differs (`*int`), so `Load` and `Store` do, and a flag could not make `func(M) int` say
   "none". They are four types and not one generic, since the accessors are one type for each Go type already and a generic
   `Optional[T]` would need a constraint that names which of them to draw. Absent is not zero in any place that matters:
-  the input is empty and says so, an emptied one is stored as nil (`bindFunc` calls `Unset` for a nullable field, where
-  for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
-  sorts it first and leaves it out of a range as it does a missing moment (`Num` is NaN), and an export leaves a CSV cell
+  the input is empty and says so, an emptied one is stored as nil (for a field that may be absent; for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
+  sorts it first and leaves it out of a range as it does a missing moment (it has no number to sort by), and an export leaves a CSV cell
   empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
   unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
@@ -272,17 +268,18 @@ design element.
   and the text rules. Rules that a type has to forbid by an error are rules it should not have: the accessors have only
   the fields that make sense for them, so those combinations cannot be written, and a `ColorPicker` has no `Rules` and no
   `Placeholder` at all. What they share with `String` (the rules, the placeholder, sorting and filtering as text) is one
-  helper, and they are text in a table. `type=` is not trusted: it is a hint to a browser, and the server is the check. An
-  email is held to the HTML standard's own grammar, which is what the browser does, so the two agree (it is looser than the
-  RFCs, and "a@b" is one); `net/mail` was weighed and dropped for that, since it accepts display names and quoted forms that an
-  email input refuses. A web address is held to more than the browser holds it to: a browser accepts any address with a scheme,
-  `javascript:` among them, and what is stored is likely to be linked, so the server wants an http or https address with a host,
-  and says so in the rules popover, since the browser would not. That is a disagreement, and it is the safe one: the page
-  accepts "ftp://x" and the server refuses it, with the same words beneath the field. It is `Website` and not `URL` because
-  `URL` is the link, which has no `Store`, reads site paths and `mailto:` too, and is a different thing from a web
-  address to type; one name for both would have made a field with a `Store` allow what a link allows. `Color` was taken by
-  the theme's, so the picker is `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since
-  there is no grammar for them. A color picker cannot be empty, so an empty `Load` shows black.
+  helper, and they are text in a table.
+- **`type=` is a hint, and the server is the check.** An email is held to the HTML standard's own grammar, which is what the browser does, so the two agree (it is looser
+  than the RFCs, and "a@b" is one); `net/mail` was weighed and dropped for that, since it accepts display names and quoted forms
+  that an email input refuses. A web address is held to more than the browser holds it to: a browser accepts any address with a
+  scheme, `javascript:` among them, and what is stored is likely to be linked, so the server wants an http or https address with
+  a host, and says so in the rules popover, since the browser would not. That is a disagreement, and it is the safe one: the
+  page accepts "ftp://x" and the server refuses it, with the same words beneath the field.
+- **The names: `Website` and not `URL`, `ColorPicker` and not `Color`.** It is `Website` and not `URL` because `URL` is the
+  link, which has no `Store`, reads site paths and `mailto:` too, and is a different thing from a web address to type; one name
+  for both would have made a field with a `Store` allow what a link allows. `Color` was taken by the theme's, so the picker is
+  `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since there is no grammar for them.
+  A color picker cannot be empty, so an empty `Load` shows black.
 
 - **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
   script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
@@ -310,7 +307,7 @@ design element.
 
 - **A file is a `File` accessor, and the library keeps no file.** `Store` is handed an `Upload` (a base name that is made safe, a size, the
   content type that was sniffed, and `Open`, which streams from the spooled temporary file of `net/http`) and copies it where the app
-  keeps files; `Load` returns a `*FileInfo` (name, size, URL) for what is kept. The library stores and serves nothing: where a file lives
+  keeps files; `Load` returns a `*FileInfo` (name, size, URL and a thumbnail: see below) for what is kept. The library stores and serves nothing: where a file lives
   (disk, a bucket, a database), who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a `Store` that is handed
   the bytes (a 200 MiB file in memory, or a read that cannot be stopped), a handle that is a path (the library would own a directory),
   and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
@@ -328,7 +325,7 @@ design element.
   cannot be a `FileKind`, since a file of no named kind has one too; `Kind` is the named kind it was found to be, for an app
   that takes several and wants to branch (`FileAny` for none, which only a field that takes any file lets in, and never
   `FileImage`, which is four kinds). It is the most specific of the kinds in `Accept` that the file is, by a fixed order
-  (`FileKind.Order`, in the IR: the images and the PDF, which exclude one another, then JSON, then CSV, then text, then any),
+  (a fixed order of the library's: the images and the PDF, which exclude one another, then JSON, then CSV, then text, then any),
   and not the first listed, which would make what an upload is depend on how the app happened to write `Accept`; a JSON file is
   also text, and `42` is JSON and CSV. The order is the library's and is not API, since an app that wants another can say it
   with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
@@ -347,7 +344,7 @@ design element.
   gives and the extension, and a file that has no type is not refused, since a wrong refusal here is worse than a right one
   late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the
   page's and is not asked per visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the
-  extensions as well as the media types, so that the script can tell a file by its name.
+  extensions as well as the media types, so that the script can tell a file by its name. A file that is chosen and not sent has a *Clear* button; the *Remove* of a stored file is a checkbox, which needs no script.
 
 - **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
   as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
@@ -381,8 +378,7 @@ design element.
   shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
   "Choose the file again". Dropped: keeping the upload on the server between the two requests (state to expire, and to clean up
   behind a load balancer), which is what the 422 design avoids for everything else. `Required` is met by a stored file that is not
-  being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a
-  toolbar item, whose inputs were the page's arguments in its address.
+  being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a toolbar item: a toolbar shows values, and a file has only a name to show.
 
 ## Guards and refusals
 
@@ -410,20 +406,22 @@ design element.
   says the rest: an ordinary one leaves the control out; `webui.Disabled(message)` draws it disabled, with the message in a
   tooltip. Either way the same `Guard` refuses the POST, and for a request made by hand its message is the toast. It applies to a table's row
   actions, its bulk actions, a toolbar's buttons and a `Link` (which is left out when the page it leads to refuses the visitor, the way the
-  sidebar leaves out an entry). Dropped: a field on `Action` (`HideWhenGuarded`, `DisabledMessage`) for what the
-  `Guard` already knows, since a field is a second place to say it and cannot depend on the row; one rule for every control,
-  hiding or disabling (hiding is right for a viewer who has no business with an editor's buttons, disabling for "Already granted", and no
-  rule is right for both); and a separate "disabled when" condition on `Action`, which is the same `Guard` said again. The costs: a
-  left-out control cannot be discovered, and its reason is seen only on a hand-made request or a refused page; a bulk `Guard` must accept a selection of
-  one, and is called for each row of the window, for each bulk action, whenever the table is drawn, as a row action's
-  is (a `RowClick` `Link` asks the destination page's `Guard` once for each row, which for a `Guard` that reads a database is a
-  read for each); the column of row buttons is there when some row of the window has one, so it comes and goes between the pages
-  of a table; a `Link` is left out whichever error the destination's `Guard` returns, since `Disabled` has no meaning
-  for a page. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
-  an application bug, which leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action
-  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. The tooltip of a disabled control opens
-  above it, so script moves it below when there is no room above (the first row of a table, whose header is over it, or a toolbar), and
-  raises the cell that holds it over the next row's buttons; without script it opens above, as before, and the first row's is cut off.
+  sidebar leaves out an entry).
+- **What was dropped beside the Guard's result, and what it costs.** Dropped: a field on `Action` (`HideWhenGuarded`,
+  `DisabledMessage`) for what the `Guard` already knows, since a field is a second place to say it and cannot depend on the row;
+  one rule for every control, hiding or disabling (hiding is right for a viewer who has no business with an editor's buttons,
+  disabling for "Already granted", and no rule is right for both); and a separate "disabled when" condition on `Action`, which
+  is the same `Guard` said again. The costs: a left-out control cannot be discovered, and its reason is seen only on a hand-made
+  request or a refused page; a bulk `Guard` must accept a selection of one, and is called for each row of the window, for each
+  bulk action, whenever the table is drawn, as a row action's is (a `RowClick` `Link` asks the destination page's `Guard` once
+  for each row, which for a `Guard` that reads a database is a read for each); the column of row buttons is there when some row
+  of the window has one, so it comes and goes between the pages of a table; a `Link` is left out whichever error the
+  destination's `Guard` returns, since `Disabled` has no meaning for a page; a `RowClick` action that is refused leaves the row
+  shown and doing nothing, since it has no button to leave out or to disable, whichever error says so; and a bulk action whose
+  `Guard` refuses every row is disabled with the first message that was given, or left out if none was. The Save of a form is
+  read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is an application bug, which
+  leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action drawn
+  has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there.
 
 ## Actions and outcomes
 
@@ -461,10 +459,7 @@ design element.
   them across a redirect is a convention of its own, and was weighed and dropped: the address (it
   would put what was typed in history and logs), a cookie (it goes with every request to the mount, is
   limited to a few kilobytes while an editor takes 16 MiB, and sends what was typed to the server again
-  and again), and a store on the server, which is what this replaced (in memory for 60 seconds under a
-  token in the flash cookie): it is per process, so behind a load balancer without stickiness the second
-  request could reach another instance, it needed a bound and a timer, and it made a refusal show as a 303
-  in the metrics, where it is a 422 now, and failures also stay visible in `webui_actions_total{result}`.
+  and again), and a store on the server, which is what this replaced: it is per process, so behind a load balancer without stickiness the second request could reach another instance, it needed a bound and a timer, and it made a refusal show as a 303 in the metrics.
 - **What a refused form that is not redirected costs.** The browser asks "send the form again?" when the page it answered with is reloaded,
   which is its standard behaviour for a response to a POST, and with script there is no workaround for it on purpose. A table
   action that is refused has no fields to draw again, so it keeps the redirect and a toast. A `Then` or a `Back` that leaves the
@@ -529,17 +524,14 @@ design element.
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
   grow without bound, and every column is sortable and filterable unless its accessor says `NoSort` or
-  `NoFilter` (below). A table says where
-  its rows come from with one of three fields. `Rows` returns every row and the
-  library filters, sorts and pages them from the columns' own accessors, a number
-  as a number and text as text, so a table over a slice has no query code at all.
-  `Load` is for a source that pages itself: it receives a `Query` and returns
-  `Window{Items, Total}`, doing the work itself; `Total` below what has been shown
-  means unknown. `Feed` is for a source that pages by a cursor: the rows come in the
-  source's order, and it is handed the cursor and a page size and returns the rows and
-  the next cursor. A cursor continues one sequence, so there is nothing for the library
-  to filter: the table has no filters, only First page, Previous and Next, and says which
-  rows it shows.
+  `NoFilter` (see Accessors).
+- **A table's rows come from one of three fields.** `Rows` returns every row and the library filters, sorts and pages them from the columns' own accessors, a number as a number and text
+  as text, so a table over a slice has no query code at all. `Load` is for a source that pages itself: it receives a `Query` and
+  returns `Window{Items, Total}`, doing the work itself; `Total` below what has been shown means unknown. `Feed` is for a source
+  that pages by a cursor: the rows come in the source's order, and it is handed the cursor and a page size and returns the rows
+  and the next cursor. A cursor continues one sequence, so there is nothing for the library to filter: the table has no filters,
+  only First page, Previous and Next, and says which rows it shows.
+
 - **A feed sorts only the page in hand.** Its columns sort the page in hand and no more: the library orders the rows `Feed`
   returned, with the same comparison `Rows` uses, in the query that built the page, and the source is not told. The sort is view
   state in the address like any other, so Next and Previous keep it, and each page is ordered within itself; the sort link stays
@@ -556,17 +548,16 @@ design element.
   header shows a filter icon; it opens a form that is a plain GET, so it works
   without script. A column with a fixed set of options — a `Select`, whose options
   are the ones it lists, in that order — gets a multi-select of exactly those, a numeric
-  column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
-  column a text input. `Load` receives them in `Query.Filters` (the options
-  chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,
-  inclusive, either end optional), keyed like `Query.Sort`. A number is compared
-  as a number, never as text: "5" is not a way to ask for more than 5. A chosen
-  option that is not an option, an empty text, a bound that is not a finite
-  number and a column the table does not have never arrive, and a typed filter is
-  cut at 200 characters. A multi-select is repeated parameters
-  (`devices.filter.status=a&devices.filter.status=b`), which is also what a form
-  of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. The page has no row of argument controls:
-  its query arguments come from the address (a link, `Open`) and have no UI.
+  column (`Int`, `Float`, `Slider`) or a moment (`Datetime`, `Timestamp`) a minimum and a maximum, and every other
+  column a text input.
+- **What a `Load` is handed of the filters.** `Load` receives them in `Query.Filters` (the options chosen, or the one text
+  typed) and `Query.Ranges` (a `Range{Min, Max *float64}`, inclusive, either end optional), keyed like `Query.Sort`. A number is
+  compared as a number, never as text: "5" is not a way to ask for more than 5. A chosen option that is not an option, an empty
+  text, a bound that is not a finite number and a column the table does not have never arrive, and a typed filter is cut at 200
+  characters. A multi-select is repeated parameters (`devices.filter.status=a&devices.filter.status=b`), which is also what a
+  form of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. Nothing on the page sets its
+  query arguments: they come from the address (a link, `Open`), and a `Toolbar` can show their values but not change them.
+
 - A link inside a panel that changes only that panel's arguments
   fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
   without script it is an ordinary navigation. The page `Guard` runs on every
@@ -593,8 +584,7 @@ design element.
   that nothing outside the leaf can read or set that state — `Guard` and
   sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
   sorted table.
-- `Rows` is searched and filtered by the library from the accessors' own values
-  (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
+- `Rows` is filtered and sorted by the library from the accessors' own values (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
   in the address and in `Query`, lower-cased with dashes in the address; there is no
   key to declare, and `Compile` refuses labels that collide.
 
@@ -609,18 +599,15 @@ design element.
 - An export reuses the table's own `Load`, which is the one thing the library can rely
   on. `Rows` is asked for everything, with no limit. `Load` is asked for 500 rows at a
   time from `Offset` 0, with the table's sort and filters, until a window comes back
-  empty or the `Total` is reached, or a cap of 100,000 rows. A source that ignores
-  `Offset` and has no `Total` would hand out its first batch for ever, so a batch that
-  is the same as the one before it, row for row, ends it. It is the whole batch and not
-  its first row that is compared: a table whose rows are not unique has batches that
-  begin with equal rows, and cutting those short would drop data without a word. `Feed`
-  is followed from the first page to the last, ending at a cursor seen twice. An export
-  that may be incomplete (cut at the cap, or stopped at a repeating source) says so in the
-  `X-Webui-Export-Truncated` header, with the number of rows the file has, since a note
-  in the file would be data. The whole
-  file is built in memory before it is written: a failure half way could not change the
-  status, and the cap bounds it. Global search is not part of the address, so it is not
-  honoured.
+  empty or the `Total` is reached, or a cap of 100,000 rows.
+- **An export stops a source that does not end.** A source that ignores `Offset` and has no `Total` would hand out its first
+  batch for ever, so a batch that is the same as the one before it, row for row, ends it. It is the whole batch and not its
+  first row that is compared: a table whose rows are not unique has batches that begin with equal rows, and cutting those short
+  would drop data without a word. `Feed` is followed from the first page to the last, ending at a cursor seen twice. An export
+  that may be incomplete (cut at the cap, or stopped at a repeating source) says so in the `X-Webui-Export-Truncated` header,
+  with the number of rows the file has, since a note in the file would be data. The whole file is built in memory before it is
+  written: a failure half way could not change the status, and the cap bounds it.
+
 - What a cell holds is decided once, for both files. CSV is the text the table shows, so
   it is what the person saw, except that a number is a number, an address is the address
   and not the words that link to it, and any other text that starts with `=`, `+`, `-`,
@@ -638,11 +625,7 @@ design element.
 
 - Search belongs to pages, not tables. A `Page` has a `Search`, handed the text and a
   limit, that returns `Hit`s: the arguments of that page that each result leads to, a
-  title and a line beneath. It was a table's, which could be searched only if it had a
-  `RowClick` to a `Link`, and a table that was on no page with arguments, or whose
-  rows led nowhere, offered nothing; and a page with path arguments could be searched
-  only while the visitor was on it, which needed a second copy of the routes just to ask
-  "which page is this address". A hit is the thing and the page that shows it, so the
+  title and a line beneath. It was a table's, which could be searched only with a `RowClick` to a `Link`, and a page with path arguments only while the visitor was on it. A hit is the thing and the page that shows it, so the
   question "who provides the results" has one answer, the page the result opens.
 
 - Each hit is checked against the page it leads to, with the page's own `Guard` and the
@@ -681,14 +664,15 @@ design element.
   A deadline works through the context, so a `Search` that does not look at it would still block its goroutine; the answer no longer waits
   for it (the slot it writes to is buffered, and nothing it does after the request ends is logged), which is the cost of not trusting
   every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
-  fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked. The same
-  endpoint answers in HTML, not JSON: for script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`),
-  which it puts in the box; and without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the
-  box's button submits to when there is no script to list the results as it is typed in. One renderer makes both, so they cannot
-  disagree, and the script has no markup of its own to keep in step with the server's. The cost is that the script inserts server
-  HTML (escaped by the template) where it used to build nodes from data. The box is a form, so without script it has a button, joined
-  to its right edge as one control, and with script the button is hidden and Enter follows the highlighted result; while the next
-  results are asked for, the last are dimmed and out of reach, and Enter then submits the form instead.
+  fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked.
+- **The search answers in HTML, with one renderer for the box and the page.** The same endpoint answers in HTML, not JSON: for
+  script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`), which it puts in the box; and
+  without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the box's button submits to when
+  there is no script to list the results as it is typed in. One renderer makes both, so they cannot disagree, and the script has
+  no markup of its own to keep in step with the server's. The cost is that the script inserts server HTML (escaped by the
+  template) where it used to build nodes from data. The box is a form, so without script it has a button, joined to its right
+  edge as one control, and with script the button is hidden and Enter follows the highlighted result; while the next results are
+  asked for, the last are dimmed and out of reach, and Enter then submits the form instead.
 
 ## Navigation and links
 
@@ -734,9 +718,7 @@ design element.
   needs a query argument only when the page carries the same one. When
   several fit, the one with the most arguments wins, so a general entry is not lit beside
   a more particular one.
-- Entries and search results whose page `Guard` refuses the visitor are left out; the
-  guards are asked with no arguments, as a visitor who opened the page bare would be.
-  The page still answers 403 to anyone who types the address. A `Guard` that panics
+- Sidebar entries whose page `Guard` refuses the visitor are left out; the `Guard` is asked with no arguments, as a visitor who opened the page bare would be. (A search result is checked with its own arguments: see Search.) The page still answers 403 to anyone who types the address. A `Guard` that panics
   when asked this way hides its entry like one that refuses, and the cause is logged
   with the page: the question is asked while every full page is drawn, the
   server-error page included, so a panic there would take down the page that
@@ -776,13 +758,7 @@ design element.
 ## Shell and theme
 
 - No cross-document view transition. The shell's regions were named and the page opted in
-  (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white,
-  in dark mode too: while the browser makes the transition it shows its own default background, which no rule of the
-  page reaches. Measured by capturing the frames of a followed link in Chrome 155 (with a headed browser, since the
-  headless one never showed it): a white frame in about 3 of 8 navigations, and 255 of 255 in the brightest; with the
-  transition skipped from script, in 0 of 8. A background on the transition, on the root group, hiding the root images
-  and giving them no animation were each tried, with the style in the page and checked to be there, and none
-  changed how often it came. The page that is on screen is held until the next has something to paint, as for any
+  (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white, in dark mode too, because the browser shows its own default background while it makes the transition, which no rule of the page reaches: measured in Chrome 155, a white frame in about 3 of 8 navigations, and none with the transition skipped. Styles on the transition were tried, and none changed how often it came. The page that is on screen is held until the next has something to paint, as for any
   navigation, which does not flash, and a shell that is the same on every page does not appear to move. What it
   costs: the 180ms fade of the content, which the design had as the sign that the page moved. A browser that fixes the
   transition's first frames could have it back, with one rule and the names of the regions.
@@ -876,33 +852,28 @@ design element.
   the page has them. The sidebar's own inputs (which entries the visitor may not open, where the brand leads, the
   entries that pages list) are asked for at the same time as the panels, so the first byte waits for the slowest of
   them and not for their sum. In order means no placeholders, no template and no script: it works with script off
-  and on a first visit, and a layout inside a layout streams with no change to either. What it costs: a slow panel
-  holds back the ready ones after it, which is no slower than a page that is not sent early; the page shifts as
-  panels arrive; the script (`enhance.js`, deferred) runs when the document ends, so the search waits for the last
-  panel. A reverse proxy that buffers a response only costs the gain (`X-Accel-Buffering: no` asks nginx not to).
-  What the status is, is decided before the first byte, so a Guard that refuses is still a 403; after it a panel
-  that panics or cannot be built is drawn as a panel that could not load, and logged, where it would have been a 500.
-  A page whose head depends on its panels (an editor, a diff or Markdown links its script and stylesheet) and a HEAD
-  request are built whole. The `Server-Timing` and `X-Webui-Built` headers say how long the first of the page took;
-  the status bar, drawn last, says how long all of it did.
+  and on a first visit, and a layout inside a layout streams with no change to either.
+- **What a page that is sent as it is built costs.** A slow panel holds back the ready ones after it, which is no slower than a page that is not sent
+  early; the page shifts as panels arrive; the script (`enhance.js`, deferred) runs when the document ends, so the search waits
+  for the last panel. A reverse proxy that buffers a response only costs the gain (`X-Accel-Buffering: no` asks nginx not to).
+  What the status is, is decided before the first byte, so a Guard that refuses is still a 403; after it a panel that panics or
+  cannot be built is drawn as a panel that could not load, and logged, where it would have been a 500. A page whose head depends
+  on its panels (an editor, a diff or Markdown links its script and stylesheet) and a HEAD request are built whole. The
+  `Server-Timing` and `X-Webui-Built` headers say how long the first of the page took; the status bar, drawn last, says how long
+  all of it did.
 
 ## The status bar
 
-- The bar says how the page came to be: the server's build time, the browser's load time,
-  and when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel
-  response so the browser's own tools and the script read the same numbers. The build
-  time is measured from the request's arrival at the app to the moment the document is
-  rendered, so it includes the application's loaders and not the writing of the response.
+- The bar says how the page came to be: the server's render time, the delivery time after it (the network, the assets and the browser) and, without script only, when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel response so the browser's own tools and the script read the same numbers. The render time is measured from the request's arrival at the app to the moment the document is rendered, so it includes the application's loaders and not the writing of the response.
 - **JS off** is a `<noscript>` badge, so it is there exactly when script is off and costs
   nothing otherwise. It says what degrades, in its title.
-- **cached?** is a guess, and says so. A page is built for each request and sent
+- **stale page** is a guess, and says so. The badge is hidden unless the page looks stale, and its title says why. A page is built for each request and sent
   `no-store`, so one whose build time is more than 15 seconds before it was opened was
   probably not built for that request: a cache, a proxy or a DNS answer put a copy between
   the server and the viewer. The browser cache is detected from Navigation Timing (a
   transfer of zero bytes that is not a reload), and a page restored from the back-forward
   cache says so. What it costs: the comparison is between the server's clock and the viewer's,
-  so a computer whose clock is a minute off shows the badge on every page, and one that is behind shows
-  the time with no age; the title of the badge says this. A way to know without trusting
+  so a computer whose clock is a minute off shows the badge on every page, and one that is behind is never told; the title of the badge says this. A way to know without trusting
   either clock would need a round trip to ask the server the time, which the bar is not worth.
   The build time is in the page, and not taken from the `Date` header, which the script
   cannot read for the document and which is whole seconds.
@@ -944,19 +915,17 @@ design element.
   only when the visitor may edit the editor (the same Guard as the Save button). The hash
   names the file, so the browser keeps it as `private, immutable`; the key is
   `HMAC-SHA256(secret, name)`, so one file's key opens no other and nothing is stored for
-  keys. A wrong or missing key is a 404, so existence is not confirmed. What it costs, both
-  ways. Compared with inline in the page, it gives caching and a response that does not carry
-  a library's types on every load, and it gives up: the key is one bearer value for every
-  visitor and for the life of the process, so anyone given an address (a pasted link, an
-  access log, since the key is in the query) can fetch that file until the process
-  restarts, and a visitor who loses edit rights keeps it until then. Compared with the
-  files being public, it keeps types that a person would not publish from being read by
-  anyone who guesses a hash. The secret is random per process (`App.Secret` overrides it):
-  with several instances and no shared secret, a page drawn by one hands an address that
-  another rejects with a 404, and the editor then runs without its context. The library's
-  own assets, and the logo and favicons, stay public: they are needed before any editor
-  page, so a key would be handed to every visitor and protect nothing. The handler is
-  written so that another user-supplied asset can be locked the same way.
+  keys. A wrong or missing key is a 404, so existence is not confirmed.
+- **What locking the context files costs, both ways.** Compared with inline in the page, it gives caching and a response that
+  does not carry a library's types on every load, and it gives up: the key is one bearer value for every visitor and for the
+  life of the process, so anyone given an address (a pasted link, an access log, since the key is in the query) can fetch that
+  file until the process restarts, and a visitor who loses edit rights keeps it until then. Compared with the files being
+  public, it keeps types that a person would not publish from being read by anyone who guesses a hash. The secret is random per
+  process (`App.Secret` overrides it): with several instances and no shared secret, a page drawn by one hands an address that
+  another rejects with a 404, and the editor then runs without its context. The library's own assets, and the logo and favicons,
+  stay public: they are needed before any editor page, so a key would be handed to every visitor and protect nothing. The
+  handler is written so that another user-supplied asset can be locked the same way.
+
 - An `Editor` is lowered to the same node as a `Form` with one field, so loading,
   rules, the Guard, rejection and echo are the one pipeline and not a second one.
   Its body limit is raised (16 MiB) on pages that have an editor only, since a
@@ -1010,7 +979,7 @@ design element.
   page whose markdown has no such block never links the editor. Colouring is
   enhancement: without script, or for a language the editor does not know, the block
   stays plain. No language service is ever offered, since the text cannot be edited.
-- goldmark is the library's second runtime dependency after templ. Writing a markdown
+- goldmark is a runtime dependency of the library, beside templ and the Prometheus client. Writing a markdown
   parser would have meant owning its edge cases, and its escaping, in a place where a
   mistake is a cross-site script. It is pure Go, and was already in the module graph
   through the linter, so it adds nothing transitive.
@@ -1022,15 +991,17 @@ design element.
   A `/_webui/metrics` was proposed and dropped: what is exposed, at which address and to
   whom are the host's decisions, and the metrics name every page template and how much
   each is used, which should not be public by default. What it costs: one line more for
-  the program. Compiling the app again, or compiling a second app with the same registry, works: a metric the registry
-  already has, the same in name, labels and help, is the one that is counted into (the `AlreadyRegisteredError` carries
-  it), so a program that replaces its app as it changes keeps its counts, and nothing fails. Failing was the first
-  design, as the safe choice, and was dropped: it made the one common case of a second compile (a program that recompiles)
-  an error to work around, in exchange for telling the program about a mistake that is not one. The cost is that two
-  *different* apps in one registry add their counts together where a page has the same path template, which is
-  right for a replacement and wrong for two apps: the program wraps the registry with `prometheus.WrapRegistererWith`
-  and a label of its own for each, to tell them apart. A metric that has the name of one of these and is not the same
-  is still an error, since it would be a clash and not a second app.
+  the program.
+- **Compiling again, or sharing a registry, never fails.** Compiling the app again, or compiling a second app with the same
+  registry, works: a metric the registry already has, the same in name, labels and help, is the one that is counted into (the
+  `AlreadyRegisteredError` carries it), so a program that replaces its app as it changes keeps its counts, and nothing fails.
+  Failing was the first design, as the safe choice, and was dropped: it made the one common case of a second compile (a program
+  that recompiles) an error to work around, in exchange for telling the program about a mistake that is not one. The cost is
+  that two *different* apps in one registry add their counts together where a page has the same path template, which is right
+  for a replacement and wrong for two apps: the program wraps the registry with `prometheus.WrapRegistererWith` and a label of
+  its own for each, to tell them apart. A metric that has the name of one of these and is not the same is still an error, since
+  it would be a clash and not a second app.
+
 - Only webui's own metrics, `webui_...`, on a registry the program supplies, so the Go
   runtime and process collectors are the program's to add or not. `prometheus/client_golang`
   is a dependency of the library for this: it was weighed against writing the text format
@@ -1052,8 +1023,7 @@ design element.
   handed it is output the program did not ask for, and it cannot be turned off for one app and left on for
   another. What it costs: a program that wants the lines passes `slog.Default()`, one line, and one that
   forgot hears nothing from a panel that could not load, which the page still says in words.
-- The logger is reached two ways. The runtime holds it (`Program.log`), and the request's context carries
-  it (`ir.LoggerFrom`) for the code that is called with no more than a value, which is a column's `Format`:
+- The logger is reached two ways. The running app holds it, and the request's context carries it for the code that is called with no more than a value, which is a column's `Format`:
   its panic is recovered where the value is turned into text, and it is logged there. A context with no
   logger gives one that says nothing, so the code that logs does not ask whether it is on.
 - The compile-failure page has no logger, since there is no app to give it one.
