@@ -137,24 +137,18 @@ func TestTheDeviceThatIsCreatedHasAnAddressOfItsOwn(t *testing.T) {
 	assert.Equal(t, get(h, rec.Header().Get("Location")).Code, http.StatusOK)
 }
 
-// A page's argument that only a link could set has an input on the page: it is applied, and the visitor is sent to the page
-// that the arguments make, with the events narrowed.
-func TestTheEventsOfADeviceAreNarrowedByAnInputForTheMinutesArgument(t *testing.T) {
+// A page's argument that only a link sets is shown as a value in a toolbar inside the tab it is for: it is read, not an input.
+func TestTheEventsOfADeviceShowTheMinutesArgumentAsAValueInAToolbar(t *testing.T) {
 	h := handler(t)
-	// The input is in the Raw events tab, which it is for, and not on the page.
+	// The value is in the Raw events tab, which it is for, and not on the page.
 	overview := get(h, "/admin/device/dev_27c38b").Body.String()
 	assert.False(t, strings.Contains(overview, "Events from"))
 	raw := get(h, "/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events").Body.String()
-	assert.Contains(t, raw, `<option value="30" data-badge="badge-mute" selected>The last 30 minutes</option>`)
-
-	// Applying it keeps the tab, since the address does.
-	rec := get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=15")
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events")
-	rec = get(h, "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events&_toolbar=p.1.0&t0=")
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // nothing chosen is all of them
-	rec = get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events&_toolbar=p.1.0&t0=7")
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b?tabs.tab=raw-events") // not an option: refused, and where they were
+	assert.Contains(t, raw, `<span class="toolbar-lbl">Events from</span> <span class="toolbar-val"><span class="badges"><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>The last 30 minutes</span></span></span>`)
+	// With no minutes it says there is none, and the toolbar has nothing to submit.
+	all := get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events").Body.String()
+	assert.Contains(t, all, `<span class="toolbar-lbl">Events from</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
+	assert.False(t, strings.Contains(raw, "_toolbar"))
 }
 
 // A device has notes, in a text area: its lines are kept, and a line break is one character whatever the browser sent.

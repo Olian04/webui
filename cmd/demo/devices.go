@@ -136,7 +136,7 @@ var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
 	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device, a button
-	// that does something, and, on the Raw events tab of a device, an input for the page's arguments.
+	// that does something, and, on the Raw events tab of a device, a value of the page's arguments, read.
 	Body: webui.Stack{DevicesToolbar, DevicesTable},
 }
 
@@ -253,9 +253,9 @@ var Details = webui.Page[DeviceArgs]{
 	// Overview, needs no parameter.
 	Body: webui.Tabs{Panels: []webui.Tab{
 		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
-		// The page's Minutes, which only a link could set, as an input of a toolbar that is inside the tab it is for: Load reads
-		// it from the arguments and Store writes the visitor's to them, and the page that comes of it is the visitor's
-		// address, which they can copy, with this tab still selected.
+		// The page's Minutes, which only a link sets (the alerts link here with ?minutes=15), shown as a value in a toolbar that is
+		// inside the tab it is for: Load reads it from the arguments. A toolbar shows values and has buttons and links; it has no
+		// inputs, so it has no form.
 		{Label: "Raw events", Body: webui.Stack{
 			webui.Toolbar[DeviceArgs]{Left: []webui.ToolbarItem[DeviceArgs]{EventWindow}},
 			RawEvents,
@@ -263,7 +263,7 @@ var Details = webui.Page[DeviceArgs]{
 	}},
 }
 
-// EventWindow is an input for an argument of the page: the minutes that the events cover. Nothing chosen is all of them.
+// EventWindow is a value of the page's arguments: the minutes that the events cover. Nothing is all of them. It is only read in a toolbar.
 var EventWindow = webui.Select[DeviceArgs]{
 	Label: "Events from",
 	Load: func(a DeviceArgs) []string {
@@ -271,12 +271,6 @@ var EventWindow = webui.Select[DeviceArgs]{
 			return nil
 		}
 		return []string{strconv.Itoa(a.Minutes)}
-	},
-	Store: func(a *DeviceArgs, v []string) {
-		a.Minutes = 0
-		if len(v) == 1 {
-			a.Minutes, _ = strconv.Atoi(v[0])
-		}
 	},
 	Options: []webui.Option{{Value: "15", Label: "The last 15 minutes"}, {Value: "30", Label: "The last 30 minutes"}, {Value: "60", Label: "The last hour"}},
 }

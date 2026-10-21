@@ -91,12 +91,6 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 			p.export(w, r, page, req, table, format)
 			return
 		}
-		if id := r.URL.Query().Get(toolbarParam); id != "" && r.Header.Get(LeafHeader) == "" {
-			if tb, ok := leaves[id].(*ir.Toolbar); ok {
-				p.toolbarApply(w, r, page, req, tb)
-				return
-			}
-		}
 		if id := r.Header.Get(LeafHeader); id != "" {
 			// A panel, or a Tabs: a request for one of them loads that and nothing else of the page.
 			if t, ok := tabs[id]; ok {

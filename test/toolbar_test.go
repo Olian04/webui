@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -27,7 +28,7 @@ type newArgs struct{ From string }
 var newDevice = webui.Page[newArgs]{Path: "/device/new", Body: webui.Stack{}}
 
 var (
-	minutesInput = webui.Int[toolArgs]{
+	minutesInput = webui.Int[toolArgs]{ // the same accessors a form would use: their Store and Rules do nothing in a toolbar
 		Label: "Minutes", Load: func(a toolArgs) int { return a.Minutes }, Store: func(a *toolArgs, v int) { a.Minutes = v },
 		Rules: webui.NumberRules[int]{Min: ptr(1), Max: ptr(1440)},
 	}
@@ -98,37 +99,105 @@ func flashOf(rec *httptest.ResponseRecorder) string {
 	return ""
 }
 
-func TestAToolbarIsARowOfButtonsAndInputsForThePagesArguments(t *testing.T) {
+func TestAToolbarIsARowOfButtonsAndValuesOfThePagesArguments(t *testing.T) {
 	t.Parallel()
 
 	s := newToolShop()
-	body := serve(s.h, http.MethodGet, "/admin/tools?minutes=15&site=north").Body.String()
+	body := serve(s.h, http.MethodGet, "/admin/tools?minutes=15&site=north&tags=edge&tags=gpu").Body.String()
+	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel grows"`)]
 
 	// A link is a real anchor, to the page its Args build from the page's arguments.
-	assert.Contains(t, body, `<a class="btn btn-primary btn-sm" href="/admin/device/new?from=north">Create device</a>`)
+	assert.Contains(t, bar, `<a class="btn btn-primary btn-sm" href="/admin/device/new?from=north">Create device</a>`)
 	// An action is a button that posts, by its position.
-	assert.Contains(t, body, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1">Sync now</button>`)
-	// An input shows the page's argument, and belongs to the form that applies it.
-	assert.Contains(t, body, `name="t2" type="number" value="15" min="1" max="1440" step="1"`)
-	assert.Contains(t, body, `form="p-0-args"`)
-	assert.Contains(t, body, `<option value="north" data-badge="badge-mute" selected>North</option>`)
-	// The form that applies them carries the rest of the address, and none of the inputs' own.
-	form := body[strings.Index(body, `<form id="p-0-args"`):]
-	form = form[:strings.Index(form, `</form>`)]
-	assert.Contains(t, form, `method="get" action="/admin/tools"`)
-	assert.Contains(t, form, `name="_toolbar" value="p.0"`)
-	assert.Contains(t, form, `name="minutes" value="15"`)
-	assert.Contains(t, form, `name="site" value="north"`)
+	assert.Contains(t, bar, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1">Sync now</button>`)
+	// An accessor is its label and its value as it is read: a number, and a select as its badges. Nothing in it can be changed.
+	assert.Contains(t, bar, `<span class="toolbar-value"><span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span></span>`)
+	assert.Contains(t, bar, `<span class="toolbar-lbl">Site</span> <span class="toolbar-val"><span class="badges"><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>North</span></span></span>`)
+	assert.Contains(t, bar, `>edge</span><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>gpu</span>`)
+	for _, input := range []string{"<input type=\"number\"", "<select", "<textarea", "toolbar-apply", "toolbar-args", "data-toolbar-form", "_toolbar", `method="get"`, `<label`} {
+		assert.False(t, strings.Contains(bar, input))
+	}
+	// The one form is the buttons': it posts the leaf and the action's position, and nothing else.
+	assert.Equal(t, strings.Count(bar, "<form"), 1)
+	assert.Contains(t, bar, `method="post"`)
 	// The left controls and the right ones are one row with a gap between them, which takes what is left over.
-	assert.Equal(t, strings.Count(body, `<span class="toolbar-gap" aria-hidden="true"></span>`), 1)
-	assert.True(t, strings.Index(body, ">Sync now</button>") < strings.Index(body, `class="toolbar-gap"`))
-	assert.True(t, strings.Index(body, `class="toolbar-gap"`) < strings.Index(body, `<label class="lbl" id="p-0-t2-label"`))
-	// Without script each input has a button of its own, joined to it, that applies them all.
-	assert.Equal(t, strings.Count(body, `<button class="btn btn-secondary btn-sm toolbar-apply" type="submit" form="p-0-args">Apply</button>`), 3)
-	field := body[strings.Index(body, `<label class="lbl" id="p-0-t2-label"`):]
-	field = field[:strings.Index(field, `</button>`)]
-	assert.True(t, strings.Contains(field, `name="t2"`) && strings.Contains(field, `toolbar-apply`)) // the button follows its input, in the same field
-	assert.False(t, strings.Contains(field, `id="p-0-t3-label"`))
+	assert.Equal(t, strings.Count(bar, `<span class="toolbar-gap" aria-hidden="true"></span>`), 1)
+	assert.True(t, strings.Index(bar, ">Sync now</button>") < strings.Index(bar, `class="toolbar-gap"`))
+	assert.True(t, strings.Index(bar, `class="toolbar-gap"`) < strings.Index(bar, `class="toolbar-lbl">Minutes`))
+}
+
+// A toolbar with no button has nothing in it to submit, so it has no form.
+func TestAToolbarOfLinksAndValuesHasNoForm(t *testing.T) {
+	t.Parallel()
+
+	s := newToolShop(
+		webui.Link[toolArgs, newArgs]{Label: "Create device", Page: newDevice, Args: func(context.Context, toolArgs) newArgs { return newArgs{} }},
+		minutesInput, siteInput,
+	)
+	body := serve(s.h, http.MethodGet, "/admin/tools?minutes=15").Body.String()
+	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel grows"`)]
+	assert.False(t, strings.Contains(bar, "<form"))
+	assert.False(t, strings.Contains(bar, "_leaf"))
+	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
+	assert.Contains(t, bar, `<a class="btn btn-secondary btn-sm" href="/admin/device/new">Create device</a>`)
+}
+
+// The accessor is the one a form uses: its Store is ignored, as a table ignores it, and an address that used to apply an input is a page.
+func TestAToolbarShowsAnAccessorReadOnlyWhateverItsStoreAndHasNoApplyingAddress(t *testing.T) {
+	t.Parallel()
+
+	withStore := webui.Int[toolArgs]{Label: "Minutes", Load: func(a toolArgs) int { return a.Minutes }, Store: func(a *toolArgs, v int) { a.Minutes = v }}
+	without := webui.Int[toolArgs]{Label: "Minutes", Load: func(a toolArgs) int { return a.Minutes }}
+	page := func(item webui.ToolbarItem[toolArgs]) http.Handler {
+		return webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{item}}}}}.MustCompile("/admin")
+	}
+	a := serve(page(withStore), http.MethodGet, "/admin/tools?minutes=15").Body.String()
+	b := serve(page(without), http.MethodGet, "/admin/tools?minutes=15").Body.String()
+	pick := func(s string) string {
+		i := strings.Index(s, `<div class="toolbar"`)
+		return s[i : i+strings.Index(s[i:], `</div>`)]
+	}
+	assert.Equal(t, pick(a), pick(b))
+
+	// The old address of an applied input is now only a page with an argument it does not know: it is shown, not redirected.
+	rec := serve(page(withStore), http.MethodGet, "/admin/tools?_toolbar=p&t0=30")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Contains(t, rec.Body.String(), `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">0</span>`)
+}
+
+func TestAToolbarValueIsAsAReadOnlyFieldShowsItAndMayHaveHelp(t *testing.T) {
+	t.Parallel()
+
+	type args struct { // arguments are plain values: an absent one is derived from them
+		Size int
+		Name string
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[args]{Path: "/t", Body: webui.Toolbar[args]{Left: []webui.ToolbarItem[args]{
+		webui.Bool[args]{Label: "Paused", Load: func(a args) *bool {
+			if a.Size == 0 {
+				return nil // not set
+			}
+			yes := a.Size > 5
+			return &yes
+		}},
+		webui.Int[args]{Label: "Size", Help: "How much is kept.", Load: func(a args) int { return a.Size }, Format: func(n int) string { return strconv.Itoa(n) + " KiB" }},
+		webui.String[args]{Label: "Name", Load: func(a args) string { return a.Name }},
+		webui.URL[args]{Label: "Docs", Text: "Read", Load: func(args) string { return "https://example.com/docs" }},
+	}}}}}.MustCompile("/admin")
+
+	bar := func(target string) string {
+		body := serve(h, http.MethodGet, target).Body.String()
+		return body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `</main>`)]
+	}
+	// Absent is a dash, and a value is as a read-only form field shows it: a Format, a link.
+	empty := bar("/admin/t")
+	assert.Contains(t, empty, `<span class="toolbar-lbl">Paused</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
+	assert.Contains(t, empty, `<span class="toolbar-lbl">Name</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
+	assert.Contains(t, empty, `<span class="toolbar-val">0 KiB</span>`)
+	assert.Contains(t, empty, `href="https://example.com/docs"`)
+	// What the help says is in the popover beside the label.
+	assert.Contains(t, empty, `<span class="tip" tabindex="0" role="note" aria-label="Help: How much is kept.">`)
+	assert.False(t, strings.Contains(empty, "<form"))
 }
 
 func TestAToolbarWithControlsAtOneEdgeHasTheGapOnTheOtherSide(t *testing.T) {
@@ -183,86 +252,19 @@ func TestAToolbarButtonThatIsGuardedIsDisabledWithItsReasonAndRefused(t *testing
 	assert.Equal(t, len(s.ran), 0)
 }
 
-// An input is applied to the page's arguments, and the visitor is sent to the page they make, with the rest of the
-// address kept, a table's sort among it, and its first page.
-func TestAnInputOfAToolbarGivesThePageTheArgumentsItMakes(t *testing.T) {
-	t.Parallel()
-
-	s := newToolShop()
-	where := func(target string) string {
-		rec := serve(s.h, http.MethodGet, target)
-		assert.Equal(t, rec.Code, http.StatusSeeOther)
-		return rec.Header().Get("Location")
-	}
-
-	assert.Equal(t, where("/admin/tools?_toolbar=p.0&t2=30"), "/admin/tools?minutes=30")
-	// What the other arguments were is kept, and what the inputs did not name.
-	assert.Equal(t, where("/admin/tools?site=south&_toolbar=p.0&t2=30&t3=north"), "/admin/tools?minutes=30&site=north")
-	// A select of several is one value for each.
-	assert.Equal(t, where("/admin/tools?minutes=5&_toolbar=p.0&t2=5&t4=edge&t4=gpu"), "/admin/tools?minutes=5&tags=edge&tags=gpu")
-	// An input that is emptied sets its argument to nothing, and so does a select with nothing chosen.
-	assert.Equal(t, where("/admin/tools?minutes=5&site=north&tags=gpu&_toolbar=p.0&t2="), "/admin/tools")
-	// The sort and the filters of a table stay, and its page does not.
-	assert.Equal(t, where("/admin/tools?devices.sort=id&devices.filter.id=a&_toolbar=p.0&t2=30"), "/admin/tools?devices.filter.id=a&devices.sort=id&minutes=30")
-	assert.Equal(t, where("/admin/tools?devices.offset=25&devices.sort=id&_toolbar=p.0&t2=30"), "/admin/tools?devices.offset=25&devices.sort=id&minutes=30") // the form drops it, as a hand-made address may keep it
-}
-
-// What the rules refuse is applied in none of the inputs, and the visitor is where they were, told why.
-func TestInputsOfAToolbarAreHeldToTheirRules(t *testing.T) {
-	t.Parallel()
-
-	s := newToolShop()
-	for name, target := range map[string]string{
-		"too many":  "/admin/tools?minutes=5&_toolbar=p.0&t2=9999",
-		"too few":   "/admin/tools?minutes=5&_toolbar=p.0&t2=0",
-		"no number": "/admin/tools?minutes=5&_toolbar=p.0&t2=abc",
-		"no option": "/admin/tools?minutes=5&_toolbar=p.0&t2=30&t3=west",
-		"two":       "/admin/tools?minutes=5&_toolbar=p.0&t2=30&t3=north&t3=south",
-	} {
-		rec := serve(s.h, http.MethodGet, target)
-		assert.Equal(t, rec.Code, http.StatusSeeOther)
-		assert.Equal(t, rec.Header().Get("Location"), "/admin/tools?minutes=5")
-		if flash := flashOf(rec); !strings.HasPrefix(flash, "e") {
-			t.Errorf("%s: flash %q, want an error", name, flash)
-		}
-	}
-	rec := serve(s.h, http.MethodGet, "/admin/tools?minutes=5&_toolbar=p.0&t2=9999")
-	assert.Equal(t, flashOf(rec), "eMinutes: Must be at most 1440.")
-	rec = serve(s.h, http.MethodGet, "/admin/tools?minutes=5&_toolbar=p.0&t2=30&t3=west")
-	assert.Equal(t, flashOf(rec), "eSite: Choose from the options offered.")
-}
-
-// A path argument is an input like any other: the address is built from the arguments, not from the form.
-func TestAnInputOfAToolbarCanChangeAPathArgument(t *testing.T) {
-	t.Parallel()
-
-	type pathArgs struct{ Id string }
-	page := webui.Page[pathArgs]{Path: "/thing/{id}", Body: webui.Toolbar[pathArgs]{Left: []webui.ToolbarItem[pathArgs]{
-		webui.String[pathArgs]{Label: "Id", Load: func(a pathArgs) string { return a.Id }, Store: func(a *pathArgs, v string) { a.Id = v }},
-	}}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
-	rec := serve(h, http.MethodGet, "/admin/thing/a?_toolbar=p&t0=b+c")
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, rec.Header().Get("Location"), "/admin/thing/b%20c")
-}
-
-// A select of a toolbar can read its options when the request is answered.
+// A select of a toolbar can read its options when the request is answered: they say what its badge reads.
 func TestASelectInAToolbarMayReadItsOptions(t *testing.T) {
 	t.Parallel()
 
 	s := &teams{}
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue", Label: "Blue team"})
 	team := webui.Select[toolArgs]{
-		Label: "Team", Load: func(a toolArgs) []string { return []string{a.Site} },
-		Store: func(a *toolArgs, v []string) { a.Site = strings.Join(v, "") }, LoadOptions: s.load,
+		Label: "Team", Load: func(a toolArgs) []string { return []string{a.Site} }, LoadOptions: s.load,
 	}
 	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{team}}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/tools").Body.String(), `>Blue team</option>`)
-	assert.Equal(t, serve(h, http.MethodGet, "/admin/tools?_toolbar=p&t0=green").Header().Get("Location"), "/admin/tools") // refused
-	s.set(webui.Option{Value: "green"})
-	assert.Equal(t, serve(h, http.MethodGet, "/admin/tools?_toolbar=p&t0=green").Header().Get("Location"), "/admin/tools?site=green")
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/tools?site=blue").Body.String(), `</span>Blue team</span>`)
 
 	s.err = errors.New("the database is down")
 	body := serve(h, http.MethodGet, "/admin/tools").Body.String()
@@ -286,9 +288,11 @@ func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{
 		webui.Link[toolArgs, newArgs]{Page: newDevice, Args: func(context.Context, toolArgs) newArgs { return newArgs{} }},
 	}}), "Toolbar.Left[0] has no Label")
-	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{
+	// A value to read needs no Store.
+	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{
 		webui.String[toolArgs]{Label: "Site", Load: func(a toolArgs) string { return a.Site }},
-	}}), "Toolbar.Left[0] has no Store")
+	}}}}}.Compile("/admin")
+	assert.NoError(t, err)
 	assert.Contains(t, problems(webui.Toolbar[toolArgs]{Left: []webui.ToolbarItem[toolArgs]{siteInput, siteInput}}), `label "Site" is used twice`)
 	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Right: []webui.ToolbarItem[webui.NoArgs]{webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}}}),
 		"A Toolbar is about the arguments of the page it is on")
