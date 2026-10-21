@@ -226,6 +226,10 @@ func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t 
 	assert.Contains(t, enhance, "handle.setAttribute('role', 'separator')")
 	assert.Contains(t, enhance, "localStorage.setItem('webui.sidebar.width', String(want))")
 	assert.Contains(t, enhance, "localStorage.removeItem('webui.sidebar.width')")
+	// A drag ends however the pointer is let go of, so the cursor that the page takes while it lasts cannot be left on.
+	for _, end := range []string{"'pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'", "window.addEventListener('blur', drop)", "if (e.buttons === 0) drop()"} {
+		assert.Contains(t, enhance, end)
+	}
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, "width: var(--sidebar-w, 240px);")

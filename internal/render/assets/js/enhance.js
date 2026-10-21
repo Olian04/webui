@@ -782,23 +782,31 @@
       } catch (err) {}
     }
 
+    // A drag ends however the pointer is let go of, and the cursor that the whole page takes while it lasts must not outlive it: the button
+    // can be released outside the window, over a menu, or after the window has lost focus, and then the handle gets no pointerup.
     var from = null;
+    function drop() {
+      from = null;
+      root.classList.remove('sidebar-dragging');
+    }
     handle.addEventListener('pointerdown', function (e) {
       if (e.button !== 0) return;
+      drop();
       from = { x: e.clientX, w: side.getBoundingClientRect().width };
       handle.setPointerCapture(e.pointerId);
       root.classList.add('sidebar-dragging');
       e.preventDefault();
     });
     handle.addEventListener('pointermove', function (e) {
-      if (from) choose(from.w + e.clientX - from.x);
+      if (!from) return;
+      if (e.buttons === 0) drop(); // let go somewhere that was not told
+      else choose(from.w + e.clientX - from.x);
     });
-    function drop() {
-      from = null;
-      root.classList.remove('sidebar-dragging');
-    }
-    handle.addEventListener('pointerup', drop);
-    handle.addEventListener('pointercancel', drop);
+    ['pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'].forEach(function (name) {
+      handle.addEventListener(name, drop);
+    });
+    window.addEventListener('blur', drop);
+    window.addEventListener('pointerup', drop, true);
     handle.addEventListener('dblclick', reset);
     handle.addEventListener('keydown', function (e) {
       var now = side.getBoundingClientRect().width;
