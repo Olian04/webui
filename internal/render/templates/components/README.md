@@ -44,8 +44,7 @@ is a slot
 
 A slot is a `templ.Component` field. Make the common configurable; make the
 uncommon composable. `Panel` has `Title string` because every panel has one, and
-`Actions templ.Component` because the panel has no opinion about what goes
-there.
+`Footer templ.Component` because the panel has no opinion about what goes there.
 
 ```go
 @c.Panel(c.PanelProps{Title: "Devices", Footer: pager()}) { table }
@@ -61,14 +60,12 @@ This is why the package does not grow a prop every time a caller needs an `id`,
 a `data-`, an `hx-` or an `aria-`. One escape hatch is the difference between a
 library that stays this size and one that doesn't. It is added to a component
 when a caller first needs it, and not before: an `Attrs` that nobody sets is a
-field to read and a spread to render for nothing. `Button`, `IconButton`,
-`Search`, `Switch` and `Form` have one today.
+field to read and a spread to render for nothing. `Button`, `IconButton`, `Search`, `Switch`, `Form`, `Input` and `FileInput` have one today.
 
 ### 5. Absence is the configuration
 
 A table that declares no bulk operations gets no checkbox column — not a
-disabled one. A page with no arguments renders a sentence saying so, not an
-empty strip. Components express this by having *no* `ShowCheckboxes bool`:
+disabled one. A toolbar with nothing left to draw is not drawn, and a table whose every action is left out has no column for them. Components express this by having *no* `ShowCheckboxes bool`:
 you either call `SelectCell` or you don't.
 
 Consequence: there is no `Sortable bool` on `Column`. A non-empty `SortHref` is
@@ -79,8 +76,7 @@ a thing this design can render.
 
 `Button` takes `Href` and renders `<a>`. This is not a convenience. It is what
 makes the UI work with scripting disabled, middle-clickable, and keyboard
-reachable without any help. A `<button>` is for submitting a form and nothing
-else.
+reachable without any help. A `<button>` is for submitting a form, or for opening a dialog with an invoker command (a question that a button asks, the preview of a file), and never for navigating.
 
 ---
 
@@ -94,10 +90,10 @@ when the component set is not.
 | `types.go` | `Tone`, `Size`, `Variant`, `Align`, `SortDir` |
 | `icon.templ` | `Icon` — any Font Awesome Free solid icon, by name |
 | **Inputs** | |
-| `button.templ` | `Button`, `IconButton` |
-| `field.templ` | `Field`, `FieldRow`, `Input`, `Checkbox`, `Switch`, `Form`, `Rules` |
+| `button.templ` | `Button` (which also draws the dialog that asks before it acts, and the wrapper of a control that is disabled with a reason), `IconButton` |
+| `field.templ` | `Field`, `FieldRow`, `Input`, `FileInput`, `Textarea`, `Select`, `Checkbox`, `Switch`, `Form` (and `Rules`, the props of the constraints) |
 | **Data display** | |
-| `table.templ` | `Table`, `TableHead`, `TableBody`, `Column`, `Row`, `RowLink`, `Cell`, `SelectAllColumn`, `SelectCell`, `ActionBar`, `Gauge`, `Pager` |
+| `table.templ` | `Table`, `TableHead`, `TableBody`, `Column`, `Row`, `RowLink`, `Cell`, `RowButton`, `SelectAllColumn`, `SelectCell`, `ActionBar`, `Gauge`, `Pager`, `CursorPager` |
 | `badge.templ` | `Badge` |
 | **Surfaces** | |
 | `panel.templ` | `Panel`, `InfoTip` |
@@ -105,13 +101,13 @@ when the component set is not.
 | `layout.templ` | `Stack`, `Split`, `Tabs` |
 | **Navigation** | |
 | `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `SidebarRow`, `NavSection`, `NavItem` |
-| `topbar.templ` | `TopBar`, `Breadcrumbs`, `Search` |
+| `topbar.templ` | `TopBar`, `Search`, `ExternalLinks` |
 | **Feedback** | |
-| `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `StatusBar` |
+| `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `StatusBar`, `StatusBarLive`, `StatusBarLate` |
 | `state.templ` | `StatePage`, `CompileError` |
 
 The document and shell around them are in `../shell.templ` and `../page.templ`.
-`internal/render` assembles pages from these and nothing else; `go run ./cmd/demo`
+`internal/render` assembles pages from these, with a few elements of its own (the filter menus, the toolbar, the code panels and the page of search results); `go run ./cmd/demo`
 shows the result.
 
 ---
@@ -119,8 +115,7 @@ shows the result.
 ## Two seams worth knowing
 
 **`Row` and `RowLink` share an address.** An anchor may only live inside a cell,
-so a clickable row is `Row{Href}` plus exactly one `RowLink` in one of its
-cells, with the same address. The stylesheet stretches that anchor over the
+so a clickable row is `Row{Href}` plus exactly one `RowLink` in one of its cells, with the same address; a row whose click is an action is `Row{Clickable}` plus one `RowButton`. The stylesheet stretches that anchor over the
 whole row, which is what makes the row one tab stop rather than six.
 
 The alternative — putting the href in templ's context in `Row` and reading it in

@@ -32,10 +32,10 @@ bar is always the truth about what is on screen.
 **Absence is configuration.** A table with no bulk operations has no
 checkbox column at all — not a disabled one. A column that cannot be filtered
 has no filter icon. A control that the visitor may not use is not there either, unless the
-application says it should be, with a reason: then it is greyed out, and nothing else is.
+application says it should be, with a reason: then it is drawn disabled, with the reason as a tooltip.
 
 **Square, not soft.** 2px radius everywhere. Shadows only on things that float
-(menus, toasts). No gradients, no glass, no decorative borders. The visual
+(menus, toasts). No gradients (but for the default mark, which is a conic one), no glass, no decorative borders. The visual
 weight budget goes entirely to separating regions.
 
 ---
@@ -87,8 +87,8 @@ over any surface.
 
 ### Semantics
 
-Five meanings, no more. Each has a text colour, a 14% background, and a 30%
-border, so a badge can be built from one token family.
+Five meanings, no more. Each has a text colour, a 14% background (12% in light), and a 30%
+border (28% in light), so a badge can be built from one token family.
 
 | Meaning | Dark | Light | Where it appears |
 |---|---|---|---|
@@ -116,15 +116,13 @@ Inter, falling back to the system UI stack. One family; no display face.
 | Table cell | 13 | 400 | Text |
 | Table header, secondary | 12.5 | 500 | Text secondary |
 | Field label | 12 | 400 | Text secondary |
-| Description | 12 | 400 | Text secondary |
+| Description | 12.5 | 400 | Text secondary |
 | Section caption | 11 | 500, uppercase, `.05em` | Text secondary |
 
-Identifiers, addresses, timestamps and payloads use a monospace face at 12–12.5
-in Text secondary. Anything the user might copy is monospace. Numeric columns
+Addresses, payloads and code (the editor, a diff, a Markdown code block) use a monospace face at 12–12.5 in Text secondary. A table cell is not monospace, since no accessor can ask for it. Numeric columns
 use tabular figures and right alignment.
 
-Nothing is bold. 500 is the heaviest weight in the system; 600 appears only in
-full-page error headings. The exception is the strong emphasis of a
+Nothing is bold. 500 is the heaviest weight in the system; 600 appears only in full-page error headings and the status bar's two badges. The exception is the strong emphasis of a
 `Markdown` leaf, which is 600: in running text 500 cannot be told from 400, and a
 reader must be able to see what the author stressed.
 
@@ -137,8 +135,8 @@ Everything is a multiple of 2, and the working gutter is 8.
 | Element | Size |
 |---|---|
 | Panel gutter | 8 |
-| Page padding | 8 vertical, 12 horizontal |
-| Corner radius | 2 (everything, without exception) |
+| Page padding | 12 on the top and sides, 46 below (it clears the status bar) |
+| Corner radius | 2, except the pills (the switch, the spinner) |
 | Sidebar | 240 (56 when collapsed) |
 | Top bar | 48 |
 | Status bar | 26 |
@@ -197,6 +195,9 @@ things in a row, not between groups in a column. The active item takes the Activ
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
 
+**A label wider than the sidebar** is cut with an ellipsis, on one line, in the entry, the section's caption and the brand; its whole is the
+title. The icon, or the initial that holds its place, keeps its size.
+
 ### Top bar
 
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
@@ -212,6 +213,10 @@ The breadcrumb is where location is expressed when the sidebar cannot show it
 — for example on a detail page that intentionally has no navigation entry of
 its own.
 
+**The search palette** (the results under the box) is 360px wide with 30px items, as tall as the window leaves between the top bar and the
+status bar and scrolling inside, dimmed and out of reach while a newer question is pending. The box says the key that opens it (⌘K, or Ctrl K).
+The sidebar's foot has the collapse button and the theme switch.
+
 ### Refresh
 
 An icon button beside the search. It reloads the page at the address it is on,
@@ -222,7 +227,7 @@ filtered in its column headers (§10).
 
 ### Content
 
-8/12 padding, scrolls independently, bottom padding clears the status bar.
+12px padding, 46px below to clear the status bar, and scrolls independently.
 
 A table panel is no taller than the window less the shell around it (the top bar and
 the content region's padding), and no shorter than 16rem unless its rows are fewer.
@@ -273,8 +278,7 @@ A panel may have a footer separated by a 1px rule: pagination on the left (with 
 table's CSV and JSON download links, as quiet buttons, beside the range),
 navigation or actions on the right.
 
-Panels never nest. If content inside a panel needs its own frame, it gets a
-bordered group with an 11px uppercase caption instead.
+Panels never nest. A `Group` is layout only, with no frame and no caption.
 
 ### Arrangements
 
@@ -284,7 +288,7 @@ bordered group with an 11px uppercase caption instead.
 - **Split** — two columns, 8px apart. Panels side by side are as tall as the tallest
   of them, so their borders line up; when a Split wraps onto more rows, the heights
   are equal within a row and not across rows. A panel's foot (a pager, the actions)
-  stays at the bottom of its box. Optionally weighted 1.6 : 1. Collapses to one
+  stays at the bottom of its box.  Collapses to one
   column below 1100px, where nothing is stretched. Only panels that are direct
   children of the Split are stretched; a layout inside it, such as Tabs, is one
   column cell, and what is under its strip (a panel, or a stack of them) fills what is left of the cell.
@@ -376,12 +380,33 @@ both have the zoom-in cursor and a primary focus ring, and open the file at full
 over a 60% dim, the image as large as the window allows and never stretched, its name beneath, and a ghost *Close*. *Clear* is a small ghost button at the right of the chooser. A name that is a link is in the link colour and is underlined on hover.
 
 **Inputs** are 32px on the input surface with a strong border; focus takes a
-primary border and a 2px primary ring at 25%. Read-only fields drop to the
-hover surface with text-secondary and a weak border — visibly not a hole you
-can type into. Invalid fields take a critical border and ring.
+primary border and a 2px primary ring at 25%. A field that is only read is not an input: it is the value as output (14.5px, in no box, under the usual quiet label, with an em dash when empty), so it is visibly not a hole you can type into. Invalid fields take a critical border and ring.
 
 **Selects** replace native chrome with a small CSS chevron so they match input
 height and weight exactly.
+
+**A text area** is an input that is at least 32px tall, with `6px 9px` of padding, a line height of 1.45, five rows and a resize handle for
+the height only. A password, a telephone, a date, a date and time and a colour input are the browser's own control, in the input's
+surface, border and focus ring; a colour fills the whole field.
+
+**A phone number with script** is a segment: a selector of the country calling code (9.5em wide, square where it meets the number) joined
+to the input, which holds the national number spaced as it is read. What is sent is E.164, in a hidden input.
+
+**A choice with script** (`select`) is badges in the field and a popover list below it, 30px to a row with a 15px checkbox (round when only one
+may be chosen), flipping above when there is no room below and no taller than 260px, which scrolls. Without script it is the browser's own
+`<select>`, a list of up to six rows when several may be chosen.
+
+**The rules and the help of a field** are in one popover, on hover and on keyboard focus of the information icon beside its label: at
+most 280px wide, opening to the right and below, with the heading "Help:" above the field's help and "Rules:" above its constraints (11px
+captions), items in 12.5px text-tertiary; its text is also the icon's accessible name. Nothing is printed beneath a control while its value is good.
+
+**A question that a button asks** is a native dialog over a 50% dim: at most 420px wide or the window less 32px, 16px and 18px of padding,
+the raised surface and a strong border, 13.5px text, a ghost *Cancel* (which has the focus) and the action's own small button.
+
+**A toolbar** is a row with no frame: it wraps, with 8px between rows and 10px between controls, bottom-aligned. A value is its label, in
+text-secondary and followed by a colon, and what it is, in the text colour, 13px, at least 32px tall; buttons are small. The gap between
+the left controls and the right ones takes what is left, and is gone when script finds that they do not fit in one row, and they flow
+from the left. A toolbar with nothing to draw is not drawn; one whose options could not be read is an empty panel that says so.
 
 **Checkboxes** are 15px, 2px radius, filling solid primary with a white check
 when set.
@@ -420,7 +445,7 @@ a text input for any other, and Apply
 small caret showing direction.
 
 Body rows: 34px, 1px rule between (none after the last), hover surface on
-hover. Selected rows take a 13% primary tint.
+hover. 
 
 **A clickable row is one real link covering the whole row**, and this is a
 requirement, not a rendering detail. The row is `position: relative`; the single
@@ -439,7 +464,7 @@ row would satisfy none of those. The cost is that text in the other cells cannot
 be selected, which is the right trade for a row whose purpose is to be followed.
 
 Cells: 10px horizontal padding. Numeric columns right-align with tabular
-figures. Identifiers are monospace text-secondary.
+figures. 
 
 Column widths follow what a column is, not what is in it. A table sizes its columns by its rows, so two tables of the
 same columns, one above the other, would have had their columns in different places for no reason a reader could
@@ -455,8 +480,7 @@ still makes its column wider, so nothing is cut, and a table that is wider than 
 built from a semantic family's 14% background and 30% border. A status badge
 may carry a 6px leading dot in the same colour. A select that holds several values
 is a badge for each, 4px apart, wrapping. Edited, a select is a 32px drop-down list in the
-style of an input, and with several values a list of up to six rows, with the chosen
-ones on the selected-row tint.
+style of an input, and with several values a list of up to six rows, with the chosen ones on a 22% primary tint.
 
 **Inline bars** are a cell display mode, not a chart: a 56×5 track on the hover
 surface with a link-coloured fill, sitting after a right-aligned number. This
@@ -465,13 +489,16 @@ smallest possible version of that idea.
 
 **Bulk selection** adds a 34px checkbox column and, when anything is selected,
 an action bar above the header: a 10% primary tint strip with the count, the
-available operations, and a *Clear* pushed to the right. When there are no bulk
+operations. When there are no bulk
 operations, neither the column nor the bar exists.
 
 **Loading** replaces the row bodies with pulsing 9px skeleton bars at staggered
 widths while the rest of the panel — header, filters, footer — holds still.
 **Empty** replaces them with a centred 28px icon, a 13.5/500 line naming the
-condition, and a 12.5 text-tertiary line naming the way out.
+condition, and a 12.5 text-secondary line naming the way out.
+
+**The pager** is a small secondary *Previous* and *Next*, each disabled at its end, with the range ("1–10 of 37") at the left. A cursor
+pager has no total, and adds "· sorted within this page" when the table is sorted.
 
 ### Export
 
@@ -506,7 +533,7 @@ they look the same.
 
 **Not permitted.** Centred, 480px: a 34px icon, a 17/600 title, a 13.5
 text-secondary line with the reason the guard gave (or, with none, that the visitor has no access),
-and, when there is one, a secondary button on. No data is shown, because none was read; the page does not say so, since how
+and, when there is one, a small ghost button on. No data is shown, because none was read; the page does not say so, since how
 the check was made is not for the visitor.
 
 **Failed to compile.** The whole application is replaced, at every address,
@@ -515,6 +542,12 @@ server error page. A 22/600 critical heading, a count, and then every problem
 at once: a monospace caption locating it, the message in a critical-tinted
 block with a 3px left border, and a **Fix:** line in plain language. Problems
 are never reported one at a time.
+
+**A refusal, by its status.** *Not found* has a search icon; *Not signed in* and *Not permitted* a lock, with the message and the link that
+the refusal gave. The rest of the states are the same page: *Page not found* (a 404 inside the shell, so that the way back is on screen),
+*That address is not valid* (a 400), *Something went wrong* (a 500, with nothing of the cause), *No pages declared* and *Nothing to open from
+here* (a breadcrumb or a search with nowhere to go). A panel whose `Load` fails, or returns a refusal, is a header with an alert icon and a
+body that says *Could not load*, or the refusal's text and link, and the page stays as it is.
 
 ---
 

@@ -11,7 +11,7 @@
 //   - The main content of a component is { children... }. Anything else that
 //     takes markup is a templ.Component field — a slot. Make the common
 //     configurable; make the uncommon composable.
-//   - Every component carries Attrs templ.Attributes. That escape hatch is why
+//   - A component carries Attrs templ.Attributes when a caller first needs one (see README.md, rule 4). That escape hatch is why
 //     this package does not need to grow a prop every time a caller needs an
 //     id, a data- attribute or an hx- attribute.
 //   - Components render. They do not load, decide policy, or know what a page

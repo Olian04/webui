@@ -88,6 +88,10 @@ does, and they let you design before you look up names.
   request, so there is no second rule to keep in step. What the guard returns also says how: an
   ordinary error leaves the control out, and `webui.Disabled("why")` draws it disabled with that
   sentence. Choose by whether the visitor ought to know that the control exists.
+- **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: `Store` is handed a file to copy, and `Load` says what is kept. Do not
+  look for a place in the library to put them, or to serve them from.
+- **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, not a panel, and it shows values and does not take input: a page
+  whose arguments the visitor sets is a `Form`.
 
 ## How to build an app
 
@@ -124,8 +128,7 @@ next.
 - **Guards run on every request, including posts.** Hiding a control is a convenience;
   the guard is what protects. The guard's message is shown to the visitor, so write it
   for them, and keep it free of anything they should not see.
-- **Errors from your data code are not shown.** A failed load shows a generic message
-  and logs the cause. Return an error for a real failure and an empty result for "none".
+- **Errors from your data code are not shown.** A failed load shows a generic message and logs the cause, except a `Refusal` (not found, not signed in, forbidden), which is for what the visitor may be told and is shown with its link. Return an error for a real failure and an empty result for "none".
 - The library already sets the security headers, refuses cross-site posts and escapes
   every value it renders. Do not work around any of it. Do not put untrusted text in
   places the documentation does not describe.
