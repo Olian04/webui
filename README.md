@@ -33,7 +33,7 @@ form checks what it is given, and the buttons are there for the people who may u
 go get github.com/Olian04/webui@latest
 ```
 
-webui needs Go 1.27 or later. Import the one package it exports:
+webui needs Go 1.27 or later. Import the package it exports (the editor's optional language services are separate imports, see the package documentation):
 
 ```go
 import "github.com/Olian04/webui/pkg/webui"
@@ -88,14 +88,13 @@ Run it and open <http://localhost:8080/admin/device>:
 
 ### Dark mode
 
-![The devices page (dark mode): a sidebar with a Devices entry, a breadcrumb, a search box, and a table with ID and IP columns.](docs/images/first-page-dark.png)
+![The devices page (dark mode): a sidebar with a Devices entry, a breadcrumb, and a table with ID and IP columns.](docs/images/first-page-dark.png)
 
 ### Light mode
 
-![The devices page (light mode): a sidebar with a Devices entry, a breadcrumb, a search box, and a table with ID and IP columns.](docs/images/first-page-light.png)
+![The devices page (light mode): a sidebar with a Devices entry, a breadcrumb, and a table with ID and IP columns.](docs/images/first-page-light.png)
 
-That is a sidebar, a breadcrumb, search, and a table whose columns all sort and
-filter, with the state kept in the address so a copied link reproduces the view. Add a
+That is a sidebar, a breadcrumb, and a table whose columns all sort and filter, with the state kept in the address so a copied link reproduces the view. Give a page a `Search` and the top bar gets a search box. Add a
 `Form` for an editable page, a `Link` to open a row, and a `Guard` to say who may see
 it.
 
@@ -119,9 +118,7 @@ The full documentation is on pkg.go.dev, with runnable examples:
 
 **<https://pkg.go.dev/github.com/Olian04/webui/pkg/webui>**
 
-It covers pages and their arguments, layouts, tables (paging, sorting, filters and
-search), forms and validation, outcomes (success, warning, failure, rejection and
-where to go next), links between pages, theming, errors, and security.
+It covers pages and their arguments, layouts and toolbars, accessors and file uploads, tables (paging, sorting, filters, export and caching), forms, validation and text rules, controls that a visitor may not use, outcomes (success, warning, failure, rejection and where to go next), links between pages, search, code editors, diffs and Markdown, theming, refusals and compile errors, logging, metrics, and security.
 
 ## What the library stores in the browser
 
@@ -131,7 +128,7 @@ fonts it ships are served by your own app and call no other host.
 
 | What | Kind | Set when | Holds | Lasts |
 | ---- | ---- | -------- | ----- | ----- |
-| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
+| `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor's action is accepted (a `Success` or a `Warning`) | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
 | `webui.sidebar.width` | `localStorage` | A visitor drags the sidebar's edge, or moves it with the arrow keys | The width in pixels, a whole number from 180 to 480 | Until the visitor resets it (Enter, or a double click on the edge) or clears site data |
@@ -217,7 +214,13 @@ This half is for people changing the library.
 | `internal/tablequery` | Filtering, sorting, paging and finding rows held in memory, for `Table.Rows` and `SearchRows`.                                                                                              |
 | `internal/runtime`    | The compiled app: routes, the request pipeline (a slow page is streamed in order), actions (an accepted one is redirected, a refused form is answered with the page and a 422), flash, search, export, and `Open`.                      |
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
-| `internal/favicon`    | Scales `Brand.Logo` into the favicon.                                                                                                                                        |
+| `internal/favicon`    | Scales `Brand.Logo` into the favicons, and an image into a thumbnail for `webui.Thumbnail`.                                                                                  |
+| `internal/phone`      | Countries, calling codes, how a national number is spaced, and E.164; the data of the phone script is made from it.                                                          |
+| `internal/editorctx`  | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service.                                                                  |
+| `internal/convert`    | List conversions between the declaration, the IR and the response.                                                                                                           |
+| `internal/assetserve` | Serves the files that never change: a hash in the name, a year's cache, compression and 304.                                                                                 |
+| `internal/metrics`    | The Prometheus metrics behind `App.Metrics`: it collects and serves none, and reuses collectors that exist.                                                                  |
+| `internal/rank`       | How well a search result matches what was typed: the score that orders the results.                                                                                          |
 | `internal/markdown`   | Markdown to HTML for `Markdown`, with goldmark: no raw HTML, links to http, https and mailto only, images as links unless the origin is trusted.                                                          |
 | `internal/textdiff`   | The unified diff that a `Diff` shows without script.                                                                                                                         |
 | `pkg/monaco`          | Optional language services for the editor, one package each (`json`, `css`, `html`, `typescript`). Importing one embeds its worker and offers it to editable editors.          |
@@ -225,6 +228,7 @@ This half is for people changing the library.
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
 | `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
 | `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace, which installs only `skills/webui` and not the source around it, and a Cursor plugin, which takes the repository root. |
+| `test`, `test/util/assert`| The tests that use only the public package, and the assertions that all of the tests use.                                                                                    |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 
 Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and
@@ -278,18 +282,18 @@ the public API needs it, it is deleted, or moved into the tests.
 ### The demo
 
 The demo is a static configuration that shows the whole library; each file has its
-own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
+own corner, and the tests beside it (`cmd/demo/*_test.go`, one file for each part of the demo) pin what it shows.
 
 | File                    | Shows                                                                                                                                                                                                                                                                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `devices.go`            | a `Help` tip on fields and a `Crumb` that reads a device by its address and not its id, a device that is not there is a 404 with a link back (`NotFound(...).WithLink(...)`), a table with paging, sorting, column filters (multi-select, range, text) and row links, an `Int` with a `Format` (bytes read "1.5 GiB" and sort and filter as the number), and a detail page whose `Search` finds its devices from the search box; a form in tabs beside a table; `Export` on a `Load`, a `Rows` and a `Feed` table (CSV and JSON from the footer); a path and query argument (`?minutes=`); a `Toolbar` of a link and a button, both left out for a viewer, and so the toolbar, a form that makes a device, a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a `Timestamp`, a `Select` that is edited, one value and several (`Multi`), one whose options are read when the page is asked for (`LoadOptions`), a rejection with `Reject`, a `Failure`, a `Warning` and `Then` |
+| `devices.go`            | a `Help` tip on fields and a `Crumb` that reads a device by its address and not its id, a device that is not there is a 404 with a link back (`NotFound(...).WithLink(...)`), a table with paging, sorting, column filters (multi-select, range, text) and row links, an `Int` with a `Format` (bytes read "1.5 GiB" and sort and filter as the number), and a detail page whose `Search` finds its devices from the search box; a form in tabs beside a table; `Export` on a `Load` table (CSV and JSON from the footer; `alerts.go` has it on `Rows` and `system.go` on a `Feed`); a `Multiline` text area; a path and query argument (`?minutes=`); a `Toolbar` of a link and a button, both left out for a viewer, and so the toolbar, a form that makes a device, a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a `Timestamp`, a `Select` that is edited, one value and several (`Multi`), one whose options are read when the page is asked for (`LoadOptions`), a rejection with `Reject`, and a `Success` that goes `Then` to the device it made |
 | `compare.go`            | arguments that are lists: a `[]string` is a query parameter that repeats (`?device=a&device=b&site=Malmö`), each element parsed on its own, the page's links keeping every one, and its address the whole of what it shows |
 | `files.go`              | the rest of a path, `{path...}`, as a `[]string` (a file browser at any depth, a breadcrumb for each segment), a row `Link` that adds a name to the list, a `PageID` constant to break the initialization cycle between a page and the table in it, and a `Markdown` whose links, such as `/files/logs`, are paths in the app |
 | `sites.go`              | a nested path with a parent breadcrumb, a sidebar entry for each site from `NavEntries`, two stateful tables on one page, each named in the address by its title, a detail page whose `Search` is `SearchRows`, so its sites are found from the search box                                                                                                                                                  |
 | `alerts.go`             | row and bulk actions, `RolePrimary` and `RoleDestructive`, a `Confirm` that asks first in a native `<dialog>`, a row `Link` to an alert page (a path argument) whose device table links on with a query argument, a form of read-only fields with one action that goes `Back` when someone else acknowledged it first, a `URL` link and a `Datetime` column (read as "53 min ago" by its `Format`, sorted and filtered as a moment), gating by role: a viewer is not offered the actions at all, with no checkbox column or bar, and an editor sees `Dismiss` disabled, with its reason, for a critical alert (`webui.Disabled`)                                                                             |
-| `settings.go`           | rules (`Required`, length, text rules, a pattern, bounds), a `Secret` API key, `Email`, `Phone`, `Website` and `ColorPicker`, a `DateOnly` timestamp, `Float`, a writable `Slider`, `OptionalInt`, `OptionalSlider` and a three-valued `Bool`, a save that `Stay`s on the form                                                                                                                                                                                                                                                            |
+| `settings.go`           | rules (`Required`, length, text rules, a pattern, bounds), a `Secret` API key, `Email`, `Phone`, `Website` and `ColorPicker`, a `DateOnly` timestamp, `Float`, a writable `Slider`, `OptionalInt`, `OptionalSlider` and a three-valued `Bool`, a save that `Stay`s on the form; an entry with no icon (the Retention page's: its initial in the collapsed sidebar) |
 | `uploads.go`            | `File`: a logo (an image of at most 1 MiB) and a certificate (a PDF a visitor may remove), checked by what they hold and not by their names, kept in memory by the demo and served by its own route as a download, with `nosniff` and the sniffed type; `ReadTimeout` on the server; with script a drop zone, a small picture of the image that is chosen and a thumbnail (`webui.Thumbnail`) of the one that is stored, each opening the full image in a dialog only when clicked, and the size and kind said before the request is sent                                                                                                                                                                                                                                                       |
-| `overview.go`           | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb): the one that shows the library all at once, the screenshot at the top of this file. A `Toolbar` of the system's values, read-only, with a button at the right edge that only editors are offered, and a `Split` of two paged tables, a table of another model and a form, each declared as on a page of its own; an entry with no icon (its initial in the collapsed sidebar) is the Retention page's, in `settings.go`|
+| `overview.go`           | the landing page (`Path: "/"`, reached from the brand and the first breadcrumb): the one that shows the library all at once, the screenshot at the top of this file. A `Toolbar` of the system's values, read-only, with a button at the right edge that only editors are offered, and a `Split` of two paged tables, a table of another model and a form, each declared as on a page of its own|
 | `system.go`             | a read-only form (no `Submit`), a read-only `Select` as a badge and a read-only `Slider` as a bar, a page `Guard` that refuses viewers, a `Feed` table, paged by a cursor, `Nav.Icon`                                                                                                                                                                                                                         |
 | `rule.go`               | an `Editor` in TypeScript with the language service imported in `main.go` (the largest worker, so the one to leave out for a small program): the types are checked as you type, and the seed text has three errors to find; its `Context` is an embedded folder that gives the service the types of the host (`rule.d.ts`) and a `tsconfig.json`; a viewer reads it highlighted and is sent no service |
 | `config.go`             | an `Editor` (JSON, saved with a `Submit` that only editors may use) over a text, a `Diff` of the saved text against the deployed one, and the JSON language service, which is one import in `main.go`, checking the text against a schema from the same embedded `Context` folder |
@@ -298,7 +302,8 @@ own corner, and `cmd/demo/demo_test.go` is the list of what it shows.
 | `layout.go`             | layouts in combination: the rows of a `Split` (equal within a row, independent between rows), a main panel with a rail (a `Stack` in a `Split`), columns in columns (a `Split` in a `Split`), `Tabs` side by side and in a `Split`, strips of three, six and sixteen tabs that scroll sideways when they do not fit, five layouts deep, an `Editor` beside a `Diff` with a runbook in a tab, and a `Markdown` text beside live panels |
 | `loading.go`            | the Loading section: a page with a slow panel is sent as it is built, in order, with a spinner and a status bar that says it is still arriving. A ten-panel staircase (one more second each), `Tabs` that read only the tab you follow (a panel outside them keeps the moment it was read at), panels in order, layouts inside layouts, panels that fail, a page built whole (an editor), a refusing `Guard` and a page that answers at once |
 | `auth.go`               | the surrounding authentication: a signed session cookie chosen at `/login` (a viewer or an editor), read by the Guards from the request's context                                                                                                                                                                                    |
-| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `Compile` and `MustCompile`, the compile-error page                                                                                                                                                                                                                                                    |
+| `main.go` and `logo.go` | `Brand.Logo`, `Theme.Accent`, `ExternalLinks`, `Logger` and the metrics registry, `Compile` and the compile-error page (`-broken`), the editor's language services imported, and an `http.Server` with `ReadTimeout` |
+| `service.go`, `format.go`, `context.go`| the demo's own data, formats and embedded files (`context/`, `handbook/`), which the other files read                                                                                                                |
 
 ### Conventions
 
