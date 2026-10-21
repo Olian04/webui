@@ -33,8 +33,9 @@ type Form struct {
 	// round trip shows the user all of them.
 	//
 	// fields are the form's Fields as they are for this request, with the choices of its selects read (see
-	// [ResolveChoices]), which a select's values are checked against.
-	Bind func(fields []Field, base any, values map[string]string) (model any, errs []FieldError)
+	// [ResolveChoices]), which a select's values are checked against. files are the files that came with the values, nil when
+	// none did; the file of a field is stored only when nothing in the submission is refused.
+	Bind func(fields []Field, base any, values map[string]string, files *Files) (model any, errs []FieldError)
 }
 
 // Editor is what makes a Form a code editor.

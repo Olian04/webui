@@ -56,6 +56,14 @@ type Settings struct {
 	Webhook    string   // where alerts are posted
 	Label      string   // the colour its graphs are drawn in, "#rrggbb"
 	CertEnds   int      // Unix seconds: midnight UTC of the day the certificate stops being valid
+	Logo       *Blob    // the image in the header of the reports
+	CertFile   *Blob    // the certificate itself, as a PDF
+}
+
+// Blob is a file that the demo keeps, in memory: the library keeps none, so what an app does with the bytes of an upload is its own.
+type Blob struct {
+	Name, Type string
+	Data       []byte
 }
 
 type RetentionPolicy struct{ Days int }

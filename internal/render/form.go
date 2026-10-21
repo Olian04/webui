@@ -85,6 +85,9 @@ type fieldView struct {
 	// Attrs are attributes for the input that script reads, such as the mark of a phone number.
 	Attrs templ.Attributes
 
+	// Stored is the file that the model holds, for a file field that is edited, and nil for none.
+	Stored *ir.StoredFile
+
 	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
 	Validity string
 	Parts    string
@@ -95,7 +98,7 @@ type fieldView struct {
 // form can be submitted by them. A form with no Submit, or whose Submit is refused
 // to the visitor, is only read.
 func (v FormView) editable(f ir.Field) bool {
-	return f.Set != nil && v.Node.Submit != nil && !v.SubmitRefused
+	return f.Writable() && v.Node.Submit != nil && !v.SubmitRefused
 }
 
 func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldView {
@@ -130,7 +133,16 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 			fv.Placeholder = storedBullets // that there is one, and not what it is, nor how long
 		}
 	}
+	if f.File != nil && editable {
+		fv.Stored = f.File.Stored(v.Model)
+		if v.Values != nil {
+			// A browser cannot fill a file chooser in, so a form that was refused has lost the file that was chosen.
+			fv.RuleLines = append(fv.RuleLines, "Choose the file again")
+		}
+	}
 	switch {
+	case f.File != nil:
+		fv.Type = "file"
 	case fv.ReadOnly:
 		// A number input shows its value in the viewer's locale ("0,67"), which is
 		// right for typing and wrong for reading. A read-only field is only read.
@@ -276,6 +288,9 @@ func ruleLines(f ir.Field, editable bool) []string {
 		return nil
 	}
 	var out []string
+	if f.File != nil {
+		out = append(out, rules.FileLines(f.File)...)
+	}
 	if f.Display == ir.DisplayTime {
 		out = append(out, "Date and time in UTC")
 		if f.DateOnly {
@@ -336,3 +351,49 @@ func boundsRule(r ir.Rules) string {
 }
 
 func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// formAttrs are the attributes of the form's element: the mark that script finds it by, and the encoding of a form that has a file
+// chooser, which is what carries a file. A form without one is posted as it always was.
+func (v FormView) formAttrs() templ.Attributes {
+	attrs := templ.Attributes{"data-leaf-form": LeafID(v.Node.At)}
+	for f := range ir.Leaves(v.Node.Fields) {
+		if f.File != nil && v.editable(f) {
+			attrs["enctype"] = "multipart/form-data"
+			break
+		}
+	}
+	return attrs
+}
+
+// currentName is the stored file's name, "" when the field holds none.
+func (fv fieldView) currentName() string {
+	if fv.Stored == nil {
+		return ""
+	}
+	return fv.Stored.Name
+}
+
+// currentHref is where the stored file is served from, "" for no link.
+func (fv fieldView) currentHref() string {
+	if fv.Stored == nil {
+		return ""
+	}
+	return fv.Stored.URL
+}
+
+// currentSize is how large the stored file is, as a person reads it, "" when that is not known.
+func (fv fieldView) currentSize() string {
+	if fv.Stored == nil || fv.Stored.Size <= 0 {
+		return ""
+	}
+	return rules.Size(fv.Stored.Size)
+}
+
+// removable is the value that the Remove checkbox sends, the field's name, "" when the field cannot be emptied, or has nothing stored
+// to remove.
+func (fv fieldView) removable() string {
+	if fv.Stored == nil || fv.Field.File == nil || !fv.Field.File.Removable {
+		return ""
+	}
+	return fv.Name
+}

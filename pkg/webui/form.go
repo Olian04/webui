@@ -80,10 +80,21 @@ func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
 // bindFunc applies a submission to the fields as they are for the request, with the choices of its selects read. It
 // starts from a copy of the loaded model, checks every writable field's rules
 // (parse → rules), applies each value that passed, and collects every failure.
-func bindFunc[M any](fields []ir.Field, base any, values map[string]string) (any, []ir.FieldError) {
+func bindFunc[M any](fields []ir.Field, base any, values map[string]string, files *ir.Files) (any, []ir.FieldError) {
 	m := base.(M)
 	var errs []ir.FieldError
+	var stores []func() // the files, which are stored when nothing in the submission is refused
 	for f := range ir.Leaves(fields) {
+		if f.File != nil {
+			if f.File.Store != nil {
+				if msg, store := bindFile(f, base, files); msg != "" {
+					errs = append(errs, ir.FieldError{Label: f.Label, Message: msg})
+				} else if store != nil {
+					stores = append(stores, func() { store(&m) })
+				}
+			}
+			continue
+		}
 		if f.Set == nil {
 			continue
 		}
@@ -113,5 +124,37 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string) (any
 			errs = append(errs, ir.FieldError{Label: f.Label, Message: "Could not read this value."})
 		}
 	}
+	if len(errs) == 0 {
+		for _, store := range stores {
+			store()
+		}
+	}
 	return m, errs
+}
+
+// bindFile is what a submission does to a file field: the words for a file that is refused, or what to do to the model, which
+// is nothing when the visitor chose no file and asked for nothing. A file that is chosen replaces one that is asked to be removed.
+func bindFile(f ir.Field, base any, files *ir.Files) (message string, store func(model any)) {
+	var up *ir.Upload
+	removed := false
+	if files != nil {
+		up, removed = files.Uploads[f.Name], files.Removed[f.Name] && f.File.Removable
+	}
+	switch {
+	case up != nil:
+		contentType, kind, msg := rules.CheckFile(f.File, up)
+		if msg != "" {
+			return msg, nil
+		}
+		up.ContentType, up.Kind = contentType, kind
+		return "", func(m any) { f.File.Store(m, up) }
+	case removed:
+		if f.Rules.Required {
+			return rules.FileRequired(), nil
+		}
+		return "", func(m any) { f.File.Store(m, nil) }
+	case f.Rules.Required && f.File.Stored(base) == nil:
+		return rules.FileRequired(), nil
+	}
+	return "", nil
 }

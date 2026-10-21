@@ -254,6 +254,41 @@ design element.
   address to type; one name for both would have made a field with a `Store` allow what a link allows. `Color` was taken by
   the theme's, so the picker is `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since
   there is no grammar for them. A color picker cannot be empty, so an empty `Load` shows black.
+- **A file is a `File` accessor, and the library keeps no file.** `Store` is handed an `Upload` (a base name that is made safe, a size, the
+  content type that was sniffed, and `Open`, which streams from the spooled temporary file of `net/http`) and copies it where the app
+  keeps files; `Load` returns a `*FileInfo` (name, size, URL) for what is kept. The library stores and serves nothing: where a file lives
+  (disk, a bucket, a database), who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a `Store` that is handed
+  the bytes (a 200 MiB file in memory, or a read that cannot be stopped), a handle that is a path (the library would own a directory),
+  and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
+  route to serve what it stored, and the docs say how to serve it safely (`attachment`, `nosniff`, the sniffed type); the demo is the
+  working example.
+- **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
+  `FileJSON`, `FileCSV`, `FileText`, `FileAny`), and the server reads the first 512 bytes with `http.DetectContentType` for the
+  binary kinds and the whole file for JSON (exactly one value, streamed), CSV and text (UTF-8, no NUL). The type that the browser
+  sends and the file's extension are the visitor's, so they are a hint (`accept=`) and nothing else: a PDF named `.png` is a PDF. There
+  is no SVG kind: SVG is XML that a browser runs, so an app that takes it says `FileAny` and owns the risk, and `FileText` does not take
+  HTML or XML for the same reason. An `Upload` says what it is twice, and they are not one value: `ContentType` is a media type
+  (`image/png`, `text/csv; …`, `application/octet-stream`), which is what to serve it as and cannot be a `FileKind`, since a file
+  of no named kind has one too; `Kind` is the named kind it was found to be, for an app that takes several and wants to branch
+  (`FileAny` for none, which only a field that takes any file lets in, and never `FileImage`, which is four kinds). It is the most
+  specific of the kinds in `Accept` that the file is, by a fixed order (`FileKind.Order`, in the IR: the images and the PDF, which
+  exclude one another, then JSON, then CSV, then text, then any), and not the first listed, which would make what an upload is
+  depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
+  library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
+  tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
+- **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
+  a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
+  multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,
+  so a visitor it refuses has nothing read from them, and a body over the limit is "That submission was too large." An action's own `Guard`
+  runs after `Bind` (it is handed the model), so for a refused action the file has been received and is in a temporary file until the
+  request ends. A program that takes uploads sets `ReadTimeout`, which the demo does, since `ReadHeaderTimeout` does not bound a body.
+- **A file is stored only when the whole submission is accepted.** `Bind` checks every field and applies each value that passed,
+  but a file is the one value that is held back until nothing is refused: a form that another field refuses has stored no file, and
+  shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
+  "Choose the file again". Dropped: keeping the upload on the server between the two requests (state to expire, and to clean up
+  behind a load balancer), which is what the 422 design avoids for everything else. `Required` is met by a stored file that is not
+  being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a
+  toolbar item, whose inputs were the page's arguments in its address.
 - **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
   script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
   spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores

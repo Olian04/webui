@@ -208,6 +208,31 @@
 // the rules of a [String], except the color, which has none; a [String] is the accessor for any other text, and for a
 // password or a text area. [URL] is the one that links, and has no Store.
 //
+// A file that a visitor sends is a [File]: an input of a form, a native file chooser, with the file that is stored shown above it, and in
+// a table or a read-only form that file's name, as a link when the app serves it. The library keeps no files. Store is handed an
+// [Upload] to copy where the app keeps them, Load says what is kept, and where it is served from is the app's own address.
+//
+//	webui.File[Device]{
+//		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
+//		Load:  func(d Device) *webui.FileInfo { return d.LogoInfo() },
+//		Store: func(d *Device, up *webui.Upload) { d.SetLogo(up) },
+//	}
+//
+// A file is of a kind by what it holds, which the library reads: the first bytes of an image or a PDF, and the whole of JSON, CSV
+// and text. What it is called, and the type that the browser says it has, are the visitor's to choose and are not trusted; the
+// words of the field name the kinds it takes ("Choose a PNG or JPEG file."), and the [Upload] says which it was: its Kind, for what to do with
+// it, and its ContentType, a media type, for what to serve it as. There is no kind for SVG, which a browser runs as
+// a page: an app that takes it says [FileAny] and owns what follows. A file has a size limit, 5 MiB unless said, which is checked
+// with the kind before Store sees the file. Nothing chosen leaves the stored file alone, and a form that is refused stores no file
+// and says to choose it again, since a browser cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
+// with nil.
+//
+// What the app serves it should serve as a download: Content-Disposition: attachment, X-Content-Type-Options: nosniff, and the
+// content type that the [Upload] was found to have. A visitor's file sent inline from the app's origin is a page of the app's. A
+// page that has a File reads a multipart body of as much as its files may be, and runs the page's Guard first, so a visitor it
+// refuses has nothing read; an action's own Guard runs after the form is bound, so the file has been received when it refuses.
+// A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
+//
 // A number or a choice that may be absent has an accessor of its own, since a Go int cannot say it:
 // [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer, and [Bool] is a yes, a no, or neither.
 // Absent is not zero. It reads as a dash, an input that is emptied is stored as nil (and a Required one refuses it), a table

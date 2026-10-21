@@ -367,6 +367,10 @@ Four button roles and no others.
 32px tall, 12px horizontal padding, 13.5/500, 2px radius, optional 14px leading
 icon.
 
+**A file chooser** is the browser's own, in an input of the same surface, border and focus ring, with its button drawn as a small
+secondary button (24px, 12.5/500, a strong border). The file that is stored is above it, in the text colour, with its size dimmed and, for
+a file that can be removed, the *Remove* checkbox at the right. A name that is a link is in the link colour and is underlined on hover.
+
 **Inputs** are 32px on the input surface with a strong border; focus takes a
 primary border and a 2px primary ring at 25%. Read-only fields drop to the
 hover surface with text-secondary and a weak border — visibly not a hole you

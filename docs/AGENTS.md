@@ -161,6 +161,14 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **Revisit when** an app has slow backends for most of its pages and the streaming from the server does not do it, and an opt-in on `App` for a device-side worker is wanted.
 
+### Keeping uploaded files in the library
+
+**Decision:** `File` is handed an `Upload` to copy and says what is kept with `Load`; the library stores nothing and serves nothing. A download route, a directory, or a database of its own was weighed and dropped.
+
+- Where files live, who may fetch them and when they go are the program's, as reloading is: a library that stored them would own a directory or a store, an address for them with its authorisation and caching, and their deletion.
+- The cost is a route of the app's own, and the rules for serving a visitor's file (attachment, `nosniff`, the sniffed type) in the docs. The demo's `uploads.go` is the example.
+- A file is of a kind by what it holds (sniffed, and for JSON, CSV and text read through), never by its name or the browser's type. There is no SVG kind, since a browser runs it.
+
 ## Tests
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.

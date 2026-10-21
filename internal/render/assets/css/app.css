@@ -1495,6 +1495,57 @@ td .multiline {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* A file chooser: the file that is stored above it, and the native button styled as a small secondary one. */
+.file {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+.file-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 13.5px;
+}
+.file-current a {
+  color: var(--blue-text);
+}
+.file-current a:hover {
+  text-decoration: underline;
+}
+.file-remove {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--text-2);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+input[type='file'].input {
+  height: auto;
+  min-height: 32px;
+  padding: 3px 4px;
+  color: var(--text-2);
+}
+input[type='file'].input::file-selector-button {
+  height: 24px;
+  margin-right: 9px;
+  padding: 0 9px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  cursor: pointer;
+}
+input[type='file'].input::file-selector-button:hover {
+  background: var(--hover);
+}
 .input::placeholder {
   color: var(--text-3);
 }

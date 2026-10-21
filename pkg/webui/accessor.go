@@ -609,6 +609,7 @@ var (
 	_ Accessor[struct{}] = Phone[struct{}]{}
 	_ Accessor[struct{}] = Website[struct{}]{}
 	_ Accessor[struct{}] = ColorPicker[struct{}]{}
+	_ Accessor[struct{}] = File[struct{}]{}
 )
 
 // ---------------------------------------------------------------- validate
@@ -689,6 +690,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateTextRules(v, at, a.Rules)
 	case ColorPicker[M]:
 		common(a.Label, a.Load == nil, "func(M) string, returning \"#rrggbb\"")
+	case File[M]:
+		common(a.Label, a.Load == nil, "func(M) *FileInfo")
+		validateFile(v, at, a)
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -737,7 +741,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Email, Phone, Website, ColorPicker, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
+			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
 	}
 }
 
@@ -895,6 +899,8 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			return ""
 		}
 		return f
+	case File[M]:
+		return lowerFile(name, a)
 	case Datetime[M]:
 		f := head(name, a.Label, ir.KindString)
 		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly

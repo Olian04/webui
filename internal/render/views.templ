@@ -7,6 +7,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 	t "github.com/Olian04/webui/internal/render/templates"
 	c "github.com/Olian04/webui/internal/render/templates/components"
+	"github.com/Olian04/webui/internal/rules"
 )
 
 // Document is the shell around one page's content.
@@ -391,7 +392,7 @@ templ (r *Renderer) Form(v FormView) {
 	}) {
 		@c.Form(c.FormProps{
 			Action: r.PageHref(v.Page, v.Path, v.Query),
-			Attrs:  templ.Attributes{"data-leaf-form": LeafID(v.Node.At)},
+			Attrs:  v.formAttrs(),
 		}) {
 			<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 			if v.Node.Editor != nil {
@@ -489,6 +490,12 @@ templ (r *Renderer) input(fv fieldView) {
 						@value(fv.Field, fv.Value, fv.Model)
 					}
 				</div>
+			case fv.Field.File != nil:
+				@c.FileInput(c.FileInputProps{
+					ID: fv.ID, Name: fv.Name, Accept: rules.FileAccept(fv.Field.File), Required: fv.Rules.Required && fv.Stored == nil,
+					Invalid: fv.Error != "", Validity: fv.Validity, Form: fv.FormID,
+					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentSize: fv.currentSize(), Remove: fv.removable(),
+				})
 			case fv.Field.Multiline:
 				@c.Textarea(c.TextareaProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",

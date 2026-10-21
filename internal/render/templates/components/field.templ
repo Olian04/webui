@@ -186,6 +186,78 @@ templ Input(p InputProps) {
 	/>
 }
 
+// FileInputProps is a file chooser, with the file that is stored shown above it. The chooser has no value, which a browser never
+// lets a page give a file input, so a file that was chosen and not sent has to be chosen again.
+type FileInputProps struct {
+	ID       string
+	Name     string
+	Accept   string // the accept attribute, a hint to the chooser and nothing more
+	Required bool
+	Invalid  bool
+
+	// Validity is what the browser says for each way the value can fail a constraint, as JSON (see InputProps).
+	Validity string
+
+	// Form is the id of the form the input belongs to, when it is not the one it is inside of.
+	Form string
+
+	// CurrentName is the stored file's name, "" for none; CurrentHref is where it is served, "" for no link; CurrentSize is
+	// how large it is, as read, "" for not knowing.
+	CurrentName, CurrentHref, CurrentSize string
+
+	// Remove is the value of the checkbox that asks for the stored file to be removed, which is the field's name; "" for a
+	// file that cannot be.
+	Remove string
+
+	// Attrs are attributes of the caller's own, such as the data attributes that script reads.
+	Attrs templ.Attributes
+}
+
+templ FileInput(p FileInputProps) {
+	<div class="file">
+		if p.CurrentName != "" {
+			<div class="file-current">
+				if p.CurrentHref != "" {
+					<a href={ p.CurrentHref }>{ p.CurrentName }</a>
+				} else {
+					<span>{ p.CurrentName }</span>
+				}
+				if p.CurrentSize != "" {
+					<span class="dim">{ p.CurrentSize }</span>
+				}
+				if p.Remove != "" {
+					<label class="file-remove"><input class="checkbox" type="checkbox" name="_rm" value={ p.Remove }/> Remove</label>
+				}
+			</div>
+		}
+		<input
+			if p.ID != "" {
+				id={ p.ID }
+			}
+			class={ "input", "file-input", templ.KV("invalid", p.Invalid) }
+			type="file"
+			if p.Name != "" {
+				name={ p.Name }
+			}
+			if p.Accept != "" {
+				accept={ p.Accept }
+			}
+			required?={ p.Required }
+			if p.Validity != "" {
+				data-validity={ p.Validity }
+			}
+			if p.Form != "" {
+				form={ p.Form }
+			}
+			if p.Invalid {
+				aria-invalid="true"
+				aria-describedby={ p.ID + "-error" }
+			}
+			{ p.Attrs... }
+		/>
+	</div>
+}
+
 // TextareaProps is a text of more than one line. It has the rules that a text area has: required, minlength and maxlength, and not a
 // pattern. The text is drawn after a newline, which the parser drops, so a text that begins with one keeps it.
 type TextareaProps struct {
