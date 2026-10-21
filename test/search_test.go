@@ -2,11 +2,12 @@ package webui_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -18,20 +19,48 @@ import (
 type searchResponse struct {
 	Results []struct {
 		Group, Title, Desc, Href string
-		Score                    float64
 	}
 }
 
+var (
+	searchLabel = regexp.MustCompile(`<div class="pal-label">(.*?)</div>`)
+	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>(?:\s*<span class="mono">(.*?)</span>)?\s*</a>`)
+)
+
+// parseResults reads the results out of the HTML that the search answers with: the labels of the groups and the links under them, in order.
+func parseResults(body string) searchResponse {
+	var out searchResponse
+	group := ""
+	rest := body
+	for {
+		l, it := searchLabel.FindStringSubmatchIndex(rest), searchItem.FindStringSubmatchIndex(rest)
+		switch {
+		case l == nil && it == nil:
+			return out
+		case it == nil || (l != nil && l[0] < it[0]):
+			group = html.UnescapeString(rest[l[2]:l[3]])
+			rest = rest[l[1]:]
+		default:
+			r := struct{ Group, Title, Desc, Href string }{Group: group, Href: html.UnescapeString(rest[it[2]:it[3]]), Title: html.UnescapeString(rest[it[4]:it[5]])}
+			if it[6] >= 0 {
+				r.Desc = html.UnescapeString(rest[it[6]:it[7]])
+			}
+			out.Results = append(out.Results, r)
+			rest = rest[it[1]:]
+		}
+	}
+}
+
+// search is what the box lists for a query: the results as the server sends them to script, as HTML.
 func search(t *testing.T, h http.Handler, query string) searchResponse {
 	t.Helper()
 
-	rec := serve(h, http.MethodGet, "/admin/_webui/search?q="+query)
+	rec := serve(h, http.MethodGet, "/admin/_webui/search?fragment=1&q="+query)
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Equal(t, rec.Header().Get("Content-Type"), "application/json; charset=utf-8")
+	assert.Equal(t, rec.Header().Get("Content-Type"), "text/html; charset=utf-8")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
-	var out searchResponse
-	assert.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
-	return out
+	assert.False(t, strings.Contains(rec.Body.String(), "<html")) // a list to put in the box, not a page
+	return parseResults(rec.Body.String())
 }
 
 var (

@@ -18,7 +18,7 @@ templ (r *Renderer) Document(d Doc) {
 		Scripts:     r.scripts(d),
 		Head:        r.head(d.Code),
 		Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
-		TopBar:      r.topbar(d.Crumbs, d.URL),
+		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query),
 		Status:      r.statusBar(d, c.StatusBar),
 		Toasts:      toastRegion(d.Toasts),
 		Streaming:   d.Streaming,
@@ -96,14 +96,12 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
 // menu when the app declares one.
 // The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
-// It is wrapped so it is simply absent without script rather than present and inert. Refresh is a link to the address the browser is on, so it
+// It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
+templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
 		if r.search {
-			<div class="js-only">
-				@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Attrs: r.searchAttrs()})
-			</div>
+			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
 		}
 		@c.IconButton(c.IconButtonProps{
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
@@ -785,5 +783,50 @@ templ (r *Renderer) unified(v DiffView) {
 					}
 				}
 		}
+	</div>
+}
+
+// SearchList is the results of a search, grouped by page, each a link: the box's list, which script fills with it, and the page of results.
+// option is the box's, whose items are the options of its listbox. A search that found nothing says so.
+templ SearchList(groups []SearchGroup, option bool) {
+	if len(groups) == 0 {
+		<div class="pal-empty">Nothing matches.</div>
+	}
+	for _, g := range groups {
+		<div class="pal-label">{ g.Label }</div>
+		for _, h := range g.Hits {
+			<a
+				class="pal-item"
+				if option {
+					role="option"
+				}
+				href={ templ.SafeURL(h.Href) }
+			>
+				<span>{ h.Title }</span>
+				if h.Desc != "" {
+					<span class="mono">{ h.Desc }</span>
+				}
+			</a>
+		}
+	}
+}
+
+// SearchPage is the page that a search is answered with when there is no script to list its results beneath the box.
+templ SearchPage(query string, groups []SearchGroup) {
+	<div class="panel">
+		<div class="panel-head">
+			if query == "" {
+				<h2 class="panel-title">Search</h2>
+			} else {
+				<h2 class="panel-title">Results for “{ query }”</h2>
+			}
+		</div>
+		<div class="panel-body pad results">
+			if query == "" {
+				<div class="pal-empty">Type what to search for.</div>
+			} else {
+				@SearchList(groups, false)
+			}
+		</div>
 	</div>
 }

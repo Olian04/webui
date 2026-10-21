@@ -716,7 +716,7 @@
   // the sidebar, so there is no index to fall out of date; pages that offer
   // Search add their own results, fetched as the user types. It is a combobox:
   // arrow keys move through the results, Enter follows one, Escape closes.
-  var palette = { items: [], active: -1, moved: false, remote: [], query: '', timer: null, ctl: null, state: 'idle' };
+  var palette = { items: [], active: -1, moved: false, html: null, query: '', timer: null, ctl: null, state: 'idle' };
 
   function paletteBox() {
     return $('[data-palette]');
@@ -730,61 +730,31 @@
     return typeof href === 'string' && href.charAt(0) === '/' && href.charAt(1) !== '/' && href.charAt(1) !== '\\';
   }
 
-  // The results are the ones the pages that offer Search found, in the order the server ranked them: the best group first, the best
-  // result first in it. There are no results of the script's own: the search finds things, and does not list the sidebar again.
-  function groupsFor() {
-    var groups = [];
-    palette.remote.forEach(function (hit) {
-      if (!safeHref(hit.href)) return;
-      var g = groups.find(function (x) {
-        return x.label === hit.group;
-      });
-      if (!g) groups.push((g = { label: hit.group, hits: [] }));
-      g.hits.push(hit);
-    });
-    return groups;
-  }
-
+  // The results are HTML that the server made, of the pages that offer Search, in the order it ranked them: put in the box all at once, so
+  // that nothing moves under the pointer as results come in one by one. The box has no results of its own: the search finds things, and does
+  // not list the sidebar again. While a question is out the answer to the last one stays, dimmed and out of reach, so the box does not empty
+  // and fill at every key.
   function drawPalette() {
     var box = paletteBox();
     var input = paletteInput();
     if (!box || !input) return;
 
     var previous = palette.items[palette.active];
-    box.textContent = '';
-    palette.items = [];
-
-    var groups = groupsFor();
-    groups.forEach(function (g) {
-      var label = document.createElement('div');
-      label.className = 'pal-label';
-      label.textContent = g.label;
-      box.appendChild(label);
-      g.hits.forEach(function (hit) {
-        var a = document.createElement('a');
-        a.className = 'pal-item';
-        a.id = 'palette-item-' + palette.items.length;
-        a.setAttribute('role', 'option');
-        a.href = hit.href;
-        var title = document.createElement('span');
-        title.textContent = hit.title;
-        a.appendChild(title);
-        if (hit.desc) {
-          var desc = document.createElement('span');
-          desc.className = 'mono';
-          desc.textContent = hit.desc;
-          a.appendChild(desc);
-        }
-        box.appendChild(a);
-        palette.items.push({ el: a, href: hit.href });
-      });
-    });
-    if (!palette.items.length) {
-      var empty = document.createElement('div');
-      empty.className = 'pal-empty';
-      empty.textContent = palette.state === 'loading' ? 'Searching…' : 'Nothing matches.';
-      box.appendChild(empty);
+    box.classList.toggle('pending', palette.state === 'loading');
+    if (palette.html !== null) {
+      box.innerHTML = palette.html;
+    } else {
+      box.textContent = '';
+      var wait = document.createElement('div');
+      wait.className = 'pal-empty';
+      wait.textContent = 'Searching…';
+      box.appendChild(wait);
     }
+    palette.items = [];
+    $$('a.pal-item', box).forEach(function (a, n) {
+      a.id = 'palette-item-' + n;
+      palette.items.push({ el: a, href: a.getAttribute('href') });
+    });
 
     // Results arriving while the user is arrowing through them must not move the
     // highlight out from under them.
@@ -824,33 +794,38 @@
     palette.moved = false;
   }
 
-  // Ask the pages that offer Search, after a pause in typing. A newer question
-  // replaces an older one, and a failure is no results.
+  // Ask the pages that offer Search, after a pause in typing, for their results as HTML. A newer question replaces an older one, and a failure is
+  // no results.
   function askRemote(query) {
     var input = paletteInput();
     var url = input && input.getAttribute('data-search-url');
     clearTimeout(palette.timer);
     if (palette.ctl) palette.ctl.abort();
-    palette.remote = [];
+    if (!query.trim()) {
+      palette.html = null;
+      palette.state = 'idle';
+      return;
+    }
     palette.state = 'loading';
-    if (!url || !query.trim()) return;
+    if (!url) return;
     palette.timer = setTimeout(async function () {
       var ctl = new AbortController();
       palette.ctl = ctl;
       try {
-        var res = await fetch(url + '?q=' + encodeURIComponent(query), {
-          headers: { Accept: 'application/json' },
+        var res = await fetch(url + '?fragment=1&q=' + encodeURIComponent(query), {
+          headers: { Accept: 'text/html' },
           credentials: 'same-origin',
           signal: ctl.signal,
         });
-        if (!res.ok) return;
-        var body = await res.json();
+        if (!res.ok) throw new Error('search ' + res.status);
+        var html = await res.text();
         if (query !== palette.query) return;
-        palette.remote = Array.isArray(body.results) ? body.results : [];
+        palette.html = html;
         palette.state = 'done';
         drawPalette();
       } catch (err) {
         if (err.name === 'AbortError') return; // a newer search replaced it
+        palette.html = '<div class="pal-empty">Nothing matches.</div>';
         palette.state = 'done';
         drawPalette();
       }
@@ -934,7 +909,8 @@
         setActive(e.key === 'ArrowDown' ? (palette.active + 1) % n : (palette.active - 1 + n) % n);
         break;
       case 'Enter':
-        if (open && palette.active >= 0) {
+        // While a question is out the results on screen are the last one's: the form is submitted instead, to the page of results.
+        if (open && palette.active >= 0 && palette.state !== 'loading') {
           e.preventDefault();
           location.href = palette.items[palette.active].href;
         }

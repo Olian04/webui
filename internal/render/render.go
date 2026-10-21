@@ -70,6 +70,9 @@ type Doc struct {
 	// Code is what the page's editors and diffs need loaded.
 	Code CodeNeeds
 
+	// Query is what the page of search results is for, which the search box holds when it is shown: "" for any other page.
+	Query string
+
 	// Phone is whether the page has a phone number to be edited, which script splits into a country and a number.
 	Phone bool
 }

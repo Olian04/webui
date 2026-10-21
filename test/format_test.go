@@ -115,10 +115,8 @@ func TestTheSearchFindsAFormattedColumnByWhatIsShownAndByTheValue(t *testing.T) 
 
 	h := blobApp()
 	titles := func(q string) []string {
-		var got struct{ Results []struct{ Title string } }
-		assert.NoError(t, json.Unmarshal(serve(h, http.MethodGet, "/admin/_webui/search?q="+url.QueryEscape(q)).Body.Bytes(), &got))
 		var out []string
-		for _, r := range got.Results {
+		for _, r := range search(t, h, url.QueryEscape(q)).Results {
 			out = append(out, r.Title)
 		}
 		return out

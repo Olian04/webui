@@ -180,9 +180,7 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
-capitalised initial in the rail). A label, a caption or a name wider than the
-sidebar is cut short with an ellipsis, on one line, and is whole in its `title`;
-the row never grows and the text never wraps. Groups carry an 11px uppercase caption above
+capitalised initial in the rail). Groups carry an 11px uppercase caption above
 them. In the rail the caption has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
 centred in 21px of height for each group, and the caption is its tooltip. Nothing is drawn above the first
 group. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
@@ -198,7 +196,7 @@ visitor may not open is not drawn.
 
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
-at text-tertiary. On the right: a 290px search field (only when some page has a `Search`: the app's pages are in the sidebar, and the search finds the things they are for), then the page's *Refresh*
+at text-tertiary. On the right: a 290px search field (only when some page has a `Search`: the app's pages are in the sidebar, and the search finds the things they are for; without script it has a *Search* button joined to its right edge and answers with a page of results, and with script the button is gone and the results are listed beneath the box as it is typed in), then the page's *Refresh*
 icon button, then, when the app declares external links, a button (the arrow-out-of-box
 icon) that opens a popover list of them: a raised surface right-aligned beneath the button, 32px items with
 a 16px icon and an 11px uppercase caption above a section, closed by a click elsewhere
