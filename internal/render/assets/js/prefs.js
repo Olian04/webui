@@ -2,7 +2,7 @@
 // module, because modules are deferred. Preferences are per-browser state and
 // are deliberately not arguments, so they stay out of the URL. A stored theme
 // overrides the app's default; with nothing stored the server's choice stands.
-// The same goes for the sidebar, which a person may narrow to its icon rail.
+// The same goes for the sidebar, which a person may narrow to its icon rail, and widen or narrow by its edge.
 //
 // The sidebar is part of each page, so a followed link draws it again at the top. Its place is kept for
 // the tab (not for the browser: it is where this visit has got to) and put back as the sidebar is parsed,
@@ -14,6 +14,10 @@
     var theme = localStorage.getItem('webui.theme');
     if (theme === 'dark' || theme === 'light') el.dataset.theme = theme;
     if (localStorage.getItem('webui.sidebar') === 'collapsed') el.dataset.sidebar = 'collapsed';
+    // The width a person dragged the sidebar to, held to what fits this window: at least 180px, at most 480px and half the
+    // window. A narrower window than the width was chosen in clamps it here and does not store the smaller one.
+    var width = parseInt(localStorage.getItem('webui.sidebar.width'), 10);
+    if (width >= 180) el.style.setProperty('--sidebar-w', Math.min(width, Math.max(180, Math.min(480, innerWidth / 2))) + 'px');
   } catch (e) {}
 })();
 

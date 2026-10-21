@@ -210,3 +210,34 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 	assert.Contains(t, css, "white-space: nowrap;\n}\n.side-scroll") // the brand's name is cut too
 	assert.Contains(t, css, "padding: 14px 12px 5px;\n  /* A caption wider than the sidebar is cut short; its whole is its title. */\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}")
 }
+
+// A visitor with script can drag the sidebar's edge to a width, which the browser keeps and the script that runs before first paint puts back,
+// so a page does not flash the wrong width. The handle is script's: the markup has none, and the rail has its own widths. There is no script
+// test harness, so this is what the shipped files carry; the behaviour is looked at in a browser.
+func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t *testing.T) {
+	t.Parallel()
+
+	h, _ := layoutApp(nil)
+	prefs := serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Body.String()
+	assert.Contains(t, prefs, "localStorage.getItem('webui.sidebar.width')")
+	assert.Contains(t, prefs, "el.style.setProperty('--sidebar-w', Math.min(width, Math.max(180, Math.min(480, innerWidth / 2))) + 'px')")
+
+	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	assert.Contains(t, enhance, "handle.setAttribute('role', 'separator')")
+	assert.Contains(t, enhance, "localStorage.setItem('webui.sidebar.width', String(want))")
+	assert.Contains(t, enhance, "localStorage.removeItem('webui.sidebar.width')")
+	// A drag ends however the pointer is let go of, so the cursor that the page takes while it lasts cannot be left on.
+	for _, end := range []string{"'pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'", "window.addEventListener('blur', drop)", "if (e.buttons === 0) drop()"} {
+		assert.Contains(t, enhance, end)
+	}
+
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "width: var(--sidebar-w, 240px);")
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-resize {\n  display: none;")
+	// The rail keeps its own width, which the variable does not touch: the rules for it say a literal.
+	assert.Contains(t, css, "html[data-sidebar='collapsed'] .sidebar {\n  width: 56px;")
+	assert.Contains(t, css, "  .sidebar {\n    width: 56px;")
+
+	// No handle is in the page, so one that has no script has none.
+	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/device/d1").Body.String(), "side-resize"))
+}

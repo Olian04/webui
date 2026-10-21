@@ -115,7 +115,7 @@ where to go next), links between pages, theming, errors, and security.
 
 ## What the library stores in the browser
 
-webui sets one cookie, keeps two values in `localStorage` and two in `sessionStorage`. It uses nothing else on a
+webui sets one cookie, keeps three values in `localStorage` and two in `sessionStorage`. It uses nothing else on a
 visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and
 fonts it ships are served by your own app and call no other host.
 
@@ -124,6 +124,7 @@ fonts it ships are served by your own app and call no other host.
 | `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor submits a form or runs an action | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
 | `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
+| `webui.sidebar.width` | `localStorage` | A visitor drags the sidebar's edge, or moves it with the arrow keys | The width in pixels, a whole number from 180 to 480 | Until the visitor resets it (Enter, or a double click on the edge) or clears site data |
 | `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |
 | `webui.content.scroll` | `sessionStorage` | A visitor leaves a page | The path of the page (never its query) and how far its content was scrolled, in pixels, so that a tab, a sort or a page of a table that is followed on the same page does not take the reader back to the top. It is put back only on a page with the same path | Until the tab is closed |
 
@@ -134,9 +135,9 @@ nothing to expire. The browser asks "send the form again?" if the page is reload
 did nothing. An accepted action is redirected with a 303 so that a reload does not repeat it, and its toast
 rides the cookie above.
 
-The two preferences are read by a small script before the first paint, so the page does not
-flash the wrong theme. They stay in the browser and are never sent to the server. A visitor
-who has never touched either control has no `localStorage` entry at all. The scroll position is
+The three preferences are read by a small script before the first paint, so the page does not
+flash the wrong theme or a sidebar of the wrong width. They stay in the browser and are never sent to the server. A visitor
+who has never touched the controls has no `localStorage` entry at all. The scroll position is
 for the tab, not for the browser, and each holds no more than a number, with the path of the page the content's is for.
 
 Two things are yours, not webui's:
