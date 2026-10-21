@@ -151,8 +151,8 @@ func (a Website[M]) meta() accessorMeta {
 
 func (Website[M]) toolbarItem(M) {}
 
-// ColorPicker projects a string field of M that holds a color, "#rrggbb", chosen with the browser's picker. A picker cannot be empty: a field
-// whose Load returns nothing shows black, and a submission always holds a color, so it has no Required, and no rule of the length
+// ColorPicker projects a string field of M that holds a colour, "#rrggbb", chosen with the browser's picker. A picker cannot be empty: a field
+// whose Load returns nothing shows black, and a submission always holds a colour, so it has no Required, and no rule of the length
 // or the text of a string. The server checks that what is submitted is "#" and six hex digits.
 type ColorPicker[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the

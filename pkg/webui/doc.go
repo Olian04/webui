@@ -4,7 +4,7 @@
 // result works with JavaScript switched off.
 //
 // An [App] is a list of [Page] values. [App.Compile] checks the declaration, and
-// returns an [net/http.Handler] you mount where you like.
+// returns a [net/http.Handler] you mount where you like.
 //
 // # Quick start
 //
@@ -52,10 +52,11 @@
 //
 //	var Details = webui.Page[DeviceArgs]{Path: "/device/{id}", Body: ...}
 //
-// Arguments may be string, bool, int, int64 or float64, and a slice of any of them, below. A field
-// left at its zero value is absent from the address. A page's Guard runs before anything is loaded,
-// on every request, and a page it refuses is answered with 403. Inside any closure
-// that serves the page, [ArgsOf] returns the arguments.
+// Arguments may be string, bool, int, int64 or float64, and a slice of any of them (see
+// Arguments that repeat). A field left at its zero value is absent from the address. A
+// page's Guard runs before anything is loaded, on every request, and a page it refuses
+// is answered with 403, or with the status of a [Refusal] (see Refusals). Inside any
+// closure that serves the page, [ArgsOf] returns the arguments.
 //
 // A page with arguments in its path has no entry in the sidebar by itself, since an entry
 // is a link with one address and "/site/{name}" has none until a name is filled in. Its
@@ -76,12 +77,16 @@
 // arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
 // a failure leaves the page drawn without them.
 //
-// A path says its arguments as they are: "/device/dev_27c38b" reads "dev_27c38b" in the breadcrumb and the
-// tab title. A page whose argument is not what a person knows the thing by sets Crumb, a function of its arguments,
-// to say what the crumb reads, such as the device's name. It is also what the page reads as the parent of a page below
-// it, "/device/{id}/log", whose path has all of its arguments. It is called whenever a page is drawn, with a deadline of two seconds for all
-// the crumbs of a page together, and is not called for a parent whose Guard refuses the visitor; a failure, a panic or an empty answer
-// leaves the words of the path.
+// A path says its arguments as they are: "/device/dev_27c38b" reads "dev_27c38b" in the
+// breadcrumb and the tab title. A page whose argument is not what a person knows the
+// thing by sets Crumb, a function of its arguments, to say what the crumb reads, such
+// as the device's name. It is also what the page reads as the parent of a page below
+// it, "/device/{id}/log", whose path has all of its arguments. It is called whenever a
+// page is drawn, with a deadline of two seconds for all the crumbs of a page together,
+// and is not called for a parent whose Guard refuses the visitor; a failure, a panic or
+// an empty answer leaves the words of the path. A page whose path ends in {name...}
+// cannot set Crumb, which is a compile error, and a parent that has an argument that is
+// not in the path is asked with that argument empty.
 //
 // A page whose path is "/" is the landing page, and the brand in the sidebar and the first
 // breadcrumb link to it. Without one they link to where the root would go: the first entry in
@@ -133,8 +138,8 @@
 // # Layouts
 //
 // A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
-// [Markdown] are leaves; they load their own data and refresh on their own, and a [Toolbar] is a leaf that is a row of controls.
-// [Stack], [Split] and [Tabs] arrange
+// [Markdown] are leaves; they load their own data and refresh on their own, and a
+// [Toolbar] is a leaf that is a row of controls. [Stack], [Split] and [Tabs] arrange
 // other bodies and nest:
 //
 //	Body: webui.Stack{
@@ -145,11 +150,154 @@
 // The selected tab is kept in the address, so it survives a reload and can be linked
 // to, and only the selected panel is loaded.
 //
+// # Accessors
+//
+// An accessor is a named, typed projection of a model: the one description of a value
+// that is an input in a [Form], a column in a [Table] and, read-only, a value in a
+// [Toolbar]. It is written once. [String], [Int], [Float], [Select], [URL], [Datetime],
+// [Timestamp] and [Slider] are the basic ones; [Email], [Phone], [Website],
+// [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [Bool] and [File]
+// are below, and a [Group] lays accessors side by side in a form. Without a Store an
+// accessor is read-only, and a [URL] never has one. An accessor's Rules (a
+// [StringRules] or a [NumberRules]: required, length, a pattern, bounds) are rendered
+// as HTML constraint attributes and checked again on the server, and its Placeholder is
+// shown in an input while it is empty.
+//
+// Every accessor but a [Group] has a Help, a line or two on what the field is for,
+// which a form and a toolbar show in the popover beside the label that lists the rules,
+// under a heading of its own and above them (on hover and on keyboard focus, and in the
+// icon's accessible name), where the label and the rules cannot say it: "The share of
+// events that are kept: 0.25 keeps one in four." A table does not show it.
+//
+// A [Select] is a choice from a list of options. Read, it is a badge for each value it
+// holds, coloured by its option's [Tone]; edited, it is a drop-down list, or with Multi
+// a list to choose several from. Its Options are written out, or read when a request is
+// answered with LoadOptions, for what the app keeps in a database.
+//
+// A Datetime or a Timestamp with a Store is a date and time picker, in UTC; with
+// DateOnly it is a date picker, and a day is midnight UTC.
+//
+// A kind of text that has an input of its own is an accessor of its own: [Email],
+// [Phone], [Website] and [ColorPicker]. The browser draws the input of that kind (the
+// right keyboard on a phone, a picker for a colour) and refuses an email or a web
+// address that is not one, in the words the server uses; the server checks all four
+// again. An email is held to what the browser holds it to; a web address to more, an
+// http or https address with a host, since a browser accepts "javascript:" and what is
+// stored will be linked. A phone number is digits with the punctuation numbers are
+// written with, which a browser does not check. One written with a country code is
+// stored as E.164, "+46701234567", without the spaces; with script the input is a
+// selector of the country calling code and the national number, spaced for reading as
+// it is typed, and [Phone.DefaultCountry] is where the selector starts. A colour is
+// "#rrggbb", and a picker cannot be empty, so a field with no value shows black. They
+// have the rules of a [String], except the colour, which has none; a [String] is the
+// accessor for any other text, and for a password or a text area. [URL] is the one that
+// links, and has no Store.
+//
+// A [String] with Secret set is a password input for a value that is never read back,
+// such as an API key. The stored value is not in the page, in a table, in a file or in
+// a search, and not in the form that answers a refused submission; the input shows a
+// row of bullets, the same whatever the value is, when there is one. A submission that
+// leaves it empty leaves it as it is, so only a key that is typed is stored. A Secret
+// needs a Store, cannot be Required (an empty submission leaves it as it is), and is
+// for a form only: not a table's column, an editor's text or a toolbar's value.
+//
+// A [String] with Multiline set is a text area, for text of more than one line. Its
+// rules are Required, MinLen and MaxLen; a Pattern and the text rules are one line's
+// and are refused, and a line break is one "\n" character whatever the browser sent, so
+// MaxLen counts what the browser's maxlength counts. In a table the cell shows the
+// first lines. It is not for a toolbar, which shows one line for a value.
+//
+// A number or a choice that may be absent has an accessor of its own, since a Go int
+// cannot say it: [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer,
+// and [Bool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
+// input that is emptied is stored as nil (and a Required one refuses it), a table sorts
+// it before every number and leaves it out of a filter by range, a CSV leaves it empty
+// and a JSON export has null. A [Bool] is a choice of Yes and No with an empty one, as
+// a [Select] is, and not a checkbox, which cannot be none of them and sends nothing
+// when it is off.
+//
+// An Int, a Float, an OptionalInt, an OptionalFloat, a Datetime and a Timestamp have a
+// Format, a function the application writes that says how the value reads where it is
+// only read, such as a size as "1.5 GiB":
+//
+//	webui.Int[Blob]{Label: "Size", Load: func(b Blob) int { return b.Size }, Format: humanBytes}
+//
+// It changes only what is shown. The column still sorts, filters and exports by the value,
+// an input that edits it holds the value, and the search finds a row by the text and by the
+// value. The library ships no formats: each is the application's own.
+//
+// # Files
+//
+// A file that a visitor sends is a [File]: an input of a form, a native file chooser,
+// with the file that is stored shown above it, and in a table or a read-only form that
+// file's name, as a link when the app serves it. The library keeps no files. Store is
+// handed an [Upload] to copy where the app keeps them, Load says what is kept, and
+// where it is served from is the app's own address.
+//
+//	webui.File[Device]{
+//		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
+//		Load:  func(d Device) *webui.FileInfo { return d.LogoInfo() },
+//		Store: func(d *Device, up *webui.Upload) { d.SetLogo(up) },
+//	}
+//
+// A file is of a kind by what it holds, which the library reads: the first bytes of an
+// image or a PDF, and the whole of JSON, CSV and text. What it is called, and the type
+// that the browser says it has, are the visitor's to choose and are not trusted; the
+// words of the field name the kinds it takes ("Choose a PNG or JPEG file."), and the
+// [Upload] says which it was: its Kind, for what to do with it, and its ContentType, a
+// media type, for what to serve it as. There is no kind for SVG, which a browser runs
+// as a page: an app that takes it says [FileAny] and owns what follows. A file has a
+// size limit, 5 MiB unless said, which is checked with the kind before Store sees the
+// file. Nothing chosen leaves the stored file alone, and a form that is refused stores
+// no file and says to choose it again, since a browser cannot fill a chooser in.
+// [File.Removable] adds a Remove checkbox, which calls Store with nil.
+//
+// With script the chooser is a frame that a file can be dropped on, a small picture of
+// an image that is chosen is shown below it (made in the page, and clicked to see the
+// file as it was chosen, at its full size, in a dialog), a file that is too large or is
+// not one of the kinds that the field takes is said to be so before the request is sent
+// (in the words the server uses), and a file that is chosen and not sent can be
+// cleared. The input stays the control: a drop puts the file in it, as if it had been
+// chosen, so the post is the browser's own and works the same without the script. The
+// early check is of the size, the name and the type that the browser gives, and is only
+// a hint, the server deciding by what the file holds; a file whose type the browser
+// does not know is not said to be wrong.
+//
+// The file that is stored is shown as a small picture when the app gives one:
+// [FileInfo.Thumbnail], a path on this site, which a Store that is handed an image
+// makes with [Thumbnail] when it keeps the file. It is shown at 32 pixels beside the
+// name, and the visitor is sent that small file and not the image, which is only
+// fetched when they click the picture, to see it at its full size in a dialog. That is
+// in the page and needs no script: when the [FileInfo] also has a URL, which is the
+// file that the dialog shows, the picture is a button that opens a native dialog with
+// an invoker command, as Confirm does, and the image in the dialog is lazy, which has
+// no box, and so is not fetched, while the dialog is closed (as for Confirm, an older
+// browser needs the script). The library never shows the file itself as a thumbnail, so
+// without a Thumbnail there is no picture. [Thumbnail] reads PNG, JPEG and GIF, and no
+// WebP, which the standard library does not decode; an app that takes more has its own
+// scaler.
+//
+// A File's MaxSize is 5 MiB unless it says, and at most 256 MiB: a larger one is a
+// compile error. [Thumbnail] makes the small picture from an [Upload] and returns
+// [ErrThumbnail] for a kind that it does not read (anything but PNG, JPEG and GIF), a
+// damaged file, or a picture of more than 25 million pixels, which is held whole in
+// memory to be scaled.
+//
+// What the app serves it should serve as a download: Content-Disposition: attachment,
+// X-Content-Type-Options: nosniff, and the content type that the [Upload] was found to
+// have. A visitor's file sent inline from the app's origin is a page of the app's. A
+// page that has a File reads a multipart body of as much as its files may be, and runs
+// the page's Guard first, so a visitor it refuses has nothing read; an action's own
+// Guard runs after the form is bound, so the file has been received when it refuses. A
+// program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout
+// does not bound.
+//
 // # Toolbars
 //
-// A [Toolbar] is a row of controls for the page it is on, such as "Create device" above a list of devices. It is not a
-// panel, so it has no frame, and it sits on the page in a [Stack] with what it is for. Its type is the page's argument
-// type, and everything in it is about the page's arguments as they are for the request:
+// A [Toolbar] is a row of controls for the page it is on, such as "Create device" above
+// a list of devices. It is not a panel, so it has no frame, and it sits on the page in
+// a [Stack] with what it is for. Its type is the page's argument type, and everything
+// in it is about the page's arguments as they are for the request:
 //
 //	Body: webui.Stack{
 //		webui.Toolbar[DevicesArgs]{
@@ -164,105 +312,34 @@
 //		DevicesTable,
 //	}
 //
-// The controls are in two groups. With room, the Left ones are at the left edge and the Right ones at the right, with what the
-// page has to spare between them; when there is no longer room for them all in a row, they flow from the left in rows,
-// as one group, the Left ones first.
+// The controls are in two groups. With room, the Left ones are at the left edge and the
+// Right ones at the right, with what the page has to spare between them; when there is
+// no longer room for them all in a row, they flow from the left in rows, as one group,
+// the Left ones first.
 //
-// An [Action] is a button that posts, and its Run is handed the page's arguments and says how it ended with an
-// [Outcome], as any action does. Its Guard decides whether the visitor may, and the same check draws the button or leaves it
-// out, and refuses the request. A [Link] is a button that goes to another page, with a Label and a Role, built from
-// the page's arguments; it is a real link, so it works in a new tab and with a keyboard, and it is left out for a visitor whom the
-// page it leads to refuses. A toolbar whose controls are all left out is not drawn.
+// An [Action] is a button that posts, and its Run is handed the page's arguments and
+// says how it ended with an [Outcome], as any action does. Its Guard decides whether
+// the visitor may, and the same check draws the button or leaves it out, and refuses
+// the request (see Controls that a visitor may not use). A [Link] is a button that goes
+// to another page, with a Label and a Role, built from the page's arguments; it is a
+// real link, so it works in a new tab and with a keyboard, and it is left out for a
+// visitor whom the page it leads to refuses. A toolbar whose controls are all left out
+// is not drawn.
 //
-// An accessor is a value of the page's arguments, shown read-only: its Label and what its Load reads from them, as a read-only
-// form field or a table cell shows it (a [Select] as its badges, a number with its Format, a [Bool] as Yes or No, a dash when
-// there is nothing). A Store on it is ignored, as it is in a table, so one accessor serves a form, a table and a toolbar. A
-// toolbar has no inputs, and no form of its own: nothing in it changes the page's arguments, and a toolbar of links and values
-// has nothing to submit. A page whose arguments the visitor sets is for a [Form], or for [Link]s to the page with other
-// arguments.
+// An accessor is a value of the page's arguments, shown read-only: its Label and what
+// its Load reads from them, as a read-only form field or a table cell shows it (a
+// [Select] as its badges, a number with its Format, a [Bool] as Yes or No, a dash when
+// there is nothing). A Store on it is ignored, as it is in a table, so one accessor
+// serves a form, a table and a toolbar (a [File] and a [Group] are the exceptions, and
+// are not toolbar items). A toolbar has no inputs, and no form of its own: nothing in
+// it changes the page's arguments, and a toolbar of links and values has nothing to
+// submit. A page whose arguments the visitor sets is for a [Form], or for [Link]s to
+// the page with other arguments.
 //
 // # Tables
 //
-// A [Table] is a list of rows of a model M, with columns that are [Accessor] values.
-// The same accessor is a column in a table and an input in a form, so it is written
-// once. [String], [Int], [Float], [Select], [URL], [Datetime], [Timestamp] and [Slider]
-// are the accessors; without a Store an accessor is read-only, and a [URL] never has one.
-// A [Select] is a choice from a list of options. Read, it is a badge for each value it holds,
-// coloured by its option's [Tone]; edited, it is a drop-down list, or with Multi a list to
-// choose several from.
-// Every accessor has a Help, a line or two on what the field is for, which a form and a toolbar show in the popover
-// beside the label that lists the rules, under a heading of its own and above them (on hover and on keyboard focus, and in the icon's
-// accessible name), where the label and the rules cannot say it: "The share of events that are kept: 0.25 keeps one in four." A table does not show it.
-//
-// A Datetime or a Timestamp with a Store is a date and time picker, in UTC; with DateOnly it is a date picker, and a day
-// is midnight UTC.
-//
-// A kind of text that has an input of its own is an accessor of its own: [Email], [Phone], [Website] and [ColorPicker]. The browser
-// draws the input of that kind (the right keyboard on a phone, a picker for a color) and refuses an email or a
-// web address that is not one, in the words the server uses; the server checks all four again. An email is held to what the
-// browser holds it to; a web address to more, an http or https address with a host, since a browser accepts "javascript:" and
-// what is stored will be linked. A phone number is digits with the punctuation numbers are written with, which a browser
-// does not check. One written with a country code is stored as E.164, "+46701234567", without the spaces; with script the
-// input is a selector of the country calling code and the national number, spaced for reading as it is typed, and
-// [Phone.DefaultCountry] is where the selector starts. A color is "#rrggbb", and a picker cannot be empty, so a field with no value shows black. They have
-// the rules of a [String], except the color, which has none; a [String] is the accessor for any other text, and for a
-// password or a text area. [URL] is the one that links, and has no Store.
-//
-// A file that a visitor sends is a [File]: an input of a form, a native file chooser, with the file that is stored shown above it, and in
-// a table or a read-only form that file's name, as a link when the app serves it. The library keeps no files. Store is handed an
-// [Upload] to copy where the app keeps them, Load says what is kept, and where it is served from is the app's own address.
-//
-//	webui.File[Device]{
-//		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
-//		Load:  func(d Device) *webui.FileInfo { return d.LogoInfo() },
-//		Store: func(d *Device, up *webui.Upload) { d.SetLogo(up) },
-//	}
-//
-// A file is of a kind by what it holds, which the library reads: the first bytes of an image or a PDF, and the whole of JSON, CSV
-// and text. What it is called, and the type that the browser says it has, are the visitor's to choose and are not trusted; the
-// words of the field name the kinds it takes ("Choose a PNG or JPEG file."), and the [Upload] says which it was: its Kind, for what to do with
-// it, and its ContentType, a media type, for what to serve it as. There is no kind for SVG, which a browser runs as
-// a page: an app that takes it says [FileAny] and owns what follows. A file has a size limit, 5 MiB unless said, which is checked
-// with the kind before Store sees the file. Nothing chosen leaves the stored file alone, and a form that is refused stores no file
-// and says to choose it again, since a browser cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
-// with nil.
-//
-// With script the chooser is a frame that a file can be dropped on, a small picture of an image that is chosen is shown below it (made
-// in the page, and clicked to see the file as it was chosen, at its full size, in a dialog), a file
-// that is too large or is not one of the kinds that the field takes is said to be so before the request is sent (in the words the
-// server uses), and a file that is chosen and not sent can be cleared. The input stays the control: a drop puts the file in it, as if it
-// had been chosen, so the post is the browser's own and works the same without the script. The early check is of the size, the
-// name and the type that the browser gives, and is only a hint, the server deciding by what the file holds; a file whose type the
-// browser does not know is not said to be wrong.
-//
-// The file that is stored is shown as a small picture when the app gives one: [FileInfo.Thumbnail], a path on this site, which a Store that
-// is handed an image makes with [Thumbnail] when it keeps the file. It is shown at 32 pixels beside the name, and the visitor is sent that
-// small file and not the image, which is only fetched when they click the picture, to see it at its full size in a dialog. That is in the
-// page and needs no script: the picture is a button that opens a native dialog with an invoker command, as Confirm does, and the image in the
-// dialog is lazy, which has no box, and so is not fetched, while the dialog is closed (as for Confirm, an older browser needs the script). The library never shows the file itself as a thumbnail, so without a Thumbnail there is no picture.
-// [Thumbnail] reads PNG, JPEG and GIF, and no WebP, which the standard library does not decode; an app that takes more has its own scaler.
-//
-// What the app serves it should serve as a download: Content-Disposition: attachment, X-Content-Type-Options: nosniff, and the
-// content type that the [Upload] was found to have. A visitor's file sent inline from the app's origin is a page of the app's. A
-// page that has a File reads a multipart body of as much as its files may be, and runs the page's Guard first, so a visitor it
-// refuses has nothing read; an action's own Guard runs after the form is bound, so the file has been received when it refuses.
-// A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
-//
-// A number or a choice that may be absent has an accessor of its own, since a Go int cannot say it:
-// [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer, and [Bool] is a yes, a no, or neither.
-// Absent is not zero. It reads as a dash, an input that is emptied is stored as nil (and a Required one refuses it), a table
-// sorts it before every number and leaves it out of a filter by range, a CSV leaves it empty and a JSON export has null.
-// A [Bool] is a choice of Yes and No with an empty one, as a [Select] is, and not a checkbox, which cannot be none of them
-// and sends nothing when it is off.
-//
-// An Int, a Float, a Datetime and a Timestamp have a Format, a function the application
-// writes that says how the value reads where it is only read, such as a size as "1.5 GiB":
-//
-//	webui.Int[Blob]{Label: "Size", Load: func(b Blob) int { return b.Size }, Format: humanBytes}
-//
-// It changes only what is shown. The column still sorts, filters and exports by the value,
-// an input that edits it holds the value, and the search finds a row by the text and by the
-// value. The library ships no formats: each is the application's own.
+// A [Table] is a list of rows of a model M, with columns that are [Accessor] values:
+// the same accessor that is an input in a [Form].
 //
 // A table says where its rows come from with exactly one of three fields:
 //
@@ -282,25 +359,6 @@
 //     continues one sequence, so the table has no filters, only First page, Previous
 //     and Next, and says which rows it shows. A column can be sorted, but only the page
 //     on screen, which the footer says; the next page is ordered within itself.
-//
-// The library keeps nothing between requests, and caching is not part of it: how long a
-// value may be reused, what it depends on and what makes it wrong are for the app to say.
-// Cache inside the function that gets the data, in Rows, Load, a Form's Load or whatever
-// they call, and see Example_caching for a small one.
-//
-//   - Key it by everything the data depends on. An app's Load may read who is looking from
-//     ctx, and a value shared between visitors is right only for data that is the same
-//     for all of them. A Load is handed a [Query], so key by that too.
-//   - Rows is called on every page load, sort, filter, page change, row action and search,
-//     so a cache in Rows serves all of them from one listing, which the library then
-//     sorts and filters on its own copy.
-//   - Join the requests that arrive while the value is being loaded, so that a busy page
-//     makes one call and a visitor who leaves does not fail the others, and do not keep an
-//     error.
-//   - Forget what an action changed by calling your own invalidation from its Run.
-//   - A row action and a bulk action find their rows through the same Rows or Load, so what
-//     they act on is as old as your cache. An action's Guard and Run are given the row as
-//     it was listed, not as it is now.
 //
 // Every column header is a sort link with a filter beside it: a text box, a minimum
 // and maximum for a number, or a choice among the values of a [Select]. A column that
@@ -327,6 +385,27 @@
 // handed the row and chooses where to go with [Outcome.Then]. Actions and BulkActions
 // add a button per row, and checkboxes with an action bar, over a table with a Key.
 //
+// # Caching
+//
+// The library keeps nothing between requests, and caching is not part of it: how long a
+// value may be reused, what it depends on and what makes it wrong are for the app to say.
+// Cache inside the function that gets the data, in Rows, Load, a Form's Load or whatever
+// they call, and see Example_caching for a small one.
+//
+//   - Key it by everything the data depends on. An app's Load may read who is looking from
+//     ctx, and a value shared between visitors is right only for data that is the same
+//     for all of them. A Load is handed a [Query], so key by that too.
+//   - Rows is called on every page load, sort, filter, page change, row action and search,
+//     so a cache in Rows serves all of them from one listing, which the library then
+//     sorts and filters on its own copy.
+//   - Join the requests that arrive while the value is being loaded, so that a busy page
+//     makes one call and a visitor who leaves does not fail the others, and do not keep an
+//     error.
+//   - Forget what an action changed by calling your own invalidation from its Run.
+//   - A row action and a bulk action find their rows through the same Rows or Load, so what
+//     they act on is as old as your cache. An action's Guard and Run are given the row as
+//     it was listed, not as it is now.
+//
 // # Forms and actions
 //
 // A [Form] loads one model and shows its Fields. An accessor with a Store is an input,
@@ -337,33 +416,31 @@
 // Submit is an [Action], and its Run says how it ended. A Form with no Submit is the detail view:
 // a panel of labelled values to read, with nothing to edit.
 //
-// A [String] with Secret set is a password input for a value that is never read back, such as an API key. The stored
-// value is not in the page, in a table, in a file or in a search, and not in the form that answers a refused submission;
-// the input shows a row of bullets, the same whatever the value is, when there is one. A submission that leaves it empty
-// leaves it as it is, so only a key that is typed is stored.
-//
-// A [String] with Multiline set is a text area, for text of more than one line. Its rules are Required, MinLen and MaxLen;
-// a Pattern and the text rules are one line's and are refused, and a line break is one "\n" character whatever the browser
-// sent, so MaxLen counts what the browser's maxlength counts. In a table the cell shows the first lines.
-//
-// An action that cannot be taken back asks first, with Confirm: its button opens a dialog with the question, and only the
-// button in the dialog goes on.
+// An action that cannot be taken back asks first, with Confirm: its button opens a
+// dialog with the question, and only the button in the dialog goes on.
 //
 //	webui.Action[[]Alert]{Label: "Delete", Role: webui.RoleDestructive, Confirm: "Delete the selected alerts?", ...}
 //
-// It is a native dialog, opened by an invoker command, so it needs no script in a current browser (Chrome and Edge 135,
-// Firefox 144, Safari 26.2); script supplies the same for an older one, and an older one with no script cannot open
-// it, and so cannot do the action. It is a question for the visitor and not a check: a request made by hand is not asked,
-// and what must not happen is refused by the Guard. A form whose Save asks is not saved by Enter in a field.
+// It is a native dialog, opened by an invoker command, so it needs no script in a
+// current browser (Chrome and Edge 135, Firefox 144, Safari 26.2); script supplies the
+// same for an older one, and an older one with no script cannot open it, and so cannot
+// do the action. It is a question for the visitor and not a check: a request made by
+// hand is not asked, and what must not happen is refused by the Guard. A form whose
+// Save asks is not saved by Enter in a field.
+//
+// Confirm cannot be set on a RowClick, which has no button to ask from.
 //
 // # Controls that a visitor may not use
 //
-// An action's Guard decides whether the visitor may do it, and what it returns decides how the control is drawn, in a table's
-// rows, in its selection bar, and in a toolbar. An ordinary error leaves the control out, as if there were none, which is right
-// when the visitor has no business knowing of it. [Disabled] draws it, disabled, with its message in a tooltip, which is right when
-// the visitor ought to know that it exists and why they cannot use it ("Already granted"). Which of the two is the application's
-// to say, since only it knows, and there is no option for it. Either way the same Guard refuses a request made by hand, with
-// the message, so what is drawn is a convenience and the Guard is the authority.
+// An action's Guard decides whether the visitor may do it, and what it returns decides
+// how the control is drawn, in a table's rows, in its selection bar, and in a toolbar.
+// An ordinary error leaves the control out, as if there were none, which is right when
+// the visitor has no business knowing of it. [Disabled] draws it, disabled, with its
+// message in a tooltip, which is right when the visitor ought to know that it exists
+// and why they cannot use it ("Already granted"). Which of the two is the application's
+// to say, since only it knows, and there is no option for it. Either way the same Guard
+// refuses a request made by hand, with the message, so what is drawn is a convenience
+// and the Guard is the authority.
 //
 //	Guard: func(ctx context.Context, d Device) error {
 //		if !canEdit(ctx) {
@@ -375,14 +452,25 @@
 //		return nil
 //	}
 //
-// A bulk action's Guard is given a selection, which does not exist when the table is drawn. It is asked of each row of the window as
-// a selection of that one row, and the button is drawn if it accepts any of them, so a bulk Guard must accept a selection of one. If
-// it refuses every one, the button is disabled with the message of the first that said [Disabled], and is otherwise left out. A table
-// with no bulk action drawn has no column of checkboxes and no bar, and one with no row action drawn has no column of buttons;
-// that column is there when a row of the page on screen has one, and so may come and go between the pages of a table. A Link, in a
-// toolbar or as a table's RowClick, is left out when the page it leads to would refuse the visitor, which asks that page's Guard
-// when the link is drawn, for each row of a table. A Guard that panics leaves its control out, and the panic is logged.
-// A form's Save that its Guard refuses, whichever error says so, is not drawn: the form is shown read-only, with a Back button.
+// A bulk action's Guard is given a selection, which does not exist when the table is
+// drawn. It is asked of each row of the window as a selection of that one row, and the
+// button is drawn if it accepts any of them, so a bulk Guard must accept a selection of
+// one. If it refuses every one, the button is disabled with the message of the first
+// that said [Disabled], and is otherwise left out. A table with no bulk action drawn
+// has no column of checkboxes and no bar, and one with no row action drawn has no
+// column of buttons; that column is there when a row of the page on screen has one, and
+// so may come and go between the pages of a table. A Link, in a toolbar or as a table's
+// RowClick, is left out when the page it leads to would refuse the visitor, which asks
+// that page's Guard when the link is drawn, for each row of a table. A Guard that
+// panics leaves its control out, and the panic is logged. A form's Save that its Guard
+// refuses, whichever error says so, is not drawn: the form is shown read-only, with a
+// Back button.
+//
+// A [RowClick] that is an [Action] and that its Guard refuses leaves the row shown and
+// doing nothing, whichever error says so, since it has no button to leave out or to
+// disable. A table with no rows has nothing to select, and draws no bulk action.
+// [Disabled] with no message is drawn with "Not allowed.", and one that a page's Guard
+// returns answers with a 403 and its message.
 //
 // # Text rules and patterns
 //
@@ -394,20 +482,25 @@
 //		NotContains: " ",
 //	}
 //
-// These are [StringRules.StartsWith], [StringRules.EndsWith], [StringRules.Contains] and their negations,
-// NotStartsWith, NotEndsWith and NotContains. Case matters, and each says what it requires in its own message ("Must
-// start with "https://"."). The server tests them with the strings package, and in the browser they are part of the
-// input's pattern, together with the field's own, so that the page refuses the values that the server refuses, and says
-// which rule it was. Where the need is one of these they are the way to say it: a pattern cannot say what a value must
-// not contain without a lookahead, which a pattern may not have.
+// These are [StringRules.StartsWith], [StringRules.EndsWith], [StringRules.Contains]
+// and their negations, NotStartsWith, NotEndsWith and NotContains. Case matters, and
+// each says what it requires in its own message ("Must start with "https://"."). The
+// server tests them with the strings package, and in the browser they are part of the
+// input's pattern, together with the field's own, so that the page refuses the values
+// that the server refuses, and says which rule it was. Where the need is one of these
+// they are the way to say it: a pattern cannot say what a value must not contain
+// without a lookahead, which a pattern may not have.
 //
-// A [PatternRule] is for what they cannot say. A pattern is run twice, by Go on the server and by the browser, as the
-// pattern attribute of the input, and a regular expression is not the same in the two: Go's is RE2 and a browser's is
-// JavaScript's. A pattern that Go accepts and a browser does not is ignored by the browser without a word, so that the
-// field is not checked in the page at all, and one that both accept can match different values. So a pattern is
-// written in the syntax that both read alike, which has been tried against both, and anything else is an error
-// when [App.Compile] runs, with what to write instead. A program that gets its patterns from somewhere else, such as
-// a schema, asks [ValidatePattern] about each one, and leaves out the ones that are refused. The syntax is:
+// A [PatternRule] is for what they cannot say. A pattern is run twice, by Go on the
+// server and by the browser, as the pattern attribute of the input, and a regular
+// expression is not the same in the two: Go's is RE2 and a browser's is JavaScript's. A
+// pattern that Go accepts and a browser does not is ignored by the browser without a
+// word, so that the field is not checked in the page at all, and one that both accept
+// can match different values. So a pattern is written in the syntax that both read
+// alike, which has been tried against both, and anything else is an error when
+// [App.Compile] runs, with what to write instead. A program that gets its patterns from
+// somewhere else, such as a schema, asks [ValidatePattern] about each one, and leaves
+// out the ones that are refused. The syntax is:
 //
 //   - A character stands for itself, except the ones with a meaning, \ ^ $ . | ? * + ( ) [ ] { }, which are written with a
 //     backslash when they are meant as themselves: \. for a dot, \( for a parenthesis. A slash and a dash are written as they are.
@@ -513,14 +606,14 @@
 //
 //	webui.Markdown[Notes]{..., TrustedOrigins: []string{"https://cdn.example.com"}}
 //
-// A link that is a path, such as [Config](/config) or [a device](/device/dev_1?minutes=15),
-// is an address in the application whatever it is mounted at: Compile's prefix is put in
-// front of it, and it opens in the same tab. It is not checked, since the text is not known
-// until it is loaded, and a path that is no page is the application's own not-found page.
-// An address with two slashes or a backslash is another site, and is not a link.
-// It needs no script. A fenced code
-// block that names a language is coloured by the editor, which the page then loads, as
-// for an [Editor] but never with a language service.
+// A link that is a path, such as [Config](/config) or [a
+// device](/device/dev_1?minutes=15), is an address in the application whatever it is
+// mounted at: Compile's prefix is put in front of it, and it opens in the same tab. It
+// is not checked, since the text is not known until it is loaded, and a path that is no
+// page is the application's own not-found page. An address with two slashes or a
+// backslash is another site, and is not a link. It needs no script. A fenced code block
+// that names a language is coloured by the editor, which the page then loads, as for an
+// [Editor] but never with a language service.
 //
 // # Outcomes
 //
@@ -573,11 +666,12 @@
 //
 // # Search
 //
-// The search box in the top bar finds the things the pages are for, and nothing else: it does not list the app's pages (the
-// sidebar does), and an app in which no page has a Search has no search box. A [Page] says how with its Search: it is handed what was typed and returns
-// the matches, each a [Hit] holding the page's arguments that lead to it and what to say
-// about it. A page for one device finds devices, and a result is a link to the page at
-// that device.
+// The search box in the top bar finds the things the pages are for, and nothing else:
+// it does not list the app's pages (the sidebar does), and an app in which no page has
+// a Search has no search box. A [Page] says how with its Search: it is handed what was
+// typed and returns the matches, each a [Hit] holding the page's arguments that lead to
+// it and what to say about it. A page for one device finds devices, and a result is a
+// link to the page at that device.
 //
 //	var Details = webui.Page[DeviceArgs]{
 //		Path: "/device/{id}",
@@ -592,45 +686,66 @@
 // offered only to a visitor who could open the page it leads to: the page's Guard is run
 // for each, with its own arguments.
 //
-// The results are ordered by how well they match what was typed, which the library judges from each Hit's Title,
-// and its Desc a little less: a title that is what was typed comes first, then one that starts with it as a word, then
-// one that starts or ends with it, then one that has it as a word, then one that has it as the start of a word, and last one that has
-// it in the middle of a word. The best result of a page puts its group first, and the best come first in each. A
-// source that returns no more than the limit it is given should return the best matches, as [SearchRows] does.
+// The results are ordered by how well they match what was typed, which the library
+// judges from each Hit's Title, and its Desc for a little over half as much: a title
+// that is what was typed comes first, then one that starts with it as a word, then one
+// that starts or ends with it, then one that has it as a word, then one that has it as
+// the start of a word, and then one that has it in the middle of a word. Below those
+// come results that have its characters in order with others between them, and last the
+// ones that match neither Title nor Desc. A query of several words that are all there,
+// but not together, ranks below the whole phrase. The best result of a page puts its
+// group first, and the best come first in each. A source that returns no more than the
+// limit it is given should return the best matches, as [SearchRows] does.
 //
-// Every page's Search is asked at once, each on a goroutine of its own, so the search takes as long as the slowest page and not as long as all of
-// them, and a page that has not answered within two seconds is left out of the answer, however it was written: a Search should look at its context, and
-// one that does not is no longer waited for. The answer is sent whole, in the order the results are ranked, and not result by result,
-// so that nothing in it moves while the visitor reaches for it. It is HTML. With script the box lists it as it is typed in; without,
-// the box is a form with a button, and what it submits is answered with a page of results in the shell of the app.
+// Every page's Search is asked at once, each on a goroutine of its own, and keeps at
+// most eight results from each, so the search takes as long as the slowest page and not
+// as long as all of them, and a page that has not answered within two seconds is left
+// out of the answer, however it was written: a Search should look at its context, and
+// one that does not is no longer waited for. The answer is sent whole, in the order the
+// results are ranked, and not result by result, so that nothing in it moves while the
+// visitor reaches for it. It is HTML. With script the box lists it as it is typed in;
+// without, the box is a form with a button, and what it submits is answered with a page
+// of results in the shell of the app. The query is cut at 200 characters, and an
+// address that two pages find is listed once.
 //
 // # Looks
 //
-// [Brand] gives the name and logo. The logo is also scaled into the browser's
-// favicon, unless NoFavicon is set. [App.ExternalLinks] are the app's links to
-// places outside it, such as signing out or the documentation, behind a button beside
-// Refresh in the top bar. An [ExternalLink] is a [Nav] entry with a URL, used as
-// written: a web address opens in a tab of its own, and a path on this site in the
-// same one. Its Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry
-// meaning (accent, ok, warning and critical) and the library derives the rest for
-// light and dark, which follow the viewer's system. A [Nav] Icon is the name of a Font
-// Awesome Free solid icon, "house" for fa-house, served by the app itself.
+// [Brand] gives the name and logo. The logo is also scaled into the browser's favicon,
+// unless NoFavicon is set. [App.ExternalLinks] are the app's links to places outside
+// it, such as signing out or the documentation, behind a button beside Refresh in the
+// top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
+// address opens in a tab of its own, and a path on this site in the same one. Its
+// Section groups it, and the entries without one come first. [Theme] restyles the four
+// colours that carry meaning (accent, ok, warning and critical) and the library derives
+// the rest for light and dark, which follow the viewer's system. A [Nav] Icon is the
+// name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
+// itself.
 //
-// # Errors
+// The sidebar is 240px wide, and a label that is wider is cut short with an ellipsis,
+// its whole being its title. With script its edge can be dragged to a width of 180 to
+// 480px, no more than half the window, which the browser keeps (in its own storage,
+// never sent to the server) and which a double click or Enter on the edge resets; the
+// icon rail that a narrow window, or the collapse button, makes has a width of its own.
 //
-// What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden], with the message to show and,
-// from [Refusal.WithLink], a link on. A page's Guard that returns one answers with its status (a 404 for a record that is not
-// there, a 401 for a credential that is missing, with a link to set it up), and any other error from a Guard is a 403 with its
-// text, as before. A panel's Load that returns one says it in the panel with its link, and the page stays as it is, because a
-// page that has begun to be sent has its status already; any other error from a Load is "Could not load", with the cause
-// logged and never shown. A Refusal is not logged: it is not a failure.
+// # Refusals
 //
-// [App.Compile] collects every problem in the declaration and reports them together
-// in one error that wraps a [CompileError] for each, naming the page, the argument
-// type, what is wrong and how to fix it. The handler it returns is never nil: after a failed compile it serves
-// the problems, as a page, at every path under the prefix, so a broken app is easy to
-// diagnose in the browser. [App.MustCompile] panics instead, for a process that
-// should refuse to start.
+// What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden],
+// with the message to show and, from [Refusal.WithLink], a link on. A page's Guard that
+// returns one answers with its status (a 404 for a record that is not there, a 401 for
+// a credential that is missing, with a link to set it up), and any other error from a
+// Guard is a 403 with its text, as before. A panel's Load that returns one says it in
+// the panel with its link, and the page stays as it is, because a page that has begun
+// to be sent has its status already; any other error from a Load is "Could not load",
+// with the cause logged and never shown. A Refusal is not logged: it is not a failure.
+//
+// # Compile errors
+//
+// [App.Compile] collects every problem in the declaration and reports them together in
+// one error that wraps a [CompileError] for each, naming the page, the argument type,
+// what is wrong and how to fix it. The handler it returns is never nil: after a failed
+// compile it serves the problems, as a page, at every path under the prefix, so a
+// broken app is easy to diagnose in the browser. [App.MustCompile] panics instead, for
+// a process that should refuse to start.
 //
 // # Logging
 //
@@ -656,10 +771,11 @@
 // the address that was asked, so the number of series does not grow with the data.
 //
 // The app serves none of it. The program registers its own registry and serves it with
-// promhttp where it serves the rest of its metrics, so where they are, and who may read them,
-// are the program's decisions. Compiling the app again, as a program does that replaces it as it changes,
-// counts into the same metrics; so does another app given the same registry, whose counts then add
-// to the first's, unless its registry is wrapped with a label of its own.
+// promhttp where it serves the rest of its metrics, so where they are, and who may read
+// them, are the program's decisions. Compiling the app again, as a program does that
+// replaces it as it changes, counts into the same metrics; so does another app given
+// the same registry, whose counts then add to the first's, unless its registry is
+// wrapped with a label of its own.
 //
 // # Security
 //

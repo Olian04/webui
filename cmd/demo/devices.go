@@ -303,10 +303,10 @@ var RecentEvents = webui.Table[Event]{
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 
-// RawEvents is the events as far back as the page's Minutes says, which the input above it sets, and all of them when it is empty.
+// RawEvents is the events as far back as the page's Minutes says, which a link sets (the alerts' links do), and all of them when it is empty.
 var RawEvents = webui.Table[Event]{
 	Title: "Raw events",
-	Desc:  "Narrowed by ?minutes= (as the alerts' links do, and as the input above sets it): all of them without.",
+	Desc:  "Narrowed by ?minutes= (as the alerts' links do): all of them without.",
 	Rows: func(ctx context.Context) ([]Event, error) {
 		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), nil
 	},

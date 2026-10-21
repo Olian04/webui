@@ -129,7 +129,7 @@ type Color string
 // and a single colour cannot be right in both.
 type Theme struct {
 	// Accent is interactive: primary buttons, links, the active entry in the
-	// sidebar, the focus ring and the selected tab.
+	// sidebar, the focus ring.
 	Accent Color
 
 	// OK is healthy, saved: a badge with ToneOK, and the toast of a Success.
