@@ -6,7 +6,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -103,4 +105,35 @@ func TestAFormatThatPanicsInTheSearchIsLoggedToTheAppsLogger(t *testing.T) {
 	rec := serve(h, http.MethodGet, "/admin/_webui/search?q=a")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, logged.String(), "a Format panicked")
+}
+
+// A request that ends before it asked for the sidebar's entries, because it panicked, leaves none of the workers that were asked for them
+// running: the Guard of another page, which they run, has finished when the response is complete, and so has what it logs.
+func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
+	t.Parallel()
+
+	var started, done atomic.Int32
+	slow := webui.Page[webui.NoArgs]{
+		Path: "/slow", Nav: webui.Nav{Label: "Slow"}, Body: webui.Stack{},
+		Guard: func(context.Context, webui.NoArgs) error {
+			if started.Add(1) == 1 {
+				time.Sleep(300 * time.Millisecond) // the first, which is the workers of the request that panics: the error page's own are quick
+			}
+			done.Add(1)
+			return nil
+		},
+	}
+	crash := webui.Page[webui.NoArgs]{
+		Path: "/crash",
+		Body: webui.Form[Device]{
+			Load:   func(context.Context) (Device, error) { panic("load") },
+			Fields: []webui.Accessor[Device]{formID},
+		},
+	}
+	h := webui.App{Pages: webui.Pages{slow, crash}}.MustCompile("/admin")
+
+	rec := serve(h, http.MethodGet, "/admin/crash")
+	assert.Equal(t, rec.Code, http.StatusInternalServerError)
+	assert.True(t, started.Load() > 0)
+	assert.Equal(t, done.Load(), started.Load()) // every Guard that was started has run to its end by the time the response is complete
 }
