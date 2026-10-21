@@ -22,8 +22,8 @@ server-rendered UI, with **no HTML, CSS or JavaScript to write**.
   <img alt="The demo's landing page: a sidebar of pages, a search box, a toolbar of the collector's status with a Sync now button, a table of devices with status badges and rate bars, a table of open alerts with severity badges and Dismiss buttons, a table of recent events, and a form of the collector's settings with a slider, a country-code phone input, a colour picker and a date." src="docs/images/overview-light.png">
 </picture>
 
-That is the demo's landing page, `go run ./cmd/demo`, in light or dark as the visitor's
-system is: [`cmd/demo/overview.go`](cmd/demo/overview.go), about 120 lines of Go with
+That is the demo's landing page, `go run ./cmd/demo`, in light or dark as the viewer's
+theme is: [`cmd/demo/overview.go`](cmd/demo/overview.go), about 120 lines of Go with
 their comments, and no HTML, CSS or JavaScript. The tables page, sort and filter, the
 form checks what it is given, and the buttons are there for the people who may use them.
 
