@@ -610,6 +610,51 @@
     refreshLeaf(leaf.getAttribute('data-leaf'), href, true);
   });
 
+  /* ------------------------------ description tips ------------------------------ */
+
+  // The popover of a description (an information icon) opens beside its icon, to the right and below, which is out of the window
+  // for an icon near the right edge or the bottom. When it opens, script measures it and moves it back in: left until its right edge is
+  // inside the window, or above the icon when there is no room below. Without script it opens where the stylesheet puts it.
+  var TIP_MARGIN = 8;
+  var STATUS_BAR = 26; // fixed along the bottom of the window
+
+  function placeTip(tip) {
+    var body = $('.tip-body', tip);
+    if (!body) return;
+    body.style.left = body.style.top = body.style.bottom = '';
+    var r = body.getBoundingClientRect();
+    if (!r.width) return; // not shown
+    var shift = 0;
+    if (r.right > window.innerWidth - TIP_MARGIN) shift = window.innerWidth - TIP_MARGIN - r.right;
+    if (r.left + shift < TIP_MARGIN) shift = TIP_MARGIN - r.left;
+    if (shift) body.style.left = body.offsetLeft + shift + 'px';
+    var below = window.innerHeight - STATUS_BAR - TIP_MARGIN;
+    if (r.bottom > below && tip.getBoundingClientRect().top - r.height - 6 > TIP_MARGIN) {
+      body.style.top = 'auto';
+      body.style.bottom = 'calc(100% + 6px)';
+    }
+  }
+
+  // A reason that a gated control gives (the tooltip of a control that is not allowed) is centred over it, which is out of the
+  // window for one at either edge: it is anchored to the side that is near the edge instead.
+  function placeGate(gate) {
+    var at = gate.getBoundingClientRect();
+    var half = Math.min(140, window.innerWidth / 2 - TIP_MARGIN);
+    var middle = at.left + at.width / 2;
+    if (middle - half < TIP_MARGIN) gate.setAttribute('data-edge', 'left');
+    else if (middle + half > window.innerWidth - TIP_MARGIN) gate.setAttribute('data-edge', 'right');
+    else gate.removeAttribute('data-edge');
+  }
+
+  function onTipOpen(e) {
+    var el = e.target.closest && e.target.closest('.tip, .gate');
+    if (!el) return;
+    if (el.classList.contains('gate')) placeGate(el);
+    else requestAnimationFrame(function () { placeTip(el); }); // after the style that shows it has been applied
+  }
+  document.addEventListener('mouseover', onTipOpen);
+  document.addEventListener('focusin', onTipOpen);
+
   /* ------------------------------- confirm -------------------------------- */
 
   // A button that asks before it acts opens a <dialog> with an invoker command, which a current browser does without script.

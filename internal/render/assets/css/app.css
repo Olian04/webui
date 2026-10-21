@@ -942,6 +942,16 @@ a.side-brand:hover {
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* A reason is centred over its control, and anchored to the near side when script finds the control at an edge of the window. */
+.gate[data-edge='left']:hover::after {
+  left: 0;
+  transform: none;
+}
+.gate[data-edge='right']:hover::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
 .gate:hover::after {
   content: attr(data-guard);
   position: absolute;
@@ -955,7 +965,9 @@ a.side-brand:hover {
   font-weight: 400;
   padding: 5px 8px;
   border-radius: 2px;
-  white-space: nowrap;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 16px));
+  white-space: normal;
   z-index: 50;
   pointer-events: none;
   box-shadow: var(--shadow);

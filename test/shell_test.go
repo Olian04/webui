@@ -154,3 +154,28 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assert.False(t, strings.Contains(plainPage, "theme."))
 	assert.False(t, strings.Contains(plainPage, "/_webui/logo"))
 }
+
+// A popover stays inside the window: script moves a description's popover back in when its icon is near an edge, and a reason on a
+// gated control is anchored to the near side; the stylesheet gives the reason a width it can be anchored with.
+func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{}.MustCompile("/admin")
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	for _, want := range []string{
+		"function placeTip(tip)",
+		"window.innerWidth - TIP_MARGIN - r.right",
+		"body.style.bottom = 'calc(100% + 6px)'",
+		"function placeGate(gate)",
+		"gate.setAttribute('data-edge', 'left')",
+		"gate.setAttribute('data-edge', 'right')",
+		"document.addEventListener('mouseover', onTipOpen)",
+		"document.addEventListener('focusin', onTipOpen)",
+	} {
+		assert.Contains(t, js, want)
+	}
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".gate[data-edge='left']:hover::after {\n  left: 0;\n  transform: none;\n}")
+	assert.Contains(t, css, ".gate[data-edge='right']:hover::after {\n  left: auto;\n  right: 0;\n  transform: none;\n}")
+	assert.Contains(t, css, "width: max-content;\n  max-width: min(280px, calc(100vw - 16px));\n  white-space: normal;")
+}

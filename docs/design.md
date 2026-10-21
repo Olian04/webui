@@ -583,3 +583,10 @@ different product.
 - Descriptions are the information icon's accessible name and also appear in a
   popover on hover and focus, so they are available to assistive technology and
   not only to a pointer.
+- A popover stays inside the window. A description's opens to the right of its
+  icon and below it; with script it is moved left until its right edge is inside the
+  window (8px margin), and above the icon when there is no room below (the
+  status bar's 26px counts). A reason on a control that is not allowed is centred
+  over it, and anchored to the near side when the control is at an edge, with a
+  width that is at most 280px, wrapped. Without script they open where the
+  stylesheet puts them, which is the cost of not measuring.
