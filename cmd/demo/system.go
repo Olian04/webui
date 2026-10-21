@@ -113,26 +113,8 @@ var (
 	}
 )
 
-// OverviewToolbar is the status of the collector at a glance, in the row that is a Toolbar: links to where to go and a button that
-// does something at the left, and the values of the system, read-only, at the right. A toolbar has no inputs. When the page is too
-// narrow for both at the edges they flow together from the left.
+// OverviewToolbar is the status of the collector at a glance, in the row that is a Toolbar: the values of the system, read-only, from the
+// left edge. A toolbar has no inputs; it is only values here, and so it has no form either.
 var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
-	Left: []webui.ToolbarItem[webui.NoArgs]{
-		webui.Link[webui.NoArgs, webui.NoArgs]{
-			Label: "Devices", Role: webui.RolePrimary, Page: DevicesPath,
-			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
-		},
-		webui.Link[webui.NoArgs, webui.NoArgs]{
-			Label: "Alerts", Page: AlertsPath,
-			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
-		},
-		webui.Action[webui.NoArgs]{
-			Label: "Run health check",
-			Guard: canEdit[webui.NoArgs],
-			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
-				return webui.Success("Health check passed"), nil
-			},
-		},
-	},
-	Right: []webui.ToolbarItem[webui.NoArgs]{overviewHealth, overviewVersion, overviewUptime, overviewQueue, overviewDisk},
+	Left: []webui.ToolbarItem[webui.NoArgs]{overviewHealth, overviewVersion, overviewUptime, overviewQueue, overviewDisk},
 }
