@@ -240,8 +240,8 @@ design element.
   reads as "nothing is stored": the input's placeholder is a row of bullets, always eight, so that neither the
   value nor its length is in the page, in place of the accessor's own `Placeholder`, which is shown when nothing is stored. It
   is a placeholder and not a `value` made of bullets, which would be submitted and stored, and the standard way to show text in
-  an empty input. The only thing the page learns of a secret is a yes or no (which asks `Load` whether it
-  returned something).
+  an empty input. The only thing the page learns of a secret is a yes or no, which is got by asking `Load` whether it
+  returned something.
 
 - **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
   type, so its rules, placeholder and `Store` come with it. What a text area cannot do is refused when the app compiles:
