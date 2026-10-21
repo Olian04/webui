@@ -34,7 +34,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
-| `Toolbar` | A row of controls with no frame: buttons, links and inputs for the page's arguments, wrapping, with the buttons and the inputs' bottoms aligned |
+| `Toolbar` | A row of controls with no frame: buttons, links and the values of the page's arguments, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons' |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
@@ -402,11 +402,11 @@ critical role.
 ### `Toolbar` → controls for the page
 
 A button is the same button as a form's, in the same three roles, small, with the same disabled-with-a-reason when its `Guard`
-refuses. A `Link` in a toolbar is the same button as an anchor. An input is the accessor's own input under its label, with
-the rules in the popover beside it; the inputs of a toolbar are not in the form of the buttons but have a form of their own, by
-the `form` attribute, so that they can be in any order among them. That form is a GET to the page with the rest of the
-address, so without script each input has an *Apply* button joined to it, at its right, as one control, and with script a change is
-applied by itself and the buttons are gone. `Left` and `Right` are one row with a gap between the groups that takes what is left
+refuses. A `Link` in a toolbar is the same button as an anchor. An accessor is a value of the page's arguments, read: its label
+(dim, with a colon) and the value as a read-only form field shows it (badges, a number with its `Format`, a link, a dash for nothing), with
+its `Help` in the popover beside the label. A `Store` on it does nothing. There are no inputs: nothing in a toolbar changes the page's
+arguments, so there is no form for them, no *Apply* button and no address that applies them; the buttons post in one form, and a toolbar
+of links and values has no form at all. `Left` and `Right` are one row with a gap between the groups that takes what is left
 over; when there is not room for every control in a row, which script measures, the gap goes and the controls flow from the left in
 rows, as one group.
 

@@ -108,7 +108,7 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 	assert.False(t, strings.Contains(serve(table, http.MethodGet, "/admin/t").Body.String(), "Not in a table."))
 }
 
-func TestHelpIsOnAToolbarInput(t *testing.T) {
+func TestHelpIsOnAToolbarValue(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{

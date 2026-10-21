@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
 
 // The device id is a path argument, so each device has its own address. The query
-// argument has a control on the page, a Toolbar, and also arrives in the address:
+// argument arrives in the address, from a link:
 //
 //   - Minutes narrows what the Raw events tab shows (the alerts link here with ?minutes=15)
 //
@@ -135,8 +134,8 @@ const DevicesPath webui.PageID[webui.NoArgs] = "/device"
 var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
-	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device, a button
-	// that does something, and, on the Raw events tab of a device, an input for the page's arguments.
+	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device and a button
+	// that does something.
 	Body: webui.Stack{DevicesToolbar, DevicesTable},
 }
 
@@ -253,32 +252,8 @@ var Details = webui.Page[DeviceArgs]{
 	// Overview, needs no parameter.
 	Body: webui.Tabs{Panels: []webui.Tab{
 		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
-		// The page's Minutes, which only a link could set, as an input of a toolbar that is inside the tab it is for: Load reads
-		// it from the arguments and Store writes the visitor's to them, and the page that comes of it is the visitor's
-		// address, which they can copy, with this tab still selected.
-		{Label: "Raw events", Body: webui.Stack{
-			webui.Toolbar[DeviceArgs]{Left: []webui.ToolbarItem[DeviceArgs]{EventWindow}},
-			RawEvents,
-		}},
+		{Label: "Raw events", Body: RawEvents},
 	}},
-}
-
-// EventWindow is an input for an argument of the page: the minutes that the events cover. Nothing chosen is all of them.
-var EventWindow = webui.Select[DeviceArgs]{
-	Label: "Events from",
-	Load: func(a DeviceArgs) []string {
-		if a.Minutes == 0 {
-			return nil
-		}
-		return []string{strconv.Itoa(a.Minutes)}
-	},
-	Store: func(a *DeviceArgs, v []string) {
-		a.Minutes = 0
-		if len(v) == 1 {
-			a.Minutes, _ = strconv.Atoi(v[0])
-		}
-	},
-	Options: []webui.Option{{Value: "15", Label: "The last 15 minutes"}, {Value: "30", Label: "The last 30 minutes"}, {Value: "60", Label: "The last hour"}},
 }
 
 var DeviceForm = webui.Form[Device]{

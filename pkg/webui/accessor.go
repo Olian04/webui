@@ -411,6 +411,8 @@ func (a URL[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
+func (URL[M]) toolbarItem(M) {}
+
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
 // "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and filters it
