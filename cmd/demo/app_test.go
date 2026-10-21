@@ -56,7 +56,9 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	rec := get(h, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
 	assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
-	assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it
+	assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it, as the values of a toolbar
+	assert.Contains(t, rec.Body.String(), `<span class="toolbar-lbl">Health</span>`)
+	assert.Contains(t, rec.Body.String(), `<span class="toolbar-lbl">Queue depth</span>`)
 
 	// Without the slash the server's mux adds it.
 	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")

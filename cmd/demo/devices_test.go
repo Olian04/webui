@@ -137,18 +137,12 @@ func TestTheDeviceThatIsCreatedHasAnAddressOfItsOwn(t *testing.T) {
 	assert.Equal(t, get(h, rec.Header().Get("Location")).Code, http.StatusOK)
 }
 
-// A page's argument that only a link sets is shown as a value in a toolbar inside the tab it is for: it is read, not an input.
-func TestTheEventsOfADeviceShowTheMinutesArgumentAsAValueInAToolbar(t *testing.T) {
+// The Raw events tab is the events and nothing above them: its window is the page's Minutes argument, which only a link sets.
+func TestTheRawEventsTabHasNoToolbar(t *testing.T) {
 	h := handler(t)
-	// The value is in the Raw events tab, which it is for, and not on the page.
-	overview := get(h, "/admin/device/dev_27c38b").Body.String()
-	assert.False(t, strings.Contains(overview, "Events from"))
 	raw := get(h, "/admin/device/dev_27c38b?minutes=30&tabs.tab=raw-events").Body.String()
-	assert.Contains(t, raw, `<span class="toolbar-lbl">Events from</span> <span class="toolbar-val"><span class="badges"><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>The last 30 minutes</span></span></span>`)
-	// With no minutes it says there is none, and the toolbar has nothing to submit.
-	all := get(h, "/admin/device/dev_27c38b?tabs.tab=raw-events").Body.String()
-	assert.Contains(t, all, `<span class="toolbar-lbl">Events from</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
-	assert.False(t, strings.Contains(raw, "_toolbar"))
+	assert.False(t, strings.Contains(raw, "data-toolbar"))
+	assert.False(t, strings.Contains(raw, "Events from"))
 }
 
 // A device has notes, in a text area: its lines are kept, and a line break is one character whatever the browser sent.

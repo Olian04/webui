@@ -41,7 +41,7 @@ var System = webui.Page[webui.NoArgs]{
 	Body: SystemStatus,
 }
 
-// SystemStatus is also on the landing page.
+// SystemStatus is the status page.
 var SystemStatus = webui.Form[SystemInfo]{
 	Title:  "Collector",
 	Desc:   "A Form with no Submit: read-only, nothing to save.",
@@ -88,5 +88,51 @@ var Audit = webui.Page[webui.NoArgs]{
 // root goes to the first page it can find that needs no arguments, with a warning.
 var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
-	Body: webui.Stack{SystemStatus, SitesTable},
+	Body: webui.Stack{OverviewToolbar, SitesTable},
+}
+
+// The values of the landing page's toolbar are accessors of the page's arguments, which this page has none of: their Load reads
+// the system instead, which a toolbar may do, since a value is only read. A Store would do nothing here, and none is given.
+var (
+	overviewHealth = webui.Select[webui.NoArgs]{
+		Label: "Health",
+		Load:  func(webui.NoArgs) []string { return []string{service.System().Health} },
+		Options: []webui.Option{
+			{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}, {Value: "down", Tone: webui.ToneCritical},
+		},
+	}
+	overviewVersion = webui.String[webui.NoArgs]{Label: "Version", Load: func(webui.NoArgs) string { return service.System().Version }}
+	overviewUptime  = webui.String[webui.NoArgs]{Label: "Uptime", Load: func(webui.NoArgs) string { return service.System().Uptime }}
+	overviewQueue   = webui.Int[webui.NoArgs]{
+		Label: "Queue depth", Help: "Events that are waiting to be written.",
+		Load: func(webui.NoArgs) int { return service.System().Queue },
+	}
+	overviewDisk = webui.Slider[webui.NoArgs]{
+		Label: "Disk used (%)", Min: 0, Max: 100,
+		Load: func(webui.NoArgs) float64 { return service.System().DiskUsed },
+	}
+)
+
+// OverviewToolbar is the status of the collector at a glance, in the row that is a Toolbar: links to where to go and a button that
+// does something at the left, and the values of the system, read-only, at the right. A toolbar has no inputs. When the page is too
+// narrow for both at the edges they flow together from the left.
+var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
+	Left: []webui.ToolbarItem[webui.NoArgs]{
+		webui.Link[webui.NoArgs, webui.NoArgs]{
+			Label: "Devices", Role: webui.RolePrimary, Page: DevicesPath,
+			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
+		},
+		webui.Link[webui.NoArgs, webui.NoArgs]{
+			Label: "Alerts", Page: AlertsPath,
+			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
+		},
+		webui.Action[webui.NoArgs]{
+			Label: "Run health check",
+			Guard: canEdit[webui.NoArgs],
+			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
+				return webui.Success("Health check passed"), nil
+			},
+		},
+	},
+	Right: []webui.ToolbarItem[webui.NoArgs]{overviewHealth, overviewVersion, overviewUptime, overviewQueue, overviewDisk},
 }
