@@ -77,7 +77,7 @@ type FileInfo struct {
 	URL string
 
 	// Thumbnail is where the app serves a small picture of the file, if it is an image: a path on this site, which is shown beside
-	// the name, at 32 pixels, and opens the file at its full size (URL) in a dialog when it is clicked. The library never shows the
+	// the name, at 32 pixels, and, when the file has a URL too, opens it at its full size in a dialog when it is clicked. The library never shows the
 	// file itself as a thumbnail, which would send the visitor the whole of an image to see a few pixels of it, so without a Thumbnail
 	// there is no picture. [Thumbnail] makes one from an [Upload].
 	Thumbnail string
@@ -129,11 +129,10 @@ type Upload struct {
 // The file is checked by what it holds, and its size, before Store sees it. A page that has a File reads the body of a
 // submission as multipart, up to the sum of the files' MaxSize and the usual limit, after the page's Guard has run, so a visitor
 // that the page refuses has nothing read from them. An action's own Guard runs after the form has been bound, so the file
-// has been received when it refuses. A program that takes uploads sets ReadTimeout and WriteTimeout on its server, which a long
-// upload would otherwise only be bounded by the header timeout of.
+// has been received when it refuses. A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
 //
-// It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar], whose inputs are the page's
-// arguments in its address, and an [Editor]'s content is a [String] by its type.
+// It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar], which shows values and
+// has only a name to show of a file, and an [Editor]'s content is a [String] by its type.
 type File[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the column in the address and in a [Query].
 	Label string

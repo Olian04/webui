@@ -10,8 +10,10 @@
 //	sites.go     a nested path, two stateful tables on one page, more search
 //	alerts.go    row and bulk actions, a destructive role, links with arguments,
 //	             every kind of outcome (success, warning, failure, then)
-//	settings.go  forms: rules, Float, Slider, a placeholder
+//	settings.go  forms: rules, Float, Slider, a placeholder, Secret, Email, Phone, Optional*
+//	uploads.go   File: a logo and a certificate, kept by the app and served as downloads
 //	system.go    a read-only form; a page guarded for editors; an unknown total
+//	overview.go  the landing page, which shows the library all at once
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context
 //

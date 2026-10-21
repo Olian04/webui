@@ -663,7 +663,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			case site.where == "Editor.Content":
 				v.add(at+" is a Secret in an editor", "An editor shows its text: use a Form with the secret as a field.")
 			case site.where == "Toolbar":
-				v.add(at+" is a Secret in a toolbar", "The inputs of a toolbar are the page's arguments, which are in the address: a secret does not belong there.")
+				v.add(at+" is a Secret in a toolbar", "A toolbar shows values and takes no input, and a secret is never shown: put it in a Form.")
 			}
 		}
 		if a.Multiline {
@@ -673,7 +673,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 			case a.Rules.StartsWith != "" || a.Rules.EndsWith != "" || a.Rules.Contains != "" || a.Rules.NotStartsWith != "" || a.Rules.NotEndsWith != "" || a.Rules.NotContains != "":
 				v.add(at+" is Multiline and has a text rule", "The text rules are checked by the browser as a pattern, which a text area has not: remove them, or check the text in Run.")
 			case site.where == "Toolbar":
-				v.add(at+" is Multiline in a toolbar", "The inputs of a toolbar are the page's arguments, which are one line each in the address.")
+				v.add(at+" is Multiline in a toolbar", "A toolbar shows one line for each value: put the text in a Form.")
 			}
 		}
 	case Email[M]:

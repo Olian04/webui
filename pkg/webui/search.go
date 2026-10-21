@@ -21,11 +21,11 @@ type Hit[A any] struct {
 
 	// Title is the result's first line. It is the one thing a result must have. What the visitor typed is matched against it to
 	// order the results: a title that is what was typed, starts or ends with it, or has it as a word, is above one that has it
-	// in the middle of a word.
+	// in the middle of a word, and that is above one that has only its characters in order, with others between them.
 	Title string
 
-	// Desc is the line beneath it, such as the device's address and site. It may be empty. It orders the results too, a
-	// little less than the Title does.
+	// Desc is the line beneath it, such as the device's address and site. It may be empty. It orders the results too, for a little over
+	// half as much as the Title does.
 	Desc string
 }
 
