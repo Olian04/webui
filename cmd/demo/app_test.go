@@ -64,8 +64,8 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 
 func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
 	body := get(handler(t), "/admin/alert").Body.String()
-	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention and archival policy</span>`) // no icon; cut short by the stylesheet, whole in its title
-	assert.Contains(t, body, `title="Retention and archival policy"`)
+	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention and archival policy for every kind of collected event</span>`) // no icon; cut short by the stylesheet, whole in its title
+	assert.Contains(t, body, `title="Retention and archival policy for every kind of collected event"`)
 	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`)) // it has the bell
 }
 
