@@ -154,3 +154,32 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assert.False(t, strings.Contains(plainPage, "theme."))
 	assert.False(t, strings.Contains(plainPage, "/_webui/logo"))
 }
+
+// The results of the search are a box that scrolls when there are more of them than the window has room for, and not a box that
+// runs out of the window.
+func TestTheSearchResultsScrollWhenThereAreMoreThanTheWindowHasRoomFor(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{}.MustCompile("/admin")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "max-height: calc(100vh - var(--topbar-h) - 26px - 24px);\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.palette.open {")
+}
+
+// A label that is wider than the sidebar is cut short with an ellipsis, in the entry, the brand and the caption, and is the
+// whole of it in the title; the stylesheet says so, and the icon that keeps its size beside the label is not one of them.
+func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{Brand: webui.Brand{Name: "A name that is far too long for the sidebar to hold"}, Pages: webui.Pages{
+		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "An entry that is far too long for the sidebar to hold", Section: "A caption that is far too long for the sidebar to hold"}, Body: webui.Stack{}},
+	}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/a").Body.String()
+	assert.Contains(t, body, `title="An entry that is far too long for the sidebar to hold"`)
+	assert.Contains(t, body, `title="A caption that is far too long for the sidebar to hold"`)
+
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	cut := "min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}"
+	assert.Contains(t, css, ".nav-item > span:not(.ni) {\n  "+cut)
+	assert.Contains(t, css, "white-space: nowrap;\n}\n.side-scroll") // the brand's name is cut too
+	assert.Contains(t, css, "padding: 14px 12px 5px;\n  /* A caption wider than the sidebar is cut short; its whole is its title. */\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}")
+}
