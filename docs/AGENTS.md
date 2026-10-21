@@ -148,7 +148,7 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **Why it is not kept**
 
-- A worker is storage on the visitor's device (ePrivacy Article 5(3)), and a loading screen is a speed-up, not something the service needs. "One cookie and two `localStorage` values" in the README would stop being true, and an operator could be asked for consent for it. It would need an opt-in on `App`, which is a public API.
+- A worker is storage on the visitor's device (ePrivacy Article 5(3)), and a loading screen is a speed-up, not something the service needs. "One cookie and three `localStorage` values" in the README would stop being true, and an operator could be asked for consent for it. It would need an opt-in on `App`, which is a public API.
 - It helps only a visitor who ran script before: a worker is registered by script, so a first visit gets no shell, and a visitor who never runs script never does. With script off later, the refresh hand-off still works, so it is correct, but it is a loading screen for few.
 - It needs special cases that every later change has to keep: only the addresses the app's pages own (a root mount would otherwise hold the host's `/login`), an export address (a download leaves the shell on screen for good, as does any link to an attachment), a guard against a hand-off that does not match (a loop of shells and requests, seen with navigation preload), and a `try` that falls back to the network, since a worker that breaks every navigation stays on the visitor's browser until it is replaced.
 - Navigation preload cannot be used: the preload response is gone once the event has answered, so using it for a late hand-off sends the request twice, which builds the page twice and loses the toast.

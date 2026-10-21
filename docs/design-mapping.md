@@ -17,7 +17,7 @@ into existence, and nothing is configured twice.
 
 | Type | Becomes |
 |---|---|
-| `App` | The shell: sidebar, top bar (breadcrumbs, search, refresh), content, status bar |
+| `App` | The shell: sidebar (with script its edge can be dragged to a width of 180 to 480px, which the browser keeps), top bar (breadcrumbs, search, refresh), content, status bar |
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
 | `Theme` | The four colours an app may restyle (`Accent`, `OK`, `Warning`, `Critical`), emitted as `theme.css` |
 | `Page` | One address, one screen |

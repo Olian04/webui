@@ -169,11 +169,16 @@ Four fixed regions. Only the content region scrolls.
 
 ### Sidebar
 
-Fixed 240px on the left, panel surface, full height, always visible. It never
+240px on the left unless a visitor has dragged it (180px to 480px, never more than half the
+window), panel surface, full height, always visible. It never
 becomes a top bar and never turns into a hamburger — below 820px it collapses
 to a 56px icon rail instead, and a button in its footer collapses it to the same
 rail at any width (the choice is a browser preference). The structure of the
 application is the one thing that should not disappear.
+
+Its right edge is a handle, with script: a 7px hit area over the border, a `col-resize` cursor, and a 2px
+line in the accent colour on hover, on keyboard focus and while it is dragged. It is a window splitter: the arrow keys
+move it, Home and End go to the ends, and Enter or a double click puts it back to 240px. The rail has no handle.
 
 Contents, top to bottom: brand mark and product name (48px, matching the top
 bar so the two align); grouped navigation; a footer pinned to the bottom.
