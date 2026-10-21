@@ -610,6 +610,68 @@
     refreshLeaf(leaf.getAttribute('data-leaf'), href, true);
   });
 
+  /* ------------------------------ description tips ------------------------------ */
+
+  // The popover of a description (an information icon) opens beside its icon, to the right and below, which is out of view for an icon near
+  // the right edge or the bottom. When it opens, script measures it and moves it back in: left until its right edge is inside, or above the icon
+  // when there is no room below. "Inside" is the window, less the status bar, and the visible part of every box that scrolls or clips and
+  // holds it, a scrollbar not being part of it: what is outside one of them is cut off, however much room the window has. Without script it
+  // opens where the stylesheet puts it.
+  var TIP_MARGIN = 8;
+  var STATUS_BAR = 26; // fixed along the bottom of the window
+
+  function clipBounds(el) {
+    var b = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight - STATUS_BAR };
+    for (var n = el.parentElement; n && n !== document.documentElement; n = n.parentElement) {
+      var style = getComputedStyle(n);
+      if (style.overflowX === 'visible' && style.overflowY === 'visible') continue;
+      var r = n.getBoundingClientRect();
+      b.left = Math.max(b.left, r.left + n.clientLeft);
+      b.top = Math.max(b.top, r.top + n.clientTop);
+      b.right = Math.min(b.right, r.left + n.clientLeft + n.clientWidth);
+      b.bottom = Math.min(b.bottom, r.top + n.clientTop + n.clientHeight);
+    }
+    return b;
+  }
+
+  function placeTip(tip) {
+    var body = $('.tip-body', tip);
+    if (!body) return;
+    body.style.left = body.style.top = body.style.bottom = '';
+    var r = body.getBoundingClientRect();
+    if (!r.width) return; // not shown
+    var inside = clipBounds(tip);
+    var shift = 0;
+    if (r.right > inside.right - TIP_MARGIN) shift = inside.right - TIP_MARGIN - r.right;
+    if (r.left + shift < inside.left + TIP_MARGIN) shift = inside.left + TIP_MARGIN - r.left;
+    if (shift) body.style.left = body.offsetLeft + shift + 'px';
+    if (r.bottom > inside.bottom - TIP_MARGIN && tip.getBoundingClientRect().top - r.height - 6 > inside.top + TIP_MARGIN) {
+      body.style.top = 'auto';
+      body.style.bottom = 'calc(100% + 6px)';
+    }
+  }
+
+  // A reason that a gated control gives (the tooltip of a control that is not allowed) is centred over it, which is out of view for one at either
+  // edge: it is anchored to the side that is near the edge instead.
+  function placeGate(gate) {
+    var inside = clipBounds(gate);
+    var at = gate.getBoundingClientRect();
+    var half = Math.min(140, (inside.right - inside.left) / 2 - TIP_MARGIN);
+    var middle = at.left + at.width / 2;
+    if (middle - half < inside.left + TIP_MARGIN) gate.setAttribute('data-edge', 'left');
+    else if (middle + half > inside.right - TIP_MARGIN) gate.setAttribute('data-edge', 'right');
+    else gate.removeAttribute('data-edge');
+  }
+
+  function onTipOpen(e) {
+    var el = e.target.closest && e.target.closest('.tip, .gate');
+    if (!el) return;
+    if (el.classList.contains('gate')) placeGate(el);
+    else requestAnimationFrame(function () { placeTip(el); }); // after the style that shows it has been applied
+  }
+  document.addEventListener('mouseover', onTipOpen);
+  document.addEventListener('focusin', onTipOpen);
+
   /* ------------------------------- confirm -------------------------------- */
 
   // A button that asks before it acts opens a <dialog> with an invoker command, which a current browser does without script.
