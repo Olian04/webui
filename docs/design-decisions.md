@@ -132,14 +132,13 @@ design element.
   inter-field dependencies are not expressible and need no ordering.
 - A `Pattern` runs twice, in Go on the server and in the browser as the `pattern` attribute, and the two regular
   expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and the claim that it was is what
-  this entry used to say. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (`internal/rules/testdata`,
-  made by `gen.mjs`): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
+  this entry used to say. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (a corpus that is kept with the tests): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
   in the page; both accept some patterns and read them differently (`.` and `\s` match more characters in a
   browser; `[a&&b]` is an intersection under `v`); and Go reads a great deal that a browser refuses (`\pL`, `\A`, `\z`,
   `\Q..\E`, `(?i)`, `(?P<n>)`, `\_`, `\-`, `[a-]`, `[(]`, `[/]`, a loose `]` or `}`, `\x{41}`, POSIX classes).
-  So `Compile` reads the pattern itself (`portable.go`) and accepts only a subset, listed in "Text rules and patterns" in the package
+  So `Compile` reads the pattern itself and accepts only a subset, listed in "Text rules and patterns" in the package
   documentation, each part of which was held against both engines: the corpus, 380 patterns by 110 inputs, is
-  recorded in `portable.json` and the Go tests hold the library to it without a browser; a random search of 60,000
+  recorded as data and the Go tests hold the library to it without a browser; a random search of 60,000
   accepted patterns against V8 found no difference. What the engines read differently is written for Go as the
   browser reads it, not refused: `.` becomes `[^\n\r\x{2028}\x{2029}]` and `\s` the white space of a browser, tested
   against every code point. Left out on purpose and listed in the test: named groups, flags in a group (not in the
@@ -219,8 +218,7 @@ design element.
   say, in every table, form, export and page search, what a value reads and the tone it is drawn in. With `Rows` the
   filter stays the values the rows hold, as for `Options`.
 - **A select reads its options when a request is answered, by a function that the field carries.** The field carries a
-  function (`ir.Field.ChoicesFor`) and each request that needs the options asks for a copy of the form or the table with them
-  read (`Form.Resolved`, `Table.Resolved`); nothing is kept between requests, since fields are shared, and the app knows how
+  function, and each request that needs the options asks for a copy of the form or the table with them read; nothing is kept between requests, since fields are shared, and the app knows how
   long its options may be old, so a slow source is cached by the app, as for `NavEntries`. A source that fails fails the panel
   as a failed `Load` does (a POST is answered with the toast); a value that is empty, listed twice or holds the separator is the
   source's mistake and fails the same way. Counted in the metrics as a load of the kind `options`, only when there was a source
@@ -232,17 +230,17 @@ design element.
   accessor, not a type, so its rules and placeholder come with it. The stored value is kept out of the page at one place:
   its `Get` returns `""`, which is what the input, a table cell, search, sort, filters and the CSV and JSON files all read, so
   there is no second place to forget. The form that answers a refused submission would still echo what was typed, which
-  it does for every field so that the value does not look reset, so a secret is left out of the echo too (`fieldView`).
+  it does for every field so that the value does not look reset, so a secret is left out of the echo too.
   An empty submission leaves the stored value (its setter ignores `""`), since the page cannot show the value and the
   visitor cannot be asked to type it again to change something else; so a `Secret` cannot be `Required`, which would say
   both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
   secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (a toolbar shows values, and there is nothing to show).
   The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
 - **A secret that has a value says that it has one, and nothing of it.** That there *is* a value is shown, since an empty box
-  reads as "nothing is stored": the input's placeholder is a row of bullets, always eight (`storedBullets`), so that neither the
+  reads as "nothing is stored": the input's placeholder is a row of bullets, always eight, so that neither the
   value nor its length is in the page, in place of the accessor's own `Placeholder`, which is shown when nothing is stored. It
   is a placeholder and not a `value` made of bullets, which would be submitted and stored, and the standard way to show text in
-  an empty input. The only thing the page learns of a secret is a yes or no (`ir.Field.Stored`, which asks `Load` whether it
+  an empty input. The only thing the page learns of a secret is a yes or no (which asks `Load` whether it
   returned something).
 
 - **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
@@ -519,8 +517,8 @@ design element.
   set a class that removes the gap; the toolbar is watched as it resizes. Without script the gap stays, which wraps a little less
   well and works. Not done: a breakpoint in CSS, which would be right for the toolbars of one app only.
 
-- **A toolbar's buttons post, as every action does.** `_leaf` names the toolbar, `_act` the position of the item, and
-  the same `perform` runs the `Guard` and the `Run`, so a button that the `Guard` refuses is left out or disabled with the reason, and the request is
+- **A toolbar's buttons post, as every action does.** The request names the toolbar and the position of the item, and
+  the same step runs the `Guard` and the `Run` as for any action, so a button that the `Guard` refuses is left out or disabled with the reason, and the request is
   refused with it. A failure, or a reject, is a toast, as for a table action, since there are no fields to point at; a
   success returns to the address it was at, with the toast. Not done: buttons that take input of their own (a popover with fields over a new model),
   which `Form` on a page of its own already is, and which the toolbar's `Link` leads to. Also not done: a `Toolbar` field of
