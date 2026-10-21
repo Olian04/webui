@@ -291,12 +291,53 @@ func TestEachKindAcceptsItsOwnBytesAndRefusesTheOthers(t *testing.T) {
 				assert.Equal(t, rec.Code == http.StatusSeeOther, want)
 				if want {
 					assert.Equal(t, s.stores, 1)
+					assert.Equal(t, s.last.Got.Kind, kindOf(c.kind, sample)) // which kind it is, to tell what came from a field that takes several
 				} else {
 					assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 					assert.Equal(t, s.stores, 0)
 				}
 			})
 		}
+	}
+}
+
+// binaryKinds are the kinds that a file is told to be by its first bytes alone.
+var binaryKinds = map[string]webui.FileKind{"png": webui.FilePNG, "jpeg": webui.FileJPEG, "gif": webui.FileGIF, "webp": webui.FileWebP, "pdf": webui.FilePDF}
+
+// kindOf is the Kind that an upload of a sample has, from a field that takes a kind: that kind, or for the kinds that stand for
+// several, the one it is. A field that takes any file knows only the images and the PDF.
+func kindOf(accepted webui.FileKind, sample string) webui.FileKind {
+	switch accepted {
+	case webui.FileImage:
+		return binaryKinds[sample]
+	case webui.FileAny:
+		if k, ok := binaryKinds[sample]; ok {
+			return k
+		}
+		return webui.FileAny
+	}
+	return accepted
+}
+
+// A file that is more than one kind is the first of the kinds the field lists that it is.
+func TestTheKindOfAFileThatIsSeveralIsTheFirstTheFieldLists(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		accept []webui.FileKind
+		want   webui.FileKind
+	}{
+		{[]webui.FileKind{webui.FileJSON, webui.FileText}, webui.FileJSON},
+		{[]webui.FileKind{webui.FileText, webui.FileJSON}, webui.FileText},
+		{[]webui.FileKind{webui.FilePNG, webui.FileImage}, webui.FilePNG},
+	} {
+		s := newFileShop(plainFile(c.accept...))
+		content := `{"a": 1}`
+		if c.want == webui.FilePNG {
+			content = string(pngBytes)
+		}
+		assert.Equal(t, multipartPost(s.h, "/admin/f", nil, part{"f1", "x", content}).Code, http.StatusSeeOther)
+		assert.Equal(t, s.last.Got.Kind, c.want)
 	}
 }
 

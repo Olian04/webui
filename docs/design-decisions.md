@@ -267,7 +267,11 @@ design element.
   binary kinds and the whole file for JSON (exactly one value, streamed), CSV and text (UTF-8, no NUL). The type that the browser
   sends and the file's extension are the visitor's, so they are a hint (`accept=`) and nothing else: a PDF named `.png` is a PDF. There
   is no SVG kind: SVG is XML that a browser runs, so an app that takes it says `FileAny` and owns the risk, and `FileText` does not take
-  HTML or XML for the same reason. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
+  HTML or XML for the same reason. An `Upload` says what it is twice, and they are not one value: `ContentType` is a media type
+  (`image/png`, `text/csv; …`, `application/octet-stream`), which is what to serve it as and cannot be a `FileKind`, since a file
+  of no named kind has one too; `Kind` is the named kind it was found to be, for an app that takes several and wants to branch
+  (`FileAny` for none, which only a field that takes any file lets in, and never `FileImage`, which is four kinds). It is the first kind
+  in `Accept` that the file is, since a JSON file is also text. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a

@@ -125,32 +125,39 @@ func UploadName(raw string) string {
 // CheckFile checks an upload against what the field takes: that it is no larger than the field allows, and that it holds one of the
 // kinds that it accepts. The kind is what the file holds (its first bytes, and for JSON, CSV and text the whole of it), and not
 // what it is called or what the browser said, which a visitor chooses. It returns the content type that the file was found to
-// have, and the words for a file that is refused.
-func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType, message string) {
+// have, the kind that it was found to be (FileAny for a file that is none of the kinds that have a name, which only a field that takes any
+// file lets in), and the words for a file that is refused.
+func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType string, kind ir.FileKind, message string) {
 	if up.Size > spec.Max {
-		return "", "Must be at most " + Size(spec.Max) + "."
+		return "", "", "Must be at most " + Size(spec.Max) + "."
 	}
 	r, err := up.Open()
 	if err != nil {
-		return "", msgFileUnreadable
+		return "", "", msgFileUnreadable
 	}
 	head := make([]byte, 512)
 	n, err := io.ReadFull(r, head)
 	_ = r.Close()
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
-		return "", msgFileUnreadable
+		return "", "", msgFileUnreadable
 	}
 	sniffed := http.DetectContentType(head[:n])
 	accepted := kinds(spec)
 	if len(accepted) == 0 {
-		return sniffed, ""
+		// Any file: it is told apart only by what its first bytes say, which is not read through, as a kind of text would be.
+		for _, k := range []ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FilePDF} {
+			if _, ok := holds(k, sniffed, up); ok {
+				return sniffed, k, ""
+			}
+		}
+		return sniffed, ir.FileAny, ""
 	}
 	for _, k := range accepted {
 		if ct, ok := holds(k, sniffed, up); ok {
-			return ct, ""
+			return ct, k, ""
 		}
 	}
-	return "", "Choose a " + Describe(spec) + " file."
+	return "", "", "Choose a " + Describe(spec) + " file."
 }
 
 // holds is whether a file that was sniffed as a type is of the kind, and the content type that it then has.

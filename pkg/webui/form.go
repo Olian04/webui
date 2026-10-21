@@ -142,11 +142,11 @@ func bindFile(f ir.Field, base any, files *ir.Files) (message string, store func
 	}
 	switch {
 	case up != nil:
-		contentType, msg := rules.CheckFile(f.File, up)
+		contentType, kind, msg := rules.CheckFile(f.File, up)
 		if msg != "" {
 			return msg, nil
 		}
-		up.ContentType = contentType
+		up.ContentType, up.Kind = contentType, kind
 		return "", func(m any) { f.File.Store(m, up) }
 	case removed:
 		if f.Rules.Required {

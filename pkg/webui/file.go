@@ -41,9 +41,20 @@ const (
 	FileAny
 )
 
+// fileKinds are the kinds as the IR holds them, by their number.
+var fileKinds = [...]ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FileImage, ir.FilePDF, ir.FileJSON, ir.FileCSV, ir.FileText, ir.FileAny}
+
 // ir is the kind as the IR holds it.
-func (k FileKind) ir() ir.FileKind {
-	return [...]ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FileImage, ir.FilePDF, ir.FileJSON, ir.FileCSV, ir.FileText, ir.FileAny}[k]
+func (k FileKind) ir() ir.FileKind { return fileKinds[k] }
+
+// fileKindOf is the kind that the IR names. One it does not know is FileAny.
+func fileKindOf(k ir.FileKind) FileKind {
+	for i, name := range fileKinds {
+		if name == k {
+			return FileKind(i)
+		}
+	}
+	return FileAny
 }
 
 // maxFileSize is the most that a [File] may be allowed to take, which is a bound on what a mistake can ask of the server.
@@ -76,8 +87,17 @@ type Upload struct {
 	// Size is how many bytes it has.
 	Size int64
 
-	// ContentType is what the file was found to hold (see [FileKind]), and not what the browser said it was.
+	// ContentType is what the file was found to hold (see [FileKind]), and not what the browser said it was. It is a media
+	// type, as a Content-Type header has it, which is what to serve the file as.
 	ContentType string
+
+	// Kind is which of the kinds the file was found to be, to tell what arrived from a field that takes several: [FilePNG],
+	// [FileJPEG], [FileGIF], [FileWebP], [FilePDF], [FileJSON], [FileCSV] or [FileText], and never [FileImage], which is
+	// four of them. It is [FileAny] for a file that is none of those, which only a field that takes any file lets in. A field that
+	// takes any file finds the kind of an image or a PDF from its first bytes, and of nothing else, since the text kinds are
+	// read through to be told, which is not done for a file that nothing asked to be one. A CSV is also a text and a JSON file is
+	// also a text: the Kind is the one of them that the field asked for, the first in Accept that the file is.
+	Kind FileKind
 
 	// Open reads the file from its start, as often as it is called. The caller closes it.
 	Open func() (io.ReadCloser, error)
@@ -209,7 +229,7 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 				a.Store(m.(*M), nil)
 				return
 			}
-			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Open: up.Open})
+			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Kind: fileKindOf(up.Kind), Open: up.Open})
 		}
 	}
 	f.File = spec

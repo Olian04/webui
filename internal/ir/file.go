@@ -48,7 +48,8 @@ type StoredFile struct {
 type Upload struct {
 	Name        string // the base name that the visitor's browser gave it, made safe
 	Size        int64
-	ContentType string // what the file holds, as the library sniffed it, and not what the browser said
+	ContentType string   // what the file holds, as the library sniffed it, and not what the browser said
+	Kind        FileKind // which of the kinds that have a name it was found to be; FileAny for none of them
 	Open        func() (io.ReadCloser, error)
 }
 

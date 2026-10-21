@@ -220,7 +220,8 @@
 //
 // A file is of a kind by what it holds, which the library reads: the first bytes of an image or a PDF, and the whole of JSON, CSV
 // and text. What it is called, and the type that the browser says it has, are the visitor's to choose and are not trusted; the
-// words of the field name the kinds it takes ("Choose a PNG or JPEG file."). There is no kind for SVG, which a browser runs as
+// words of the field name the kinds it takes ("Choose a PNG or JPEG file."), and the [Upload] says which it was: its Kind, for what to do with
+// it, and its ContentType, a media type, for what to serve it as. There is no kind for SVG, which a browser runs as
 // a page: an app that takes it says [FileAny] and owns what follows. A file has a size limit, 5 MiB unless said, which is checked
 // with the kind before Store sees the file. Nothing chosen leaves the stored file alone, and a form that is refused stores no file
 // and says to choose it again, since a browser cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
