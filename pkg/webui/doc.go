@@ -158,7 +158,7 @@
 //				webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
 //			},
 //			Right: []webui.ToolbarItem[DevicesArgs]{
-//				webui.Select[DevicesArgs]{Label: "Site", Load: loadSite, Store: storeSite, Options: sites},
+//				webui.Select[DevicesArgs]{Label: "Site", Load: loadSite, Options: sites},
 //			},
 //		},
 //		DevicesTable,
@@ -171,13 +171,14 @@
 // An [Action] is a button that posts, and its Run is handed the page's arguments and says how it ended with an
 // [Outcome], as any action does. Its Guard decides whether the visitor may, and the same check disables the button, with
 // the reason, and refuses the request. A [Link] is a button that goes to another page, with a Label and a Role, built from
-// the page's arguments; it is a real link, so it works in a new tab and with a keyboard. An accessor with a Store, such as
-// a [Select], an [Int] or a [String], is an input for the page's arguments: Load reads its value from them, and Store
-// writes the visitor's, after which the visitor is sent to the page those arguments make, an address that can be
-// copied. It does not matter whether the argument is in the path or the query. The rules of the accessor apply, in the
-// browser and again on the server, and a [Select] may read its options with LoadOptions. An input applies itself when it
-// changes with script, and without it with an Apply button joined to the input, so that each has its own. An input that is emptied is set to nothing: Store is handed
-// the zero value. Every table of the page keeps its sort and filters and returns to its first page.
+// the page's arguments; it is a real link, so it works in a new tab and with a keyboard.
+//
+// An accessor is a value of the page's arguments, shown read-only: its Label and what its Load reads from them, as a read-only
+// form field or a table cell shows it (a [Select] as its badges, a number with its Format, a [Bool] as Yes or No, a dash when
+// there is nothing). A Store on it is ignored, as it is in a table, so one accessor serves a form, a table and a toolbar. A
+// toolbar has no inputs, and no form of its own: nothing in it changes the page's arguments, and a toolbar of links and values
+// has nothing to submit. A page whose arguments the visitor sets is for a [Form], or for [Link]s to the page with other
+// arguments.
 //
 // # Tables
 //
@@ -211,7 +212,7 @@
 // Absent is not zero. It reads as a dash, an input that is emptied is stored as nil (and a Required one refuses it), a table
 // sorts it before every number and leaves it out of a filter by range, a CSV leaves it empty and a JSON export has null.
 // A [Bool] is a choice of Yes and No with an empty one, as a [Select] is, and not a checkbox, which cannot be none of them
-// and sends nothing when it is off. A page's arguments and so a [Toolbar]'s inputs cannot be absent, so none of these is one.
+// and sends nothing when it is off.
 //
 // An Int, a Float, a Datetime and a Timestamp have a Format, a function the application
 // writes that says how the value reads where it is only read, such as a size as "1.5 GiB":

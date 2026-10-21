@@ -4,8 +4,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// editsPhone is whether a page body has a phone number that the visitor can edit: a field of a form that can be submitted, or an
-// input of a toolbar.
+// editsPhone is whether a page body has a phone number that the visitor can edit: a field of a form that can be submitted.
 func editsPhone(body ir.Node) bool {
 	found := false
 	ir.Walk(body, func(n ir.Node) {
@@ -15,10 +14,6 @@ func editsPhone(body ir.Node) bool {
 				for f := range ir.Leaves(n.Fields) {
 					found = found || (f.Set != nil && f.Rules.Format == ir.FormatTel)
 				}
-			}
-		case *ir.Toolbar:
-			for _, f := range n.Inputs() {
-				found = found || (f.Set != nil && f.Rules.Format == ir.FormatTel)
 			}
 		}
 	})

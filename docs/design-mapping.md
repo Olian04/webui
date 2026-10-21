@@ -25,7 +25,7 @@ into existence, and nothing is configured twice.
 | `Page.Crumb` | What the page's crumb reads, in the breadcrumb and the tab title, in place of the value that the path has for the segment; it names the page as the parent of one below it too, when the path has the arguments the parent needs. Asked whenever a full page is drawn, within two seconds for all of a page's crumbs, and not for a parent whose `Guard` refuses the visitor |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state; a `Refusal` it returns is the **Not found**, **Not signed in** or **Not permitted** state of its status, with its message and, when it has one, a link on |
-| `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
+| `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in. A label wider than the sidebar is cut short with an ellipsis and is whole in the entry's `title` |
 | `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
 | `Page.Search` | The page's things as a group of results in the top bar's search, beneath the app's pages: each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
 | `App.ExternalLinks` | The button in the top bar, beside Refresh, and the popover list of the app's links to places outside it behind it. An `ExternalLink` is a `Nav` entry (label, icon, section caption) with a `URL`, used as written (a web address opens in a tab of its own; the list groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
@@ -34,7 +34,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
-| `Toolbar` | A row of controls with no frame: buttons, links and inputs for the page's arguments, wrapping, with the buttons and the inputs' bottoms aligned |
+| `Toolbar` | A row of controls with no frame: buttons, links and the values of the page's arguments, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons' |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
@@ -402,11 +402,11 @@ critical role.
 ### `Toolbar` → controls for the page
 
 A button is the same button as a form's, in the same three roles, small, with the same disabled-with-a-reason when its `Guard`
-refuses. A `Link` in a toolbar is the same button as an anchor. An input is the accessor's own input under its label, with
-the rules in the popover beside it; the inputs of a toolbar are not in the form of the buttons but have a form of their own, by
-the `form` attribute, so that they can be in any order among them. That form is a GET to the page with the rest of the
-address, so without script each input has an *Apply* button joined to it, at its right, as one control, and with script a change is
-applied by itself and the buttons are gone. `Left` and `Right` are one row with a gap between the groups that takes what is left
+refuses. A `Link` in a toolbar is the same button as an anchor. An accessor is a value of the page's arguments, read: its label
+(dim, with a colon) and the value as a read-only form field shows it (badges, a number with its `Format`, a link, a dash for nothing), with
+its `Help` in the popover beside the label. A `Store` on it does nothing. There are no inputs: nothing in a toolbar changes the page's
+arguments, so there is no form for them, no *Apply* button and no address that applies them; the buttons post in one form, and a toolbar
+of links and values has no form at all. `Left` and `Right` are one row with a gap between the groups that takes what is left
 over; when there is not room for every control in a row, which script measures, the gap goes and the controls flow from the left in
 rows, as one group.
 

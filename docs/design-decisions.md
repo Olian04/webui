@@ -208,7 +208,7 @@ design element.
   An empty submission leaves the stored value (its setter ignores `""`), since the page cannot show the value and the
   visitor cannot be asked to type it again to change something else; so a `Secret` cannot be `Required`, which would say
   both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
-  secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (whose inputs are in the address).
+  secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (a toolbar shows values, and there is nothing to show).
   The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
   That there *is* a value is shown, since an empty box reads as "nothing is stored": the input's placeholder is a row of
   bullets, always eight (`storedBullets`), so that neither the value nor its length is in the page, in place of the
@@ -219,7 +219,7 @@ design element.
 - **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
   type, so its rules, placeholder and `Store` come with it. What a text area cannot do is refused when the app compiles:
   it has no `pattern` attribute, and the text rules reach the browser as one, so a `Pattern` or a text rule on a multiline
-  field is an error (check the text in `Run`), and so is one in a toolbar, whose inputs are one line each in the address.
+  field is an error (check the text in `Run`), and so is one in a toolbar, which shows one line for each value.
   `Required`, `MinLen` and `MaxLen` stay and are the browser's too. A browser sends a line break of a text area as CRLF, which
   its own `maxlength` counts as one character and `utf8.RuneCountInString` as two, so a text that the page accepted could be
   refused by the server; `bindFunc` reads CRLF as `\n` before it checks and stores, which is also what an app wants to
@@ -236,8 +236,7 @@ design element.
   empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
   unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
-  state costs. None of them is a `Toolbar` input, since a page's arguments are strings, numbers and bools that cannot be
-  nil, and an absent argument is spelt by leaving it out of the address.
+  state costs. In a `Toolbar` they are values to read, computed from the page's arguments (which are plain values, with no nil) by their `Load`.
 - **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a
   type on `String`. The first version was a typed `String.Input`, and it needed a compile error for every field of `String` that
   it could not be combined with: `Secret` and `Multiline` (inputs of their own), and for a color `MinLen`, `MaxLen`, `Pattern`
@@ -335,28 +334,23 @@ design element.
   toolbar's `Action` is the arguments, whose `Guard` can gate by them and whose `Run` reads them, and `ArgsOf(ctx)`
   gives the same. `Link[A, B]` is the existing `Link` with a `Label` and a `Role`, built from the arguments instead of
   a row. The type is checked: a `Toolbar[X]` on a page of `Y` is a compile error, so nothing is asserted wrongly at run time.
-  The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and every accessor that can have a `Store` satisfy
-  by a method that takes `A`, so an accessor of another type does not fit.
-- **The inputs of a toolbar are accessors of the arguments, applied by the server through `Store`.** The page's arguments are the
-  model, so the same `Load` and `Store` that a form's fields have are what an input is, with their rules, formats and
-  `LoadOptions`, and no second kind of input for the page. Each input is named by its position (`t0`), not by the
-  argument it is for, which a `Store` does not say; the form that applies them is a GET to the page, with the rest of the
-  current address as hidden fields and `_toolbar=<id>`; the server decodes the arguments from the address, applies the
-  inputs to them with `Store`, and redirects (303) to the page those arguments encode to. It is the arguments that are
-  encoded, so an argument in the path and one in the query are alike, a list repeats, and a zero argument is not in the
-  address. Not done, as they cost more than they give: inputs named by their argument, which a GET form could submit
-  as it is but would tie an accessor to a field by a string; and a pointer-returning accessor, which finds the field by address.
-- **What an input does with what it is given.** An empty input sets its argument to nothing, by `ir.Field.Unset`, the zero
-  value of the type that `Store` takes, since "I cleared it" is the only way to take a filter off and an `Int` has no
-  empty value to parse. The rules of the accessor are checked as a form does (`Required`, bounds, a select's options,
-  text rules), and every failure is reported: none of the inputs is applied, and the visitor is where they were, with the
-  messages in a toast. A toast rides the flash cookie, as the failure of a table action does, because the answer is
-  a redirect. Every table keeps its sort and filters, and loses its offset, which the hidden fields leave out as a
-  changed filter does: what it shows may no longer have a second page. Without script each input has an
-  *Apply* button of its own, joined to it in a group (a grid of the input and the button), so that a toolbar of several has a
-  button at each and not one apart from all of them; each submits the whole form, since the inputs belong to one. Script
-  hides them; with script a change applies it (`change`, and a slider's range, which the number
-  beside it does not hear), after the browser has checked its constraints.
+  The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and the accessors satisfy by a method that takes `A`, so an
+  accessor of another type does not fit.
+- **A toolbar shows values and has no inputs.** The first version had inputs: accessors with a `Store` that wrote the visitor's value to
+  the page's arguments, applied by the server through a GET form (`_toolbar=<id>`, inputs named by position, the rest of the address as
+  hidden fields) and a redirect to the page the arguments encode to, with an *Apply* button joined to each input without script and a
+  `change` handler with it. It was dropped, and removed outright, for what it cost against what a `Form` already is. An input
+  that changes the page needed its own form, a second request path (the GET apply beside the POST of the buttons), a second way of
+  reporting refused values (a toast on a redirect, where a form re-draws with the messages beneath the fields), position-named
+  fields, script to apply and an Apply button without, and styling for both; and a toolbar of values with no button still carried a
+  form. What remains is what a toolbar is good for: buttons, links, and the values of the page's arguments to read. An accessor in a
+  toolbar is its label and its value as a read-only form field shows it; its `Store` is ignored, as a table ignores it, so
+  the one accessor declaration serves a form, a table and a toolbar (a compile error for a `Store` there was weighed and dropped for that: it
+  would have forced a second declaration of any accessor shared with a form). A page whose arguments the visitor sets is for a `Form`,
+  or for links to the page with other arguments. The cost is that a page's argument that only a link sets, such as a window, cannot be
+  chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be an argument (`Optional*`, `Bool`, `URL`) are
+  toolbar items too, computed from the arguments by their `Load`; `Secret` and `Multiline` stay refused (nothing to read, and one line of text).
+  A toolbar with a button has one form, which posts the buttons, and one with only links and values has none.
 - **A toolbar has two groups, `Left` and `Right`, and they are one row.** A gap between the groups takes what the page has
   to spare, so the right ones are at the right edge. When there is no room for every control in a row the gap goes and
   the controls flow from the left in rows, the left ones first, as one group; the right group does not wrap as a unit onto a line

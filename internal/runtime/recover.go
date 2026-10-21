@@ -20,6 +20,13 @@ import (
 func (p *Program) recovered(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tw := &statusWriter{ResponseWriter: w}
+		// However the request ends, the sidebar's workers it started have finished when it does: a request that panicked or failed before
+		// it waited for them would otherwise leave them running past its end.
+		defer func() {
+			if req := From(r.Context()); req != nil && req.shell != nil {
+				req.shell.join()
+			}
+		}()
 		defer func() {
 			v := recover()
 			if v == nil {

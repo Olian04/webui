@@ -56,7 +56,11 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	rec := get(h, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
 	assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
-	assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it
+	assert.Contains(t, rec.Body.String(), "Disk used") // the system status on it, as the values of a toolbar
+	assert.Contains(t, rec.Body.String(), `<span class="toolbar-lbl">Health</span>`)
+	assert.Contains(t, rec.Body.String(), `<span class="toolbar-lbl">Queue depth</span>`)
+	bar := rec.Body.String()[strings.Index(rec.Body.String(), `<div class="toolbar"`):strings.Index(rec.Body.String(), `<div class="panel grows"`)]
+	assert.False(t, strings.Contains(bar, "<form") || strings.Contains(bar, "btn") || strings.Contains(bar, "toolbar-gap")) // values only, from the left
 
 	// Without the slash the server's mux adds it.
 	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")
@@ -64,8 +68,9 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 
 func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
 	body := get(handler(t), "/admin/alert").Body.String()
-	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention</span>`) // no icon
-	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`))                                   // it has the bell
+	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention and archival policy for every kind of collected event</span>`) // no icon; cut short by the stylesheet, whole in its title
+	assert.Contains(t, body, `title="Retention and archival policy for every kind of collected event"`)
+	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`)) // it has the bell
 }
 
 func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {
