@@ -131,8 +131,7 @@ design element.
   problem came from `Store` seeing `*M`; rules see only their own value, so
   inter-field dependencies are not expressible and need no ordering.
 - A `Pattern` runs twice, in Go on the server and in the browser as the `pattern` attribute, and the two regular
-  expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and the claim that it was is what
-  this entry used to say. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (a corpus that is kept with the tests): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
+  expressions are not one: RE2 is not "the intersection" of Go's and JavaScript's, and it is not. Measured, in Go 1.27 and in V8 with the `v` and the `u` flags (a corpus that is kept with the tests): a browser **ignores** a `pattern` it cannot compile, with no error, so the field is not checked
   in the page; both accept some patterns and read them differently (`.` and `\s` match more characters in a
   browser; `[a&&b]` is an intersection under `v`); and Go reads a great deal that a browser refuses (`\pL`, `\A`, `\z`,
   `\Q..\E`, `(?i)`, `(?P<n>)`, `\_`, `\-`, `[a-]`, `[(]`, `[/]`, a loose `]` or `}`, `\x{41}`, POSIX classes).
@@ -167,8 +166,7 @@ design element.
 
 ## Accessors
 
-- An accessor says how its value reads with `Format`, a function the application writes, on
-  `Int`, `Float`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
+- An accessor says how its value reads with `Format`, a function the application writes, on `Int`, `Float`, `OptionalInt`, `OptionalFloat`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
   field with no Store, and what the search looks in): sorting, filters, the range bounds, an
   editable input and the export keep the value, so a size can read "1.5 GiB" and sort as
   bytes. Considered and dropped: formats the library ships as constants (`FormatBytes`,
@@ -310,7 +308,7 @@ design element.
 
 - **A file is a `File` accessor, and the library keeps no file.** `Store` is handed an `Upload` (a base name that is made safe, a size, the
   content type that was sniffed, and `Open`, which streams from the spooled temporary file of `net/http`) and copies it where the app
-  keeps files; `Load` returns a `*FileInfo` (name, size, URL) for what is kept. The library stores and serves nothing: where a file lives
+  keeps files; `Load` returns a `*FileInfo` (name, size, URL and a thumbnail: see below) for what is kept. The library stores and serves nothing: where a file lives
   (disk, a bucket, a database), who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a `Store` that is handed
   the bytes (a 200 MiB file in memory, or a read that cannot be stopped), a handle that is a path (the library would own a directory),
   and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
@@ -381,8 +379,7 @@ design element.
   shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
   "Choose the file again". Dropped: keeping the upload on the server between the two requests (state to expire, and to clean up
   behind a load balancer), which is what the 422 design avoids for everything else. `Required` is met by a stored file that is not
-  being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a
-  toolbar item, whose inputs were the page's arguments in its address.
+  being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a toolbar item: a toolbar shows values, and a file has only a name to show.
 
 ## Guards and refusals
 
@@ -419,11 +416,9 @@ design element.
   is (a `RowClick` `Link` asks the destination page's `Guard` once for each row, which for a `Guard` that reads a database is a
   read for each); the column of row buttons is there when some row of the window has one, so it comes and goes between the pages
   of a table; a `Link` is left out whichever error the destination's `Guard` returns, since `Disabled` has no meaning
-  for a page. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
+  for a page; a `RowClick` action that is refused leaves the row shown and doing nothing, since it has no button to leave out or to disable, whichever error says so; and a bulk action whose `Guard` refuses every row is disabled with the first message that was given, or left out if none was. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
   an application bug, which leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action
-  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. The tooltip of a disabled control opens
-  above it, so script moves it below when there is no room above (the first row of a table, whose header is over it, or a toolbar), and
-  raises the cell that holds it over the next row's buttons; without script it opens above, as before, and the first row's is cut off.
+  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. 
 
 ## Actions and outcomes
 
@@ -529,7 +524,7 @@ design element.
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
   grow without bound, and every column is sortable and filterable unless its accessor says `NoSort` or
-  `NoFilter` (below). A table says where
+  `NoFilter` (see Accessors). A table says where
   its rows come from with one of three fields. `Rows` returns every row and the
   library filters, sorts and pages them from the columns' own accessors, a number
   as a number and text as text, so a table over a slice has no query code at all.
@@ -556,7 +551,7 @@ design element.
   header shows a filter icon; it opens a form that is a plain GET, so it works
   without script. A column with a fixed set of options — a `Select`, whose options
   are the ones it lists, in that order — gets a multi-select of exactly those, a numeric
-  column (`Int`, `Float`, `Slider`) a minimum and a maximum, and every other
+  column (`Int`, `Float`, `Slider`) or a moment (`Datetime`, `Timestamp`) a minimum and a maximum, and every other
   column a text input. `Load` receives them in `Query.Filters` (the options
   chosen, or the one text typed) and `Query.Ranges` (a `Range{Min, Max *float64}`,
   inclusive, either end optional), keyed like `Query.Sort`. A number is compared
@@ -565,8 +560,7 @@ design element.
   number and a column the table does not have never arrive, and a typed filter is
   cut at 200 characters. A multi-select is repeated parameters
   (`devices.filter.status=a&devices.filter.status=b`), which is also what a form
-  of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. The page has no row of argument controls:
-  its query arguments come from the address (a link, `Open`) and have no UI.
+  of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. Nothing on the page sets its query arguments: they come from the address (a link, `Open`), and a `Toolbar` can show their values but not change them.
 - A link inside a panel that changes only that panel's arguments
   fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
   without script it is an ordinary navigation. The page `Guard` runs on every
@@ -593,8 +587,7 @@ design element.
   that nothing outside the leaf can read or set that state — `Guard` and
   sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
   sorted table.
-- `Rows` is searched and filtered by the library from the accessors' own values
-  (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
+- `Rows` is filtered and sorted by the library from the accessors' own values (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
   in the address and in `Query`, lower-cased with dashes in the address; there is no
   key to declare, and `Compile` refuses labels that collide.
 
@@ -619,8 +612,7 @@ design element.
   `X-Webui-Export-Truncated` header, with the number of rows the file has, since a note
   in the file would be data. The whole
   file is built in memory before it is written: a failure half way could not change the
-  status, and the cap bounds it. Global search is not part of the address, so it is not
-  honoured.
+  status, and  the cap bounds it.
 - What a cell holds is decided once, for both files. CSV is the text the table shows, so
   it is what the person saw, except that a number is a number, an address is the address
   and not the words that link to it, and any other text that starts with `=`, `+`, `-`,
@@ -734,9 +726,7 @@ design element.
   needs a query argument only when the page carries the same one. When
   several fit, the one with the most arguments wins, so a general entry is not lit beside
   a more particular one.
-- Entries and search results whose page `Guard` refuses the visitor are left out; the
-  guards are asked with no arguments, as a visitor who opened the page bare would be.
-  The page still answers 403 to anyone who types the address. A `Guard` that panics
+- Sidebar entries whose page `Guard` refuses the visitor are left out; the `Guard` is asked with no arguments, as a visitor who opened the page bare would be. (A search result is checked with its own arguments: see Search.) The page still answers 403 to anyone who types the address. A `Guard` that panics
   when asked this way hides its entry like one that refuses, and the cause is logged
   with the page: the question is asked while every full page is drawn, the
   server-error page included, so a panic there would take down the page that
@@ -888,21 +878,16 @@ design element.
 
 ## The status bar
 
-- The bar says how the page came to be: the server's build time, the browser's load time,
-  and when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel
-  response so the browser's own tools and the script read the same numbers. The build
-  time is measured from the request's arrival at the app to the moment the document is
-  rendered, so it includes the application's loaders and not the writing of the response.
+- The bar says how the page came to be: the server's render time, the delivery time after it (the network, the assets and the browser) and, without script only, when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel response so the browser's own tools and the script read the same numbers. The render time is measured from the request's arrival at the app to the moment the document is rendered, so it includes the application's loaders and not the writing of the response.
 - **JS off** is a `<noscript>` badge, so it is there exactly when script is off and costs
   nothing otherwise. It says what degrades, in its title.
-- **cached?** is a guess, and says so. A page is built for each request and sent
+- **stale page** is a guess, and says so. The badge is hidden unless the page looks stale, and its title says why. A page is built for each request and sent
   `no-store`, so one whose build time is more than 15 seconds before it was opened was
   probably not built for that request: a cache, a proxy or a DNS answer put a copy between
   the server and the viewer. The browser cache is detected from Navigation Timing (a
   transfer of zero bytes that is not a reload), and a page restored from the back-forward
   cache says so. What it costs: the comparison is between the server's clock and the viewer's,
-  so a computer whose clock is a minute off shows the badge on every page, and one that is behind shows
-  the time with no age; the title of the badge says this. A way to know without trusting
+  so a computer whose clock is a minute off shows the badge on every page, and one that is behind is never told; the title of the badge says this. A way to know without trusting
   either clock would need a round trip to ask the server the time, which the bar is not worth.
   The build time is in the page, and not taken from the `Date` header, which the script
   cannot read for the document and which is whole seconds.
@@ -1010,7 +995,7 @@ design element.
   page whose markdown has no such block never links the editor. Colouring is
   enhancement: without script, or for a language the editor does not know, the block
   stays plain. No language service is ever offered, since the text cannot be edited.
-- goldmark is the library's second runtime dependency after templ. Writing a markdown
+- goldmark is a runtime dependency of the library, beside templ and the Prometheus client. Writing a markdown
   parser would have meant owning its edge cases, and its escaping, in a place where a
   mistake is a cross-site script. It is pure Go, and was already in the module graph
   through the linter, so it adds nothing transitive.
