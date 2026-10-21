@@ -191,9 +191,11 @@ var DevicesTable = webui.Table[Device]{
 }
 
 // NewDevicePage is the form that makes a device: a Form of a model that is new, so what it loads is a zero Device. The
-// list's Link leads here, and a Cancel or a save returns to the list.
+// list's Link leads here, and a Cancel or a save returns to the list. The page is for editors: a viewer is refused it, and the
+// list does not offer them the Link.
 var NewDevicePage = webui.Page[webui.NoArgs]{
-	Path: "/device/new",
+	Path:  "/device/new",
+	Guard: canEdit[webui.NoArgs],
 	Body: webui.Form[Device]{
 		Title: "New device",
 		Desc:  "The same fields as a device's own form, over a device that does not exist yet.",

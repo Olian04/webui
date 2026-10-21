@@ -16,8 +16,8 @@ const (
 )
 
 // Action is a mutation. Guard receives the subject: one model, or the
-// selection (a []any of models) for a bulk action. It gates the control at
-// render time and authorises the request before Run.
+// selection (a []any of models) for a bulk action. It decides whether the control is drawn
+// at render time, and authorises the request before Run.
 type Action struct {
 	Label string
 	Role  Role
@@ -28,3 +28,9 @@ type Action struct {
 	Guard func(ctx context.Context, subject any) error
 	Run   func(ctx context.Context, subject any) (Outcome, error)
 }
+
+// Disabled is the error a Guard returns to say that its control is to be drawn, disabled, with Message to say why, in place of
+// not being drawn, which is what any other error from a Guard says. Either way the Guard refuses the request.
+type Disabled struct{ Message string }
+
+func (d *Disabled) Error() string { return d.Message }

@@ -24,7 +24,7 @@ const (
 	RoleDestructive
 )
 
-// Action is a mutation of M. Guard enables the control and authorises Run.
+// Action is a mutation of M. Guard decides whether the control is drawn and authorises Run.
 // Label is the button text; a Form's Submit defaults to "Save". Run says how it
 // ended with an Outcome (Success, Warning, Failure or Reject), or an error for
 // something the user cannot fix.
@@ -42,16 +42,17 @@ type Action[M any] struct {
 	// supplies the same for an older one, and an older one with no script cannot open it, and so cannot
 	// do the action. It asks the visitor and no one else: a request made by hand is not asked, and an action
 	// that must not happen is refused by its Guard. A form that has one is not submitted by pressing Enter in a
-	// field, which would not ask. A button that is refused by its Guard is disabled with its reason, and has no
-	// dialog. It cannot be set on a Table's RowClick, which has no button.
+	// field, which would not ask. A button that is refused by its Guard has no dialog. It cannot be set on a
+	// Table's RowClick, which has no button.
 	Confirm string
 
-	// Guard decides whether the visitor may do this. It receives the action's
-	// subject, and the same check disables the button, with its reason shown, and
-	// authorises the request, so there is no control that looks available and then
-	// fails. A bulk action's subject is the selection. A form's Submit that the
-	// visitor is refused is not drawn at all: the form is shown read-only, with a
-	// Back button in place of Save and Cancel.
+	// Guard decides whether the visitor may do this. It receives the action's subject, and the same check
+	// authorises the request and decides how the control is drawn, so there is no control that looks available
+	// and then fails. An error that it returns leaves the control out; [Disabled] draws it disabled, with its message.
+	// A bulk action's subject is the selection, which does not exist when the table is drawn: the control is drawn if
+	// the Guard accepts a selection of any one row of the window, so it must accept one. A form's Submit that the
+	// visitor is refused, whichever error says it, is not drawn at all: the form is shown read-only, with a Back
+	// button in place of Save and Cancel.
 	Guard func(ctx context.Context, m M) error
 
 	// Run does it, and says how it ended with an [Outcome]. An error is for
@@ -59,6 +60,14 @@ type Action[M any] struct {
 	// sees that something went wrong.
 	Run func(ctx context.Context, m M) (Outcome, error)
 }
+
+// Disabled is the error that a Guard returns to have its control drawn, disabled, with message to tell the visitor why: "Already
+// granted", "Needs a second approver". Any other error from a Guard leaves the control out, as if it were not there, and a
+// visitor who may not do something does not see it. Which of the two is right is the application's to say, with what its Guard
+// returns, since only it knows whether the visitor ought to know that the control exists. Either way the Guard refuses a request
+// that is made by hand, and the message is the one that the visitor is shown. It is for a button's Guard: a page's Guard that
+// returns it refuses the visitor with 403 and the message.
+func Disabled(message string) error { return &ir.Disabled{Message: message} }
 
 // validateAction checks what every action needs. needLabel is false only for a
 // Form's Submit and a row's click, which have a default or no button.

@@ -324,9 +324,28 @@ design element.
 - The re-render after a rejection must echo the raw submitted input, not the
   model value, or the user's bad input disappears and the form looks like it
   reset.
-- Bulk-action gating: `Action[[]Device].Guard` receives the selection, so
-  gating happens at execution rather than per-row at render. Row actions are
-  gated at render, per row, by the same `Guard` that authorises the POST.
+- Row actions are decided at render, per row, by the same `Guard` that authorises the POST. A bulk action's `Guard` receives the
+  selection, which does not exist yet: it is asked of each row as a selection of one, and the button is drawn if it accepts any (see
+  *A Guard's result decides how its control is drawn*).
+
+- **A Guard's result decides how its control is drawn.** An action's `Guard` returns an error to refuse, and what the error is
+  says the rest: an ordinary one leaves the control out; `webui.Disabled(message)` draws it disabled, with the message in a
+  tooltip. Either way the same `Guard` refuses the POST, and for a request made by hand its message is the toast. It applies to a table's row
+  actions, its bulk actions, a toolbar's buttons and a `Link` (which is left out when the page it leads to refuses the visitor, the way the
+  sidebar leaves out an entry). Dropped: a field on `Action` (`HideWhenGuarded`, `DisabledMessage`) for what the
+  `Guard` already knows, since a field is a second place to say it and cannot depend on the row; one rule for every control,
+  hiding or disabling (hiding is right for a viewer who has no business with an editor's buttons, disabling for "Already granted", and no
+  rule is right for both); and a separate "disabled when" condition on `Action`, which is the same `Guard` said again. The costs: a
+  left-out control cannot be discovered, and its reason is seen only on a hand-made request or a refused page; a bulk `Guard` must accept a selection of
+  one, and is called for each row of the window, for each bulk action, whenever the table is drawn, as a row action's
+  is (a `RowClick` `Link` asks the destination page's `Guard` once for each row, which for a `Guard` that reads a database is a
+  read for each); the column of row buttons is there when some row of the window has one, so it comes and goes between the pages
+  of a table; a `Link` is left out whichever error the destination's `Guard` returns, since `Disabled` has no meaning
+  for a page. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
+  an application bug, which leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action
+  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. The tooltip of a disabled control opens
+  above it, so script moves it below when there is no room above (the first row of a table, whose header is over it, or a toolbar), and
+  raises the cell that holds it over the next row's buttons; without script it opens above, as before, and the first row's is cut off.
 
 - **A `Toolbar` is a row of controls for the page, and its type is the page's arguments** (`Toolbar[A]`, items of `A`).
   It is a leaf and not a panel (no frame), in a `Stack` with what it is for. What the controls are about is what a page
@@ -360,7 +379,7 @@ design element.
   well and works. Not done: a breakpoint in CSS, which would be right for the toolbars of one app only.
 
 - **A toolbar's buttons post, as every action does.** `_leaf` names the toolbar, `_act` the position of the item, and
-  the same `perform` runs the `Guard` and the `Run`, so a button that the `Guard` refuses is disabled with the reason, and the request is
+  the same `perform` runs the `Guard` and the `Run`, so a button that the `Guard` refuses is left out or disabled with the reason, and the request is
   refused with it. A failure, or a reject, is a toast, as for a table action, since there are no fields to point at; a
   success returns to the address it was at, with the toast. Not done: buttons that take input of their own (a popover with fields over a new model),
   which `Form` on a page of its own already is, and which the toolbar's `Link` leads to. Also not done: a `Toolbar` field of

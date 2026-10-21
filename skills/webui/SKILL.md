@@ -84,8 +84,10 @@ does, and they let you design before you look up names.
   warning, failure or a rejection of particular fields, and the library decides the
   message, the colour and where the user goes. Say where to go next only when you must.
 - **Gating is one rule, in one place.** A guard decides whether a visitor may open a
-  page or run an action. The same check hides or disables the control and refuses the
-  request, so there is no second rule to keep in step.
+  page or run an action. The same check draws or leaves out the control and refuses the
+  request, so there is no second rule to keep in step. What the guard returns also says how: an
+  ordinary error leaves the control out, and `webui.Disabled("why")` draws it disabled with that
+  sentence. Choose by whether the visitor ought to know that the control exists.
 
 ## How to build an app
 
@@ -150,8 +152,8 @@ next.
 - Write tests against the compiled handler with `net/http/httptest`: request a page,
   post to an action, and look at the status, the redirect and the HTML. The runnable
   examples in the documentation show the pattern.
-- Check the page as a visitor who may not do things: guarded controls, hidden entries,
-  forbidden pages.
+- Check the page as a visitor who may not do things: guarded controls that are left out or
+  disabled, hidden entries, forbidden pages, and the table or toolbar that is left with nothing.
 - After upgrading webui, read the release notes for the version, if there are any, then
   re-read the documentation and recompile. A compile error after an upgrade is usually
   an API that moved: the documentation says where it went.

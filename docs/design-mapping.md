@@ -69,12 +69,13 @@ into existence, and nothing is configured twice.
 | `Bool` | Yes, no, or not set: a drop-down of Yes and No with an empty option (a `<select>`, so it needs no script; a checkbox cannot be neither, and an unchecked one sends nothing), and a neutral Yes or No badge where it is read, with a dash for neither. Its table filter is a choice among them, and the JSON is `true`, `false` or `null` |
 | `Table.Rows`, `Table.Load` or `Table.Feed` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself; `Feed` is handed a cursor by a source that pages by cursor, in its own order, which a cursor continues and the library cannot filter, so its columns have no filter and sort only the page on screen, and its footer is "Showing rows 10032–10054" with *First page*, *Previous* and *Next* |
 | `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
-| `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected |
-| `Table.Actions` | A button per row in a trailing cell |
+| `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected. Each is drawn if its `Guard` accepts a selection of any one row of the window, and with none drawn there is no column and no bar |
+| `Table.Actions` | A button per row in a trailing cell, left out for a row whose `Guard` returns an error and disabled, with its message, for one that returns `Disabled`; the cell is empty for a row with none, and the column is there when some row of the window has a button |
 | `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
 | `Action` | A button; its `Role` decides primary / secondary / destructive |
-| `Action.Confirm` | A question asked before the action is done: the button opens a native `<dialog>` (an invoker command, `command="show-modal"`, so no script is needed in a current browser) with the question, **Cancel** and a button that is the action's own, with its `name` and `value`, inside the same form, so the request is the one the button would have made. Backdrop click and Escape close it (`closedby="any"`); Cancel has focus. In a table, one dialog for each row and action, by position and never by key. A button refused by its `Guard` is the disabled one with its reason and has no dialog. A form's Save that asks is not submitted by Enter in a field (a disabled button ahead of the dialog's is the form's default button). Not a check: a request made by hand is not asked |
+| `Action.Guard`, `Disabled` | What the `Guard` returns decides how the control is drawn, and refuses the request in either case. An error leaves the button out; `Disabled(message)` draws it at 45% with the message in a raised tooltip (the *gated* treatment). In a table's rows, its selection bar (a bulk `Guard` is asked of each row as a selection of one) and a toolbar. A form's Save is not drawn for either: the form is read-only, with *Back*. A `Guard` that panics leaves the control out and is logged |
+| `Action.Confirm` | A question asked before the action is done: the button opens a native `<dialog>` (an invoker command, `command="show-modal"`, so no script is needed in a current browser) with the question, **Cancel** and a button that is the action's own, with its `name` and `value`, inside the same form, so the request is the one the button would have made. Backdrop click and Escape close it (`closedby="any"`); Cancel has focus. In a table, one dialog for each row and action, by position and never by key. A button refused by its `Guard` has no dialog, whether it is left out or disabled. A form's Save that asks is not submitted by Enter in a field (a disabled button ahead of the dialog's is the form's default button). Not a check: a request made by hand is not asked |
 | `Success`, `Warning` | A toast, bottom-right (carried across the redirect by a flash cookie), green or amber; the action was accepted |
 | `Failure` | A red toast over the form shown again, with what was typed kept |
 | `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |
@@ -400,8 +401,9 @@ critical role.
 
 ### `Toolbar` → controls for the page
 
-A button is the same button as a form's, in the same three roles, small, with the same disabled-with-a-reason when its `Guard`
-refuses. A `Link` in a toolbar is the same button as an anchor. An accessor is a value of the page's arguments, read: its label
+A button is the same button as a form's, in the same three roles, small, left out or disabled with its reason as its `Guard`
+says. A `Link` in a toolbar is the same button as an anchor, left out when the page it leads to refuses the visitor. A toolbar with
+nothing left to draw is not drawn. An accessor is a value of the page's arguments, read: its label
 (dim, with a colon) and the value as a read-only form field shows it (badges, a number with its `Format`, a link, a dash for nothing), with
 its `Help` in the popover beside the label. A `Store` on it does nothing. There are no inputs: nothing in a toolbar changes the page's
 arguments, so there is no form for them, no *Apply* button and no address that applies them; the buttons post in one form, and a toolbar
@@ -433,7 +435,8 @@ An `Action` is for what a link cannot say: where to go depends on the row, or th
 click changes something. The row is one button, stretched over the cell as the
 anchor is, inside the table's form, so it too works without script. It is a POST,
 so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
-`Guard` refuses is shown but does nothing.
+`Guard` refuses is shown but does nothing. A `Link` to a page that refuses the visitor is a plain row, which asks that
+page's `Guard` once for each row.
 
 ### `Guard` → gating, in two places from one declaration
 
@@ -442,11 +445,12 @@ so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
 1. **On the page** — the **Not permitted** state, with the reason the `Guard`
    gave, which is for the visitor to read. The page shows nothing, because
    nothing was fetched, and does not say how the check was made.
-2. **On a control** — the *gated* treatment: 45% opacity plus a tooltip giving
-   the reason. The same check that would reject the request also disables the
-   button, so there is no second authorisation rule to keep in sync and no
-   control that looks available and then fails. A form's *Submit* is the one
-   exception: refused, it is not drawn, because a form that cannot be saved
+2. **On a control** — the control is left out, or the *gated* treatment: 45%
+   opacity plus a tooltip giving the reason, as the `Guard` returns an ordinary
+   error or `Disabled`. The same check that would reject the request decides
+   the control, so there is no second authorisation rule to keep in sync and no
+   control that looks available and then fails. A form's *Submit* has no
+   disabled form: refused, it is not drawn, because a form that cannot be saved
    is shown read-only (see `Form`).
 
 ### `Outcome`

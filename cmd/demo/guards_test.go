@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -17,10 +18,14 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), "requires the editor role")
 
-	// Gated controls: disabled, with the reason.
+	// Guarded controls: an ordinary error leaves them out, and with nothing to act with there is nothing to select with
+	// either: no checkbox column, no bar, no column of actions.
 	body := get(h, "/admin/alert").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role">`)
-	assert.Contains(t, body, `disabled>Dismiss</button>`)
+	assert.False(t, strings.Contains(body, ">Dismiss</button>"))
+	assert.False(t, strings.Contains(body, `class="gate"`))
+	for _, absent := range []string{`class="pick"`, `class="actionbar"`, `class="actions"`, `name="_sel"`} {
+		assert.False(t, strings.Contains(body, absent))
+	}
 
 	alert := get(h, "/admin/alert/alt_000").Body.String() // a form: its submit is not offered, a way back is
 	assert.False(t, strings.Contains(alert, ">Acknowledge</button>"))
@@ -33,6 +38,34 @@ func TestViewerIsRefusedWhereGuarded(t *testing.T) {
 	assert.False(t, strings.Contains(device, ">Cancel</a>"))
 	assert.Contains(t, device, `href="/admin/device">Back</a>`)
 	assert.False(t, strings.Contains(device, `name="f0_1"`)) // the IP is shown, not offered for editing
+}
+
+// An editor is offered what a viewer is not, and a Guard that says Disabled draws the button disabled, with its sentence, for the rows it
+// says it of: here a critical alert, which is acknowledged and not dismissed.
+func TestADisabledActionIsDrawnWithItsReasonAndStillRefused(t *testing.T) {
+	h := handlerAs(t, Editor)
+	body := get(h, "/admin/alert").Body.String()
+	assert.Contains(t, body, `class="pick"`)
+	assert.Contains(t, body, `class="actionbar"`)
+	assert.Contains(t, body, `<span class="gate" data-guard="A critical alert is acknowledged, not dismissed">`)
+
+	var critical, other string
+	for _, a := range service.OpenAlerts() {
+		if a.Severity == "critical" && critical == "" {
+			critical = a.ID
+		}
+		if a.Severity != "critical" && other == "" {
+			other = a.ID
+		}
+	}
+	assert.True(t, critical != "" && other != "")
+	assert.Contains(t, body, `value="row:0:`+other+`">Dismiss</button>`) // the button is a dialog's, whose own button submits
+
+	// A request that is made by hand is refused for the same reason,.
+	rec := post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"row:0:" + critical}})
+	assert.Equal(t, flashOf(rec), "eA critical alert is acknowledged, not dismissed")
+	_, still := service.Alert(critical)
+	assert.True(t, still)
 }
 
 // A device, a site, an alert or a file that is not there is a 404 that says so, with a way back to the list.

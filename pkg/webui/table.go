@@ -189,14 +189,20 @@ type Table[M any] struct {
 	// handed the row and may decide where to go from it, with [Outcome.Then], such as
 	// to a folder page or an object page, or change something. It is a POST, so it
 	// cannot be opened in a new tab, and it needs Key. A row its Guard refuses does
-	// nothing.
+	// nothing, and a row whose Link leads to a page that refuses the visitor is a plain
+	// row, which asks that page's Guard once for each row.
 	RowClick RowClick[M]
 
-	// Actions render as a button per row.
+	// Actions render as a button per row. A row for whom the action's Guard returns an
+	// error has no button for it, and [Disabled] draws it disabled, with its message. The
+	// column of buttons is there when a row of the page on screen has one drawn.
 	Actions []Action[M]
 
 	// BulkActions render in a selection bar above the table, which then has a
-	// checkbox column. Their subject is the selected rows.
+	// checkbox column. Their subject is the selected rows. When the table is drawn the
+	// action's Guard is asked of each row as a selection of one, and the button is drawn if
+	// it accepts any: a bulk Guard must accept a selection of one. With no bulk action
+	// drawn, there is no bar and no checkbox column.
 	BulkActions []Action[[]M]
 
 	// Columns are the table's columns, in order. A column is known by its Label,

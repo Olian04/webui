@@ -208,11 +208,14 @@ templ (r *Renderer) Table(v TableView) {
 }
 
 templ (r *Renderer) tableContent(v TableView, cols []columnView) {
+	{{ actions := v.hasRowActions() }}
 	if v.selectable() {
 		@c.ActionBar() {
 			for i, a := range v.Node.Bulk {
-				@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i), Confirm: a.Confirm, ConfirmID: confirmID(v.Node.At, "b", i)}) {
-					{ a.Label }
+				if v.bulkGate(i).Drawn() {
+					@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i), Guard: v.bulkGate(i).Reason, Confirm: a.Confirm, ConfirmID: confirmID(v.Node.At, "b", i)}) {
+						{ a.Label }
+					}
 				}
 			}
 		}
@@ -225,7 +228,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 			for _, w := range columnWidths(cols) {
 				<col style={ "width:" + w }/>
 			}
-			if v.hasRowActions() {
+			if actions {
 				<col class="actions"/>
 			}
 		</colgroup>
@@ -236,7 +239,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 			for _, col := range cols {
 				@c.Column(c.ColumnProps{Label: col.Field.Label, Align: col.Align, SortHref: col.SortHref, SortDir: col.SortDir, Filter: col.Filter})
 			}
-			if v.hasRowActions() {
+			if actions {
 				<th class="actions"><span class="sr-only">Actions</span></th>
 			}
 		}
@@ -253,7 +256,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 				}
 			}
 			for i, row := range v.Rows {
-				@r.tableRow(v, cols, i, row)
+				@r.tableRow(v, cols, i, row, actions)
 			}
 		}
 	}
@@ -277,7 +280,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	return c.Pager(r.pager(v))
 }
 
-templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
+templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, actions bool) {
 	@c.Row(c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}) {
 		if v.selectable() {
 			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select row " + v.Keys[i]})
@@ -285,15 +288,17 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any) {
 		for j, col := range cols {
 			@r.cell(col, row, v.Hrefs[i], v.clicks(i), v.rowClickValue(i), j == 0)
 		}
-		if v.hasRowActions() {
+		if actions {
 			<td class="actions">
 				for a, act := range v.Node.Actions {
-					@c.Button(c.ButtonProps{
-						Variant: variant(act.Role), Size: c.SizeSmall,
-						Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a),
-						Confirm: act.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
-					}) {
-						{ act.Label }
+					if v.gate(i, a).Drawn() {
+						@c.Button(c.ButtonProps{
+							Variant: variant(act.Role), Size: c.SizeSmall,
+							Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a).Reason,
+							Confirm: act.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
+						}) {
+							{ act.Label }
+						}
 					}
 				}
 			</td>
@@ -376,7 +381,7 @@ templ present(f ir.Field, text string, model any) {
 
 // Form renders a loaded form leaf as one panel. The submit button and its
 // Cancel sit in the footer, inside the <form>, so they submit it. When the
-// submit is refused (SubmitGate) they are replaced by a Back button.
+// submit is refused (SubmitRefused) they are replaced by a Back button.
 templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
@@ -398,7 +403,7 @@ templ (r *Renderer) Form(v FormView) {
 					}
 				</div>
 			}
-			if v.Node.Submit != nil && v.SubmitGate != "" {
+			if v.Node.Submit != nil && v.SubmitRefused {
 				// A visitor who may not save has nothing to save or cancel: the footer
 				// offers the way back, or no footer when there is no way back.
 				if v.CancelHref != "" {
@@ -529,7 +534,7 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
 		@c.Panel(c.PanelProps{Failed: true, Leaf: LeafID(v.Node.At)}) {
 		}
-	} else {
+	} else if v.drawn() {
 		<div class="toolbar" data-toolbar>
 			if v.hasActions() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
@@ -543,19 +548,21 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 	}
 }
 
-// toolbarItems are the controls of a toolbar, in order, with the gap before the right ones.
+// toolbarItems are the controls of a toolbar, in order, with the gap before the right ones. An item that is not drawn
+// for this visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
 templ (r *Renderer) toolbarItems(v ToolbarView) {
 	for i, it := range v.Node.Items {
 		if i == v.Node.RightFrom {
 			<span class="toolbar-gap" aria-hidden="true"></span>
 		}
 		switch {
+			case !v.gate(i).Drawn():
 			case it.Action != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i], Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
 					{ it.Label }
 				}
 			case it.Link != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i], Guard: v.Gates[i]}) {
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
 					{ it.Label }
 				}
 			case it.Field != nil:

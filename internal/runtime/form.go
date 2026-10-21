@@ -50,12 +50,11 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 		view.Model = model
 	}
 
-	// The same Guard that would reject the request gates the control, so there
-	// is no second authorisation rule to keep in sync.
+	// The same Guard that would reject the request decides the control, so there
+	// is no second authorisation rule to keep in sync. A form that may not be saved is read, whichever
+	// error says so: there is no disabled form to draw that is any use to the visitor.
 	if n.Submit != nil && n.Submit.Guard != nil {
-		if err := n.Submit.Guard(ctx, view.Model); err != nil {
-			view.SubmitGate = err.Error()
-		}
+		view.SubmitRefused = !p.gateOf(page, "the Submit of a form", func() error { return n.Submit.Guard(ctx, view.Model) }).Open()
 	}
 	if n.Editor != nil {
 		// A language service goes only to an editor that can be edited by this visitor:

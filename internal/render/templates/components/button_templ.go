@@ -14,10 +14,10 @@ import templruntime "github.com/a-h/templ/runtime"
 // on middle click, and is reachable by keyboard without any help. Leave Href
 // empty only for a control that submits a form.
 //
-// Guard carries the reason the current viewer may not use this control. One
-// field drives both halves of the design's rule: the control dims and explains
-// itself, and the same check rejects the request. There is no second
-// authorisation rule to keep in sync.
+// Guard carries the reason the current viewer may not use a control that is drawn anyway: the control dims and
+// explains itself. A control that the viewer is simply not offered is not given to Button at all; which of the two it
+// is, is the application's to say, with what its Guard returns, and the same check rejects the request, so there is no
+// second authorisation rule to keep in sync.
 type ButtonProps struct {
 	Href    string
 	Variant Variant
