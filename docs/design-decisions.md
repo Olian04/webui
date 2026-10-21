@@ -42,12 +42,13 @@ design element.
   repeated parameters. The spec says which fields are lists (`ArgSpec.List`, with the kind of one element, so
   `[]string`, `[]int`, `[]int64`, `[]float64`, `[]bool` and slices of defined types of them all work), the
   parser keeps every value of those keys, and the codec parses each element on its own and reports each that
-  fails (a 400, with the value). What it leaves out on purpose: an empty string, which a URL cannot tell from none
-  (so `[]string{""}` is as absent as `nil`), and an empty list, which is as absent as a nil one; and what it
-  refuses: an element holding U+001F (the separator, which would be read back as two), and a slice of
-  anything but the five types (a `[]byte` is a mistake, not a list of numbers). A slice for `{name}` is a compile
-  error with a fix that says to write `{name...}` or to drop the segment so that it is a query parameter. The one
-  limit is the address's own: a long list is a long URL.
+  fails (a 400, with the value).
+- **What a repeated parameter leaves out on purpose.** An empty string, which a URL cannot tell from none (so `[]string{""}` is
+  as absent as `nil`), and an empty list, which is as absent as a nil one; and what it refuses: an element holding U+001F (the
+  separator, which would be read back as two), and a slice of anything but the five types (a `[]byte` is a mistake, not a list
+  of numbers). A slice for `{name}` is a compile error with a fix that says to write `{name...}` or to drop the segment so that
+  it is a query parameter. The one limit is the address's own: a long list is a long URL.
+
 - Optionality: a zero field means absent and stays out of the URL. A field
   where zero is meaningful needs a pointer — the same trade as `Rules`.
 - Argument names come from the lower-cased field name, overridable with a
@@ -79,11 +80,10 @@ design element.
     },
   }
   ```
+- **What the `PageID` constant gives, and costs.** `PageID[A]` carries the argument type, so `Page[NoArgs]{Path: DetailsPath}`
+  and `Open(ctx, DevicesPath, DeviceArgs{})` do not compile. `Path: "/device"` still does: a literal or an untyped constant
+  converts. `Open` and `Link.Page` take a page or its `PageID`; only a `string` variable can no longer be a `Path`.
 
-  `PageID[A]` carries the argument type, so `Page[NoArgs]{Path: DetailsPath}` and
-  `Open(ctx, DevicesPath, DeviceArgs{})` do not compile. `Path: "/device"` still
-  does: a literal or an untyped constant converts. `Open` and `Link.Page` take a
-  page or its `PageID`; only a `string` variable can no longer be a `Path`.
 - `Open` can fail at render time (a zero path argument), so `Target` carries an
   error, which it keeps to itself: a `Target` is opaque and only `Outcome.Then`
   reads it, so a redirect can only be to a page of the app. A row link that cannot
@@ -118,14 +118,15 @@ design element.
   by the names of the properties of the control's `ValidityState` (`valueMissing`, `tooShort`, `tooLong`,
   `patternMismatch`, `rangeUnderflow`, `rangeOverflow`, `badInput`, `stepMismatch`), the standard
   vocabulary of the Constraint Validation API, put in a `data-validity` attribute of each editable input and select.
-  With script, when a control reports itself invalid (the `invalid` event), the first reason that is true, in the order
-  the server checks, goes to `setCustomValidity`, which the browser then shows in its own bubble; it is taken back
-  when the value changes, since a custom message keeps a control invalid until it is. Nothing is drawn by the page
-  and nothing is reinvented: the bubble, the focus and the blocking of the submission are the browser's. Without
-  script the browser says its own words, and a pattern's message follows them as the control's `title`, which is what
-  the attribute is for. Left as they were: a moment's own parse errors, and the range slider, which cannot leave its
-  bounds. What it costs: a `tooShort` or `tooLong` message is only given for a value the visitor edited, which is the
-  browser's rule for those two, so a value that was loaded too long is caught by the server.
+- **With script the browser's words are the server's, and are taken back when the value changes.** With script, when a control
+  reports itself invalid (the `invalid` event), the first reason that is true, in the order the server checks, goes to
+  `setCustomValidity`, which the browser then shows in its own bubble; it is taken back when the value changes, since a custom
+  message keeps a control invalid until it is. Nothing is drawn by the page and nothing is reinvented: the bubble, the focus and
+  the blocking of the submission are the browser's. Without script the browser says its own words, and a pattern's message
+  follows them as the control's `title`, which is what the attribute is for. Left as they were: a moment's own parse errors, and
+  the range slider, which cannot leave its bounds. What it costs: a `tooShort` or `tooLong` message is only given for a value
+  the visitor edited, which is the browser's rule for those two, so a value that was loaded too long is caught by the server.
+
 - `Store` is pure assignment with no error return, and no `ctx`. The ordering
   problem came from `Store` seeing `*M`; rules see only their own value, so
   inter-field dependencies are not expressible and need no ordering.
@@ -216,15 +217,16 @@ design element.
   was opened before the change is told so (the 422 draws it again with the options as they are). The same
   options give a table with `Load` its filter (the source filters, so the library can only offer what it is told) and
   say, in every table, form, export and page search, what a value reads and the tone it is drawn in. With `Rows` the
-  filter stays the values the rows hold, as for `Options`. How: the field carries a function (`ir.Field.ChoicesFor`)
-  and each request that needs the options asks for a copy of the form or the table with them read
-  (`Form.Resolved`, `Table.Resolved`); nothing is kept between requests, since fields are shared, and the app knows
-  how long its options may be old, so a slow source is cached by the app, as for `NavEntries`. A source that fails
-  fails the panel as a failed `Load` does (a POST is answered with the toast); a value that is empty, listed twice or
-  holds the separator is the source's mistake and fails the same way. Counted in the metrics as a load of the kind
-  `options`, only when there was a source to read. Not done: letting the visitor enter a value that is not among the
-  options (`Open`), which a `<select>` cannot take and which would be a combobox for one value and a tag input for several; a
-  select of several values that grows with what was entered is the case that would need it.
+  filter stays the values the rows hold, as for `Options`.
+- **A select reads its options when a request is answered, by a function that the field carries.** How: the field carries a
+  function (`ir.Field.ChoicesFor`) and each request that needs the options asks for a copy of the form or the table with them
+  read (`Form.Resolved`, `Table.Resolved`); nothing is kept between requests, since fields are shared, and the app knows how
+  long its options may be old, so a slow source is cached by the app, as for `NavEntries`. A source that fails fails the panel
+  as a failed `Load` does (a POST is answered with the toast); a value that is empty, listed twice or holds the separator is the
+  source's mistake and fails the same way. Counted in the metrics as a load of the kind `options`, only when there was a source
+  to read. Not done: letting the visitor enter a value that is not among the options (`Open`), which a `<select>` cannot take
+  and which would be a combobox for one value and a tag input for several; a select of several values that grows with what was
+  entered is the case that would need it.
 
 - **A `String` can be a `Secret`** (a value that is typed and never read back, such as an API key). It is a flag on the
   accessor, not a type, so its rules and placeholder come with it. The stored value is kept out of the page at one place:
@@ -236,11 +238,12 @@ design element.
   both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
   secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (a toolbar shows values, and there is nothing to show).
   The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
-  That there *is* a value is shown, since an empty box reads as "nothing is stored": the input's placeholder is a row of
-  bullets, always eight (`storedBullets`), so that neither the value nor its length is in the page, in place of the
-  accessor's own `Placeholder`, which is shown when nothing is stored. It is a placeholder and not a `value` made of
-  bullets, which would be submitted and stored, and the standard way to show text in an empty input. The only thing the page
-  learns of a secret is a yes or no (`ir.Field.Stored`, which asks `Load` whether it returned something).
+- **A secret that has a value says that it has one, and nothing of it.** That there *is* a value is shown, since an empty box
+  reads as "nothing is stored": the input's placeholder is a row of bullets, always eight (`storedBullets`), so that neither the
+  value nor its length is in the page, in place of the accessor's own `Placeholder`, which is shown when nothing is stored. It
+  is a placeholder and not a `value` made of bullets, which would be submitted and stored, and the standard way to show text in
+  an empty input. The only thing the page learns of a secret is a yes or no (`ir.Field.Stored`, which asks `Load` whether it
+  returned something).
 
 - **A `String` can be `Multiline`** (a text area for a description or some JSON), as a flag on the accessor and not a
   type, so its rules, placeholder and `Store` come with it. What a text area cannot do is refused when the app compiles:
@@ -288,15 +291,16 @@ design element.
   spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores
   as it is (a number written with a code is normalised to the same form with no script too). E.164 was chosen over keeping the
   spaces: one number then has one form, so it can be compared, searched and dialled, and the spacing is only how it is shown.
-  The spacing is data, not code: groupings for about twenty countries where the national format is known, and threes for the
-  rest, which is approximate and says so; `libphonenumber` metadata would be right for every country and is 80 to 150 kB and a
-  licence to carry. The countries are a Go table, `internal/phone`, which is also what the server validates `DefaultCountry`
-  with and what the script is given (as the first line of `phone.js`, generated with it), so what the script offers is what the
-  server accepts. The costs: the numbering plan of `+1` has more countries than the US and Canada, which are not listed (a number
-  of one of them is typed as `+1 242 …`, and is still the right number); a number that is already stored without a code, or with an
-  extension, is not split, since doing so would change it, and stays the plain input until it is cleared; and the length and
-  pattern rules of the field are not the browser's with script, because what is typed there is the national part and the rule is
-  about the number that is sent: the server holds it to them, in a page that says so beneath the field.
+- **The grouping of a phone number is data, and approximate.** The spacing is data, not code: groupings for about twenty
+  countries where the national format is known, and threes for the rest, which is approximate and says so; `libphonenumber`
+  metadata would be right for every country and is 80 to 150 kB and a licence to carry. The countries are a Go table,
+  `internal/phone`, which is also what the server validates `DefaultCountry` with and what the script is given (as the first
+  line of `phone.js`, generated with it), so what the script offers is what the server accepts. The costs: the numbering plan of
+  `+1` has more countries than the US and Canada, which are not listed (a number of one of them is typed as `+1 242 …`, and is
+  still the right number); a number that is already stored without a code, or with an extension, is not split, since doing so
+  would change it, and stays the plain input until it is cleared; and the length and pattern rules of the field are not the
+  browser's with script, because what is typed there is the national part and the rule is about the number that is sent: the
+  server holds it to them, in a page that says so beneath the field.
 
 - **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline
   does not have, and a `Timestamp` of midnight shown as "00:00" is noise. `DateOnly` is a flag on `Datetime` and `Timestamp`, not
@@ -320,14 +324,16 @@ design element.
   binary kinds and the whole file for JSON (exactly one value, streamed), CSV and text (UTF-8, no NUL). The type that the browser
   sends and the file's extension are the visitor's, so they are a hint (`accept=`) and nothing else: a PDF named `.png` is a PDF. There
   is no SVG kind: SVG is XML that a browser runs, so an app that takes it says `FileAny` and owns the risk, and `FileText` does not take
-  HTML or XML for the same reason. An `Upload` says what it is twice, and they are not one value: `ContentType` is a media type
-  (`image/png`, `text/csv; …`, `application/octet-stream`), which is what to serve it as and cannot be a `FileKind`, since a file
-  of no named kind has one too; `Kind` is the named kind it was found to be, for an app that takes several and wants to branch
-  (`FileAny` for none, which only a field that takes any file lets in, and never `FileImage`, which is four kinds). It is the most
-  specific of the kinds in `Accept` that the file is, by a fixed order (`FileKind.Order`, in the IR: the images and the PDF, which
-  exclude one another, then JSON, then CSV, then text, then any), and not the first listed, which would make what an upload is
-  depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
-  library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
+  HTML or XML for the same reason.
+- **An upload says what it is twice: a media type and a kind.** An `Upload` says what it is twice, and they are not one value:
+  `ContentType` is a media type (`image/png`, `text/csv; …`, `application/octet-stream`), which is what to serve it as and
+  cannot be a `FileKind`, since a file of no named kind has one too; `Kind` is the named kind it was found to be, for an app
+  that takes several and wants to branch (`FileAny` for none, which only a field that takes any file lets in, and never
+  `FileImage`, which is four kinds). It is the most specific of the kinds in `Accept` that the file is, by a fixed order
+  (`FileKind.Order`, in the IR: the images and the PDF, which exclude one another, then JSON, then CSV, then text, then any),
+  and not the first listed, which would make what an upload is depend on how the app happened to write `Accept`; a JSON file is
+  also text, and `42` is JSON and CSV. The order is the library's and is not API, since an app that wants another can say it
+  with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
 
 - **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
@@ -335,13 +341,15 @@ design element.
   (`input.files = ...`, from a `DataTransfer` of the first file), so the request is the browser's own multipart post, which a `fetch` would
   have replaced with a second way to send a form to keep in step with the first. The picture of a chosen image is read with
   `FileReader.readAsDataURL`, and not `URL.createObjectURL`: the policy lets an image be `'self'` or `data:`, and a `blob:` address would
-  have meant widening it for this. Only PNG, JPEG, GIF and WebP are drawn, and only up to 4 MiB, since a data address is held in the page
-  (SVG is a document that can run script, and is not drawn). The size and the kind are told to the script by the server in
-  `data-file`, in the words the server uses, through `setCustomValidity`, so the browser's own message appears and the form does not submit. The kind check
-  is a hint: it goes by the type that the browser gives and the extension, and a file that has no type is not refused, since a wrong refusal
-  here is worse than a right one late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the page's and is not asked per
-  visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the extensions as well as the media types, so
-  that the script can tell a file by its name.
+  have meant widening it for this.
+- **The picture of a chosen image is a `data:` address, small, and never SVG.** Only PNG, JPEG, GIF and WebP are drawn, and only
+  up to 4 MiB, since a data address is held in the page (SVG is a document that can run script, and is not drawn). The size and
+  the kind are told to the script by the server in `data-file`, in the words the server uses, through `setCustomValidity`, so
+  the browser's own message appears and the form does not submit. The kind check is a hint: it goes by the type that the browser
+  gives and the extension, and a file that has no type is not refused, since a wrong refusal here is worse than a right one
+  late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the
+  page's and is not asked per visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the
+  extensions as well as the media types, so that the script can tell a file by its name.
 
 - **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
   as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
@@ -352,14 +360,16 @@ design element.
   from the page). A background image on a placeholder was weighed: it defers the same way, since a closed dialog is not rendered, but it has no size of its own,
   so a 64px logo and a 4K photograph would fill the same box (a `contain` that enlarges the one and fits the other), no alt text, and the address in a style attribute.
   The image has its size, its alt and no inline style.
-  The library keeps no files, so it cannot make the thumbnail itself: the app does, when its `Store` is handed the image, and
-  `webui.Thumbnail(up, size)` is there for it (PNG, JPEG and GIF, to a PNG that keeps the picture's proportions and is never enlarged, with the
-  picture of no more than 25 million pixels, since it is held whole in memory and a small PNG can be a vast picture). Dropped: showing the file
-  itself, which is what was wrong; the library keeping a thumbnail beside every upload, which is keeping files; and a WebP reader, which is an image
-  dependency for every program, so a WebP has no `Thumbnail` from the helper, and the name stands alone unless the app scales it with its own.
-  The cost: an app that wants a picture makes the small one and a route to serve it; there is no picture without one, which is the
-  library's choice and not a gap; and the picture of a file that is chosen is made in the page, in a canvas, from a data: address
-  of the whole file, which is held only as long as it takes to draw it, and read again when the dialog is opened.
+- **The library makes no thumbnail, and offers `webui.Thumbnail` to the app that does.** The library keeps no files, so it
+  cannot make the thumbnail itself: the app does, when its `Store` is handed the image, and `webui.Thumbnail(up, size)` is there
+  for it (PNG, JPEG and GIF, to a PNG that keeps the picture's proportions and is never enlarged, with the picture of no more
+  than 25 million pixels, since it is held whole in memory and a small PNG can be a vast picture). Dropped: showing the file
+  itself, which is what was wrong; the library keeping a thumbnail beside every upload, which is keeping files; and a WebP
+  reader, which is an image dependency for every program, so a WebP has no `Thumbnail` from the helper, and the name stands
+  alone unless the app scales it with its own. The cost: an app that wants a picture makes the small one and a route to serve
+  it; there is no picture without one, which is the library's choice and not a gap; and the picture of a file that is chosen is
+  made in the page, in a canvas, from a data: address of the whole file, which is held only as long as it takes to draw it, and
+  read again when the dialog is opened.
 
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
@@ -384,14 +394,15 @@ design element.
   `Unauthorized` and `Forbidden` make a `Refusal`, `WithLink(label, target)` gives it a link (the `Target` that `Open` builds, read
   inside `pkg/webui`, since it has no parts to read outside; not called `Then`, which on an `Outcome` redirects the user
   and here would only offer a link that they choose to follow), and it is found with `errors.As`, so a wrapped one counts.
-  They are made into `ir.Refusal` where the closures are lowered (the page `Guard`, and the loads of a table, a form, a diff, a
-  markdown and an editor), which is the one place a type assertion belongs. In a `Guard` the status is the page's: `admit` returns
-  it, and `begin` draws the state of that status (the nav, search and gate paths only ask whether there is an error, so they are
-  unchanged, and a POST to a refused page is redirected to the page that says it, as before). In a panel's `Load` the page has
-  its status by then (a page that streams has sent it, `streamAfter`), so the panel says the message and its link in place of
-  "Could not load", and the page stays 200: said in the documentation and not hidden. A refusal is the visitor's matter and
-  not the app's failure, so it is not logged; an error that is anything else is as it was. Not done: a status for a panel's refusal,
-  which would make a page that has begun to be sent a lie, or buffering every page to be able to.
+- **A refusal is the page's status in a `Guard`, and is said in place in a panel.** A refusal is read where the page's `Guard`
+  and the loads of a table, a form, a diff, a markdown and an editor are lowered, which is the one place a type assertion
+  belongs. In a `Guard` the status is the page's, and the page draws the state of that status (the sidebar, the search and the
+  links only ask whether there is an error, so they are unchanged, and a POST to a refused page is redirected to the page that
+  says it, as before). In a panel's `Load` the page has its status by then (a page that streams has sent it), so the panel says
+  the message and its link in place of "Could not load", and the page stays 200: said in the documentation and not hidden. A
+  refusal is the visitor's matter and not the app's failure, so it is not logged; an error that is anything else is as it was.
+  Not done: a status for a panel's refusal, which would make a page that has begun to be sent a lie, or buffering every page to
+  be able to.
 
 - Row actions are decided at render, per row, by the same `Guard` that authorises the POST. A bulk action's `Guard` receives the
   selection, which does not exist yet: it is asked of each row as a selection of one, and the button is drawn if it accepts any (see
@@ -456,11 +467,11 @@ design element.
   token in the flash cookie): it is per process, so behind a load balancer without stickiness the second
   request could reach another instance, it needed a bound and a timer, and it made a refusal show as a 303
   in the metrics, where it is a 422 now, and failures also stay visible in `webui_actions_total{result}`.
-  What it costs: the browser asks "send the form again?" when the page it answered with is reloaded,
-  which is its standard behaviour for a response to a POST, and with script there is no workaround for it
-  on purpose. A table action that is refused has no fields to draw again, so it keeps the redirect and a
-  toast. A `Then` or a `Back` that leaves the form still takes the user there, with the message as a
-  toast, and what was typed is not kept, as before.
+- **What a refused form that is not redirected costs.**  "send the form again?" when the page it answered with is reloaded,
+  which is its standard behaviour for a response to a POST, and with script there is no workaround for it on purpose. A table
+  action that is refused has no fields to draw again, so it keeps the redirect and a toast. A `Then` or a `Back` that leaves the
+  form still takes the user there, with the message as a toast, and what was typed is not kept, as before.
+
 - The re-render after a rejection must echo the raw submitted input, not the
   model value, or the user's bad input disappears and the form looks like it
   reset.
@@ -489,14 +500,9 @@ design element.
   The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and the accessors satisfy by a method that takes `A`, so an
   accessor of another type does not fit.
 
-- **A toolbar shows values and has no inputs.** The first version had inputs: accessors with a `Store` that wrote the visitor's value to
-  the page's arguments, applied by the server through a GET form (`_toolbar=<id>`, inputs named by position, the rest of the address as
-  hidden fields) and a redirect to the page the arguments encode to, with an *Apply* button joined to each input without script and a
-  `change` handler with it. It was dropped, and removed outright, for what it cost against what a `Form` already is. An input
-  that changes the page needed its own form, a second request path (the GET apply beside the POST of the buttons), a second way of
-  reporting refused values (a toast on a redirect, where a form re-draws with the messages beneath the fields), position-named
-  fields, script to apply and an Apply button without, and styling for both; and a toolbar of values with no button still carried a
-  form. What remains is what a toolbar is good for: buttons, links, and the values of the page's arguments to read. An accessor in a
+- **A toolbar shows values and has no inputs.** It once had inputs that wrote the page's arguments, and they were removed outright: an input that changes
+  the page needed what a `Form` already is (a form and a request path of its own, a way of reporting a refused value, and script to apply it, or a
+  button without), and a toolbar of values with no button still carried a form. What remains is what a toolbar is good for: buttons, links, and the values of the page's arguments to read. An accessor in a
   toolbar is its label and its value as a read-only form field shows it; its `Store` is ignored, as a table ignores it, so
   the one accessor declaration serves a form, a table and a toolbar (a compile error for a `Store` there was weighed and dropped for that: it
   would have forced a second declaration of any accessor shared with a form). A page whose arguments the visitor sets is for a `Form`,
@@ -535,20 +541,18 @@ design element.
   source's order, and it is handed the cursor and a page size and returns the rows and
   the next cursor. A cursor continues one sequence, so there is nothing for the library
   to filter: the table has no filters, only First page, Previous and Next, and says which
-  rows it shows. Its columns sort the page in hand and no more: the library orders the rows
-  `Feed` returned, with the same comparison `Rows` uses, in the query that built the page, and the
-  source is not told. The sort is view state in the address like any other, so Next and Previous
-  keep it, and each page is ordered within itself; the sort link stays on the page, since the cursor
-  is the way back to it, and the footer says "sorted within this page" so that the order is not
-  mistaken for the sequence's. What this costs: a sort by a column does not find that column's
-  smallest value in the sequence, only on the page, which is all a cursor can honestly offer;
-  a source that can sort should be a `Load`. The export of a feed ignores the sort, since it
-  is the sequence from its first page to its last. The address carries the cursor, the first row's number and the pages
-  before, so nothing is kept on the server; Previous goes back as far as the address
-  remembers (a bounded number of characters, the oldest forgotten first). It is a source of
-  its own, not a mode of `Query`, so a table can never carry both a cursor and an
-  offset. Exactly one of the three is set, which `Compile` checks. Setting a filter
-  returns every table to its first page.
+  rows it shows.
+- **A feed sorts only the page in hand.** Its columns sort the page in hand and no more: the library orders the rows `Feed`
+  returned, with the same comparison `Rows` uses, in the query that built the page, and the source is not told. The sort is view
+  state in the address like any other, so Next and Previous keep it, and each page is ordered within itself; the sort link stays
+  on the page, since the cursor is the way back to it, and the footer says "sorted within this page" so that the order is not
+  mistaken for the sequence's. What this costs: a sort by a column does not find that column's smallest value in the sequence,
+  only on the page, which is all a cursor can honestly offer; a source that can sort should be a `Load`. The export of a feed
+  ignores the sort, since it is the sequence from its first page to its last. The address carries the cursor, the first row's
+  number and the pages before, so nothing is kept on the server; Previous goes back as far as the address remembers (a bounded
+  number of characters, the oldest forgotten first). It is a source of its own, not a mode of `Query`, so a table can never
+  carry both a cursor and an offset. Exactly one of the three is set, which `Compile` checks. Setting a filter returns every
+  table to its first page.
 
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
