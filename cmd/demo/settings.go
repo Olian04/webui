@@ -149,7 +149,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 
 var Retention = webui.Page[webui.NoArgs]{
 	Path: "/retention",
-	Nav:  webui.Nav{Label: "Retention", Section: "Configuration"}, // no Icon: its initial, R, stands in when the sidebar is a rail
+	Nav:  webui.Nav{Label: "Retention and archival policy for every kind of collected event", Section: "Configuration"}, // no Icon: its initial, R, stands in when the sidebar is a rail; the label is wider than the sidebar, so it is cut short with an ellipsis
 	Body: webui.Form[RetentionPolicy]{
 		Title:  "Retention",
 		Load:   func(context.Context) (RetentionPolicy, error) { return service.Retention(), nil },

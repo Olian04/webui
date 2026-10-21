@@ -522,48 +522,60 @@ templ Refused(ref *ir.Refusal) {
 	}
 }
 
-// Toolbar is a row of controls: buttons, and inputs for the page's arguments. It is not a panel. The buttons post, in one
-// form, by their position. An input belongs, by its form attribute, to a form of its own that goes back to the page with
-// what was given and the rest of the address, which the server turns into the page's arguments and sends the visitor on
-// to, so the controls can be in any order. Without script an input is applied with an Apply button joined to it; with script,
-// when it changes. The controls for the left and the right are one row, with a gap between the two groups that takes what
-// is left over; script says when there is not room for them all in a row, and then the gap is gone and they flow as one.
+// Toolbar is a row of controls: buttons, links, and the values of the page's arguments, read-only. It is not a panel. The buttons
+// post, in one form, by their position; a toolbar with no button has no form, since there is nothing in it to submit. A value
+// is its label and what the accessor reads from the page's arguments, as a read-only form field shows it. The controls for the
+// left and the right are one row, with a gap between the two groups that takes what is left over; script says when there is
+// not room for them all in a row, and then the gap is gone and they flow as one.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
 		@c.Panel(c.PanelProps{Failed: true, Leaf: LeafID(v.Node.At)}) {
 		}
 	} else {
-		{{ formID := v.formID() }}
 		<div class="toolbar" data-toolbar>
-			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
-				for i, it := range v.Node.Items {
-					if i == v.Node.RightFrom {
-						<span class="toolbar-gap" aria-hidden="true"></span>
-					}
-					switch {
-						case it.Action != nil:
-							@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i], Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
-								{ it.Label }
-							}
-						case it.Link != nil:
-							@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i], Guard: v.Gates[i]}) {
-								{ it.Label }
-							}
-						case it.Field != nil:
-							@r.input(r.toolbarInput(ctx, v, *it.Field))
-					}
+			if v.hasActions() {
+				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
+					<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+					@r.toolbarItems(v)
 				}
-			}
-			if v.hasInputs() {
-				<form id={ formID } class="toolbar-args" method="get" action={ r.PageHref(v.Page, v.Path, nil) } data-toolbar-form>
-					<input type="hidden" name={ ToolbarParam } value={ LeafID(v.Node.At) }/>
-					for _, k := range carry(v.Query) {
-						<input type="hidden" name={ k.Name } value={ k.Value }/>
-					}
-				</form>
+			} else {
+				@r.toolbarItems(v)
 			}
 		</div>
+	}
+}
+
+// toolbarItems are the controls of a toolbar, in order, with the gap before the right ones.
+templ (r *Renderer) toolbarItems(v ToolbarView) {
+	for i, it := range v.Node.Items {
+		if i == v.Node.RightFrom {
+			<span class="toolbar-gap" aria-hidden="true"></span>
+		}
+		switch {
+			case it.Action != nil:
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.Gates[i], Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
+					{ it.Label }
+				}
+			case it.Link != nil:
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i], Guard: v.Gates[i]}) {
+					{ it.Label }
+				}
+			case it.Field != nil:
+				{{ shown := it.Field.Shown(ctx, v.Args) }}
+				<span class="toolbar-value">
+					<span class="toolbar-lbl">{ it.Field.Label }</span>
+					if it.Field.Help != "" {
+						@c.InfoTip(c.InfoTipProps{Help: it.Field.Help})
+					}
+					<span class="toolbar-val">
+						if shown == "" {
+							@dash()
+						} else {
+							@value(*it.Field, shown, v.Args)
+						}
+					</span>
+				</span>
+		}
 	}
 }
 

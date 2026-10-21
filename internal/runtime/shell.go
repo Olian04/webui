@@ -43,6 +43,10 @@ func (p *Program) startShell(ctx context.Context, here render.Here, active strin
 	return s
 }
 
+// join is for them to have finished, and nothing else: a panic in one is not raised. It is how a request that ends before it asked for
+// their answers (it panicked, or failed) leaves none of them running past its end, writing to a logger the program may have closed.
+func (s *shellInputs) join() { s.wg.Wait() }
+
 // wait is for them to be answered. A panic in one is raised again here, on the request's own goroutine, where
 // the recovery of the request answers it, as when they were asked from there.
 func (s *shellInputs) wait() {

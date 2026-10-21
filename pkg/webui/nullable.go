@@ -55,6 +55,8 @@ func (a OptionalInt[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
+func (OptionalInt[M]) toolbarItem(M) {}
+
 // OptionalFloat projects a *float64 field of M: a number that may be absent, as [OptionalInt] is a whole number that may.
 type OptionalFloat[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
@@ -101,6 +103,8 @@ func (a OptionalFloat[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
+func (OptionalFloat[M]) toolbarItem(M) {}
+
 // OptionalSlider projects a *float64 field of M on a range, as a [Slider] does, for a value that may be absent: a bar that is not
 // drawn, a dash in its place, and a number input that is empty and stores nil when it is left so.
 type OptionalSlider[M any] struct {
@@ -145,6 +149,8 @@ func (a OptionalSlider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
+func (OptionalSlider[M]) toolbarItem(M) {}
+
 // Bool projects a *bool field of M: yes, no, or not set. A checkbox cannot say "not set", and its unchecked state is not sent at all, so
 // it is a choice of Yes and No with an empty one, as a [Select] is, and read it is a Yes or a No in a badge. Like a
 // Select, its filter in a table is a choice among the values.
@@ -182,6 +188,8 @@ func (a Bool[M]) label() string { return a.Label }
 func (a Bool[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
+
+func (Bool[M]) toolbarItem(M) {}
 
 // validateOptional checks what an optional number needs besides what every accessor does: Required needs a Store, since an
 // input that cannot be filled in cannot be required.
