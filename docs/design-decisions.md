@@ -246,7 +246,7 @@ design element.
   field is an error (check the text in `Run`), and so is one in a toolbar, which shows one line for each value.
   `Required`, `MinLen` and `MaxLen` stay and are the browser's too. A browser sends a line break of a text area as CRLF, which
   its own `maxlength` counts as one character and `utf8.RuneCountInString` as two, so a text that the page accepted could be
-  refused by the server; `bindFunc` reads CRLF as `\n` before it checks and stores, which is also what an app wants to
+  refused by the server; the form's binding reads CRLF as `\n` before it checks and stores, which is also what an app wants to
   handle. A text that wants highlighting, a language service or a schema is an `Editor`, not this. In a table the cell
   keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
   read the text as it is.
@@ -255,9 +255,8 @@ design element.
   flag on `Int`: the Go type differs (`*int`), so `Load` and `Store` do, and a flag could not make `func(M) int` say
   "none". They are four types and not one generic, since the accessors are one type for each Go type already and a generic
   `Optional[T]` would need a constraint that names which of them to draw. Absent is not zero in any place that matters:
-  the input is empty and says so, an emptied one is stored as nil (`bindFunc` calls `Unset` for a nullable field, where
-  for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
-  sorts it first and leaves it out of a range as it does a missing moment (`Num` is NaN), and an export leaves a CSV cell
+  the input is empty and says so, an emptied one is stored as nil (for a field that may be absent; for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
+  sorts it first and leaves it out of a range as it does a missing moment (it has no number to sort by), and an export leaves a CSV cell
   empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
   unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
@@ -326,7 +325,7 @@ design element.
   cannot be a `FileKind`, since a file of no named kind has one too; `Kind` is the named kind it was found to be, for an app
   that takes several and wants to branch (`FileAny` for none, which only a field that takes any file lets in, and never
   `FileImage`, which is four kinds). It is the most specific of the kinds in `Accept` that the file is, by a fixed order
-  (`FileKind.Order`, in the IR: the images and the PDF, which exclude one another, then JSON, then CSV, then text, then any),
+  (a fixed order of the library's: the images and the PDF, which exclude one another, then JSON, then CSV, then text, then any),
   and not the first listed, which would make what an upload is depend on how the app happened to write `Accept`; a JSON file is
   also text, and `42` is JSON and CSV. The order is the library's and is not API, since an app that wants another can say it
   with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
@@ -1024,8 +1023,7 @@ design element.
   handed it is output the program did not ask for, and it cannot be turned off for one app and left on for
   another. What it costs: a program that wants the lines passes `slog.Default()`, one line, and one that
   forgot hears nothing from a panel that could not load, which the page still says in words.
-- The logger is reached two ways. The runtime holds it (`Program.log`), and the request's context carries
-  it (`ir.LoggerFrom`) for the code that is called with no more than a value, which is a column's `Format`:
+- The logger is reached two ways. The running app holds it, and the request's context carries it for the code that is called with no more than a value, which is a column's `Format`:
   its panic is recovered where the value is turned into text, and it is logged there. A context with no
   logger gives one that says nothing, so the code that logs does not ask whether it is on.
 - The compile-failure page has no logger, since there is no app to give it one.
