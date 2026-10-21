@@ -344,7 +344,7 @@ design element.
   gives and the extension, and a file that has no type is not refused, since a wrong refusal here is worse than a right one
   late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the
   page's and is not asked per visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the
-  extensions as well as the media types, so that the script can tell a file by its name.
+  extensions as well as the media types, so that the script can tell a file by its name. A file that is chosen and not sent has a *Clear* button; the *Remove* of a stored file is a checkbox, which needs no script.
 
 - **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
   as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
