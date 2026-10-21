@@ -579,6 +579,11 @@ a.side-brand:hover {
   padding: 4px;
   display: none;
   z-index: 40;
+  /* Results that are more than the window has room for scroll inside the box, and not out of the window: from under the top
+     bar to above the status bar, with a margin. The arrow keys scroll the active result into view. */
+  max-height: calc(100vh - var(--topbar-h) - 26px - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .palette.open {
   display: block;

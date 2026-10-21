@@ -504,8 +504,8 @@
 //
 // # Search
 //
-// The search box in the top bar lists the app's pages, and finds the things the pages
-// are for. A [Page] says how with its Search: it is handed what was typed and returns
+// The search box in the top bar finds the things the pages are for, and nothing else: it does not list the app's pages (the
+// sidebar does), and an app in which no page has a Search has no search box. A [Page] says how with its Search: it is handed what was typed and returns
 // the matches, each a [Hit] holding the page's arguments that lead to it and what to say
 // about it. A page for one device finds devices, and a result is a link to the page at
 // that device.
@@ -522,6 +522,12 @@
 // name in the navigation, or under the entry it borrows its place from. A result is
 // offered only to a visitor who could open the page it leads to: the page's Guard is run
 // for each, with its own arguments.
+//
+// The results are ordered by how well they match what was typed, which the library judges from each Hit's Title,
+// and its Desc a little less: a title that is what was typed comes first, then one that starts with it as a word, then
+// one that starts or ends with it, then one that has it as a word, then one that has it as the start of a word, and last one that has
+// it in the middle of a word. The best result of a page puts its group first, and the best come first in each. A
+// source that returns no more than the limit it is given should return the best matches, as [SearchRows] does.
 //
 // # Looks
 //

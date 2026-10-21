@@ -761,7 +761,7 @@
   // the sidebar, so there is no index to fall out of date; pages that offer
   // Search add their own results, fetched as the user types. It is a combobox:
   // arrow keys move through the results, Enter follows one, Escape closes.
-  var palette = { items: [], active: -1, moved: false, remote: [], query: '', timer: null, ctl: null };
+  var palette = { items: [], active: -1, moved: false, remote: [], query: '', timer: null, ctl: null, state: 'idle' };
 
   function paletteBox() {
     return $('[data-palette]');
@@ -775,31 +775,17 @@
     return typeof href === 'string' && href.charAt(0) === '/' && href.charAt(1) !== '/' && href.charAt(1) !== '\\';
   }
 
-  function pages() {
-    return $$('.side-scroll a.nav-item[href]').map(function (a) {
-      // The label, not the whole link: an entry with no icon holds its initial in
-      // a span of its own, which is for the collapsed sidebar and not a name.
-      var label = a.querySelector('span:not(.ni-letter)');
-      return { group: 'Pages', title: (label || a).textContent.trim(), desc: '', href: a.getAttribute('href') };
-    });
-  }
-
-  function groupsFor(query) {
-    var q = query.trim().toLowerCase();
-    var local = pages().filter(function (p) {
-      return p.title.toLowerCase().indexOf(q) !== -1;
-    });
+  // The results are the ones the pages that offer Search found, in the order the server ranked them: the best group first, the best
+  // result first in it. There are no results of the script's own: the search finds things, and does not list the sidebar again.
+  function groupsFor() {
     var groups = [];
-    function add(hit) {
+    palette.remote.forEach(function (hit) {
+      if (!safeHref(hit.href)) return;
       var g = groups.find(function (x) {
         return x.label === hit.group;
       });
       if (!g) groups.push((g = { label: hit.group, hits: [] }));
       g.hits.push(hit);
-    }
-    local.forEach(add);
-    palette.remote.forEach(function (hit) {
-      if (safeHref(hit.href)) add(hit);
     });
     return groups;
   }
@@ -813,7 +799,7 @@
     box.textContent = '';
     palette.items = [];
 
-    var groups = groupsFor(palette.query);
+    var groups = groupsFor();
     groups.forEach(function (g) {
       var label = document.createElement('div');
       label.className = 'pal-label';
@@ -841,7 +827,7 @@
     if (!palette.items.length) {
       var empty = document.createElement('div');
       empty.className = 'pal-empty';
-      empty.textContent = 'Nothing matches.';
+      empty.textContent = palette.state === 'loading' ? 'Searching…' : 'Nothing matches.';
       box.appendChild(empty);
     }
 
@@ -884,13 +870,14 @@
   }
 
   // Ask the pages that offer Search, after a pause in typing. A newer question
-  // replaces an older one, and a failure leaves just the navigation.
+  // replaces an older one, and a failure is no results.
   function askRemote(query) {
     var input = paletteInput();
     var url = input && input.getAttribute('data-search-url');
     clearTimeout(palette.timer);
     if (palette.ctl) palette.ctl.abort();
     palette.remote = [];
+    palette.state = 'loading';
     if (!url || !query.trim()) return;
     palette.timer = setTimeout(async function () {
       var ctl = new AbortController();
@@ -905,9 +892,12 @@
         var body = await res.json();
         if (query !== palette.query) return;
         palette.remote = Array.isArray(body.results) ? body.results : [];
+        palette.state = 'done';
         drawPalette();
       } catch (err) {
-        /* the navigation results stand */
+        if (err.name === 'AbortError') return; // a newer search replaced it
+        palette.state = 'done';
+        drawPalette();
       }
     }, 150);
   }
@@ -917,8 +907,13 @@
     if (!input) return;
     palette.query = input.value;
     palette.moved = false;
-    drawPalette();
+    if (!palette.query.trim()) {
+      askRemote(''); // a question that was waiting is not answered
+      closePalette(); // nothing typed, nothing to find: the search does not list pages
+      return;
+    }
     askRemote(palette.query);
+    drawPalette();
   }
 
   document.addEventListener('focusin', function (e) {
