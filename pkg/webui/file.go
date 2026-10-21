@@ -95,8 +95,9 @@ type Upload struct {
 	// [FileJPEG], [FileGIF], [FileWebP], [FilePDF], [FileJSON], [FileCSV] or [FileText], and never [FileImage], which is
 	// four of them. It is [FileAny] for a file that is none of those, which only a field that takes any file lets in. A field that
 	// takes any file finds the kind of an image or a PDF from its first bytes, and of nothing else, since the text kinds are
-	// read through to be told, which is not done for a file that nothing asked to be one. A CSV is also a text and a JSON file is
-	// also a text: the Kind is the one of them that the field asked for, the first in Accept that the file is.
+	// read through to be told, which is not done for a file that nothing asked to be one. A file can be more than one of the kinds
+	// that a field takes (JSON is also text, and a number alone is JSON and CSV), and the Kind is the most specific of them,
+	// whatever order Accept lists them in: the images and the PDF, which exclude one another, then JSON, then CSV, then text.
 	Kind FileKind
 
 	// Open reads the file from its start, as often as it is called. The caller closes it.

@@ -152,7 +152,10 @@ func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType string, kind ir.Fi
 		}
 		return sniffed, ir.FileAny, ""
 	}
-	for _, k := range accepted {
+	// The most specific kind first, whatever order the field lists them in: a JSON file that a field takes as JSON or text is JSON.
+	matching := slices.Clone(accepted)
+	slices.SortStableFunc(matching, func(a, b ir.FileKind) int { return a.Order() - b.Order() })
+	for _, k := range matching {
 		if ct, ok := holds(k, sniffed, up); ok {
 			return ct, k, ""
 		}

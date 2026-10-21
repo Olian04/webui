@@ -59,3 +59,15 @@ func TestWhatAFieldTakesIsSaidInWords(t *testing.T) {
 	assert.Equal(t, FileAccept(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileCSV}}), "image/png,text/csv,.csv")
 	assert.Equal(t, FileAccept(&ir.FileSpec{}), "")
 }
+
+// The order that kinds are matched in puts the more specific first: what excludes the rest, then the grammars, then text, then any.
+func TestKindsAreMatchedFromTheMostSpecificToTheLeast(t *testing.T) {
+	t.Parallel()
+
+	inOrder := []ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FilePDF, ir.FileJSON, ir.FileCSV, ir.FileText, ir.FileAny}
+	for i := 1; i < len(inOrder); i++ {
+		assert.True(t, inOrder[i-1].Order() < inOrder[i].Order())
+	}
+	assert.Equal(t, ir.FileImage.Order(), ir.FilePNG.Order()) // four of the first
+	assert.True(t, ir.FileKind("unknown").Order() > ir.FileAny.Order())
+}

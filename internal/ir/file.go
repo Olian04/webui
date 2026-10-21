@@ -19,6 +19,35 @@ const (
 	FileAny   FileKind = "any"
 )
 
+// Order is where the kind comes among the kinds that a file is matched against: the more exactly a kind says what a file is, the
+// sooner it is tried, so that a file which is several kinds is the most specific of those that a field takes, whatever order the
+// field lists them in. The images and the PDF are told apart by their first bytes and exclude one another; JSON, a grammar that a
+// CSV or a text is not, is before CSV, which is before text, which any file is; and FileAny is last. FileImage is four of the
+// kinds before it, and has the place of the first of them.
+func (k FileKind) Order() int {
+	switch k {
+	case FilePNG, FileImage:
+		return 0
+	case FileJPEG:
+		return 1
+	case FileGIF:
+		return 2
+	case FileWebP:
+		return 3
+	case FilePDF:
+		return 4
+	case FileJSON:
+		return 10
+	case FileCSV:
+		return 11
+	case FileText:
+		return 20
+	case FileAny:
+		return 30
+	}
+	return 40 // a kind that is not known is tried last
+}
+
 // FileSpec is what makes a Field a file input: what it accepts, how large, what is stored, and how a new file is stored.
 type FileSpec struct {
 	// Kinds are the kinds accepted. Empty, and FileAny, mean any file.

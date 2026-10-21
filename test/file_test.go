@@ -319,25 +319,34 @@ func kindOf(accepted webui.FileKind, sample string) webui.FileKind {
 	return accepted
 }
 
-// A file that is more than one kind is the first of the kinds the field lists that it is.
-func TestTheKindOfAFileThatIsSeveralIsTheFirstTheFieldLists(t *testing.T) {
+// A file that is more than one kind is the most specific of the kinds that the field takes, whatever order the field lists them in.
+func TestTheKindOfAFileThatIsSeveralIsTheMostSpecificTheFieldTakes(t *testing.T) {
 	t.Parallel()
 
 	for _, c := range []struct {
-		accept []webui.FileKind
-		want   webui.FileKind
+		name    string
+		content string
+		accept  []webui.FileKind
+		want    webui.FileKind
 	}{
-		{[]webui.FileKind{webui.FileJSON, webui.FileText}, webui.FileJSON},
-		{[]webui.FileKind{webui.FileText, webui.FileJSON}, webui.FileText},
-		{[]webui.FileKind{webui.FilePNG, webui.FileImage}, webui.FilePNG},
+		{"json before text", `{"a": 1}`, []webui.FileKind{webui.FileJSON, webui.FileText}, webui.FileJSON},
+		{"text before json", `{"a": 1}`, []webui.FileKind{webui.FileText, webui.FileJSON}, webui.FileJSON},
+		{"csv before text", "a,b\n", []webui.FileKind{webui.FileCSV, webui.FileText}, webui.FileCSV},
+		{"text before csv", "a,b\n", []webui.FileKind{webui.FileText, webui.FileCSV}, webui.FileCSV},
+		{"a number is json before csv", "42", []webui.FileKind{webui.FileCSV, webui.FileJSON}, webui.FileJSON},
+		{"a number is json before text", "42", []webui.FileKind{webui.FileText, webui.FileCSV, webui.FileJSON}, webui.FileJSON},
+		{"words are csv, and text", "just words", []webui.FileKind{webui.FileText, webui.FileCSV}, webui.FileCSV},
+		{"a png named for a kind and an image", string(pngBytes), []webui.FileKind{webui.FileImage, webui.FilePNG}, webui.FilePNG},
+		{"a jpeg of an image", string(jpegBytes), []webui.FileKind{webui.FilePDF, webui.FileImage}, webui.FileJPEG},
+		{"any takes every file and tells only an image or a pdf", `{"a": 1}`, []webui.FileKind{webui.FileAny, webui.FileJSON}, webui.FileAny},
 	} {
-		s := newFileShop(plainFile(c.accept...))
-		content := `{"a": 1}`
-		if c.want == webui.FilePNG {
-			content = string(pngBytes)
-		}
-		assert.Equal(t, multipartPost(s.h, "/admin/f", nil, part{"f1", "x", content}).Code, http.StatusSeeOther)
-		assert.Equal(t, s.last.Got.Kind, c.want)
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newFileShop(plainFile(c.accept...))
+			assert.Equal(t, multipartPost(s.h, "/admin/f", nil, part{"f1", "x", c.content}).Code, http.StatusSeeOther)
+			assert.Equal(t, s.last.Got.Kind, c.want)
+		})
 	}
 }
 

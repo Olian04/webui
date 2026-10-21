@@ -270,8 +270,11 @@ design element.
   HTML or XML for the same reason. An `Upload` says what it is twice, and they are not one value: `ContentType` is a media type
   (`image/png`, `text/csv; …`, `application/octet-stream`), which is what to serve it as and cannot be a `FileKind`, since a file
   of no named kind has one too; `Kind` is the named kind it was found to be, for an app that takes several and wants to branch
-  (`FileAny` for none, which only a field that takes any file lets in, and never `FileImage`, which is four kinds). It is the first kind
-  in `Accept` that the file is, since a JSON file is also text. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
+  (`FileAny` for none, which only a field that takes any file lets in, and never `FileImage`, which is four kinds). It is the most
+  specific of the kinds in `Accept` that the file is, by a fixed order (`FileKind.Order`, in the IR: the images and the PDF, which
+  exclude one another, then JSON, then CSV, then text, then any), and not the first listed, which would make what an upload is
+  depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
+  library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
