@@ -124,7 +124,7 @@ templ statusRequest(p StatusBarProps) {
 templ statusMeta(p StatusBarProps) {
 	<span class="status-meta">
 		<noscript>
-			<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: there is no search box, no code editor, and a panel reloads the page.">JS off</span>
+			<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.">JS off</span>
 		</noscript>
 		<span class="sb-badge sb-warn" data-stale hidden></span>
 		if !p.Built.IsZero() {

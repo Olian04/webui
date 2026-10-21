@@ -104,9 +104,6 @@ type InputProps struct {
 	// Class is a class of the caller's own, besides the input's.
 	Class string
 
-	// Form is the id of the form the input belongs to, when it is not the one it is inside of.
-	Form string
-
 	// Autocomplete is the input's autocomplete, when it has one.
 	Autocomplete string
 
@@ -175,9 +172,6 @@ templ Input(p InputProps) {
 		if p.Autocomplete != "" {
 			autocomplete={ p.Autocomplete }
 		}
-		if p.Form != "" {
-			form={ p.Form }
-		}
 		if p.Invalid {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
@@ -197,9 +191,6 @@ type FileInputProps struct {
 
 	// Validity is what the browser says for each way the value can fail a constraint, as JSON (see InputProps).
 	Validity string
-
-	// Form is the id of the form the input belongs to, when it is not the one it is inside of.
-	Form string
 
 	// CurrentName is the stored file's name, "" for none; CurrentHref is where it is served, "" for no link; CurrentSize is
 	// how large it is, as read, "" for not knowing.
@@ -270,9 +261,6 @@ templ FileInput(p FileInputProps) {
 			if p.Validity != "" {
 				data-validity={ p.Validity }
 			}
-			if p.Form != "" {
-				form={ p.Form }
-			}
 			if p.Invalid {
 				aria-invalid="true"
 				aria-describedby={ p.ID + "-error" }
@@ -291,9 +279,6 @@ type TextareaProps struct {
 	Placeholder string
 	Invalid     bool
 	Rules       Rules
-
-	// Form is the id of the form the control belongs to, when it is not the one it is inside of.
-	Form string
 
 	// Validity is as for an Input.
 	Validity string
@@ -321,9 +306,6 @@ templ Textarea(p TextareaProps) {
 		}
 		if p.Validity != "" {
 			data-validity={ p.Validity }
-		}
-		if p.Form != "" {
-			form={ p.Form }
 		}
 		if p.Invalid {
 			aria-invalid="true"
@@ -355,7 +337,6 @@ type SelectProps struct {
 	Required bool
 	Invalid  bool
 	Validity string // as for an Input
-	Form     string // as for an Input
 }
 
 // size is how many options a list shows before it scrolls.
@@ -380,9 +361,6 @@ templ Select(p SelectProps) {
 		if p.Multi {
 			multiple
 			size={ p.size() }
-		}
-		if p.Form != "" {
-			form={ p.Form }
 		}
 		if p.Invalid {
 			aria-invalid="true"

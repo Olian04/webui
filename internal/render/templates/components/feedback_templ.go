@@ -483,7 +483,7 @@ func statusMeta(p StatusBarProps) templ.Component {
 			templ_7745c5c3_Var17 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"status-meta\"><noscript><span class=\"sb-badge sb-warn\" title=\"JavaScript is off. Everything works as whole pages: there is no search box, no code editor, and a panel reloads the page.\">JS off</span></noscript><span class=\"sb-badge sb-warn\" data-stale hidden></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<span class=\"status-meta\"><noscript><span class=\"sb-badge sb-warn\" title=\"JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.\">JS off</span></noscript><span class=\"sb-badge sb-warn\" data-stale hidden></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

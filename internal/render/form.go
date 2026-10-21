@@ -72,9 +72,6 @@ type fieldView struct {
 	Type      string
 	Rules     c.Rules
 
-	// FormID is the form the control belongs to, when it is not the one it is inside of.
-	FormID string
-
 	// Placeholder is what the input shows while it is empty: the field's own, or for a secret that has a value the bullets.
 	Placeholder string
 
