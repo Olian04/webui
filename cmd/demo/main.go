@@ -140,8 +140,9 @@ func routes(app http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/admin/", authenticated(app))
 	mux.Handle("GET /uploads/{name}", authenticated(http.HandlerFunc(serveUpload))) // what a File holds, served by the app: see uploads.go
-	mux.Handle("GET /metrics", metricsHandler(registry))                            // the program's own, with the app's (App.Metrics) in it
-	mux.HandleFunc("GET /login", loginPage)                                         // the app's menu links here: "Log out"
+	mux.Handle("GET /uploads/{name}/thumb", authenticated(http.HandlerFunc(serveThumb)))
+	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Metrics) in it
+	mux.HandleFunc("GET /login", loginPage)              // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)

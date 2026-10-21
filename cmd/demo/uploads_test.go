@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"image"
+	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -51,8 +53,8 @@ func TestTheIngestFormTakesAnImageAndAPDFAndServesThemAsDownloads(t *testing.T) 
 	h := handler(t)
 	form := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, form, `enctype="multipart/form-data"`)
-	assert.Contains(t, form, `name="f9_0" accept="image/png,image/jpeg,image/gif,image/webp"`)
-	assert.Contains(t, form, `name="f9_1" accept="application/pdf"`)
+	assert.Contains(t, form, `name="f9_0" accept="image/png,.png,image/jpeg,.jpg,.jpeg,image/gif,.gif,image/webp,.webp"`)
+	assert.Contains(t, form, `name="f9_1" accept="application/pdf,.pdf"`)
 	assert.Contains(t, form, "Up to 1 MiB")
 
 	rec := saveIngest(h, nil, upload{"f9_0", "../../logo.png", demoPNG}, upload{"f9_1", "cert.pdf", demoPDF})
@@ -106,4 +108,62 @@ func TestAViewerCannotUploadAndHasNoChooser(t *testing.T) {
 	body := get(viewer, "/admin/settings").Body.String()
 	assert.False(t, strings.Contains(body, `type="file"`))
 	assert.False(t, strings.Contains(body, "enctype"))
+}
+
+// With script the chooser is a drop zone, and the page tells the script what each field takes.
+func TestTheIngestFormLinksTheFileScriptAndTellsItWhatEachFieldTakes(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `/_webui/file.`)
+	assert.Contains(t, body, `&#34;maxMessage&#34;:&#34;Must be at most 1 MiB.&#34;`)
+
+	// A viewer has no chooser. The page still links the script, which is the page's and not the visitor's (the Guard that refuses them is
+	// asked per request), and it has nothing to do there.
+	viewer := get(handlerAs(t, Viewer), "/admin/settings").Body.String()
+	assert.False(t, strings.Contains(viewer, `data-file=`))
+}
+
+// bigPicture is a PNG of 2000 by 1000, which is a few kilobytes as a file and a lot as a picture.
+func bigPicture(t *testing.T) []byte {
+	t.Helper()
+
+	img := image.NewNRGBA(image.Rect(0, 0, 2000, 1000))
+	for i := 0; i < len(img.Pix); i += 4 {
+		img.Pix[i], img.Pix[i+1], img.Pix[i+2], img.Pix[i+3] = 47, 158, 143, 255
+	}
+	var buf bytes.Buffer
+	assert.NoError(t, png.Encode(&buf, img))
+	return buf.Bytes()
+}
+
+// A stored image is shown as a small picture that the app made when it kept the file, and not as the image shrunk: the page is not sent the
+// whole of it to show 32 pixels. The picture links to the full file, which is only fetched when it is opened.
+func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *testing.T) {
+	h := handler(t)
+	big := bigPicture(t)
+	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "photo.png", big}, upload{"f9_1", "cert.pdf", demoPDF}).Code, http.StatusSeeOther)
+
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `command="show-modal" aria-haspopup="dialog" aria-label="Preview photo.png" title="Preview photo.png"><img class="file-thumb" src="/uploads/logo/thumb" alt=""></button>`)
+	assert.Contains(t, body, `<img class="preview-full" src="/uploads/logo" alt="photo.png" loading="lazy" decoding="async">`) // fetched only when the dialog opens
+	assert.False(t, strings.Contains(body, "/uploads/certificate/thumb"))                                                      // a PDF has no picture
+
+	small := get(h, "/uploads/logo/thumb")
+	assert.Equal(t, small.Code, http.StatusOK)
+	assert.Equal(t, small.Header().Get("Content-Type"), "image/png")
+	cfg, err := png.DecodeConfig(bytes.NewReader(small.Body.Bytes()))
+	assert.NoError(t, err)
+	assert.Equal(t, [2]int{cfg.Width, cfg.Height}, [2]int{64, 32})
+	assert.True(t, small.Body.Len() < 1000)
+
+	// The full image is the file as it was uploaded.
+	full := get(h, "/uploads/logo")
+	assert.DeepEqual(t, full.Body.Bytes(), big)
+	assert.Equal(t, get(h, "/uploads/certificate/thumb").Code, http.StatusNotFound)
+
+	// A kind that cannot be scaled has no picture, and the name stands alone.
+	webp := append([]byte("RIFF\x24\x00\x00\x00WEBPVP8 "), bytes.Repeat([]byte{0}, 32)...)
+	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "photo.webp", webp}).Code, http.StatusSeeOther)
+	assert.False(t, strings.Contains(get(h, "/admin/settings").Body.String(), "file-thumb"))
+	assert.Equal(t, get(h, "/uploads/logo/thumb").Code, http.StatusNotFound)
 }

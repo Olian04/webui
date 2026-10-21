@@ -205,6 +205,10 @@ type FileInputProps struct {
 	// how large it is, as read, "" for not knowing.
 	CurrentName, CurrentHref, CurrentSize string
 
+	// CurrentThumb is where a small picture of the stored file is, "" for none. It is shown at 32 pixels, and links to the file at full size
+	// when there is an address for it, which script opens in a dialog and without script is a link to the file.
+	CurrentThumb string
+
 	// Remove is the value of the checkbox that asks for the stored file to be removed, which is the field's name; "" for a
 	// file that cannot be.
 	Remove string
@@ -217,6 +221,26 @@ templ FileInput(p FileInputProps) {
 	<div class="file">
 		if p.CurrentName != "" {
 			<div class="file-current">
+				if p.CurrentThumb != "" && p.CurrentHref != "" {
+					// The thumbnail opens the file at full size in a native dialog, with an invoker command as a button that asks does, so it needs no
+					// script. The image is lazy: in a dialog that is closed it has no box, so it is not fetched until the dialog is opened.
+					<button
+						class="file-thumb-link"
+						type="button"
+						commandfor={ p.ID + "-preview" }
+						command="show-modal"
+						aria-haspopup="dialog"
+						aria-label={ "Preview " + p.CurrentName }
+						title={ "Preview " + p.CurrentName }
+					><img class="file-thumb" src={ p.CurrentThumb } alt=""/></button>
+					<dialog id={ p.ID + "-preview" } class="preview-dialog" closedby="any" aria-label={ "Preview of " + p.CurrentName }>
+						<img class="preview-full" src={ p.CurrentHref } alt={ p.CurrentName } loading="lazy" decoding="async"/>
+						<div class="preview-name">{ p.CurrentName }</div>
+						<button class="btn btn-ghost btn-sm preview-close" type="button" commandfor={ p.ID + "-preview" } command="close" autofocus>Close</button>
+					</dialog>
+				} else if p.CurrentThumb != "" {
+					<img class="file-thumb" src={ p.CurrentThumb } alt=""/>
+				}
 				if p.CurrentHref != "" {
 					<a href={ p.CurrentHref }>{ p.CurrentName }</a>
 				} else {

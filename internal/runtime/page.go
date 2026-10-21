@@ -286,7 +286,7 @@ func (p *Program) pageDoc(ctx context.Context, page *ir.Page, req *Request, cont
 		Here:    render.Here{Page: page.PathTemplate, Path: pathVals, Query: query},
 		Content: content,
 	}
-	doc.Phone = p.render.NeedsPhone(page)
+	doc.Phone, doc.File = p.render.NeedsPhone(page), p.render.NeedsFile(page)
 	if req != nil {
 		doc.Code = req.code
 	}

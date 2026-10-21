@@ -3,6 +3,7 @@ package webui
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -74,6 +75,12 @@ type FileInfo struct {
 	// URL is where the app serves the file, the address that the name links to, or "" for no link. It is held to the rules of a
 	// [URL]: a path on this site, or an http, https or mailto address; anything else is shown as plain text.
 	URL string
+
+	// Thumbnail is where the app serves a small picture of the file, if it is an image: a path on this site, which is shown beside
+	// the name, at 32 pixels, and opens the file at its full size (URL) in a dialog when it is clicked. The library never shows the
+	// file itself as a thumbnail, which would send the visitor the whole of an image to see a few pixels of it, so without a Thumbnail
+	// there is no picture. [Thumbnail] makes one from an [Upload].
+	Thumbnail string
 }
 
 // Upload is a file that a visitor sent. It is held on the server, in memory or in a file of its own, until the request is
@@ -189,6 +196,12 @@ func validateFile[M any](v *bodyValidator, at string, a File[M]) {
 	}
 }
 
+// samePath is whether an address is a path on this site, which is the only place that a picture is shown from: the content security policy
+// lets an image be this site's own, and a thumbnail is not one that an address elsewhere should be asked for.
+func samePath(s string) bool {
+	return strings.HasPrefix(s, "/") && !strings.HasPrefix(s, "//") && !strings.HasPrefix(s, `/\`) && !strings.ContainsAny(s, "\n\r")
+}
+
 // lowerFile is a File as the IR holds it.
 func lowerFile[M any](name string, a File[M]) ir.Field {
 	f := head(name, a.Label, ir.KindString)
@@ -201,6 +214,9 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 		out := &ir.StoredFile{Name: info.Name, Size: info.Size, URL: info.URL}
 		if !validURL(out.URL) {
 			out.URL = "" // a link that is not safe to follow is shown as a name
+		}
+		if samePath(info.Thumbnail) {
+			out.Thumb = info.Thumbnail
 		}
 		return out
 	}

@@ -1509,6 +1509,103 @@ td .multiline {
   gap: 4px 10px;
   font-size: 13.5px;
 }
+/* With script, the chooser is in a frame that a file can be dropped on: dashed, and lit while a file is over it. */
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--border-2);
+  border-radius: 2px;
+  transition:
+    border-color 0.11s,
+    background-color 0.11s;
+}
+.file-drop.dragging {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+}
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.file-clear[hidden],
+.file-preview[hidden] {
+  display: none;
+}
+.file-hint {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.file-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 96px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+.file-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+.file-thumb-link,
+.file-thumb-chosen {
+  display: inline-flex;
+  padding: 0;
+  background: none;
+  border: 0;
+  cursor: zoom-in;
+  border-radius: 2px;
+}
+.file-thumb-link:focus-visible,
+.file-thumb-chosen:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+/* The file at its full size, over the dimmed page: as large as the window allows, whole, and never stretched. */
+dialog.preview-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  padding: 12px;
+  background: var(--raise);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+dialog.preview-dialog:not([open]) {
+  display: none;
+}
+dialog.preview-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+.preview-full {
+  display: block;
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 140px);
+  object-fit: contain;
+}
+.preview-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
 .file-current a {
   color: var(--blue-text);
 }

@@ -64,6 +64,7 @@ type Settings struct {
 type Blob struct {
 	Name, Type string
 	Data       []byte
+	Thumb      []byte // a small PNG of an image, made when it was kept; nil for a file that has none
 }
 
 type RetentionPolicy struct{ Days int }

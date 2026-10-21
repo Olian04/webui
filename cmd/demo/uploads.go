@@ -24,7 +24,11 @@ func held(b *Blob, name string) *webui.FileInfo {
 	if b == nil {
 		return nil
 	}
-	return &webui.FileInfo{Name: b.Name, Size: int64(len(b.Data)), URL: "/uploads/" + name}
+	info := &webui.FileInfo{Name: b.Name, Size: int64(len(b.Data)), URL: "/uploads/" + name}
+	if len(b.Thumb) > 0 {
+		info.Thumbnail = "/uploads/" + name + "/thumb" // the small picture that the page shows, and not the image
+	}
+	return info
 }
 
 // keep copies an upload into where the app holds it. An upload is only open until the action has run, so it is copied here, within
@@ -44,7 +48,14 @@ func keep(dst **Blob, up *webui.Upload, limit int64) {
 	if err != nil || int64(len(data)) > limit {
 		return
 	}
-	*dst = &Blob{Name: up.Name, Type: up.ContentType, Data: data}
+	blob := &Blob{Name: up.Name, Type: up.ContentType, Data: data}
+	// An image gets a small picture of itself when it is kept, twice the 32 pixels that a page shows it at, so that the page is not sent
+	// the whole of it to show a thumbnail; the full image is fetched only when the visitor opens it. Thumbnail reads PNG, JPEG and GIF: for
+	// a WebP there is none, and the page shows the name alone, which is what an app that does not scale a kind of image gets.
+	if thumb, err := webui.Thumbnail(up, 64); err == nil {
+		blob.Thumb = thumb
+	}
+	*dst = blob
 }
 
 var (
@@ -62,6 +73,28 @@ var (
 		Store: func(s *Settings, up *webui.Upload) { keep(&s.CertFile, up, maxCertificate) },
 	}
 )
+
+// serveThumb sends back the small picture of an upload that was made when it was kept, which is a PNG that the app made and so has no
+// need of the care that a visitor's own file has; it is sent the same way.
+func serveThumb(w http.ResponseWriter, r *http.Request) {
+	settings := service.Settings()
+	var b *Blob
+	switch r.PathValue("name") {
+	case "logo":
+		b = settings.Logo
+	case "certificate":
+		b = settings.CertFile
+	}
+	if b == nil || len(b.Thumb) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Length", strconv.Itoa(len(b.Thumb)))
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write(b.Thumb)
+}
 
 // serveUpload sends back a file that was uploaded, as a visitor's file is to be sent: as a download (attachment), with the content type
 // that it was found to have and with nosniff, so that a browser does not decide for itself what it is and run it. Sent inline from this

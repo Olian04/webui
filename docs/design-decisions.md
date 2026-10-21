@@ -276,6 +276,35 @@ design element.
   depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
   library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
+- **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
+  page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input
+  (`input.files = ...`, from a `DataTransfer` of the first file), so the request is the browser's own multipart post, which a `fetch` would
+  have replaced with a second way to send a form to keep in step with the first. The picture of a chosen image is read with
+  `FileReader.readAsDataURL`, and not `URL.createObjectURL`: the policy lets an image be `'self'` or `data:`, and a `blob:` address would
+  have meant widening it for this. Only PNG, JPEG, GIF and WebP are drawn, and only up to 4 MiB, since a data address is held in the page
+  (SVG is a document that can run script, and is not drawn). The size and the kind are told to the script by the server in
+  `data-file`, in the words the server uses, through `setCustomValidity`, so the browser's own message appears and the form does not submit. The kind check
+  is a hint: it goes by the type that the browser gives and the extension, and a file that has no type is not refused, since a wrong refusal
+  here is worse than a right one late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the page's and is not asked per
+  visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the extensions as well as the media types, so
+  that the script can tell a file by its name.
+- **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
+  as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
+  `FileInfo` has a `Thumbnail`, a path on this site, which the page shows (in the markup, so it needs no script) as a button that opens
+  the file at full size in a native `<dialog>`, by an invoker command (`commandfor`, `command="show-modal"`), which is what `Confirm` does and so has the
+  same costs: Chrome and Edge 135, Firefox 144 and Safari 26.2 without script, and `enhance.js` for an older browser. The full image is an `<img loading="lazy">` in
+  the closed dialog, which has no box and so is not fetched until the dialog opens (measured: not loaded before the click, loaded after, with all script removed
+  from the page). A background image on a placeholder was weighed: it defers the same way, since a closed dialog is not rendered, but it has no size of its own,
+  so a 64px logo and a 4K photograph would fill the same box (a `contain` that enlarges the one and fits the other), no alt text, and the address in a style attribute.
+  The image has its size, its alt and no inline style.
+  The library keeps no files, so it cannot make the thumbnail itself: the app does, when its `Store` is handed the image, and
+  `webui.Thumbnail(up, size)` is there for it (PNG, JPEG and GIF, to a PNG that keeps the picture's proportions and is never enlarged, with the
+  picture of no more than 25 million pixels, since it is held whole in memory and a small PNG can be a vast picture). Dropped: showing the file
+  itself, which is what was wrong; the library keeping a thumbnail beside every upload, which is keeping files; and a WebP reader, which is an image
+  dependency for every program, so a WebP has no `Thumbnail` from the helper, and the name stands alone unless the app scales it with its own.
+  The cost: an app that wants a picture makes the small one and a route to serve it; there is no picture without one, which is the
+  library's choice and not a gap; and the picture of a file that is chosen is made in the page, in a canvas, from a data: address
+  of the whole file, which is held only as long as it takes to draw it, and read again when the dialog is opened.
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
   multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,

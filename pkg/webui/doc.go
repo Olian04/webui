@@ -227,6 +227,21 @@
 // and says to choose it again, since a browser cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
 // with nil.
 //
+// With script the chooser is a frame that a file can be dropped on, a small picture of an image that is chosen is shown below it (made
+// in the page, and clicked to see the file as it was chosen, at its full size, in a dialog), a file
+// that is too large or is not one of the kinds that the field takes is said to be so before the request is sent (in the words the
+// server uses), and a file that is chosen and not sent can be cleared. The input stays the control: a drop puts the file in it, as if it
+// had been chosen, so the post is the browser's own and works the same without the script. The early check is of the size, the
+// name and the type that the browser gives, and is only a hint, the server deciding by what the file holds; a file whose type the
+// browser does not know is not said to be wrong.
+//
+// The file that is stored is shown as a small picture when the app gives one: [FileInfo.Thumbnail], a path on this site, which a Store that
+// is handed an image makes with [Thumbnail] when it keeps the file. It is shown at 32 pixels beside the name, and the visitor is sent that
+// small file and not the image, which is only fetched when they click the picture, to see it at its full size in a dialog. That is in the
+// page and needs no script: the picture is a button that opens a native dialog with an invoker command, as Confirm does, and the image in the
+// dialog is lazy, which has no box, and so is not fetched, while the dialog is closed (as for Confirm, an older browser needs the script). The library never shows the file itself as a thumbnail, so without a Thumbnail there is no picture.
+// [Thumbnail] reads PNG, JPEG and GIF, and no WebP, which the standard library does not decode; an app that takes more has its own scaler.
+//
 // What the app serves it should serve as a download: Content-Disposition: attachment, X-Content-Type-Options: nosniff, and the
 // content type that the [Upload] was found to have. A visitor's file sent inline from the app's origin is a page of the app's. A
 // page that has a File reads a multipart body of as much as its files may be, and runs the page's Guard first, so a visitor it
