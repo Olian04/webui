@@ -290,8 +290,13 @@ design element.
   that the script can tell a file by its name.
 - **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
   as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
-  `FileInfo` has a `Thumbnail`, a path on this site, which the page shows (in the markup, so it needs no script) with a link to the
-  file at full size; script opens that link in a native dialog, which loads the file when it is opened and lets go of it when it is closed.
+  `FileInfo` has a `Thumbnail`, a path on this site, which the page shows (in the markup, so it needs no script) as a button that opens
+  the file at full size in a native `<dialog>`, by an invoker command (`commandfor`, `command="show-modal"`), which is what `Confirm` does and so has the
+  same costs: Chrome and Edge 135, Firefox 144 and Safari 26.2 without script, and `enhance.js` for an older browser. The full image is an `<img loading="lazy">` in
+  the closed dialog, which has no box and so is not fetched until the dialog opens (measured: not loaded before the click, loaded after, with all script removed
+  from the page). A background image on a placeholder was weighed: it defers the same way, since a closed dialog is not rendered, but it has no size of its own,
+  so a 64px logo and a 4K photograph would fill the same box (a `contain` that enlarges the one and fits the other), no alt text, and the address in a style attribute.
+  The image has its size, its alt and no inline style.
   The library keeps no files, so it cannot make the thumbnail itself: the app does, when its `Store` is handed the image, and
   `webui.Thumbnail(up, size)` is there for it (PNG, JPEG and GIF, to a PNG that keeps the picture's proportions and is never enlarged, with the
   picture of no more than 25 million pixels, since it is held whole in memory and a small PNG can be a vast picture). Dropped: showing the file

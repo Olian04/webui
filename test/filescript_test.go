@@ -95,15 +95,16 @@ func TestTheFileChooserTellsTheScriptWhatTheFieldTakesInTheServersWords(t *testi
 	assert.Equal(t, len(d.Accept), 0)
 }
 
-// The stored file's picture is the one that the app made: a small one, which is in the page and not made by script, and which links to the
-// file at full size. The library never shows the file itself as a thumbnail, and shows a picture only from a path on this site.
+// The stored file's picture is the one that the app made: a small one, which is in the page and not made by script, and which opens the
+// file at full size in a dialog that is in the page too, with an invoker command as a button that asks does, so that it works without script.
+// The library never shows the file itself as a thumbnail, and shows a picture only from a path on this site.
 func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T) {
 	t.Parallel()
 
 	for name, c := range map[string]struct {
 		info *webui.FileInfo
 		img  string // the thumbnail that is shown, "" for none
-		link string // where the picture links to, "" for nowhere
+		link string // the file that its dialog shows at full size, "" for no dialog
 	}{
 		"a thumbnail and the file":    {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: "/files/a/thumb"}, "/files/a/thumb", "/files/a"},
 		"a thumbnail and no file":     {&webui.FileInfo{Name: "a.png", Thumbnail: "/files/a/thumb"}, "/files/a/thumb", ""},
@@ -127,9 +128,14 @@ func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T)
 			assert.Contains(t, body, `<img class="file-thumb" src="`+c.img+`" alt="">`)
 			if c.link == "" {
 				assert.False(t, strings.Contains(body, "file-thumb-link"))
-			} else {
-				assert.Contains(t, body, `<a class="file-thumb-link" href="`+c.link+`" title="Preview a.png">`)
+				assert.False(t, strings.Contains(body, "preview-dialog"))
+				return
 			}
+			assert.Contains(t, body, `<button class="file-thumb-link" type="button" commandfor="p-f1-preview" command="show-modal" aria-haspopup="dialog" aria-label="Preview a.png" title="Preview a.png"><img class="file-thumb" src="`+c.img+`" alt=""></button>`)
+			assert.Contains(t, body, `<dialog id="p-f1-preview" class="preview-dialog" closedby="any" aria-label="Preview of a.png">`)
+			// The full image is lazy: in a dialog that is closed it has no box, so it is fetched when the dialog is opened and not before.
+			assert.Contains(t, body, `<img class="preview-full" src="`+c.link+`" alt="a.png" loading="lazy" decoding="async">`)
+			assert.Contains(t, body, `commandfor="p-f1-preview" command="close"`)
 		})
 	}
 }
@@ -145,9 +151,14 @@ func TestTheFileScriptDoesWhatItSaysItDoes(t *testing.T) {
 	for _, want := range []string{
 		"readAsDataURL", "new DataTransfer()", "input.files = one.files", "setCustomValidity(said)", "reportValidity()",
 		"/^image\\/(png|jpeg|gif|webp)$/", "PREVIEW_MAX", "'Files'", "input[type=\"file\"][data-file]",
-		"dialog.showModal()", "a.file-thumb-link", "toDataURL('image/png')", "full.src = data", "img.removeAttribute('src')",
+		"dialog.showModal()", "toDataURL('image/png')", "full.src = data", "img.removeAttribute('src')",
 	} {
 		assert.Contains(t, js, want)
+	}
+	// Every function that the script calls is one that it has: a script that is cut about by an edit still has all its tokens, and fails at once
+	// in the browser, where there is no harness to say so. These are the ones that it calls and does not take from the page.
+	for _, fn := range []string{"config", "problem", "element", "readAsData", "openPreview", "enhance", "enhanceAll"} {
+		assert.Contains(t, js, "function "+fn+"(")
 	}
 	assert.False(t, strings.Contains(js, "createObjectURL")) // a blob: address is not one that the content security policy lets an image have
 	assert.False(t, strings.Contains(js, "svg"))

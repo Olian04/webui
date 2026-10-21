@@ -372,7 +372,7 @@ secondary button (24px, 12.5/500, a strong border). The file that is stored is a
 a file that can be removed, the *Remove* checkbox at the right. With script the chooser sits in a 1px dashed frame in the strong border
 colour, with "or drop a file here" in the tertiary text colour beneath it; while a file is dragged over, the frame takes the primary colour and
 an 8% tint of it. A picture of a chosen image is below, at most 96px high in a 1px border, and the stored image's thumbnail is a 32px square beside its name;
-both have the zoom-in cursor and a primary focus ring, and open the file at full size in a dialog: a raised surface with a 1px strong border
+both have the zoom-in cursor and a primary focus ring, and open the file at full size in a dialog (the stored one in the page, by an invoker command, with no script): a raised surface with a 1px strong border
 over a 60% dim, the image as large as the window allows and never stretched, its name beneath, and a ghost *Close*. *Clear* is a small ghost button at the right of the chooser. A name that is a link is in the link colour and is underlined on hover.
 
 **Inputs** are 32px on the input surface with a strong border; focus takes a

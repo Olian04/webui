@@ -697,7 +697,7 @@
         }
         return;
       }
-      if (e.target.tagName === 'DIALOG' && e.target.classList.contains('confirm')) e.target.close();
+      if (e.target.tagName === 'DIALOG' && (e.target.classList.contains('confirm') || e.target.classList.contains('preview-dialog'))) e.target.close();
     });
   }
 

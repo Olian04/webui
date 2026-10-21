@@ -10,10 +10,10 @@
 // What the field takes is in data-file on the input, as JSON: {max, maxMessage, accept: [".png", "image/png", ...], kindMessage, image}.
 // image says that a file that is chosen may be shown if it is a picture.
 //
-// A picture is small, and clicking it opens the file at its full size in a dialog. The picture of the stored file is the server's: the
-// thumbnail that the app made, in the page, with a link to the file, which without this script is followed. A picture of a file that is
-// chosen is made here, scaled down, and the file itself is read only when the dialog is opened, so that a large image is not held
-// in the page to show a few dozen pixels of it.
+// A picture is small, and clicking it opens the file at its full size in a dialog. The picture of the stored file is the server's, with
+// its own dialog, which a button opens with an invoker command and so needs none of this. A picture of a file that is chosen is made here,
+// scaled down, with a dialog of the same look that is made when it is first wanted, and the file itself is read only when the dialog is
+// opened, so that a large image is not held in the page to show a few dozen pixels of it.
 (function () {
   'use strict';
 
@@ -24,8 +24,8 @@
   var PREVIEW_MAX = 4 * 1024 * 1024;
   var THUMB = 192; // the longest side of the picture of a chosen file, twice what it is shown at, for a screen of a high density
 
-  // The dialog that shows a file at its full size: one for the page, made when it is first wanted. The file is loaded when the dialog is
-  // opened and let go of when it is closed, so nothing is fetched or held for a picture that nobody opened. It is a native dialog,
+  // The dialog that shows a file that is chosen at its full size: one for the page, made when it is first wanted. The file is read when
+  // the dialog is opened and let go of when it is closed, so nothing is held for a picture that nobody opened. It is a native dialog,
   // which has the focus, Escape, the backdrop and the top layer; a click on the backdrop closes it where closedby is not known.
   var dialog = null;
   function openPreview(src, name) {
@@ -56,16 +56,6 @@
     dialog.querySelector('.preview-name').textContent = name;
     dialog.showModal();
   }
-
-  // The thumbnail of a stored file is a link to the file, which opens the dialog in place of leaving the page; a click that means to open
-  // it somewhere else (a new tab, a download) is left to the browser.
-  document.addEventListener('click', function (e) {
-    var link = e.target.closest && e.target.closest('a.file-thumb-link');
-    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    var name = link.getAttribute('title') ? link.getAttribute('title').replace(/^Preview /, '') : '';
-    openPreview(link.href, name);
-  });
 
   function config(input) {
     try {

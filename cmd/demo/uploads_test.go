@@ -144,8 +144,9 @@ func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *test
 	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "photo.png", big}, upload{"f9_1", "cert.pdf", demoPDF}).Code, http.StatusSeeOther)
 
 	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `<a class="file-thumb-link" href="/uploads/logo" title="Preview photo.png"><img class="file-thumb" src="/uploads/logo/thumb" alt=""></a>`)
-	assert.False(t, strings.Contains(body, "/uploads/certificate/thumb")) // a PDF has no picture
+	assert.Contains(t, body, `command="show-modal" aria-haspopup="dialog" aria-label="Preview photo.png" title="Preview photo.png"><img class="file-thumb" src="/uploads/logo/thumb" alt=""></button>`)
+	assert.Contains(t, body, `<img class="preview-full" src="/uploads/logo" alt="photo.png" loading="lazy" decoding="async">`) // fetched only when the dialog opens
+	assert.False(t, strings.Contains(body, "/uploads/certificate/thumb"))                                                      // a PDF has no picture
 
 	small := get(h, "/uploads/logo/thumb")
 	assert.Equal(t, small.Code, http.StatusOK)
