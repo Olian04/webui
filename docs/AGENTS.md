@@ -7,23 +7,28 @@
 | `pkg/webui`        | Public API. Declaration AST, split by file. `Compile` lowers to internal runtime. |
 | `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
-| `internal/rules`   | Pattern syntax both engines read, text rules, constraint check, HTML attrs from `Rules`.                           |
+| `internal/rules`   | Pattern syntax both engines read, text rules, the constraint check, the format checks (email, web address, phone, colour), the check of an uploaded file by what it holds, and HTML attrs from `Rules`. |
 | `internal/phone`   | Countries and calling codes, how a national number is spaced, E.164 normalising and the check of a phone number. The renderer generates `phone.js` from it (data first, then `assets/js/phone.js`). |
-| `internal/favicon` | Scale `Brand.Logo` to the favicon PNGs (stdlib only).                             |
+| `internal/favicon` | Scale an image to fit a square, with its proportions or padded (stdlib only): the favicons from `Brand.Logo`, and the thumbnails of `webui.Thumbnail`. |
+| `internal/rank`    | How well a search result matches what was typed: the score that orders the results.   |
+| `internal/convert` | List conversions between the declaration, the IR and the response.                    |
+| `internal/assetserve` | Serves files that never change: a content hash in the name, a year's cache, compression, 304. |
+| `internal/editorctx` | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service. |
+| `internal/metrics` | The Prometheus metrics behind `App.Metrics`: it collects and serves none; collectors that already exist are reused. |
 | `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links unless from a trusted origin; the only place that decides what text may do on a page. |
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
 | `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
 | `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`Table.Rows`). |
 | `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline (lazy panels, in-order streaming), POST actions (an accepted one ends in a 303, a refused form is answered with the page and a 422), flash, export, `Open` resolve. |
-| `internal/render`  | IR + loaded data → HTML; asset routes. `templates/components` is the design language. |
+| `internal/render`  | IR + loaded data → HTML. `templates/components` is the design language. The assets are built here (hashed, compressed) and served through `internal/assetserve` by the runtime's routes. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
 | `.claude-plugin`, `.cursor-plugin` | Packaging of the skill. The Claude Code marketplace installs only `skills/webui` (a `git-subdir` source, so users do not pull the Go source); the Cursor plugin takes the repo root. No `version` is set, so installs follow the default branch. |
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
-`pkg/webui` files: `app`, `page`, `table`, `form`, `editor`, `diff`, `markdown`, `language`, `layout`, `accessor`, `action`, `outcome`, `link`, `open`, `compile`, `compile_error`, `validate`, `lower`. One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
+`pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
 The demo's tests (`cmd/demo/*_test.go`) are one file for each part of the demo, named for it (`devices_test.go`, `alerts_test.go`, `settings_test.go`, `guards_test.go`, ...), and `helpers_test.go` has what they share (`handler`, `get`, `post`, `follow`, `flashOf`). A test for a new or changed feature goes in the file of the page it is about, or in a file of its own for a new page, so that two changes to the demo do not edit one file. They share the demo's one in-memory service, so none runs in parallel.
 
@@ -38,7 +43,7 @@ The runnable `Example` functions in `pkg/webui` are the documentation's tests, a
 | `docs/design-decisions.md` | Why the API is shaped as it is, and what each decision costs. |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
-design token (the app's `webui.Theme` colours are the only ones it may override); no component reads a literal value. When the two documents and
+design token (the app's `webui.Theme` colours are the only ones it may override); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 
@@ -54,7 +59,7 @@ is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
 
 `internal/` packages may import each other. `pkg/` owns public types and `Compile` glue.
 
-Consumers outside this module cannot import `internal/`. No side effects on import.
+Consumers outside this module cannot import `internal/`. No side effects on import, except `pkg/monaco/*`, which are imported for the effect (each registers its worker).
 
 Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 
@@ -148,7 +153,7 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 **Why it is not kept**
 
-- A worker is storage on the visitor's device (ePrivacy Article 5(3)), and a loading screen is a speed-up, not something the service needs. "One cookie and three `localStorage` values" in the README would stop being true, and an operator could be asked for consent for it. It would need an opt-in on `App`, which is a public API.
+- A worker is storage on the visitor's device (ePrivacy Article 5(3)), and a loading screen is a speed-up, not something the service needs. "One cookie, three `localStorage` values and two `sessionStorage` values" in the README would stop being true, and an operator could be asked for consent for it. It would need an opt-in on `App`, which is a public API.
 - It helps only a visitor who ran script before: a worker is registered by script, so a first visit gets no shell, and a visitor who never runs script never does. With script off later, the refresh hand-off still works, so it is correct, but it is a loading screen for few.
 - It needs special cases that every later change has to keep: only the addresses the app's pages own (a root mount would otherwise hold the host's `/login`), an export address (a download leaves the shell on screen for good, as does any link to an attachment), a guard against a hand-off that does not match (a loop of shells and requests, seen with navigation preload), and a `try` that falls back to the network, since a worker that breaks every navigation stays on the visitor's browser until it is replaced.
 - Navigation preload cannot be used: the preload response is gone once the event has answered, so using it for a late hand-off sends the request twice, which builds the page twice and loses the toast.

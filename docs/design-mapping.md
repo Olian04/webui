@@ -26,8 +26,9 @@ into existence, and nothing is configured twice.
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state; a `Refusal` it returns is the **Not found**, **Not signed in** or **Not permitted** state of its status, with its message and, when it has one, a link on |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
+| `Page.NavEntries` | An entry for each of a page's arguments, read when a page is drawn, in the place and with the icon of the page's `Nav`; the one whose arguments fit the address is lit |
 | `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
-| `Page.Search` | The page's things as a group of results in the top bar's search, which lists nothing else and is not drawn at all when no page has a `Search`; empty, it shows nothing, and it says "Searching…" and "Nothing matches." Every page's search is asked at once and the answer is sent whole, as HTML: with script the box lists it; without, the box is a form with a *Search* button joined to its right edge, and its answer is a page of results in the shell The results are ranked by how well the `Hit`'s title (and its line beneath, a little less) matches what was typed, the best group first and the best result first in each. Each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
+| `Page.Search` | The page's things as a group of results in the top bar's search, which lists nothing else and is not drawn at all when no page has a `Search`; empty, it shows nothing, and it says "Searching…" and "Nothing matches." Every page's search is asked at once and the answer is sent whole, as HTML: with script the box lists it; without, the box is a form with a *Search* button joined to its right edge, and its answer is a page of results in the shell. The results are ranked by how well the `Hit`'s title (and its line beneath, a little less) matches what was typed, the best group first and the best result first in each. Each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
 | `App.ExternalLinks` | The button in the top bar, beside Refresh, and the popover list of the app's links to places outside it behind it. An `ExternalLink` is a `Nav` entry (label, icon, section caption) with a `URL`, used as written (a web address opens in a tab of its own; the list groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
@@ -47,30 +48,33 @@ into existence, and nothing is configured twice.
 | `Form.Title` / `Table.Title`, `Desc` | The panel header text, and an information icon whose popover shows the description on hover and on focus |
 | accessor (`String`, `Int`, `Float`) in a `Form` | A labelled input |
 | accessor in a `Table` | A column |
-| `Label` | The input label / column header |
 | value kind | The input type and the column's alignment |
-| `Format` (on `Int`, `Float`, `Datetime`, `Timestamp`) | How the value reads where it is only read: a table cell, a field with no `Store`. The column still sorts, filters and exports by the value, and an editable input holds the value |
+| `Format` (on `Int`, `Float`, `OptionalInt`, `OptionalFloat`, `Datetime`, `Timestamp`) | How the value reads where it is only read: a table cell, a field with no `Store`. The column still sorts, filters and exports by the value, and an editable input holds the value |
 | `Group` | Its fields side by side in one row. Layout only: no frame, no caption |
 | no `Store` | The value shown as output, in no box: the field's usual quiet label over the value at 14.5px, and an em dash when it is empty |
-| accessor `Label` | What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it, unless the accessor says `NoSort` or `NoFilter` |
-| `Select.Options` | The values a select can hold, in order, each with what it says and its tone. In a `Rows` table a select column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Options`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
+| `Label` | The input label and the column header. What a column's sort link and filter ask `Load` for, and the column's name in the address; every column header is a sort link with a filter beside it, unless the accessor says `NoSort` or `NoFilter` |
+| `Select.Options`, `Select.LoadOptions` | The values a select can hold, given or read when a request is answered,, in order, each with what it says and its tone. In a `Rows` table a select column's filter is a multi-select of the values its rows hold; in a `Load` table, of exactly the `Options`, or text when there are none. A numeric column's filter is a minimum and a maximum, and any other column's a text input |
 | accessor `Help` | In a form or a toolbar (read-only too), a section of the popover that is beside the label (the information icon, which lists the rules): under the heading "Help:", above "Rules:". The popover is on hover and keyboard focus, and its text is the icon's accessible name. A field with a `Help` and no rules has the icon for the help alone. Not in a table |
-| `Placeholder` (on `String`, `Int`, `Float`) | The input's placeholder |
+| `Placeholder` (on `String`, `Int`, `Float`, their `Optional` forms, `Email`, `Phone`, `Website`) | The input's placeholder |
 | `Email`, `Phone`, `Website`, `ColorPicker` | A string of a kind that has an input of its own: `type="email"`, `"tel"`, `"url"` or `"color"`. The browser flags an email or a web address that is not one (`typeMismatch`, in the server's words, through `setCustomValidity`); the server checks all four. They have a `String`'s rules and `Placeholder`; a `ColorPicker` has neither, since it is the browser's picker, and an empty one shows black. A `Website` says "A web address, http or https" in the rules popover, since the server is stricter than the browser. Read, they are text: `URL` is the link |
-| `File` | In a form, a native file chooser (`type="file"`, with `accept` from the kinds, a hint only) with the stored file above it: its name, a link when `Load` gives a URL, its size, and with `Removable` a *Remove* checkbox. The form is `multipart/form-data` only when it has one. The popover lists what it takes ("A PNG or JPEG file", "Up to 5 MiB"). In a table or a read-only form the stored file's name, a link when it has a URL, and a dash for none. Not a toolbar item. A file is checked by what it holds, not by its name; a form that is refused stores no file, shows the stored one again, and says to choose the file again, since a browser cannot refill a chooser |
-| `File` with script | A dashed frame around the chooser that a file can be dropped on (lit while one is over it), "or drop a file here" beneath it, a small picture of a chosen image (PNG, JPEG, GIF or WebP, up to 4 MiB; scaled down in the page to 192px) below that, which opens the file as it was chosen at its full size in a dialog when it is clicked, and a *Clear* button for a file that is chosen and not sent. A file that is too large or is not a kind that the field takes is refused at once, with the server's words, by the browser's own validation message, and does not submit; a file whose type the browser does not give is not. The stored file's picture is the app's `Thumbnail` (a path of this site), 32px beside the name, in the page, and a button that opens the file at full size in a native dialog with an invoker command (as `Action.Confirm` does), whose lazy image is fetched only then; no `Thumbnail`, no picture. The stored picture and its dialog need no script. Still one file to a field: a drop of several takes the first |
-| `Phone` with script | A segment, a selector of the country calling code (`+46 Sweden`), joined to the input that holds the national number, which is spaced as it is typed (`70 123 45 67`, by the country's grouping where one is known, else in threes) and has its trunk `0` dropped. The selector starts at `DefaultCountry`, else the country of the browser's language, else empty; pasting `+46 70 …` picks the country by its code. A hidden input with the field's name carries E.164, `+46701234567`, and the server stores a number with a code that way, with no spaces (without a code, as typed). The input has the length and pattern rules of the field removed: the server holds the number that is sent to them. A number that is there and is not international (or has an extension) is left as the one plain input it was. Not script: the one `type="tel"` input, as typed |
+| `File` | In a form, a native file chooser (`type="file"`, with `accept` from the kinds, a hint only) with the stored file above it: its name (a link when `Load` gives a URL) and its size, and with `Removable` a *Remove* checkbox. The form is `multipart/form-data` only when it has one. The popover lists what it takes ("A PNG or JPEG file", "Up to 5 MiB"). In a table or a read-only form it is the stored file's name, a link when it has a URL, and a dash for none. It is not a toolbar item |
+| `File.Required` | A file that is stored and is not being removed, or a new one; the browser asks for one only when none is stored, and a refusal says "Choose a file." |
+| `FileInfo.Thumbnail`, `FileInfo.URL` | The app's small picture of the stored file, 32px beside its name, in the page. With a `URL` too it is a button that opens that file at full size in a native dialog with an invoker command (as `Action.Confirm` does), whose lazy image is fetched only then, with no script; a `Thumbnail` alone is only the picture. Both are paths of this site, and without a `Thumbnail` there is no picture: the file itself is never shown shrunk |
+| `webui.Thumbnail` | What an app's `Store` makes the `Thumbnail` with: a PNG of the uploaded image fitted inside a square, with its own proportions, never enlarged, from PNG, JPEG or GIF (no WebP), and not from a picture of more than 25 million pixels |
+| `File` with script | A dashed frame around the chooser that a file can be dropped on (lit while one is over it), "or drop a file here" beneath it, and a *Clear* button for a file that is chosen and not sent. A chosen image (PNG, JPEG, GIF or WebP, up to 4 MiB) is shown below as a small picture, scaled down in the page to 192px, only when the field takes images, and opens as it was chosen at full size in a dialog when it is clicked. A file that is too large or is not a kind that the field takes is refused at once, with the server's words, by the browser's own validation message, and does not submit; a file whose type the browser does not give is not. Still one file to a field: a drop of several takes the first |
+| `Phone` with script | A segment, a selector of the country calling code (`+46 Sweden`), joined to the input that holds the national number, which is spaced as it is typed (`70 123 45 67`, by the country's grouping where one is known, else in threes) and has its trunk `0` dropped. The selector starts at `DefaultCountry`, else the country of the browser's language, else empty; pasting `+46 70 …` picks the country by its code. A hidden input with the field's name carries E.164, `+46701234567`, and the server stores a number with a code that way, with no spaces (without a code, as typed). The input has the length and pattern rules of the field removed: the server holds the number that is sent to them. A number that is there and is not international (or has an extension) is left as the one plain input it was. Without script: the one `type="tel"` input, as typed |
 | `Datetime.DateOnly`, `Timestamp.DateOnly` | A date: `type="date"` with no `step`, "Date in UTC" in the rules popover, shown in a table and a form as "2026-10-09", and a table's filter bounds are date inputs. The stored value is midnight UTC (Unix seconds, or the date alone for a `Datetime`) |
-| `Rules` | HTML validation attributes on the input, and the hint beneath it |
+| `Rules` | HTML validation attributes on the input, and the rules listed in the popover beside its label |
 | `Select` | A choice from a list of options. Read, in a status column or beside its label in a form, it is a badge for each value, in its option's tone. With a `Store` it is a drop-down list (a `<select>`, so it needs no script), or with `Multi` a list to choose several from; `Required` refuses nothing chosen, and a value that is not one of the options is refused on the server |
-| `URL` | A link, only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
+| `URL` | A link, with `Text` for its words (the same on every row), only because the page declares the column a `URL`: no other accessor makes a link of its value. It opens in a new tab with `rel="noopener noreferrer"`, carries an arrow, and tells screen readers so. Only a site path or an http, https or mailto address is one; anything else is plain text. Read-only; not the first column of a clickable table |
 | `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs. With a `Store` a form shows the native date and time picker (`datetime-local`, to the second, in UTC) and says "Date and time in UTC" in the field's rules popover |
-| `Slider` | An inline bar in a table; in a form a bar, or a range input when it has a `Store` |
+| `Slider` | An inline bar in a table, and in a form that is only read; with a `Store`, see the next row |
 | `Slider` with a `Store` | A number input that is the control (it is submitted, has the bounds and the `step`, and works without script) with a range beside it, for script, to drag. `StepSize` is the distance between the values, from `Min`, or a power of ten that gives a hundred steps or more over the range; the value is shown with its decimals. The server holds a value to the step too, in the words the browser uses (`step="any"` submitted whatever the pointer was over, such as 81.6719540426991) |
 | `OptionalInt`, `OptionalFloat`, `OptionalSlider` | The number, slider and bar of the same names, for a value that may be absent (`Load` returns a pointer). Absent is an empty input with the field's placeholder, and a dash where it is only read, in a table and in a read-only form; an empty slider is dimmed, since its thumb must rest somewhere. Emptying the input stores `nil`, and `Required` refuses it. In a table it sorts first and is in no range; the CSV cell is empty and the JSON is `null` |
 | `Bool` | Yes, no, or not set: a drop-down of Yes and No with an empty option (a `<select>`, so it needs no script; a checkbox cannot be neither, and an unchecked one sends nothing), and a neutral Yes or No badge where it is read, with a dash for neither. Its table filter is a choice among them, and the JSON is `true`, `false` or `null` |
 | `Table.Rows`, `Table.Load` or `Table.Feed` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself; `Feed` is handed a cursor by a source that pages by cursor, in its own order, which a cursor continues and the library cannot filter, so its columns have no filter and sort only the page on screen, and its footer is "Showing rows 10032–10054" with *First page*, *Previous* and *Next* |
 | `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
+| `Table.Key` | What names a row to a request: required with `Actions` or `BulkActions`, since a button posts the key of its row and never its position |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected. Each is drawn if its `Guard` accepts a selection of any one row of the window, and with none drawn there is no column and no bar |
 | `Table.Actions` | A button per row in a trailing cell, left out for a row whose `Guard` returns an error and disabled, with its message, for one that returns `Disabled`; the cell is empty for a row with none, and the column is there when some row of the window has a button |
 | `Table.PageSize`, `Table.Title` | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
@@ -91,8 +95,8 @@ into existence, and nothing is configured twice.
 
 ### `App` and `Brand`
 
-`App` is the whole screen. Its `Pages` populate the sidebar; `ByPath` is what makes a breadcrumb parent clickable and what lets one
-page link to another without either knowing the other's address.
+`App` is the whole screen. Its `Pages` populate the sidebar; the compiled app's lookup of pages by path is what makes a breadcrumb parent clickable and
+what lets one page link to another without either knowing the other's address.
 
 The browser tab's icon is generated: `Brand.Logo` is scaled to 32 px (the tab)
 and 180 px (a phone's home screen), fitted inside a square and never stretched,
@@ -125,9 +129,9 @@ dark differ, and light or dark is the viewer's choice, not the app's; a single
 colour cannot be right in both. A field left empty keeps the design's colour, so
 a zero `Theme` serves no `theme.css` at all.
 
-### `Page` and `PathTemplate`
+### `Page.Path`
 
-One page is one screen and one address. `PathTemplate` is both:
+One page is one screen and one address. The path (a `PageID`) is both:
 
 - the address the user sees and shares, and
 - the breadcrumb trail, derived from its segments.
@@ -159,8 +163,8 @@ The consequences:
 ### `Decode`
 
 Invisible, but it is the reason an address can be trusted: the values in the
-address are the values the page will receive, parsed once at compile time rather
-than re-derived per request.
+address are the values the page will receive: the argument codec is built once at compile time, and it decodes the address on every request, so what
+the page is handed is what it declared.
 
 ---
 
@@ -228,9 +232,9 @@ nothing to declare for it: it is a page with no `Label`.
 
 ## Body: layouts
 
-### `Node` and `Addr`
+### The body tree
 
-The body tree is the panel arrangement. `Addr` — the node's path of child
+The body tree is the panel arrangement. A leaf's address — its path of child
 indices — is what a refresh names. Practically, this is the difference between
 "the screen reloaded" and "one panel reloaded": with JavaScript, a control
 belonging to a leaf re-renders the panel at that address and the rest of the
@@ -352,12 +356,14 @@ and renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
 |---|---|---|
-| `Label` | Field label, 12.5/500 | Column header, 12.5/500 |
+| `Label` | Field label, 12/400, text-secondary | Column header, 12.5/500 |
 | value kind | Input type | Cell alignment and formatting (numeric → right, tabular figures) |
 | `Load` | The value shown | The cell value |
 | `Store` absent | **Read-only** — shown as output, not as a disabled input | (no effect; a column is always read-only) |
-| `Rules` | Validation attributes + the hint line | Ignored |
-| `Label` | (the label) | Header is a sort link and has a filter beside it; the sorted one takes the link colour and a caret |
+| `Rules` | Validation attributes + the rules popover | Ignored |
+| `NoSort`, `NoFilter` | Ignored | Leave the header's sort link, and its filter, off |
+| `Help` | A section of the popover beside the label | Not shown |
+| `Format` | Where only read: how the value reads | How the cell reads; the column still sorts, filters and exports by the value |
 | `Group` | Fields side by side, with no frame | Ignored |
 | `Placeholder` | The placeholder | Ignored |
 
@@ -377,6 +383,9 @@ Each rule has exactly one visual form:
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
 | `String.Secret` | `type="password"`, `autocomplete="new-password"` | "Leave empty to keep the current value", in the popover; the stored value is never in the page, and a row of bullets (the input's placeholder, always eight) says that there is one |
+| `Select` with `Multi` | `multiple` | "Hold Ctrl or ⌘ to choose more than one", in the popover |
+| `Slider` with a `StepSize` | `step` | "In steps of n", in the popover |
+| `File` | `accept`, `required` | What it takes ("A PNG or JPEG file") and "Up to 5 MiB", in the popover; "Choose the file again" in a form that was refused, which a browser cannot refill |
 | `String.Multiline` | `<textarea>` with `required`, `minlength`, `maxlength` (no `pattern`) | Five rows, as tall as the visitor drags it; a cell shows the first three lines |
 | `StartsWith`, `EndsWith`, `Contains` and their `Not` forms | `pattern`, with the field's own | What each requires ("Starts with "https://""), in the popover, and as its message beneath a refused value |
 
@@ -417,7 +426,7 @@ rows, as one group.
 
 Declaring bulk operations adds the 34px checkbox column and, once anything is
 selected, the action bar: a 10% primary strip carrying the count, the
-operations, and *Clear*. A table that declares none has no column and no bar —
+operations. A table that declares none has no column and no bar —
 not a disabled one.
 
 Selection itself is deliberately **not** an argument: it never enters the
@@ -468,6 +477,8 @@ what the user typed, since a refusal did nothing and a reload may send it again.
 | `Warning(msg)` | yes | The same with an amber border: it was done, and the user should be aware of `msg` |
 | `Failure(msg)` | no | The form shown again with what was typed, and a toast with a red border saying `msg` |
 | `Reject(Field(...)...)` | no | The form shown again with what was typed, an invalid border + ring on each named field and its message beneath, and a "Not saved" toast |
+| `.Back()` | any | Back to the page the user came from, even for an outcome that would have shown the form again; what was typed is not kept, and the message is the toast there |
+| `.Stay()` | any | Stays where it is, even for a success that would have returned to where the form was opened from |
 | `.Then(target)` | any | Navigation, whatever the outcome: the user goes there instead of what it would have done, with its message as a toast there. A refused outcome that is told where to go does not show the form again, so what was typed is not kept |
 
 `Reject` is the design's most important rejection path: a save that was
