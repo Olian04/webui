@@ -118,7 +118,7 @@ design element.
   by the names of the properties of the control's `ValidityState` (`valueMissing`, `tooShort`, `tooLong`,
   `patternMismatch`, `rangeUnderflow`, `rangeOverflow`, `badInput`, `stepMismatch`), the standard
   vocabulary of the Constraint Validation API, put in a `data-validity` attribute of each editable input and select.
-- **With script the browser's words are the server's, and are taken back when the value changes.** With script, when a control
+- **With script the browser's words are the server's, and are taken back when the value changes.** When a control
   reports itself invalid (the `invalid` event), the first reason that is true, in the order the server checks, goes to
   `setCustomValidity`, which the browser then shows in its own bubble; it is taken back when the value changes, since a custom
   message keeps a control invalid until it is. Nothing is drawn by the page and nothing is reinvented: the bubble, the focus and
@@ -218,7 +218,7 @@ design element.
   options give a table with `Load` its filter (the source filters, so the library can only offer what it is told) and
   say, in every table, form, export and page search, what a value reads and the tone it is drawn in. With `Rows` the
   filter stays the values the rows hold, as for `Options`.
-- **A select reads its options when a request is answered, by a function that the field carries.** How: the field carries a
+- **A select reads its options when a request is answered, by a function that the field carries.** The field carries a
   function (`ir.Field.ChoicesFor`) and each request that needs the options asks for a copy of the form or the table with them
   read (`Form.Resolved`, `Table.Resolved`); nothing is kept between requests, since fields are shared, and the app knows how
   long its options may be old, so a slow source is cached by the app, as for `NavEntries`. A source that fails fails the panel
@@ -467,7 +467,7 @@ design element.
   token in the flash cookie): it is per process, so behind a load balancer without stickiness the second
   request could reach another instance, it needed a bound and a timer, and it made a refusal show as a 303
   in the metrics, where it is a 422 now, and failures also stay visible in `webui_actions_total{result}`.
-- **What a refused form that is not redirected costs.**  "send the form again?" when the page it answered with is reloaded,
+- **What a refused form that is not redirected costs.** The browser asks "send the form again?" when the page it answered with is reloaded,
   which is its standard behaviour for a response to a POST, and with script there is no workaround for it on purpose. A table
   action that is refused has no fields to draw again, so it keeps the redirect and a toast. A `Then` or a `Back` that leaves the
   form still takes the user there, with the message as a toast, and what was typed is not kept, as before.
