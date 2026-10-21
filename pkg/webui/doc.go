@@ -160,8 +160,7 @@
 // are below, and a [Group] lays accessors side by side in a form. Without a Store an
 // accessor is read-only, and a [URL] never has one. An accessor's Rules (a
 // [StringRules] or a [NumberRules]: required, length, a pattern, bounds) are rendered
-// as HTML constraint attributes and checked again on the server, and its Placeholder is
-// shown in an input while it is empty.
+// as HTML constraint attributes and checked again on the server, and its Placeholder is shown in an input while it is empty. A [Float] shows Precision decimals.
 //
 // Every accessor but a [Group] has a Help, a line or two on what the field is for,
 // which a form and a toolbar show in the popover beside the label that lists the rules,
@@ -349,8 +348,7 @@
 //     query. It is all most tables need. It is called on every request that needs
 //     the rows, and nothing is kept between them.
 //   - Load returns one page of rows and does the filtering, sorting and paging
-//     itself. It is handed a [Query], with the window, sort and filters in force,
-//     and returns a [Window]. Use it when the source can do that work better than
+//     itself. It is handed a [Query], with the window, sort and filters in force (a numeric column's filter is a [Range], either end of it optional), and returns a [Window]. Use it when the source can do that work better than
 //     the library, or is too large to list in full, such as a database table or a
 //     remote API.
 //   - Feed is for a source that pages by a cursor, such as an object store's listing.
@@ -498,7 +496,7 @@
 // word, so that the field is not checked in the page at all, and one that both accept
 // can match different values. So a pattern is written in the syntax that both read
 // alike, which has been tried against both, and anything else is an error when
-// [App.Compile] runs, with what to write instead. A program that gets its patterns from
+// [App.Compile] runs, with what to write instead (a [PatternError] says what is wrong with the pattern and what to write). A program that gets its patterns from
 // somewhere else, such as a schema, asks [ValidatePattern] about each one, and leaves
 // out the ones that are refused. The syntax is:
 //
@@ -715,8 +713,7 @@
 // it, such as signing out or the documentation, behind a button beside Refresh in the
 // top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
 // address opens in a tab of its own, and a path on this site in the same one. Its
-// Section groups it, and the entries without one come first. [Theme] restyles the four
-// colours that carry meaning (accent, ok, warning and critical) and the library derives
+// Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#2f9e8f" that Compile refuses when it is anything else, and the library derives
 // the rest for light and dark, which follow the viewer's system. A [Nav] Icon is the
 // name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
 // itself.

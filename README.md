@@ -33,7 +33,8 @@ form checks what it is given, and the buttons are there for the people who may u
 go get github.com/Olian04/webui@latest
 ```
 
-webui needs Go 1.27 or later. Import the package it exports (the editor's optional language services are separate imports, see the package documentation):
+webui needs Go 1.27 or later. Import the package it exports (the editor's optional
+language services are separate imports, see the package documentation):
 
 ```go
 import "github.com/Olian04/webui/pkg/webui"
@@ -94,9 +95,10 @@ Run it and open <http://localhost:8080/admin/device>:
 
 ![The devices page (light mode): a sidebar with a Devices entry, a breadcrumb, and a table with ID and IP columns.](docs/images/first-page-light.png)
 
-That is a sidebar, a breadcrumb, and a table whose columns all sort and filter, with the state kept in the address so a copied link reproduces the view. Give a page a `Search` and the top bar gets a search box. Add a
-`Form` for an editable page, a `Link` to open a row, and a `Guard` to say who may see
-it.
+That is a sidebar, a breadcrumb, and a table whose columns all sort and filter, with the
+state kept in the address so a copied link reproduces the view. Give a page a `Search`
+and the top bar gets a search box. Add a `Form` for an editable page, a `Link` to open a
+row, and a `Guard` to say who may see it.
 
 webui does not authenticate. Mount the handler behind your own login.
 
@@ -118,13 +120,18 @@ The full documentation is on pkg.go.dev, with runnable examples:
 
 **<https://pkg.go.dev/github.com/Olian04/webui/pkg/webui>**
 
-It covers pages and their arguments, layouts and toolbars, accessors and file uploads, tables (paging, sorting, filters, export and caching), forms, validation and text rules, controls that a visitor may not use, outcomes (success, warning, failure, rejection and where to go next), links between pages, search, code editors, diffs and Markdown, theming, refusals and compile errors, logging, metrics, and security.
+It covers pages and their arguments, layouts and toolbars, accessors and file uploads,
+tables (paging, sorting, filters, export and caching), forms, validation and text rules,
+controls that a visitor may not use, outcomes (success, warning, failure, rejection and
+where to go next), links between pages, search, code editors, diffs and Markdown,
+theming, refusals and compile errors, logging, metrics, and security.
 
 ## What the library stores in the browser
 
-webui sets one cookie, keeps three values in `localStorage` and two in `sessionStorage`. It uses nothing else on a
-visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and
-fonts it ships are served by your own app and call no other host.
+webui sets one cookie, keeps three values in `localStorage` and two in `sessionStorage`.
+It uses nothing else on a visitor's device: no analytics, no tracking, no identifier,
+and the scripts, styles and fonts it ships are served by your own app and call no other
+host.
 
 | What | Kind | Set when | Holds | Lasts |
 | ---- | ---- | -------- | ----- | ----- |
@@ -135,17 +142,19 @@ fonts it ships are served by your own app and call no other host.
 | `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |
 | `webui.content.scroll` | `sessionStorage` | A visitor leaves a page | The path of the page (never its query) and how far its content was scrolled, in pixels, so that a tab, a sort or a page of a table that is followed on the same page does not take the reader back to the top. It is put back only on a page with the same path | Until the tab is closed |
 
-A form that is refused is not redirected: the POST is answered with the page, the form drawn again with what the
-visitor typed and what was refused, with the status 422. What was typed is in that response and nowhere else: it is not
-in a cookie, not in the address, and not kept on the server, so there is nothing to lose behind a load balancer and
-nothing to expire. The browser asks "send the form again?" if the page is reloaded, which is right, since a refusal
-did nothing. An accepted action is redirected with a 303 so that a reload does not repeat it, and its toast
-rides the cookie above.
+A form that is refused is not redirected: the POST is answered with the page, the form
+drawn again with what the visitor typed and what was refused, with the status 422. What
+was typed is in that response and nowhere else: it is not in a cookie, not in the
+address, and not kept on the server, so there is nothing to lose behind a load balancer
+and nothing to expire. The browser asks "send the form again?" if the page is reloaded,
+which is right, since a refusal did nothing. An accepted action is redirected with a 303
+so that a reload does not repeat it, and its toast rides the cookie above.
 
-The three preferences are read by a small script before the first paint, so the page does not
-flash the wrong theme or a sidebar of the wrong width. They stay in the browser and are never sent to the server. A visitor
-who has never touched the controls has no `localStorage` entry at all. The scroll position is
-for the tab, not for the browser, and each holds no more than a number, with the path of the page the content's is for.
+The three preferences are read by a small script before the first paint, so the page
+does not flash the wrong theme or a sidebar of the wrong width. They stay in the browser
+and are never sent to the server. A visitor who has never touched the controls has no
+`localStorage` entry at all. The scroll position is for the tab, not for the browser,
+and each holds no more than a number, with the path of the page the content's is for.
 
 Two things are yours, not webui's:
 
@@ -154,11 +163,11 @@ Two things are yours, not webui's:
 - **Pictures from other origins.** A page that shows Markdown with `TrustedOrigins` lets the
   visitor's browser fetch pictures from them, which tells those hosts the visitor's address.
 
-Under the EU's ePrivacy rules (Article 5(3)), storing information on a visitor's device needs
-consent unless it is strictly necessary for a service the visitor asked for. Whether the
-three items above fall under that exemption is for you to decide as the operator, since you
-are the one who deploys the app; the table is there so that you can decide it, and name them
-in your privacy notice. This is not legal advice.
+Under the EU's ePrivacy rules (Article 5(3)), storing information on a visitor's device
+needs consent unless it is strictly necessary for a service the visitor asked for.
+Whether the three items above fall under that exemption is for you to decide as the
+operator, since you are the one who deploys the app; the table is there so that you can
+decide it, and name them in your privacy notice. This is not legal advice.
 
 ## Building with an AI agent
 
@@ -281,12 +290,15 @@ the public API needs it, it is deleted, or moved into the tests.
 
 ### The demo
 
-The demo is a static configuration that shows the whole library; each file has its
-own corner, and the tests beside it (`cmd/demo/*_test.go`, one file for each part of the demo) pin what it shows.
+The demo is a static configuration that shows the whole library; each file has its own
+corner, and the tests beside it (`cmd/demo/*_test.go`, one file for each part of the
+demo) pin what it shows.
 
 | File                    | Shows                                                                                                                                                                                                                                                                                                                                |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `devices.go`            | a `Help` tip on fields and a `Crumb` that reads a device by its address and not its id, a device that is not there is a 404 with a link back (`NotFound(...).WithLink(...)`), a table with paging, sorting, column filters (multi-select, range, text) and row links, an `Int` with a `Format` (bytes read "1.5 GiB" and sort and filter as the number), and a detail page whose `Search` finds its devices from the search box; a form in tabs beside a table; `Export` on a `Load` table (CSV and JSON from the footer; `alerts.go` has it on `Rows` and `system.go` on a `Feed`); a `Multiline` text area; a path and query argument (`?minutes=`); a `Toolbar` of a link and a button, both left out for a viewer, and so the toolbar, a form that makes a device, a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a `Timestamp`, a `Select` that is edited, one value and several (`Multi`), one whose options are read when the page is asked for (`LoadOptions`), a rejection with `Reject`, and a `Success` that goes `Then` to the device it made |
+| `devices.go`            | the list: a table with paging, sorting, column filters (multi-select, range, text) and row links; an `Int` with a `Format` (bytes read "1.5 GiB" and sort and filter as the number); `Export` on a `Load` table (CSV and JSON from the footer; `alerts.go` has it on `Rows` and `system.go` on a `Feed`); a `Toolbar` of a link and a button, both left out for a viewer, and so the toolbar                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `devices.go`, a device  | a detail page whose `Search` finds its devices from the search box; a `Help` tip on fields and a `Crumb` that reads a device by its address and not its id; a device that is not there is a 404 with a link back (`NotFound(...).WithLink(...)`); a form in tabs beside a table; a path and query argument (`?minutes=`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `devices.go`, a new device| a form that makes a device, and a device form that returns to whichever page opened it, with no code; `Placeholder`, `Group`, a `Timestamp`, a `Multiline` text area; a `Select` that is edited, one value and several (`Multi`), one whose options are read when the page is asked for (`LoadOptions`); a rejection with `Reject`, and a `Success` that goes `Then` to the device it made                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `compare.go`            | arguments that are lists: a `[]string` is a query parameter that repeats (`?device=a&device=b&site=Malmö`), each element parsed on its own, the page's links keeping every one, and its address the whole of what it shows |
 | `files.go`              | the rest of a path, `{path...}`, as a `[]string` (a file browser at any depth, a breadcrumb for each segment), a row `Link` that adds a name to the list, a `PageID` constant to break the initialization cycle between a page and the table in it, and a `Markdown` whose links, such as `/files/logs`, are paths in the app |
 | `sites.go`              | a nested path with a parent breadcrumb, a sidebar entry for each site from `NavEntries`, two stateful tables on one page, each named in the address by its title, a detail page whose `Search` is `SearchRows`, so its sites are found from the search box                                                                                                                                                  |
