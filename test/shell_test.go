@@ -163,8 +163,10 @@ func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
 	h := webui.App{}.MustCompile("/admin")
 	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
 	for _, want := range []string{
+		"function clipBounds(el)",
 		"function placeTip(tip)",
-		"window.innerWidth - TIP_MARGIN - r.right",
+		"inside.right - TIP_MARGIN - r.right",
+		"n.clientLeft + n.clientWidth", // the visible part of a box that scrolls: not its scrollbar
 		"body.style.bottom = 'calc(100% + 6px)'",
 		"function placeGate(gate)",
 		"gate.setAttribute('data-edge', 'left')",
