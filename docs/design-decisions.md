@@ -100,21 +100,6 @@ design element.
   `Compile`. `Open` remains for programmatic navigation, such as
   `Outcome.Then`.
 
-- **What a visitor may be told is a `Refusal`, a typed error with a status.** A `Guard`'s error was always a 403 with its text, and a
-  `Load`'s was "Could not load" with the cause hidden, since either may name what a visitor should not see; so an app that
-  wanted a 404 for a record that is not there, or a 401 with a link to set up a credential, had no way to say so. `NotFound`,
-  `Unauthorized` and `Forbidden` make a `Refusal`, `WithLink(label, target)` gives it a link (the `Target` that `Open` builds, read
-  inside `pkg/webui`, since it has no parts to read outside; not called `Then`, which on an `Outcome` redirects the user
-  and here would only offer a link that they choose to follow), and it is found with `errors.As`, so a wrapped one counts.
-  They are made into `ir.Refusal` where the closures are lowered (the page `Guard`, and the loads of a table, a form, a diff, a
-  markdown and an editor), which is the one place a type assertion belongs. In a `Guard` the status is the page's: `admit` returns
-  it, and `begin` draws the state of that status (the nav, search and gate paths only ask whether there is an error, so they are
-  unchanged, and a POST to a refused page is redirected to the page that says it, as before). In a panel's `Load` the page has
-  its status by then (a page that streams has sent it, `streamAfter`), so the panel says the message and its link in place of
-  "Could not load", and the page stays 200: said in the documentation and not hidden. A refusal is the visitor's matter and
-  not the app's failure, so it is not logged; an error that is anything else is as it was. Not done: a status for a panel's refusal,
-  which would make a page that has begun to be sent a lie, or buffering every page to be able to.
-
 ## Validation and rules
 
 - Validation is declarative. `Rules` is a per-value-type struct of data, not
@@ -179,8 +164,49 @@ design element.
 - Any struct a user fills with an unkeyed literal from another package trips
   `go vet`'s composites check, so nested literals in the API must expect keyed
   fields; `Reject` takes `webui.Field[Device](IP, "...")` messages, which are keyed.
+
+## Accessors
+
+- An accessor says how its value reads with `Format`, a function the application writes, on
+  `Int`, `Float`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
+  field with no Store, and what the search looks in): sorting, filters, the range bounds, an
+  editable input and the export keep the value, so a size can read "1.5 GiB" and sort as
+  bytes. Considered and dropped: formats the library ships as constants (`FormatBytes`,
+  `FormatDuration`), which is less API to write and less to get wrong, but a list that grows
+  with every unit someone needs, and a way for an application to say anything else; and a
+  second accessor that shows what another sorts by, which is a second declaration of one
+  column. What it costs: each application writes its bytes formatter; the range filter of a
+  number is typed in the number and not in what Format shows; a moment's Format is not
+  handed an empty or unparsable value, which shows as it did. A Format that panics is
+  logged and the value shown as it is, so one bug is a plain number and not every page that
+  has the column.
+
+- **A column can leave itself out of sorting or filtering** (`NoSort`, `NoFilter` on each accessor that is a column).
+  The default stays "every column does both", since that is what a table of rows is for and an app that says nothing
+  gets it. A column that is left out has no sort link, or no filter menu, in its header, and a header with neither is
+  only its name; and the address cannot ask for what it left out: a sort by it is dropped like a sort by a column the table
+  does not have, and its filter or range never reaches `Load` (nor the library's own filtering, for `Rows`), so the
+  address, which is the visitor's to edit, is no way round it. The parameters of a column that left a part out
+  are not kept on the table's other links either. The two are separate because they are: free text is worth
+  filtering and not ordering, a list of words the reverse. It is a flag on the accessor, with the `Label` that names
+  the column, since an accessor already describes its own column; the same accessor in a form says nothing of it.
+  Not done: a rule for the whole table (`Table.NoSort`), which a table of nothing but filterable columns does not need.
+
+- **A field may say what it is for, with `Help`.** A label names a field and its rules say what a value may be, and neither says what
+  it is for or what to put in it ("0.25 keeps one event in four"). `Help` is a field of every accessor, beside `NoSort` and
+  `NoFilter`, and so is one method on the accessor interface (`meta`) in place of one for each. It goes in the popover that is
+  already beside the label, the information icon that lists the rules, as a section of its own: the heading "Help:" and the
+  text, above "Rules:" and its list. A second icon was tried first (a question mark beside the information icon) and dropped: two
+  icons on one label is more to see and to tell apart for what is one question, what the visitor should know about the field, and
+  one popover has one place for a keyboard and a screen reader to land and read all of it. The popover is the panel's
+  `Desc` popover, so it needs no script. A `Placeholder` was not stretched to it: it disappears when the visitor types and is only for text. A read-only field
+  shows it too, since what a value is for is as true when it is only read. A table does not: a column header is a name and
+  a sort, and a `Placeholder` is not there either. It is text, not markup, so a popover is never a way into the page. The
+  cost is that the help and the rules are in one popover that the visitor must hover for, which is the reason to keep a `Help` to a line or two.
+
 - `Group` listed as a column is rejected by `Compile` rather than flattened —
   flattening would mean defining what a nested group is in a cell.
+
 - A nested `Table` inside a form's `Fields` stays out of scope. If it turns out
   to be wanted, it is solved then.
 
@@ -226,6 +252,7 @@ design element.
   handle. A text that wants highlighting, a language service or a schema is an `Editor`, not this. In a table the cell
   keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
   read the text as it is.
+
 - **A value that may be absent is an accessor of its own** (`OptionalInt`, `OptionalFloat`, `OptionalSlider`, `Bool`), not a
   flag on `Int`: the Go type differs (`*int`), so `Load` and `Store` do, and a flag could not make `func(M) int` say
   "none". They are four types and not one generic, since the accessors are one type for each Go type already and a generic
@@ -237,6 +264,7 @@ design element.
   unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
   state costs. In a `Toolbar` they are values to read, computed from the page's arguments (which are plain values, with no nil) by their `Load`.
+
 - **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a
   type on `String`. The first version was a typed `String.Input`, and it needed a compile error for every field of `String` that
   it could not be combined with: `Secret` and `Multiline` (inputs of their own), and for a color `MinLen`, `MaxLen`, `Pattern`
@@ -254,6 +282,30 @@ design element.
   address to type; one name for both would have made a field with a `Store` allow what a link allows. `Color` was taken by
   the theme's, so the picker is `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since
   there is no grammar for them. A color picker cannot be empty, so an empty `Load` shows black.
+
+- **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
+  script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
+  spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores
+  as it is (a number written with a code is normalised to the same form with no script too). E.164 was chosen over keeping the
+  spaces: one number then has one form, so it can be compared, searched and dialled, and the spacing is only how it is shown.
+  The spacing is data, not code: groupings for about twenty countries where the national format is known, and threes for the
+  rest, which is approximate and says so; `libphonenumber` metadata would be right for every country and is 80 to 150 kB and a
+  licence to carry. The countries are a Go table, `internal/phone`, which is also what the server validates `DefaultCountry`
+  with and what the script is given (as the first line of `phone.js`, generated with it), so what the script offers is what the
+  server accepts. The costs: the numbering plan of `+1` has more countries than the US and Canada, which are not listed (a number
+  of one of them is typed as `+1 242 …`, and is still the right number); a number that is already stored without a code, or with an
+  extension, is not split, since doing so would change it, and stays the plain input until it is cleared; and the length and
+  pattern rules of the field are not the browser's with script, because what is typed there is the national part and the rule is
+  about the number that is sent: the server holds it to them, in a page that says so beneath the field.
+
+- **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline
+  does not have, and a `Timestamp` of midnight shown as "00:00" is noise. `DateOnly` is a flag on `Datetime` and `Timestamp`, not
+  a type, since all else about them is the same: it is `type="date"`, shown and filtered as a date, and a day is midnight
+  UTC, so what is stored is Unix seconds of that moment, or for a `Datetime` the date alone, "2026-10-09" (which `Datetime`
+  already reads). A time of day that arrives by hand is dropped to the day. A filter's bounds are date inputs; the bound "to" is
+  the midnight of that date and not the end of it, which is right for what a day column holds, and a column that mixes would
+  want a moment, not a flag.
+
 - **A file is a `File` accessor, and the library keeps no file.** `Store` is handed an `Upload` (a base name that is made safe, a size, the
   content type that was sniffed, and `Open`, which streams from the spooled temporary file of `net/http`) and copies it where the app
   keeps files; `Load` returns a `*FileInfo` (name, size, URL) for what is kept. The library stores and serves nothing: where a file lives
@@ -262,6 +314,7 @@ design element.
   and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
   route to serve what it stored, and the docs say how to serve it safely (`attachment`, `nosniff`, the sniffed type); the demo is the
   working example.
+
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
   `FileJSON`, `FileCSV`, `FileText`, `FileAny`), and the server reads the first 512 bytes with `http.DetectContentType` for the
   binary kinds and the whole file for JSON (exactly one value, streamed), CSV and text (UTF-8, no NUL). The type that the browser
@@ -276,6 +329,7 @@ design element.
   depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
   library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
+
 - **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
   page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input
   (`input.files = ...`, from a `DataTransfer` of the first file), so the request is the browser's own multipart post, which a `fetch` would
@@ -288,6 +342,7 @@ design element.
   here is worse than a right one late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the page's and is not asked per
   visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the extensions as well as the media types, so
   that the script can tell a file by its name.
+
 - **The stored picture is a thumbnail that the app made, and the full image is fetched only when it is clicked.** Showing the stored file
   as the picture at 32 pixels sent the visitor the whole image (a 4K photograph, on every load of the form) to show a few pixels of it.
   `FileInfo` has a `Thumbnail`, a path on this site, which the page shows (in the markup, so it needs no script) as a button that opens
@@ -305,12 +360,14 @@ design element.
   The cost: an app that wants a picture makes the small one and a route to serve it; there is no picture without one, which is the
   library's choice and not a gap; and the picture of a file that is chosen is made in the page, in a canvas, from a data: address
   of the whole file, which is held only as long as it takes to draw it, and read again when the dialog is opened.
+
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
   multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,
   so a visitor it refuses has nothing read from them, and a body over the limit is "That submission was too large." An action's own `Guard`
   runs after `Bind` (it is handed the model), so for a refused action the file has been received and is in a temporary file until the
   request ends. A program that takes uploads sets `ReadTimeout`, which the demo does, since `ReadHeaderTimeout` does not bound a body.
+
 - **A file is stored only when the whole submission is accepted.** `Bind` checks every field and applies each value that passed,
   but a file is the one value that is held back until nothing is refused: a form that another field refuses has stored no file, and
   shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
@@ -318,27 +375,46 @@ design element.
   behind a load balancer), which is what the 422 design avoids for everything else. `Required` is met by a stored file that is not
   being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a
   toolbar item, whose inputs were the page's arguments in its address.
-- **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
-  script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
-  spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores
-  as it is (a number written with a code is normalised to the same form with no script too). E.164 was chosen over keeping the
-  spaces: one number then has one form, so it can be compared, searched and dialled, and the spacing is only how it is shown.
-  The spacing is data, not code: groupings for about twenty countries where the national format is known, and threes for the
-  rest, which is approximate and says so; `libphonenumber` metadata would be right for every country and is 80 to 150 kB and a
-  licence to carry. The countries are a Go table, `internal/phone`, which is also what the server validates `DefaultCountry`
-  with and what the script is given (as the first line of `phone.js`, generated with it), so what the script offers is what the
-  server accepts. The costs: the numbering plan of `+1` has more countries than the US and Canada, which are not listed (a number
-  of one of them is typed as `+1 242 …`, and is still the right number); a number that is already stored without a code, or with an
-  extension, is not split, since doing so would change it, and stays the plain input until it is cleared; and the length and
-  pattern rules of the field are not the browser's with script, because what is typed there is the national part and the rule is
-  about the number that is sent: the server holds it to them, in a page that says so beneath the field.
-- **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline
-  does not have, and a `Timestamp` of midnight shown as "00:00" is noise. `DateOnly` is a flag on `Datetime` and `Timestamp`, not
-  a type, since all else about them is the same: it is `type="date"`, shown and filtered as a date, and a day is midnight
-  UTC, so what is stored is Unix seconds of that moment, or for a `Datetime` the date alone, "2026-10-09" (which `Datetime`
-  already reads). A time of day that arrives by hand is dropped to the day. A filter's bounds are date inputs; the bound "to" is
-  the midnight of that date and not the end of it, which is right for what a day column holds, and a column that mixes would
-  want a moment, not a flag.
+
+## Guards and refusals
+
+- **What a visitor may be told is a `Refusal`, a typed error with a status.** A `Guard`'s error was always a 403 with its text, and a
+  `Load`'s was "Could not load" with the cause hidden, since either may name what a visitor should not see; so an app that
+  wanted a 404 for a record that is not there, or a 401 with a link to set up a credential, had no way to say so. `NotFound`,
+  `Unauthorized` and `Forbidden` make a `Refusal`, `WithLink(label, target)` gives it a link (the `Target` that `Open` builds, read
+  inside `pkg/webui`, since it has no parts to read outside; not called `Then`, which on an `Outcome` redirects the user
+  and here would only offer a link that they choose to follow), and it is found with `errors.As`, so a wrapped one counts.
+  They are made into `ir.Refusal` where the closures are lowered (the page `Guard`, and the loads of a table, a form, a diff, a
+  markdown and an editor), which is the one place a type assertion belongs. In a `Guard` the status is the page's: `admit` returns
+  it, and `begin` draws the state of that status (the nav, search and gate paths only ask whether there is an error, so they are
+  unchanged, and a POST to a refused page is redirected to the page that says it, as before). In a panel's `Load` the page has
+  its status by then (a page that streams has sent it, `streamAfter`), so the panel says the message and its link in place of
+  "Could not load", and the page stays 200: said in the documentation and not hidden. A refusal is the visitor's matter and
+  not the app's failure, so it is not logged; an error that is anything else is as it was. Not done: a status for a panel's refusal,
+  which would make a page that has begun to be sent a lie, or buffering every page to be able to.
+
+- Row actions are decided at render, per row, by the same `Guard` that authorises the POST. A bulk action's `Guard` receives the
+  selection, which does not exist yet: it is asked of each row as a selection of one, and the button is drawn if it accepts any (see
+  *A Guard's result decides how its control is drawn*).
+
+- **A Guard's result decides how its control is drawn.** An action's `Guard` returns an error to refuse, and what the error is
+  says the rest: an ordinary one leaves the control out; `webui.Disabled(message)` draws it disabled, with the message in a
+  tooltip. Either way the same `Guard` refuses the POST, and for a request made by hand its message is the toast. It applies to a table's row
+  actions, its bulk actions, a toolbar's buttons and a `Link` (which is left out when the page it leads to refuses the visitor, the way the
+  sidebar leaves out an entry). Dropped: a field on `Action` (`HideWhenGuarded`, `DisabledMessage`) for what the
+  `Guard` already knows, since a field is a second place to say it and cannot depend on the row; one rule for every control,
+  hiding or disabling (hiding is right for a viewer who has no business with an editor's buttons, disabling for "Already granted", and no
+  rule is right for both); and a separate "disabled when" condition on `Action`, which is the same `Guard` said again. The costs: a
+  left-out control cannot be discovered, and its reason is seen only on a hand-made request or a refused page; a bulk `Guard` must accept a selection of
+  one, and is called for each row of the window, for each bulk action, whenever the table is drawn, as a row action's
+  is (a `RowClick` `Link` asks the destination page's `Guard` once for each row, which for a `Guard` that reads a database is a
+  read for each); the column of row buttons is there when some row of the window has one, so it comes and goes between the pages
+  of a table; a `Link` is left out whichever error the destination's `Guard` returns, since `Disabled` has no meaning
+  for a page. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
+  an application bug, which leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action
+  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. The tooltip of a disabled control opens
+  above it, so script moves it below when there is no room above (the first row of a table, whose header is over it, or a toolbar), and
+  raises the cell that holds it over the next row's buttons; without script it opens above, as before, and the first row's is cut off.
 
 ## Actions and outcomes
 
@@ -388,28 +464,21 @@ design element.
 - The re-render after a rejection must echo the raw submitted input, not the
   model value, or the user's bad input disappears and the form looks like it
   reset.
-- Row actions are decided at render, per row, by the same `Guard` that authorises the POST. A bulk action's `Guard` receives the
-  selection, which does not exist yet: it is asked of each row as a selection of one, and the button is drawn if it accepts any (see
-  *A Guard's result decides how its control is drawn*).
 
-- **A Guard's result decides how its control is drawn.** An action's `Guard` returns an error to refuse, and what the error is
-  says the rest: an ordinary one leaves the control out; `webui.Disabled(message)` draws it disabled, with the message in a
-  tooltip. Either way the same `Guard` refuses the POST, and for a request made by hand its message is the toast. It applies to a table's row
-  actions, its bulk actions, a toolbar's buttons and a `Link` (which is left out when the page it leads to refuses the visitor, the way the
-  sidebar leaves out an entry). Dropped: a field on `Action` (`HideWhenGuarded`, `DisabledMessage`) for what the
-  `Guard` already knows, since a field is a second place to say it and cannot depend on the row; one rule for every control,
-  hiding or disabling (hiding is right for a viewer who has no business with an editor's buttons, disabling for "Already granted", and no
-  rule is right for both); and a separate "disabled when" condition on `Action`, which is the same `Guard` said again. The costs: a
-  left-out control cannot be discovered, and its reason is seen only on a hand-made request or a refused page; a bulk `Guard` must accept a selection of
-  one, and is called for each row of the window, for each bulk action, whenever the table is drawn, as a row action's
-  is (a `RowClick` `Link` asks the destination page's `Guard` once for each row, which for a `Guard` that reads a database is a
-  read for each); the column of row buttons is there when some row of the window has one, so it comes and goes between the pages
-  of a table; a `Link` is left out whichever error the destination's `Guard` returns, since `Disabled` has no meaning
-  for a page. The Save of a form is read-only for either (a form that cannot be sent would only invite typing). A `Guard` that panics is
-  an application bug, which leaves the control out and is logged, since a page must not fail for it. A table with no row actions and no bulk action
-  drawn has no form, no checkbox column and no bar, and a toolbar with nothing drawn is not there. The tooltip of a disabled control opens
-  above it, so script moves it below when there is no room above (the first row of a table, whose header is over it, or a toolbar), and
-  raises the cell that holds it over the next row's buttons; without script it opens above, as before, and the first row's is cut off.
+- **An action may ask first, with a native `<dialog>`.** `Action.Confirm` puts a question between the click and the
+  request. A `<dialog>` opened by an invoker command (`commandfor`, `command="show-modal"`) needs no script, which is the rule
+  for everything here, and gives focus handling, Escape, the top layer and a backdrop for free; the confirming button is
+  a submit button inside the dialog, which sits in the form that the action's button was in, so the request is the one
+  the button would have made, with its `_act` and nothing else new on the server. `window.confirm()` was weighed and
+  dropped: it needs script, cannot be styled, and is blocked in some embeds. The costs, in the docs: invoker commands
+  need Chrome and Edge 135, Firefox 144, Safari 26.2, so `enhance.js` adds a small click handler for an older browser, and an
+  older one with no script cannot open the dialog, and so cannot do the action (it fails closed, which is the safe way);
+  a form whose Save asks is not submitted by Enter in a field, because Enter clicks the form's first submit button, which
+  would be the one in the closed dialog, so a disabled one is put ahead of it; and it asks the visitor, not the server, so
+  a hand-made request is not asked and a Guard is what refuses. A row action's dialog is named by the row's position and the
+  action's, never the key, so nothing a row says is in an id. A `RowClick` action has no button and may not have one.
+
+## Toolbar
 
 - **A `Toolbar` is a row of controls for the page, and its type is the page's arguments** (`Toolbar[A]`, items of `A`).
   It is a leaf and not a panel (no frame), in a `Stack` with what it is for. What the controls are about is what a page
@@ -419,6 +488,7 @@ design element.
   a row. The type is checked: a `Toolbar[X]` on a page of `Y` is a compile error, so nothing is asserted wrongly at run time.
   The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and the accessors satisfy by a method that takes `A`, so an
   accessor of another type does not fit.
+
 - **A toolbar shows values and has no inputs.** The first version had inputs: accessors with a `Store` that wrote the visitor's value to
   the page's arguments, applied by the server through a GET form (`_toolbar=<id>`, inputs named by position, the rest of the address as
   hidden fields) and a redirect to the page the arguments encode to, with an *Apply* button joined to each input without script and a
@@ -434,6 +504,7 @@ design element.
   chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be an argument (`Optional*`, `Bool`, `URL`) are
   toolbar items too, computed from the arguments by their `Load`; `Secret` and `Multiline` stay refused (nothing to read, and one line of text).
   A toolbar with a button has one form, which posts the buttons, and one with only links and values has none.
+
 - **A toolbar has two groups, `Left` and `Right`, and they are one row.** A gap between the groups takes what the page has
   to spare, so the right ones are at the right edge. When there is no room for every control in a row the gap goes and
   the controls flow from the left in rows, the left ones first, as one group; the right group does not wrap as a unit onto a line
@@ -448,34 +519,8 @@ design element.
   success returns to the address it was at, with the toast. Not done: buttons that take input of their own (a popover with fields over a new model),
   which `Form` on a page of its own already is, and which the toolbar's `Link` leads to. Also not done: a `Toolbar` field of
   `Table`, which would put the same items in a table's header beside its title.
-- **An action may ask first, with a native `<dialog>`.** `Action.Confirm` puts a question between the click and the
-  request. A `<dialog>` opened by an invoker command (`commandfor`, `command="show-modal"`) needs no script, which is the rule
-  for everything here, and gives focus handling, Escape, the top layer and a backdrop for free; the confirming button is
-  a submit button inside the dialog, which sits in the form that the action's button was in, so the request is the one
-  the button would have made, with its `_act` and nothing else new on the server. `window.confirm()` was weighed and
-  dropped: it needs script, cannot be styled, and is blocked in some embeds. The costs, in the docs: invoker commands
-  need Chrome and Edge 135, Firefox 144, Safari 26.2, so `enhance.js` adds a small click handler for an older browser, and an
-  older one with no script cannot open the dialog, and so cannot do the action (it fails closed, which is the safe way);
-  a form whose Save asks is not submitted by Enter in a field, because Enter clicks the form's first submit button, which
-  would be the one in the closed dialog, so a disabled one is put ahead of it; and it asks the visitor, not the server, so
-  a hand-made request is not asked and a Guard is what refuses. A row action's dialog is named by the row's position and the
-  action's, never the key, so nothing a row says is in an id. A `RowClick` action has no button and may not have one.
 
 ## Tables, filters and view state
-
-- An accessor says how its value reads with `Format`, a function the application writes, on
-  `Int`, `Float`, `Datetime` and `Timestamp`. It changes only what is read (a table cell, a
-  field with no Store, and what the search looks in): sorting, filters, the range bounds, an
-  editable input and the export keep the value, so a size can read "1.5 GiB" and sort as
-  bytes. Considered and dropped: formats the library ships as constants (`FormatBytes`,
-  `FormatDuration`), which is less API to write and less to get wrong, but a list that grows
-  with every unit someone needs, and a way for an application to say anything else; and a
-  second accessor that shows what another sorts by, which is a second declaration of one
-  column. What it costs: each application writes its bytes formatter; the range filter of a
-  number is typed in the number and not in what Format shows; a moment's Format is not
-  handed an empty or unparsable value, which shows as it did. A Format that panics is
-  logged and the value shown as it is, so one bug is a plain number and not every page that
-  has the column.
 
 - Pagination and sorting are library-owned view state. A table always pages, 25
   rows a page unless `Table.PageSize` says, since one that listed every row would
@@ -504,27 +549,6 @@ design element.
   its own, not a mode of `Query`, so a table can never carry both a cursor and an
   offset. Exactly one of the three is set, which `Compile` checks. Setting a filter
   returns every table to its first page.
-- **A column can leave itself out of sorting or filtering** (`NoSort`, `NoFilter` on each accessor that is a column).
-  The default stays "every column does both", since that is what a table of rows is for and an app that says nothing
-  gets it. A column that is left out has no sort link, or no filter menu, in its header, and a header with neither is
-  only its name; and the address cannot ask for what it left out: a sort by it is dropped like a sort by a column the table
-  does not have, and its filter or range never reaches `Load` (nor the library's own filtering, for `Rows`), so the
-  address, which is the visitor's to edit, is no way round it. The parameters of a column that left a part out
-  are not kept on the table's other links either. The two are separate because they are: free text is worth
-  filtering and not ordering, a list of words the reverse. It is a flag on the accessor, with the `Label` that names
-  the column, since an accessor already describes its own column; the same accessor in a form says nothing of it.
-  Not done: a rule for the whole table (`Table.NoSort`), which a table of nothing but filterable columns does not need.
-- **A field may say what it is for, with `Help`.** A label names a field and its rules say what a value may be, and neither says what
-  it is for or what to put in it ("0.25 keeps one event in four"). `Help` is a field of every accessor, beside `NoSort` and
-  `NoFilter`, and so is one method on the accessor interface (`meta`) in place of one for each. It goes in the popover that is
-  already beside the label, the information icon that lists the rules, as a section of its own: the heading "Help:" and the
-  text, above "Rules:" and its list. A second icon was tried first (a question mark beside the information icon) and dropped: two
-  icons on one label is more to see and to tell apart for what is one question, what the visitor should know about the field, and
-  one popover has one place for a keyboard and a screen reader to land and read all of it. The popover is the panel's
-  `Desc` popover, so it needs no script. A `Placeholder` was not stretched to it: it disappears when the visitor types and is only for text. A read-only field
-  shows it too, since what a value is for is as true when it is only read. A table does not: a column header is a name and
-  a sort, and a `Placeholder` is not there either. It is text, not markup, so a popover is never a way into the page. The
-  cost is that the help and the rules are in one popover that the visitor must hover for, which is the reason to keep a `Help` to a line or two.
 
 - Column filtering is library-owned view state, like sorting. Hovering a
   header shows a filter icon; it opens a form that is a plain GET, so it works
@@ -571,55 +595,6 @@ design element.
   (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
   in the address and in `Query`, lower-cased with dashes in the address; there is no
   key to declare, and `Compile` refuses labels that collide.
-- Search belongs to pages, not tables. A `Page` has a `Search`, handed the text and a
-  limit, that returns `Hit`s: the arguments of that page that each result leads to, a
-  title and a line beneath. It was a table's, which could be searched only if it had a
-  `RowClick` to a `Link`, and a table that was on no page with arguments, or whose
-  rows led nowhere, offered nothing; and a page with path arguments could be searched
-  only while the visitor was on it, which needed a second copy of the routes just to ask
-  "which page is this address". A hit is the thing and the page that shows it, so the
-  question "who provides the results" has one answer, the page the result opens.
-- Each hit is checked against the page it leads to, with the page's own `Guard` and the
-  hit's arguments, so the search never offers what following it would refuse; the page's
-  `Guard` is not asked with no arguments to decide whether to search at all, since
-  one that looks the thing up refuses an empty id for the wrong reason. The
-  search itself runs for every visitor, so one that is costly or private looks at the
-  context. A search that fails or panics leaves that page out, and the rest answer.
-  Results are grouped under the page's name in the navigation, or the entry it
-  borrows from, which is what the visitor knows the page as.
-- `SearchRows` is the in-memory case: it makes a `Search` from rows, a `Hit` builder and
-  the fields to look in, so an app that lists its rows in a `Rows` table pays one
-  declaration on the detail page and no query code, as it did with `Table.Search`.
-  A table-level `Search` was removed and not kept beside it: two ways to say the same
-  thing, with different limits, would have been the first thing a reader had to learn
-  to choose between.
-- **The search finds things, ranks them, and is only there when there is something to find.** It first also listed the app's own
-  pages, filtered from the sidebar by script. That was dropped: the sidebar is already the list of pages, a search that lists
-  it again puts every page above the things the visitor typed for, and an app with no `Search` had a box that could only
-  filter the sidebar. Now the box is drawn only when some page has a `Search`, empty it shows nothing, and the results are those of
-  the pages' Searches. They are ordered by `internal/rank`, one scale for every app, from the title (and the description, at 0.6):
-  exact 1, a word that starts the title 0.95, a start 0.9, a word that ends it 0.85, an end 0.8, a word of its own 0.75, the start
-  of a word 0.65, inside a word 0.4, characters in order with others between 0.2, and a floor of 0.05 for a result a source found for
-  a reason neither shows. A clean match is above a sequence in the middle of a word, which is what a person typing means. The library
-  scores and the source does not, so there is no `Hit.Score` to set wrong and a source that cannot rank (a database's `LIKE`)
-  ranks like any other; a source with a relevance of its own cannot say so, which is the cost, and it is the one place an app
-  would want a field. Results are grouped by page and the
-  groups ordered by their best result, so the context that tells two things of one name apart stays, rather than one flat list.
-  `SearchRows` ranks every row that matches before it keeps the limit, since the first rows that match are not the best.
-- **The search asks every page at once, answers whole, and answers in HTML.** The pages' searches were asked one after the other under one
-  shared deadline, so one slow search held the others back and the answer took the sum of them. Each page now runs on a goroutine of its own
-  with its own deadline (two seconds), so the answer takes as long as the slowest, and a page that is late is left out and the rest answer.
-  A deadline works through the context, so a `Search` that does not look at it would still block its goroutine; the answer no longer waits
-  for it (the slot it writes to is buffered, and nothing it does after the request ends is logged), which is the cost of not trusting
-  every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
-  fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked. The same
-  endpoint answers in HTML, not JSON: for script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`),
-  which it puts in the box; and without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the
-  box's button submits to when there is no script to list the results as it is typed in. One renderer makes both, so they cannot
-  disagree, and the script has no markup of its own to keep in step with the server's. The cost is that the script inserts server
-  HTML (escaped by the template) where it used to build nodes from data. The box is a form, so without script it has a button, joined
-  to its right edge as one control, and with script the button is hidden and Enter follows the highlighted result; while the next
-  results are asked for, the last are dimmed and out of reach, and Enter then submits the form instead.
 
 - Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
   JSON, that download every row the sort and filters keep. It is a declaration and not
@@ -657,19 +632,63 @@ design element.
   what the cell shows and a comma in a quoted cell reads as a list of one. Its keys are the columns' labels, in the columns' order. Row actions,
   row links and the selection column are not columns and are not in the file.
 
-## Navigation and links
+## Search
 
-- No cross-document view transition. The shell's regions were named and the page opted in
-  (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white,
-  in dark mode too: while the browser makes the transition it shows its own default background, which no rule of the
-  page reaches. Measured by capturing the frames of a followed link in Chrome 155 (with a headed browser, since the
-  headless one never showed it): a white frame in about 3 of 8 navigations, and 255 of 255 in the brightest; with the
-  transition skipped from script, in 0 of 8. A background on the transition, on the root group, hiding the root images
-  and giving them no animation were each tried, with the style in the page and checked to be there, and none
-  changed how often it came. The page that is on screen is held until the next has something to paint, as for any
-  navigation, which does not flash, and a shell that is the same on every page does not appear to move. What it
-  costs: the 180ms fade of the content, which the design had as the sign that the page moved. A browser that fixes the
-  transition's first frames could have it back, with one rule and the names of the regions.
+- Search belongs to pages, not tables. A `Page` has a `Search`, handed the text and a
+  limit, that returns `Hit`s: the arguments of that page that each result leads to, a
+  title and a line beneath. It was a table's, which could be searched only if it had a
+  `RowClick` to a `Link`, and a table that was on no page with arguments, or whose
+  rows led nowhere, offered nothing; and a page with path arguments could be searched
+  only while the visitor was on it, which needed a second copy of the routes just to ask
+  "which page is this address". A hit is the thing and the page that shows it, so the
+  question "who provides the results" has one answer, the page the result opens.
+
+- Each hit is checked against the page it leads to, with the page's own `Guard` and the
+  hit's arguments, so the search never offers what following it would refuse; the page's
+  `Guard` is not asked with no arguments to decide whether to search at all, since
+  one that looks the thing up refuses an empty id for the wrong reason. The
+  search itself runs for every visitor, so one that is costly or private looks at the
+  context. A search that fails or panics leaves that page out, and the rest answer.
+  Results are grouped under the page's name in the navigation, or the entry it
+  borrows from, which is what the visitor knows the page as.
+
+- `SearchRows` is the in-memory case: it makes a `Search` from rows, a `Hit` builder and
+  the fields to look in, so an app that lists its rows in a `Rows` table pays one
+  declaration on the detail page and no query code, as it did with `Table.Search`.
+  A table-level `Search` was removed and not kept beside it: two ways to say the same
+  thing, with different limits, would have been the first thing a reader had to learn
+  to choose between.
+
+- **The search finds things, ranks them, and is only there when there is something to find.** It first also listed the app's own
+  pages, filtered from the sidebar by script. That was dropped: the sidebar is already the list of pages, a search that lists
+  it again puts every page above the things the visitor typed for, and an app with no `Search` had a box that could only
+  filter the sidebar. Now the box is drawn only when some page has a `Search`, empty it shows nothing, and the results are those of
+  the pages' Searches. They are ordered by `internal/rank`, one scale for every app, from the title (and the description, at 0.6):
+  exact 1, a word that starts the title 0.95, a start 0.9, a word that ends it 0.85, an end 0.8, a word of its own 0.75, the start
+  of a word 0.65, inside a word 0.4, characters in order with others between 0.2, and a floor of 0.05 for a result a source found for
+  a reason neither shows. A clean match is above a sequence in the middle of a word, which is what a person typing means. The library
+  scores and the source does not, so there is no `Hit.Score` to set wrong and a source that cannot rank (a database's `LIKE`)
+  ranks like any other; a source with a relevance of its own cannot say so, which is the cost, and it is the one place an app
+  would want a field. Results are grouped by page and the
+  groups ordered by their best result, so the context that tells two things of one name apart stays, rather than one flat list.
+  `SearchRows` ranks every row that matches before it keeps the limit, since the first rows that match are not the best.
+
+- **The search asks every page at once, answers whole, and answers in HTML.** The pages' searches were asked one after the other under one
+  shared deadline, so one slow search held the others back and the answer took the sum of them. Each page now runs on a goroutine of its own
+  with its own deadline (two seconds), so the answer takes as long as the slowest, and a page that is late is left out and the rest answer.
+  A deadline works through the context, so a `Search` that does not look at it would still block its goroutine; the answer no longer waits
+  for it (the slot it writes to is buffered, and nothing it does after the request ends is logged), which is the cost of not trusting
+  every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
+  fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked. The same
+  endpoint answers in HTML, not JSON: for script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`),
+  which it puts in the box; and without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the
+  box's button submits to when there is no script to list the results as it is typed in. One renderer makes both, so they cannot
+  disagree, and the script has no markup of its own to keep in step with the server's. The cost is that the script inserts server
+  HTML (escaped by the template) where it used to build nodes from data. The box is a form, so without script it has a button, joined
+  to its right edge as one control, and with script the button is hidden and Enter follows the highlighted result; while the next
+  results are asked for, the last are dimmed and out of reach, and Enter then submits the form instead.
+
+## Navigation and links
 
 - A tab, with script, is read alone. Following one was a navigation to the same page with another `tabs.tab`, which read
   every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the leaf
@@ -687,21 +706,6 @@ design element.
     what the link was before;
   - a tab that was read is read again when it is chosen again: there is no cache, which is the app's.
 
-- The sidebar keeps its place when a link in it is followed. It is part of each page, so the next page draws it
-  again at the top, and a link far down a long list would send the list back up. `prefs.js`, the script that
-  runs before first paint, keeps how far the list was scrolled in `sessionStorage` when a page is left (`pagehide`)
-  and puts it back as the sidebar is parsed, each time the parser adds to the document until the list is
-  complete, so the first paint has it and a person who scrolls a page that is still arriving is not taken back.
-  What it costs: a visitor without script has the list at the top as before (a script is what remembers it), the
-  entry that is lit is not scrolled into view (the place is kept, not corrected), and one more value is kept on the
-  device, for the life of the tab and no longer.
-- The content keeps its place when a link goes to the same page: a tab, a sort, a filter or a page of a table is a
-  whole-page navigation to the same path, and it would send a reader who had scrolled back to the top. `prefs.js`
-  keeps `{path, top}` in `sessionStorage` when a page is left, and the next page puts `top` back only if its path is
-  the same, as the content arrives (the same observer as the sidebar's, which stops at the first wheel, key, touch or
-  click so that a page that is still being sent does not fight the reader, and at the end of the document). A link to
-  another page starts at its top. What it costs: one more value on the device for the life of the tab, the path
-  of the page it is for; and a page that is shorter than it was ends at its own end, as a scroll does.
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
   proper prefix that is a page with a `Label`, never the root). There is no field to
   declare, because the breadcrumb already derives its parents the same way.
@@ -754,27 +758,6 @@ design element.
   leave. `Stay` on a not-accepted outcome changes nothing, since keeping what was
   typed is what it does already. Cancel is navigation with no outcome to consult, so
   it always goes back.
-- The sidebar collapses to an icon rail from a button in its footer, and always below
-  820px; the choice is a browser preference, so it stays out of the address. An entry
-  with no icon shows its label's initial in the rail.
-- **The sidebar's width is the visitor's to change, with script.** Script adds a handle on the sidebar's edge, a window splitter
-  (`role="separator"`, focusable): it is dragged with the pointer, moved 16px by the arrow keys (64px with Shift), set to its
-  smallest or largest by Home and End, and reset to 240px by Enter or a double click. It is 180px to 480px, and no more than half the
-  window. The width is a browser preference like the collapse, in `localStorage` (`webui.sidebar.width`), so it is not in the address
-  and not on the server, which has no visitor to keep it for. `prefs.js` puts it in the CSS variable `--sidebar-w` before the body is parsed,
-  because every link is a whole page, and a sidebar that was drawn 240px wide and then moved would flash. The rail has its own widths, in
-  rules that are more specific or later, so the variable never widens it, and there is no handle in it. Not done: a handle that is in the
-  markup (it would do nothing without script, and every page's markup would change), a width kept in a cookie (it would ride
-  every request), and a width in the address. What it costs: one more value in the browser (the README says so); a visitor without script
-  has the width the stylesheet gives; a window that is narrower than the width it was chosen in holds it to what fits, which is not
-  stored, so the wide one comes back with the window; and a width is for a browser, and not for a person on two.
-- Icons are Font Awesome Free solid, drawn with a vendored font served by the app, so
-  the content security policy stays `'self'`. The class and name list are generated by
-  `internal/render/assets/fontawesome_gen.go`.
-- A theme is four colours. The renderer derives the rest per mode with `color-mix`,
-  because one colour cannot be right on both a dark and a light surface. Surfaces and
-  text are not themeable: they are what makes the modes differ, and the mode is the
-  viewer's choice.
 - **The breadcrumb is derived from the path, and a page may say its own crumb.** A path has the value of an argument,
   such as an opaque id, and a person knows the thing by something else, its name. `Page.Crumb func(ctx, A) string` is
   asked for it, and not `Nav.Label`, which names an *entry* and stays refused on a page with arguments (an entry is one
@@ -787,6 +770,62 @@ design element.
   knows is not theirs, and the page itself, when its Guard refuses, is drawn with the path's words. The cost is that
   the `Guard` runs once more for each page with a Crumb. A path that takes the rest, `{name...}`, has the segments for
   crumbs and may not have one (a parent above it may).
+
+## Shell and theme
+
+- No cross-document view transition. The shell's regions were named and the page opted in
+  (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white,
+  in dark mode too: while the browser makes the transition it shows its own default background, which no rule of the
+  page reaches. Measured by capturing the frames of a followed link in Chrome 155 (with a headed browser, since the
+  headless one never showed it): a white frame in about 3 of 8 navigations, and 255 of 255 in the brightest; with the
+  transition skipped from script, in 0 of 8. A background on the transition, on the root group, hiding the root images
+  and giving them no animation were each tried, with the style in the page and checked to be there, and none
+  changed how often it came. The page that is on screen is held until the next has something to paint, as for any
+  navigation, which does not flash, and a shell that is the same on every page does not appear to move. What it
+  costs: the 180ms fade of the content, which the design had as the sign that the page moved. A browser that fixes the
+  transition's first frames could have it back, with one rule and the names of the regions.
+
+- The sidebar keeps its place when a link in it is followed. It is part of each page, so the next page draws it
+  again at the top, and a link far down a long list would send the list back up. `prefs.js`, the script that
+  runs before first paint, keeps how far the list was scrolled in `sessionStorage` when a page is left (`pagehide`)
+  and puts it back as the sidebar is parsed, each time the parser adds to the document until the list is
+  complete, so the first paint has it and a person who scrolls a page that is still arriving is not taken back.
+  What it costs: a visitor without script has the list at the top as before (a script is what remembers it), the
+  entry that is lit is not scrolled into view (the place is kept, not corrected), and one more value is kept on the
+  device, for the life of the tab and no longer.
+
+- The content keeps its place when a link goes to the same page: a tab, a sort, a filter or a page of a table is a
+  whole-page navigation to the same path, and it would send a reader who had scrolled back to the top. `prefs.js`
+  keeps `{path, top}` in `sessionStorage` when a page is left, and the next page puts `top` back only if its path is
+  the same, as the content arrives (the same observer as the sidebar's, which stops at the first wheel, key, touch or
+  click so that a page that is still being sent does not fight the reader, and at the end of the document). A link to
+  another page starts at its top. What it costs: one more value on the device for the life of the tab, the path
+  of the page it is for; and a page that is shorter than it was ends at its own end, as a scroll does.
+
+- The sidebar collapses to an icon rail from a button in its footer, and always below
+  820px; the choice is a browser preference, so it stays out of the address. An entry
+  with no icon shows its label's initial in the rail.
+
+- **The sidebar's width is the visitor's to change, with script.** Script adds a handle on the sidebar's edge, a window splitter
+  (`role="separator"`, focusable): it is dragged with the pointer, moved 16px by the arrow keys (64px with Shift), set to its
+  smallest or largest by Home and End, and reset to 240px by Enter or a double click. It is 180px to 480px, and no more than half the
+  window. The width is a browser preference like the collapse, in `localStorage` (`webui.sidebar.width`), so it is not in the address
+  and not on the server, which has no visitor to keep it for. `prefs.js` puts it in the CSS variable `--sidebar-w` before the body is parsed,
+  because every link is a whole page, and a sidebar that was drawn 240px wide and then moved would flash. The rail has its own widths, in
+  rules that are more specific or later, so the variable never widens it, and there is no handle in it. Not done: a handle that is in the
+  markup (it would do nothing without script, and every page's markup would change), a width kept in a cookie (it would ride
+  every request), and a width in the address. What it costs: one more value in the browser (the README says so); a visitor without script
+  has the width the stylesheet gives; a window that is narrower than the width it was chosen in holds it to what fits, which is not
+  stored, so the wide one comes back with the window; and a width is for a browser, and not for a person on two.
+
+- Icons are Font Awesome Free solid, drawn with a vendored font served by the app, so
+  the content security policy stays `'self'`. The class and name list are generated by
+  `internal/render/assets/fontawesome_gen.go`.
+
+- A theme is four colours. The renderer derives the rest per mode with `color-mix`,
+  because one colour cannot be right on both a dark and a light surface. Surfaces and
+  text are not themeable: they are what makes the modes differ, and the mode is the
+  viewer's choice.
 
 ## Assets and transport
 
