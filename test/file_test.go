@@ -147,7 +147,7 @@ func TestAFormWithAFileIsMultipartAndOneWithoutIsNot(t *testing.T) {
 	s := newFileShop(plainFile(webui.FilePNG, webui.FileJPEG))
 	body := serve(s.h, http.MethodGet, "/admin/f").Body.String()
 	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	assert.Contains(t, body, `type="file" name="f1" accept="image/png,image/jpeg"`)
+	assert.Contains(t, body, `type="file" name="f1" accept="image/png,.png,image/jpeg,.jpg,.jpeg"`)
 	assert.False(t, strings.Contains(body, `type="file" name="f1" value=`)) // a chooser has no value, which a browser would not take
 	assert.Contains(t, body, `A PNG or JPEG file`)
 	assert.Contains(t, body, `Up to 5 MiB`)
@@ -458,13 +458,13 @@ func TestARequiredFileIsOneThatIsStoredAndNotRemovedOrNewlyChosen(t *testing.T) 
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "Choose a file.")
 	body := serve(s.h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `accept="image/png" required`) // the browser asks for one
+	assert.Contains(t, body, `accept="image/png,.png" required`) // the browser asks for one
 
 	// Stored, nothing chosen: that satisfies it, and the browser does not ask for another.
 	s = newFileShop(required(false))
 	s.held = &webui.FileInfo{Name: "old.png"}
 	assert.Equal(t, multipartPost(s.h, "/admin/f", nil).Code, http.StatusSeeOther)
-	assert.False(t, strings.Contains(serve(s.h, http.MethodGet, "/admin/f").Body.String(), `accept="image/png" required`))
+	assert.False(t, strings.Contains(serve(s.h, http.MethodGet, "/admin/f").Body.String(), `accept="image/png,.png" required`))
 
 	// Stored, and asked to be removed, with nothing to replace it: it is gone, and so is what satisfied it.
 	s = newFileShop(required(true))

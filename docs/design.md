@@ -369,7 +369,10 @@ icon.
 
 **A file chooser** is the browser's own, in an input of the same surface, border and focus ring, with its button drawn as a small
 secondary button (24px, 12.5/500, a strong border). The file that is stored is above it, in the text colour, with its size dimmed and, for
-a file that can be removed, the *Remove* checkbox at the right. A name that is a link is in the link colour and is underlined on hover.
+a file that can be removed, the *Remove* checkbox at the right. With script the chooser sits in a 1px dashed frame in the strong border
+colour, with "or drop a file here" in the tertiary text colour beneath it; while a file is dragged over, the frame takes the primary colour and
+an 8% tint of it. A picture of a chosen image is below, at most 96px high in a 1px border, and the stored image is a 32px square
+beside its name; *Clear* is a small ghost button at the right of the chooser. A name that is a link is in the link colour and is underlined on hover.
 
 **Inputs** are 32px on the input surface with a strong border; focus takes a
 primary border and a 2px primary ring at 25%. Read-only fields drop to the

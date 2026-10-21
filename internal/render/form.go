@@ -135,6 +135,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	}
 	if f.File != nil && editable {
 		fv.Stored = f.File.Stored(v.Model)
+		fv.Attrs = fileAttrs(f, fv.Stored)
 		if v.Values != nil {
 			// A browser cannot fill a file chooser in, so a form that was refused has lost the file that was chosen.
 			fv.RuleLines = append(fv.RuleLines, "Choose the file again")

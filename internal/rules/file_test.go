@@ -56,7 +56,7 @@ func TestWhatAFieldTakesIsSaidInWords(t *testing.T) {
 		}
 		assert.Equal(t, Describe(&spec), want)
 	}
-	assert.Equal(t, FileAccept(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileCSV}}), "image/png,text/csv,.csv")
+	assert.Equal(t, FileAccept(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileCSV}}), "image/png,.png,text/csv,.csv")
 	assert.Equal(t, FileAccept(&ir.FileSpec{}), "")
 }
 

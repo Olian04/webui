@@ -276,6 +276,20 @@ design element.
   depend on how the app happened to write `Accept`; a JSON file is also text, and `42` is JSON and CSV. The order is the
   library's and is not API, since an app that wants another can say it with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
+- **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
+  page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input
+  (`input.files = ...`, from a `DataTransfer` of the first file), so the request is the browser's own multipart post, which a `fetch` would
+  have replaced with a second way to send a form to keep in step with the first. The picture of a chosen image is read with
+  `FileReader.readAsDataURL`, and not `URL.createObjectURL`: the policy lets an image be `'self'` or `data:`, and a `blob:` address would
+  have meant widening it for this. Only PNG, JPEG, GIF and WebP are drawn, and only up to 4 MiB, since a data address is held in the page
+  (SVG is a document that can run script, and is not drawn). The size, the kind and a stored picture are told to the script by the server in
+  `data-file`, in the words the server uses, through `setCustomValidity`, so the browser's own message appears and the form does not submit. The kind check
+  is a hint: it goes by the type that the browser gives and the extension, and a file that has no type is not refused, since a wrong refusal
+  here is worse than a right one late; the server is the check. The stored file's picture is shown only for a field that takes nothing
+  but images (the app gives no type for what it holds) and for a path of this site (a picture from elsewhere would need the policy
+  widened). The cost: a page of a form that a visitor may only read still links the script, which is the page's and is not asked per
+  visitor, and has nothing to do; a drop of several files takes the first; and `accept=` now has the extensions as well as the media types, so
+  that the script can tell a file by its name.
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
   multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,

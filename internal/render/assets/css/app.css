@@ -1509,6 +1509,53 @@ td .multiline {
   gap: 4px 10px;
   font-size: 13.5px;
 }
+/* With script, the chooser is in a frame that a file can be dropped on: dashed, and lit while a file is over it. */
+.file-drop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px dashed var(--border-2);
+  border-radius: 2px;
+  transition:
+    border-color 0.11s,
+    background-color 0.11s;
+}
+.file-drop.dragging {
+  border-color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 8%, transparent);
+}
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.file-row .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.file-clear[hidden],
+.file-preview[hidden] {
+  display: none;
+}
+.file-hint {
+  color: var(--text-3);
+  font-size: 12px;
+}
+.file-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 96px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+.file-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
 .file-current a {
   color: var(--blue-text);
 }

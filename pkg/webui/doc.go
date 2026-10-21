@@ -227,6 +227,14 @@
 // and says to choose it again, since a browser cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
 // with nil.
 //
+// With script the chooser is a frame that a file can be dropped on, a picture of an image that is chosen is shown below it, a file
+// that is too large or is not one of the kinds that the field takes is said to be so before the request is sent (in the words the
+// server uses), and a file that is chosen and not sent can be cleared. The input stays the control: a drop puts the file in it, as if it
+// had been chosen, so the post is the browser's own and works the same without the script. The early check is of the size, the
+// name and the type that the browser gives, and is only a hint, the server deciding by what the file holds; a file whose type the
+// browser does not know is not said to be wrong. A field that takes only images shows a picture of the file that is stored, if
+// its URL is a path on this site.
+//
 // What the app serves it should serve as a download: Content-Disposition: attachment, X-Content-Type-Options: nosniff, and the
 // content type that the [Upload] was found to have. A visitor's file sent inline from the app's origin is a page of the app's. A
 // page that has a File reads a multipart body of as much as its files may be, and runs the page's Guard first, so a visitor it

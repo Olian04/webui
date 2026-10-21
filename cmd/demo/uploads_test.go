@@ -51,8 +51,8 @@ func TestTheIngestFormTakesAnImageAndAPDFAndServesThemAsDownloads(t *testing.T) 
 	h := handler(t)
 	form := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, form, `enctype="multipart/form-data"`)
-	assert.Contains(t, form, `name="f9_0" accept="image/png,image/jpeg,image/gif,image/webp"`)
-	assert.Contains(t, form, `name="f9_1" accept="application/pdf"`)
+	assert.Contains(t, form, `name="f9_0" accept="image/png,.png,image/jpeg,.jpg,.jpeg,image/gif,.gif,image/webp,.webp"`)
+	assert.Contains(t, form, `name="f9_1" accept="application/pdf,.pdf"`)
 	assert.Contains(t, form, "Up to 1 MiB")
 
 	rec := saveIngest(h, nil, upload{"f9_0", "../../logo.png", demoPNG}, upload{"f9_1", "cert.pdf", demoPDF})
@@ -106,4 +106,24 @@ func TestAViewerCannotUploadAndHasNoChooser(t *testing.T) {
 	body := get(viewer, "/admin/settings").Body.String()
 	assert.False(t, strings.Contains(body, `type="file"`))
 	assert.False(t, strings.Contains(body, "enctype"))
+}
+
+// With script the chooser is a drop zone that shows a picture: the page links the script, and tells it what the logo takes and where the stored
+// logo's picture is, which the certificate, a PDF, has none of.
+func TestTheIngestFormLinksTheFileScriptAndTellsItWhatEachFieldTakes(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/settings").Body.String()
+	assert.Contains(t, body, `/_webui/file.`)
+	assert.Contains(t, body, `&#34;maxMessage&#34;:&#34;Must be at most 1 MiB.&#34;`)
+	assert.False(t, strings.Contains(body, `&#34;preview&#34;`)) // nothing is stored yet
+
+	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "logo.png", demoPNG}, upload{"f9_1", "cert.pdf", demoPDF}).Code, http.StatusSeeOther)
+	body = get(h, "/admin/settings").Body.String()
+	assert.Equal(t, strings.Count(body, `&#34;preview&#34;:&#34;/uploads/logo&#34;`), 1) // the logo's, and only the logo's
+	assert.False(t, strings.Contains(body, `&#34;preview&#34;:&#34;/uploads/certificate`))
+
+	// A viewer has no chooser. The page still links the script, which is the page's and not the visitor's (the Guard that refuses them is
+	// asked per request), and it has nothing to do there.
+	viewer := get(handlerAs(t, Viewer), "/admin/settings").Body.String()
+	assert.False(t, strings.Contains(viewer, `data-file=`))
 }

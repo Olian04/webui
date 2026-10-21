@@ -76,6 +76,11 @@ func (r *Renderer) buildAssets() error {
 		}
 		add(logical, body, mime)
 	}
+	fileJS, err := read("js/file.js")
+	if err != nil {
+		return err
+	}
+	add("file.js", fileJS, "text/javascript; charset=utf-8")
 	phoneJS, err := read("js/phone.js")
 	if err != nil {
 		return err

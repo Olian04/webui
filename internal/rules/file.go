@@ -71,18 +71,51 @@ func Describe(spec *ir.FileSpec) string {
 	return strings.Join(names[:len(names)-1], ", ") + " or " + names[len(names)-1]
 }
 
-// FileAccept is the accept attribute of the field's input, which is a hint to the browser's file chooser and nothing more: the
-// server decides by what the file holds. "" for any file.
-func FileAccept(spec *ir.FileSpec) string {
-	tokens := map[ir.FileKind][]string{
-		ir.FilePNG: {"image/png"}, ir.FileJPEG: {"image/jpeg"}, ir.FileGIF: {"image/gif"}, ir.FileWebP: {"image/webp"},
-		ir.FilePDF: {"application/pdf"}, ir.FileJSON: {"application/json", ".json"}, ir.FileCSV: {"text/csv", ".csv"}, ir.FileText: {"text/plain", ".txt"},
-	}
+// acceptTokens are the media type and the extensions of each kind, as an accept attribute has them.
+var acceptTokens = map[ir.FileKind][]string{
+	ir.FilePNG: {"image/png", ".png"}, ir.FileJPEG: {"image/jpeg", ".jpg", ".jpeg"}, ir.FileGIF: {"image/gif", ".gif"}, ir.FileWebP: {"image/webp", ".webp"},
+	ir.FilePDF: {"application/pdf", ".pdf"}, ir.FileJSON: {"application/json", ".json"}, ir.FileCSV: {"text/csv", ".csv"}, ir.FileText: {"text/plain", ".txt"},
+}
+
+// FileAccepts are the tokens of the field's accept attribute: the media types and the extensions of the kinds it takes, none for any
+// file. They are a hint to the browser's file chooser, and to script, which tells a visitor early that a file is not one of them. They are
+// only a hint: the server decides by what the file holds.
+func FileAccepts(spec *ir.FileSpec) []string {
 	var out []string
 	for _, k := range kinds(spec) {
-		out = append(out, tokens[k]...)
+		out = append(out, acceptTokens[k]...)
 	}
-	return strings.Join(out, ",")
+	return out
+}
+
+// FileAccept is the accept attribute of the field's input, "" for any file.
+func FileAccept(spec *ir.FileSpec) string { return strings.Join(FileAccepts(spec), ",") }
+
+// AcceptsImages is whether the field takes a file that a browser can show as a picture: any file, or one of the four images.
+func AcceptsImages(spec *ir.FileSpec) bool {
+	accepted := kinds(spec)
+	return len(accepted) == 0 || slices.ContainsFunc(accepted, isImage)
+}
+
+// OnlyImages is whether every file that the field takes is an image, so that the file that is stored is one.
+func OnlyImages(spec *ir.FileSpec) bool {
+	accepted := kinds(spec)
+	return len(accepted) > 0 && !slices.ContainsFunc(accepted, func(k ir.FileKind) bool { return !isImage(k) })
+}
+
+func isImage(k ir.FileKind) bool {
+	return k == ir.FilePNG || k == ir.FileJPEG || k == ir.FileGIF || k == ir.FileWebP
+}
+
+// FileTooLarge is what to say of a file that is larger than the field takes.
+func FileTooLarge(limit int64) string { return "Must be at most " + Size(limit) + "." }
+
+// FileWrongKind is what to say of a file that is not one of the kinds that the field takes, "" for a field that takes any.
+func FileWrongKind(spec *ir.FileSpec) string {
+	if d := Describe(spec); d != "" {
+		return "Choose a " + d + " file."
+	}
+	return ""
 }
 
 // Size is a number of bytes as a person reads it: "5 MiB", "1.5 KiB", "900 bytes".
@@ -129,7 +162,7 @@ func UploadName(raw string) string {
 // file lets in), and the words for a file that is refused.
 func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType string, kind ir.FileKind, message string) {
 	if up.Size > spec.Max {
-		return "", "", "Must be at most " + Size(spec.Max) + "."
+		return "", "", FileTooLarge(spec.Max)
 	}
 	r, err := up.Open()
 	if err != nil {
@@ -160,7 +193,7 @@ func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType string, kind ir.Fi
 			return ct, k, ""
 		}
 	}
-	return "", "", "Choose a " + Describe(spec) + " file."
+	return "", "", FileWrongKind(spec)
 }
 
 // holds is whether a file that was sniffed as a type is of the kind, and the content type that it then has.
