@@ -36,9 +36,9 @@ type FormView struct {
 	// Errors is the message for each rejected field, by label.
 	Errors map[string]string
 
-	// SubmitGate is why the viewer may not submit, "" when they may. A viewer who
+	// SubmitRefused is whether the viewer may not submit, whatever the Guard said of it. A viewer who
 	// may not submit is offered a Back button in place of Save and Cancel.
-	SubmitGate string
+	SubmitRefused bool
 
 	// CancelHref is where Cancel, or Back, goes, "" for neither.
 	CancelHref string
@@ -95,7 +95,7 @@ type fieldView struct {
 // form can be submitted by them. A form with no Submit, or whose Submit is refused
 // to the visitor, is only read.
 func (v FormView) editable(f ir.Field) bool {
-	return f.Set != nil && v.Node.Submit != nil && v.SubmitGate == ""
+	return f.Set != nil && v.Node.Submit != nil && !v.SubmitRefused
 }
 
 func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldView {

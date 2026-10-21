@@ -138,7 +138,7 @@ button:hover{border-color:#3d71d9}button b{display:block;font-weight:500}button 
 .note{margin:16px 0 0;padding:10px 12px;font-size:12.5px;border:1px solid var(--note-line);background:var(--note);border-radius:2px}.note b{font-weight:500}
 </style></head><body><main>
 <h1>Collector</h1><p>You are signed out. Choose who to continue as.</p>
-<form method="post" action="/login"><input type="hidden" name="role" value="viewer"><button><b>Continue as a viewer</b><span>Can look at everything, and change nothing: guarded controls are disabled, with the reason.</span></button></form>
+<form method="post" action="/login"><input type="hidden" name="role" value="viewer"><button><b>Continue as a viewer</b><span>Can look at everything, and change nothing: guarded controls are not there.</span></button></form>
 <form method="post" action="/login"><input type="hidden" name="role" value="editor"><button><b>Continue as an editor</b><span>Can change devices, alerts and settings, and read the audit log.</span></button></form>
 <p class="note" role="note"><b>About this page.</b> It is not part of the library: it was made for the demo, to stand in for a sign-in page. The library does no authentication of its own.</p>
 </main></body></html>`

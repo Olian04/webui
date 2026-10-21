@@ -100,8 +100,12 @@ func TestTheDeviceListHasAToolbarOfALinkAndAnAction(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), fmt.Sprintf("oSynced %d devices", len(service.devices)))
 
+	// A viewer is offered neither: the button's Guard refuses them, and so does the page that the Link leads to. With nothing in
+	// it for them, the toolbar is not there at all. A request that is made by hand is refused all the same.
 	viewer := get(handlerAs(t, Viewer), "/admin/device").Body.String()
-	assert.Contains(t, viewer, `<span class="gate" data-guard="requires the editor role">`)
+	assert.False(t, strings.Contains(viewer, "Sync now"))
+	assert.False(t, strings.Contains(viewer, "Create device"))
+	assert.False(t, strings.Contains(viewer, "data-toolbar"))
 	rec = post(handlerAs(t, Viewer), "/admin/device", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 }

@@ -27,6 +27,9 @@ type RowClick[M any] interface {
 // has a form, the library remembers the page the user came from, so the form's
 // Cancel returns there, and so does a save, unless the Outcome says otherwise with
 // [Outcome.Stay] or [Outcome.Then].
+//
+// A link to a page that refuses the visitor is not drawn: when it is, the page's Guard is asked with the arguments the link builds,
+// and a toolbar's button, or a table's row, is left out or plain. A panic in that Guard answers no, and is logged.
 type Link[M, A any] struct {
 	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]

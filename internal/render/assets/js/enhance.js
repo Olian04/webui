@@ -652,7 +652,9 @@
   }
 
   // A reason that a gated control gives (the tooltip of a control that is not allowed) is centred over it, which is out of view for one at either
-  // edge: it is anchored to the side that is near the edge instead.
+  // edge: it is anchored to the side that is near the edge instead. It is above the control, which is out of view for one at the top of
+  // what holds it (the first row of a table, whose header is above it, or a toolbar): it is below it instead, when there is no room above.
+  // How tall it is, it being drawn by the stylesheet, is estimated from its text.
   function placeGate(gate) {
     var inside = clipBounds(gate);
     var at = gate.getBoundingClientRect();
@@ -661,6 +663,13 @@
     if (middle - half < inside.left + TIP_MARGIN) gate.setAttribute('data-edge', 'left');
     else if (middle + half > inside.right - TIP_MARGIN) gate.setAttribute('data-edge', 'right');
     else gate.removeAttribute('data-edge');
+
+    var table = gate.closest('table');
+    var top = table && table.tHead ? Math.max(inside.top, table.tHead.getBoundingClientRect().bottom) : inside.top; // a header stays over what scrolls under it
+    var lines = Math.ceil(((gate.getAttribute('data-guard') || '').length * 6.5) / 262);
+    var height = 12 + 16 * Math.max(1, lines);
+    if (at.top - 6 - height < top + TIP_MARGIN && at.bottom + 6 + height < inside.bottom - TIP_MARGIN) gate.setAttribute('data-below', '');
+    else gate.removeAttribute('data-below');
   }
 
   function onTipOpen(e) {

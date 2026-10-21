@@ -158,17 +158,30 @@ var AlertDeviceTable = webui.Table[Device]{
 
 // Confirm asks before it acts: the button opens a dialog with the question, and only its own button goes on. It is a native
 // <dialog> opened by an invoker command, so it needs no script.
+//
+// What the Guard returns is also how the button is drawn. A viewer is refused with an ordinary error, so the button is not
+// there for them. For an editor the row decides: a critical alert may not be dismissed, and says so with [webui.Disabled],
+// which draws the button, disabled, with that sentence, since an editor who finds it missing would wonder why.
 var Dismiss = webui.Action[Alert]{
 	Label:   "Dismiss",
 	Confirm: "Dismiss this alert? It stops counting as open for everyone.",
-	Guard:   canEdit[Alert],
+	Guard: func(ctx context.Context, a Alert) error {
+		if err := canEdit(ctx, a); err != nil {
+			return err
+		}
+		if a.Severity == "critical" {
+			return webui.Disabled("A critical alert is acknowledged, not dismissed")
+		}
+		return nil
+	},
 	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
 		service.Acknowledge(a.ID)
 		return webui.Success("Dismissed " + a.ID), nil
 	},
 }
 
-// A bulk action's Guard receives the selection, so it runs when the action does.
+// A bulk action's Guard receives the selection, so it runs when the action does. It also runs when the table is drawn, to
+// decide whether the button is, with each row as a selection of one: the button is drawn if it accepts any of them.
 var Acknowledge = webui.Action[[]Alert]{
 	Label: "Acknowledge",
 	Role:  webui.RolePrimary,
@@ -189,7 +202,7 @@ var Acknowledge = webui.Action[[]Alert]{
 }
 
 // A destructive action is drawn in the critical colour. Like every action it is
-// gated by its Guard: as a viewer it is disabled, with the reason.
+// decided by its Guard: a viewer is not offered it.
 var Delete = webui.Action[[]Alert]{
 	Label:   "Delete",
 	Role:    webui.RoleDestructive,

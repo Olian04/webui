@@ -58,15 +58,18 @@ type TableView struct {
 	// Options is, for each open-set column by Key, the values its rows hold.
 	Options map[string][]string
 
-	// ClickGates is, for a table whose RowClick is an Action, the reason each row
-	// may not be clicked by this viewer, "" when it may.
-	ClickGates []string
+	// ClickRefused is, for a table whose RowClick is an Action, whether each row
+	// may not be clicked by this viewer.
+	ClickRefused []bool
 
-	// Keys is each row's identity, and Gates the reason each row's action is
-	// refused to this viewer, by row then action ("" when allowed). Both are
+	// Keys is each row's identity, and Gates what each row's action is for this
+	// viewer, by row then action, as the declared actions number them. Both are
 	// empty for a table with no actions.
 	Keys  []string
-	Gates [][]string
+	Gates [][]Gate
+
+	// BulkGates is what each bulk action is for this viewer, as the declared actions number them.
+	BulkGates []Gate
 
 	Failed bool // Load failed: the panel says so, the page stands
 
@@ -241,19 +244,22 @@ func (v TableView) label() string {
 	return "Table"
 }
 
-// interactive reports whether the table posts: it has row actions or bulk
-// actions. A table that declares neither has no form, no checkbox column and
-// no bar — absence is the configuration.
+// interactive reports whether the table posts: a row action or a bulk action is drawn for
+// this viewer, or a click on a row is an action. A table with none has no form, no checkbox column and
+// no bar: absence is the configuration, and for a viewer whose Guards refuse every action, so it is for them.
 func (v TableView) interactive() bool {
-	return len(v.Node.Actions)+len(v.Node.Bulk) > 0 || v.Node.RowAction != nil
+	return v.selectable() || v.hasRowActions() || v.Node.RowAction != nil
 }
 
 // clicks is whether row i runs the table's RowAction when clicked.
 func (v TableView) clicks(i int) bool {
-	return v.Node.RowAction != nil && i < len(v.Keys) && (i >= len(v.ClickGates) || v.ClickGates[i] == "")
+	return v.Node.RowAction != nil && i < len(v.Keys) && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
 }
 
-func (v TableView) selectable() bool { return len(v.Node.Bulk) > 0 }
+// selectable is whether a bulk action is drawn, and so a column to select the rows with and a bar to act on them from.
+func (v TableView) selectable() bool {
+	return slices.ContainsFunc(v.BulkGates, Gate.Drawn)
+}
 
 // linkOf is the address a DisplayLink field has for a row, "" for any other field or
 // a value that may not be a link.
@@ -294,7 +300,11 @@ func (v TableView) rowClickValue(i int) string {
 	return ""
 }
 
-func (v TableView) hasRowActions() bool { return len(v.Node.Actions) > 0 }
+// hasRowActions is whether a row of this window has a row action drawn, and so a column to draw it in: it comes and goes
+// with the rows that the window holds, as the Guards say.
+func (v TableView) hasRowActions() bool {
+	return slices.ContainsFunc(v.Gates, func(row []Gate) bool { return slices.ContainsFunc(row, Gate.Drawn) })
+}
 
 // width is the column count including the ones the table adds itself.
 func (v TableView) width() int {
@@ -331,11 +341,20 @@ func RowClickValue(key string) string { return "click:0:" + key }
 // BulkActionValue is the "_act" value of a bulk action button.
 func BulkActionValue(action int) string { return fmt.Sprintf("bulk:%d", action) }
 
-func (v TableView) gate(row, action int) string {
+// gate is what row's action is for this viewer: not drawn, disabled, or as it is.
+func (v TableView) gate(row, action int) Gate {
 	if row < len(v.Gates) && action < len(v.Gates[row]) {
 		return v.Gates[row][action]
 	}
-	return ""
+	return Gate{}
+}
+
+// bulkGate is what a bulk action is for this viewer.
+func (v TableView) bulkGate(action int) Gate {
+	if action < len(v.BulkGates) {
+		return v.BulkGates[action]
+	}
+	return Gate{}
 }
 
 type carried struct{ Name, Value string }

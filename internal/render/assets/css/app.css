@@ -1006,6 +1006,10 @@ html.js .search-submit {
   right: 0;
   transform: none;
 }
+.gate[data-below]:hover::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
 .gate:hover::after {
   content: attr(data-guard);
   position: absolute;
@@ -2455,6 +2459,11 @@ html:not(.js) [data-pickall] {
 }
 html:not(.js) .js-only {
   display: none;
+}
+/* A reason that opens over the next row's buttons is above them: each cell of buttons is its own layer, and a later one is over an earlier. */
+td.actions:hover,
+td.actions:focus-within {
+  z-index: 2;
 }
 td.actions .gate:hover::after,
 .panel-foot .gate:hover::after {

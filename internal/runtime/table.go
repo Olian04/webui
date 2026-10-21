@@ -194,14 +194,17 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.Next = window.Next
 	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
-	view.Keys, view.Gates = rowKeysAndGates(ctx, n, rows)
-	view.ClickGates = clickGates(ctx, n, rows)
+	view.Keys, view.Gates = p.rowKeysAndGates(ctx, page, n, rows)
+	view.ClickRefused = p.clickRefused(ctx, page, n, rows)
+	view.BulkGates = p.bulkGates(ctx, page, n, rows)
 	return p.render.Table(view)
 }
 
 // rowHrefs resolves each row's destination through Open, so it is a real href
 // with the mount prefix. A row whose link cannot be built has none, and is
-// logged: it renders as an ordinary row rather than a dead link.
+// logged: it renders as an ordinary row rather than a dead link. So does a row
+// whose destination page refuses the visitor, since a link they cannot follow is
+// not offered, and that is asked of the page's Guard once for each row.
 func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) []string {
 	hrefs := make([]string, len(rows))
 	link := n.RowClick
@@ -214,49 +217,74 @@ func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *
 			p.log.Error("webui: row link failed", "page", page.PathTemplate, "dest", link.Dest, "err", err)
 			continue
 		}
-		hrefs[i] = href
+		if p.mayFollow(ctx, page, link, href) {
+			hrefs[i] = href
+		}
 	}
 	return hrefs
 }
 
-// clickGates is, for a table whose RowClick is an Action, why each row may not be
-// clicked by this viewer: the Action's Guard, run on the row, as it will be on the
-// POST. A row it refuses is shown but does nothing.
-func clickGates(ctx context.Context, n *ir.Table, rows []any) []string {
+// clickRefused is, for a table whose RowClick is an Action, whether this viewer may not click each row: the Action's
+// Guard, run on the row, as it will be on the POST. A row it refuses is shown but does nothing, whichever
+// error says so: it has no button to hide or to disable.
+func (p *Program) clickRefused(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []bool {
 	if n.RowAction == nil || n.RowAction.Guard == nil {
 		return nil
 	}
-	gates := make([]string, len(rows))
+	refused := make([]bool, len(rows))
 	for i, row := range rows {
-		if err := n.RowAction.Guard(ctx, row); err != nil {
-			gates[i] = err.Error()
-		}
+		refused[i] = !p.gateOf(page, "the RowClick of a table", func() error { return n.RowAction.Guard(ctx, row) }).Open()
 	}
-	return gates
+	return refused
 }
 
-// rowKeysAndGates names each row and says which of its actions this viewer may
-// not use, and why. The same Guard that gates the button authorises the POST,
-// so there is no second authorisation rule to keep in sync. Bulk actions are
-// not gated here: their Guard takes the selection, which does not exist yet,
-// so it runs at execution.
-func rowKeysAndGates(ctx context.Context, n *ir.Table, rows []any) ([]string, [][]string) {
+// rowKeysAndGates names each row and says what each of its actions is for this
+// viewer. The same Guard that decides the button authorises the POST, so there is no
+// second authorisation rule to keep in sync. The gates are by the position that an
+// action was declared at, whether it is drawn or not, since that is what its button
+// posts.
+func (p *Program) rowKeysAndGates(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) ([]string, [][]render.Gate) {
 	if n.Key == nil {
 		return nil, nil
 	}
 	keys := make([]string, len(rows))
-	gates := make([][]string, len(rows))
+	gates := make([][]render.Gate, len(rows))
 	for i, row := range rows {
 		keys[i] = n.Key(row)
-		gates[i] = make([]string, len(n.Actions))
+		gates[i] = make([]render.Gate, len(n.Actions))
 		for a, act := range n.Actions {
-			if act.Guard == nil {
-				continue
-			}
-			if err := act.Guard(ctx, row); err != nil {
-				gates[i][a] = err.Error()
+			if act.Guard != nil {
+				gates[i][a] = p.gateOf(page, "the action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, row) })
 			}
 		}
 	}
 	return keys, gates
+}
+
+// bulkGates says what each bulk action is for this viewer. Its Guard takes a selection, which does not exist
+// until the visitor has made one, so it is asked of each row of the window as a selection of that one row, and
+// the action is drawn if any of them is accepted. If every one is refused it is disabled, with the message of the
+// first that said so, when one did, and is otherwise not drawn. A table with no rows has nothing to select, and none is drawn.
+func (p *Program) bulkGates(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []render.Gate {
+	if len(n.Bulk) == 0 {
+		return nil
+	}
+	gates := make([]render.Gate, len(n.Bulk))
+	for b, act := range n.Bulk {
+		gates[b] = render.Gate{Hidden: true}
+		for _, row := range rows {
+			var g render.Gate
+			if act.Guard != nil {
+				g = p.gateOf(page, "the bulk action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, []any{row}) })
+			}
+			if g.Open() {
+				gates[b] = g
+				break
+			}
+			if gates[b].Hidden && g.Drawn() {
+				gates[b] = g // the first that is disabled, if no row is accepted
+			}
+		}
+	}
+	return gates
 }

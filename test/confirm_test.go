@@ -122,15 +122,22 @@ func TestAFormWhoseSaveAsksIsNotSubmittedByEnterInAField(t *testing.T) {
 	assert.Contains(t, body, `<button class="btn btn-primary btn-sm" type="submit">Save</button>`)
 }
 
-// A button that its Guard refuses is disabled with the reason, and has no dialog to open.
-func TestAGatedButtonHasNoDialog(t *testing.T) {
+// A button that its Guard refuses has no dialog to open, whether it is left out or drawn disabled, and the dialogs of the others
+// keep the ids that they have by the position their actions were declared at.
+func TestARefusedButtonHasNoDialog(t *testing.T) {
 	t.Parallel()
 
 	h, _ := confirmApp("Sure?", func(context.Context, parcel) error { return errors.New("read only") })
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
+	assert.False(t, strings.Contains(body, `id="confirm-p.1-r0a0"`))
+	assert.False(t, strings.Contains(body, `data-guard`))
+	assert.True(t, strings.Contains(body, `id="confirm-p.1-b0"`)) // the bulk action has no Guard
+
+	h, _ = confirmApp("Sure?", func(context.Context, parcel) error { return webui.Disabled("read only") })
+	body = serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, body, `data-guard="read only"`)
 	assert.False(t, strings.Contains(body, `id="confirm-p.1-r0a0"`))
-	assert.True(t, strings.Contains(body, `id="confirm-p.1-b0"`)) // the bulk action is not gated
+	assert.True(t, strings.Contains(body, `id="confirm-p.1-b0"`))
 }
 
 func TestAnActionWithNoConfirmHasNoDialog(t *testing.T) {

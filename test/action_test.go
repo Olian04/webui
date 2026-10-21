@@ -303,7 +303,7 @@ func TestRedirectGoesWhereOpenSays(t *testing.T) {
 	assert.Contains(t, follow(s.h, rec).Body.String(), "Something went wrong")
 }
 
-func TestTableRendersSelectionBarAndGatedRowActions(t *testing.T) {
+func TestTableRendersSelectionBarAndOmitsTheRowActionsItsGuardRefuses(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()
@@ -316,9 +316,12 @@ func TestTableRendersSelectionBarAndGatedRowActions(t *testing.T) {
 	assert.Contains(t, body, `name="_act" value="row:0:a:1"`) // keys may contain colons
 	assert.Contains(t, body, `class="btn btn-danger btn-sm"`)
 
-	// The locked row's action is disabled, with the reason in a tooltip.
-	assert.Contains(t, body, `<span class="gate" data-guard="locked by an administrator">`)
-	assert.Equal(t, strings.Count(body, `class="gate"`), 1)
+	// The locked row's Guard returns an error that says nothing of how to draw it: the action is not there, and its row
+	// has an empty cell in the column that the other rows' actions are in.
+	assert.Equal(t, strings.Count(body, `>Delete</button>`), 2)
+	assert.False(t, strings.Contains(body, `value="row:0:locked"`))
+	assert.Contains(t, body, `<td class="actions"></td>`)
+	assert.False(t, strings.Contains(body, `class="gate"`))
 }
 
 func TestTableWithoutActionsHasNoFormNoCheckboxesNoBar(t *testing.T) {

@@ -31,8 +31,8 @@ bar is always the truth about what is on screen.
 
 **Absence is configuration.** A table with no bulk operations has no
 checkbox column at all — not a disabled one. A column that cannot be filtered
-has no filter icon. Nothing is greyed out except things you could do if you were
-someone else.
+has no filter icon. A control that the visitor may not use is not there either, unless the
+application says it should be, with a reason: then it is greyed out, and nothing else is.
 
 **Square, not soft.** 2px radius everywhere. Shadows only on things that float
 (menus, toasts). No gradients, no glass, no decorative borders. The visual
@@ -376,13 +376,20 @@ when set.
 **Switches** are 30×16 pills, used only for session-level modes, never for
 saved data.
 
-**Disabled vs. gated.** Disabled is 45% opacity with no explanation. *Gated* —
-a control you are not permitted to use — is also 45%, but reveals a raised
-tooltip on hover saying why. A control is never silently removed because of
-permissions and never silently fails when pressed. The exception is a form's
-Save: a form the visitor may not submit is shown as read-only output, with a Back
-button in place of Save and Cancel, since a form of inputs that cannot be sent
-would only invite typing.
+**Absent, disabled, or gated.** A control that the visitor may not use is one of
+two things, and the application's Guard says which with what it returns. An ordinary
+error leaves the control out: there is no button, and a table whose every button is
+left out has no column for them, no checkbox column and no bar, and a toolbar with
+nothing in it is not drawn. `Disabled("Already granted")` draws it, 45% opaque,
+with a raised tooltip on hover saying why: the *gated* treatment, for a control that
+the visitor ought to know exists. Plain *disabled* is the same 45% with no
+explanation, for what the library itself cannot do (a pager at the end of its range).
+The reason opens above the control, or below it when there is no room above. A control never fails silently when pressed: a request made by hand is refused with
+the Guard's message. The cost of leaving a control out is that it cannot be
+discovered, and that its reason is seen only on a page that is refused outright.
+A form's Save is the one control with no disabled form: a form the visitor may not
+submit is shown as read-only output, with a Back button in place of Save and Cancel,
+since a form of inputs that cannot be sent would only invite typing.
 
 ---
 

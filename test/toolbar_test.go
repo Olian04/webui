@@ -237,17 +237,28 @@ func TestAnActionOfAToolbarIsDoneToThePagesArguments(t *testing.T) {
 	assert.Equal(t, len(s.ran), 1)
 }
 
-// The Guard that disables a button is the one that refuses the request.
-func TestAToolbarButtonThatIsGuardedIsDisabledWithItsReasonAndRefused(t *testing.T) {
+// The Guard that leaves a button out is the one that refuses the request, and so is the one that disables it.
+func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) {
 	t.Parallel()
 
 	s := newToolShop()
 	s.deny = errors.New("requires the editor role")
 	body := serve(s.h, http.MethodGet, "/admin/tools").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button></span>`)
+	assert.False(t, strings.Contains(body, "Sync now"))
+	assert.False(t, strings.Contains(body, "requires the editor role")) // nothing says that there was a button
+	assert.Contains(t, body, `href="/admin/device/new">Create device</a>`)
+	assert.False(t, strings.Contains(body, `<form action="/admin/tools" method="post"`)) // and with no button there is nothing to post
 
 	rec := post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "erequires the editor role")
+	assert.Equal(t, len(s.ran), 0)
+
+	s.deny = webui.Disabled("requires the editor role")
+	body = serve(s.h, http.MethodGet, "/admin/tools").Body.String()
+	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button></span>`)
+
+	rec = post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 	assert.Equal(t, len(s.ran), 0)
 }

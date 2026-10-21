@@ -169,9 +169,10 @@
 // as one group, the Left ones first.
 //
 // An [Action] is a button that posts, and its Run is handed the page's arguments and says how it ended with an
-// [Outcome], as any action does. Its Guard decides whether the visitor may, and the same check disables the button, with
-// the reason, and refuses the request. A [Link] is a button that goes to another page, with a Label and a Role, built from
-// the page's arguments; it is a real link, so it works in a new tab and with a keyboard.
+// [Outcome], as any action does. Its Guard decides whether the visitor may, and the same check draws the button or leaves it
+// out, and refuses the request. A [Link] is a button that goes to another page, with a Label and a Role, built from
+// the page's arguments; it is a real link, so it works in a new tab and with a keyboard, and it is left out for a visitor whom the
+// page it leads to refuses. A toolbar whose controls are all left out is not drawn.
 //
 // An accessor is a value of the page's arguments, shown read-only: its Label and what its Load reads from them, as a read-only
 // form field or a table cell shows it (a [Select] as its badges, a number with its Format, a [Bool] as Yes or No, a dash when
@@ -314,6 +315,34 @@
 // Firefox 144, Safari 26.2); script supplies the same for an older one, and an older one with no script cannot open
 // it, and so cannot do the action. It is a question for the visitor and not a check: a request made by hand is not asked,
 // and what must not happen is refused by the Guard. A form whose Save asks is not saved by Enter in a field.
+//
+// # Controls that a visitor may not use
+//
+// An action's Guard decides whether the visitor may do it, and what it returns decides how the control is drawn, in a table's
+// rows, in its selection bar, and in a toolbar. An ordinary error leaves the control out, as if there were none, which is right
+// when the visitor has no business knowing of it. [Disabled] draws it, disabled, with its message in a tooltip, which is right when
+// the visitor ought to know that it exists and why they cannot use it ("Already granted"). Which of the two is the application's
+// to say, since only it knows, and there is no option for it. Either way the same Guard refuses a request made by hand, with
+// the message, so what is drawn is a convenience and the Guard is the authority.
+//
+//	Guard: func(ctx context.Context, d Device) error {
+//		if !canEdit(ctx) {
+//			return errors.New("requires the editor role") // the button is not there
+//		}
+//		if d.Locked {
+//			return webui.Disabled("This device is locked") // the button is there, and says why it cannot be used
+//		}
+//		return nil
+//	}
+//
+// A bulk action's Guard is given a selection, which does not exist when the table is drawn. It is asked of each row of the window as
+// a selection of that one row, and the button is drawn if it accepts any of them, so a bulk Guard must accept a selection of one. If
+// it refuses every one, the button is disabled with the message of the first that said [Disabled], and is otherwise left out. A table
+// with no bulk action drawn has no column of checkboxes and no bar, and one with no row action drawn has no column of buttons;
+// that column is there when a row of the page on screen has one, and so may come and go between the pages of a table. A Link, in a
+// toolbar or as a table's RowClick, is left out when the page it leads to would refuse the visitor, which asks that page's Guard
+// when the link is drawn, for each row of a table. A Guard that panics leaves its control out, and the panic is logged.
+// A form's Save that its Guard refuses, whichever error says so, is not drawn: the form is shown read-only, with a Back button.
 //
 // # Text rules and patterns
 //
@@ -596,7 +625,7 @@
 //
 // The library sets no authentication: mount the handler behind your own. A [Page]'s
 // Guard and an [Action]'s Guard decide what a visitor may see and do, and the same
-// check that disables a control also authorises the request. Navigation entries and
+// check that draws or leaves out a control also authorises the request. Navigation entries and
 // search results a visitor could not open are left out. POST requests are
 // protected against cross-site request forgery (CSRF) with
 // [net/http.CrossOriginProtection], responses carry a content security policy, and
