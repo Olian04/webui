@@ -82,39 +82,3 @@ var Audit = webui.Page[webui.NoArgs]{
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},
 }
-
-// The landing page is the page at "/". It has no Nav of its own: the brand in
-// the sidebar and the first breadcrumb both lead here. Without such a page the
-// root goes to the first page it can find that needs no arguments, with a warning.
-var Overview = webui.Page[webui.NoArgs]{
-	Path: "/",
-	Body: webui.Stack{OverviewToolbar, SitesTable},
-}
-
-// The values of the landing page's toolbar are accessors of the page's arguments, which this page has none of: their Load reads
-// the system instead, which a toolbar may do, since a value is only read. A Store would do nothing here, and none is given.
-var (
-	overviewHealth = webui.Select[webui.NoArgs]{
-		Label: "Health",
-		Load:  func(webui.NoArgs) []string { return []string{service.System().Health} },
-		Options: []webui.Option{
-			{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}, {Value: "down", Tone: webui.ToneCritical},
-		},
-	}
-	overviewVersion = webui.String[webui.NoArgs]{Label: "Version", Load: func(webui.NoArgs) string { return service.System().Version }}
-	overviewUptime  = webui.String[webui.NoArgs]{Label: "Uptime", Load: func(webui.NoArgs) string { return service.System().Uptime }}
-	overviewQueue   = webui.Int[webui.NoArgs]{
-		Label: "Queue depth", Help: "Events that are waiting to be written.",
-		Load: func(webui.NoArgs) int { return service.System().Queue },
-	}
-	overviewDisk = webui.Slider[webui.NoArgs]{
-		Label: "Disk used (%)", Min: 0, Max: 100,
-		Load: func(webui.NoArgs) float64 { return service.System().DiskUsed },
-	}
-)
-
-// OverviewToolbar is the status of the collector at a glance, in the row that is a Toolbar: the values of the system, read-only, from the
-// left edge. A toolbar has no inputs; it is only values here, and so it has no form either.
-var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
-	Left: []webui.ToolbarItem[webui.NoArgs]{overviewHealth, overviewVersion, overviewUptime, overviewQueue, overviewDisk},
-}
