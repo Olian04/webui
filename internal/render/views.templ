@@ -477,7 +477,7 @@ templ (r *Renderer) input(fv fieldView) {
 					</span>
 					@c.Input(c.InputProps{
 						ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type, Mono: true, Class: "range-number", Placeholder: fv.Placeholder,
-						Invalid: fv.Error != "", Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Form: fv.FormID,
+						Invalid: fv.Error != "", Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
 					})
 				</div>
 			case fv.ReadOnly:
@@ -493,29 +493,25 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.Field.File != nil:
 				@c.FileInput(c.FileInputProps{
 					ID: fv.ID, Name: fv.Name, Accept: rules.FileAccept(fv.Field.File), Required: fv.Rules.Required && fv.Stored == nil,
-					Invalid: fv.Error != "", Validity: fv.Validity, Form: fv.FormID,
+					Invalid: fv.Error != "", Validity: fv.Validity,
 					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentThumb: fv.currentThumb(), CurrentSize: fv.currentSize(), Remove: fv.removable(), Attrs: fv.Attrs,
 				})
 			case fv.Field.Multiline:
 				@c.Textarea(c.TextareaProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules, Validity: fv.Validity, Form: fv.FormID,
+					Rules: fv.Rules, Validity: fv.Validity,
 				})
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
-					Required: fv.Rules.Required, Invalid: fv.Error != "", Validity: fv.Validity, Form: fv.FormID,
+					Required: fv.Rules.Required, Invalid: fv.Error != "", Validity: fv.Validity,
 				})
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
 					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
-					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Form: fv.FormID, Autocomplete: fv.Autocomplete, Attrs: fv.Attrs,
+					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Parts: fv.Parts, Autocomplete: fv.Autocomplete, Attrs: fv.Attrs,
 				})
-		}
-		if fv.FormID != "" {
-			// An input of a toolbar is applied with a button of its own without script, joined to it (see .toolbar .field).
-			<button class="btn btn-secondary btn-sm toolbar-apply" type="submit" form={ fv.FormID }>Apply</button>
 		}
 	}
 }
