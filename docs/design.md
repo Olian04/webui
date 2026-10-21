@@ -196,7 +196,7 @@ visitor may not open is not drawn.
 
 48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
-at text-tertiary. On the right: a 290px search field, then the page's *Refresh*
+at text-tertiary. On the right: a 290px search field (only when some page has a `Search`: the app's pages are in the sidebar, and the search finds the things they are for), then the page's *Refresh*
 icon button, then, when the app declares external links, a button (the arrow-out-of-box
 icon) that opens a popover list of them: a raised surface right-aligned beneath the button, 32px items with
 a 16px icon and an 11px uppercase caption above a section, closed by a click elsewhere
