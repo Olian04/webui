@@ -38,7 +38,7 @@ import (
 //   - An accessor, such as a [Select], an [Int] or a [Bool], is a value of the page's arguments, shown read-only: its Label and
 //     what its Load reads from the arguments, as a table cell or a read-only form field shows it (a [Select] as its badges, a
 //     number as a number, with its Format). A Store on it is ignored, as it is in a table, so one accessor serves a form, a
-//     table and a toolbar. A toolbar has no inputs: nothing in it changes the page's arguments, and it has no form of its own. A
+//     table and a toolbar (a [File] is the exception: it is a form's input and a table's column, and not a toolbar's). A toolbar has no inputs: nothing in it changes the page's arguments, and it has no form of its own. A
 //     page whose arguments the visitor sets uses a [Form], and a [Link] for a page that takes other arguments.
 //
 // A toolbar is not a panel: it has no frame, so it sits on the page, in a [Stack] with what it is for. One whose controls are all

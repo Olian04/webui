@@ -105,11 +105,11 @@ func TestBindStartsFromLoadedModelAndReportsEveryFailure(t *testing.T) {
 	ipName := form.Fields[0].Group[1].Name
 	countName := form.Fields[1].Name
 
-	got, errs := form.Bind(form.Fields, base, map[string]string{ipName: "9.9.9.9", countName: "7"})
+	got, errs := form.Bind(form.Fields, base, map[string]string{ipName: "9.9.9.9", countName: "7"}, nil)
 	assert.Equal(t, len(errs), 0)
 	assert.DeepEqual(t, got, dev{Id: "d1", Ip: "9.9.9.9", Count: 7}) // Id kept: it has no Store
 
-	_, errs = form.Bind(form.Fields, base, map[string]string{ipName: "nope", countName: "x"})
+	_, errs = form.Bind(form.Fields, base, map[string]string{ipName: "nope", countName: "x"}, nil)
 	assert.Equal(t, len(errs), 2)
 	assert.Equal(t, errs[0].Label, "IP")
 	assert.Equal(t, errs[1].Label, "Count")

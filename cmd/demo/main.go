@@ -129,7 +129,8 @@ func main() {
 	}
 
 	log.Printf("listening on http://localhost%s/admin/", *addr)
-	srv := &http.Server{Addr: *addr, Handler: routes(handler), ReadHeaderTimeout: 10 * time.Second}
+	// A program that takes uploads bounds how long it waits for a request, body included, as ReadHeaderTimeout alone does not.
+	srv := &http.Server{Addr: *addr, Handler: routes(handler), ReadHeaderTimeout: 10 * time.Second, ReadTimeout: time.Minute}
 	log.Fatal(srv.ListenAndServe())
 }
 
@@ -138,8 +139,9 @@ func main() {
 func routes(app http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("/admin/", authenticated(app))
-	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Metrics) in it
-	mux.HandleFunc("GET /login", loginPage)              // the app's menu links here: "Log out"
+	mux.Handle("GET /uploads/{name}", authenticated(http.HandlerFunc(serveUpload))) // what a File holds, served by the app: see uploads.go
+	mux.Handle("GET /metrics", metricsHandler(registry))                            // the program's own, with the app's (App.Metrics) in it
+	mux.HandleFunc("GET /login", loginPage)                                         // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)

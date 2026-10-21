@@ -109,8 +109,17 @@ type Field struct {
 	// Set: what an input that was emptied means. Nil for a field that is read-only.
 	Unset func(model any)
 
+	// File is set for a field that holds a file: what it accepts, and how it is stored. Its Get is the stored file's name and its
+	// Link its address, so that it reads as a link where it is only read.
+	File *FileSpec
+
 	Min float64 // DisplaySlider: the range, also in Rules for a writable one
 	Max float64
+}
+
+// Writable is whether the field can be changed by a submission: it has a Set, or it is a file that has a Store.
+func (f Field) Writable() bool {
+	return f.Set != nil || (f.File != nil && f.File.Store != nil)
 }
 
 // ListSep joins the values of a field that holds several, and of a parameter that may repeat,

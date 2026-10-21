@@ -142,6 +142,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 			webui.Group[Settings]{Contact, OnCall},
 			webui.Group[Settings]{Webhook, Label},
 			CertEnds,
+			webui.Group[Settings]{Logo, Certificate},
 		},
 		Submit: SaveIngest,
 	},

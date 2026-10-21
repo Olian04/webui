@@ -12,7 +12,7 @@ func editsPhone(body ir.Node) bool {
 		case *ir.Form:
 			if n.Submit != nil {
 				for f := range ir.Leaves(n.Fields) {
-					found = found || (f.Set != nil && f.Rules.Format == ir.FormatTel)
+					found = found || (f.Writable() && f.Rules.Format == ir.FormatTel)
 				}
 			}
 		}

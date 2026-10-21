@@ -2,7 +2,9 @@ package runtime
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"slices"
 	"strconv"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
+	"github.com/Olian04/webui/internal/rules"
 )
 
 // maxBody bounds a submission. An admin form is a few fields; a megabyte is
@@ -20,6 +23,10 @@ const maxBody = 1 << 20
 // body and may be large. A Content.Rules.MaxLen is how an application bounds it
 // further.
 const maxEditorBody = 16 << 20
+
+// uploadMemory is how much of a multipart submission is held in memory: what is more is written to files of their own, which
+// the server removes when the request is answered.
+const uploadMemory = 1 << 20
 
 // leavesOf maps each leaf's id to its node, so a POST can name one and nothing
 // else: the id comes from position, never from anything the user typed.
@@ -74,6 +81,7 @@ func actionable(leaves map[string]ir.Node) bool {
 // page the viewer may not open.
 func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.HandlerFunc {
 	parser := argParser(page)
+	budget := fileBudget(leaves)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := p.cross.Check(r); err != nil {
 			http.Error(w, "cross-origin request refused", http.StatusForbidden)
@@ -84,19 +92,30 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		if hasEditor(leaves) {
 			limit = maxEditorBody
 		}
+		// A page with a file field takes a multipart body of as much as its files may be, besides the usual: which is the
+		// limit of that kind of body, and of no other that is posted to it.
+		multipart := budget > 0 && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
+		if multipart {
+			limit = budget + maxBody
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, limit)
-		if err := r.ParseForm(); err != nil {
-			message := "That submission could not be read."
-			if strings.Contains(err.Error(), "too large") {
-				message = "That submission was too large."
-			}
-			p.refuse(w, r, message)
+		if err := r.ParseForm(); err != nil { // of a multipart body, only the address
+			p.refuse(w, r, unreadable(err))
 			return
 		}
 
 		req, ok := p.begin(w, r, page, parser)
 		if !ok {
 			return
+		}
+		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
+		// refuses has nothing of theirs received.
+		if multipart {
+			//nolint:gosec // G120: the body was limited above, by http.MaxBytesReader, to what the files may be.
+			if err := r.ParseMultipartForm(uploadMemory); err != nil {
+				p.refuse(w, r, unreadable(err))
+				return
+			}
 		}
 		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
 		case *ir.Form:
@@ -109,6 +128,65 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			p.refuse(w, r, notUnderstood)
 		}
 	}
+}
+
+// unreadable is what to say of a body that could not be read: that it was too large, or that it was not understood.
+func unreadable(err error) string {
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) || strings.Contains(err.Error(), "too large") {
+		return "That submission was too large."
+	}
+	return "That submission could not be read."
+}
+
+// fileBudget is the most that the files of a page may be, together, which is 0 for a page that has none.
+func fileBudget(leaves map[string]ir.Node) int64 {
+	var total int64
+	for _, n := range leaves {
+		if form, ok := n.(*ir.Form); ok {
+			for f := range ir.Leaves(form.Fields) {
+				if f.File != nil && f.File.Store != nil {
+					total += f.File.Max
+				}
+			}
+		}
+	}
+	return total
+}
+
+// uploadsOf are the files that a submission carried, for the form's file fields: the first of each field that is not an empty
+// part, which is what a chooser that was left alone sends, and the stored files that the visitor asked to remove. It is nil when
+// there are none, which is the usual.
+func uploadsOf(r *http.Request, fields []ir.Field) *ir.Files {
+	var out *ir.Files
+	add := func() {
+		if out == nil {
+			out = &ir.Files{Uploads: map[string]*ir.Upload{}, Removed: map[string]bool{}}
+		}
+	}
+	for f := range ir.Leaves(fields) {
+		if f.File == nil || f.File.Store == nil {
+			continue
+		}
+		if r.MultipartForm != nil {
+			for _, fh := range r.MultipartForm.File[f.Name] {
+				if fh.Filename == "" || fh.Size == 0 {
+					continue
+				}
+				add()
+				out.Uploads[f.Name] = &ir.Upload{
+					Name: rules.UploadName(fh.Filename), Size: fh.Size,
+					Open: func() (io.ReadCloser, error) { return fh.Open() },
+				}
+				break
+			}
+		}
+		if slices.Contains(r.PostForm["_rm"], f.Name) {
+			add()
+			out.Removed[f.Name] = true
+		}
+	}
+	return out
 }
 
 // notUnderstood is what a POST that names no leaf, or no action, that the page has is answered with.
@@ -144,7 +222,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("form options: %w", err))
 		return
 	}
-	model, errs := n.Bind(resolved.Fields, base, values)
+	model, errs := n.Bind(resolved.Fields, base, values, uploadsOf(r, resolved.Fields))
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
 		p.returnToForm(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
