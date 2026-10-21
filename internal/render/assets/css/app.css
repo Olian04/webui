@@ -1556,6 +1556,53 @@ td .multiline {
   border: 1px solid var(--border);
   border-radius: 2px;
 }
+.file-thumb-link,
+.file-thumb-chosen {
+  display: inline-flex;
+  cursor: zoom-in;
+  border-radius: 2px;
+}
+.file-thumb-link:focus-visible,
+.file-thumb-chosen:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+/* The file at its full size, over the dimmed page: as large as the window allows, whole, and never stretched. */
+dialog.preview-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  padding: 12px;
+  background: var(--raise);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+}
+dialog.preview-dialog:not([open]) {
+  display: none;
+}
+dialog.preview-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+.preview-full {
+  display: block;
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 140px);
+  object-fit: contain;
+}
+.preview-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
 .file-current a {
   color: var(--blue-text);
 }

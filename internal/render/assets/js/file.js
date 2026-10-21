@@ -7,9 +7,13 @@
 // holds, which script cannot see: what is said here is only what a name, a size and the type that the browser gives can say, in the
 // words that the server uses.
 //
-// What the field takes is in data-file on the input, as JSON: {max, maxMessage, accept: [".png", "image/png", ...], kindMessage, image,
-// preview}. image says that a file that is chosen may be shown if it is a picture, and preview is the address on this site of the picture
-// of the file that is stored, which is there only for a field that takes nothing but images.
+// What the field takes is in data-file on the input, as JSON: {max, maxMessage, accept: [".png", "image/png", ...], kindMessage, image}.
+// image says that a file that is chosen may be shown if it is a picture.
+//
+// A picture is small, and clicking it opens the file at its full size in a dialog. The picture of the stored file is the server's: the
+// thumbnail that the app made, in the page, with a link to the file, which without this script is followed. A picture of a file that is
+// chosen is made here, scaled down, and the file itself is read only when the dialog is opened, so that a large image is not held
+// in the page to show a few dozen pixels of it.
 (function () {
   'use strict';
 
@@ -18,6 +22,50 @@
   // to show a thumbnail. SVG is not among them, since it is a document that can hold script.
   var IMAGE = /^image\/(png|jpeg|gif|webp)$/;
   var PREVIEW_MAX = 4 * 1024 * 1024;
+  var THUMB = 192; // the longest side of the picture of a chosen file, twice what it is shown at, for a screen of a high density
+
+  // The dialog that shows a file at its full size: one for the page, made when it is first wanted. The file is loaded when the dialog is
+  // opened and let go of when it is closed, so nothing is fetched or held for a picture that nobody opened. It is a native dialog,
+  // which has the focus, Escape, the backdrop and the top layer; a click on the backdrop closes it where closedby is not known.
+  var dialog = null;
+  function openPreview(src, name) {
+    if (!dialog) {
+      dialog = element('dialog', 'preview-dialog');
+      dialog.setAttribute('closedby', 'any');
+      dialog.addEventListener('click', function (e) {
+        if (e.target === dialog) dialog.close();
+      });
+      dialog.addEventListener('close', function () {
+        var img = dialog.querySelector('img');
+        if (img) img.removeAttribute('src');
+      });
+      var close = element('button', 'btn btn-ghost btn-sm preview-close', 'Close');
+      close.type = 'button';
+      close.addEventListener('click', function () {
+        dialog.close();
+      });
+      dialog.appendChild(element('img', 'preview-full'));
+      dialog.appendChild(element('div', 'preview-name'));
+      dialog.appendChild(close);
+      document.body.appendChild(dialog);
+    }
+    var full = dialog.querySelector('img');
+    full.alt = name;
+    full.src = src;
+    dialog.setAttribute('aria-label', 'Preview of ' + name);
+    dialog.querySelector('.preview-name').textContent = name;
+    dialog.showModal();
+  }
+
+  // The thumbnail of a stored file is a link to the file, which opens the dialog in place of leaving the page; a click that means to open
+  // it somewhere else (a new tab, a download) is left to the browser.
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('a.file-thumb-link');
+    if (!link || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    var name = link.getAttribute('title') ? link.getAttribute('title').replace(/^Preview /, '') : '';
+    openPreview(link.href, name);
+  });
 
   function config(input) {
     try {
@@ -41,6 +89,15 @@
       if (!ok) return cfg.kindMessage || '';
     }
     return '';
+  }
+
+  // The file as a data: address, which the policy lets an image be and a blob: address it does not.
+  function readAsData(file, done) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (typeof reader.result === 'string') done(reader.result);
+    };
+    reader.readAsDataURL(file);
   }
 
   function element(tag, className, text) {
@@ -73,18 +130,6 @@
     zone.appendChild(hint);
     zone.appendChild(shown);
 
-    // The picture of the file that is stored, beside its name, when the field takes only images and the app gave an address of this site.
-    var current = input.closest('.file') && input.closest('.file').querySelector('.file-current');
-    if (current && cfg.preview) {
-      var thumb = element('img', 'file-thumb');
-      thumb.alt = '';
-      thumb.src = cfg.preview;
-      thumb.addEventListener('error', function () {
-        thumb.remove(); // not there, or not a picture: the name is what there is
-      });
-      current.insertBefore(thumb, current.firstChild);
-    }
-
     var token = 0; // which file the picture being read is for, so that a slow one is not shown for a file that has been replaced
     function sync() {
       var file = input.files && input.files[0];
@@ -106,16 +151,36 @@
       }
       if (!cfg.image || !IMAGE.test(file.type) || file.size > PREVIEW_MAX) return;
       var mine = token;
-      var reader = new FileReader();
-      reader.onload = function () {
-        if (mine !== token || typeof reader.result !== 'string') return;
-        var img = element('img', '');
-        img.alt = 'Preview of ' + file.name;
-        img.src = reader.result;
-        shown.appendChild(img);
-        shown.hidden = false;
-      };
-      reader.readAsDataURL(file);
+      readAsData(file, function (data) {
+        if (mine !== token) return;
+        // Scaled down, in a canvas, to a picture of a few kilobytes: the page holds that, and not the image.
+        var full = new Image();
+        full.onload = function () {
+          if (mine !== token) return;
+          var ratio = Math.min(1, THUMB / Math.max(full.naturalWidth, full.naturalHeight));
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(full.naturalWidth * ratio));
+          canvas.height = Math.max(1, Math.round(full.naturalHeight * ratio));
+          canvas.getContext('2d').drawImage(full, 0, 0, canvas.width, canvas.height);
+          var link = element('a', 'file-thumb-chosen');
+          link.href = '#';
+          link.title = 'Preview ' + file.name;
+          var img = element('img', '');
+          img.alt = '';
+          img.src = canvas.toDataURL('image/png');
+          link.appendChild(img);
+          link.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            readAsData(file, function (again) {
+              openPreview(again, file.name); // the file as it was chosen, read now
+            });
+          });
+          shown.appendChild(link);
+          shown.hidden = false;
+        };
+        full.src = data;
+      });
     }
 
     input.addEventListener('change', sync);

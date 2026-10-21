@@ -71,6 +71,10 @@ type StoredFile struct {
 	Name string
 	Size int64
 	URL  string // where the app serves it, "" for no link
+
+	// Thumb is where the app serves a small picture of it, "" for none. It is a path on this site, which is all that a page may show a
+	// picture from, and is only ever shown at a few dozen pixels.
+	Thumb string
 }
 
 // Upload is a file that a visitor sent, which is held on the server, in memory or in a file of its own, until the request is answered.

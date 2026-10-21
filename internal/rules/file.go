@@ -97,12 +97,6 @@ func AcceptsImages(spec *ir.FileSpec) bool {
 	return len(accepted) == 0 || slices.ContainsFunc(accepted, isImage)
 }
 
-// OnlyImages is whether every file that the field takes is an image, so that the file that is stored is one.
-func OnlyImages(spec *ir.FileSpec) bool {
-	accepted := kinds(spec)
-	return len(accepted) > 0 && !slices.ContainsFunc(accepted, func(k ir.FileKind) bool { return !isImage(k) })
-}
-
 func isImage(k ir.FileKind) bool {
 	return k == ir.FilePNG || k == ir.FileJPEG || k == ir.FileGIF || k == ir.FileWebP
 }

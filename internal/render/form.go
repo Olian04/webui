@@ -135,7 +135,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	}
 	if f.File != nil && editable {
 		fv.Stored = f.File.Stored(v.Model)
-		fv.Attrs = fileAttrs(f, fv.Stored)
+		fv.Attrs = fileAttrs(f)
 		if v.Values != nil {
 			// A browser cannot fill a file chooser in, so a form that was refused has lost the file that was chosen.
 			fv.RuleLines = append(fv.RuleLines, "Choose the file again")
@@ -380,6 +380,14 @@ func (fv fieldView) currentHref() string {
 		return ""
 	}
 	return fv.Stored.URL
+}
+
+// currentThumb is where the stored file's small picture is, "" for none.
+func (fv fieldView) currentThumb() string {
+	if fv.Stored == nil {
+		return ""
+	}
+	return fv.Stored.Thumb
 }
 
 // currentSize is how large the stored file is, as a person reads it, "" when that is not known.

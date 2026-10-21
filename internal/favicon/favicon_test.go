@@ -80,3 +80,21 @@ func TestAnEmptyImageIsATransparentSquare(t *testing.T) {
 		t.Fatal("want an empty 8x8")
 	}
 }
+
+func TestFitKeepsTheProportionsWithNoPaddingAndNeverEnlarges(t *testing.T) {
+	red := color.NRGBA{R: 255, A: 255}
+	for _, c := range []struct{ w, h, size, wantW, wantH int }{
+		{64, 32, 16, 16, 8}, {32, 64, 16, 8, 16}, {10, 10, 16, 10, 10}, {1000, 1, 16, 16, 1}, {5, 400, 16, 1, 16},
+	} {
+		got := Fit(solid(c.w, c.h, red), c.size)
+		if b := got.Bounds(); b.Dx() != c.wantW || b.Dy() != c.wantH {
+			t.Fatalf("%dx%d fitted to %d is %dx%d, want %dx%d", c.w, c.h, c.size, b.Dx(), b.Dy(), c.wantW, c.wantH)
+		}
+		if at := got.NRGBAAt(0, 0); at != red {
+			t.Fatalf("the corner is %v, want the picture: there is no padding", at)
+		}
+	}
+	if b := Fit(image.NewNRGBA(image.Rect(0, 0, 0, 0)), 16).Bounds(); !b.Empty() {
+		t.Fatalf("an empty picture fits as %v, want empty", b)
+	}
+}

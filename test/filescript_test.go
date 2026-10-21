@@ -20,7 +20,6 @@ type fileData struct {
 	Accept      []string `json:"accept"`
 	KindMessage string   `json:"kindMessage"`
 	Image       bool     `json:"image"`
-	Preview     string   `json:"preview"`
 }
 
 // dataOf reads the data-file attribute of the page's file input.
@@ -96,29 +95,41 @@ func TestTheFileChooserTellsTheScriptWhatTheFieldTakesInTheServersWords(t *testi
 	assert.Equal(t, len(d.Accept), 0)
 }
 
-// The stored file is shown as a picture when it is one and is on this site: a field that takes only images, and an address that is a path.
-func TestTheStoredFileIsShownAsAPictureOnlyWhenItIsOneAndIsOnThisSite(t *testing.T) {
+// The stored file's picture is the one that the app made: a small one, which is in the page and not made by script, and which links to the
+// file at full size. The library never shows the file itself as a thumbnail, and shows a picture only from a path on this site.
+func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T) {
 	t.Parallel()
 
 	for name, c := range map[string]struct {
-		accept []webui.FileKind
-		url    string
-		want   string
+		info *webui.FileInfo
+		img  string // the thumbnail that is shown, "" for none
+		link string // where the picture links to, "" for nowhere
 	}{
-		"an image on this site":             {[]webui.FileKind{webui.FileImage}, "/files/logo", "/files/logo"},
-		"one kind of image":                 {[]webui.FileKind{webui.FilePNG}, "/files/logo", "/files/logo"},
-		"an image on another site":          {[]webui.FileKind{webui.FileImage}, "https://example.com/logo.png", ""},
-		"a protocol-relative address":       {[]webui.FileKind{webui.FileImage}, "//example.com/logo.png", ""},
-		"no address":                        {[]webui.FileKind{webui.FileImage}, "", ""},
-		"a field that takes more than that": {[]webui.FileKind{webui.FileImage, webui.FilePDF}, "/files/logo", ""},
-		"any file":                          {nil, "/files/logo", ""},
+		"a thumbnail and the file":    {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: "/files/a/thumb"}, "/files/a/thumb", "/files/a"},
+		"a thumbnail and no file":     {&webui.FileInfo{Name: "a.png", Thumbnail: "/files/a/thumb"}, "/files/a/thumb", ""},
+		"no thumbnail, only the file": {&webui.FileInfo{Name: "a.png", URL: "/files/a"}, "", ""}, // the file is never shown shrunk
+		"a thumbnail on another site": {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: "https://example.com/a.png"}, "", ""},
+		"a protocol-relative address": {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: "//example.com/a.png"}, "", ""},
+		"a backslash":                 {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: `/\example.com/a.png`}, "", ""},
+		"a data address":              {&webui.FileInfo{Name: "a.png", URL: "/files/a", Thumbnail: "data:image/png;base64,AAAA"}, "", ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			s := newFileShop(plainFile(c.accept...))
-			s.held = &webui.FileInfo{Name: "logo.png", URL: c.url}
-			assert.Equal(t, dataOf(t, serve(s.h, http.MethodGet, "/admin/f").Body.String()).Preview, c.want)
+			s := newFileShop(plainFile(webui.FileImage))
+			s.held = c.info
+			body := serve(s.h, http.MethodGet, "/admin/f").Body.String()
+			if c.img == "" {
+				assert.False(t, strings.Contains(body, `class="file-thumb"`))
+				assert.False(t, strings.Contains(body, "file-thumb-link"))
+				return
+			}
+			assert.Contains(t, body, `<img class="file-thumb" src="`+c.img+`" alt="">`)
+			if c.link == "" {
+				assert.False(t, strings.Contains(body, "file-thumb-link"))
+			} else {
+				assert.Contains(t, body, `<a class="file-thumb-link" href="`+c.link+`" title="Preview a.png">`)
+			}
 		})
 	}
 }
@@ -134,6 +145,7 @@ func TestTheFileScriptDoesWhatItSaysItDoes(t *testing.T) {
 	for _, want := range []string{
 		"readAsDataURL", "new DataTransfer()", "input.files = one.files", "setCustomValidity(said)", "reportValidity()",
 		"/^image\\/(png|jpeg|gif|webp)$/", "PREVIEW_MAX", "'Files'", "input[type=\"file\"][data-file]",
+		"dialog.showModal()", "a.file-thumb-link", "toDataURL('image/png')", "full.src = data", "img.removeAttribute('src')",
 	} {
 		assert.Contains(t, js, want)
 	}

@@ -494,7 +494,7 @@ templ (r *Renderer) input(fv fieldView) {
 				@c.FileInput(c.FileInputProps{
 					ID: fv.ID, Name: fv.Name, Accept: rules.FileAccept(fv.Field.File), Required: fv.Rules.Required && fv.Stored == nil,
 					Invalid: fv.Error != "", Validity: fv.Validity, Form: fv.FormID,
-					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentSize: fv.currentSize(), Remove: fv.removable(), Attrs: fv.Attrs,
+					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentThumb: fv.currentThumb(), CurrentSize: fv.currentSize(), Remove: fv.removable(), Attrs: fv.Attrs,
 				})
 			case fv.Field.Multiline:
 				@c.Textarea(c.TextareaProps{

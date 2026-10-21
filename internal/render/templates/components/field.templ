@@ -205,6 +205,10 @@ type FileInputProps struct {
 	// how large it is, as read, "" for not knowing.
 	CurrentName, CurrentHref, CurrentSize string
 
+	// CurrentThumb is where a small picture of the stored file is, "" for none. It is shown at 32 pixels, and links to the file at full size
+	// when there is an address for it, which script opens in a dialog and without script is a link to the file.
+	CurrentThumb string
+
 	// Remove is the value of the checkbox that asks for the stored file to be removed, which is the field's name; "" for a
 	// file that cannot be.
 	Remove string
@@ -217,6 +221,11 @@ templ FileInput(p FileInputProps) {
 	<div class="file">
 		if p.CurrentName != "" {
 			<div class="file-current">
+				if p.CurrentThumb != "" && p.CurrentHref != "" {
+					<a class="file-thumb-link" href={ p.CurrentHref } title={ "Preview " + p.CurrentName }><img class="file-thumb" src={ p.CurrentThumb } alt=""/></a>
+				} else if p.CurrentThumb != "" {
+					<img class="file-thumb" src={ p.CurrentThumb } alt=""/>
+				}
 				if p.CurrentHref != "" {
 					<a href={ p.CurrentHref }>{ p.CurrentName }</a>
 				} else {

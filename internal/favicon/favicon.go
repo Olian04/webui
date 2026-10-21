@@ -32,12 +32,38 @@ func Scale(src image.Image, size int) *image.NRGBA {
 	if b.Empty() || size <= 0 {
 		return out
 	}
-
 	// The picture's size in the square, and where its top-left lands.
-	ratio := math.Min(float64(size)/float64(b.Dx()), float64(size)/float64(b.Dy()))
-	w := max(1, int(math.Round(float64(b.Dx())*ratio)))
-	h := max(1, int(math.Round(float64(b.Dy())*ratio)))
+	w, h := fitted(b, size, false)
 	ox, oy := (size-w)/2, (size-h)/2
+	draw.Draw(out, image.Rect(ox, oy, ox+w, oy+h), resample(src, w, h), image.Point{}, draw.Src)
+	return out
+}
+
+// Fit is src scaled down to fit inside a size x size box, with its own proportions and no padding, so that its longest side is size. A
+// picture that already fits is as it was, and is never enlarged.
+func Fit(src image.Image, size int) *image.NRGBA {
+	b := src.Bounds()
+	if b.Empty() || size <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+	w, h := fitted(b, size, true)
+	return resample(src, w, h)
+}
+
+// fitted is the size that a picture of the bounds has when it is fitted inside a square of the size, never smaller than a pixel, and
+// with shrinkOnly, never larger than it was.
+func fitted(b image.Rectangle, size int, shrinkOnly bool) (w, h int) {
+	ratio := math.Min(float64(size)/float64(b.Dx()), float64(size)/float64(b.Dy()))
+	if shrinkOnly {
+		ratio = math.Min(ratio, 1)
+	}
+	return max(1, int(math.Round(float64(b.Dx())*ratio))), max(1, int(math.Round(float64(b.Dy())*ratio)))
+}
+
+// resample is src scaled to w x h, each pixel the average of the source pixels it covers.
+func resample(src image.Image, w, h int) *image.NRGBA {
+	out := image.NewNRGBA(image.Rect(0, 0, w, h))
+	b := src.Bounds()
 
 	// Work in premultiplied RGBA, from a copy that has the source's origin at 0,0.
 	flat := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
@@ -47,7 +73,7 @@ func Scale(src image.Image, size int) *image.NRGBA {
 	for y := range h {
 		for x := range w {
 			r, g, bl, a := average(flat, float64(x)*sx, float64(y)*sy, float64(x+1)*sx, float64(y+1)*sy)
-			out.Set(ox+x, oy+y, color.RGBA64{R: uint16(r), G: uint16(g), B: uint16(bl), A: uint16(a)})
+			out.Set(x, y, color.RGBA64{R: uint16(r), G: uint16(g), B: uint16(bl), A: uint16(a)})
 		}
 	}
 	return out
