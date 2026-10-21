@@ -44,11 +44,6 @@ func TestTheResultsOfASearchAreOrderedByHowWellTheyMatch(t *testing.T) {
 	got := search(t, h, "device")
 	// exact, then a word that starts it, then a start, then an end, then a word's start, then inside a word.
 	assert.DeepEqual(t, titles(got), []string{"Device", "device list", "Devices", "Subdevice", "My devices", "Odevice x"})
-	for i := 1; i < len(got.Results); i++ {
-		assert.True(t, got.Results[i-1].Score >= got.Results[i].Score)
-	}
-	assert.Equal(t, got.Results[0].Score, 1.0)
-	assert.True(t, got.Results[len(got.Results)-1].Score > 0)
 }
 
 func TestTheGroupsAreOrderedByTheirBestResultAndKeptTogether(t *testing.T) {

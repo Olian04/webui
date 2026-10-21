@@ -461,6 +461,24 @@ a.side-brand:hover {
   height: 14px;
   font-size: 12px;
 }
+/* Without script the box has a button at its right, joined to it as one control; with script the results are listed as it is typed
+   in, and the button is not needed. */
+.search {
+  padding-right: 0;
+}
+.search-submit {
+  align-self: stretch;
+  height: auto;
+  margin-left: 2px;
+  border-width: 0 0 0 1px;
+  border-radius: 0 1px 1px 0;
+}
+html.js .search {
+  padding-right: 9px;
+}
+html.js .search-submit {
+  display: none;
+}
 .kbd {
   font:
     11px ui-monospace,
@@ -566,6 +584,12 @@ a.side-brand:hover {
 .palette.open {
   display: block;
 }
+/* While the next results are asked for, the last are shown dimmed and out of reach, so that a click cannot land on a result that is
+   about to be replaced. */
+.palette.pending .pal-item {
+  opacity: 0.5;
+  pointer-events: none;
+}
 .pal-label {
   font-size: 11px;
   font-weight: 500;
@@ -598,6 +622,14 @@ a.side-brand:hover {
   white-space: nowrap;
   font-size: 11px;
   color: var(--text-2);
+}
+/* The page of results, which the box's list is without script: the same items, in a panel. */
+.results .pal-item {
+  height: 34px;
+  text-decoration: none;
+}
+.results .pal-label {
+  padding-top: 12px;
 }
 .pal-empty {
   padding: 12px 9px;

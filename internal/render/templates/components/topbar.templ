@@ -34,20 +34,26 @@ templ TopBar(p TopBarProps) {
 	</header>
 }
 
+// SearchProps is the search box: a form that goes to Action with what was typed as q. With script it is a box that lists
+// its results beneath it as they are typed, and its button is not needed; without, the button is how it is submitted, and
+// the answer is a page of results. Value is what was searched for, when the page is its results.
 type SearchProps struct {
 	Placeholder string
 	Shortcut    string
+	Action      string
+	Value       string
 	Attrs       templ.Attributes
 }
 
 templ Search(p SearchProps) {
-	<div class="search">
+	<form class="search" method="get" action={ p.Action } role="search">
 		@Icon(IconProps{Name: IconSearch})
-		<input data-palette-input placeholder={ p.Placeholder } autocomplete="off" aria-label={ p.Placeholder } { p.Attrs... }/>
+		<input data-palette-input type="text" name="q" value={ p.Value } enterkeyhint="search" placeholder={ p.Placeholder } autocomplete="off" aria-label={ p.Placeholder } { p.Attrs... }/>
 		if p.Shortcut != "" {
-			<span class="kbd" aria-hidden="true">{ p.Shortcut }</span>
+			<span class="js-only"><span class="kbd" aria-hidden="true">{ p.Shortcut }</span></span>
 		}
-	</div>
+		<button class="btn btn-secondary btn-sm search-submit" type="submit">Search</button>
+	</form>
 }
 
 // LinkEntry is one link in ExternalLinks. Section is a caption above this entry, which

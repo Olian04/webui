@@ -78,7 +78,7 @@ func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
 
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 	body := get(handler(t), "/admin/system").Body.String()
-	assert.False(t, strings.Contains(body, `type="submit"`))
+	assert.False(t, strings.Contains(body, `class="panel-foot`)) // nothing to save: no Save, and no Cancel
 	assert.Contains(t, body, `class="badge badge-ok"`)
 	assert.Contains(t, body, `class="gauge-fill"`) // a Slider with no Store is a bar
 }

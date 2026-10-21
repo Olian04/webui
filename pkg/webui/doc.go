@@ -529,6 +529,12 @@
 // it in the middle of a word. The best result of a page puts its group first, and the best come first in each. A
 // source that returns no more than the limit it is given should return the best matches, as [SearchRows] does.
 //
+// Every page's Search is asked at once, each on a goroutine of its own, so the search takes as long as the slowest page and not as long as all of
+// them, and a page that has not answered within two seconds is left out of the answer, however it was written: a Search should look at its context, and
+// one that does not is no longer waited for. The answer is sent whole, in the order the results are ranked, and not result by result,
+// so that nothing in it moves while the visitor reaches for it. It is HTML. With script the box lists it as it is typed in; without,
+// the box is a form with a button, and what it submits is answered with a page of results in the shell of the app.
+//
 // # Looks
 //
 // [Brand] gives the name and logo. The logo is also scaled into the browser's

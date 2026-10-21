@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/base64"
+	"html"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -33,6 +35,35 @@ func handlerAs(t *testing.T, role Role) http.Handler {
 }
 
 // handler is the site for an editor, who may do everything.
+// searchResult is one result of the search, as the box lists it.
+type searchResult struct{ Group, Title, Href string }
+
+var (
+	searchLabel = regexp.MustCompile(`<div class="pal-label">(.*?)</div>`)
+	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>`)
+)
+
+// searchResults are what the search finds for q, in order, read out of the HTML that it answers script with: a heading for each page
+// that found something, and a link under it for each result.
+func searchResults(h http.Handler, q string) []searchResult {
+	body := get(h, "/admin/_webui/search?fragment=1&q="+url.QueryEscape(q)).Body.String()
+	var out []searchResult
+	group := ""
+	for body != "" {
+		l, it := searchLabel.FindStringSubmatchIndex(body), searchItem.FindStringSubmatchIndex(body)
+		switch {
+		case l == nil && it == nil:
+			return out
+		case it == nil || (l != nil && l[0] < it[0]):
+			group, body = html.UnescapeString(body[l[2]:l[3]]), body[l[1]:]
+		default:
+			out = append(out, searchResult{Group: group, Href: html.UnescapeString(body[it[2]:it[3]]), Title: html.UnescapeString(body[it[4]:it[5]])})
+			body = body[it[1]:]
+		}
+	}
+	return out
+}
+
 func handler(t *testing.T) http.Handler { return handlerAs(t, Editor) }
 
 func get(h http.Handler, target string) *httptest.ResponseRecorder {

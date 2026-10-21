@@ -520,9 +520,23 @@ design element.
   a reason neither shows. A clean match is above a sequence in the middle of a word, which is what a person typing means. The library
   scores and the source does not, so there is no `Hit.Score` to set wrong and a source that cannot rank (a database's `LIKE`)
   ranks like any other; a source with a relevance of its own cannot say so, which is the cost, and it is the one place an app
-  would want a field. `Score` is in the JSON for the script (and a test), not in the API. Results are grouped by page and the
+  would want a field. Results are grouped by page and the
   groups ordered by their best result, so the context that tells two things of one name apart stays, rather than one flat list.
   `SearchRows` ranks every row that matches before it keeps the limit, since the first rows that match are not the best.
+- **The search asks every page at once, answers whole, and answers in HTML.** The pages' searches were asked one after the other under one
+  shared deadline, so one slow search held the others back and the answer took the sum of them. Each page now runs on a goroutine of its own
+  with its own deadline (two seconds), so the answer takes as long as the slowest, and a page that is late is left out and the rest answer.
+  A deadline works through the context, so a `Search` that does not look at it would still block its goroutine; the answer no longer waits
+  for it (the slot it writes to is buffered, and nothing it does after the request ends is logged), which is the cost of not trusting
+  every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
+  fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked. The same
+  endpoint answers in HTML, not JSON: for script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`),
+  which it puts in the box; and without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the
+  box's button submits to when there is no script to list the results as it is typed in. One renderer makes both, so they cannot
+  disagree, and the script has no markup of its own to keep in step with the server's. The cost is that the script inserts server
+  HTML (escaped by the template) where it used to build nodes from data. The box is a form, so without script it has a button, joined
+  to its right edge as one control, and with script the button is hidden and Enter follows the highlighted result; while the next
+  results are asked for, the last are dimmed and out of reach, and Enter then submits the form instead.
 
 - Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
   JSON, that download every row the sort and filters keep. It is a declaration and not

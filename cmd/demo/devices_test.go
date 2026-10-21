@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -170,12 +169,8 @@ func TestADevicesNotesAreATextAreaThatKeepsItsLines(t *testing.T) {
 func TestSearchAsksTheDetailPagesThatOfferThemselves(t *testing.T) {
 	h := handler(t)
 	results := func(q string) (groups map[string][]string) {
-		var got struct {
-			Results []struct{ Group, Title, Href string }
-		}
-		assert.NoError(t, json.Unmarshal(get(h, "/admin/_webui/search?q="+url.QueryEscape(q)).Body.Bytes(), &got))
 		groups = map[string][]string{}
-		for _, r := range got.Results {
+		for _, r := range searchResults(h, q) {
 			groups[r.Group] = append(groups[r.Group], r.Href)
 		}
 		return groups

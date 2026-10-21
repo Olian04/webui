@@ -2,10 +2,10 @@ package webui_test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -63,17 +63,14 @@ func ExampleTable() {
 	handler := webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
 
 	// Typing "192.168" in the search box finds the second device, by its address,
-	// and links to its page.
+	// and links to its page. The box lists the answer, which is HTML: a heading for the page
+	// that found it, and a link.
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/_webui/search?q=192.168", nil))
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/_webui/search?fragment=1&q=192.168", nil))
 
-	var found struct {
-		Results []struct{ Group, Title, Href string }
-	}
-	_ = json.Unmarshal(rec.Body.Bytes(), &found)
-	for _, r := range found.Results {
-		fmt.Println(r.Group, r.Title, r.Href)
-	}
+	group := regexp.MustCompile(`<div class="pal-label">(.*?)</div>`).FindStringSubmatch(rec.Body.String())
+	link := regexp.MustCompile(`<a class="pal-item" role="option" href="(.*?)">\s*<span>(.*?)</span>`).FindStringSubmatch(rec.Body.String())
+	fmt.Println(group[1], link[2], link[1])
 	// Output:
 	// Devices dev_2 /admin/device/dev_2
 }
