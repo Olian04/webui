@@ -510,6 +510,19 @@ design element.
   A table-level `Search` was removed and not kept beside it: two ways to say the same
   thing, with different limits, would have been the first thing a reader had to learn
   to choose between.
+- **The search finds things, ranks them, and is only there when there is something to find.** It first also listed the app's own
+  pages, filtered from the sidebar by script. That was dropped: the sidebar is already the list of pages, a search that lists
+  it again puts every page above the things the visitor typed for, and an app with no `Search` had a box that could only
+  filter the sidebar. Now the box is drawn only when some page has a `Search`, empty it shows nothing, and the results are those of
+  the pages' Searches. They are ordered by `internal/rank`, one scale for every app, from the title (and the description, at 0.6):
+  exact 1, a word that starts the title 0.95, a start 0.9, a word that ends it 0.85, an end 0.8, a word of its own 0.75, the start
+  of a word 0.65, inside a word 0.4, characters in order with others between 0.2, and a floor of 0.05 for a result a source found for
+  a reason neither shows. A clean match is above a sequence in the middle of a word, which is what a person typing means. The library
+  scores and the source does not, so there is no `Hit.Score` to set wrong and a source that cannot rank (a database's `LIKE`)
+  ranks like any other; a source with a relevance of its own cannot say so, which is the cost, and it is the one place an app
+  would want a field. `Score` is in the JSON for the script (and a test), not in the API. Results are grouped by page and the
+  groups ordered by their best result, so the context that tells two things of one name apart stays, rather than one flat list.
+  `SearchRows` ranks every row that matches before it keeps the limit, since the first rows that match are not the best.
 
 - Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
   JSON, that download every row the sort and filters keep. It is a declaration and not

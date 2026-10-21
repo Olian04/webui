@@ -62,7 +62,7 @@ func TestThereIsNoArgumentsRowAndRefreshLivesInTheTopBar(t *testing.T) {
 	// Refresh sits in the top bar, a link to the address the browser is on.
 	top := body[strings.Index(body, `<header class="topbar">`):strings.Index(body, "</header>")]
 	assert.Contains(t, top, `class="iconbtn" href="/admin/device/abc?debug=true&amp;q=x&amp;n=5" title="Refresh" aria-label="Refresh" data-refresh`)
-	assert.Contains(t, top, `data-palette-input`) // next to the global search
+	assert.False(t, strings.Contains(top, `data-palette-input`)) // no page has a Search, so there is no search box
 	assert.Equal(t, strings.Count(body, "data-refresh"), 1)
 }
 

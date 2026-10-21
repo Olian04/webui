@@ -27,7 +27,7 @@ into existence, and nothing is configured twice.
 | `Page.Guard` | The **Not permitted** full-page state; a `Refusal` it returns is the **Not found**, **Not signed in** or **Not permitted** state of its status, with its message and, when it has one, a link on |
 | `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in. A label wider than the sidebar is cut short with an ellipsis and is whole in the entry's `title` |
 | `Nav.Section` | The uppercase caption above a group of entries. The sidebar is grouped by it, not by position: entries without one first, then each section in the order it is first named |
-| `Page.Search` | The page's things as a group of results in the top bar's search, beneath the app's pages: each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
+| `Page.Search` | The page's things as a group of results in the top bar's search, which lists nothing else and is not drawn at all when no page has a `Search`; empty, it shows nothing, and it says "Searching…" and "Nothing matches." The results are ranked by how well the `Hit`'s title (and its line beneath, a little less) matches what was typed, the best group first and the best result first in each. Each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments). `SearchRows` makes one from rows in memory |
 | `App.ExternalLinks` | The button in the top bar, beside Refresh, and the popover list of the app's links to places outside it behind it. An `ExternalLink` is a `Nav` entry (label, icon, section caption) with a `URL`, used as written (a web address opens in a tab of its own; the list groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
@@ -88,8 +88,7 @@ into existence, and nothing is configured twice.
 
 ### `App` and `Brand`
 
-`App` is the whole screen. Its `Pages` populate the sidebar and the command
-palette; `ByPath` is what makes a breadcrumb parent clickable and what lets one
+`App` is the whole screen. Its `Pages` populate the sidebar; `ByPath` is what makes a breadcrumb parent clickable and what lets one
 page link to another without either knowing the other's address.
 
 The browser tab's icon is generated: `Brand.Logo` is scaled to 32 px (the tab)

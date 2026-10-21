@@ -95,14 +95,16 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
 // menu when the app declares one.
-// The search is wrapped so it is simply absent without script rather than
-// present and inert. Refresh is a link to the address the browser is on, so it
+// The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
+// It is wrapped so it is simply absent without script rather than present and inert. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
 templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
-		<div class="js-only">
-			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Attrs: r.searchAttrs()})
-		</div>
+		if r.search {
+			<div class="js-only">
+				@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Attrs: r.searchAttrs()})
+			</div>
+		}
 		@c.IconButton(c.IconButtonProps{
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
 			Attrs: templ.Attributes{"data-refresh": true},
@@ -110,7 +112,9 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here string) {
 		if items := r.linkEntries(); len(items) > 0 {
 			@c.ExternalLinks(items)
 		}
-		<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
+		if r.search {
+			<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
+		}
 	}
 }
 
@@ -131,17 +135,13 @@ templ (r *Renderer) sidebarFooter() {
 	</div>
 }
 
-// searchAttrs describes the search box to the page script: a listbox it fills,
-// and, when some page offers Search, where to ask for those results.
+// searchAttrs describes the search box to the page script: a listbox it fills, and where to ask for the results of the pages
+// that offer Search.
 func (r *Renderer) searchAttrs() templ.Attributes {
-	attrs := templ.Attributes{
+	return templ.Attributes{
 		"role": "combobox", "aria-expanded": "false", "aria-controls": "palette",
-		"aria-autocomplete": "list",
+		"aria-autocomplete": "list", "data-search-url": r.AssetHref("search"),
 	}
-	if r.search {
-		attrs["data-search-url"] = r.AssetHref("search")
-	}
-	return attrs
 }
 
 func (r *Renderer) logoHref() string {

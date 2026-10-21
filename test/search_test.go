@@ -18,6 +18,7 @@ import (
 type searchResponse struct {
 	Results []struct {
 		Group, Title, Desc, Href string
+		Score                    float64
 	}
 }
 

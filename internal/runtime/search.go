@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/rank"
 )
 
 const (
@@ -23,6 +25,9 @@ type searchHit struct {
 	Title string `json:"title"`
 	Desc  string `json:"desc,omitempty"`
 	Href  string `json:"href"`
+
+	// Score is how well the result matches what was typed, from 0 to 1 (see [rank.Hit]), which is what orders them.
+	Score float64 `json:"score"`
 }
 
 // search answers the global search with what every page that offers itself to it finds.
@@ -48,6 +53,7 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 		for _, page := range p.App.Pages {
 			hits = append(hits, p.searchPage(ctx, page, query, seen)...)
 		}
+		hits = ranked(hits)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -96,9 +102,34 @@ func (p *Program) searchPage(ctx context.Context, page *ir.Page, query string, s
 			continue // a result is only for what this visitor could open: the destination's Guard has the last word
 		}
 		seen[href] = true
-		hits = append(hits, searchHit{Group: group, Title: cmp.Or(hit.Title, href), Desc: hit.Desc, Href: href})
+		title := cmp.Or(hit.Title, href)
+		hits = append(hits, searchHit{Group: group, Title: title, Desc: hit.Desc, Href: href, Score: rank.Hit(query, title, hit.Desc)})
 	}
 	return hits
+}
+
+// ranked orders the results by how well they match: the best first inside each group, and the groups by their best result,
+// so what the visitor most likely meant is at the top, under the name of what it is. Results that match as well are
+// left in the order they were found in, and so are groups.
+func ranked(hits []searchHit) []searchHit {
+	var order []string // the groups, as they were first found
+	best := map[string]float64{}
+	by := map[string][]searchHit{}
+	for _, h := range hits {
+		if _, ok := by[h.Group]; !ok {
+			order = append(order, h.Group)
+		}
+		by[h.Group] = append(by[h.Group], h)
+		best[h.Group] = max(best[h.Group], h.Score)
+	}
+	slices.SortStableFunc(order, func(a, b string) int { return cmp.Compare(best[b], best[a]) })
+	out := make([]searchHit, 0, len(hits))
+	for _, g := range order {
+		group := by[g]
+		slices.SortStableFunc(group, func(a, b searchHit) int { return cmp.Compare(b.Score, a.Score) })
+		out = append(out, group...)
+	}
+	return out
 }
 
 // searchGroup is what a page's results are listed under: the page's name in the navigation, or the
