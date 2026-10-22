@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -20,7 +21,7 @@ const (
 	copyChunk        = 32 << 10 // how much of a file is read at a time
 )
 
-// received is what a submission carried, read as it arrived: its values, and the files that were written, each to the FileWriter that the
+// received is what a submission carried, read as it arrived: its values, and the files that were written, each to the writer that the
 // app gave it. It is the one place that holds the writers, so that every one of them is settled, once, however the request ends.
 type received struct {
 	files   *ir.Files // the uploads and the refused files, nil when there are none
@@ -30,9 +31,11 @@ type received struct {
 	settled bool
 }
 
-// openFile is a writer that the app gave, and whether it has been closed.
+// openFile is a writer that the app gave, the token that it gave for the file, and whether the writer has been closed.
 type openFile struct {
-	w      ir.FileWriter
+	spec   *ir.FileSpec
+	w      io.WriteCloser
+	token  any
 	closed bool
 }
 
@@ -76,21 +79,24 @@ func (rec *received) filesFor(r *http.Request, fields []ir.Field) *ir.Files {
 	return out
 }
 
-// commit makes the files permanent, which is what a submission that was accepted does. Every writer is submitted, and the errors are
-// the ones that there were.
-func (rec *received) commit(log *slog.Logger) error {
+// commit makes the files permanent, which is what a submission that was accepted does, with the model as the action saw it. Every file is
+// committed, and the errors are the ones that there were. The context is not cancelled with the request.
+func (rec *received) commit(ctx context.Context, log *slog.Logger, model any) error {
 	if rec.settled {
 		return nil
 	}
 	rec.settled = true
+	ctx = context.WithoutCancel(ctx)
 	var errs []error
 	for _, f := range rec.writers {
 		if err := f.close(); err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		if err := f.w.Submit(); err != nil {
-			errs = append(errs, err)
+		if f.spec.Commit != nil {
+			if err := f.spec.Commit(ctx, model, f.token); err != nil {
+				errs = append(errs, err)
+			}
 		}
 	}
 	if err := errors.Join(errs...); err != nil {
@@ -101,18 +107,21 @@ func (rec *received) commit(log *slog.Logger) error {
 }
 
 // discard removes the files, which is what every end of a request but an accepted submission does, a panic included. It is a no-op
-// once the files are settled.
-func (rec *received) discard(log *slog.Logger) {
+// once the files are settled. The context is not cancelled with the request, which is often why the files are discarded.
+func (rec *received) discard(ctx context.Context, log *slog.Logger) {
 	if rec == nil || rec.settled {
 		return
 	}
 	rec.settled = true
+	ctx = context.WithoutCancel(ctx)
 	for _, f := range rec.writers {
 		if err := f.close(); err != nil {
 			log.Error("webui: an uploaded file could not be closed", "err", err)
 		}
-		if err := f.w.Discard(); err != nil {
-			log.Error("webui: an uploaded file could not be discarded", "err", err)
+		if f.spec.Discard != nil {
+			if err := f.spec.Discard(ctx, f.token); err != nil {
+				log.Error("webui: an uploaded file could not be discarded", "err", err)
+			}
 		}
 	}
 }
@@ -222,13 +231,13 @@ func (p *Program) receiveFile(w http.ResponseWriter, r *http.Request, page *ir.P
 		rec.model, rec.loaded = base, true
 	}
 	in := ir.Incoming{Name: rules.UploadName(part.FileName()), ContentType: check.Sniffed(), Kind: check.HeadKind()}
-	fw, err := spec.Open(r.Context(), rec.model, in)
+	dst, token, err := spec.Open(r.Context(), rec.model, in)
 	if err != nil {
 		check.Abort()
 		p.log.Error("webui: a file could not be opened for writing", "page", page.PathTemplate, "err", err)
 		return refused(msgFileNotSaved)
 	}
-	of := &openFile{w: fw}
+	of := &openFile{spec: spec, w: dst, token: token}
 	rec.writers = append(rec.writers, of)
 
 	var size int64

@@ -247,7 +247,7 @@ func TestEveryFileThatWasOpenedIsSubmittedWhenTheFormIsAcceptedAndDiscardedWhenI
 func TestAFileOverTheLimitStopsBeingWrittenAndTheRestOfTheFormIsStillRead(t *testing.T) {
 	t.Parallel()
 
-	s := newFileShop(func(s *fileShop) webui.File[attachment] {
+	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
 		f := plainFile()(s)
 		f.MaxSize = 1000
 		return f
@@ -333,17 +333,18 @@ func TestAFileThatCannotBeSubmittedIsToldAndTheOthersAreStillSubmitted(t *testin
 
 	var mu sync.Mutex
 	var writers []*recWriter
-	file := func(label string, fail error) webui.File[attachment] {
-		return webui.File[attachment]{
+	file := func(label string, fail error) webui.File[attachment, *recWriter] {
+		return webui.File[attachment, *recWriter]{
 			Label: label, Load: func(attachment) *webui.FileInfo { return nil },
-			Open: func(context.Context, attachment, webui.Incoming) (webui.FileWriter, error) {
+			Open: func(context.Context, attachment, webui.Incoming) (io.WriteCloser, *recWriter, error) {
 				w := &recWriter{fail: failures{submit: fail}}
 				mu.Lock()
 				writers = append(writers, w)
 				mu.Unlock()
-				return w, nil
+				return w, w, nil
 			},
-			Store: func(*attachment, *webui.Upload) {},
+			Commit: func(_ context.Context, _ attachment, w *recWriter) error { return w.Submit() },
+			Store:  func(*attachment, *webui.Upload) {},
 		}
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
@@ -375,34 +376,114 @@ func TestABodyThatEndsEarlyDiscardsTheFileThatWasBeingWritten(t *testing.T) {
 	settledOnce(t, s, false)
 }
 
-// The writer is the app's own and makes of a Closer whatever it needs: closing, and what is done when the form is accepted or is not.
-func TestNewFileWriterClosesWhatItIsGivenAndRunsWhatItIsToldToDo(t *testing.T) {
+// Commit is given the token that Open returned for the file, and the model as the action saw it, with what Store noted in it.
+func TestCommitIsGivenTheTokenAndTheModelAsTheActionSawIt(t *testing.T) {
 	t.Parallel()
 
-	var buf bytes.Buffer
-	closed := 0
-	var calls []string
-	w := webui.NewFileWriter(closer{&buf, func() { closed++ }},
-		func() error { calls = append(calls, "submit"); return nil },
-		func() error { calls = append(calls, "discard"); return errors.New("gone") })
-	_, err := w.Write([]byte("abc"))
-	assert.NoError(t, err)
-	assert.NoError(t, w.Close())
-	assert.NoError(t, w.Submit())
-	assert.Equal(t, w.Discard().Error(), "gone")
-	assert.Equal(t, buf.String(), "abc")
-	assert.Equal(t, closed, 1)
-	assert.DeepEqual(t, calls, []string{"submit", "discard"})
-
-	// Neither is needed of a writer that has nothing to move or remove.
-	bare := webui.NewFileWriter(closer{io.Discard, func() {}}, nil, nil)
-	assert.NoError(t, bare.Submit())
-	assert.NoError(t, bare.Discard())
+	var mu sync.Mutex
+	var got attachment
+	var tokenIsWriter bool
+	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+		f := plainFile(webui.FilePNG)(s)
+		f.Commit = func(_ context.Context, a attachment, w *recWriter) error {
+			mu.Lock()
+			defer mu.Unlock()
+			got, tokenIsWriter = a, w == s.writers[0]
+			return w.Submit()
+		}
+		return f
+	}, withSubmit(func(a *webui.Action[attachment]) {
+		a.Run = func(_ context.Context, m attachment) (webui.Outcome, error) {
+			assert.Equal(t, m.Got.Name, "a.png") // Store has run before Run
+			return webui.Success("Saved"), nil
+		}
+	}))
+	rec := multipartPost(s.h, "/admin/f", map[string]string{"f0": "Late title"}, part{"f1", "a.png", string(pngBytes)})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, got.Title, "Late title")
+	assert.Equal(t, got.Got.Name, "a.png")
+	assert.True(t, tokenIsWriter)
 }
 
-type closer struct {
-	io.Writer
-	on func()
+// What is committed or discarded is reached even when the request has been cancelled, which is often why a file is discarded.
+func TestCommitAndDiscardAreGivenAContextThatTheRequestsCancellationDoesNotReach(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct {
+		name   string
+		values map[string]string
+		commit bool
+	}{
+		{"accepted", nil, true},
+		{"refused", map[string]string{"f0": "x"}, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			var mu sync.Mutex
+			var settled []error
+			s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+				f := plainFile(webui.FilePNG)(s)
+				f.Commit = func(ctx context.Context, _ attachment, w *recWriter) error {
+					mu.Lock()
+					defer mu.Unlock()
+					settled = append(settled, ctx.Err())
+					return w.Submit()
+				}
+				f.Discard = func(ctx context.Context, w *recWriter) error {
+					mu.Lock()
+					defer mu.Unlock()
+					settled = append(settled, ctx.Err())
+					return w.Discard()
+				}
+				return f
+			})
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			s.onWrite = func(int) { cancel() } // the visitor goes away as the file arrives
+
+			var body bytes.Buffer
+			mw := multipart.NewWriter(&body)
+			_ = mw.WriteField("_leaf", "p")
+			for k, v := range map[string]string{"f0": "Report"} {
+				if c.values != nil {
+					v = c.values[k]
+				}
+				_ = mw.WriteField(k, v)
+			}
+			hdr := textproto.MIMEHeader{}
+			hdr.Set("Content-Disposition", `form-data; name="f1"; filename="a.png"`)
+			part, _ := mw.CreatePart(hdr)
+			_, _ = part.Write(pngBytes)
+			_ = mw.Close()
+			req := httptest.NewRequest(http.MethodPost, "/admin/f", &body).WithContext(ctx)
+			req.Header.Set("Content-Type", mw.FormDataContentType())
+			s.h.ServeHTTP(httptest.NewRecorder(), req)
+
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Equal(t, len(settled), 1)
+			assert.NoError(t, settled[0]) // not cancelled, though the request was
+			submits, discards := s.settled()
+			assert.Equal(t, submits == 1, c.commit)
+			assert.Equal(t, discards == 1, !c.commit)
+		})
+	}
 }
 
-func (c closer) Close() error { c.on(); return nil }
+// An app with nothing to do when a file is permanent or is dropped leaves both out, and the file is written all the same.
+func TestACommitAndADiscardAreOptional(t *testing.T) {
+	t.Parallel()
+
+	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+		f := plainFile(webui.FilePNG)(s)
+		f.Commit, f.Discard = nil, nil
+		return f
+	})
+	assert.Equal(t, multipartPost(s.h, "/admin/f", nil, part{"f1", "a.png", string(pngBytes)}).Code, http.StatusSeeOther)
+	assert.Equal(t, s.writers[0].closes, 1)
+	assert.Equal(t, s.writers[0].buf.Len(), len(pngBytes))
+	assert.Equal(t, multipartPost(s.h, "/admin/f", map[string]string{"f0": "x"}, part{"f1", "a.png", string(pngBytes)}).Code, http.StatusUnprocessableEntity)
+}

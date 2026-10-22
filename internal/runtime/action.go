@@ -105,10 +105,10 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			return
 		}
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
-		// refuses has nothing of theirs received. Every file that is written is settled, with Submit when the submission is accepted
+		// refuses has nothing of theirs received. Every file that is written is settled, with Commit when the submission is accepted
 		// (in perform) and with Discard in every other end of the request, which is this defer, a panic included.
 		rec := &received{}
-		defer rec.discard(p.log)
+		defer func() { rec.discard(r.Context(), p.log) }()
 		if multipart && !p.receive(w, r, page, req, leaves, rec, valueLimit) {
 			return
 		}
@@ -249,7 +249,7 @@ func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page,
 	if rec != nil && (outcome.Kind == ir.OutcomeSuccess || outcome.Kind == ir.OutcomeWarning) {
 		// Accepted: the files are made permanent now, before the visitor is told. A file that cannot be is not a success, and the
 		// action has already run, so the form is where the visitor is left, with the words for it.
-		if err := rec.commit(p.log); err != nil {
+		if err := rec.commit(ctx, p.log, subject); err != nil {
 			p.m.Action(page.PathTemplate, "error")
 			p.leave(w, r, ir.Outcome{Kind: ir.OutcomeFailure, Message: msgFileNotStored}, r.URL.RequestURI())
 			return ir.Outcome{}, false

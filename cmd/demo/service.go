@@ -493,7 +493,7 @@ func (s *Service) Settings() Settings {
 	return s.settings
 }
 
-// SetBlob keeps the file of one of the settings' file fields, which is what a [webui.FileWriter] does when the form was accepted: after
+// SetBlob keeps the file of one of the settings' file fields, which is what a file does when the form was accepted (its Commit): after
 // SetSettings, which holds the model as it was loaded and so does not have it.
 func (s *Service) SetBlob(slot string, b *Blob) {
 	s.mu.Lock()

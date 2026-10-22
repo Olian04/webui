@@ -306,7 +306,7 @@ design element.
   want a moment, not a flag.
 
 - **A file is a `File` accessor, and the library keeps no file, in memory or on disk.** `Open` is called as a file begins to arrive and returns
-  the `FileWriter` that the bytes are written to as they are received; `Store` is handed an `Upload` (a base name that is made safe, a size, the
+  the `io.WriteCloser` that the bytes are written to as they are received, and the app's token for the file; `Store` is handed an `Upload` (a base name that is made safe, a size, the
   content type that was sniffed, and the kind, and no bytes) after every field is accepted, to note in the model what arrived; `Load` returns a `*FileInfo`
   (name, size, URL and a thumbnail: see below) for what is kept. The library stores and serves nothing: where a file lives (disk, a bucket, a database),
   who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a `Store` that is handed the bytes (a 200 MiB file in memory,
@@ -317,17 +317,24 @@ design element.
   `nosniff`, the sniffed type); the demo is the working example. Breaking: `Upload.Open` is gone, `Open` is required whenever there is a `Store`,
   and `Thumbnail` takes the app's own copy to read.
 
-- **`Open` returns a `FileWriter`, which owns what it wrote: `Close`, then `Submit` or `Discard`.** The library calls `Close` when the writing is done
-  (or is not going to be) and then exactly one of `Submit`, which makes the file permanent when the submission was accepted (an object store renames
-  the temporary key), and `Discard`, which removes it when it was not (the file was refused, or a rule, a Guard or `Run` refused or failed the
-  submission, or the request ended). `NewFileWriter` makes one of any `io.WriteCloser`, with the two functions, either of which may be nil. The
-  writer, and not the model, carries what the file is called while it is a temporary, so that the control flow of a submission, and the temporary
-  name that joins `Open` to the rename, are not spread over `Open`, `Store` and `Run`. Dropped: an `Open` that returns a bare `io.WriteCloser`, with a
-  `Discard` function of the `File` beside it and the app renaming in `Store` or `Run` (the lifecycle of one file is then in three places, and the
-  name travels in the model); and a `Store` that is the commit (it runs before the action's Guard and `Run`, so a file would be permanent before the
-  submission is). The costs: `Submit` runs after `Run`, so a `Submit` that fails leaves a `Run` that has already happened, and the visitor is told "Saved,
-  but a file could not be stored", with the failure logged, so an app keeps `Run` from depending on the file being permanent; a file that was
-  written and then refused leaves its temporary object until `Discard` removes it, which a crash does not run, so an object store also expires its
+- **`Open` returns a writer and a token, and the file is committed or discarded with the token.** `File[M, T]` has a second type parameter, the app's
+  own type for what stands for a file while it is a temporary (an object store's temporary key, a path, an upload id). `Open` returns the writer
+  and the token; the library closes the writer when the writing is done (or is not going to be), and then calls exactly one of `Commit(ctx, m, token)`,
+  which makes the file permanent when the submission was accepted (`perform`, after `Run`, with the model as `Run` saw it), and `Discard(ctx, token)`,
+  which removes it when it was not (the file was refused, or a rule, a Guard or `Run` refused or failed the submission, or the request ended). Both
+  may be nil, and the context they are given is not cancelled with the request, since a visitor who went away is the commonest reason to discard. The
+  token is typed, so that the temporary name that joins `Open` to the rename is the app's own value and is neither in the model nor a
+  type assertion. Dropped: a `FileWriter` interface (an `io.WriteCloser` with `Submit` and `Discard` methods) and a `NewFileWriter` to make one,
+  which is one more interface and a wrapper to learn where the standard library's `io.WriteCloser` was enough, and puts the lifecycle on the writer where the
+  other fields of a `File` have it on the accessor; an `Open` that returns a bare
+  `io.WriteCloser`, with the app renaming in `Store` or `Run` (the lifecycle of one file is then in three places, and the name travels in the model); a
+  `Store` that is the commit (it runs inside `Bind`, before the action's Guard and `Run`, so a file would be permanent before the submission is, and a
+  refused action would leave it); and an upload in a request of its own, then promoted when the form is posted, or sent straight to the store with a
+  presigned address (state between requests to expire, script that a form must work without, and storage that the library would own). The costs: `File`
+  has a second type parameter, which a field that is only read says as `struct{}`; `Commit` runs after `Run`, so a `Commit` that fails leaves a
+  `Run` that has already happened, and the visitor is told "Saved, but a file could not be stored", with the failure logged, so an app keeps `Run` from
+  depending on the file being permanent, and `Discard` is not called for a file whose `Commit` failed, which may be half done; a file that was written
+  and then refused leaves its temporary object until `Discard` removes it, which a crash does not run, so an object store also expires its
   temporary keys by its own lifecycle rules; and `Close` failing refuses the file.
 
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
@@ -372,7 +379,7 @@ design element.
   so a 64px logo and a 4K photograph would fill the same box (a `contain` that enlarges the one and fits the other), no alt text, and the address in a style attribute.
   The image has its size, its alt and no inline style.
 - **The library makes no thumbnail, and offers `webui.Thumbnail` to the app that does.** The library keeps no files, so it
-  cannot make the thumbnail itself: the app does, from the copy that it holds when its `FileWriter` is submitted, and `webui.Thumbnail(src, kind, size)` is there
+  cannot make the thumbnail itself: the app does, from the copy that it holds when the file is committed, and `webui.Thumbnail(src, kind, size)` is there
   for it (PNG, JPEG and GIF, to a PNG that keeps the picture's proportions and is never enlarged, with the picture of no more
   than 25 million pixels, since it is held whole in memory and a small PNG can be a vast picture). Dropped: showing the file
   itself, which is what was wrong; the library keeping a thumbnail beside every upload, which is keeping files; and a WebP
@@ -400,7 +407,7 @@ design element.
 
 - **A file is made permanent only when the whole submission is accepted.** `Bind` checks every field and applies each value that passed,
   but a file is the one value that is held back until nothing is refused: a form that another field refuses has had its file written
-  and then discarded (`FileWriter.Discard`), and shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
+  and then discarded (`File.Discard`), and shows the stored one again. A browser never fills a file chooser in, so the file that was chosen is lost either way; the field says
   "Choose the file again". Dropped: keeping the upload on the server between the two requests (state to expire, and to clean up
   behind a load balancer), which is what the 422 design avoids for everything else. `Required` is met by a stored file that is not
   being removed or a new one; a new file with a removal is a replacement. A `File` is a form input and a table column, and not a toolbar item: a toolbar shows values, and a file has only a name to show.

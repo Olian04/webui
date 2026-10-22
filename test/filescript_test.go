@@ -55,10 +55,10 @@ func TestAPageLinksTheFileScriptOnlyWhenItHasAFileToChoose(t *testing.T) {
 		Load: func(context.Context) (attachment, error) {
 			return attachment{Held: &webui.FileInfo{Name: "a.pdf"}}, nil
 		},
-		Fields: []webui.Accessor[attachment]{webui.File[attachment]{
+		Fields: []webui.Accessor[attachment]{webui.File[attachment, struct{}]{
 			Label: "Attachment", Load: func(a attachment) *webui.FileInfo { return a.Held },
 			Store: func(*attachment, *webui.Upload) {},
-			Open:  func(context.Context, attachment, webui.Incoming) (webui.FileWriter, error) { return nopWriter(), nil },
+			Open:  nopOpen,
 		}},
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/f").Body.String()
@@ -70,7 +70,7 @@ func TestAPageLinksTheFileScriptOnlyWhenItHasAFileToChoose(t *testing.T) {
 func TestTheFileChooserTellsTheScriptWhatTheFieldTakesInTheServersWords(t *testing.T) {
 	t.Parallel()
 
-	s := newFileShop(func(s *fileShop) webui.File[attachment] {
+	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
 		f := plainFile(webui.FilePNG, webui.FileJPEG)(s)
 		f.MaxSize = 2 << 20
 		return f

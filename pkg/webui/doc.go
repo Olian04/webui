@@ -230,28 +230,27 @@
 // A file that a visitor sends is a [File]: an input of a form, a native file chooser,
 // with the file that is stored shown above it, and in a table or a read-only form that
 // file's name, as a link when the app serves it. The library keeps no files, in memory
-// or on disk. Open is called as a file begins to arrive and returns the [FileWriter]
+// or on disk. Open is called as a file begins to arrive and returns the [io.WriteCloser]
 // that it is written to, as it is received, which is how a file of any size goes
-// straight to where the app keeps it. The writer is closed, and then it is submitted
-// when the form was accepted, to make the file permanent, or discarded when it was
-// not, to remove it. Store notes in the model what arrived, an [Upload] that has no
-// bytes, Load says what is kept, and where it is served from is the app's own address.
-// [NewFileWriter] makes a FileWriter of any [io.WriteCloser].
+// straight to where the app keeps it, and a token of the app's own type for the file
+// (File's second type parameter), such as the temporary key that it was written under.
+// The writer is closed, and then Commit is called with the token when the form was
+// accepted, to make the file permanent, or Discard when it was not, to remove it. Store
+// notes in the model what arrived, an [Upload] that has no bytes, Load says what is
+// kept, and where it is served from is the app's own address. A File that is only read
+// has no token, and says struct{}.
 //
-//	webui.File[Device]{
+//	webui.File[Device, string]{
 //		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
 //		Load:  func(d Device) *webui.FileInfo { return d.LogoInfo() },
-//		Open: func(ctx context.Context, d Device, in webui.Incoming) (webui.FileWriter, error) {
-//			tmp, err := bucket.Create(ctx, "tmp/"+uuid.NewString()) // an io.WriteCloser
-//			if err != nil {
-//				return nil, err
-//			}
-//			return webui.NewFileWriter(tmp,
-//				func() error { return bucket.Rename(ctx, tmp.Name(), "logos/"+d.ID) }, // accepted
-//				func() error { return bucket.Delete(ctx, tmp.Name()) },                // not
-//			), nil
+//		Open: func(ctx context.Context, d Device, in webui.Incoming) (io.WriteCloser, string, error) {
+//			key := "tmp/" + uuid.NewString()
+//			w, err := bucket.Create(ctx, key) // an io.WriteCloser
+//			return w, key, err
 //		},
-//		Store: func(d *Device, up *webui.Upload) { d.SetLogo(up.Name, up.Size) },
+//		Commit:  func(ctx context.Context, d Device, key string) error { return bucket.Rename(ctx, key, "logos/"+d.ID) },
+//		Discard: func(ctx context.Context, key string) error { return bucket.Delete(ctx, key) },
+//		Store:   func(d *Device, up *webui.Upload) { d.SetLogo(up.Name, up.Size) },
 //	}
 //
 // A file is of a kind by what it holds, which the library reads: the first bytes of an
@@ -311,7 +310,7 @@
 // discarded, and an Open that is to refuse a visitor does so itself, from its context.
 // A file that is refused as it arrives is not written, and the rest of it is read and
 // thrown away, so that the browser is answered and not reset. If a file cannot be made
-// permanent after the action has run, which Submit's error says, the visitor is told so.
+// permanent after the action has run, which Commit's error says, the visitor is told so.
 // A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout
 // does not bound.
 //

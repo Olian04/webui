@@ -68,19 +68,15 @@ type FileSpec struct {
 	// Store hands a file to the model: a new upload, or nil for a file that is removed. It is nil for a field that is only read.
 	Store func(model any, up *Upload)
 
-	// Open is where a new file is written, as it arrives, with the model as it was loaded. It is set whenever Store is.
-	Open func(ctx context.Context, model any, in Incoming) (FileWriter, error)
-}
+	// Open is where a new file is written, as it arrives, with the model as it was loaded. It returns the writer, which the library closes, and
+	// the app's token for the file, which Commit and Discard are handed. It is set whenever Store is.
+	Open func(ctx context.Context, model any, in Incoming) (io.WriteCloser, any, error)
 
-// FileWriter is where the bytes of a file go, and what is done with them when the submission is decided.
-type FileWriter interface {
-	io.WriteCloser
+	// Commit makes a file permanent, with the model as the action saw it: the submission was accepted. It may be nil.
+	Commit func(ctx context.Context, model any, token any) error
 
-	// Submit makes what was written permanent: the submission was accepted.
-	Submit() error
-
-	// Discard removes what was written: the submission was not accepted.
-	Discard() error
+	// Discard removes a file: the submission was not accepted. It may be nil.
+	Discard func(ctx context.Context, token any) error
 }
 
 // Incoming is what is known of a file when it begins to arrive.
