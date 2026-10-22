@@ -2,8 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
-	"io"
 	"mime"
 	"net/http"
 	"strconv"
@@ -11,13 +9,11 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-// The library keeps no uploaded file: Open returns the writer that each one is written to as it arrives, and a token for it, and Load says what
-// is kept. Here they are kept in memory, in the service, and served from /uploads/ below, which is the app's own address: a File names it as the
-// URL of what it holds. An app that keeps files elsewhere writes to that: an object store would start its multipart upload under a temporary key in
-// Open and return the key as the token, write each chunk to it, complete it in Close, rename it to its own key in Commit, and delete it in
-// Discard, with no copy of the file on this server's disk at any point.
+// The library keeps no uploaded file: Store is handed an Upload to copy where the app keeps them, and Load says what is kept. Here
+// they are kept in memory, in the service, and served from /uploads/ below, which is the app's own address: a File names it as the
+// URL of what it holds.
 
-// maxLogo and maxCertificate are the most that each takes, which the library holds each file to as it is written.
+// maxLogo and maxCertificate are the most that each takes, as the fields say, and the most that is read of an upload.
 const (
 	maxLogo        = 1 << 20
 	maxCertificate = 5 << 20
@@ -35,59 +31,40 @@ func held(b *Blob, name string) *webui.FileInfo {
 	return info
 }
 
-// pending is a file while it is received: a buffer that is written to and can be closed, which is nothing to do for memory, and what is known of it,
-// which is the token that Commit is handed. A file that is not committed is dropped with it.
-type pending struct {
-	bytes.Buffer
-	in webui.Incoming
-}
-
-func (*pending) Close() error { return nil }
-
-// open is where a file goes while it is received.
-func open(_ context.Context, _ Settings, in webui.Incoming) (io.WriteCloser, *pending, error) {
-	p := &pending{in: in}
-	return p, p, nil
-}
-
-// commit keeps the file of the field in slot, which is what is done when the submission is accepted, after the settings are saved, so that
-// what is kept is not overwritten by them. The kind and the content type are what the first bytes said, which is all that an image or a PDF
-// is told by.
-func commit(slot string) func(context.Context, Settings, *pending) error {
-	return func(_ context.Context, _ Settings, p *pending) error {
-		blob := &Blob{Name: p.in.Name, Type: p.in.ContentType, Data: p.Bytes()}
-		// An image gets a small picture of itself when it is kept, twice the 32 pixels that a page shows it at, so that the page is not
-		// sent the whole of it to show a thumbnail; the full image is fetched only when the visitor opens it. Thumbnail reads PNG, JPEG and
-		// GIF: for a WebP there is none, and the page shows the name alone, which is what an app that does not scale a kind of image gets.
-		if thumb, err := webui.Thumbnail(bytes.NewReader(blob.Data), p.in.Kind, 64); err == nil {
-			blob.Thumb = thumb
-		}
-		service.SetBlob(slot, blob)
-		return nil
+// keep copies an upload into where the app holds it. An upload is only held until the action has run, so it is copied here, within the
+// limit that the field set, which the library has checked and the copy is held to again. A nil upload is a file that the visitor asked to
+// remove.
+func keep(dst **Blob, up *webui.Upload, limit int64) {
+	if up == nil {
+		*dst = nil
+		return
 	}
+	if int64(len(up.Data)) > limit {
+		return // what was held stays
+	}
+	blob := &Blob{Name: up.Name, Type: up.ContentType, Data: bytes.Clone(up.Data)}
+	// An image gets a small picture of itself when it is kept, twice the 32 pixels that a page shows it at, so that the page is not sent
+	// the whole of it to show a thumbnail; the full image is fetched only when the visitor opens it. Thumbnail reads PNG, JPEG and GIF: for
+	// a WebP there is none, and the page shows the name alone, which is what an app that does not scale a kind of image gets.
+	if thumb, err := webui.Thumbnail(up, 64); err == nil {
+		blob.Thumb = thumb
+	}
+	*dst = blob
 }
 
 var (
 	// An image of at most a megabyte. The kind is what the file holds, and not what it is called: a text file named logo.png is refused.
-	Logo = webui.File[Settings, *pending]{
+	Logo = webui.File[Settings]{
 		Label: "Report logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: maxLogo,
-		Help:   "The image at the top of each report: a PNG, JPEG, GIF or WebP file.",
-		Load:   func(s Settings) *webui.FileInfo { return held(s.Logo, "logo") },
-		Open:   open,
-		Commit: commit("logo"),
-		Store:  func(*Settings, *webui.Upload) {}, // the file is kept by Commit, and a logo is only replaced, never removed
+		Help:  "The image at the top of each report: a PNG, JPEG, GIF or WebP file.",
+		Load:  func(s Settings) *webui.FileInfo { return held(s.Logo, "logo") },
+		Store: func(s *Settings, up *webui.Upload) { keep(&s.Logo, up, maxLogo) },
 	}
 	// A file that may be removed, and not only replaced: a checkbox beside it stores nil.
-	Certificate = webui.File[Settings, *pending]{
+	Certificate = webui.File[Settings]{
 		Label: "Certificate (PDF)", Accept: []webui.FileKind{webui.FilePDF}, MaxSize: maxCertificate, Removable: true,
-		Load:   func(s Settings) *webui.FileInfo { return held(s.CertFile, "certificate") },
-		Open:   open,
-		Commit: commit("certificate"),
-		Store: func(s *Settings, up *webui.Upload) { // a new file is kept by Commit; a removed one is gone from the model
-			if up == nil {
-				s.CertFile = nil
-			}
-		},
+		Load:  func(s Settings) *webui.FileInfo { return held(s.CertFile, "certificate") },
+		Store: func(s *Settings, up *webui.Upload) { keep(&s.CertFile, up, maxCertificate) },
 	}
 )
 

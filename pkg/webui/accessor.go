@@ -609,7 +609,7 @@ var (
 	_ Accessor[struct{}] = Phone[struct{}]{}
 	_ Accessor[struct{}] = Website[struct{}]{}
 	_ Accessor[struct{}] = ColorPicker[struct{}]{}
-	_ Accessor[struct{}] = File[struct{}, struct{}]{}
+	_ Accessor[struct{}] = File[struct{}]{}
 )
 
 // ---------------------------------------------------------------- validate
@@ -690,10 +690,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateTextRules(v, at, a.Rules)
 	case ColorPicker[M]:
 		common(a.Label, a.Load == nil, "func(M) string, returning \"#rrggbb\"")
-	case fileAccessor[M]:
-		label, noLoad := a.basics()
-		common(label, noLoad, "func(M) *FileInfo")
-		a.validateFile(v, at)
+	case File[M]:
+		common(a.Label, a.Load == nil, "func(M) *FileInfo")
+		validateFile(v, at, a)
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -900,8 +899,8 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 			return ""
 		}
 		return f
-	case fileAccessor[M]:
-		return a.lowerFile(name)
+	case File[M]:
+		return lowerFile(name, a)
 	case Datetime[M]:
 		f := head(name, a.Label, ir.KindString)
 		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly

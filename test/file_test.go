@@ -35,92 +35,20 @@ type attachment struct {
 	Title string
 	Held  *webui.FileInfo
 	Got   *webui.Upload
+	Data  []byte
 	Gone  bool // Store was called with nil
 }
 
 // fileShop is a page with a form that has a File and a Title, and what was done on it.
 type fileShop struct {
-	mu      sync.Mutex
-	stores  int
-	last    attachment
-	held    *webui.FileInfo
-	writers []*recWriter // one for each file that Open was called for, in the order
-	fail    failures
-	onWrite func(n int) // told how much a writer has been given, after each write
-	watch   *watched    // looked at with each write, if there is one
-	h       http.Handler
+	mu     sync.Mutex
+	stores int
+	last   attachment
+	held   *webui.FileInfo
+	h      http.Handler
 }
 
-// failures are what the writers of a shop fail at, to test what is done when they do.
-type failures struct {
-	open, write, close, submit error
-}
-
-// recWriter is a writer, and the token of the file it is written to, that holds what it is written in memory and counts what is done to it.
-type recWriter struct {
-	in        webui.Incoming
-	buf       bytes.Buffer
-	fail      failures
-	closes    int
-	submits   int
-	discards  int
-	onWrite   func(n int) // told how much has been written, after each Write
-	writeLock sync.Mutex
-}
-
-func (w *recWriter) Write(b []byte) (int, error) {
-	w.writeLock.Lock()
-	defer w.writeLock.Unlock()
-	if w.fail.write != nil {
-		return 0, w.fail.write
-	}
-	w.buf.Write(b)
-	if w.onWrite != nil {
-		w.onWrite(w.buf.Len())
-	}
-	return len(b), nil
-}
-
-func (w *recWriter) Close() error {
-	w.writeLock.Lock()
-	defer w.writeLock.Unlock()
-	w.closes++
-	return w.fail.close
-}
-
-func (w *recWriter) Submit() error {
-	w.writeLock.Lock()
-	defer w.writeLock.Unlock()
-	w.submits++
-	return w.fail.submit
-}
-
-func (w *recWriter) Discard() error {
-	w.writeLock.Lock()
-	defer w.writeLock.Unlock()
-	w.discards++
-	return nil
-}
-
-// settled is how often a file was submitted and discarded, over all of the files that were opened, once each.
-func (s *fileShop) settled() (submits, discards int) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, w := range s.writers {
-		submits += w.submits
-		discards += w.discards
-	}
-	return submits, discards
-}
-
-// opened is how many files Open was called for.
-func (s *fileShop) opened() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return len(s.writers)
-}
-
-func newFileShop(file func(*fileShop) webui.File[attachment, *recWriter], opts ...func(*webui.Page[webui.NoArgs])) *fileShop {
+func newFileShop(file func(*fileShop) webui.File[attachment], opts ...func(*webui.Page[webui.NoArgs])) *fileShop {
 	s := &fileShop{}
 	title := webui.String[attachment]{
 		Label: "Title", Load: func(a attachment) string { return a.Title }, Store: func(a *attachment, v string) { a.Title = v },
@@ -133,6 +61,10 @@ func newFileShop(file func(*fileShop) webui.File[attachment, *recWriter], opts .
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.last = a
+			if a.Got != nil { // copied here, as an Upload is only held until the request is answered
+				a.Data = bytes.Clone(a.Got.Data)
+				s.last = a
+			}
 			return webui.Success("Saved"), nil
 		}},
 	}}
@@ -144,26 +76,11 @@ func newFileShop(file func(*fileShop) webui.File[attachment, *recWriter], opts .
 }
 
 // plainFile is a File with the given kinds, storing what it is handed.
-func plainFile(kinds ...webui.FileKind) func(*fileShop) webui.File[attachment, *recWriter] {
-	return func(s *fileShop) webui.File[attachment, *recWriter] {
-		return webui.File[attachment, *recWriter]{
+func plainFile(kinds ...webui.FileKind) func(*fileShop) webui.File[attachment] {
+	return func(s *fileShop) webui.File[attachment] {
+		return webui.File[attachment]{
 			Label: "Attachment", Accept: kinds,
 			Load: func(a attachment) *webui.FileInfo { return a.Held },
-			Open: func(_ context.Context, _ attachment, in webui.Incoming) (io.WriteCloser, *recWriter, error) {
-				s.mu.Lock()
-				defer s.mu.Unlock()
-				if s.fail.open != nil {
-					return nil, nil, s.fail.open
-				}
-				w := &recWriter{in: in, fail: s.fail, onWrite: s.onWrite}
-				if s.watch != nil {
-					w.onWrite = func(int) { s.watch.saw() }
-				}
-				s.writers = append(s.writers, w)
-				return w, w, nil
-			},
-			Commit:  func(_ context.Context, _ attachment, w *recWriter) error { return w.Submit() },
-			Discard: func(_ context.Context, w *recWriter) error { return w.Discard() },
 			Store: func(a *attachment, up *webui.Upload) {
 				s.mu.Lock()
 				s.stores++
@@ -249,7 +166,7 @@ func TestTheFileThatIsStoredIsShownAboveTheChooser(t *testing.T) {
 	assert.Contains(t, body, `<span class="dim">1.5 KiB</span>`)
 	assert.False(t, strings.Contains(body, `name="_rm"`))
 
-	s = newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+	s = newFileShop(func(s *fileShop) webui.File[attachment] {
 		f := plainFile()(s)
 		f.Removable = true
 		return f
@@ -271,13 +188,7 @@ func TestAnUploadIsHandedToStoreWithWhatItHoldsAndTheBaseNameOnly(t *testing.T) 
 	assert.Equal(t, s.last.Got.Name, "x.png")
 	assert.Equal(t, s.last.Got.ContentType, "image/png") // what it holds, whatever the browser said
 	assert.Equal(t, s.last.Got.Size, int64(len(pngBytes)))
-	// The bytes are where Open put them, and the writer was told what was known when the file began.
-	assert.Equal(t, s.opened(), 1)
-	assert.DeepEqual(t, s.writers[0].buf.Bytes(), pngBytes)
-	assert.Equal(t, s.writers[0].in, webui.Incoming{Name: "x.png", ContentType: "image/png", Kind: webui.FilePNG})
-	assert.Equal(t, s.writers[0].closes, 1)
-	submits, discards := s.settled()
-	assert.Equal(t, [2]int{submits, discards}, [2]int{1, 0})
+	assert.DeepEqual(t, s.last.Data, pngBytes) // the whole of it, in memory
 }
 
 // The name is the base name that the browser gave, made safe: the rest of the cases are the rules package's own.
@@ -310,18 +221,12 @@ func TestNothingChosenLeavesTheStoredFileAlone(t *testing.T) {
 	rec = multipartPost(s.h, "/admin/f", nil)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, s.stores, 0)
-
-	// A name with nothing in it is an empty file, which is no file: nothing is opened for it.
-	rec = multipartPost(s.h, "/admin/f", nil, part{"f1", "empty.png", ""})
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, s.stores, 0)
-	assert.Equal(t, s.opened(), 0)
 }
 
 func TestRemoveCallsStoreWithNilAndANewFileReplacesTheRemoval(t *testing.T) {
 	t.Parallel()
 
-	removable := func(s *fileShop) webui.File[attachment, *recWriter] {
+	removable := func(s *fileShop) webui.File[attachment] {
 		f := plainFile(webui.FilePNG)(s)
 		f.Removable = true
 		return f
@@ -464,7 +369,7 @@ func TestAFileThatIsNotTheKindIsRefusedInTheWordsOfTheField(t *testing.T) {
 func TestAFileLargerThanMaxSizeIsRefusedAndNothingIsStored(t *testing.T) {
 	t.Parallel()
 
-	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+	s := newFileShop(func(s *fileShop) webui.File[attachment] {
 		f := plainFile()(s)
 		f.MaxSize = 100
 		return f
@@ -481,7 +386,7 @@ func TestAFileLargerThanMaxSizeIsRefusedAndNothingIsStored(t *testing.T) {
 func TestABodyLargerThanTheFilesMayBeIsTooLarge(t *testing.T) {
 	t.Parallel()
 
-	s := newFileShop(func(s *fileShop) webui.File[attachment, *recWriter] {
+	s := newFileShop(func(s *fileShop) webui.File[attachment] {
 		f := plainFile()(s)
 		f.MaxSize = 1000
 		return f
@@ -536,8 +441,8 @@ func TestAFormThatIsRefusedStoresNoFileAndShowsTheStoredOneAgain(t *testing.T) {
 func TestARequiredFileIsOneThatIsStoredAndNotRemovedOrNewlyChosen(t *testing.T) {
 	t.Parallel()
 
-	required := func(removable bool) func(*fileShop) webui.File[attachment, *recWriter] {
-		return func(s *fileShop) webui.File[attachment, *recWriter] {
+	required := func(removable bool) func(*fileShop) webui.File[attachment] {
+		return func(s *fileShop) webui.File[attachment] {
 			f := plainFile(webui.FilePNG)(s)
 			f.Required, f.Removable = true, removable
 			return f
@@ -605,7 +510,7 @@ func TestAUrlencodedPostToAPageWithAFileIsAsItWas(t *testing.T) {
 func TestAFileIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	problems := func(f webui.File[attachment, struct{}]) string {
+	problems := func(f webui.File[attachment]) string {
 		var all string
 		page := webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
 			Load:   func(context.Context) (attachment, error) { return attachment{}, nil },
@@ -618,17 +523,11 @@ func TestAFileIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	load := func(attachment) *webui.FileInfo { return nil }
 	store := func(*attachment, *webui.Upload) {}
-	open := func(context.Context, attachment, webui.Incoming) (io.WriteCloser, struct{}, error) {
-		return nil, struct{}{}, nil
-	}
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F"}), "has no Load")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Removable: true}), "is Removable but has no Store")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Required: true}), "is Required but has no Store")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Store: store, Open: open, MaxSize: -1}), "has MaxSize -1")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Load: load, Store: store, Open: open}), "has no Label")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Store: store}), "has a Store but no Open")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Open: open}), "has an Open but no Store")
-	assert.Contains(t, problems(webui.File[attachment, struct{}]{Label: "F", Load: load, Commit: func(context.Context, attachment, struct{}) error { return nil }}), "has a Commit or Discard but no Open")
+	assert.Contains(t, problems(webui.File[attachment]{Label: "F"}), "has no Load")
+	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Removable: true}), "is Removable but has no Store")
+	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Required: true}), "is Required but has no Store")
+	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Store: store, MaxSize: -1}), "has MaxSize -1")
+	assert.Contains(t, problems(webui.File[attachment]{Load: load, Store: store}), "has no Label")
 }
 
 // In a table a file is its stored name, a link when the app serves it, and a dash for none.
@@ -643,7 +542,7 @@ func TestAFileInATableIsItsNameAndALink(t *testing.T) {
 		Rows: func(context.Context) ([]attachment, error) { return rows, nil },
 		Columns: []webui.Accessor[attachment]{
 			webui.String[attachment]{Label: "Title", Load: func(a attachment) string { return a.Title }},
-			webui.File[attachment, struct{}]{Label: "File", Load: func(a attachment) *webui.FileInfo { return a.Held }},
+			webui.File[attachment]{Label: "File", Load: func(a attachment) *webui.FileInfo { return a.Held }},
 		},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
@@ -659,11 +558,10 @@ func TestTheSizeOfAFileIsTheAppsToSayWithNoCeilingAndNoOverflow(t *testing.T) {
 	t.Parallel()
 
 	var stored atomic.Int32
-	file := func(label string) webui.File[attachment, struct{}] {
-		return webui.File[attachment, struct{}]{
+	file := func(label string) webui.File[attachment] {
+		return webui.File[attachment]{
 			Label: label, MaxSize: math.MaxInt64,
 			Load:  func(attachment) *webui.FileInfo { return nil },
-			Open:  nopOpen,
 			Store: func(*attachment, *webui.Upload) { stored.Add(1) },
 		}
 	}
@@ -686,9 +584,8 @@ func TestAFileOfAnySizeCompilesAndANegativeOneDoesNot(t *testing.T) {
 	file := func(size int64) webui.App {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
 			Load: func(context.Context) (attachment, error) { return attachment{}, nil },
-			Fields: []webui.Accessor[attachment]{webui.File[attachment, struct{}]{
+			Fields: []webui.Accessor[attachment]{webui.File[attachment]{
 				Label: "F", MaxSize: size, Load: func(attachment) *webui.FileInfo { return nil }, Store: func(*attachment, *webui.Upload) {},
-				Open: nopOpen,
 			}},
 		}}}}
 	}
@@ -702,12 +599,3 @@ func TestAFileOfAnySizeCompilesAndANegativeOneDoesNot(t *testing.T) {
 	}
 	assert.True(t, found)
 }
-
-// nopOpen is an Open that takes everything and does nothing with it.
-func nopOpen(context.Context, attachment, webui.Incoming) (io.WriteCloser, struct{}, error) {
-	return nopCloser{io.Discard}, struct{}{}, nil
-}
-
-type nopCloser struct{ io.Writer }
-
-func (nopCloser) Close() error { return nil }

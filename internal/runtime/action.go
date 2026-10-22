@@ -105,11 +105,9 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			return
 		}
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
-		// refuses has nothing of theirs received. Every file that is written is settled, with Commit when the submission is accepted
-		// (in perform) and with Discard in every other end of the request, which is this defer, a panic included.
+		// refuses has nothing of theirs received.
 		rec := &received{}
-		defer func() { rec.discard(r.Context(), p.log) }()
-		if multipart && !p.receive(w, r, page, req, leaves, rec, valueLimit) {
+		if multipart && !p.receive(w, r, leaves, rec, valueLimit) {
 			return
 		}
 		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
@@ -169,13 +167,10 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 
-	base := rec.model // as it was loaded when a file began to arrive, which is the model the file's writer was opened with
-	if !rec.loaded {
-		var err error
-		if base, err = timed(p, page, formKind(n), func() (any, error) { return n.Load(ctx) }); err != nil {
-			p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
-			return
-		}
+	base, err := timed(p, page, formKind(n), func() (any, error) { return n.Load(ctx) })
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
+		return
 	}
 	values := map[string]string{}
 	selects := selectNames(n.Fields)
@@ -200,7 +195,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.returnToForm(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
 		return
 	}
-	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit", rec)
+	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit")
 	if !ok {
 		return
 	}
@@ -231,7 +226,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 // the form again, in which case what was typed is not kept and the message is in the toast it
 // arrives to. It returns the outcome when it is for the caller to act on, and false when the
 // response has been written. what names the action in the error that is logged.
-func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, act *ir.Action, subject any, what string, rec *received) (ir.Outcome, bool) {
+func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, act *ir.Action, subject any, what string) (ir.Outcome, bool) {
 	ctx := r.Context()
 	if act.Guard != nil {
 		if err := act.Guard(ctx, subject); err != nil {
@@ -245,15 +240,6 @@ func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page,
 		p.m.Action(page.PathTemplate, "error")
 		p.fail(w, r, page, req, fmt.Errorf("%s: %w", what, err))
 		return ir.Outcome{}, false
-	}
-	if rec != nil && (outcome.Kind == ir.OutcomeSuccess || outcome.Kind == ir.OutcomeWarning) {
-		// Accepted: the files are made permanent now, before the visitor is told. A file that cannot be is not a success, and the
-		// action has already run, so the form is where the visitor is left, with the words for it.
-		if err := rec.commit(ctx, p.log, subject); err != nil {
-			p.m.Action(page.PathTemplate, "error")
-			p.leave(w, r, ir.Outcome{Kind: ir.OutcomeFailure, Message: msgFileNotStored}, r.URL.RequestURI())
-			return ir.Outcome{}, false
-		}
 	}
 	p.m.Action(page.PathTemplate, resultOf(outcome))
 	switch {
@@ -441,7 +427,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		subject = picked
 	}
 
-	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label), nil)
+	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
 	if !ok {
 		return
 	}

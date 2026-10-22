@@ -168,11 +168,11 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 ### Keeping uploaded files in the library
 
-**Decision:** `File.Open` returns the writer that an upload is written to as it arrives and the app's token for it, and `Load` says what is kept; the library holds no bytes of a file, in memory or on disk, and serves nothing. A download route, a directory, a database of its own, and a spool of `net/http`'s (which `ParseMultipartForm` makes, and a 5 GiB upload to an object store should not wait on) were weighed and dropped.
+**Decision:** `File` is handed an `Upload` to copy and says what is kept with `Load`; the library stores nothing and serves nothing. A download route, a directory, or a database of its own was weighed and dropped.
 
 - Where files live, who may fetch them and when they go are the program's, as reloading is: a library that stored them would own a directory or a store, an address for them with its authorisation and caching, and their deletion.
 - The cost is a route of the app's own, and the rules for serving a visitor's file (attachment, `nosniff`, the sniffed type) in the docs. The demo's `uploads.go` is the example.
-- The body is read once, in order, with `MultipartReader`: the page's Guard first, then each file part to its writer, checked as it goes. A writer is closed, and then its token is committed (the submission was accepted, which `perform` does after `Run`) or discarded (every other end of the request, which `postHandler` defers, a panic included): change the order of that and a refused submission keeps a file. The validators of the text kinds run on goroutines that `Finish` and `Abort` join, so none outlives the request.
+- A file is held in memory for the request and never written to disk: the body is read once with `MultipartReader`, not `ParseMultipartForm`, which spools to a temporary file. Do not reintroduce a spool, a handle or a lifecycle on the field: a file too large to hold is a transaction of its own, not a form value (three designs on PR #98 that put the store behind the field all leaked it).
 - A file is of a kind by what it holds (sniffed, and for JSON, CSV and text read through), never by its name or the browser's type. There is no SVG kind, since a browser runs it.
 
 ## Tests

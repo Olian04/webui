@@ -60,7 +60,7 @@ type Settings struct {
 	CertFile   *Blob    // the certificate itself, as a PDF
 }
 
-// Blob is a file that the demo keeps, in memory: the library keeps none, so where the bytes of an upload go is the app's own (see uploads.go).
+// Blob is a file that the demo keeps, in memory: the library keeps none, so what an app does with the bytes of an upload is its own.
 type Blob struct {
 	Name, Type string
 	Data       []byte
@@ -491,19 +491,6 @@ func (s *Service) Settings() Settings {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.settings
-}
-
-// SetBlob keeps the file of one of the settings' file fields, which is what a file does when the form was accepted (its Commit): after
-// SetSettings, which holds the model as it was loaded and so does not have it.
-func (s *Service) SetBlob(slot string, b *Blob) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	switch slot {
-	case "logo":
-		s.settings.Logo = b
-	case "certificate":
-		s.settings.CertFile = b
-	}
 }
 
 func (s *Service) SetSettings(v Settings) {

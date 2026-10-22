@@ -229,28 +229,17 @@
 //
 // A file that a visitor sends is a [File]: an input of a form, a native file chooser,
 // with the file that is stored shown above it, and in a table or a read-only form that
-// file's name, as a link when the app serves it. The library keeps no files, in memory
-// or on disk. Open is called as a file begins to arrive and returns the [io.WriteCloser]
-// that it is written to, as it is received, which is how a file of any size goes
-// straight to where the app keeps it, and a token of the app's own type for the file
-// (File's second type parameter), such as the temporary key that it was written under.
-// The writer is closed, and then Commit is called with the token when the form was
-// accepted, to make the file permanent, or Discard when it was not, to remove it. Store
-// notes in the model what arrived, an [Upload] that has no bytes, Load says what is
-// kept, and where it is served from is the app's own address. A File that is only read
-// has no token, and says struct{}.
+// file's name, as a link when the app serves it. The library keeps no files: a file is
+// held in memory, in [Upload.Data], until the request is answered, and never written to
+// disk, so a File is for a file that the app can hold for each visitor that sends one at
+// once, with a MaxSize to match. Store is handed the [Upload] to copy where the app
+// keeps files, Load says what is kept, and where it is served from is the app's own
+// address.
 //
-//	webui.File[Device, string]{
+//	webui.File[Device]{
 //		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
 //		Load:  func(d Device) *webui.FileInfo { return d.LogoInfo() },
-//		Open: func(ctx context.Context, d Device, in webui.Incoming) (io.WriteCloser, string, error) {
-//			key := "tmp/" + uuid.NewString()
-//			w, err := bucket.Create(ctx, key) // an io.WriteCloser
-//			return w, key, err
-//		},
-//		Commit:  func(ctx context.Context, d Device, key string) error { return bucket.Rename(ctx, key, "logos/"+d.ID) },
-//		Discard: func(ctx context.Context, key string) error { return bucket.Delete(ctx, key) },
-//		Store:   func(d *Device, up *webui.Upload) { d.SetLogo(up.Name, up.Size) },
+//		Store: func(d *Device, up *webui.Upload) { d.SetLogo(up) },
 //	}
 //
 // A file is of a kind by what it holds, which the library reads: the first bytes of an
@@ -260,14 +249,10 @@
 // [Upload] says which it was: its Kind, for what to do with it, and its ContentType, a
 // media type, for what to serve it as. There is no kind for SVG, which a browser runs
 // as a page: an app that takes it says [FileAny] and owns what follows. A file has a
-// size limit, 5 MiB unless said, which is checked with the kind as the file arrives:
-// the kind of an image or a PDF before Open is called, so that a file that cannot be
-// taken is never opened, and that of JSON, CSV and text, which are told by all of the
-// file, when it has been written. A file that is over its limit is not written past it.
-// Nothing chosen leaves the stored file alone and calls neither Open nor Store, and a
-// form that is refused discards the file and says to choose it again, since a browser
-// cannot fill a chooser in. [File.Removable] adds a Remove checkbox, which calls Store
-// with nil.
+// size limit, 5 MiB unless said, which is checked with the kind before Store sees the
+// file. Nothing chosen leaves the stored file alone, and a form that is refused stores
+// no file and says to choose it again, since a browser cannot fill a chooser in.
+// [File.Removable] adds a Remove checkbox, which calls Store with nil.
 //
 // With script the chooser is a frame that a file can be dropped on, a small picture of
 // an image that is chosen is shown below it (made in the page, and clicked to see the
@@ -281,8 +266,8 @@
 // does not know is not said to be wrong.
 //
 // The file that is stored is shown as a small picture when the app gives one:
-// [FileInfo.Thumbnail], a path on this site, which an app that has kept an image
-// makes with [Thumbnail], from the copy that it holds, when the writer is submitted. It is shown at 32 pixels beside the
+// [FileInfo.Thumbnail], a path on this site, which a Store that is handed an image
+// makes with [Thumbnail] when it keeps the file. It is shown at 32 pixels beside the
 // name, and the visitor is sent that small file and not the image, which is only
 // fetched when they click the picture, to see it at its full size in a dialog. That is
 // in the page and needs no script: when the [FileInfo] also has a URL, which is the
@@ -294,7 +279,7 @@
 // WebP, which the standard library does not decode; an app that takes more has its own
 // scaler.
 //
-// A File's MaxSize is 5 MiB unless it says, and as large as the app says: the library sets no ceiling, and the body of a page's submission is limited to the sum of its files' MaxSize and a megabyte. [Thumbnail] makes the small picture from a source that it reads once, and returns
+// A File's MaxSize is 5 MiB unless it says, and as large as the app says: the library sets no ceiling, and the body of a page's submission is limited to the sum of its files' MaxSize and a megabyte. [Thumbnail] makes the small picture from an [Upload] and returns
 // [ErrThumbnail] for a kind that it does not read (anything but PNG, JPEG and GIF), a
 // damaged file, or a picture of more than 25 million pixels, which is held whole in
 // memory to be scaled.
@@ -303,15 +288,10 @@
 // X-Content-Type-Options: nosniff, and the content type that the [Upload] was found to
 // have. A visitor's file sent inline from the app's origin is a page of the app's. A
 // page that has a File reads a multipart body of as much as its files may be, in the
-// order that it is sent in, and runs the page's Guard first, so a visitor it refuses
-// has nothing read. Open is called with the model as it was loaded, before the fields
-// that the form has after the file are read, and before the action's own Guard, which
-// runs after the form is bound: the file has been received when it refuses, and is then
-// discarded, and an Open that is to refuse a visitor does so itself, from its context.
-// A file that is refused as it arrives is not written, and the rest of it is read and
-// thrown away, so that the browser is answered and not reset. If a file cannot be made
-// permanent after the action has run, which Commit's error says, the visitor is told so.
-// A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout
+// order that it is sent in, and runs the page's Guard first, so a visitor it refuses has
+// nothing read; an action's own Guard runs after the form is bound, so the file has been
+// received when it refuses. A
+// program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout
 // does not bound.
 //
 // # Toolbars

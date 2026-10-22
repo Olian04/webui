@@ -1,10 +1,9 @@
 package runtime
 
 import (
-	"context"
+	"bytes"
 	"errors"
 	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -14,37 +13,10 @@ import (
 	"github.com/Olian04/webui/internal/rules"
 )
 
-// The words of a file that could not be written, and of one that was written and could not be made permanent.
-const (
-	msgFileNotSaved  = "Could not save this file."
-	msgFileNotStored = "Saved, but a file could not be stored."
-	copyChunk        = 32 << 10 // how much of a file is read at a time
-)
-
-// received is what a submission carried, read as it arrived: its values, and the files that were written, each to the writer that the
-// app gave it. It is the one place that holds the writers, so that every one of them is settled, once, however the request ends.
+// received is what a multipart submission carried, read as it arrived: the files that were chosen, held in memory, or the words for each that was
+// refused.
 type received struct {
-	files   *ir.Files // the uploads and the refused files, nil when there are none
-	model   any       // the form's model, as it was loaded when the first file began to arrive
-	loaded  bool
-	writers []*openFile
-	settled bool
-}
-
-// openFile is a writer that the app gave, the token that it gave for the file, and whether the writer has been closed.
-type openFile struct {
-	spec   *ir.FileSpec
-	w      io.WriteCloser
-	token  any
-	closed bool
-}
-
-func (f *openFile) close() error {
-	if f.closed {
-		return nil
-	}
-	f.closed = true
-	return f.w.Close() //nolint:wrapcheck // the app's own error, which is logged as it is
+	files *ir.Files // the uploads and the refused files, nil when there are none
 }
 
 func (rec *received) add() *ir.Files {
@@ -79,68 +51,22 @@ func (rec *received) filesFor(r *http.Request, fields []ir.Field) *ir.Files {
 	return out
 }
 
-// commit makes the files permanent, which is what a submission that was accepted does, with the model as the action saw it. Every file is
-// committed, and the errors are the ones that there were. The context is not cancelled with the request.
-func (rec *received) commit(ctx context.Context, log *slog.Logger, model any) error {
-	if rec.settled {
-		return nil
-	}
-	rec.settled = true
-	ctx = context.WithoutCancel(ctx)
-	var errs []error
-	for _, f := range rec.writers {
-		if err := f.close(); err != nil {
-			errs = append(errs, err)
-			continue
-		}
-		if f.spec.Commit != nil {
-			if err := f.spec.Commit(ctx, model, f.token); err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-	if err := errors.Join(errs...); err != nil {
-		log.Error("webui: an uploaded file could not be stored", "err", err)
-		return err
-	}
-	return nil
-}
-
-// discard removes the files, which is what every end of a request but an accepted submission does, a panic included. It is a no-op
-// once the files are settled. The context is not cancelled with the request, which is often why the files are discarded.
-func (rec *received) discard(ctx context.Context, log *slog.Logger) {
-	if rec == nil || rec.settled {
-		return
-	}
-	rec.settled = true
-	ctx = context.WithoutCancel(ctx)
-	for _, f := range rec.writers {
-		if err := f.close(); err != nil {
-			log.Error("webui: an uploaded file could not be closed", "err", err)
-		}
-		if f.spec.Discard != nil {
-			if err := f.spec.Discard(ctx, f.token); err != nil {
-				log.Error("webui: an uploaded file could not be discarded", "err", err)
-			}
-		}
-	}
-}
-
 // writableFile is the file field of the form that has the name, which a visitor may send a file to.
 func writableFile(fields []ir.Field, name string) *ir.FileSpec {
 	for f := range ir.Leaves(fields) {
-		if f.Name == name && f.File != nil && f.File.Store != nil && f.File.Open != nil {
+		if f.Name == name && f.File != nil && f.File.Store != nil {
 			return f.File
 		}
 	}
 	return nil
 }
 
-// receive reads a multipart body in the order that it arrives, once, with nothing held but the values: each file is written, as it comes,
-// to the writer that the app gives for it, and checked as it goes. The leaf that the form is of must come before its files, as the
-// markup of the library has it, since the files are the form's. It sets r.PostForm to the values, so that what follows reads them as it does
-// those of a body that was not multipart, and answers the request itself when it cannot go on.
-func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, leaves map[string]ir.Node, rec *received, valueLimit int64) bool {
+// receive reads a multipart body in the order that it arrives, once, holding only the values and the files that the form takes: a file is read into
+// memory, as far as the field lets it be, and not into the temporary file that net/http's ParseMultipartForm would write what is more than a
+// megabyte to, so that nothing of a submission is written to disk. The leaf that the form is of must come before its files, as the markup of the
+// library has it, since the files are the form's. It sets r.PostForm to the values, so that what follows reads them as it does those of a
+// body that was not multipart, and answers the request itself when it cannot go on.
+func (p *Program) receive(w http.ResponseWriter, r *http.Request, leaves map[string]ir.Node, rec *received, valueLimit int64) bool {
 	mr, err := r.MultipartReader()
 	if err != nil {
 		p.refuse(w, r, unreadable(err))
@@ -185,7 +111,7 @@ func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page,
 		if spec == nil {
 			continue
 		}
-		if !p.receiveFile(w, r, page, req, rec, form, spec, name, part) {
+		if !p.receiveFile(w, r, rec, spec, name, part) {
 			return false
 		}
 	}
@@ -199,9 +125,13 @@ func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page,
 	return true
 }
 
-// receiveFile writes one file to the writer that the app gives for it, and checks it as it goes. A file that is refused is a message for
-// its field, and the rest of it is thrown away; what stops the request is a body that cannot be read, or a form that cannot be loaded.
-func (p *Program) receiveFile(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, rec *received, form *ir.Form, spec *ir.FileSpec, name string, part *multipart.Part) bool {
+// receiveFile reads one file into memory and checks it. A file that is refused is a message for its field, and the rest of it is thrown away
+// (by reading the next part); what stops the request is a body that cannot be read.
+func (p *Program) receiveFile(w http.ResponseWriter, r *http.Request, rec *received, spec *ir.FileSpec, name string, part *multipart.Part) bool {
+	refused := func(message string) bool {
+		rec.add().Refused[name] = message
+		return true
+	}
 	head := make([]byte, rules.HeadSize)
 	n, err := io.ReadFull(part, head)
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
@@ -212,77 +142,26 @@ func (p *Program) receiveFile(w http.ResponseWriter, r *http.Request, page *ir.P
 		return true // a chooser that was left alone sends an empty part, which is no file
 	}
 	head = head[:n]
-	refused := func(message string) bool {
-		rec.add().Refused[name] = message
-		return true
+	if _, _, message := rules.FileHead(spec, head); message != "" {
+		return refused(message) // before the rest of it is held
 	}
-	check, message := rules.BeginFile(spec, head)
-	if message != "" {
-		return refused(message)
-	}
-	if !rec.loaded {
-		ctx := r.Context()
-		base, err := timed(p, page, formKind(form), func() (any, error) { return form.Load(ctx) })
-		if err != nil {
-			check.Abort()
-			p.fail(w, r, page, req, err)
-			return false
-		}
-		rec.model, rec.loaded = base, true
-	}
-	in := ir.Incoming{Name: rules.UploadName(part.FileName()), ContentType: check.Sniffed(), Kind: check.HeadKind()}
-	dst, token, err := spec.Open(r.Context(), rec.model, in)
+	var data bytes.Buffer
+	data.Write(head)
+	rest, err := io.ReadAll(io.LimitReader(part, spec.Max-int64(n)+1))
 	if err != nil {
-		check.Abort()
-		p.log.Error("webui: a file could not be opened for writing", "page", page.PathTemplate, "err", err)
-		return refused(msgFileNotSaved)
+		p.refuse(w, r, unreadable(err))
+		return false
 	}
-	of := &openFile{spec: spec, w: dst, token: token}
-	rec.writers = append(rec.writers, of)
-
-	var size int64
-	write := func(b []byte) string {
-		if size+int64(len(b)) > spec.Max {
-			return rules.FileTooLarge(spec.Max)
-		}
-		size += int64(len(b))
-		_, _ = check.Writer().Write(b) // which never fails
-		if _, err := of.w.Write(b); err != nil {
-			p.log.Error("webui: a file could not be written", "page", page.PathTemplate, "err", err)
-			return msgFileNotSaved
-		}
-		return ""
+	data.Write(rest)
+	if int64(data.Len()) > spec.Max {
+		return refused(rules.FileTooLarge(spec.Max))
 	}
-	refusal := write(head)
-	buf := make([]byte, copyChunk)
-	for refusal == "" {
-		n, err := part.Read(buf)
-		if n > 0 {
-			refusal = write(buf[:n])
-		}
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			check.Abort()
-			_ = of.close() // the request is over, and the file is discarded with it
-			p.refuse(w, r, unreadable(err))
-			return false
-		}
-	}
-	if refusal != "" {
-		check.Abort()
-		_ = of.close()
-		return refused(refusal)
-	}
-	contentType, kind, message := check.Finish(spec)
-	if err := of.close(); err != nil {
-		p.log.Error("webui: a file could not be closed", "page", page.PathTemplate, "err", err)
-		return refused(msgFileNotSaved)
-	}
+	contentType, kind, message := rules.CheckFile(spec, data.Bytes())
 	if message != "" {
 		return refused(message)
 	}
-	rec.add().Uploads[name] = &ir.Upload{Name: in.Name, Size: size, ContentType: contentType, Kind: kind}
+	rec.add().Uploads[name] = &ir.Upload{
+		Name: rules.UploadName(part.FileName()), Size: int64(data.Len()), ContentType: contentType, Kind: kind, Data: data.Bytes(),
+	}
 	return true
 }

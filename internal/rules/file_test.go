@@ -1,11 +1,8 @@
 package rules
 
 import (
-	"bytes"
-	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/test/util/assert"
@@ -75,22 +72,6 @@ func TestKindsAreMatchedFromTheMostSpecificToTheLeast(t *testing.T) {
 	assert.True(t, ir.FileKind("unknown").Order() > ir.FileAny.Order())
 }
 
-// run is a file of the given bytes through a check, as the runtime writes one: the head first, then the rest.
-func run(spec *ir.FileSpec, data []byte) (contentType string, kind ir.FileKind, message string) {
-	head := data[:min(len(data), HeadSize)]
-	c, message := BeginFile(spec, head)
-	if message != "" {
-		return "", "", message
-	}
-	_, _ = c.Writer().Write(head)
-	for rest := data[len(head):]; len(rest) > 0; {
-		n := min(len(rest), 100)
-		_, _ = c.Writer().Write(rest[:n])
-		rest = rest[n:]
-	}
-	return c.Finish(spec)
-}
-
 func TestAFileIsToldByItsFirstBytesAndByAllOfItForTheKindsOfText(t *testing.T) {
 	t.Parallel()
 
@@ -106,6 +87,7 @@ func TestAFileIsToldByItsFirstBytesAndByAllOfItForTheKindsOfText(t *testing.T) {
 		{"a png", []ir.FileKind{ir.FilePNG}, png, "image/png", ir.FilePNG, false},
 		{"a png where an image is taken", []ir.FileKind{ir.FileImage}, png, "image/png", ir.FilePNG, false},
 		{"a png where a pdf is taken", []ir.FileKind{ir.FilePDF}, png, "", "", true},
+		{"a png where json is taken", []ir.FileKind{ir.FileJSON}, png, "", "", true},
 		{"json", []ir.FileKind{ir.FileJSON}, []byte(`{"a": [1, 2]}`), "application/json", ir.FileJSON, false},
 		{"json that ends early", []ir.FileKind{ir.FileJSON}, []byte(`{"a": `), "", "", true},
 		{"json past the head", []ir.FileKind{ir.FileJSON}, []byte(`[` + strings.Repeat(`1,`, 1000) + `1]`), "application/json", ir.FileJSON, false},
@@ -117,57 +99,36 @@ func TestAFileIsToldByItsFirstBytesAndByAllOfItForTheKindsOfText(t *testing.T) {
 		{"the same, which is only text", []ir.FileKind{ir.FileText, ir.FileCSV, ir.FileJSON}, []byte("a,\"b\n"), "text/plain; charset=utf-8", ir.FileText, false},
 		{"any file, a pdf", nil, []byte("%PDF-1.4\n%%EOF\n"), "application/pdf", ir.FilePDF, false},
 		{"any file, which is none that is named", nil, []byte(`{"a": 1}`), "text/plain; charset=utf-8", ir.FileAny, false},
-		{"an empty file as text", []ir.FileKind{ir.FileText}, []byte(""), "", "", true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			spec := &ir.FileSpec{Kinds: c.kinds, Max: 1 << 20}
-			ct, kind, message := run(spec, c.data)
+			ct, kind, message := CheckFile(&ir.FileSpec{Kinds: c.kinds, Max: 1 << 20}, c.data)
 			assert.Equal(t, message != "", c.refused)
 			assert.Equal(t, ct, c.wantType)
 			assert.Equal(t, kind, c.wantKind)
 		})
 	}
+	_, _, message := CheckFile(&ir.FileSpec{Max: 10}, []byte("0123456789a"))
+	assert.Equal(t, message, "Must be at most 10 bytes.")
 }
 
-// What the first bytes tell is known before the rest has been written: the kind of an image or a PDF, and a refusal of a file that no kind takes.
+// What the first bytes tell is known before the rest has been read: the kind of an image or a PDF, and a refusal of a file that no kind takes.
 func TestWhatTheFirstBytesTellIsKnownAtTheStart(t *testing.T) {
 	t.Parallel()
 
 	spec := &ir.FileSpec{Kinds: []ir.FileKind{ir.FileImage, ir.FileJSON}}
-	c, message := BeginFile(spec, []byte("\xff\xd8\xff\xe0\x00\x10JFIF"))
+	sniffed, kind, message := FileHead(spec, []byte("\xff\xd8\xff\xe0\x00\x10JFIF"))
 	assert.Equal(t, message, "")
-	assert.Equal(t, c.HeadKind(), ir.FileJPEG)
-	assert.Equal(t, c.Sniffed(), "image/jpeg")
-	c.Abort()
+	assert.Equal(t, kind, ir.FileJPEG)
+	assert.Equal(t, sniffed, "image/jpeg")
 
-	c, message = BeginFile(spec, []byte(`{"a": 1}`))
+	_, kind, message = FileHead(spec, []byte(`{"a": 1}`))
 	assert.Equal(t, message, "")
-	assert.Equal(t, c.HeadKind(), ir.FileAny) // told only by all of it
-	c.Abort()
+	assert.Equal(t, kind, ir.FileAny) // told only by all of it
 
-	_, message = BeginFile(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileJPEG}}, []byte("%PDF-1.4"))
+	_, _, message = FileHead(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileJPEG}}, []byte("%PDF-1.4"))
 	assert.Equal(t, message, "Choose a PNG or JPEG file.")
-}
-
-// The checks of text read what is written to them on goroutines of their own, which end with the check, finished or not, however far each got.
-// It is not parallel, so that the goroutines of other tests are not counted.
-func TestAFileCheckLeavesNoGoroutineBehind(t *testing.T) {
-	before := runtime.NumGoroutine()
-	spec := &ir.FileSpec{Kinds: []ir.FileKind{ir.FileText, ir.FileCSV, ir.FileJSON}, Max: 1 << 20}
-	for range 50 {
-		run(spec, []byte(`{"a": 1}`))
-		run(spec, []byte(`{"a": `)) // json that fails at once, and stops reading while the rest is still written
-		run(spec, append([]byte(`}`), bytes.Repeat([]byte("x"), 100_000)...))
-
-		c, _ := BeginFile(spec, []byte("words"))
-		_, _ = c.Writer().Write([]byte("words"))
-		c.Abort() // a file that is not finished
-	}
-	deadline := time.Now().Add(2 * time.Second)
-	for runtime.NumGoroutine() > before && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
-	assert.Equal(t, runtime.NumGoroutine(), before)
+	_, _, message = FileHead(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG}}, []byte("plain words"))
+	assert.Equal(t, message, "Choose a PNG file.")
 }

@@ -1,10 +1,7 @@
 package webui
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
@@ -82,14 +79,15 @@ type FileInfo struct {
 	Thumbnail string
 }
 
-// Upload is a file that a visitor sent, and that was written to the [io.WriteCloser] that [File.Open] returned for it. It is what is known
-// of the file once all of it has arrived: it holds no bytes, which are where the writer put them.
+// Upload is a file that a visitor sent. It is held in memory, in Data, until the request is answered, and then it is gone: a Run that is
+// to keep the file copies it where the app keeps files, and a Store that only notes the Upload for Run to use has not kept it. It is
+// never written to disk by the library.
 type Upload struct {
 	// Name is what the visitor's file was called, as a base name: never a path, with the control characters taken out and at
 	// most 255 characters. It is the visitor's, so it is not to be used as a name on disk.
 	Name string
 
-	// Size is how many bytes were written.
+	// Size is how many bytes it has.
 	Size int64
 
 	// ContentType is what the file was found to hold (see [FileKind]), and not what the browser said it was. It is a media
@@ -104,90 +102,48 @@ type Upload struct {
 	// that a field takes (JSON is also text, and a number alone is JSON and CSV), and the Kind is the most specific of them,
 	// whatever order Accept lists them in: the images and the PDF, which exclude one another, then JSON, then CSV, then text.
 	Kind FileKind
-}
 
-// Incoming is what is known of a file when it begins to arrive, which is when [File.Open] is called: before any of it has been written,
-// and so before the whole of it can be checked.
-type Incoming struct {
-	// Name is what the visitor's file is called, as [Upload.Name] has it.
-	Name string
-
-	// ContentType is what the first 512 bytes of the file hold, as [Upload.ContentType] has it. For JSON, CSV and text, which are told by
-	// reading all of the file, it is only what those bytes look like (a "text/plain" type); the [Upload] has the final one.
-	ContentType string
-
-	// Kind is the kind of an image or a PDF, which its first bytes tell, and [FileAny] for any other file, whose kind is known only
-	// when all of it has arrived, in [Upload.Kind].
-	Kind FileKind
+	// Data is the whole of the file. It is held in memory, up to the field's MaxSize, so a field that takes a large file has a MaxSize that
+	// the app can afford to hold for each visitor that is sending one at the same time.
+	Data []byte
 }
 
 // File projects a file of M that a visitor can send, and the one that the app holds. It is an input of a form: a native file
 // chooser, with the file that is stored shown above it. In a table, or where it is only read, it is the stored file's name,
 // which is a link when Load gives it a URL.
 //
-// The library keeps no files, not in memory and not on disk. Open is called as a file begins to arrive and returns the
-// [io.WriteCloser] that the file is written to as it is received, which is how a file of any size goes straight to where the app keeps it,
-// an object store or a disk, with no copy of it made first, and a token of the app's own type T for the file, which says what
-// was written (a temporary key, a path, an upload id). The writer is closed when the writing is done, and then exactly one of Commit and
-// Discard is called with the token: Commit when the submission was accepted, to make the file permanent (to rename the temporary
-// object), and Discard when it was not, to remove it. Store is handed the [Upload] when every field has been checked, to note in the
-// model what arrived, and Load says what is kept; where the app serves it from is the app's own address. A file that the app serves
-// should be sent with Content-Disposition: attachment, with X-Content-Type-Options: nosniff and with the content type that the Upload
-// has, and never from the page's own origin as the page it is inline in: what a visitor sent is theirs, and an HTML or SVG file that a
+// The library keeps no files. A file is a value of the form, and is held in memory for as long as the request is: Store is handed an
+// [Upload], with the whole of the file in its Data, which the app copies where it keeps files (by Run, or by Store itself), and Load says
+// what is kept; where the app serves it from is the app's own address. Nothing is written to disk, so a File is for a file that the app can
+// hold in memory for each visitor that sends one at the same time, with a MaxSize to match: a few megabytes, an image or a document. A file that the app serves should be sent with
+// Content-Disposition: attachment, with X-Content-Type-Options: nosniff and with the content type that the Upload has, and
+// never from the page's own origin as the page it is inline in: what a visitor sent is theirs, and an HTML or SVG file that a
 // browser opens is a script that runs as the app.
 //
-// A File that is only read has no use for a token, and says struct{} for T.
+// A submission that chooses no file leaves the stored one alone and does not call Store. One that chooses a file calls Store
+// with it, after every field has been checked, and only if none of them is refused, so a form that is refused stores nothing; and
+// a browser cannot refill a file chooser, so the visitor chooses the file again, which the field says. With Removable, a
+// checkbox beside the stored file calls Store with nil.
 //
-// A submission that chooses no file leaves the stored one alone and calls none of Open, Store, Commit and Discard. One that chooses a
-// file calls Open when it arrives, Store with the Upload after every field has been checked, and Commit, with the model as the
-// action's Run saw it, when Run has accepted it; a form that is refused or fails has the file discarded, and a browser cannot refill a
-// file chooser, so the visitor chooses the file again, which the field says. With Removable, a checkbox beside the stored file calls
-// Store with nil. Commit and Discard are given a context that is not cancelled when the request is, since a file that is discarded
-// because the visitor went away is the case that most needs the store to be reached.
-//
-// The file is checked by what it holds, and its size, as it arrives: a file that is not one of the kinds that the field takes, which its
-// first bytes tell for an image or a PDF, is refused before Open is called, and one that is larger than MaxSize is
-// refused when it reaches it, and nothing more is written. JSON, CSV and text are told by all of the file, so they are written and then
-// refused if they are not what they were taken for. A page that has a File reads the body of a submission as multipart, in the order that
-// it is sent in, up to the sum of the files' MaxSize and the usual limit, after the page's Guard has run, so a visitor
-// that the page refuses has nothing read from them. Open is called with the model as it was loaded, as the first part of the file arrives,
-// and so before the fields that the browser sends after the file have been read, and before the action's own Guard, which runs after
-// the form has been bound and so after the file has been received: an Open that is to refuse a visitor does so itself, from the context. A
-// browser that sends a file that is refused still sends all of it, so the rest of it is read and thrown away, up to the limit, and
-// the form is drawn again with what was typed. If a Commit fails, which happens after the action has run, the visitor is told that a
-// file could not be stored, and the cause is logged. A program that takes uploads sets ReadTimeout on its server, which
-// ReadHeaderTimeout does not bound.
+// The file is checked by what it holds, and its size, before Store sees it: a file that is not one of the kinds that the
+// field takes, which its first bytes tell for an image or a PDF, is refused before the rest of it is held, and one that is larger than
+// MaxSize is refused when it reaches it, and the rest of it is read and thrown away, so that the browser is answered and not reset. A page
+// that has a File reads the body of a submission as multipart, in the order that it is sent in, up to the sum of the files' MaxSize and the usual
+// limit, after the page's Guard has run, so a visitor that the page refuses has nothing read from them. An action's own Guard runs after
+// the form has been bound, so the file has been received when it refuses. A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
 //
 // It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar], which shows values and
 // has only a name to show of a file, and an [Editor]'s content is a [String] by its type.
-type File[M, T any] struct {
+type File[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the column in the address and in a [Query].
 	Label string
 
 	// Load reads the file that the model holds, or nil for none.
 	Load func(M) *FileInfo
 
-	// Store is handed a file that the visitor sent, after all of it has been written and every field has been checked, or nil for one that
-	// they asked to remove (see Removable). It notes in the model what arrived, for Run; the bytes are in the writer that Open
-	// returned. Without it the field is read-only, and it needs an Open.
+	// Store is handed a file that the visitor sent, or nil for one that they asked to remove (see Removable). Without it the
+	// field is read-only.
 	Store func(*M, *Upload)
-
-	// Open is called when a file begins to arrive, with the model as it was loaded, and returns where the file is written, which the
-	// library closes when it has been, and the token that stands for it, which Commit and Discard are handed. An error refuses the
-	// file before any of it is written, and its cause is logged, not shown. It is called once for each file that is chosen, and not
-	// for a chooser that is left alone. Without it, Store is a compile error.
-	Open func(ctx context.Context, m M, in Incoming) (io.WriteCloser, T, error)
-
-	// Commit makes the file permanent, which is what is done when the submission was accepted: the action's Run has returned a success or a
-	// warning. It is given the model as Run saw it, and the token that Open returned. It may be nil, for an app that has nothing to do
-	// once the file is written. Exactly one of Commit and Discard is called for each file that Open was called for and did not
-	// fail, after the writer was closed.
-	Commit func(ctx context.Context, m M, token T) error
-
-	// Discard removes the file, which is what is done when the submission was not accepted: a field or the action's Guard
-	// refused it, Run failed, rejected or returned an error, the file was refused as it arrived or could not be closed, or the request ended
-	// before it was done. It may be nil.
-	Discard func(ctx context.Context, token T) error
 
 	// Accept lists the kinds of file that the field takes. Left empty it takes any file.
 	Accept []FileKind
@@ -216,36 +172,15 @@ type File[M, T any] struct {
 	NoFilter bool
 }
 
-func (a File[M, T]) label() string { return a.Label }
+func (a File[M]) label() string { return a.Label }
 
-func (a File[M, T]) meta() accessorMeta {
+func (a File[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// fileAccessor is a File of any token, which the type switches over accessors cannot name, since the token is not one of the type's
-// parameters that they have.
-type fileAccessor[M any] interface {
-	Accessor[M]
-	basics() (label string, noLoad bool)
-	validateFile(v *bodyValidator, at string)
-	lowerFile(name string) ir.Field
-}
-
-func (a File[M, T]) basics() (string, bool) { return a.Label, a.Load == nil }
-
-func (a File[M, T]) validateFile(v *bodyValidator, at string) { validateFile(v, at, a) }
-
-func (a File[M, T]) lowerFile(name string) ir.Field { return lowerFile(name, a) }
-
 // validateFile checks what a File says of itself, and where it is.
-func validateFile[M, T any](v *bodyValidator, at string, a File[M, T]) {
+func validateFile[M any](v *bodyValidator, at string, a File[M]) {
 	switch {
-	case a.Store != nil && a.Open == nil:
-		v.add(at+" has a Store but no Open", "A file is written as it arrives, to where Open says: set Open, or remove Store to make the field read-only.")
-	case a.Open != nil && a.Store == nil:
-		v.add(at+" has an Open but no Store", "Open is where a new file goes, and Store is what notes it in the model: set Store, or remove Open.")
-	case a.Open == nil && (a.Commit != nil || a.Discard != nil):
-		v.add(at+" has a Commit or Discard but no Open", "They are handed what Open returns for a file: set Open, or remove them.")
 	case a.Removable && a.Store == nil:
 		v.add(at+" is Removable but has no Store", "A file is removed by calling Store with nil: set Store, or remove Removable.")
 	case a.Required && a.Store == nil:
@@ -261,9 +196,6 @@ func validateFile[M, T any](v *bodyValidator, at string, a File[M, T]) {
 	}
 }
 
-// errNoWriter is what an Open that returned no writer and no error is taken as.
-var errNoWriter = errors.New("webui: File.Open returned no writer and no error")
-
 // samePath is whether an address is a path on this site, which is the only place that a picture is shown from: the content security policy
 // lets an image be this site's own, and a thumbnail is not one that an address elsewhere should be asked for.
 func samePath(s string) bool {
@@ -271,7 +203,7 @@ func samePath(s string) bool {
 }
 
 // lowerFile is a File as the IR holds it.
-func lowerFile[M, T any](name string, a File[M, T]) ir.Field {
+func lowerFile[M any](name string, a File[M]) ir.Field {
 	f := head(name, a.Label, ir.KindString)
 	f.Display, f.Nullable = ir.DisplayLink, true
 	stored := func(m any) *ir.StoredFile {
@@ -314,29 +246,7 @@ func lowerFile[M, T any](name string, a File[M, T]) ir.Field {
 				a.Store(m.(*M), nil)
 				return
 			}
-			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Kind: fileKindOf(up.Kind)})
-		}
-		spec.Open = func(ctx context.Context, m any, in ir.Incoming) (io.WriteCloser, any, error) {
-			w, token, err := a.Open(ctx, m.(M), Incoming{Name: in.Name, ContentType: in.ContentType, Kind: fileKindOf(in.Kind)})
-			if err != nil {
-				return nil, nil, err //nolint:wrapcheck // the app's own error, which is logged as it is
-			}
-			if w == nil {
-				return nil, nil, errNoWriter
-			}
-			return w, token, nil
-		}
-		if a.Commit != nil {
-			spec.Commit = func(ctx context.Context, m, token any) error {
-				t, _ := token.(T) // the zero value for a token that is a nil interface
-				return a.Commit(ctx, m.(M), t)
-			}
-		}
-		if a.Discard != nil {
-			spec.Discard = func(ctx context.Context, token any) error {
-				t, _ := token.(T)
-				return a.Discard(ctx, t)
-			}
+			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Kind: fileKindOf(up.Kind), Data: up.Data})
 		}
 	}
 	f.File = spec
