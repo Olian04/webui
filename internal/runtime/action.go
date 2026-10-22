@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"slices"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
-	"github.com/Olian04/webui/internal/rules"
 )
 
 // maxBody bounds a submission. An admin form is a few fields; a megabyte is
@@ -24,10 +22,6 @@ const maxBody = 1 << 20
 // body and may be large. A Content.Rules.MaxLen is how an application bounds it
 // further.
 const maxEditorBody = 16 << 20
-
-// uploadMemory is how much of a multipart submission is held in memory: what is more is written to files of their own, which
-// the server removes when the request is answered.
-const uploadMemory = 1 << 20
 
 // leavesOf maps each leaf's id to its node, so a POST can name one and nothing
 // else: the id comes from position, never from anything the user typed.
@@ -93,6 +87,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		if hasEditor(leaves) {
 			limit = maxEditorBody
 		}
+		valueLimit := limit // what the values of a multipart body may come to, which is what a body that is not multipart may
 		// A page with a file field takes a multipart body of as much as its files may be, besides the usual: which is the
 		// limit of that kind of body, and of no other that is posted to it.
 		multipart := budget > 0 && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
@@ -111,16 +106,13 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		}
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
 		// refuses has nothing of theirs received.
-		if multipart {
-			//nolint:gosec // G120: the body was limited above, by http.MaxBytesReader, to what the files may be.
-			if err := r.ParseMultipartForm(uploadMemory); err != nil {
-				p.refuse(w, r, unreadable(err))
-				return
-			}
+		rec := &received{}
+		if multipart && !p.receive(w, r, leaves, rec, valueLimit) {
+			return
 		}
 		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
 		case *ir.Form:
-			p.submit(w, r, page, req, n)
+			p.submit(w, r, page, req, n, rec)
 		case *ir.Table:
 			p.tableAct(w, r, page, req, n)
 		case *ir.Toolbar:
@@ -164,46 +156,11 @@ func addCapped(a, b int64) int64 {
 	return a + b
 }
 
-// uploadsOf are the files that a submission carried, for the form's file fields: the first of each field that is not an empty
-// part, which is what a chooser that was left alone sends, and the stored files that the visitor asked to remove. It is nil when
-// there are none, which is the usual.
-func uploadsOf(r *http.Request, fields []ir.Field) *ir.Files {
-	var out *ir.Files
-	add := func() {
-		if out == nil {
-			out = &ir.Files{Uploads: map[string]*ir.Upload{}, Removed: map[string]bool{}}
-		}
-	}
-	for f := range ir.Leaves(fields) {
-		if f.File == nil || f.File.Store == nil {
-			continue
-		}
-		if r.MultipartForm != nil {
-			for _, fh := range r.MultipartForm.File[f.Name] {
-				if fh.Filename == "" || fh.Size == 0 {
-					continue
-				}
-				add()
-				out.Uploads[f.Name] = &ir.Upload{
-					Name: rules.UploadName(fh.Filename), Size: fh.Size,
-					Open: func() (io.ReadCloser, error) { return fh.Open() },
-				}
-				break
-			}
-		}
-		if slices.Contains(r.PostForm["_rm"], f.Name) {
-			add()
-			out.Removed[f.Name] = true
-		}
-	}
-	return out
-}
-
 // notUnderstood is what a POST that names no leaf, or no action, that the page has is answered with.
 const notUnderstood = "That request was not understood."
 
 // submit binds and runs a form's Submit.
-func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form) {
+func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form, rec *received) {
 	ctx := r.Context()
 	if n.Submit == nil {
 		p.refuse(w, r, notUnderstood)
@@ -232,7 +189,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("form options: %w", err))
 		return
 	}
-	model, errs := n.Bind(resolved.Fields, base, values, uploadsOf(r, resolved.Fields))
+	model, errs := n.Bind(resolved.Fields, base, values, rec.filesFor(r, resolved.Fields))
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
 		p.returnToForm(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))

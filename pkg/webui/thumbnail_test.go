@@ -8,7 +8,6 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
-	"io"
 	"math/rand/v2"
 	"testing"
 
@@ -24,7 +23,7 @@ func solidImage(w, h int) *image.NRGBA {
 }
 
 func uploadOf(kind FileKind, data []byte) *Upload {
-	return &Upload{Kind: kind, Size: int64(len(data)), Open: func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil }}
+	return &Upload{Kind: kind, Size: int64(len(data)), Data: data}
 }
 
 func sizeOf(t *testing.T, data []byte) image.Point {
@@ -88,7 +87,7 @@ func TestAThumbnailIsNotMadeOfWhatItDoesNotRead(t *testing.T) {
 	assert.NoError(t, png.Encode(&p, solidImage(10, 10)))
 	for _, up := range map[string]*Upload{
 		"a nil upload":      nil,
-		"no Open":           {Kind: FilePNG},
+		"no data":           {Kind: FilePNG},
 		"a webp":            uploadOf(FileWebP, p.Bytes()),
 		"a pdf":             uploadOf(FilePDF, p.Bytes()),
 		"any file":          uploadOf(FileAny, p.Bytes()),
@@ -100,11 +99,6 @@ func TestAThumbnailIsNotMadeOfWhatItDoesNotRead(t *testing.T) {
 	}
 	_, err := Thumbnail(uploadOf(FilePNG, p.Bytes()), 0)
 	assert.True(t, errors.Is(err, ErrThumbnail))
-
-	// A file that cannot be opened is the app's own error, and is not hidden.
-	boom := errors.New("the disk is gone")
-	_, err = Thumbnail(&Upload{Kind: FilePNG, Open: func() (io.ReadCloser, error) { return nil, boom }}, 64)
-	assert.True(t, errors.Is(err, boom))
 }
 
 // A small file can be a very large picture, which is read whole into memory to be scaled: it is refused by its size before it is read.

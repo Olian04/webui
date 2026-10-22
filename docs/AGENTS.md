@@ -172,6 +172,7 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 - Where files live, who may fetch them and when they go are the program's, as reloading is: a library that stored them would own a directory or a store, an address for them with its authorisation and caching, and their deletion.
 - The cost is a route of the app's own, and the rules for serving a visitor's file (attachment, `nosniff`, the sniffed type) in the docs. The demo's `uploads.go` is the example.
+- A file is held in memory for the request and never written to disk: the body is read once with `MultipartReader`, not `ParseMultipartForm`, which spools to a temporary file. Do not reintroduce a spool, a handle or a lifecycle on the field: a file too large to hold is a transaction of its own, not a form value (three designs on PR #98 that put the store behind the field all leaked it).
 - A file is of a kind by what it holds (sniffed, and for JSON, CSV and text read through), never by its name or the browser's type. There is no SVG kind, since a browser runs it.
 
 ## Tests

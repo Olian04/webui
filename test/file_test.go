@@ -61,13 +61,8 @@ func newFileShop(file func(*fileShop) webui.File[attachment], opts ...func(*webu
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			s.last = a
-			if a.Got != nil { // copied here, as an Upload is only open until Run returns
-				r, err := a.Got.Open()
-				if err != nil {
-					return webui.Outcome{}, err
-				}
-				defer func() { _ = r.Close() }() // a read-only handle: there is nothing to lose if closing fails
-				a.Data, _ = io.ReadAll(r)
+			if a.Got != nil { // copied here, as an Upload is only held until the request is answered
+				a.Data = bytes.Clone(a.Got.Data)
 				s.last = a
 			}
 			return webui.Success("Saved"), nil
@@ -193,7 +188,7 @@ func TestAnUploadIsHandedToStoreWithWhatItHoldsAndTheBaseNameOnly(t *testing.T) 
 	assert.Equal(t, s.last.Got.Name, "x.png")
 	assert.Equal(t, s.last.Got.ContentType, "image/png") // what it holds, whatever the browser said
 	assert.Equal(t, s.last.Got.Size, int64(len(pngBytes)))
-	assert.DeepEqual(t, s.last.Data, pngBytes) // copied by Run, while it was open
+	assert.DeepEqual(t, s.last.Data, pngBytes) // the whole of it, in memory
 }
 
 // The name is the base name that the browser gave, made safe: the rest of the cases are the rules package's own.

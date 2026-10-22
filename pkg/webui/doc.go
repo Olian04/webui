@@ -229,9 +229,12 @@
 //
 // A file that a visitor sends is a [File]: an input of a form, a native file chooser,
 // with the file that is stored shown above it, and in a table or a read-only form that
-// file's name, as a link when the app serves it. The library keeps no files. Store is
-// handed an [Upload] to copy where the app keeps them, Load says what is kept, and
-// where it is served from is the app's own address.
+// file's name, as a link when the app serves it. The library keeps no files: a file is
+// held in memory, in [Upload.Data], until the request is answered, and never written to
+// disk, so a File is for a file that the app can hold for each visitor that sends one at
+// once, with a MaxSize to match. Store is handed the [Upload] to copy where the app
+// keeps files, Load says what is kept, and where it is served from is the app's own
+// address.
 //
 //	webui.File[Device]{
 //		Label: "Logo", Accept: []webui.FileKind{webui.FileImage}, MaxSize: 1 << 20,
@@ -284,9 +287,10 @@
 // What the app serves it should serve as a download: Content-Disposition: attachment,
 // X-Content-Type-Options: nosniff, and the content type that the [Upload] was found to
 // have. A visitor's file sent inline from the app's origin is a page of the app's. A
-// page that has a File reads a multipart body of as much as its files may be, and runs
-// the page's Guard first, so a visitor it refuses has nothing read; an action's own
-// Guard runs after the form is bound, so the file has been received when it refuses. A
+// page that has a File reads a multipart body of as much as its files may be, in the
+// order that it is sent in, and runs the page's Guard first, so a visitor it refuses has
+// nothing read; an action's own Guard runs after the form is bound, so the file has been
+// received when it refuses. A
 // program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout
 // does not bound.
 //

@@ -71,3 +71,64 @@ func TestKindsAreMatchedFromTheMostSpecificToTheLeast(t *testing.T) {
 	assert.Equal(t, ir.FileImage.Order(), ir.FilePNG.Order()) // four of the first
 	assert.True(t, ir.FileKind("unknown").Order() > ir.FileAny.Order())
 }
+
+func TestAFileIsToldByItsFirstBytesAndByAllOfItForTheKindsOfText(t *testing.T) {
+	t.Parallel()
+
+	png := append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 600)...)
+	for _, c := range []struct {
+		name     string
+		kinds    []ir.FileKind
+		data     []byte
+		wantType string
+		wantKind ir.FileKind
+		refused  bool
+	}{
+		{"a png", []ir.FileKind{ir.FilePNG}, png, "image/png", ir.FilePNG, false},
+		{"a png where an image is taken", []ir.FileKind{ir.FileImage}, png, "image/png", ir.FilePNG, false},
+		{"a png where a pdf is taken", []ir.FileKind{ir.FilePDF}, png, "", "", true},
+		{"a png where json is taken", []ir.FileKind{ir.FileJSON}, png, "", "", true},
+		{"json", []ir.FileKind{ir.FileJSON}, []byte(`{"a": [1, 2]}`), "application/json", ir.FileJSON, false},
+		{"json that ends early", []ir.FileKind{ir.FileJSON}, []byte(`{"a": `), "", "", true},
+		{"json past the head", []ir.FileKind{ir.FileJSON}, []byte(`[` + strings.Repeat(`1,`, 1000) + `1]`), "application/json", ir.FileJSON, false},
+		{"json that goes wrong past the head", []ir.FileKind{ir.FileJSON}, []byte(`[` + strings.Repeat(`1,`, 1000) + `1,]`), "", "", true},
+		{"csv", []ir.FileKind{ir.FileCSV}, []byte("a,b\n1,2\n"), "text/csv", ir.FileCSV, false},
+		{"text that has a NUL past the head", []ir.FileKind{ir.FileText}, []byte(strings.Repeat("words ", 200) + "\x00"), "", "", true},
+		{"json, csv and text at once, which is json", []ir.FileKind{ir.FileText, ir.FileCSV, ir.FileJSON}, []byte(`{"a": 1}`), "application/json", ir.FileJSON, false},
+		{"the same, which is only csv", []ir.FileKind{ir.FileText, ir.FileCSV, ir.FileJSON}, []byte("a,b\n"), "text/csv", ir.FileCSV, false},
+		{"the same, which is only text", []ir.FileKind{ir.FileText, ir.FileCSV, ir.FileJSON}, []byte("a,\"b\n"), "text/plain; charset=utf-8", ir.FileText, false},
+		{"any file, a pdf", nil, []byte("%PDF-1.4\n%%EOF\n"), "application/pdf", ir.FilePDF, false},
+		{"any file, which is none that is named", nil, []byte(`{"a": 1}`), "text/plain; charset=utf-8", ir.FileAny, false},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			ct, kind, message := CheckFile(&ir.FileSpec{Kinds: c.kinds, Max: 1 << 20}, c.data)
+			assert.Equal(t, message != "", c.refused)
+			assert.Equal(t, ct, c.wantType)
+			assert.Equal(t, kind, c.wantKind)
+		})
+	}
+	_, _, message := CheckFile(&ir.FileSpec{Max: 10}, []byte("0123456789a"))
+	assert.Equal(t, message, "Must be at most 10 bytes.")
+}
+
+// What the first bytes tell is known before the rest has been read: the kind of an image or a PDF, and a refusal of a file that no kind takes.
+func TestWhatTheFirstBytesTellIsKnownAtTheStart(t *testing.T) {
+	t.Parallel()
+
+	spec := &ir.FileSpec{Kinds: []ir.FileKind{ir.FileImage, ir.FileJSON}}
+	sniffed, kind, message := FileHead(spec, []byte("\xff\xd8\xff\xe0\x00\x10JFIF"))
+	assert.Equal(t, message, "")
+	assert.Equal(t, kind, ir.FileJPEG)
+	assert.Equal(t, sniffed, "image/jpeg")
+
+	_, kind, message = FileHead(spec, []byte(`{"a": 1}`))
+	assert.Equal(t, message, "")
+	assert.Equal(t, kind, ir.FileAny) // told only by all of it
+
+	_, _, message = FileHead(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG, ir.FileJPEG}}, []byte("%PDF-1.4"))
+	assert.Equal(t, message, "Choose a PNG or JPEG file.")
+	_, _, message = FileHead(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG}}, []byte("plain words"))
+	assert.Equal(t, message, "Choose a PNG file.")
+}

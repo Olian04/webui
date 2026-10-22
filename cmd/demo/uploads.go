@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io"
+	"bytes"
 	"mime"
 	"net/http"
 	"strconv"
@@ -31,24 +31,18 @@ func held(b *Blob, name string) *webui.FileInfo {
 	return info
 }
 
-// keep copies an upload into where the app holds it. An upload is only open until the action has run, so it is copied here, within
-// the limit that the field set, which the library has checked and the copy is held to again. A nil upload is a file that the
-// visitor asked to remove.
+// keep copies an upload into where the app holds it. An upload is only held until the action has run, so it is copied here, within the
+// limit that the field set, which the library has checked and the copy is held to again. A nil upload is a file that the visitor asked to
+// remove.
 func keep(dst **Blob, up *webui.Upload, limit int64) {
 	if up == nil {
 		*dst = nil
 		return
 	}
-	r, err := up.Open()
-	if err != nil {
+	if int64(len(up.Data)) > limit {
 		return // what was held stays
 	}
-	defer func() { _ = r.Close() }() // a read-only handle: there is nothing to lose if closing fails
-	data, err := io.ReadAll(io.LimitReader(r, limit+1))
-	if err != nil || int64(len(data)) > limit {
-		return
-	}
-	blob := &Blob{Name: up.Name, Type: up.ContentType, Data: data}
+	blob := &Blob{Name: up.Name, Type: up.ContentType, Data: bytes.Clone(up.Data)}
 	// An image gets a small picture of itself when it is kept, twice the 32 pixels that a page shows it at, so that the page is not sent
 	// the whole of it to show a thumbnail; the full image is fetched only when the visitor opens it. Thumbnail reads PNG, JPEG and GIF: for
 	// a WebP there is none, and the page shows the name alone, which is what an app that does not scale a kind of image gets.

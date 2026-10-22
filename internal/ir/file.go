@@ -1,7 +1,5 @@
 package ir
 
-import "io"
-
 // FileKind is a kind of file that a field accepts, as the library tells it by what the file holds and not by what it is called.
 type FileKind string
 
@@ -77,19 +75,23 @@ type StoredFile struct {
 	Thumb string
 }
 
-// Upload is a file that a visitor sent, which is held on the server, in memory or in a file of its own, until the request is answered.
+// Upload is a file that a visitor sent, which is held in memory until the request is answered.
 type Upload struct {
 	Name        string // the base name that the visitor's browser gave it, made safe
 	Size        int64
 	ContentType string   // what the file holds, as the library sniffed it, and not what the browser said
 	Kind        FileKind // which of the kinds that have a name it was found to be; FileAny for none of them
-	Open        func() (io.ReadCloser, error)
+	Data        []byte   // the whole of the file
 }
 
 // Files are what a submission carried besides its values.
 type Files struct {
 	// Uploads are the file that each file field was given, by the field's name. A field that was given none is not in it.
 	Uploads map[string]*Upload
+
+	// Refused are the words for each file that was refused as it arrived, by the field's name: it was too large, or not a kind that the
+	// field takes. Such a file has no upload.
+	Refused map[string]string
 
 	// Removed are the file fields whose stored file the visitor asked to remove, by name.
 	Removed map[string]bool

@@ -306,13 +306,14 @@ design element.
   want a moment, not a flag.
 
 - **A file is a `File` accessor, and the library keeps no file.** `Store` is handed an `Upload` (a base name that is made safe, a size, the
-  content type that was sniffed, and `Open`, which streams from the spooled temporary file of `net/http`) and copies it where the app
+  content type that was sniffed, and `Data`, the whole of the file, in memory) and copies it where the app
   keeps files; `Load` returns a `*FileInfo` (name, size, URL and a thumbnail: see below) for what is kept. The library stores and serves nothing: where a file lives
-  (disk, a bucket, a database), who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a `Store` that is handed
-  the bytes (a 200 MiB file in memory, or a read that cannot be stopped), a handle that is a path (the library would own a directory),
+  (disk, a bucket, a database), who may fetch it and when it is deleted are the program's, as reloading is. Dropped: a handle that is a path (the library would own a directory), a reader over the spool of `net/http`
+  (a megabyte of a file in memory and the rest in a temporary file on the server's disk, which the library did not choose and the app could not turn off),
   and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
   route to serve what it stored, and the docs say how to serve it safely (`attachment`, `nosniff`, the sniffed type); the demo is the
-  working example.
+  working example. A `File` is for a file that can be held in memory, and a file that is too large to be (several gigabytes, on its way to an
+  object store) is not a form value at all: it is a transaction of its own, which the library does not have yet.
 
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
   `FileJSON`, `FileCSV`, `FileText`, `FileAny`), and the server reads the first 512 bytes with `http.DetectContentType` for the
@@ -366,12 +367,18 @@ design element.
   made in the page, in a canvas, from a data: address of the whole file, which is held only as long as it takes to draw it, and
   read again when the dialog is opened.
 
-- **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
+- **A form that has a file is multipart, read after the page's Guard, once, into memory.** The form's `enctype` is `multipart/form-data` only when it has
   a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte (the library sets no ceiling on a `MaxSize`: how large a file may be is the app's to say, and an early version that refused more than 256 MiB was dropped for that; the sum saturates at the largest size there is, so that an app that says "as large as it likes" for more than one file has no limit, and not a negative one), for a
   multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,
-  so a visitor it refuses has nothing read from them, and a body over the limit is "That submission was too large." An action's own `Guard`
-  runs after `Bind` (it is handed the model), so for a refused action the file has been received and is in a temporary file until the
-  request ends. A program that takes uploads sets `ReadTimeout`, which the demo does, since `ReadHeaderTimeout` does not bound a body.
+  so a visitor it refuses has nothing read from them, and a body over the limit is "That submission was too large." The body is read once, in
+  order, with `MultipartReader`, and not `ParseMultipartForm`, which keeps a megabyte in memory and writes the rest to a temporary file: the values go to
+  the form, and each file is read into memory (its first 512 bytes first, so that a file of the wrong kind is refused before the rest is held) and
+  checked, so nothing of a submission is written to disk. A file that is refused is not held, and the rest of it is read and thrown away, since a
+  browser that is not read to the end resets the connection and the visitor sees that instead of the reason; the other parts are still read, so the form
+  is drawn again with what was typed. An action's own `Guard` runs after `Bind` (it is handed the model), so for a refused action the file has been received
+  and is dropped with the request. The costs: memory for each upload that is arriving is up to its `MaxSize`, so the app sets one that it can hold
+  for as many visitors as send at once; `_leaf` names the form that the files are of, so it must come before them, as the markup of the library has it, and a
+  body that has it after is "not understood". A program that takes uploads sets `ReadTimeout`, which the demo does, since `ReadHeaderTimeout` does not bound a body.
 
 - **A file is stored only when the whole submission is accepted.** `Bind` checks every field and applies each value that passed,
   but a file is the one value that is held back until nothing is refused: a form that another field refuses has stored no file, and

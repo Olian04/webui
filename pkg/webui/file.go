@@ -2,7 +2,6 @@ package webui
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
@@ -80,9 +79,9 @@ type FileInfo struct {
 	Thumbnail string
 }
 
-// Upload is a file that a visitor sent. It is held on the server, in memory or in a file of its own, until the request is
-// answered, and then it is gone: Open is valid until the action's Run returns, so a Run that is to keep the file copies it,
-// and a Store that only notes the Upload for Run to use has not kept it.
+// Upload is a file that a visitor sent. It is held in memory, in Data, until the request is answered, and then it is gone: a Run that is
+// to keep the file copies it where the app keeps files, and a Store that only notes the Upload for Run to use has not kept it. It is
+// never written to disk by the library.
 type Upload struct {
 	// Name is what the visitor's file was called, as a base name: never a path, with the control characters taken out and at
 	// most 255 characters. It is the visitor's, so it is not to be used as a name on disk.
@@ -104,16 +103,19 @@ type Upload struct {
 	// whatever order Accept lists them in: the images and the PDF, which exclude one another, then JSON, then CSV, then text.
 	Kind FileKind
 
-	// Open reads the file from its start, as often as it is called. The caller closes it.
-	Open func() (io.ReadCloser, error)
+	// Data is the whole of the file. It is held in memory, up to the field's MaxSize, so a field that takes a large file has a MaxSize that
+	// the app can afford to hold for each visitor that is sending one at the same time.
+	Data []byte
 }
 
 // File projects a file of M that a visitor can send, and the one that the app holds. It is an input of a form: a native file
 // chooser, with the file that is stored shown above it. In a table, or where it is only read, it is the stored file's name,
 // which is a link when Load gives it a URL.
 //
-// The library keeps no files. Store is handed an [Upload], which it copies where the app keeps them, and Load says what is
-// kept; where the app serves it from is the app's own address. A file that the app serves should be sent with
+// The library keeps no files. A file is a value of the form, and is held in memory for as long as the request is: Store is handed an
+// [Upload], with the whole of the file in its Data, which the app copies where it keeps files (by Run, or by Store itself), and Load says
+// what is kept; where the app serves it from is the app's own address. Nothing is written to disk, so a File is for a file that the app can
+// hold in memory for each visitor that sends one at the same time, with a MaxSize to match: a few megabytes, an image or a document. A file that the app serves should be sent with
 // Content-Disposition: attachment, with X-Content-Type-Options: nosniff and with the content type that the Upload has, and
 // never from the page's own origin as the page it is inline in: what a visitor sent is theirs, and an HTML or SVG file that a
 // browser opens is a script that runs as the app.
@@ -123,10 +125,12 @@ type Upload struct {
 // a browser cannot refill a file chooser, so the visitor chooses the file again, which the field says. With Removable, a
 // checkbox beside the stored file calls Store with nil.
 //
-// The file is checked by what it holds, and its size, before Store sees it. A page that has a File reads the body of a
-// submission as multipart, up to the sum of the files' MaxSize and the usual limit, after the page's Guard has run, so a visitor
-// that the page refuses has nothing read from them. An action's own Guard runs after the form has been bound, so the file
-// has been received when it refuses. A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
+// The file is checked by what it holds, and its size, before Store sees it: a file that is not one of the kinds that the
+// field takes, which its first bytes tell for an image or a PDF, is refused before the rest of it is held, and one that is larger than
+// MaxSize is refused when it reaches it, and the rest of it is read and thrown away, so that the browser is answered and not reset. A page
+// that has a File reads the body of a submission as multipart, in the order that it is sent in, up to the sum of the files' MaxSize and the usual
+// limit, after the page's Guard has run, so a visitor that the page refuses has nothing read from them. An action's own Guard runs after
+// the form has been bound, so the file has been received when it refuses. A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
 //
 // It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar], which shows values and
 // has only a name to show of a file, and an [Editor]'s content is a [String] by its type.
@@ -242,7 +246,7 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 				a.Store(m.(*M), nil)
 				return
 			}
-			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Kind: fileKindOf(up.Kind), Open: up.Open})
+			a.Store(m.(*M), &Upload{Name: up.Name, Size: up.Size, ContentType: up.ContentType, Kind: fileKindOf(up.Kind), Data: up.Data})
 		}
 	}
 	f.File = spec

@@ -2,6 +2,7 @@ package rules
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -19,10 +20,7 @@ import (
 )
 
 // The words of a file that is not what the field takes.
-const (
-	msgFileUnreadable = "Could not read this file."
-	msgFileRequired   = "Choose a file."
-)
+const msgFileRequired = "Choose a file."
 
 // maxUploadName is the most characters of a file's name that are kept.
 const maxUploadName = 255
@@ -149,80 +147,98 @@ func UploadName(raw string) string {
 	return raw
 }
 
-// CheckFile checks an upload against what the field takes: that it is no larger than the field allows, and that it holds one of the
+// HeadSize is how many bytes of a file are read to tell what it is, which is what http.DetectContentType looks at.
+const HeadSize = 512
+
+// FileHead tells what a file may be from its first bytes, which is all that it takes for an image or a PDF, and refuses a file that
+// cannot be any of the kinds that the field accepts: so that a file of the wrong kind is refused before the rest of it is read. It returns the content type
+// that the bytes have, the kind that they say the file is (FileAny for a file that is none of the kinds that are told by their first bytes,
+// which is JSON, CSV or text, told only by reading all of it, or a file that nothing asked to be a kind), and the words for a file that is
+// refused.
+func FileHead(spec *ir.FileSpec, head []byte) (sniffed string, kind ir.FileKind, message string) {
+	sniffed = http.DetectContentType(head)
+	base, _, _ := strings.Cut(sniffed, ";")
+	accepted := kinds(spec)
+	for _, k := range []ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FilePDF} {
+		if binaryHolds(k, base) {
+			if len(accepted) == 0 || slices.Contains(accepted, k) {
+				return sniffed, k, ""
+			}
+			return sniffed, "", FileWrongKind(spec) // an image or a PDF is no text, and no other image
+		}
+	}
+	if len(accepted) == 0 {
+		return sniffed, ir.FileAny, ""
+	}
+	for _, k := range accepted {
+		if (k == ir.FileJSON || k == ir.FileCSV || k == ir.FileText) && base == "text/plain" {
+			return sniffed, ir.FileAny, "" // told by all of it
+		}
+	}
+	return sniffed, "", FileWrongKind(spec)
+}
+
+// CheckFile checks the whole of an upload against what the field takes: that it is no larger than the field allows, and that it holds one of the
 // kinds that it accepts. The kind is what the file holds (its first bytes, and for JSON, CSV and text the whole of it), and not
 // what it is called or what the browser said, which a visitor chooses. It returns the content type that the file was found to
 // have, the kind that it was found to be (FileAny for a file that is none of the kinds that have a name, which only a field that takes any
 // file lets in), and the words for a file that is refused.
-func CheckFile(spec *ir.FileSpec, up *ir.Upload) (contentType string, kind ir.FileKind, message string) {
-	if up.Size > spec.Max {
+func CheckFile(spec *ir.FileSpec, data []byte) (contentType string, kind ir.FileKind, message string) {
+	if int64(len(data)) > spec.Max {
 		return "", "", FileTooLarge(spec.Max)
 	}
-	r, err := up.Open()
-	if err != nil {
-		return "", "", msgFileUnreadable
+	sniffed, kind, message := FileHead(spec, data[:min(len(data), HeadSize)])
+	if message != "" {
+		return "", "", message
 	}
-	head := make([]byte, 512)
-	n, err := io.ReadFull(r, head)
-	_ = r.Close()
-	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) && !errors.Is(err, io.EOF) {
-		return "", "", msgFileUnreadable
-	}
-	sniffed := http.DetectContentType(head[:n])
 	accepted := kinds(spec)
-	if len(accepted) == 0 {
-		// Any file: it is told apart only by what its first bytes say, which is not read through, as a kind of text would be.
-		for _, k := range []ir.FileKind{ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FilePDF} {
-			if _, ok := holds(k, sniffed, up); ok {
-				return sniffed, k, ""
-			}
-		}
-		return sniffed, ir.FileAny, ""
+	if len(accepted) == 0 || kind != ir.FileAny {
+		return sniffed, kind, "" // told by its first bytes, which is not read through, as a kind of text would be
 	}
 	// The most specific kind first, whatever order the field lists them in: a JSON file that a field takes as JSON or text is JSON.
 	matching := slices.Clone(accepted)
 	slices.SortStableFunc(matching, func(a, b ir.FileKind) int { return a.Order() - b.Order() })
 	for _, k := range matching {
-		if ct, ok := holds(k, sniffed, up); ok {
+		if ct, ok := holds(k, sniffed, data); ok {
 			return ct, k, ""
 		}
 	}
 	return "", "", FileWrongKind(spec)
 }
 
-// holds is whether a file that was sniffed as a type is of the kind, and the content type that it then has.
-func holds(k ir.FileKind, sniffed string, up *ir.Upload) (string, bool) {
-	base, _, _ := strings.Cut(sniffed, ";")
+// binaryHolds is whether a file of the content type is of an image or a PDF kind.
+func binaryHolds(k ir.FileKind, base string) bool {
 	switch k {
 	case ir.FilePNG:
-		return base, base == "image/png"
+		return base == "image/png"
 	case ir.FileJPEG:
-		return base, base == "image/jpeg"
+		return base == "image/jpeg"
 	case ir.FileGIF:
-		return base, base == "image/gif"
+		return base == "image/gif"
 	case ir.FileWebP:
-		return base, base == "image/webp"
+		return base == "image/webp"
 	case ir.FilePDF:
-		return base, base == "application/pdf"
+		return base == "application/pdf"
+	case ir.FileJSON, ir.FileCSV, ir.FileText, ir.FileImage, ir.FileAny:
+	}
+	return false
+}
+
+// holds is whether a file that was sniffed as a type is of a kind that is told by reading all of it, and the content type that it then has.
+func holds(k ir.FileKind, sniffed string, data []byte) (string, bool) {
+	base, _, _ := strings.Cut(sniffed, ";")
+	switch k {
 	case ir.FileJSON:
-		return "application/json", base == "text/plain" && readsAs(up, validText) && readsAs(up, validJSON)
+		return "application/json", base == "text/plain" && validText(bytes.NewReader(data)) && validJSON(bytes.NewReader(data))
 	case ir.FileCSV:
-		return "text/csv", base == "text/plain" && readsAs(up, validText) && readsAs(up, validCSV)
+		return "text/csv", base == "text/plain" && validText(bytes.NewReader(data)) && validCSV(bytes.NewReader(data))
 	case ir.FileText:
-		return sniffed, base == "text/plain" && readsAs(up, validText)
+		return sniffed, base == "text/plain" && validText(bytes.NewReader(data))
+	case ir.FilePNG, ir.FileJPEG, ir.FileGIF, ir.FileWebP, ir.FilePDF:
+		return base, binaryHolds(k, base)
 	case ir.FileImage, ir.FileAny:
 	}
 	return "", false
-}
-
-// readsAs is whether the upload, read from its start, is what check says it is.
-func readsAs(up *ir.Upload, check func(io.Reader) bool) bool {
-	r, err := up.Open()
-	if err != nil {
-		return false
-	}
-	defer func() { _ = r.Close() }() // a read-only handle: there is nothing to lose if closing fails
-	return check(r)
 }
 
 // validText is text that a person could read: UTF-8, with no NUL, and not empty.
