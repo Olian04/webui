@@ -58,9 +58,6 @@ func fileKindOf(k ir.FileKind) FileKind {
 	return FileAny
 }
 
-// maxFileSize is the most that a [File] may be allowed to take, which is a bound on what a mistake can ask of the server.
-const maxFileSize = 256 << 20
-
 // defaultFileSize is what a [File] with no MaxSize takes.
 const defaultFileSize = 5 << 20
 
@@ -147,7 +144,7 @@ type File[M any] struct {
 	// Accept lists the kinds of file that the field takes. Left empty it takes any file.
 	Accept []FileKind
 
-	// MaxSize is the most bytes that a file may have; 5 MiB when it is 0. A negative size, or one over 256 MiB, is a compile error.
+	// MaxSize is the most bytes that a file may have; 5 MiB when it is 0. How large is the app's to say, and the library sets no ceiling of its own; a negative size is a compile error.
 	MaxSize int64
 
 	// Required says the model must have a file: one that is stored and is not being removed, or a new one.
@@ -185,8 +182,8 @@ func validateFile[M any](v *bodyValidator, at string, a File[M]) {
 	case a.Required && a.Store == nil:
 		v.add(at+" is Required but has no Store", "A file that is required is one that can be sent: set Store, or remove Required.")
 	}
-	if a.MaxSize < 0 || a.MaxSize > maxFileSize {
-		v.add(fmt.Sprintf("%s has MaxSize %d", at, a.MaxSize), "Use a size from 1 byte to 256 MiB, or leave it 0 for 5 MiB.")
+	if a.MaxSize < 0 {
+		v.add(fmt.Sprintf("%s has MaxSize %d", at, a.MaxSize), "Use a size in bytes, or leave it 0 for 5 MiB.")
 	}
 	for i, k := range a.Accept {
 		if int(k) > int(FileAny) {

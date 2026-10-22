@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -531,7 +532,6 @@ func TestAFileIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Removable: true}), "is Removable but has no Store")
 	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Required: true}), "is Required but has no Store")
 	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Store: store, MaxSize: -1}), "has MaxSize -1")
-	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Store: store, MaxSize: 257 << 20}), "has MaxSize")
 	assert.Contains(t, problems(webui.File[attachment]{Load: load, Store: store}), "has no Label")
 }
 
@@ -555,4 +555,52 @@ func TestAFileInATableIsItsNameAndALink(t *testing.T) {
 	assert.Contains(t, body, `plan.pdf`)
 	assert.Contains(t, body, `href="/files/plan"`)
 	assert.Contains(t, body, `<span class="sr-only">empty</span>`)
+}
+
+// The size a file may be is the app's to say, as large as it likes: the library has no ceiling of its own, and the limit of a body that is the sum of
+// the files' sizes does not overflow when the app says the largest size there is, more than once.
+func TestTheSizeOfAFileIsTheAppsToSayWithNoCeilingAndNoOverflow(t *testing.T) {
+	t.Parallel()
+
+	var stored atomic.Int32
+	file := func(label string) webui.File[attachment] {
+		return webui.File[attachment]{
+			Label: label, MaxSize: math.MaxInt64,
+			Load:  func(attachment) *webui.FileInfo { return nil },
+			Store: func(*attachment, *webui.Upload) { stored.Add(1) },
+		}
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
+		Load:   func(context.Context) (attachment, error) { return attachment{Title: "Report"}, nil },
+		Fields: []webui.Accessor[attachment]{file("One"), file("Two"), file("Three")},
+		Submit: webui.Action[attachment]{Run: func(context.Context, attachment) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
+	}}}}.MustCompile("/admin")
+
+	rec := multipartPost(h, "/admin/f", map[string]string{"f0": ""}, part{"f0", "a.bin", "some bytes"})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "oSaved") // and not "That submission was too large."
+	assert.Equal(t, stored.Load(), int32(1))
+}
+
+// A negative size is still a mistake, and any other size, however large, is the app's.
+func TestAFileOfAnySizeCompilesAndANegativeOneDoesNot(t *testing.T) {
+	t.Parallel()
+
+	file := func(size int64) webui.App {
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
+			Load: func(context.Context) (attachment, error) { return attachment{}, nil },
+			Fields: []webui.Accessor[attachment]{webui.File[attachment]{
+				Label: "F", MaxSize: size, Load: func(attachment) *webui.FileInfo { return nil }, Store: func(*attachment, *webui.Upload) {},
+			}},
+		}}}}
+	}
+	for _, size := range []int64{1, 5 << 20, 1 << 30, 1 << 50, math.MaxInt64} {
+		_, err := file(size).Compile("/admin")
+		assert.NoError(t, err)
+	}
+	var found bool
+	for _, e := range compileErrors(t, file(-1)) {
+		found = found || strings.Contains(e.Error(), "has MaxSize -1")
+	}
+	assert.True(t, found)
 }
