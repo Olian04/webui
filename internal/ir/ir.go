@@ -82,4 +82,5 @@ var (
 	_ Node = (*Tabs)(nil)
 	_ Node = (*Form)(nil)
 	_ Node = (*Table)(nil)
+	_ Node = (*FileUpload)(nil)
 )

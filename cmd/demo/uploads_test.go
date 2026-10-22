@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"image"
 	"image/png"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/textproto"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -166,4 +169,55 @@ func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *test
 	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "photo.webp", webp}).Code, http.StatusSeeOther)
 	assert.False(t, strings.Contains(get(h, "/admin/settings").Body.String(), "file-thumb"))
 	assert.Equal(t, get(h, "/uploads/logo/thumb").Code, http.StatusNotFound)
+}
+
+// postFirmware posts the one file of the Firmware panel, as a browser does: the leaf first.
+func postFirmware(h http.Handler, name string, data []byte) *httptest.ResponseRecorder {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	_ = w.WriteField("_leaf", "p.0")
+	hdr := textproto.MIMEHeader{}
+	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+name+`"`)
+	hdr.Set("Content-Type", "application/octet-stream")
+	p, _ := w.CreatePart(hdr)
+	_, _ = p.Write(data)
+	_ = w.Close()
+	req := httptest.NewRequest(http.MethodPost, "/admin/firmware", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// A file of any size goes to the panel's Receive as it arrives: here it is hashed, and what it was is kept, and none of it.
+func TestTheFirmwarePanelHashesAFileAsItArrivesAndKeepsOnlyWhatItWas(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/firmware").Body.String()
+	assert.Contains(t, body, "Upload firmware")
+	assert.Contains(t, body, `enctype="multipart/form-data"`)
+	assert.Contains(t, body, "Up to 2 GiB")
+
+	data := bytes.Repeat([]byte("firmware "), 300_000) // a few megabytes, which are never held
+	sum := sha256.Sum256(data)
+	rec := postFirmware(h, "../images/collector-1.2.bin", data)
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "oReceived collector-1.2.bin, sha256 "+hex.EncodeToString(sum[:])[:12]+"…")
+
+	after := get(h, "/admin/firmware").Body.String()
+	assert.Contains(t, after, "collector-1.2.bin")
+	assert.Contains(t, after, hex.EncodeToString(sum[:]))
+	assert.Contains(t, after, strconv.Itoa(len(data)))
+}
+
+// A viewer sees the panel disabled, with the reason, and a post that is made by hand is refused.
+func TestAViewerSeesTheFirmwarePanelDisabledAndCannotUpload(t *testing.T) {
+	viewer := handlerAs(t, Viewer)
+	body := get(viewer, "/admin/firmware").Body.String()
+	assert.Contains(t, body, "Upload firmware")
+	assert.Contains(t, body, "Requires the editor role")
+	assert.Contains(t, body, "disabled")
+
+	rec := postFirmware(viewer, "x.bin", []byte("data"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "eRequires the editor role")
 }

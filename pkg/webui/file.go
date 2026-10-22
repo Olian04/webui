@@ -115,7 +115,7 @@ type Upload struct {
 // The library keeps no files. A file is a value of the form, and is held in memory for as long as the request is: Store is handed an
 // [Upload], with the whole of the file in its Data, which the app copies where it keeps files (by Run, or by Store itself), and Load says
 // what is kept; where the app serves it from is the app's own address. Nothing is written to disk, so a File is for a file that the app can
-// hold in memory for each visitor that sends one at the same time, with a MaxSize to match: a few megabytes, an image or a document. A file that the app serves should be sent with
+// hold in memory for each visitor that sends one at the same time, with a MaxSize to match: a few megabytes, an image or a document. A file that is too large for that is a [FileUpload]. A file that the app serves should be sent with
 // Content-Disposition: attachment, with X-Content-Type-Options: nosniff and with the content type that the Upload has, and
 // never from the page's own origin as the page it is inline in: what a visitor sent is theirs, and an HTML or SVG file that a
 // browser opens is a script that runs as the app.

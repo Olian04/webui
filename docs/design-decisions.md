@@ -313,7 +313,27 @@ design element.
   and a download route of the library's own (it would own serving, and caching and authorisation with it). The cost: the app writes a
   route to serve what it stored, and the docs say how to serve it safely (`attachment`, `nosniff`, the sniffed type); the demo is the
   working example. A `File` is for a file that can be held in memory, and a file that is too large to be (several gigabytes, on its way to an
-  object store) is not a form value at all: it is a transaction of its own, which the library does not have yet.
+  object store) is not a form value at all: it is a `FileUpload`, a transaction of its own (see below).
+
+- **A file too large to hold is a `FileUpload` panel, whose action is handed the file as a reader.** A form field is one value in a single
+  transaction (bind, rules, Guard, `Run`, all-or-nothing), which is why a file in a form is held in memory and checked with the rest: a stream
+  of several gigabytes to an object store is not part of that, and three designs that put the store behind the field (a writer with `Submit` and
+  `Discard`, a typed token with `Commit` and `Discard`, an `UploadSpool` that `Store` is handed a handle of) each leaked how a file is stored into
+  every form with a file, and made the form's order the upload's lifecycle. A `FileUpload` is a leaf of its own with its own POST, so none of that is
+  there: `Receive` is an `Action[FileHandle]`, the `FileHandle` (name, sniffed content type, kind and a `Reader`) is its subject, and its `Run` is the upload,
+  which reads the `Reader` wherever it goes and returns an `Outcome`; the Guard, which is the action's, decides how the panel is drawn (asked with a
+  `FileHandle` that has no reader: `Disabled` disables, any other error leaves the panel out) and refuses the post. It is not generic: a panel's type
+  parameter is its loaded model, and this has none, so what `Run` needs of the page it reads with `ArgsOf`. One file per panel, in one request, with no other
+  fields: what the app wants of the file besides it is a second step. The first 512 bytes are read before the Guard, so that it can see the kind, and the
+  `Reader` is held to `MaxSize`, which is required and has no default (the cap is the app's to say, as for a `File`); a file larger than it is refused as
+  "Must be at most …", whether `Run` read to the end or stopped early (what it did not read is read by the library, bounded by the limit of the body, so that the
+  browser is answered and not reset). Only the kinds that the first bytes tell can be accepted (the images, PDF and any file), since the file is read once, by
+  `Run`: JSON, CSV and text are told by all of the file, and are a `File`'s. Dropped: the same panel as a form with `Open`, `Commit` and `Discard`; a
+  generic panel of the page's arguments; several files in one request (a result and a failure for each, and partial success); a progress bar and
+  upload by script (below). The costs: a visitor that the Guard refuses has only the first 512 bytes of the file read, and a browser that was sending a
+  large file may see the connection closed; a `Run` that fails after a partial write to a store leaves it for the app to clean up, which the library cannot,
+  not knowing the store; and the browser's own load indicator is the only progress, since the input stays the control and the post is the browser's own
+  (the earlier decision), which an `XMLHttpRequest` with a `<progress>` would reverse, and is a decision of its own.
 
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
   `FileJSON`, `FileCSV`, `FileText`, `FileAny`), and the server reads the first 512 bytes with `http.DetectContentType` for the

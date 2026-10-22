@@ -138,8 +138,9 @@
 // # Layouts
 //
 // A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
-// [Markdown] are leaves; they load their own data and refresh on their own, and a
-// [Toolbar] is a leaf that is a row of controls. [Stack], [Split] and [Tabs] arrange
+// [Markdown] are leaves; they load their own data and refresh on their own, a
+// [Toolbar] is a leaf that is a row of controls, and a [FileUpload] is a leaf that is a
+// panel for sending one large file. [Stack], [Split] and [Tabs] arrange
 // other bodies and nest:
 //
 //	Body: webui.Stack{
@@ -283,6 +284,33 @@
 // [ErrThumbnail] for a kind that it does not read (anything but PNG, JPEG and GIF), a
 // damaged file, or a picture of more than 25 million pixels, which is held whole in
 // memory to be scaled.
+//
+// A file that is too large to be held in memory, which is a File's limit, is not a form's
+// value at all: it is a [FileUpload], a panel of its own. Its Receive is an [Action] whose
+// subject is the [FileHandle], the file as it arrives, and whose Run reads it from the
+// handle's Reader wherever it is to go, an object store, with nothing held by the library,
+// in memory or on disk, and says how it ended with an [Outcome]:
+//
+//	webui.FileUpload{
+//		Title: "Upload firmware", MaxSize: 2 << 30,
+//		Receive: webui.Action[webui.FileHandle]{
+//			Guard: canEdit,
+//			Run: func(ctx context.Context, f webui.FileHandle) (webui.Outcome, error) {
+//				if _, err := bucket.PutObject(ctx, "firmware/"+f.Name, f.Reader); err != nil {
+//					return webui.Outcome{}, err
+//				}
+//				return webui.Success("Uploaded " + f.Name), nil
+//			},
+//		},
+//	}
+//
+// It is a native form with one file and a button, and the chooser is the same frame that
+// a file can be dropped on. The Guard is asked when the panel is drawn, which draws it
+// disabled for [Disabled] and leaves it out for any other error, and again when the file
+// arrives, after its first 512 bytes, which tell its kind, and before more. MaxSize has no
+// default, since how large is the app's to say, and is held to as the file is read.
+// Only the kinds that the first bytes tell can be taken, as the file is read once. See
+// [FileUpload].
 //
 // What the app serves it should serve as a download: Content-Disposition: attachment,
 // X-Content-Type-Options: nosniff, and the content type that the [Upload] was found to
