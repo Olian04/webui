@@ -2,9 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"mime"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -112,4 +117,51 @@ func serveUpload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(b.Data)))
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(b.Data)
+}
+
+// A file too large to be held, which is a panel of its own and not a field of a form: a firmware image of up to 2 GiB. Receive is handed the file as
+// it arrives, and reads it from the Reader wherever it is to go, which for an app is an object store. Here it is hashed, as it is read, and only what it
+// was is kept: nothing of the file is held, in memory or on disk. The Guard is asked when the page is drawn, which is how a viewer sees a panel that is
+// disabled and says why, and again when the file arrives, which is what refuses a post that is made by hand.
+var FirmwarePage = webui.Page[webui.NoArgs]{
+	Path: "/firmware",
+	Nav:  webui.Nav{Label: "Firmware", Icon: "database", Section: "Operations"},
+	Body: webui.Stack{
+		webui.FileUpload{
+			Title: "Upload firmware", Desc: "A FileUpload: one file, of any size up to its MaxSize, handed to Receive as it arrives. The demo hashes it as it is read and keeps only what it was.",
+			Help:    "The image to roll out to the collectors. It is hashed on the way in, and not kept.",
+			MaxSize: 2 << 30,
+			Receive: webui.Action[webui.FileHandle]{
+				Label: "Upload",
+				Guard: func(ctx context.Context, _ webui.FileHandle) error {
+					if RoleOf(ctx) != Editor {
+						return webui.Disabled("Requires the editor role")
+					}
+					return nil
+				},
+				Run: func(_ context.Context, f webui.FileHandle) (webui.Outcome, error) {
+					sum := sha256.New()
+					size, err := io.Copy(sum, f.Reader) // all of it, as it comes: this is how the file is known to be whole
+					if err != nil {
+						return webui.Outcome{}, err //nolint:wrapcheck // a failing read of the body, which the library answers
+					}
+					digest := hex.EncodeToString(sum.Sum(nil))
+					service.SetFirmware(Firmware{Name: f.Name, Size: int(size), SHA256: digest, At: time.Now().Format("Jan 2 15:04")})
+					return webui.Success("Received " + f.Name + ", sha256 " + digest[:12] + "…"), nil
+				},
+			},
+		},
+		webui.Form[Firmware]{
+			Title: "Last upload",
+			Load:  func(context.Context) (Firmware, error) { return service.Firmware(), nil },
+			Fields: []webui.Accessor[Firmware]{
+				webui.Group[Firmware]{
+					webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
+					webui.Int[Firmware]{Label: "Bytes", Load: func(f Firmware) int { return f.Size }},
+				},
+				webui.String[Firmware]{Label: "SHA-256", Load: func(f Firmware) string { return f.SHA256 }},
+				webui.String[Firmware]{Label: "Received", Load: func(f Firmware) string { return f.At }},
+			},
+		},
+	},
 }

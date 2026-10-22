@@ -88,7 +88,8 @@ does, and they let you design before you look up names.
   request, so there is no second rule to keep in step. What the guard returns also says how: an
   ordinary error leaves the control out, and `webui.Disabled("why")` draws it disabled with that
   sentence. Choose by whether the visitor ought to know that the control exists.
-- **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: `Store` is handed a file to copy, and `Load` says what is kept. Do not
+- **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: a `File` in a form is held in memory for the request and `Store` is handed it
+  to copy, a file too large for that is a `FileUpload` panel whose `Receive` action reads it as a stream, and `Load` says what is kept. Do not
   look for a place in the library to put them, or to serve them from.
 - **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, not a panel, and it shows values and does not take input: a page
   whose arguments the visitor sets is a `Form`.

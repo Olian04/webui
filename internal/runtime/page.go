@@ -244,6 +244,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return p.markdown(ctx, req, page, n), nil
 	case *ir.Toolbar:
 		return p.toolbar(ctx, req, page, n), nil
+	case *ir.FileUpload:
+		return p.fileUpload(ctx, req, page, n), nil
 	case *ir.Form:
 		var sub *submission
 		if req.sub != nil && req.subLeaf == render.LeafID(n.At) {

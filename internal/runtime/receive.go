@@ -61,12 +61,15 @@ func writableFile(fields []ir.Field, name string) *ir.FileSpec {
 	return nil
 }
 
+// uploadField is the name of the file input of a FileUpload.
+const uploadField = "file"
+
 // receive reads a multipart body in the order that it arrives, once, holding only the values and the files that the form takes: a file is read into
 // memory, as far as the field lets it be, and not into the temporary file that net/http's ParseMultipartForm would write what is more than a
 // megabyte to, so that nothing of a submission is written to disk. The leaf that the form is of must come before its files, as the markup of the
 // library has it, since the files are the form's. It sets r.PostForm to the values, so that what follows reads them as it does those of a
 // body that was not multipart, and answers the request itself when it cannot go on.
-func (p *Program) receive(w http.ResponseWriter, r *http.Request, leaves map[string]ir.Node, rec *received, valueLimit int64) bool {
+func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, leaves map[string]ir.Node, rec *received, valueLimit int64) bool {
 	mr, err := r.MultipartReader()
 	if err != nil {
 		p.refuse(w, r, unreadable(err))
@@ -102,6 +105,14 @@ func (p *Program) receive(w http.ResponseWriter, r *http.Request, leaves map[str
 		if !known {
 			p.refuse(w, r, notUnderstood)
 			return false
+		}
+		if upload, ok := leaf.(*ir.FileUpload); ok {
+			// A panel that is for one file, of any size: the file is not held, and is handed to the action as it arrives, which answers the request.
+			if name == uploadField {
+				p.uploadAct(w, r, page, req, upload, part)
+				return false
+			}
+			continue
 		}
 		form, _ := leaf.(*ir.Form)
 		if form == nil || rec.seen(name) {

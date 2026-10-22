@@ -8,14 +8,19 @@ import (
 	"github.com/a-h/templ"
 )
 
-// editsFile is whether a page body has a file that the visitor can choose: a file field of a form that can be submitted.
+// editsFile is whether a page body has a file that the visitor can choose: a file field of a form that can be submitted, or a file upload panel.
 func editsFile(body ir.Node) bool {
 	found := false
 	ir.Walk(body, func(n ir.Node) {
-		if form, ok := n.(*ir.Form); ok && form.Submit != nil {
-			for f := range ir.Leaves(form.Fields) {
-				found = found || (f.File != nil && f.Writable())
+		switch n := n.(type) {
+		case *ir.Form:
+			if n.Submit != nil {
+				for f := range ir.Leaves(n.Fields) {
+					found = found || (f.File != nil && f.Writable())
+				}
 			}
+		case *ir.FileUpload:
+			found = true
 		}
 	})
 	return found
@@ -36,10 +41,13 @@ type fileClient struct {
 }
 
 // fileAttrs are the attributes of a file chooser that script reads.
-func fileAttrs(f ir.Field) templ.Attributes {
+func fileAttrs(f ir.Field) templ.Attributes { return fileAttrsOf(f.File) }
+
+// fileAttrsOf is fileAttrs for what a file input takes.
+func fileAttrsOf(spec *ir.FileSpec) templ.Attributes {
 	c := fileClient{
-		Max: f.File.Max, MaxMessage: rules.FileTooLarge(f.File.Max), Accept: rules.FileAccepts(f.File),
-		KindMessage: rules.FileWrongKind(f.File), Image: rules.AcceptsImages(f.File),
+		Max: spec.Max, MaxMessage: rules.FileTooLarge(spec.Max), Accept: rules.FileAccepts(spec),
+		KindMessage: rules.FileWrongKind(spec), Image: rules.AcceptsImages(spec),
 	}
 	b, err := json.Marshal(c)
 	if err != nil {

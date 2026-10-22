@@ -1,0 +1,32 @@
+package ir
+
+import "io"
+
+// FileUpload is a leaf that is a panel for sending one file, of any size, to the app, which reads it as it arrives. It has no model: what it
+// shows is its own, and what it does is its Receive.
+type FileUpload struct {
+	At Addr
+
+	Title, Desc string
+	Help        string
+
+	// Spec is what the panel takes: its Kinds and its Max. Only the kinds that the first bytes tell are allowed, since the file is read once, by the app.
+	Spec *FileSpec
+
+	// Receive is the action that does the upload: its Run is handed the file as its subject, which Subject makes, and its Label is the button.
+	Receive *Action
+
+	// Subject makes the subject of Receive for a file: what is known of it, and the reader that has all of it. The panel is drawn with the zero
+	// Incoming (of kind FileAny) and no reader, to ask the Guard whether it is for this visitor.
+	Subject func(in Incoming, r io.Reader) any
+}
+
+// Incoming is what is known of a file when it begins to arrive: its first bytes have been read, and nothing more.
+type Incoming struct {
+	Name        string
+	ContentType string
+	Kind        FileKind
+}
+
+// Addr reports the node's position in the body tree.
+func (f *FileUpload) Addr() Addr { return f.At }

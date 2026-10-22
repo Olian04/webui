@@ -12,6 +12,7 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
+	"github.com/Olian04/webui/internal/rules"
 )
 
 // maxBody bounds a submission. An admin form is a few fields; a megabyte is
@@ -29,7 +30,7 @@ func leavesOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
 	ir.Walk(root, func(n ir.Node) {
 		switch n.(type) {
-		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Toolbar:
+		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Toolbar, *ir.FileUpload:
 			out[render.LeafID(n.Addr())] = n
 		}
 	})
@@ -65,6 +66,8 @@ func actionable(leaves map[string]ir.Node) bool {
 			if slices.ContainsFunc(n.Items, func(it ir.ToolbarItem) bool { return it.Action != nil }) {
 				return true
 			}
+		case *ir.FileUpload:
+			return true
 		}
 	}
 	return false
@@ -107,7 +110,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
 		// refuses has nothing of theirs received.
 		rec := &received{}
-		if multipart && !p.receive(w, r, leaves, rec, valueLimit) {
+		if multipart && !p.receive(w, r, page, req, leaves, rec, valueLimit) {
 			return
 		}
 		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
@@ -117,6 +120,9 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			p.tableAct(w, r, page, req, n)
 		case *ir.Toolbar:
 			p.toolbarAct(w, r, page, req, n)
+		case *ir.FileUpload:
+			// A file is received as it arrives, while the body is read, and answers the request itself: this is a post that sent none.
+			p.refuse(w, r, rules.FileRequired())
 		default:
 			p.refuse(w, r, notUnderstood)
 		}
@@ -136,12 +142,15 @@ func unreadable(err error) string {
 func fileBudget(leaves map[string]ir.Node) int64 {
 	var total int64
 	for _, n := range leaves {
-		if form, ok := n.(*ir.Form); ok {
-			for f := range ir.Leaves(form.Fields) {
+		switch n := n.(type) {
+		case *ir.Form:
+			for f := range ir.Leaves(n.Fields) {
 				if f.File != nil && f.File.Store != nil {
 					total = addCapped(total, f.File.Max)
 				}
 			}
+		case *ir.FileUpload:
+			total = addCapped(total, n.Spec.Max)
 		}
 	}
 	return total

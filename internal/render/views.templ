@@ -587,6 +587,35 @@ templ (r *Renderer) toolbarItems(v ToolbarView) {
 	}
 }
 
+// FileUpload is a panel for sending one file, of any size, to the app. It is a form of its own, which posts to the page: the leaf comes first, so that
+// the body says whose file it is before the file begins, and then the one file, which is not held anywhere on the way. It has no fields besides
+// the file. A visitor whom its Guard refuses with Disabled has the chooser and the button disabled, with the reason, and one whom it refuses
+// with any other error has no panel.
+templ (r *Renderer) FileUpload(v FileUploadView) {
+	if v.Gate.Drawn() {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}) {
+			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: templ.Attributes{"enctype": "multipart/form-data"}}) {
+				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+				<div class="panel-body pad">
+					@c.Field(c.FieldProps{For: v.inputID(), Label: "File", Required: true, Rules: v.ruleLines(), Help: v.Node.Help}) {
+						@c.FileInput(c.FileInputProps{
+							ID: v.inputID(), Name: uploadField, Accept: rules.FileAccept(v.Node.Spec), Required: v.Gate.Reason == "", Attrs: v.attrs(),
+						})
+					}
+				</div>
+				<div class="panel-foot end">
+					@c.Button(c.ButtonProps{
+						Variant: variant(v.Node.Receive.Role), Size: c.SizeSmall, Guard: v.Gate.Reason,
+						Confirm: v.Node.Receive.Confirm, ConfirmID: confirmID(v.Node.At, "upload", 0),
+					}) {
+						{ v.Node.Receive.Label }
+					}
+				</div>
+			}
+		}
+	}
+}
+
 // Tabs is the strip and the selected panel, in one element, so that a layout that arranges its children (a Split puts
 // them in a grid) sees one child. The strip is links, because the selected tab is a page argument: it is in the
 // address, survives a reload, and works without script.
