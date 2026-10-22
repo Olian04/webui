@@ -1,6 +1,9 @@
 package ir
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 // FileKind is a kind of file that a field accepts, as the library tells it by what the file holds and not by what it is called.
 type FileKind string
@@ -64,6 +67,27 @@ type FileSpec struct {
 
 	// Store hands a file to the model: a new upload, or nil for a file that is removed. It is nil for a field that is only read.
 	Store func(model any, up *Upload)
+
+	// Open is where a new file is written, as it arrives, with the model as it was loaded. It is set whenever Store is.
+	Open func(ctx context.Context, model any, in Incoming) (FileWriter, error)
+}
+
+// FileWriter is where the bytes of a file go, and what is done with them when the submission is decided.
+type FileWriter interface {
+	io.WriteCloser
+
+	// Submit makes what was written permanent: the submission was accepted.
+	Submit() error
+
+	// Discard removes what was written: the submission was not accepted.
+	Discard() error
+}
+
+// Incoming is what is known of a file when it begins to arrive.
+type Incoming struct {
+	Name        string
+	ContentType string
+	Kind        FileKind
 }
 
 // StoredFile is a file that the app holds: what the page says of it.
@@ -77,19 +101,22 @@ type StoredFile struct {
 	Thumb string
 }
 
-// Upload is a file that a visitor sent, which is held on the server, in memory or in a file of its own, until the request is answered.
+// Upload is a file that a visitor sent, and was written to where the app keeps it.
 type Upload struct {
 	Name        string // the base name that the visitor's browser gave it, made safe
 	Size        int64
 	ContentType string   // what the file holds, as the library sniffed it, and not what the browser said
 	Kind        FileKind // which of the kinds that have a name it was found to be; FileAny for none of them
-	Open        func() (io.ReadCloser, error)
 }
 
 // Files are what a submission carried besides its values.
 type Files struct {
 	// Uploads are the file that each file field was given, by the field's name. A field that was given none is not in it.
 	Uploads map[string]*Upload
+
+	// Refused are the words for each file that was refused as it arrived, by the field's name: it was too large, or not a kind that the
+	// field takes, or could not be written.
+	Refused map[string]string
 
 	// Removed are the file fields whose stored file the visitor asked to remove, by name.
 	Removed map[string]bool

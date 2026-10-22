@@ -132,21 +132,19 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string, file
 	return m, errs
 }
 
-// bindFile is what a submission does to a file field: the words for a file that is refused, or what to do to the model, which
+// bindFile is what a submission does to a file field: the words for a file that was refused as it arrived, or what to do to the model, which
 // is nothing when the visitor chose no file and asked for nothing. A file that is chosen replaces one that is asked to be removed.
 func bindFile(f ir.Field, base any, files *ir.Files) (message string, store func(model any)) {
 	var up *ir.Upload
 	removed := false
 	if files != nil {
+		if msg := files.Refused[f.Name]; msg != "" {
+			return msg, nil
+		}
 		up, removed = files.Uploads[f.Name], files.Removed[f.Name] && f.File.Removable
 	}
 	switch {
 	case up != nil:
-		contentType, kind, msg := rules.CheckFile(f.File, up)
-		if msg != "" {
-			return msg, nil
-		}
-		up.ContentType, up.Kind = contentType, kind
 		return "", func(m any) { f.File.Store(m, up) }
 	case removed:
 		if f.Rules.Required {

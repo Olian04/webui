@@ -59,7 +59,7 @@ func (p *Program) toolbarAct(w http.ResponseWriter, r *http.Request, page *ir.Pa
 		return
 	}
 	action := n.Items[index].Action
-	outcome, ok := p.perform(w, r, page, req, action, req.Args, fmt.Sprintf("action %q", n.Items[index].Label))
+	outcome, ok := p.perform(w, r, page, req, action, req.Args, fmt.Sprintf("action %q", n.Items[index].Label), nil)
 	if !ok {
 		return
 	}

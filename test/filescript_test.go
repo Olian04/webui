@@ -58,6 +58,7 @@ func TestAPageLinksTheFileScriptOnlyWhenItHasAFileToChoose(t *testing.T) {
 		Fields: []webui.Accessor[attachment]{webui.File[attachment]{
 			Label: "Attachment", Load: func(a attachment) *webui.FileInfo { return a.Held },
 			Store: func(*attachment, *webui.Upload) {},
+			Open:  func(context.Context, attachment, webui.Incoming) (webui.FileWriter, error) { return nopWriter(), nil },
 		}},
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/f").Body.String()

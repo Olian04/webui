@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"net/http"
 	"slices"
@@ -13,7 +12,6 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
-	"github.com/Olian04/webui/internal/rules"
 )
 
 // maxBody bounds a submission. An admin form is a few fields; a megabyte is
@@ -24,10 +22,6 @@ const maxBody = 1 << 20
 // body and may be large. A Content.Rules.MaxLen is how an application bounds it
 // further.
 const maxEditorBody = 16 << 20
-
-// uploadMemory is how much of a multipart submission is held in memory: what is more is written to files of their own, which
-// the server removes when the request is answered.
-const uploadMemory = 1 << 20
 
 // leavesOf maps each leaf's id to its node, so a POST can name one and nothing
 // else: the id comes from position, never from anything the user typed.
@@ -93,6 +87,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		if hasEditor(leaves) {
 			limit = maxEditorBody
 		}
+		valueLimit := limit // what the values of a multipart body may come to, which is what a body that is not multipart may
 		// A page with a file field takes a multipart body of as much as its files may be, besides the usual: which is the
 		// limit of that kind of body, and of no other that is posted to it.
 		multipart := budget > 0 && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
@@ -110,17 +105,16 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 			return
 		}
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
-		// refuses has nothing of theirs received.
-		if multipart {
-			//nolint:gosec // G120: the body was limited above, by http.MaxBytesReader, to what the files may be.
-			if err := r.ParseMultipartForm(uploadMemory); err != nil {
-				p.refuse(w, r, unreadable(err))
-				return
-			}
+		// refuses has nothing of theirs received. Every file that is written is settled, with Submit when the submission is accepted
+		// (in perform) and with Discard in every other end of the request, which is this defer, a panic included.
+		rec := &received{}
+		defer rec.discard(p.log)
+		if multipart && !p.receive(w, r, page, req, leaves, rec, valueLimit) {
+			return
 		}
 		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
 		case *ir.Form:
-			p.submit(w, r, page, req, n)
+			p.submit(w, r, page, req, n, rec)
 		case *ir.Table:
 			p.tableAct(w, r, page, req, n)
 		case *ir.Toolbar:
@@ -164,56 +158,24 @@ func addCapped(a, b int64) int64 {
 	return a + b
 }
 
-// uploadsOf are the files that a submission carried, for the form's file fields: the first of each field that is not an empty
-// part, which is what a chooser that was left alone sends, and the stored files that the visitor asked to remove. It is nil when
-// there are none, which is the usual.
-func uploadsOf(r *http.Request, fields []ir.Field) *ir.Files {
-	var out *ir.Files
-	add := func() {
-		if out == nil {
-			out = &ir.Files{Uploads: map[string]*ir.Upload{}, Removed: map[string]bool{}}
-		}
-	}
-	for f := range ir.Leaves(fields) {
-		if f.File == nil || f.File.Store == nil {
-			continue
-		}
-		if r.MultipartForm != nil {
-			for _, fh := range r.MultipartForm.File[f.Name] {
-				if fh.Filename == "" || fh.Size == 0 {
-					continue
-				}
-				add()
-				out.Uploads[f.Name] = &ir.Upload{
-					Name: rules.UploadName(fh.Filename), Size: fh.Size,
-					Open: func() (io.ReadCloser, error) { return fh.Open() },
-				}
-				break
-			}
-		}
-		if slices.Contains(r.PostForm["_rm"], f.Name) {
-			add()
-			out.Removed[f.Name] = true
-		}
-	}
-	return out
-}
-
 // notUnderstood is what a POST that names no leaf, or no action, that the page has is answered with.
 const notUnderstood = "That request was not understood."
 
 // submit binds and runs a form's Submit.
-func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form) {
+func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form, rec *received) {
 	ctx := r.Context()
 	if n.Submit == nil {
 		p.refuse(w, r, notUnderstood)
 		return
 	}
 
-	base, err := timed(p, page, formKind(n), func() (any, error) { return n.Load(ctx) })
-	if err != nil {
-		p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
-		return
+	base := rec.model // as it was loaded when a file began to arrive, which is the model the file's writer was opened with
+	if !rec.loaded {
+		var err error
+		if base, err = timed(p, page, formKind(n), func() (any, error) { return n.Load(ctx) }); err != nil {
+			p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
+			return
+		}
 	}
 	values := map[string]string{}
 	selects := selectNames(n.Fields)
@@ -232,13 +194,13 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("form options: %w", err))
 		return
 	}
-	model, errs := n.Bind(resolved.Fields, base, values, uploadsOf(r, resolved.Fields))
+	model, errs := n.Bind(resolved.Fields, base, values, rec.filesFor(r, resolved.Fields))
 	if len(errs) > 0 {
 		p.m.Action(page.PathTemplate, "invalid") // the rules refused it before anything ran
 		p.returnToForm(w, r, page, req, n, model, values, errs, fieldsToast(len(errs)))
 		return
 	}
-	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit")
+	outcome, ok := p.perform(w, r, page, req, n.Submit, model, "submit", rec)
 	if !ok {
 		return
 	}
@@ -269,7 +231,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 // the form again, in which case what was typed is not kept and the message is in the toast it
 // arrives to. It returns the outcome when it is for the caller to act on, and false when the
 // response has been written. what names the action in the error that is logged.
-func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, act *ir.Action, subject any, what string) (ir.Outcome, bool) {
+func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, act *ir.Action, subject any, what string, rec *received) (ir.Outcome, bool) {
 	ctx := r.Context()
 	if act.Guard != nil {
 		if err := act.Guard(ctx, subject); err != nil {
@@ -283,6 +245,15 @@ func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page,
 		p.m.Action(page.PathTemplate, "error")
 		p.fail(w, r, page, req, fmt.Errorf("%s: %w", what, err))
 		return ir.Outcome{}, false
+	}
+	if rec != nil && (outcome.Kind == ir.OutcomeSuccess || outcome.Kind == ir.OutcomeWarning) {
+		// Accepted: the files are made permanent now, before the visitor is told. A file that cannot be is not a success, and the
+		// action has already run, so the form is where the visitor is left, with the words for it.
+		if err := rec.commit(p.log); err != nil {
+			p.m.Action(page.PathTemplate, "error")
+			p.leave(w, r, ir.Outcome{Kind: ir.OutcomeFailure, Message: msgFileNotStored}, r.URL.RequestURI())
+			return ir.Outcome{}, false
+		}
 	}
 	p.m.Action(page.PathTemplate, resultOf(outcome))
 	switch {
@@ -470,7 +441,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		subject = picked
 	}
 
-	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
+	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label), nil)
 	if !ok {
 		return
 	}

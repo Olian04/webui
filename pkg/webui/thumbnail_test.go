@@ -8,9 +8,9 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
-	"io"
 	"math/rand/v2"
 	"testing"
+	"testing/iotest"
 
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -23,8 +23,9 @@ func solidImage(w, h int) *image.NRGBA {
 	return img
 }
 
-func uploadOf(kind FileKind, data []byte) *Upload {
-	return &Upload{Kind: kind, Size: int64(len(data)), Open: func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(data)), nil }}
+// thumbOf is the thumbnail of an image of the kind that is held in data, as an app that kept it would make one.
+func thumbOf(kind FileKind, data []byte, size int) ([]byte, error) {
+	return Thumbnail(bytes.NewReader(data), kind, size)
 }
 
 func sizeOf(t *testing.T, data []byte) image.Point {
@@ -44,14 +45,15 @@ func TestAThumbnailKeepsTheProportionsAndTheLongestSideIsTheSize(t *testing.T) {
 
 	for _, c := range []struct {
 		name string
-		up   *Upload
+		kind FileKind
+		data []byte
 		want image.Point
 	}{
-		{"a wide png", uploadOf(FilePNG, p.Bytes()), image.Point{X: 64, Y: 32}},
-		{"a tall jpeg", uploadOf(FileJPEG, j.Bytes()), image.Point{X: 32, Y: 64}},
-		{"a gif", uploadOf(FileGIF, g.Bytes()), image.Point{X: 64, Y: 21}},
+		{"a wide png", FilePNG, p.Bytes(), image.Point{X: 64, Y: 32}},
+		{"a tall jpeg", FileJPEG, j.Bytes(), image.Point{X: 32, Y: 64}},
+		{"a gif", FileGIF, g.Bytes(), image.Point{X: 64, Y: 21}},
 	} {
-		got, err := Thumbnail(c.up, 64)
+		got, err := thumbOf(c.kind, c.data, 64)
 		assert.NoError(t, err)
 		assert.Equal(t, sizeOf(t, got), c.want)
 	}
@@ -63,7 +65,7 @@ func TestAThumbnailNeverEnlargesAndIsMuchSmallerThanTheImage(t *testing.T) {
 
 	var small, big bytes.Buffer
 	assert.NoError(t, png.Encode(&small, solidImage(20, 10)))
-	got, err := Thumbnail(uploadOf(FilePNG, small.Bytes()), 64)
+	got, err := thumbOf(FilePNG, small.Bytes(), 64)
 	assert.NoError(t, err)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 20, Y: 10})
 
@@ -75,7 +77,7 @@ func TestAThumbnailNeverEnlargesAndIsMuchSmallerThanTheImage(t *testing.T) {
 		noise.Pix[i] = byte(rng.Uint32() & 0xff) // the low eight bits, which is what noise needs
 	}
 	assert.NoError(t, png.Encode(&big, noise))
-	got, err = Thumbnail(uploadOf(FilePNG, big.Bytes()), 64)
+	got, err = thumbOf(FilePNG, big.Bytes(), 64)
 	assert.NoError(t, err)
 	assert.True(t, len(got) < big.Len()/100)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 64, Y: 43})
@@ -86,24 +88,30 @@ func TestAThumbnailIsNotMadeOfWhatItDoesNotRead(t *testing.T) {
 
 	var p bytes.Buffer
 	assert.NoError(t, png.Encode(&p, solidImage(10, 10)))
-	for _, up := range map[string]*Upload{
-		"a nil upload":      nil,
-		"no Open":           {Kind: FilePNG},
-		"a webp":            uploadOf(FileWebP, p.Bytes()),
-		"a pdf":             uploadOf(FilePDF, p.Bytes()),
-		"any file":          uploadOf(FileAny, p.Bytes()),
-		"damaged":           uploadOf(FilePNG, p.Bytes()[:30]),
-		"a jpeg that isn't": uploadOf(FileJPEG, p.Bytes()),
+	for name, c := range map[string]struct {
+		kind FileKind
+		data []byte
+	}{
+		"a webp":            {FileWebP, p.Bytes()},
+		"a pdf":             {FilePDF, p.Bytes()},
+		"any file":          {FileAny, p.Bytes()},
+		"damaged":           {FilePNG, p.Bytes()[:30]},
+		"a jpeg that isn't": {FileJPEG, p.Bytes()},
 	} {
-		_, err := Thumbnail(up, 64)
-		assert.True(t, errors.Is(err, ErrThumbnail))
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			_, err := thumbOf(c.kind, c.data, 64)
+			assert.True(t, errors.Is(err, ErrThumbnail))
+		})
 	}
-	_, err := Thumbnail(uploadOf(FilePNG, p.Bytes()), 0)
+	_, err := Thumbnail(nil, FilePNG, 64)
+	assert.True(t, errors.Is(err, ErrThumbnail))
+	_, err = thumbOf(FilePNG, p.Bytes(), 0)
 	assert.True(t, errors.Is(err, ErrThumbnail))
 
-	// A file that cannot be opened is the app's own error, and is not hidden.
+	// A source that cannot be read is why there is none, and its own error is not hidden.
 	boom := errors.New("the disk is gone")
-	_, err = Thumbnail(&Upload{Kind: FilePNG, Open: func() (io.ReadCloser, error) { return nil, boom }}, 64)
+	_, err = Thumbnail(iotest.ErrReader(boom), FilePNG, 64)
 	assert.True(t, errors.Is(err, boom))
 }
 
@@ -114,12 +122,29 @@ func TestAThumbnailIsNotMadeOfAPictureOfMoreThan25MillionPixels(t *testing.T) {
 	var buf bytes.Buffer
 	assert.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 5100, 5100)))) // 26 million pixels, and a file of a few kilobytes
 	assert.True(t, buf.Len() < 200_000)
-	_, err := Thumbnail(uploadOf(FilePNG, buf.Bytes()), 64)
+	_, err := thumbOf(FilePNG, buf.Bytes(), 64)
 	assert.True(t, errors.Is(err, ErrThumbnail))
 
 	buf.Reset()
 	assert.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 4000, 4000)))) // 4k, and more, is fine
-	got, err := Thumbnail(uploadOf(FilePNG, buf.Bytes()), 64)
+	got, err := thumbOf(FilePNG, buf.Bytes(), 64)
 	assert.NoError(t, err)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 64, Y: 64})
+}
+
+// The source is read once, from its start, in whatever pieces it gives: it need not be seekable, and nothing that was read for the size is lost
+// to the picture.
+func TestAThumbnailIsMadeOfASourceThatIsReadOnceInSmallPieces(t *testing.T) {
+	t.Parallel()
+
+	var p, j bytes.Buffer
+	assert.NoError(t, png.Encode(&p, solidImage(400, 200)))
+	assert.NoError(t, jpeg.Encode(&j, solidImage(300, 600), nil))
+	for kind, data := range map[FileKind][]byte{FilePNG: p.Bytes(), FileJPEG: j.Bytes()} {
+		got, err := Thumbnail(iotest.OneByteReader(bytes.NewReader(data)), kind, 64)
+		assert.NoError(t, err)
+		want, err := thumbOf(kind, data, 64)
+		assert.NoError(t, err)
+		assert.DeepEqual(t, got, want)
+	}
 }

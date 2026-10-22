@@ -22,22 +22,22 @@ const maxThumbnailPixels = 25_000_000
 var ErrThumbnail = errors.New("webui: no thumbnail can be made of this file")
 
 // Thumbnail is the picture of an uploaded image scaled down to fit inside a square of size pixels, as a PNG, with the picture's own
-// proportions and never enlarged. It is for a [FileInfo]'s Thumbnail: a Store that is handed an image makes the small one when it keeps
-// the file, so that a page shows the small picture and the visitor is not sent the whole of an image to see it at 32 pixels. Twice the
-// size that it is shown at is right for a screen of a high density.
+// proportions and never enlarged. It is for a [FileInfo]'s Thumbnail: an app that has kept an image makes the small one, so that a page shows the small
+// picture and the visitor is not sent the whole of an image to see it at 32 pixels. Twice the size that it is shown at is right for a
+// screen of a high density.
 //
-// It reads PNG, JPEG and GIF (the first picture of one), which the standard library decodes, and no WebP, which it does not and a
-// library that took an image dependency to read would carry it for every program. An [Upload] of any other kind, a picture of more than
-// 25 million pixels and a damaged file are an [ErrThumbnail]. An app that wants to read more has its own scaler: a Thumbnail that the app
-// made is only an address. The upload is opened twice, the second time to read the picture, since its size is read first, and each
-// is closed.
-func Thumbnail(up *Upload, size int) ([]byte, error) {
-	if up == nil || up.Open == nil || size <= 0 {
+// It reads src, an image of the kind that is given (the [Upload]'s Kind), once, from its start: the file is not kept by the library, so
+// an app that is to make a thumbnail has its own copy to read, from where it wrote the file or from a buffer of it. It reads PNG, JPEG and
+// GIF (the first picture of one), which the standard library decodes, and no WebP, which it does not and a library that took an image
+// dependency to read would carry it for every program. Any other kind, a picture of more than 25 million pixels and a damaged
+// file are an [ErrThumbnail]. An app that wants to read more has its own scaler: a Thumbnail that the app made is only an address.
+func Thumbnail(src io.Reader, kind FileKind, size int) ([]byte, error) {
+	if src == nil || size <= 0 {
 		return nil, ErrThumbnail
 	}
 	var decode func(io.Reader) (image.Image, error)
 	var config func(io.Reader) (image.Config, error)
-	switch up.Kind {
+	switch kind {
 	case FilePNG:
 		decode, config = png.Decode, png.DecodeConfig
 	case FileJPEG:
@@ -47,34 +47,23 @@ func Thumbnail(up *Upload, size int) ([]byte, error) {
 	case FileWebP, FileImage, FilePDF, FileJSON, FileCSV, FileText, FileAny:
 		return nil, ErrThumbnail
 	}
-	var cfg image.Config
-	if err := reading(up, func(r io.Reader) (err error) { cfg, err = config(r); return err }); err != nil {
-		return nil, err
+	// The size is read first, from the start of the file, which is then read again from the start by the picture's decoder: the source is read
+	// once, and the bytes that were read for the size are put back in front of it.
+	var head bytes.Buffer
+	cfg, err := config(io.TeeReader(src, &head))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrThumbnail, err)
 	}
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxThumbnailPixels {
 		return nil, ErrThumbnail
 	}
-	var img image.Image
-	if err := reading(up, func(r io.Reader) (err error) { img, err = decode(r); return err }); err != nil {
-		return nil, err
+	img, err := decode(io.MultiReader(&head, src))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrThumbnail, err)
 	}
 	var out bytes.Buffer
 	if err := png.Encode(&out, favicon.Fit(img, size)); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrThumbnail, err)
 	}
 	return out.Bytes(), nil
-}
-
-// reading opens the upload for read, and closes it. What is wrong with the picture is an ErrThumbnail, and what is wrong with the file,
-// which is the app's, is its own error.
-func reading(up *Upload, read func(io.Reader) error) error {
-	r, err := up.Open()
-	if err != nil {
-		return err //nolint:wrapcheck // the app's own error, of its own file
-	}
-	defer func() { _ = r.Close() }() // a read-only handle
-	if err := read(r); err != nil {
-		return fmt.Errorf("%w: %w", ErrThumbnail, err)
-	}
-	return nil
 }
