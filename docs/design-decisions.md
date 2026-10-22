@@ -367,7 +367,7 @@ design element.
   read again when the dialog is opened.
 
 - **A form that has a file is multipart, read after the page's Guard.** The form's `enctype` is `multipart/form-data` only when it has
-  a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte, for a
+  a file field, so no other form changes. The page's body limit is the sum of its files' `MaxSize` and the usual megabyte (the library sets no ceiling on a `MaxSize`: how large a file may be is the app's to say, and an early version that refused more than 256 MiB was dropped for that; the sum saturates at the largest size there is, so that an app that says "as large as it likes" for more than one file has no limit, and not a negative one), for a
   multipart body only; an urlencoded post to the same page keeps the usual one. The page's `Guard` runs before the body is parsed,
   so a visitor it refuses has nothing read from them, and a body over the limit is "That submission was too large." An action's own `Guard`
   runs after `Bind` (it is handed the model), so for a refused action the file has been received and is in a temporary file until the

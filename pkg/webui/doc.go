@@ -276,8 +276,7 @@
 // WebP, which the standard library does not decode; an app that takes more has its own
 // scaler.
 //
-// A File's MaxSize is 5 MiB unless it says, and at most 256 MiB: a larger one is a
-// compile error. [Thumbnail] makes the small picture from an [Upload] and returns
+// A File's MaxSize is 5 MiB unless it says, and as large as the app says: the library sets no ceiling, and the body of a page's submission is limited to the sum of its files' MaxSize and a megabyte. [Thumbnail] makes the small picture from an [Upload] and returns
 // [ErrThumbnail] for a kind that it does not read (anything but PNG, JPEG and GIF), a
 // damaged file, or a picture of more than 25 million pixels, which is held whole in
 // memory to be scaled.

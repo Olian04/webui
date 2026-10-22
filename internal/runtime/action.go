@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -96,7 +97,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		// limit of that kind of body, and of no other that is posted to it.
 		multipart := budget > 0 && strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data")
 		if multipart {
-			limit = budget + maxBody
+			limit = addCapped(budget, maxBody)
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, limit)
 		if err := r.ParseForm(); err != nil { // of a multipart body, only the address
@@ -146,12 +147,21 @@ func fileBudget(leaves map[string]ir.Node) int64 {
 		if form, ok := n.(*ir.Form); ok {
 			for f := range ir.Leaves(form.Fields) {
 				if f.File != nil && f.File.Store != nil {
-					total += f.File.Max
+					total = addCapped(total, f.File.Max)
 				}
 			}
 		}
 	}
 	return total
+}
+
+// addCapped is a + b, or the largest size there is when that would overflow: an app that says a file may be as large as it likes, for more than one
+// file, has a limit that is as large as it likes, and not a negative one.
+func addCapped(a, b int64) int64 {
+	if a > math.MaxInt64-b {
+		return math.MaxInt64
+	}
+	return a + b
 }
 
 // uploadsOf are the files that a submission carried, for the form's file fields: the first of each field that is not an empty
