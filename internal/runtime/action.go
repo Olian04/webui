@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/internal/render"
 	"github.com/Olian04/webui/internal/rules"
 )
@@ -238,6 +239,14 @@ func formValues(post url.Values, fields []ir.Field) map[string]string {
 			values[k] = strings.Join(v, ir.ListSep)
 		default:
 			values[k] = v[0]
+		}
+	}
+	for f := range ir.Leaves(fields) {
+		if f.Rules.Format == ir.FormatTel && f.Writable() {
+			// The number and the country of its selector are the one number, which is what is held to the rules and stored.
+			if national, ok := values[f.Name]; ok {
+				values[f.Name] = phone.Compose(values[f.Name+render.PhoneCountrySuffix], national)
+			}
 		}
 	}
 	return values

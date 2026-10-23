@@ -79,6 +79,9 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", LeafHeader)
+		if p.render.NeedsPhone(page) {
+			w.Header().Add("Vary", "Accept-Language") // the country a number starts at is the visitor's
+		}
 		req, ok := p.begin(w, r, page, parser)
 		if !ok {
 			return
@@ -121,7 +124,7 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 	if err != nil {
 		return nil, raw, http.StatusBadRequest, nil
 	}
-	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey])}
+	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey]), Languages: r.Header.Get("Accept-Language")}
 	*r = *r.WithContext(With(r.Context(), req))
 	if page.Guard != nil {
 		if err := page.Guard(r.Context(), decoded); err != nil {

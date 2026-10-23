@@ -1,10 +1,12 @@
 // Package phone is what is known of phone numbers: the countries and their calling codes, how a national number is spaced for
-// reading, and what an international number is. It is the one place the page's script and the server read it from, so that
-// what the script offers is what the server accepts.
+// reading, what an international number is, and how a country and a national number make one. It is all the server's: a form
+// is drawn with the countries in it and a number is read here, so that what the page offers is what the server accepts and
+// script is left with nothing to know.
 package phone
 
 import (
-	"encoding/json"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -31,33 +33,153 @@ func Known(iso string) bool {
 	return false
 }
 
-// JSON is the countries as the script reads them: an array of {i, n, c, g, t, m}, the keys short because the page is sent
-// with it, and the groups, trunk and main left out where they are not set.
-func JSON() []byte {
-	type entry struct {
-		I string `json:"i"`
-		N string `json:"n"`
-		C string `json:"c"`
-		G []int  `json:"g,omitempty"`
-		T int    `json:"t,omitempty"`
-		M int    `json:"m,omitempty"`
-	}
-	out := make([]entry, len(countries))
-	for i, c := range countries {
-		e := entry{I: c.ISO, N: c.Name, C: c.Code, G: c.Groups}
-		if c.Trunk {
-			e.T = 1
+// ByISO is the country that has the code iso.
+func ByISO(iso string) (Country, bool) {
+	for _, c := range countries {
+		if c.ISO == iso {
+			return c, true
 		}
-		if c.Main {
-			e.M = 1
+	}
+	return Country{}, false
+}
+
+// CountryOf is the country that a number is of, by its code: the longest code that its digits start with, which is what makes "358" Finland and not "3" and a code that
+// is not one, and of the countries that share a code the main one. It is false for digits that start with no code.
+func CountryOf(digits string) (Country, bool) {
+	for n := 3; n >= 1; n-- {
+		if len(digits) < n {
+			continue
 		}
-		out[i] = e
+		var found Country
+		var ok bool
+		for _, c := range countries {
+			if c.Code == digits[:n] && (!ok || c.Main) {
+				found, ok = c, true
+			}
+		}
+		if ok {
+			return found, true
+		}
 	}
-	b, err := json.Marshal(out)
-	if err != nil {
-		return []byte("[]") // cannot happen: strings and numbers
+	return Country{}, false
+}
+
+// digitsOf is the digits of text, with nothing else.
+func digitsOf(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if r >= '0' && r <= '9' {
+			b.WriteRune(r)
+		}
 	}
-	return b
+	return b.String()
+}
+
+// Split is an international number as the country it is of and the digits after its code, which is how a form shows it: the country in a selector and the rest in an
+// input. It is false for a number that is not international, or is of no country in the list.
+func Split(e164 string) (country Country, national string, ok bool) {
+	number, isInternational := International(e164)
+	if !isInternational {
+		return Country{}, "", false
+	}
+	digits := digitsOf(number)
+	c, found := CountryOf(digits)
+	if !found {
+		return Country{}, "", false
+	}
+	return c, digits[len(c.Code):], true
+}
+
+// Spaced is the digits of a national number in groups, spaced for reading: as the country says, with the rest in one, or in threes for a country that does not
+// say. A group of one is joined to the one before it, so that nothing ends in a lone digit.
+func Spaced(c Country, digits string) string {
+	var out []string
+	at := 0
+	if len(c.Groups) > 0 {
+		for _, size := range c.Groups {
+			if at >= len(digits) {
+				break
+			}
+			end := min(at+size, len(digits))
+			out = append(out, digits[at:end])
+			at = end
+		}
+		if at < len(digits) {
+			out = append(out, digits[at:])
+		}
+		return strings.Join(out, " ")
+	}
+	for at < len(digits) {
+		end := min(at+3, len(digits))
+		out = append(out, digits[at:end])
+		at = end
+	}
+	if n := len(out); n > 1 && len(out[n-1]) == 1 {
+		out[n-2] += out[n-1]
+		out = out[:n-1]
+	}
+	return strings.Join(out, " ")
+}
+
+// Compose is the number that a country and the text of a national number make: "+" and the code and the digits, without the trunk 0 that the national format has
+// and the international one drops. Text that begins with "+" is a whole number, with its own code, whatever country was chosen. Text that has anything in it that is
+// not a digit or the punctuation of a number (letters, an extension), or no country, or no digits, is returned as it was typed, to be held to the rules as it is.
+func Compose(iso, national string) string {
+	national = strings.TrimSpace(national)
+	if national == "" || strings.HasPrefix(national, "+") {
+		return national
+	}
+	c, ok := ByISO(iso)
+	if !ok {
+		return national
+	}
+	for _, r := range national {
+		if (r < '0' || r > '9') && !strings.ContainsRune(separators, r) {
+			return national
+		}
+	}
+	digits := digitsOf(national)
+	if c.Trunk && strings.HasPrefix(digits, "0") {
+		digits = digits[1:]
+	}
+	if digits == "" {
+		return national
+	}
+	return "+" + c.Code + digits
+}
+
+// FromLanguages is the country that a visitor's languages name, for a form that has no number to start at: the first of the languages, the likeliest first, that has a
+// region that is in the list ("sv-SE" is Sweden). It is the Accept-Language header, as the browser sent it, and the answer is "" when it names none.
+func FromLanguages(accept string) string {
+	type tag struct {
+		region string
+		q      float64
+		at     int
+	}
+	var tags []tag
+	for i, part := range strings.Split(accept, ",") {
+		name, params, _ := strings.Cut(strings.TrimSpace(part), ";")
+		q := 1.0
+		if v, found := strings.CutPrefix(strings.TrimSpace(params), "q="); found {
+			if parsed, err := strconv.ParseFloat(v, 64); err == nil {
+				q = parsed
+			}
+		}
+		parts := strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' })
+		for _, sub := range parts[min(1, len(parts)):] { // the subtags after the language
+			if len(sub) == 2 {
+				tags = append(tags, tag{region: strings.ToUpper(sub), q: q, at: i})
+				break
+			}
+		}
+	}
+	sort.SliceStable(tags, func(i, j int) bool { return tags[i].q > tags[j].q })
+	for _, t := range tags {
+		if Known(t.region) {
+			return t.region
+		}
+	}
+	return ""
 }
 
 // Digits are the most that an international number has, with its country code: what E.164 allows. The fewest is a number

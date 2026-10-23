@@ -180,6 +180,39 @@ templ Input(p InputProps) {
 	/>
 }
 
+// PhoneInputProps is a phone number: a selector of the country calling code in front of the input that holds the national number.
+// What is sent is the country, as CCName, and the number as it was typed, as Name: the server makes the one number of them.
+type PhoneInputProps struct {
+	ID, Name, CCName string
+	Value            string // the national number, spaced
+	Placeholder      string
+	Required         bool
+	Invalid          bool
+	Countries        []PhoneCountry
+}
+
+// PhoneCountry is a country of the selector, with its calling code. Groups is how many digits are in each group of the national number, "2,3,2,2", and Trunk
+// says that the national format has a leading 0 that the international one drops: what script spaces the digits by.
+type PhoneCountry struct {
+	ISO, Label, Code, Groups string
+	Trunk, Selected    bool
+}
+
+templ PhoneInput(p PhoneInputProps) {
+	<div class="phone" data-phone>
+		<select class="input phone-cc" name={ p.CCName } aria-label="Country calling code">
+			<option value="">—</option>
+			for _, c := range p.Countries {
+				<option value={ c.ISO } data-code={ c.Code } data-groups={ c.Groups } data-trunk?={ c.Trunk } selected?={ c.Selected }>{ c.Label }</option>
+			}
+		</select>
+		@Input(InputProps{
+			ID: p.ID, Name: p.Name, Value: p.Value, Type: "tel", Placeholder: p.Placeholder, Invalid: p.Invalid,
+			Rules: Rules{Required: p.Required}, Autocomplete: "tel-national", Attrs: templ.Attributes{"inputmode": "tel"},
+		})
+	</div>
+}
+
 // FileInputProps is a file chooser, with the file that is stored shown above it. The chooser has no value, which a browser never
 // lets a page give a file input, so a file that was chosen and not sent has to be chosen again.
 type FileInputProps struct {

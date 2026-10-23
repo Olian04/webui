@@ -28,6 +28,9 @@ type Request struct {
 	// library built said so and it is an address in this app. Empty otherwise.
 	From string
 
+	// Languages is the Accept-Language the browser sent, for what depends on where the visitor is, such as the country a phone number starts at.
+	Languages string
+
 	// Raw is the same values by argument name, path and query merged, plus the
 	// view state the library keeps for tables and tabs ("devices.offset").
 	// Argument names cannot contain the separator, so the two never collide.
