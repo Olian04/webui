@@ -119,6 +119,12 @@ func serveUpload(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(b.Data)
 }
 
+// FirmwareChoice is what a visitor chooses beside the firmware image, which is the model of the upload panel: the options, with the defaults that Load gives.
+type FirmwareChoice struct {
+	Taken   string // what to do when an image of the same name was uploaded already: "refuse" it, or "replace" it, which removes the old one from the history
+	Channel string // "stable" or "beta"
+}
+
 // A file too large to be held, which is a panel of its own and not a field of a form: a firmware image of up to 2 GiB. Receive is handed the file as
 // it arrives, and reads it from the Reader wherever it is to go, which for an app is an object store. Here it is hashed, as it is read, and only what it
 // was is kept: nothing of the file is held, in memory or on disk. The Guard is asked when the page is drawn, which is how a viewer sees a panel that is
@@ -127,42 +133,67 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 	Path: "/firmware",
 	Nav:  webui.Nav{Label: "Firmware", Icon: "database", Section: "Operations"},
 	Body: webui.Stack{
-		webui.FileUpload{
+		webui.FileUpload[FirmwareChoice]{
 			Title: "Upload firmware", Desc: "A FileUpload: one file, of any size up to its MaxSize, handed to Receive as it arrives. The demo hashes it as it is read and keeps only what it was.",
 			Help:    "The image to roll out to the collectors. It is hashed on the way in, and not kept.",
 			MaxSize: 2 << 30,
-			Receive: webui.Action[webui.FileHandle]{
+			// What is chosen beside the file: fields of a form, checked before any of the file is read, and handed to Receive as f.Options.
+			Load: func(context.Context) (FirmwareChoice, error) {
+				return FirmwareChoice{Taken: "refuse", Channel: "stable"}, nil
+			},
+			Fields: []webui.Accessor[FirmwareChoice]{
+				webui.Select[FirmwareChoice]{
+					Label: "If an image has the same name", Required: true,
+					Options: []webui.Option{{Value: "refuse", Label: "Refuse it"}, {Value: "replace", Label: "Replace it"}},
+					Load:    func(c FirmwareChoice) []string { return []string{c.Taken} },
+					Store:   func(c *FirmwareChoice, v []string) { c.Taken = v[0] },
+				},
+				webui.Select[FirmwareChoice]{
+					Label: "Release channel", Required: true,
+					Options: []webui.Option{{Value: "stable", Label: "Stable"}, {Value: "beta", Label: "Beta"}},
+					Load:    func(c FirmwareChoice) []string { return []string{c.Channel} },
+					Store:   func(c *FirmwareChoice, v []string) { c.Channel = v[0] },
+				},
+			},
+			Receive: webui.Action[webui.FileHandle[FirmwareChoice]]{
 				Label: "Upload",
-				Guard: func(ctx context.Context, _ webui.FileHandle) error {
+				Guard: func(ctx context.Context, _ webui.FileHandle[FirmwareChoice]) error {
 					if RoleOf(ctx) != Editor {
 						return webui.Disabled("Requires the editor role")
 					}
 					return nil
 				},
-				Run: func(_ context.Context, f webui.FileHandle) (webui.Outcome, error) {
+				Run: func(_ context.Context, f webui.FileHandle[FirmwareChoice]) (webui.Outcome, error) {
+					// A choice that is made beside the file is known before it is read, so a refusal costs none of it: what Run did not read is thrown away.
+					fw := Firmware{Name: f.Name, Folder: f.Path}
+					replace := f.Options.Taken == "replace"
+					if service.HasFirmware(fw.Key()) && !replace {
+						return webui.Failure(fw.Key() + " was uploaded already: choose to replace it to upload it again"), nil
+					}
 					sum := sha256.New()
 					size, err := io.Copy(sum, f.Reader) // all of it, as it comes: this is how the file is known to be whole
 					if err != nil {
 						return webui.Outcome{}, err //nolint:wrapcheck // a failing read of the body, which the library answers
 					}
 					digest := hex.EncodeToString(sum.Sum(nil))
-					service.SetFirmware(Firmware{Name: f.Name, Folder: f.Path, Type: f.DeclaredType, Size: int(size), SHA256: digest, At: time.Now().Format("Jan 2 15:04")})
+					fw.Channel, fw.Type, fw.Size, fw.SHA256, fw.At = f.Options.Channel, f.DeclaredType, int(size), digest, time.Now().Format("Jan 2 15:04")
+					if !service.SetFirmware(fw, replace) { // another upload of the name came first, while this one was being read
+						return webui.Failure(fw.Key() + " was uploaded already: choose to replace it to upload it again"), nil
+					}
 					return webui.Success("Received " + f.Name + ", sha256 " + digest[:12] + "…"), nil
 				},
 			},
 		},
-		webui.Form[Firmware]{
-			Title: "Last upload",
-			Load:  func(context.Context) (Firmware, error) { return service.Firmware(), nil },
-			Fields: []webui.Accessor[Firmware]{
-				webui.Group[Firmware]{
-					webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
-					webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},
-				},
-				webui.Group[Firmware]{
-					webui.String[Firmware]{Label: "Type said by the browser", Load: func(f Firmware) string { return f.Type }},
-					webui.Int[Firmware]{Label: "Bytes", Load: func(f Firmware) int { return f.Size }},
-				},
+		// Every image that was uploaded, newest first: what was kept of each, and none of the file.
+		webui.Table[Firmware]{
+			Title: "Upload history", Desc: "Every image that was uploaded, newest first. Only what it was is kept: the file is hashed as it arrives and never held.",
+			Rows: func(context.Context) ([]Firmware, error) { return service.FirmwareHistory(), nil },
+			Columns: []webui.Accessor[Firmware]{
+				webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
+				webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},
+				webui.String[Firmware]{Label: "Channel", Load: func(f Firmware) string { return f.Channel }},
+				webui.String[Firmware]{Label: "Type said by the browser", Load: func(f Firmware) string { return f.Type }},
+				webui.Int[Firmware]{Label: "Bytes", Load: func(f Firmware) int { return f.Size }},
 				webui.String[Firmware]{Label: "SHA-256", Load: func(f Firmware) string { return f.SHA256 }},
 				webui.String[Firmware]{Label: "Received", Load: func(f Firmware) string { return f.At }},
 			},

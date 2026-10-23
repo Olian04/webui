@@ -22,7 +22,7 @@ import (
 
 // arrived is what a file upload's Run was handed, and read from it.
 type arrived struct {
-	handle webui.FileHandle // without its Reader
+	handle webui.FileHandle[struct{}] // without its Reader
 	data   []byte
 	err    error // what reading the whole of it failed with
 }
@@ -47,11 +47,11 @@ func (s *uploadShop) count() int {
 }
 
 // newUploadShop is a page with a FileUpload whose Run reads all of the file and says that it was uploaded; edit changes the panel, or its Run.
-func newUploadShop(edit func(*webui.FileUpload), pageOpts ...func(*webui.Page[webui.NoArgs])) *uploadShop {
+func newUploadShop(edit func(*webui.FileUpload[struct{}]), pageOpts ...func(*webui.Page[webui.NoArgs])) *uploadShop {
 	s := &uploadShop{}
-	up := webui.FileUpload{
+	up := webui.FileUpload[struct{}]{
 		Title: "Upload firmware", MaxSize: 5 << 20,
-		Receive: webui.Action[webui.FileHandle]{Run: func(_ context.Context, f webui.FileHandle) (webui.Outcome, error) {
+		Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(_ context.Context, f webui.FileHandle[struct{}]) (webui.Outcome, error) {
 			data, err := io.ReadAll(f.Reader)
 			f.Reader = nil
 			s.mu.Lock()
@@ -82,23 +82,25 @@ func upload(h http.Handler, filename, content string, wrap func(io.Reader) io.Re
 func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	problems := func(f webui.FileUpload) string {
+	problems := func(f webui.FileUpload[struct{}]) string {
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: f}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
 	}
-	run := func(context.Context, webui.FileHandle) (webui.Outcome, error) { return webui.Success("ok"), nil }
-	receive := webui.Action[webui.FileHandle]{Run: run}
-	assert.Contains(t, problems(webui.FileUpload{MaxSize: 1}), "FileUpload.Receive has no Run")
-	assert.Contains(t, problems(webui.FileUpload{Receive: receive}), "FileUpload has MaxSize 0")
-	assert.Contains(t, problems(webui.FileUpload{Receive: receive, MaxSize: -5}), "FileUpload has MaxSize -5")
-	for _, k := range []webui.FileKind{webui.FileJSON, webui.FileCSV, webui.FileText} {
-		assert.Contains(t, problems(webui.FileUpload{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileImage, k}}), "told by all of the file")
+	run := func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
+		return webui.Success("ok"), nil
 	}
-	assert.Contains(t, problems(webui.FileUpload{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileKind(99)}}), "is not a FileKind")
-	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: webui.FileUpload{
+	receive := webui.Action[webui.FileHandle[struct{}]]{Run: run}
+	assert.Contains(t, problems(webui.FileUpload[struct{}]{MaxSize: 1}), "FileUpload.Receive has no Run")
+	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive}), "FileUpload has MaxSize 0")
+	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: -5}), "FileUpload has MaxSize -5")
+	for _, k := range []webui.FileKind{webui.FileJSON, webui.FileCSV, webui.FileText} {
+		assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileImage, k}}), "told by all of the file")
+	}
+	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileKind(99)}}), "is not a FileKind")
+	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: webui.FileUpload[struct{}]{
 		Receive: receive, MaxSize: 1 << 40, Accept: []webui.FileKind{webui.FileImage, webui.FilePDF, webui.FileAny},
 	}}}}.Compile("/admin")
 	assert.NoError(t, err) // as large as the app says, with no ceiling
@@ -108,7 +110,7 @@ func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 func TestAFileUploadIsAFormOfItsOwnWithTheLeafBeforeTheFile(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(func(f *webui.FileUpload) {
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Accept, f.MaxSize, f.Help, f.Desc = []webui.FileKind{webui.FilePNG, webui.FileJPEG}, 2<<30, "The image that the device shows.", "Sent to the bucket."
 		f.Receive.Label = "Send it"
 	})
@@ -130,14 +132,14 @@ func TestAFileUploadIsAFormOfItsOwnWithTheLeafBeforeTheFile(t *testing.T) {
 func TestAFileUploadHandsTheFileToRunAsItArrives(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(func(f *webui.FileUpload) { f.Accept = []webui.FileKind{webui.FileImage} })
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FileImage} })
 	rec := upload(s.h, `../../photos/x.png`, string(pngBytes), nil)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "oUploaded x.png")
 	got := s.last()
 	assert.DeepEqual(t, got.data, pngBytes)
 	assert.NoError(t, got.err)
-	assert.Equal(t, got.handle, webui.FileHandle{
+	assert.Equal(t, got.handle, webui.FileHandle[struct{}]{
 		Name: "x.png", Path: "photos", RawName: "../../photos/x.png", ContentType: "image/png", DeclaredType: "application/octet-stream", Kind: webui.FilePNG,
 	})
 }
@@ -148,8 +150,8 @@ func TestAFileUploadIsStreamedToRunAndNotHeldFirst(t *testing.T) {
 
 	first := make(chan struct{})
 	var once sync.Once
-	s := newUploadShop(func(f *webui.FileUpload) {
-		f.Receive.Run = func(_ context.Context, h webui.FileHandle) (webui.Outcome, error) {
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
 			buf := make([]byte, 64<<10)
 			n, err := io.ReadAtLeast(h.Reader, buf, 4096)
 			if err != nil {
@@ -201,8 +203,8 @@ func TestAFileUploadWritesNothingToDisk(t *testing.T) {
 	t.Setenv("TEMP", dir)
 
 	var inRun int
-	s := newUploadShop(func(f *webui.FileUpload) {
-		f.Receive.Run = func(_ context.Context, h webui.FileHandle) (webui.Outcome, error) {
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
 			n, err := io.Copy(io.Discard, h.Reader)
 			entries, _ := os.ReadDir(dir)
 			inRun = len(entries)
@@ -224,7 +226,7 @@ func TestAFileUploadWritesNothingToDisk(t *testing.T) {
 func TestAFileUploadOfTheWrongKindIsRefusedWithoutCallingRun(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(func(f *webui.FileUpload) { f.Accept = []webui.FileKind{webui.FilePNG} })
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
 	rec := upload(s.h, "plan.png", string(pdfBytes)+strings.Repeat("x", 1<<20), nil)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "eChoose a PNG file.")
@@ -236,7 +238,7 @@ func TestAFileUploadOfTheWrongKindIsRefusedWithoutCallingRun(t *testing.T) {
 func TestAFileUploadLargerThanMaxSizeIsRefused(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(func(f *webui.FileUpload) { f.MaxSize = 1000 })
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.MaxSize = 1000 })
 	rec := upload(s.h, "big.bin", strings.Repeat("x", 100_000), nil)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "eMust be at most 1000 bytes.")
@@ -245,9 +247,11 @@ func TestAFileUploadLargerThanMaxSizeIsRefused(t *testing.T) {
 	assert.True(t, len(s.last().data) <= 1000)
 
 	// A Run that stops early, with the file unread, is not let off: the rest of it is read by the library, and is too large.
-	early := newUploadShop(func(f *webui.FileUpload) {
+	early := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.MaxSize = 1000
-		f.Receive.Run = func(context.Context, webui.FileHandle) (webui.Outcome, error) { return webui.Success("Uploaded"), nil }
+		f.Receive.Run = func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
+			return webui.Success("Uploaded"), nil
+		}
 	})
 	assert.Equal(t, flashOf(upload(early.h, "big.bin", strings.Repeat("x", 100_000), nil)), "eMust be at most 1000 bytes.")
 
@@ -259,8 +263,10 @@ func TestAFileUploadLargerThanMaxSizeIsRefused(t *testing.T) {
 func TestAFileUploadRunThatReadsNothingIsAnswered(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(func(f *webui.FileUpload) {
-		f.Receive.Run = func(context.Context, webui.FileHandle) (webui.Outcome, error) { return webui.Success("Noted"), nil }
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Run = func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
+			return webui.Success("Noted"), nil
+		}
 	})
 	rec := upload(s.h, "a.bin", strings.Repeat("x", 1<<20), nil)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -283,8 +289,8 @@ func TestAFileUploadOutcomeIsToldAsAnyActionsIs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			s := newUploadShop(func(f *webui.FileUpload) {
-				f.Receive.Run = func(_ context.Context, h webui.FileHandle) (webui.Outcome, error) {
+			s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+				f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
 					_, _ = io.Copy(io.Discard, h.Reader)
 					return c.outcome, c.err
 				}
@@ -304,9 +310,9 @@ func TestAFileUploadRunCanReadThePagesArguments(t *testing.T) {
 		Bucket string `webui:"bucket"`
 	}
 	var got string
-	h := webui.App{Pages: webui.Pages{webui.Page[args]{Path: "/up/{bucket}", Body: webui.FileUpload{
+	h := webui.App{Pages: webui.Pages{webui.Page[args]{Path: "/up/{bucket}", Body: webui.FileUpload[struct{}]{
 		MaxSize: 1 << 20,
-		Receive: webui.Action[webui.FileHandle]{Run: func(ctx context.Context, f webui.FileHandle) (webui.Outcome, error) {
+		Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(ctx context.Context, f webui.FileHandle[struct{}]) (webui.Outcome, error) {
 			_, _ = io.Copy(io.Discard, f.Reader)
 			got = webui.ArgsOf[args](ctx).Bucket
 			return webui.Success("Uploaded"), nil
@@ -321,15 +327,15 @@ func TestAFileUploadRunCanReadThePagesArguments(t *testing.T) {
 func TestAFileUploadGuardDecidesHowThePanelIsDrawn(t *testing.T) {
 	t.Parallel()
 
-	hidden := newUploadShop(func(f *webui.FileUpload) {
-		f.Receive.Guard = func(context.Context, webui.FileHandle) error { return errors.New("no") }
+	hidden := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Guard = func(context.Context, webui.FileHandle[struct{}]) error { return errors.New("no") }
 	})
 	body := serve(hidden.h, http.MethodGet, "/admin/up").Body.String()
 	assert.False(t, strings.Contains(body, `type="file"`))
 	assert.False(t, strings.Contains(body, "Upload firmware"))
 
-	disabled := newUploadShop(func(f *webui.FileUpload) {
-		f.Receive.Guard = func(_ context.Context, h webui.FileHandle) error {
+	disabled := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Guard = func(_ context.Context, h webui.FileHandle[struct{}]) error {
 			assert.True(t, h.Reader == nil) // a file that has not arrived
 			return webui.Disabled("An upload is already running")
 		}
@@ -346,10 +352,12 @@ func TestAFileUploadGuardDecidesHowThePanelIsDrawn(t *testing.T) {
 func TestAFileUploadGuardRefusesThePostBeforeTheRestOfTheFileIsRead(t *testing.T) {
 	t.Parallel()
 
-	for name, guard := range map[string]func(context.Context, webui.FileHandle) error{
-		"an error": func(context.Context, webui.FileHandle) error { return errors.New("requires the editor role") },
-		"disabled": func(context.Context, webui.FileHandle) error { return webui.Disabled("requires the editor role") },
-		"the file": func(_ context.Context, h webui.FileHandle) error {
+	for name, guard := range map[string]func(context.Context, webui.FileHandle[struct{}]) error{
+		"an error": func(context.Context, webui.FileHandle[struct{}]) error { return errors.New("requires the editor role") },
+		"disabled": func(context.Context, webui.FileHandle[struct{}]) error {
+			return webui.Disabled("requires the editor role")
+		},
+		"the file": func(_ context.Context, h webui.FileHandle[struct{}]) error {
 			if h.Name != "a.bin" || h.Kind != webui.FileAny || h.Reader == nil {
 				return errors.New("the guard was not given the file")
 			}
@@ -360,7 +368,7 @@ func TestAFileUploadGuardRefusesThePostBeforeTheRestOfTheFileIsRead(t *testing.T
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			s := newUploadShop(func(f *webui.FileUpload) { f.Receive.Guard = guard })
+			s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Receive.Guard = guard })
 			var read atomic.Int64
 			rec := upload(s.h, "a.bin", strings.Repeat("x", 4<<20), func(r io.Reader) io.Reader {
 				return io.TeeReader(r, writerFunc(func(b []byte) { read.Add(int64(len(b))) }))
@@ -498,4 +506,171 @@ func TestAFileUploadHandsOverTheFolderAndTheNameAsSent(t *testing.T) {
 		assert.Equal(t, got.Path, want.path)
 		assert.Equal(t, got.RawName, raw) // as the browser sent it, so that the app can say that it was changed
 	}
+}
+
+// choice is the options of a panel that takes some: what the visitor chooses beside the file.
+type choice struct {
+	Note    string
+	Channel string
+}
+
+// choiceShop is a page with a FileUpload that has options, and what its Run was handed.
+type choiceShop struct {
+	mu   sync.Mutex
+	runs []webui.FileHandle[choice]
+	h    http.Handler
+}
+
+func (s *choiceShop) count() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.runs)
+}
+
+func newChoiceShop(edit func(*webui.FileUpload[choice])) *choiceShop {
+	s := &choiceShop{}
+	up := webui.FileUpload[choice]{
+		Title: "Upload", MaxSize: 5 << 20,
+		Load: func(context.Context) (choice, error) { return choice{Note: "a note", Channel: "stable"}, nil },
+		Fields: []webui.Accessor[choice]{
+			webui.String[choice]{
+				Label: "Note", Rules: webui.StringRules{MinLen: 3},
+				Load: func(c choice) string { return c.Note }, Store: func(c *choice, v string) { c.Note = v },
+			},
+			webui.Select[choice]{
+				Label: "Channel", Required: true,
+				Options: []webui.Option{{Value: "stable"}, {Value: "beta"}},
+				Load:    func(c choice) []string { return []string{c.Channel} }, Store: func(c *choice, v []string) { c.Channel = v[0] },
+			},
+		},
+		Receive: webui.Action[webui.FileHandle[choice]]{Run: func(_ context.Context, f webui.FileHandle[choice]) (webui.Outcome, error) {
+			_, _ = io.Copy(io.Discard, f.Reader)
+			f.Reader = nil
+			s.mu.Lock()
+			s.runs = append(s.runs, f)
+			s.mu.Unlock()
+			return webui.Success("Uploaded " + f.Name), nil
+		}},
+	}
+	if edit != nil {
+		edit(&up)
+	}
+	s.h = webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: up}}}.MustCompile("/admin")
+	return s
+}
+
+// chosen posts a panel with options: the leaf, the fields in the order that the form has them, and then the one file.
+func chosen(h http.Handler, wrap func(io.Reader) io.Reader, note, channel, content string) *httptest.ResponseRecorder {
+	return orderedPost(h, "/admin/up", wrap,
+		rawPart{"_leaf", "", "p"}, rawPart{"f0", "", note}, rawPart{"f1", "", channel}, rawPart{"file", "a.bin", content})
+}
+
+func TestAFileUploadHasInputsBesideTheFileWithTheirDefaultsAndTheirRules(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(nil)
+	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
+	note, channel, file := strings.Index(body, `name="f0"`), strings.Index(body, `name="f1"`), strings.Index(body, `type="file"`)
+	assert.True(t, note >= 0 && channel > note && file > channel) // in the order of the form, the file last, so that they arrive first
+	assert.Contains(t, body, `value="a note"`)                    // the defaults that Load gave
+	assert.Contains(t, body, `minlength="3"`)                     // the rules, as a form's inputs have them
+	assert.Contains(t, body, `enctype="multipart/form-data"`)
+	assert.Equal(t, strings.Count(body, `name="_leaf"`), 1)
+}
+
+func TestAFileUploadHandsRunWhatWasChosenBesideTheFile(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(nil)
+	rec := chosen(s.h, nil, "my note", "beta", "data")
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
+	assert.Equal(t, s.runs[0].Options, choice{Note: "my note", Channel: "beta"})
+}
+
+// The Guard is given the options as bound, since what the visitor chose may be what decides whether they may.
+func TestAFileUploadGuardIsGivenTheOptions(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(func(f *webui.FileUpload[choice]) {
+		f.Receive.Guard = func(_ context.Context, h webui.FileHandle[choice]) error {
+			if h.Reader != nil && h.Options.Channel == "beta" {
+				return errors.New("beta is not for you")
+			}
+			return nil
+		}
+	})
+	assert.Equal(t, flashOf(chosen(s.h, nil, "note", "stable", "data")), "oUploaded a.bin")
+	assert.Equal(t, flashOf(chosen(s.h, nil, "note", "beta", "data")), "ebeta is not for you")
+	assert.Equal(t, s.count(), 1)
+}
+
+// What is chosen is checked by the rules of its fields before any of the file is read: a refusal costs the file nothing, and says which field.
+func TestAFileUploadChoiceThatIsRefusedIsRefusedBeforeTheFileIsRead(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(nil)
+	for name, c := range map[string]struct{ note, channel, want string }{
+		"too short":      {"x", "stable", "Note: Must be at least 3 characters."},
+		"not an option":  {"note", "nightly", "Channel:"},
+		"nothing chosen": {"note", "", "Channel: "},
+	} {
+		var read atomic.Int64
+		rec := chosen(s.h, func(r io.Reader) io.Reader {
+			return io.TeeReader(r, writerFunc(func(b []byte) { read.Add(int64(len(b))) }))
+		}, c.note, c.channel, strings.Repeat("x", 4<<20))
+		assert.Equal(t, rec.Code, http.StatusSeeOther)
+		assert.Contains(t, flashOf(rec), c.want)
+		assert.True(t, read.Load() < 1<<20) // the fields, and none of the file
+		_ = name
+	}
+	assert.Equal(t, s.count(), 0)
+}
+
+// A field that comes after the file is not a choice: it was not there when the file began, and is not read.
+func TestAFileUploadFieldAfterTheFileIsIgnored(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(nil)
+	rec := orderedPost(s.h, "/admin/up", nil,
+		rawPart{"_leaf", "", "p"}, rawPart{"f0", "", "first"}, rawPart{"f1", "", "stable"}, rawPart{"file", "a.bin", "data"}, rawPart{"f0", "", "late"})
+	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
+	assert.Equal(t, s.runs[0].Options.Note, "first")
+}
+
+// A panel with no Load has the zero options as its defaults, and one with no Fields has none to choose.
+func TestAFileUploadOptionsAreOptional(t *testing.T) {
+	t.Parallel()
+
+	s := newChoiceShop(func(f *webui.FileUpload[choice]) { f.Load, f.Fields = nil, nil })
+	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
+	assert.False(t, strings.Contains(body, `name="f0"`))
+	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "a.bin", "data"})
+	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
+	assert.Equal(t, s.runs[0].Options, choice{})
+}
+
+func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
+	t.Parallel()
+
+	problems := func(f webui.FileUpload[choice]) string {
+		var all string
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: f}}}) {
+			all += e.Error() + "\n"
+		}
+		return all
+	}
+	note := webui.String[choice]{Label: "Note", Load: func(c choice) string { return c.Note }}
+	receive := webui.Action[webui.FileHandle[choice]]{Run: func(context.Context, webui.FileHandle[choice]) (webui.Outcome, error) {
+		return webui.Success("ok"), nil
+	}}
+	assert.Contains(t, problems(webui.FileUpload[choice]{MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note, note}}), "used twice")
+	assert.Contains(t, problems(webui.FileUpload[choice]{
+		MaxSize: 1, Receive: receive,
+		Fields: []webui.Accessor[choice]{webui.File[choice]{Label: "F", Load: func(choice) *webui.FileInfo { return nil }}},
+	}), "is a File")
+	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: webui.FileUpload[choice]{
+		MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note},
+	}}}}.Compile("/admin")
+	assert.NoError(t, err)
 }

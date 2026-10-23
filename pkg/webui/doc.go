@@ -291,11 +291,13 @@
 // handle's Reader wherever it is to go, an object store, with nothing held by the library,
 // in memory or on disk, and says how it ended with an [Outcome]:
 //
-//	webui.FileUpload{
+//	webui.FileUpload[Release]{
 //		Title: "Upload firmware", MaxSize: 2 << 30,
-//		Receive: webui.Action[webui.FileHandle]{
+//		Load:   func(ctx context.Context) (Release, error) { return Release{Channel: "stable"}, nil }, // the defaults
+//		Fields: []webui.Accessor[Release]{channel},                                                   // beside the file
+//		Receive: webui.Action[webui.FileHandle[Release]]{
 //			Guard: canEdit,
-//			Run: func(ctx context.Context, f webui.FileHandle) (webui.Outcome, error) {
+//			Run: func(ctx context.Context, f webui.FileHandle[Release]) (webui.Outcome, error) {
 //				if _, err := bucket.PutObject(ctx, "firmware/"+f.Name, f.Reader); err != nil {
 //					return webui.Outcome{}, err
 //				}
@@ -303,6 +305,12 @@
 //			},
 //		},
 //	}
+//
+// What the visitor chooses beside the file is the panel's model, as a form's is: Load gives
+// the defaults and Fields are the inputs (any accessor that a form has), which come before the
+// file in the page and in the request, so that they are checked, and the Guard asked with them
+// as [FileHandle.Options], before any of the file is read. A refused choice refuses the upload
+// without reading it. A panel with nothing to choose says struct{} and has neither.
 //
 // A file that was chosen in a folder has the folder in [FileHandle.Path], made safe, apart
 // from its Name; [FileHandle.RawName] is the name as the browser sent it, to tell the visitor

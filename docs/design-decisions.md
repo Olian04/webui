@@ -327,11 +327,9 @@ design element.
   of several gigabytes to an object store is not part of that, and three designs that put the store behind the field (a writer with `Submit` and
   `Discard`, a typed token with `Commit` and `Discard`, an `UploadSpool` that `Store` is handed a handle of) each leaked how a file is stored into
   every form with a file, and made the form's order the upload's lifecycle. A `FileUpload` is a leaf of its own with its own POST, so none of that is
-  there: `Receive` is an `Action[FileHandle]`, the `FileHandle` (name, sniffed content type, kind and a `Reader`) is its subject, and its `Run` is the upload,
+  there: `Receive` is an `Action[FileHandle[M]]`, the `FileHandle` (name, sniffed content type, kind and a `Reader`) is its subject, and its `Run` is the upload,
   which reads the `Reader` wherever it goes and returns an `Outcome`; the Guard, which is the action's, decides how the panel is drawn (asked with a
-  `FileHandle` that has no reader: `Disabled` disables, any other error leaves the panel out) and refuses the post. It is not generic: a panel's type
-  parameter is its loaded model, and this has none, so what `Run` needs of the page it reads with `ArgsOf`. One file per panel, in one request, with no other
-  fields: what the app wants of the file besides it is a second step. The first 512 bytes are read before the Guard, so that it can see the kind, and the
+  `FileHandle` that has no reader: `Disabled` disables, any other error leaves the panel out) and refuses the post. What `Run` needs of the page it reads with `ArgsOf`. One file per panel, in one request: what the visitor chooses beside it is the panel's options (below). The first 512 bytes are read before the Guard, so that it can see the kind, and the
   `Reader` is held to `MaxSize`, which is required and has no default (the cap is the app's to say, as for a `File`); a file larger than it is refused as
   "Must be at most …", whether `Run` read to the end or stopped early (what it did not read is read by the library, bounded by the limit of the body, so that the
   browser is answered and not reset). Only the kinds that the first bytes tell can be accepted (the images, PDF and any file), since the file is read once, by
@@ -341,6 +339,18 @@ design element.
   large file may see the connection closed; a `Run` that fails after a partial write to a store leaves it for the app to clean up, which the library cannot,
   not knowing the store; and the browser's own load indicator is the only progress, since the input stays the control and the post is the browser's own
   (the earlier decision), which an `XMLHttpRequest` with a `<progress>` would reverse, and is a decision of its own.
+
+- **What is chosen beside the file is the panel's model: `FileUpload[M]`.** The first version had no inputs and was not generic, since a panel's type parameter is its loaded model and
+  it had none; an app that moved to it needed a choice beside the file ("replace if it exists", a storage class, a folder) that was made before the file was sent, and a second step
+  after the upload cannot be. So the panel has a model, the options, as a form has: `Load` gives the defaults (optional), `Fields` are the inputs, any accessor of a form with a `Store`
+  and rules (a `File` among them is a compile error), and the type parameter is named `M` as on every other leaf. They are lowered, bound (`bindFunc`) and drawn (`formField`) by the
+  form's own machinery, and are an `ir.Form` with a placeholder Submit, which is what makes its fields inputs. The fields come before the file in the page, so the request sends them first:
+  they are bound, and checked by their rules, before any of the file is read, a refusal answers like a table action's (a toast of the messages) without reading the file, and the options
+  are `FileHandle.Options` for the Guard and `Run`. A field that arrives after the file is ignored. Dropped: only page arguments (a visitor cannot choose with them on the page that
+  uploads); a fixed kind of extra input (a bool or a select) of the library's (it would decide what apps choose); and options that can be read after the upload (the choice cannot
+  change what is already being written). The costs: **an upload with nothing to choose says `FileUpload[struct{}]` and `FileHandle[struct{}]`**, since Go cannot default a type
+  parameter, a break from the version that was not generic; the Guard is asked after the options are bound, so a visitor it would refuse sees a field's message first when they post by
+  hand without the fields; and the options are the visitor's word, which `Run` checks as it does anything else.
 
 - **A `FileHandle` says what the browser said, apart from what the library made safe.** `Name` is the base name, made safe, and is never a path; `Path` is the folder that a
   file was sent in (a visitor who chose a folder), made safe by a rule that never lets it leave the folder the app puts it in (both slashes separate, empty, `.` and `..` elements are

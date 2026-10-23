@@ -109,7 +109,7 @@ func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page,
 		if upload, ok := leaf.(*ir.FileUpload); ok {
 			// A panel that is for one file, of any size: the file is not held, and is handed to the action as it arrives, which answers the request.
 			if name == uploadField {
-				p.uploadAct(w, r, page, req, upload, part)
+				p.uploadAct(w, r, page, req, upload, part, values)
 				return false
 			}
 			continue

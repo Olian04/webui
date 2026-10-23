@@ -173,9 +173,16 @@ func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *test
 
 // postFirmware posts the one file of the Firmware panel, as a browser does: the leaf first.
 func postFirmware(h http.Handler, name string, data []byte) *httptest.ResponseRecorder {
+	return postFirmwareChoosing(h, "refuse", "stable", name, data)
+}
+
+// postFirmwareChoosing posts it with what the visitor chose beside the file: the fields come before it, as the form has them.
+func postFirmwareChoosing(h http.Handler, taken, channel, name string, data []byte) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
 	_ = w.WriteField("_leaf", "p.0")
+	_ = w.WriteField("f0", taken)
+	_ = w.WriteField("f1", channel)
 	hdr := textproto.MIMEHeader{}
 	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+name+`"`)
 	hdr.Set("Content-Type", "application/octet-stream")
@@ -221,4 +228,64 @@ func TestAViewerSeesTheFirmwarePanelDisabledAndCannotUpload(t *testing.T) {
 	rec := postFirmware(viewer, "x.bin", []byte("data"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "eRequires the editor role")
+}
+
+// What is chosen beside the file is checked before any of the file is read, and reaches Receive: an image of a name that was uploaded already is refused unless the visitor chose
+// to replace it, which removes the old entry from the history, and the release channel that they chose is kept.
+func TestTheFirmwarePanelTakesWhatIsChosenBesideTheFile(t *testing.T) {
+	h := handler(t)
+	assert.Equal(t, flashOf(postFirmwareChoosing(h, "refuse", "beta", "same.bin", []byte("one")))[:9], "oReceived")
+	assert.Contains(t, get(h, "/admin/firmware").Body.String(), "Beta")
+
+	// A name that was uploaded before, and not only the last one, is refused, and the history is as it was.
+	assert.Equal(t, flashOf(postFirmwareChoosing(h, "refuse", "stable", "other.bin", []byte("x")))[:9], "oReceived")
+	again := postFirmwareChoosing(h, "refuse", "stable", "same.bin", []byte("two"))
+	assert.Equal(t, flashOf(again), "esame.bin was uploaded already: choose to replace it to upload it again")
+	body := get(h, "/admin/firmware").Body.String()
+	assert.Equal(t, strings.Count(body, "same.bin"), 1)
+	oneSum := sha256.Sum256([]byte("one"))
+	assert.Contains(t, body, hex.EncodeToString(oneSum[:]))
+
+	// Replacing takes the old entry out and puts the new one at the top.
+	assert.Equal(t, flashOf(postFirmwareChoosing(h, "replace", "stable", "same.bin", []byte("two")))[:9], "oReceived")
+	body = get(h, "/admin/firmware").Body.String()
+	assert.Equal(t, strings.Count(body, "same.bin"), 1)
+	twoSum := sha256.Sum256([]byte("two"))
+	assert.Contains(t, body, hex.EncodeToString(twoSum[:]))
+	assert.False(t, strings.Contains(body, hex.EncodeToString(oneSum[:])))
+	assert.True(t, strings.Index(body, "same.bin") < strings.Index(body, "other.bin")) // the newest first
+
+	// A choice that is not one of the options is refused with the field's message, and the file is not read.
+	bad := postFirmwareChoosing(h, "delete everything", "stable", "third.bin", []byte("x"))
+	assert.Equal(t, bad.Code, http.StatusSeeOther)
+	assert.Contains(t, flashOf(bad), "If an image has the same name")
+
+	// The panel draws its choices with their defaults, before the file.
+	body = get(h, "/admin/firmware").Body.String()
+	choices, file := strings.Index(body, "If an image has the same name"), strings.Index(body, `type="file"`)
+	assert.True(t, choices >= 0 && file > choices)
+	assert.Contains(t, body, "Release channel")
+}
+
+// The same name in another folder is another image.
+func TestTheFirmwareNameIncludesTheFolder(t *testing.T) {
+	h := handler(t)
+	for _, name := range []string{"a/fw.bin", "b/fw.bin"} {
+		assert.Equal(t, flashOf(postFirmwareChoosing(h, "refuse", "stable", name, []byte(name)))[:9], "oReceived")
+	}
+	assert.Equal(t, flashOf(postFirmwareChoosing(h, "refuse", "stable", "a/fw.bin", []byte("again"))), "ea/fw.bin was uploaded already: choose to replace it to upload it again")
+}
+
+// Every image that was uploaded is in the history, newest first, with what was kept of it.
+func TestTheFirmwareHistoryListsEveryUploadNewestFirst(t *testing.T) {
+	h := handler(t)
+	assert.Contains(t, get(h, "/admin/firmware").Body.String(), "Upload history")
+	for _, name := range []string{"one.bin", "two.bin", "three.bin"} {
+		assert.Equal(t, flashOf(postFirmware(h, name, []byte(name)))[:9], "oReceived")
+	}
+	body := get(h, "/admin/firmware").Body.String()
+	one, two, three := strings.Index(body, "one.bin"), strings.Index(body, "two.bin"), strings.Index(body, "three.bin")
+	assert.True(t, three >= 0 && two > three && one > two)
+	sum := sha256.Sum256([]byte("one.bin"))
+	assert.Contains(t, body, hex.EncodeToString(sum[:]))
 }

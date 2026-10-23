@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 	"sync"
@@ -69,14 +70,15 @@ type Blob struct {
 
 type RetentionPolicy struct{ Days int }
 
-// Firmware is what the demo keeps of the last image that was uploaded to it: not the image, which is hashed as it arrives and never held, but what it was.
+// Firmware is what the demo keeps of an image that was uploaded to it: not the image, which is hashed as it arrives and never held, but what it was.
 type Firmware struct {
-	Name   string
-	Folder string // where the visitor's file was, when they chose a folder
-	Type   string // what the browser said it was, which is the visitor's word and not what it holds
-	Size   int
-	SHA256 string
-	At     string
+	Name    string
+	Folder  string // where the visitor's file was, when they chose a folder
+	Type    string // what the browser said it was, which is the visitor's word and not what it holds
+	Channel string // the release channel that the visitor chose
+	Size    int
+	SHA256  string
+	At      string
 }
 
 // SiteSummary is one site rolled up from its devices.
@@ -123,7 +125,7 @@ type Service struct {
 	rule      string // the paging rule, TypeScript
 	retention RetentionPolicy
 	audit     []AuditEntry // newest first
-	firmware  Firmware
+	firmware  []Firmware   // every image that was uploaded, newest first
 	started   time.Time
 }
 
@@ -498,17 +500,38 @@ func (s *Service) Audit(offset, limit int) []AuditEntry {
 	return slices.Clone(s.audit[lo:hi])
 }
 
-func (s *Service) Firmware() Firmware {
+// Key is what names an image: its folder and its name, as it was uploaded.
+func (f Firmware) Key() string { return path.Join(f.Folder, f.Name) }
+
+// HasFirmware is whether an image of that key was uploaded.
+func (s *Service) HasFirmware(key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.firmware
+	return slices.ContainsFunc(s.firmware, func(f Firmware) bool { return f.Key() == key })
 }
 
-func (s *Service) SetFirmware(f Firmware) {
+// FirmwareHistory is every image that was uploaded, newest first.
+func (s *Service) FirmwareHistory() []Firmware {
 	s.mu.Lock()
-	s.firmware = f
+	defer s.mu.Unlock()
+	return slices.Clone(s.firmware)
+}
+
+// SetFirmware records an upload at the top of the history. An image of the same key that was uploaded already is refused, unless replace says to
+// take its place, which removes the old entry. It is false for a refusal, which is decided under the lock, so that two uploads of one name at once
+// cannot both be recorded.
+func (s *Service) SetFirmware(f Firmware, replace bool) bool {
+	s.mu.Lock()
+	taken := slices.ContainsFunc(s.firmware, func(old Firmware) bool { return old.Key() == f.Key() })
+	if taken && !replace {
+		s.mu.Unlock()
+		return false
+	}
+	s.firmware = slices.DeleteFunc(s.firmware, func(old Firmware) bool { return old.Key() == f.Key() })
+	s.firmware = slices.Insert(s.firmware, 0, f)
 	s.mu.Unlock()
-	s.record("uploaded firmware", f.Name)
+	s.record("uploaded firmware", f.Key())
+	return true
 }
 
 func (s *Service) Settings() Settings {
