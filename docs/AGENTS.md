@@ -57,7 +57,9 @@ is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
 
 The server answers a browser with HTML and nothing else (see the opening of `design-decisions.md` and htmx's [HATEOAS](https://htmx.org/essays/hateoas) and
 [hypermedia-driven applications](https://htmx.org/essays/hypermedia-driven-applications)): each response holds the links, forms and buttons that the visitor can use in that
-state. A script feature gets an HTML fragment from the server, through the `X-Webui-Leaf` protocol that `enhance.js` already uses, and puts it in the page. Never add a JSON
+state. A script feature gets an HTML fragment from the server, through the `X-Webui-Leaf` protocol that `enhance.js` already uses, and puts it in the page. A POST that carries that header is answered
+for every leaf in HTML and never with a redirect or a cookie: the item (`li.result`, with `a.result-next` for where the outcome goes) with the status of how it went (200 accepted, 422 refused,
+403 the Guard, 500 a failure), or, for a form that was refused, the form again with the 422; the script reads the status and the link, never a tone. Never add a JSON
 endpoint or a response that a script has to interpret, and do not build markup in script from data. `upload.js` is the example: the server answers each file it sends with a list
 item, and the script puts it in the page as it is.
 

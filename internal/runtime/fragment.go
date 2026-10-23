@@ -14,11 +14,13 @@ func wantsFragment(r *http.Request) bool {
 }
 
 // writeResult answers a script-made POST with the result as a list item: the tone and the text of what the toast would have said, and, when the outcome goes somewhere
-// else, a link to it, which is the next action that the response offers.
+// else, a link to it, which is the next action that the response offers. The status says how it went, as HTTP does: 200 for what was accepted, 422 for what was
+// understood and refused, 403 for what the visitor may not do, and 500 for what failed, so that a script that sends a request need read no more than the status to
+// know whether to go on.
 func (p *Program) writeResult(w http.ResponseWriter, r *http.Request, status int, tone render.ToastTone, text, next string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	if err := render.UploadResult(tone, text, next).Render(r.Context(), w); err != nil {
+	if err := render.Result(tone, text, next).Render(r.Context(), w); err != nil {
 		p.log.Error("webui: a result could not be written", "path", r.URL.Path, "err", err)
 	}
 }

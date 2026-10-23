@@ -1596,7 +1596,7 @@ td .multiline {
   border-color: var(--red-bd);
   background: var(--red-bg);
 }
-.upload-text {
+.result-text {
   flex: 1 1 auto;
 }
 .file-hint {

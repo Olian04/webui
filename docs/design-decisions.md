@@ -386,10 +386,10 @@ design element.
   and a progress bar are one feature, because they all need what a plain form post cannot do: a request for each file that script makes. So `upload.js`, linked only by a page
   that has a `FileUpload` and after `file.js`, takes over the form's submit: for each chosen file, in order, it sends the form's controls and then the file (with its
   folder in its name, which the server reads as `Path`) with an `XMLHttpRequest`, for the progress events that `fetch` has none of, to the form's own address, with the
-  `X-Webui-Leaf` header that a request for one panel's HTML carries. A POST with that header is answered with **HTML, never data**: one list item with the outcome's
-  tone and text and, when the outcome goes somewhere, a link to it (a refused page Guard is the same item with the 403), written at the places where a flash and a
-  redirect are, so every other post is unchanged. The script puts the item in the file's row as it is and reads nothing from it but that link: when every file went
-  well and the last outcome went somewhere it follows the link, as a browser that was redirected would, and the panels around it (tables) are asked for again from the
+  `X-Webui-Leaf` header that a request for one panel's HTML carries. A POST with that header is answered with **HTML, never data**, and the status says how it went (below): one list item with the outcome's
+  tone and text and, when the outcome goes somewhere, a link to it, written at the places where a flash and a redirect are, so every other post is unchanged. The script
+  puts the item in the file's row as it is and reads nothing from it but that link, and whether a file went well is its status: when every file was a success and the last
+  outcome went somewhere it follows the link, as a browser that was redirected would, and the panels around it (tables) are asked for again from the
   server by a `webui:changed` event that `enhance.js` answers, so that what was just sent is in them. A `Cancel` aborts the request in flight and marks the rest "Not
   sent". `Multiple` is the one option, and a folder is not a second: it adds `multiple` to the chooser (by script, never in the markup, so that without script a post
   never drops files that were chosen), a *Choose folder* button on a hidden `webkitdirectory` input, and the expansion of a folder that is dropped with
@@ -399,6 +399,19 @@ design element.
   HTML, which the decisions log opens with); and a reload after the last file (it loses the results, and a refused file is the thing to read). The costs: a second way to send
   a form to keep in step with the first, for this panel only; a script of about 300 lines with no test harness, whose behaviour is checked in a browser by hand and its tokens by
   the tests; a progress bar per file and not of the whole queue; and a request for each file, which for hundreds of small files is slower than one.
+
+- **A post that script makes is answered in HTML, for any panel, with the status of how it went.** The first version of the upload's answer was the upload's: a list item that
+  any other post with the header would have been given with no place to go, a form that was refused was given the whole page, and the script told success from failure by the
+  word in the item's tone. It is one contract now, for every leaf. A post with `X-Webui-Leaf` is answered with HTML and never with a redirect, a cookie or data: **an accepted
+  action is the item with a 200** (a warning too: it was done), **a refused outcome, rule or file is the item with a 422** (understood, and refused), **a Guard's refusal is the item
+  with a 403** (the visitor may not, which is not that what they sent was refused), **a failure is the item with a 500**, and a refused page Guard, a post from another site and an
+  argument that did not parse are the item with their own statuses; **a form that was refused is the form**: the HTML of the leaf, drawn again with what was typed and what was
+  refused, and nothing round it, as a request for the leaf is answered, with the 422. The item is `li.result` with `data-tone` for how to draw it, `.result-text` and, when the
+  outcome goes somewhere, `a.result-next`: a link that is the next action, which the script follows and has not to know. So a script reads the status that HTTP has for it and the
+  link that the HTML has, and never a tone, and an app's tone is for the eye. What the script still says itself is what only it can know: "Not sent." for a file that a *Cancel*
+  stopped before it was sent, "Cancelled." and "The upload could not be completed." for a request that did not reach an answer, which have no response to be the server's words. The
+  panel's form is told by plain attributes (`data-upload` marks it and `data-multiple` says that it takes several files), and not by JSON that the script parses. The costs: a
+  status for each way it can go is more than a 200, and a script that sends a form (there is none yet) has the form's HTML to swap in and the item to read.
 
 - **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
   page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input

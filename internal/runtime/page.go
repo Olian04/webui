@@ -363,6 +363,10 @@ func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 	}
 	p.log.Error("webui: request failed", "page", page.PathTemplate, "err", err)
 	if r.Method == http.MethodPost {
+		if wantsFragment(r) {
+			p.writeResult(w, r, http.StatusInternalServerError, render.ToastError, "Something went wrong. The cause was logged on the server.", "")
+			return
+		}
 		p.refuse(w, r, "Something went wrong. The cause was logged on the server.") // a POST is answered with a redirect
 		return
 	}

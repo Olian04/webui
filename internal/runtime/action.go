@@ -254,7 +254,12 @@ func (p *Program) perform(w http.ResponseWriter, r *http.Request, page *ir.Page,
 	if act.Guard != nil {
 		if err := act.Guard(ctx, subject); err != nil {
 			p.m.Action(page.PathTemplate, "denied")
-			p.refuse(w, r, cmp.Or(err.Error(), "Not allowed."))
+			message := cmp.Or(err.Error(), "Not allowed.")
+			if wantsFragment(r) {
+				p.writeResult(w, r, http.StatusForbidden, render.ToastError, message, "") // the visitor may not, which is not that what they sent was refused
+				return ir.Outcome{}, false
+			}
+			p.refuse(w, r, message)
 			return ir.Outcome{}, false
 		}
 	}
@@ -311,6 +316,19 @@ func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, page *ir.
 	ctx := r.Context()
 	req.sub, req.subLeaf = &submission{model: model, values: values, errs: errs}, render.LeafID(n.At)
 	path, query := p.address(page, req)
+	if wantsFragment(r) {
+		// A script that sent the form is given the form, drawn again with what was typed and what was refused, and nothing round it: the HTML of the
+		// leaf, as a request for it is, to put where the form was.
+		body, err := p.body(ctx, req, page, n)
+		if err != nil {
+			p.fail(w, r, page, req, err)
+			return
+		}
+		if err := writeHTML(ctx, w, http.StatusUnprocessableEntity, body); err != nil {
+			p.log.Error("webui: render failed", "path", r.URL.Path, "leaf", r.Header.Get(LeafHeader), "err", err)
+		}
+		return
+	}
 	req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 	req.panels = &panelSet{}
 	body := p.panel(ctx, req, page, page.Body)
@@ -343,7 +361,11 @@ func (p *Program) flashRedirect(w http.ResponseWriter, r *http.Request, target, 
 		if next == r.URL.RequestURI() {
 			next = "" // staying where it is is not something to offer a link to
 		}
-		p.writeResult(w, r, http.StatusOK, tone, text, next)
+		status := http.StatusOK
+		if tone == render.ToastError {
+			status = http.StatusUnprocessableEntity // understood, and refused
+		}
+		p.writeResult(w, r, status, tone, text, next)
 		return
 	}
 	p.setFlash(w, r, text, tone)

@@ -725,8 +725,8 @@ func TestAFileUploadThatScriptSendsIsAnsweredWithAnHTMLFragment(t *testing.T) {
 	}{
 		"success": {outcome: webui.Success("Stored it"), status: 200, tone: "ok", text: "Stored it"},
 		"warning": {outcome: webui.Warning("Stored it slowly"), status: 200, tone: "warn", text: "Stored it slowly"},
-		"failure": {outcome: webui.Failure("The bucket is full"), status: 200, tone: "bad", text: "The bucket is full"},
-		"error":   {err: errors.New("boom"), status: 200, tone: "bad", text: "Something went wrong. The cause was logged on the server."},
+		"failure": {outcome: webui.Failure("The bucket is full"), status: 422, tone: "bad", text: "The bucket is full"},
+		"error":   {err: errors.New("boom"), status: 500, tone: "bad", text: "Something went wrong. The cause was logged on the server."},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -743,8 +743,8 @@ func TestAFileUploadThatScriptSendsIsAnsweredWithAnHTMLFragment(t *testing.T) {
 			assert.Equal(t, rec.Header().Get("Location"), "")
 			assert.Equal(t, flashOf(rec), "") // no flash: the HTML is the answer
 			body := strings.TrimSpace(rec.Body.String())
-			assert.True(t, strings.HasPrefix(body, `<li class="upload-result" data-tone="`+c.tone+`">`) && strings.HasSuffix(body, `</li>`))
-			assert.Contains(t, body, `<span class="upload-text">`+c.text+`</span>`)
+			assert.True(t, strings.HasPrefix(body, `<li class="result" data-tone="`+c.tone+`">`) && strings.HasSuffix(body, `</li>`))
+			assert.Contains(t, body, `<span class="result-text">`+c.text+`</span>`)
 			assert.False(t, strings.Contains(body, "<a ")) // it goes nowhere else
 		})
 	}
@@ -755,7 +755,7 @@ func TestAnUploadFragmentEscapesTheTextAndSaysWhatWasRefused(t *testing.T) {
 	t.Parallel()
 
 	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
-	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="upload-text">Choose a PNG file.</span>`)
+	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="result-text">Choose a PNG file.</span>`)
 
 	named := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
@@ -785,7 +785,7 @@ func TestAnUploadFragmentOffersALinkToWhereTheOutcomeGoes(t *testing.T) {
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: up}, done}}.MustCompile("/admin")
 	body := postFragment(h, "a.bin", "data").Body.String()
-	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm upload-next" href="/admin/done">Continue</a>`)
+	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm result-next" href="/admin/done">Continue</a>`)
 	assert.Contains(t, body, `data-tone="ok"`)
 }
 
@@ -798,7 +798,7 @@ func TestAFileUploadPostOnAPageTheVisitorMayNotOpenIsRefusedAsAFragment(t *testi
 	})
 	rec := postFragment(s.h, "a.bin", "data")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="upload-text">requires the editor role</span>`)
+	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="result-text">requires the editor role</span>`)
 	assert.Equal(t, s.count(), 0)
 }
 
@@ -808,10 +808,12 @@ func TestAFileUploadTellsTheScriptWhetherItTakesSeveralAndTakesOneWithout(t *tes
 	t.Parallel()
 
 	one := serve(newUploadShop(nil).h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, one, `data-upload="{&#34;multiple&#34;:false}"`)
+	assert.Contains(t, one, ` data-upload`)
+	assert.False(t, strings.Contains(one, "data-multiple")) // one file
 	several := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Multiple = true })
 	body := serve(several.h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, body, `data-upload="{&#34;multiple&#34;:true}"`)
+	assert.Contains(t, body, ` data-multiple`)
+	assert.False(t, strings.Contains(body, "{&#34;multiple")) // plain attributes, and no data that script has to parse
 	input := body[strings.Index(body, `<input`+""):]
 	input = input[strings.Index(input, `type="file"`)-10:]
 	input = input[:strings.Index(input, ">")]
@@ -842,16 +844,16 @@ func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 	js := serve(s.h, http.MethodGet, assetURL(t, s.h, "upload.js")).Body.String()
 	for _, want := range []string{
 		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(LEAF_HEADER, leaf)", "'X-Webui-Leaf'", "new FormData()", "data.append('file', item.file,",
-		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.upload-result", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
-		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.upload-next", "window.location.assign(next.href)", "X-Webui-Leaf",
+		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.result", "hasAttribute('data-multiple')", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
+		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.result-next", "li._ok", "xhr.status >= 200 && xhr.status < 300", "window.location.assign(next.href)", "X-Webui-Leaf",
 	} {
 		assert.Contains(t, js, want)
 	}
-	for _, fn := range []string{"element", "config", "fromFiles", "walk", "controls", "enhance", "enhanceAll", "setItems", "busy", "show", "finish", "send"} {
+	for _, fn := range []string{"element", "fromFiles", "walk", "controls", "enhance", "enhanceAll", "setItems", "busy", "show", "finish", "send"} {
 		assert.Contains(t, js, "function "+fn+"(")
 	}
 	assert.False(t, strings.Contains(js, "xhr.response)")) // nothing is read as data
-	assert.False(t, strings.Contains(js, "JSON.parse(xhr"))
+	assert.False(t, strings.Contains(js, "JSON.parse"))    // nothing is parsed, and the form is told by its attributes
 	assert.False(t, strings.Contains(js, ".json()"))
 	assert.False(t, strings.Contains(js, "innerHTML"))
 	assert.False(t, strings.Contains(js, "fetch("))
