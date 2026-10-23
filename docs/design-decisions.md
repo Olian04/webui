@@ -452,6 +452,22 @@ design element.
 
 ## Guards and refusals
 
+- **Every state that stops a visitor is HTML with the way on in it.** The hypermedia audit found states that were a line of plain text or a message with nothing to follow, and each is
+  now the page of the state with the links that the state offers, written by the server. A method an address does not take is a 405 in the shell, with what it does answer and a link to open
+  it; a post from another site is a 403 in the shell with a link to the page (and a fragment of the same words for script); the 400 for an argument that did not parse says so and leads on to
+  the page without its query, and no longer tells the visitor to edit an address; a 500 leads on to the same address, to try again; a page whose render failed so badly that no shell could be
+  drawn is the smallest page of HTML with a link, not a line of text. A panel that failed has a *Try again* link to the page's address, and a table that shows nothing has the way on that the
+  reason offers: *Go to the first page* when it is past its end, *Clear the filters* when some are set. A script's post that a page's Guard refused is answered with the refusal's words
+  and its `Href` for any status, and not only for the 403. A breadcrumb parent and a form's *Cancel* and *Back* are asked of the Guard of the page they lead to, as a toolbar link and a row
+  link are, so that none leads the visitor to a 403 that nothing on the page had said: a refused parent is its words and no link, and a way back that is refused is not drawn. A control that
+  its Guard disabled gives its reason as text and not only as a tooltip on hover: the wrapper takes the keyboard focus (which shows the tooltip as hover does), and a screen reader reads
+  "Not available: reason" after the button; and a form that is only read says why in its footer when its Guard said `Disabled`. Left as they are, on purpose: the pager's disabled *Previous*
+  and *Next* stay drawn (the buttons keep their places, which "nothing moves under the pointer" asks for, and a disabled button is announced as one), and a source that does not know its
+  total can still show a *Next* that leads to an empty page, which the table then says and leads on from. The costs: more markup in the states, and the in-process Guard check that a link
+  asks is paid for each breadcrumb parent on every page that has one.
+
+
+
 - **What a visitor may be told is a `Refusal`, a typed error with a status.** A `Guard`'s error was always a 403 with its text, and a
   `Load`'s was "Could not load" with the cause hidden, since either may name what a visitor should not see; so an app that
   wanted a 404 for a record that is not there, or a 401 with a link to set up a credential, had no way to say so. `NotFound`,

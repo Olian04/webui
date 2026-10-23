@@ -57,7 +57,7 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("fragment") != "" {
 		if err := writeHTML(r.Context(), w, http.StatusOK, render.SearchFragment(groups)); err != nil {
 			p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			plainFailure(w, r)
 		}
 		return
 	}
@@ -234,6 +234,7 @@ func (p *Program) searchGroup(page *ir.Page) string {
 // of this app, its arguments decode, and its Guard allows them. An address that
 // is none of these is not a result worth showing.
 func (p *Program) mayOpen(ctx context.Context, href string) bool {
+	//nolint:gosec // G704: an in-process request to this app's own gate, and no connection: href is an address of this app, which a from address has been checked to be (see safeRedirect).
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet, href, http.NoBody)
 	if err != nil {
 		return false

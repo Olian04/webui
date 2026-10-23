@@ -5,8 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/a-h/templ"
@@ -59,8 +61,15 @@ func (p *Program) start(ctx context.Context, hide map[string]bool) string {
 // notFound is the 404 inside the shell, so the way back is on screen.
 func (p *Program) notFound(w http.ResponseWriter, r *http.Request) {
 	if _, pattern := p.gate.Handler(r); pattern != "" {
-		w.Header().Set("Allow", p.allow[pattern])
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		allow := p.allow[pattern]
+		w.Header().Set("Allow", allow)
+		open := ""
+		if slices.Contains(strings.Split(strings.ReplaceAll(allow, " ", ""), ","), http.MethodGet) {
+			open = r.URL.RequestURI()
+		}
+		p.write(w, r, http.StatusMethodNotAllowed, render.Doc{
+			Title: "Not allowed", Crumbs: []render.Crumb{p.render.Home(), {Label: "Not allowed"}}, Content: render.MethodNotAllowed(allow, open),
+		})
 		return
 	}
 	p.missing(w, r)
@@ -85,7 +94,7 @@ func (p *Program) writeWith(w http.ResponseWriter, r *http.Request, status int, 
 	doc = p.finish(w, r, doc, shell)
 	if err := writeHTML(r.Context(), w, status, p.render.Document(doc)); err != nil {
 		p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		plainFailure(w, r)
 	}
 }
 
@@ -114,13 +123,23 @@ func (p *Program) finish(w http.ResponseWriter, r *http.Request, doc render.Doc,
 	return doc
 }
 
+// plainFailure answers a request whose page could not be drawn at all, which is when no shell can be: with the smallest page of HTML that says so and leads
+// on to the same address, and not a line of plain text that leads nowhere.
+func plainFailure(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusInternalServerError)
+	_, _ = fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>Something went wrong</title><p>Something went wrong. <a href="%s">Try again</a>.</p>`,
+		html.EscapeString(r.URL.RequestURI()))
+}
+
 // FailureHandler serves the compile problems at every address and for every
 // method: the app did not compile, so there is nothing else to serve.
 func FailureHandler(problems []render.Problem) http.Handler {
 	return securedFor(csp, ir.Discard(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if err := writeHTML(r.Context(), w, http.StatusInternalServerError, render.CompileFailure(problems)); err != nil {
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			plainFailure(w, r)
 		}
 	}))
 }

@@ -256,7 +256,7 @@ func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) 
 
 	s.deny = webui.Disabled("requires the editor role")
 	body = serve(s.h, http.MethodGet, "/admin/tools").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button></span>`)
+	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button><span class="sr-only">Not available: requires the editor role</span></span>`)
 
 	rec = post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")

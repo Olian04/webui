@@ -34,13 +34,16 @@ templ Button(p ButtonProps) {
 	if p.Guard != "" {
 		// A control that its Guard disabled, with a reason, is in a wrapper that carries
 		// the tooltip: opacity on the button itself would dim the tooltip too.
-		<span class="gate" data-guard={ p.Guard }>
+		// The reason is text that can be reached, and not only a tooltip: the wrapper takes the focus, which shows the tooltip as hover does, and a screen reader
+		// reads the reason after the disabled button, since a disabled button itself cannot be focused.
+		<span class="gate" data-guard={ p.Guard } tabindex="0">
 			@Button(ButtonProps{
 				Variant: p.Variant, Size: p.Size,
 				Name: p.Name, Value: p.Value, Disabled: true, Attrs: p.Attrs,
 			}) {
 				{ children... }
 			}
+			<span class="sr-only">Not available: { p.Guard }</span>
 		</span>
 	} else if p.Confirm != "" && p.Href == "" && !p.Disabled {
 		// A native dialog, opened by a button with an invoker command, so it needs no script. The dialog is inside the form

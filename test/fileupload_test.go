@@ -825,7 +825,7 @@ func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 	for _, want := range []string{
 		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(LEAF_HEADER, leaf)", "'X-Webui-Leaf'", "new FormData()", "data.append('file', item.file,",
 		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.upload-result", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
-		"'webui:changed'", "form[data-upload]", "aria-busy", "aria-live", "a.upload-next", "window.location.assign(next.href)", "X-Webui-Leaf",
+		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.upload-next", "window.location.assign(next.href)", "X-Webui-Leaf",
 	} {
 		assert.Contains(t, js, want)
 	}

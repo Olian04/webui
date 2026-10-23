@@ -109,7 +109,7 @@
     var cfg = config(form);
     var input = form.querySelector('input[type="file"][name="file"]');
     var leafInput = form.querySelector('input[name="_leaf"]');
-    if (!cfg || !input || !leafInput) return;
+    if (!cfg || !input || input.disabled || !leafInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
     form.setAttribute('data-upload-ready', '');
 
     var leaf = leafInput.value;

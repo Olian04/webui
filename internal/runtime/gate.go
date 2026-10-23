@@ -42,5 +42,16 @@ func (p *Program) mayFollow(ctx context.Context, page *ir.Page, link *ir.Link, h
 	}).Open()
 }
 
+// mayLead is whether a link that the framework draws on page, to the page at href (a breadcrumb parent, Cancel, Back), is drawn: the visitor may open it.
+// A Guard that panics answers no, and is logged.
+func (p *Program) mayLead(ctx context.Context, page *ir.Page, href string) bool {
+	return p.gateOf(page, "the Guard of a page that a link on "+page.PathTemplate+" leads to", func() error {
+		if !p.mayOpen(ctx, href) {
+			return errNoWay
+		}
+		return nil
+	}).Open()
+}
+
 // errNoWay is the answer of a page that the visitor may not open, of which a link to it says no more.
 var errNoWay = errors.New("the visitor may not open the page")

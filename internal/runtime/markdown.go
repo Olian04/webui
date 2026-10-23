@@ -15,7 +15,8 @@ import (
 func (p *Program) markdown(ctx context.Context, req *Request, page *ir.Page, n *ir.Markdown) templ.Component {
 	model, ok, refusal := loaded(p, ctx, page, "markdown", "markdown", n.At, func() (any, error) { return n.Load(ctx) })
 	if !ok {
-		return p.render.Markdown(render.MarkdownView{Node: n, Failed: true, Refusal: refusal})
+		path, query := req.encode(page)
+		return p.render.Markdown(render.MarkdownView{Node: n, Failed: true, Refusal: refusal, Retry: p.render.PageHref(page, path, query)})
 	}
 	view := p.render.MarkdownView(n, n.Content.Get(model))
 	if view.Result.Highlight {

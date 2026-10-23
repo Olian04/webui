@@ -177,8 +177,8 @@ func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
 		assert.Contains(t, js, want)
 	}
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	assert.Contains(t, css, ".gate[data-edge='left']:hover::after {\n  left: 0;\n  transform: none;\n}")
-	assert.Contains(t, css, ".gate[data-edge='right']:hover::after {\n  left: auto;\n  right: 0;\n  transform: none;\n}")
+	assert.Contains(t, css, ".gate[data-edge='left']:hover::after,\n.gate[data-edge='left']:focus-visible::after {\n  left: 0;\n  transform: none;\n}")
+	assert.Contains(t, css, ".gate[data-edge='right']:hover::after,\n.gate[data-edge='right']:focus-visible::after {\n  left: auto;\n  right: 0;\n  transform: none;\n}")
 	assert.Contains(t, css, "width: max-content;\n  max-width: min(280px, calc(100vw - 16px));\n  white-space: normal;")
 }
 

@@ -41,7 +41,7 @@ func (p *Program) recovered(next http.Handler) http.Handler {
 			}
 			p.log.Error("webui: panic while serving", "method", r.Method, "path", r.URL.Path, "panic", v, "stack", string(stack))
 			if tw.status == 0 {
-				p.write(tw, r, http.StatusInternalServerError, render.Doc{Title: "Error", Content: render.ServerError()})
+				p.write(tw, r, http.StatusInternalServerError, render.Doc{Title: "Error", Content: render.ServerError(r.URL.RequestURI())})
 			}
 		}()
 		next.ServeHTTP(tw, r)

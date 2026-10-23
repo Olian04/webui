@@ -15,7 +15,8 @@ import (
 func (p *Program) diff(ctx context.Context, req *Request, page *ir.Page, n *ir.Diff) templ.Component {
 	model, ok, refusal := loaded(p, ctx, page, "diff", "diff", n.At, func() (any, error) { return n.Load(ctx) })
 	if !ok {
-		return p.render.Diff(render.DiffView{Node: n, Failed: true, Refusal: refusal})
+		path, query := req.encode(page)
+		return p.render.Diff(render.DiffView{Node: n, Failed: true, Refusal: refusal, Retry: p.render.PageHref(page, path, query)})
 	}
 	req.code.Add("")
 	return p.render.Diff(render.NewDiffView(n, n.Original.Get(model), n.Modified.Get(model)))
