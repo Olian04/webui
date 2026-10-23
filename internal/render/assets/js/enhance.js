@@ -194,35 +194,14 @@
 
   /* ------------------------------ panel refresh --------------------------- */
 
-  // While one panel reloads, its rows pulse and nothing else moves. This says
-  // "this panel is reloading"; a whole-page fade would say "the page moved".
-  function skeleton(el) {
-    var body = $('tbody', el);
-    if (!body) return;
-    var columns = $$('thead th', el).length || 3;
-    var rows = Math.min(Math.max($$('tbody tr', el).length, 3), 10);
-    var widths = [70, 55, 40, 35, 50, 60];
-    body.textContent = '';
-    for (var r = 0; r < rows; r++) {
-      var tr = document.createElement('tr');
-      tr.className = 'skel-row';
-      tr.setAttribute('aria-hidden', 'true');
-      for (var c = 0; c < columns; c++) {
-        var td = document.createElement('td');
-        var bar = document.createElement('span');
-        bar.className = 'skel';
-        bar.style.width = widths[c % widths.length] + '%';
-        td.appendChild(bar);
-        tr.appendChild(td);
-      }
-      body.appendChild(tr);
-    }
-  }
+  // While one panel reloads it says so with aria-busy, which the stylesheet draws as its rows pulsing and out of reach, and nothing else moves: the rows are
+  // the ones that were there, and a request that fails leaves them as they were. This says "this panel is reloading"; a whole-page fade would say "the page moved".
 
   // The same URL, asking for one panel. Returns the panel element, or throws
   // when the answer is anything but that panel: the caller falls back to a
   // plain navigation, which is what the link was all along.
-  async function fetchLeaf(id, href, signal) {
+  async function fetchLeaf(id, href, signal, marker) {
+    marker = marker || 'data-leaf'; // a panel, or the set of tabs, which is named by its own attribute
     var started = performance.now();
     var res = await fetch(href, {
       headers: { [LEAF_HEADER]: id, Accept: 'text/html' },
@@ -234,7 +213,7 @@
     var tpl = document.createElement('template');
     tpl.innerHTML = await res.text(); // our own markup, from our own origin
     var next = tpl.content.firstElementChild;
-    if (!next || next.getAttribute('data-leaf') !== id) throw new Error('not that panel');
+    if (!next || next.getAttribute(marker) !== id) throw new Error('not that panel');
     noteResponse(res, performance.now() - started);
     return next;
   }
@@ -248,13 +227,13 @@
     var ctl = new AbortController();
     inflight.set(id, ctl);
 
-    skeleton(el);
+    el.setAttribute('aria-busy', 'true');
     status('GET', href, 'panel ' + id);
     try {
       var next = await fetchLeaf(id, href, ctl.signal);
       el.replaceWith(next);
       if (push) history.pushState(null, '', href);
-      settle(href, id);
+      settle(href, next);
     } catch (err) {
       if (err && err.name === 'AbortError') return true; // a newer request took over
       location.href = href;
@@ -264,33 +243,59 @@
     return true;
   }
 
-  // After one panel moved to a new address, everything that embeds the old one
-  // is stale: the Refresh button, a form's action, and the sort and pager links
-  // of the panels around it. Forms keep what the user typed, so their action is
-  // patched in place; panels with links are fetched again.
-  function settle(href, movedId) {
+  // After one panel, or a strip of tabs, moved to a new address, the others hold addresses of the old one: the sort and pager links of the panels around it, the
+  // links of the other strips of tabs, and the action of a form, which is where it posts to and so where it comes back to. This script does not know how an address is
+  // made, so it does not put the new one in: it asks the server for those panels at the new address, which writes them. A panel that is read, and has links that replace
+  // it, is replaced; a form keeps what the visitor typed in it and takes the action of the server's copy; the strip of another set of tabs is replaced and its panel is not.
+  // `moved` is the element that was just fetched, which is as new as the address.
+  function syncPanels(href, moved) {
+    var apart = function (el) {
+      return !moved || (el !== moved && !moved.contains(el) && !el.contains(moved));
+    };
+    $$('[data-leaf]')
+      .filter(apart)
+      .forEach(function (el) {
+        var id = el.getAttribute('data-leaf');
+        var replaces = $('a[data-in-place]', el);
+        var forms = $$('form[method="post"]', el);
+        if (!replaces && !forms.length) return;
+        fetchLeaf(id, href)
+          .then(function (next) {
+            if (replaces) {
+              var current = $(leafSelector(id));
+              if (current) current.replaceWith(next);
+              return;
+            }
+            var fresh = $$('form[method="post"]', next);
+            if (fresh.length !== forms.length) return;
+            forms.forEach(function (f, i) {
+              f.setAttribute('action', fresh[i].getAttribute('action') || '');
+            });
+          })
+          .catch(function () {});
+      });
+    $$('[data-tabs]')
+      .filter(function (set) {
+        return !moved || (set !== moved && !moved.contains(set)); // the strip of a set that holds the moved panel is still stale
+      })
+      .forEach(function (set) {
+        var id = set.getAttribute('data-tabs');
+        fetchLeaf(id, href, undefined, 'data-tabs')
+          .then(function (next) {
+            var strip = $('.tabs', set);
+            var fresh = $('.tabs', next);
+            if (strip && fresh) strip.replaceWith(fresh);
+          })
+          .catch(function () {});
+      });
+  }
+
+  // The same address, and the Refresh button leads there too.
+  function settle(href, moved) {
     status('GET', href);
     var refresh = $('[data-refresh]');
     if (refresh) refresh.setAttribute('href', href);
-
-    $$('[data-leaf]').forEach(function (leaf) {
-      var id = leaf.getAttribute('data-leaf');
-      if (id === movedId) return;
-      $$('form', leaf).forEach(function (f) {
-        if (f.method === 'post') f.setAttribute('action', href);
-      });
-      var links = $$('a[href]', leaf).some(function (a) {
-        return new URL(a.href, location.href).pathname === location.pathname;
-      });
-      if (links) {
-        fetchLeaf(id, href)
-          .then(function (next) {
-            var current = $(leafSelector(id));
-            if (current) current.replaceWith(next);
-          })
-          .catch(function () {});
-      }
-    });
+    syncPanels(href, moved);
   }
 
   // Something that script did on the server, a file that was sent, may have changed what the other panels show: they are asked for again, from the
@@ -313,7 +318,9 @@
   document.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
-    var a = e.target.closest('a[href]');
+    // A link replaces its panel in place when the server says so (data-in-place); any other is a navigation, which is what a link is. The address must still be this page's,
+    // since the panel is asked for at the same path, and anything else is left to the browser.
+    var a = e.target.closest('a[href][data-in-place]');
     if (!a || a.target || a.hasAttribute('download')) return;
     var leaf = a.closest('[data-leaf]');
     if (!leaf) return;
@@ -409,43 +416,6 @@
   var EDITORS = '[data-code-editor], [data-code-diff]';
   var CODE_BLOCKS = '.md pre > code[class*="language-"]';
 
-  // Puts the selection right in the address of every link and form of the page that is not in `except`.
-  function retarget(except, key, value) {
-    $$('a[href]').forEach(function (a) {
-      if (except.contains(a)) return;
-      var url = new URL(a.href, location.href);
-      if (url.origin !== location.origin || url.pathname !== location.pathname) return;
-      if (value === null) url.searchParams.delete(key);
-      else url.searchParams.set(key, value);
-      a.setAttribute('href', url.pathname + url.search);
-    });
-    $$('form').forEach(function (f) {
-      if (except.contains(f)) return;
-      var action = new URL(f.getAttribute('action') || location.href, location.href);
-      if (action.pathname !== location.pathname) return;
-      if (f.method === 'post') {
-        // Where a form posts, and so where it comes back to, has the selection in it.
-        if (value === null) action.searchParams.delete(key);
-        else action.searchParams.set(key, value);
-        f.setAttribute('action', action.pathname + action.search);
-        return;
-      }
-      // A filter carries the rest of the address in fields.
-      var field = f.querySelector('input[type="hidden"][name="' + CSS.escape(key) + '"]');
-      if (value === null) {
-        if (field) field.remove();
-      } else if (field) {
-        field.value = value;
-      } else {
-        field = document.createElement('input');
-        field.type = 'hidden';
-        field.name = key;
-        field.value = value;
-        f.appendChild(field);
-      }
-    });
-  }
-
   // Brings the active tab of a strip that scrolls into view: in the middle of it when the strip is new, and, when it
   // replaces one that was scrolled, where that was, moved only as far as the active tab needs.
   function showActiveTab(set, scrolled) {
@@ -465,7 +435,6 @@
 
   async function selectTab(set, link) {
     var id = set.getAttribute('data-tabs');
-    var key = set.getAttribute('data-tabkey');
     var dest = new URL(link.href, location.href);
     var href = dest.pathname + dest.search;
 
@@ -497,10 +466,7 @@
       set.replaceWith(next);
       showActiveTab(next, scrolled);
       history.pushState(null, '', href);
-      var refresh = $('[data-refresh]');
-      if (refresh) refresh.setAttribute('href', href);
-      retarget(next, key, dest.searchParams.get(key));
-      status('GET', href);
+      settle(href, next);
       var active = $('.tab.active', next);
       if (focused && active) active.focus();
     } catch (err) {
@@ -936,11 +902,9 @@
     if (palette.html !== null) {
       box.innerHTML = palette.html;
     } else {
-      box.textContent = '';
-      var wait = document.createElement('div');
-      wait.className = 'pal-empty';
-      wait.textContent = 'Searching…';
-      box.appendChild(wait);
+      // The words for a question that is out are the page's own, in a template that the server wrote.
+      var pending = $('template[data-palette-pending]');
+      box.innerHTML = pending ? pending.innerHTML : '';
     }
     palette.items = [];
     $$('a.pal-item', box).forEach(function (a, n) {
@@ -1004,12 +968,12 @@
       var ctl = new AbortController();
       palette.ctl = ctl;
       try {
-        var res = await fetch(url + '?fragment=1&q=' + encodeURIComponent(query), {
-          headers: { Accept: 'text/html' },
+        var res = await fetch(url + '?q=' + encodeURIComponent(query), {
+          headers: { [LEAF_HEADER]: 'search', Accept: 'text/html' },
           credentials: 'same-origin',
           signal: ctl.signal,
         });
-        if (!res.ok) throw new Error('search ' + res.status);
+        // The box's words are the server's, whatever the status: its list, or its words for a search that could not be made.
         var html = await res.text();
         if (query !== palette.query) return;
         palette.html = html;
@@ -1017,7 +981,9 @@
         drawPalette();
       } catch (err) {
         if (err.name === 'AbortError') return; // a newer search replaced it
-        palette.html = '<div class="pal-empty">Nothing matches.</div>';
+        // Nothing came back at all, so there are no words of the server's to put in the box: say that, and not that nothing matches.
+        var down = $('template[data-palette-down]');
+        palette.html = down ? down.innerHTML : '';
         palette.state = 'done';
         drawPalette();
       }

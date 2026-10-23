@@ -14,8 +14,8 @@ func TestAFeedPagesByACursorAndSortsOnlyThePageInHandWithNoFilters(t *testing.T)
 	h := handler(t)
 	body := get(h, "/admin/audit").Body.String()
 	assert.Contains(t, body, "Showing rows 1–8") // no total, but which rows
-	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8&amp;audit-log.back=1%3A&amp;audit-log.row=9">Next`)
-	assert.Contains(t, body, `disabled>First page</button>`)
+	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8&amp;audit-log.back=1%3A&amp;audit-log.row=9" data-in-place>Next`)
+	assert.Contains(t, body, `disabled data-in-place>First page</button>`)
 	assert.False(t, strings.Contains(body, `aria-sort="ascending"`)) // the source's order, until a column is chosen
 	assert.False(t, strings.Contains(body, `aria-sort="descending"`))
 	assert.False(t, strings.Contains(body, `class="filter`))
@@ -24,8 +24,8 @@ func TestAFeedPagesByACursorAndSortsOnlyThePageInHandWithNoFilters(t *testing.T)
 
 	// The cursor comes back, and the last page has no Next.
 	last := get(h, "/admin/audit?audit-log.after=40").Body.String()
-	assert.Contains(t, last, `href="/admin/audit">First page`)
-	assert.Contains(t, last, `disabled>Next</button>`)
+	assert.Contains(t, last, `href="/admin/audit" data-in-place>First page`)
+	assert.Contains(t, last, `disabled data-in-place>Next</button>`)
 
 	// Actions are recorded: the newest entry is the one just made.
 	post(h, "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})

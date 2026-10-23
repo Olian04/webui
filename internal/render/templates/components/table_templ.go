@@ -266,7 +266,7 @@ func Column(p ColumnProps) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-in-place>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -996,7 +996,7 @@ func pagerButton(href string) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Button(ButtonProps{Href: href, Size: SizeSmall, Disabled: href == ""}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var38), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Button(ButtonProps{Href: href, Size: SizeSmall, Disabled: href == "", Attrs: templ.Attributes{"data-in-place": true}}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var38), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

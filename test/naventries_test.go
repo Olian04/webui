@@ -211,8 +211,8 @@ func TestEntriesAreOnlyLoadedForAFullPage(t *testing.T) {
 	assert.Equal(t, int(calls.Load()), 2) // nothing is kept between pages: it is the visitor's, and it may change
 
 	before := calls.Load()
-	for _, target := range []string{"/admin/_webui/search?fragment=1&q=x", "/admin/_webui/" + "nothing"} {
-		serve(h, http.MethodGet, target)
+	for _, target := range []string{"/admin/_webui/search?q=x", "/admin/_webui/" + "nothing"} {
+		serve(searchBox(h), http.MethodGet, target)
 	}
 	assert.Equal(t, calls.Load(), before) // not for an asset, or the list that the box shows
 

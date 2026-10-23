@@ -113,6 +113,9 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 		}
 		if r.search {
 			<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
+			// What the box says while a question is out, in the page's own words: script puts it there and has no words of its own for it.
+			<template data-palette-pending><div class="pal-empty">Searching…</div></template>
+			<template data-palette-down><div class="pal-empty">The search could not be reached.</div></template>
 		}
 	}
 }
@@ -255,12 +258,12 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 							Desc:  emptyHint(v),
 						}) {
 							if first != "" {
-								@c.Button(c.ButtonProps{Href: first, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+								@c.Button(c.ButtonProps{Href: first, Variant: c.VariantGhost, Size: c.SizeSmall, Attrs: inPlace}) {
 									Go to the first page
 								}
 							}
 							if unfiltered != "" {
-								@c.Button(c.ButtonProps{Href: unfiltered, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+								@c.Button(c.ButtonProps{Href: unfiltered, Variant: c.VariantGhost, Size: c.SizeSmall, Attrs: inPlace}) {
 									Clear the filters
 								}
 							}
@@ -713,10 +716,10 @@ templ Result(tone ToastTone, text string, next string) {
 // address, survives a reload, and works without script.
 //
 // With script a tab is followed by asking for this element alone (see LeafHeader), which loads only the tab that is
-// selected: data-tabs is its id, in the same form as a panel's, and data-tabkey is the argument that selects the tab,
-// which the page's other links carry and script puts right.
-templ Tabs(label string, strip []c.Tab, content templ.Component, id, key string) {
-	<div class="tabset" data-tabs={ id } data-tabkey={ key }>
+// selected: data-tabs is its id, in the same form as a panel's. The panels around it that hold its selection in their addresses are asked for again by
+// script, from the server, which writes them: the script has no knowledge of how an address is made.
+templ Tabs(label string, strip []c.Tab, content templ.Component, id string) {
+	<div class="tabset" data-tabs={ id }>
 		@c.Tabs(c.TabsProps{Tabs: strip, Label: label})
 		<div data-tabbody>
 			@content
@@ -785,7 +788,7 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 			}
 			<div class="filter-actions">
 				if fv.Clear != "" {
-					@c.Button(c.ButtonProps{Href: fv.Clear, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+					@c.Button(c.ButtonProps{Href: fv.Clear, Variant: c.VariantGhost, Size: c.SizeSmall, Attrs: inPlace}) {
 						Clear
 					}
 				}

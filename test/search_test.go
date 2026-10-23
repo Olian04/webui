@@ -51,11 +51,19 @@ func parseResults(body string) searchResponse {
 	}
 }
 
+// searchBox is the handler as script asks it for the box's list: with the header that a request for one panel carries, named for the box, and not with a parameter of the address.
+func searchBox(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("X-Webui-Leaf", "search")
+		h.ServeHTTP(w, r)
+	})
+}
+
 // search is what the box lists for a query: the results as the server sends them to script, as HTML.
 func search(t *testing.T, h http.Handler, query string) searchResponse {
 	t.Helper()
 
-	rec := serve(h, http.MethodGet, "/admin/_webui/search?fragment=1&q="+query)
+	rec := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q="+query)
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Equal(t, rec.Header().Get("Content-Type"), "text/html; charset=utf-8")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")

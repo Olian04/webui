@@ -575,3 +575,8 @@ func columnNeed(f ir.Field) float64 {
 	}
 	return max(header, cell)
 }
+
+// inPlace marks a link that replaces the panel it is in, with the panel as the server draws it at the address that the link leads to: the sort and pager links of a table,
+// and the ways on from an empty or failed one. Script follows such a link by asking the server for that panel alone, and any other link is a navigation, which is
+// what a link is: the markup says which, and script does not guess from where the link leads.
+var inPlace = templ.Attributes{"data-in-place": true}

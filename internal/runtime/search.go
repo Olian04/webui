@@ -41,6 +41,9 @@ type searchHit struct {
 // A page's Search is handed what was typed and answers with the arguments of the page that each result leads to. A page that fails is
 // left out. Every result is then checked against the page it leads to, with that page's own arguments and Guard, so the search never
 // offers what following it would refuse: a device the visitor may not see is not a hit, however the search that found it was written.
+// searchLeaf is what the header names when a request is for the search box's list of results.
+const searchLeaf = "search"
+
 func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if runes := []rune(query); len(runes) > searchMaxChars {
@@ -54,10 +57,12 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-store")
-	if r.URL.Query().Get("fragment") != "" {
+	w.Header().Add("Vary", LeafHeader)
+	if r.Header.Get(LeafHeader) == searchLeaf {
+		// The box's own list, which script asks for with the header that a request for one panel carries, and not with a parameter of the address.
 		if err := writeHTML(r.Context(), w, http.StatusOK, render.SearchFragment(groups)); err != nil {
 			p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)
-			plainFailure(w, r)
+			_ = writeHTML(r.Context(), w, http.StatusInternalServerError, render.SearchFailed())
 		}
 		return
 	}

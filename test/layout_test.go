@@ -194,7 +194,7 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 		quickTable("Beside"),
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, body, `<div class="split"><div class="tabset" data-tabs="p.0" data-tabkey="tabs.tab"><nav class="tabs"`)
+	assert.Contains(t, body, `<div class="split"><div class="tabset" data-tabs="p.0"><nav class="tabs"`)
 	assert.Equal(t, strings.Count(body, `<div class="tabset" `), 1)
 	// The strip and the panel it selects are inside the one element, which ends before the next child begins.
 	end := strings.Index(body, `</div></div><div class="panel grows"`)
@@ -299,7 +299,7 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	body := rec.Body.String()
 
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.1" data-tabkey="tabs.tab">`))
+	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.1">`))
 	assert.Contains(t, body, "Raw-row")
 	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
 	assert.False(t, strings.Contains(body, "Overview-row"))
@@ -310,7 +310,7 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 
 	// The page carries what script needs to ask: the id, and the argument that selects a tab.
 	page := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	assert.Contains(t, page, `<div class="tabset" data-tabs="p.1" data-tabkey="tabs.tab">`)
+	assert.Contains(t, page, `<div class="tabset" data-tabs="p.1">`)
 
 	// It is the page's own request: the Guard runs, and an id that is not a Tabs or a panel is a 404.
 	refused, _ := layoutApp(func(context.Context, layoutArgs) error { return errors.New("no") })

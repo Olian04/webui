@@ -248,7 +248,7 @@ The body tree is the panel arrangement. A leaf's address — its path of child
 indices — is what a refresh names. Practically, this is the difference between
 "the screen reloaded" and "one panel reloaded": with JavaScript, a control
 belonging to a leaf re-renders the panel at that address and the rest of the
-screen never moves; without it, the same link reloads the page. The skeleton
+screen never moves; without it, the same link reloads the page. The loading
 state in §10 of the design document exists precisely to make that address
 visible while it is happening.
 

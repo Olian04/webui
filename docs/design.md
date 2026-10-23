@@ -492,8 +492,8 @@ an action bar above the header: a 10% primary tint strip with the count, the
 operations. When there are no bulk
 operations, neither the column nor the bar exists.
 
-**Loading** replaces the row bodies with pulsing 9px skeleton bars at staggered
-widths while the rest of the panel — header, filters, footer — holds still.
+**Loading** pulses the rows that are there, out of reach, while the rest of the panel —
+header, filters, footer — holds still (`aria-busy` on the panel, drawn by the stylesheet).
 **Empty** replaces them with a centred 28px icon, a 13.5/500 line naming the
 condition, and a 12.5 text-secondary line naming the way out.
 
@@ -576,7 +576,7 @@ the white came as often. It was measured with Chrome 155 as a white frame in abo
 transition, and in none of 8 with it skipped. A page that says its canvas is dark must not be white at any frame of
 a navigation, so the cross-fade went.
 
-**A panel that reloads and a page that moved still mean different things.** The skeleton (§10) says *this one panel
+**A panel that reloads and a page that moved still mean different things.** The pulsing rows (§10) say *this one panel
 is reloading and everything else you can see is still current*, and it is the only motion a navigation has.
 
 ### A page that is still arriving

@@ -66,7 +66,9 @@ func ExampleTable() {
 	// and links to its page. The box lists the answer, which is HTML: a heading for the page
 	// that found it, and a link.
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/_webui/search?fragment=1&q=192.168", nil))
+	req := httptest.NewRequest(http.MethodGet, "/admin/_webui/search?q=192.168", nil)
+	req.Header.Set("X-Webui-Leaf", "search") // as the box's script asks for its list: with the header that a request for one panel carries
+	handler.ServeHTTP(rec, req)
 
 	group := regexp.MustCompile(`<div class="pal-label">(.*?)</div>`).FindStringSubmatch(rec.Body.String())
 	link := regexp.MustCompile(`<a class="pal-item" role="option" href="(.*?)">\s*<span>(.*?)</span>`).FindStringSubmatch(rec.Body.String())
