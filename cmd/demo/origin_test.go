@@ -44,7 +44,7 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 	h := handler(t)
 	assert.Equal(t, cancelHref(t, h, "/admin/device/dev_27c38b"), "/admin/device")
 	// A search result carries none, since a search is not a page.
-	search := get(h, "/admin/_webui/search?fragment=1&q=dev_27c38b").Body.String()
+	search := get(searchBox(h), "/admin/_webui/search?q=dev_27c38b").Body.String()
 	assert.Contains(t, search, `href="/admin/device/dev_27c38b"`)
 	assert.False(t, strings.Contains(search, "webui.from"))
 	// An address that is not in this app is ignored.

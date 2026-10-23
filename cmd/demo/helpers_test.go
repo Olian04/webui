@@ -46,7 +46,7 @@ var (
 // searchResults are what the search finds for q, in order, read out of the HTML that it answers script with: a heading for each page
 // that found something, and a link under it for each result.
 func searchResults(h http.Handler, q string) []searchResult {
-	body := get(h, "/admin/_webui/search?fragment=1&q="+url.QueryEscape(q)).Body.String()
+	body := get(searchBox(h), "/admin/_webui/search?q="+url.QueryEscape(q)).Body.String()
 	var out []searchResult
 	group := ""
 	for body != "" {
@@ -102,4 +102,12 @@ func flashOf(rec *httptest.ResponseRecorder) string {
 		}
 	}
 	return ""
+}
+
+// searchBox is the handler as script asks it for the search box's list: with the header that a request for one panel carries, named for the box.
+func searchBox(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("X-Webui-Leaf", "search")
+		h.ServeHTTP(w, r)
+	})
 }

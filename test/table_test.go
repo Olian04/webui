@@ -102,12 +102,12 @@ func TestTablePagerLinksAndRange(t *testing.T) {
 
 	mid := serve(h, http.MethodGet, "/admin/device?devices.offset=10").Body.String()
 	assert.Contains(t, mid, "11–20 of 25")
-	assert.Contains(t, mid, `href="/admin/device">Previous</a>`) // the first page carries no offset
+	assert.Contains(t, mid, `href="/admin/device" data-in-place>Previous</a>`) // the first page carries no offset
 
 	lastPage := serve(h, http.MethodGet, "/admin/device?devices.offset=20").Body.String()
 	assert.Contains(t, lastPage, "21–25 of 25")
-	assert.Contains(t, lastPage, `disabled>Next</button>`)
-	assert.Contains(t, lastPage, `href="/admin/device?devices.offset=10">Previous</a>`)
+	assert.Contains(t, lastPage, `disabled data-in-place>Next</button>`)
+	assert.Contains(t, lastPage, `href="/admin/device?devices.offset=10" data-in-place>Previous</a>`)
 	assert.Equal(t, last.Offset, 20)
 }
 
@@ -204,12 +204,12 @@ func TestTwoTablesKeepIndependentStateUnderTheirTitles(t *testing.T) {
 	assert.DeepEqual(t, seen[1], webui.Query{Offset: 15, Limit: 5, Sort: "ID", Desc: true})
 
 	// Each table's links change only its own state and carry the other's along.
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=15&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id">Next`)
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.desc=true&amp;t1.offset=20&amp;t1.sort=id">Next`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=15&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id" data-in-place>Next`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.desc=true&amp;t1.offset=20&amp;t1.sort=id" data-in-place>Next`)
 	// Sorting one table returns only that table to its first page, and a column
 	// already sorted descending sorts ascending again.
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.sort=id&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id">ID`)
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.sort=id">ID`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.sort=id&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id" data-in-place>ID`)
+	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.sort=id" data-in-place>ID`)
 }
 
 func TestViewStateForALeafThePageDoesNotHaveIsIgnored(t *testing.T) {
@@ -379,7 +379,7 @@ func TestAnActiveFilterShowsAndCanBeCleared(t *testing.T) {
 	assert.False(t, strings.Contains(id, `name="devices.filter.id"`))
 
 	// Clear removes that filter, and the offset, and keeps the rest.
-	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.sort=id">`)
+	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.sort=id"`)
 }
 
 func TestSortAndPagerLinksKeepFiltersAsRepeatedParameters(t *testing.T) {
@@ -452,7 +452,7 @@ func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
 	assert.Contains(t, own, `name="devices.sort" value="id"`)
 
 	// Clear drops both bounds and the offset, and keeps the sort.
-	assert.Contains(t, body, `href="/admin/device?devices.sort=id">Clear`)
+	assert.Contains(t, body, `href="/admin/device?devices.sort=id" data-in-place>Clear`)
 }
 
 func TestATableWithNoPageSizePagesBy25(t *testing.T) {

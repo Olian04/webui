@@ -83,8 +83,8 @@ func TestSearchResultsAreEscaped(t *testing.T) {
 		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "a"}, Title: `<img src=x onerror=alert(1)>`, Desc: `<b>bold</b>`}}, nil
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
-	for _, target := range []string{"/admin/_webui/search?fragment=1&q=%3Cscript%3E", "/admin/_webui/search?q=%3Cscript%3E"} {
-		body := serve(h, http.MethodGet, target).Body.String()
+	for _, asked := range []http.Handler{searchBox(h), h} { // the box's list, and the page of results
+		body := serve(asked, http.MethodGet, "/admin/_webui/search?q=%3Cscript%3E").Body.String()
 		assert.False(t, strings.Contains(body, "<img src=x"))
 		assert.False(t, strings.Contains(body, "<b>bold"))
 		assert.False(t, strings.Contains(body, "<script>"))
@@ -128,14 +128,16 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	t.Parallel()
 
 	h := searchApp(rowsSearch(), nil)
-	list := serve(h, http.MethodGet, "/admin/_webui/search?fragment=1&q=eth").Body.String()
+	list := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	assert.Contains(t, list, `<div class="pal-label">Devices</div>`)
 	assert.Contains(t, list, `<a class="pal-item" role="option" href="/admin/device/dev-eth%200">`)
 	assert.False(t, strings.Contains(list, "<html"))
 
 	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
-	for _, want := range []string{"'?fragment=1&q='", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'"} {
+	for _, want := range []string{"'?q='", "[LEAF_HEADER]: 'search'", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'", "template[data-palette-pending]", "template[data-palette-down]"} {
 		assert.Contains(t, js, want)
 	}
-	assert.False(t, strings.Contains(js, "res.json()")) // it is not JSON any more
+	assert.False(t, strings.Contains(js, "res.json()"))      // it is not JSON any more
+	assert.False(t, strings.Contains(js, "fragment=1"))      // a framework parameter is a header, never a part of the address
+	assert.False(t, strings.Contains(js, "Nothing matches")) // a search that was not made is not one that found nothing
 }

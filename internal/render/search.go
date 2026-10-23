@@ -23,6 +23,11 @@ func SearchFragment(groups []SearchGroup) templ.Component {
 	return SearchList(groups, true)
 }
 
+// SearchFailed is what the box says when the search could not be made: the server's words, which script puts in the box as it puts the results.
+func SearchFailed() templ.Component {
+	return templ.Raw(`<div class="pal-empty">The search could not be made. The cause was logged on the server.</div>`)
+}
+
 // SearchResults is the page of results of a search, in the shell of the app: what a search without script is answered with.
 func SearchResults(query string, groups []SearchGroup) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {

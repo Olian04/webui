@@ -224,7 +224,7 @@ func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) 
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
 
 	body := serve(h, http.MethodGet, "/f").Body.String()
-	assert.Contains(t, body, `href="/f?objects.after=a+b%26c%3Dd%2F%C3%A9&amp;objects.back=1%3A&amp;objects.row=2">Next`)
+	assert.Contains(t, body, `href="/f?objects.after=a+b%26c%3Dd%2F%C3%A9&amp;objects.back=1%3A&amp;objects.row=2" data-in-place>Next`)
 	serve(h, http.MethodGet, "/f?objects.after="+url.QueryEscape("a b&c=d/é"))
 	assert.Equal(t, got[len(got)-1], "a b&c=d/é") // it comes back as it went
 

@@ -67,7 +67,7 @@ templ Column(p ColumnProps) {
 	>
 		<span class="th-in">
 			if p.SortHref != "" {
-				<a href={ p.SortHref }>
+				<a href={ p.SortHref } data-in-place>
 					{ p.Label }
 					if p.SortDir == SortAsc {
 						@Icon(IconProps{Name: IconSortAsc, Class: "caret"})
@@ -288,7 +288,7 @@ func (p PagerProps) rangeLabel() string {
 
 // pagerButton is one of a pager's buttons: a link, or disabled when there is nowhere to go.
 templ pagerButton(href string) {
-	@Button(ButtonProps{Href: href, Size: SizeSmall, Disabled: href == ""}) {
+	@Button(ButtonProps{Href: href, Size: SizeSmall, Disabled: href == "", Attrs: templ.Attributes{"data-in-place": true}}) {
 		{ children... }
 	}
 }

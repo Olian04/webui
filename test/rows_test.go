@@ -117,7 +117,7 @@ func TestAFilterShrinksTheTotalAndThePagesNotJustTheRows(t *testing.T) {
 	h := rowsApp(nil)
 	body := serve(h, http.MethodGet, "/admin/device?devices.filter.id=dev0").Body.String()
 	assert.Contains(t, body, "1–10 of 10") // dev00 to dev09
-	assert.Contains(t, body, `disabled>Next</button>`)
+	assert.Contains(t, body, `disabled data-in-place>Next</button>`)
 }
 
 func TestRowsThatFailFailThePanelNotThePage(t *testing.T) {

@@ -413,6 +413,17 @@ design element.
   panel's form is told by plain attributes (`data-upload` marks it and `data-multiple` says that it takes several files), and not by JSON that the script parses. The costs: a
   status for each way it can go is more than a 200, and a script that sends a form (there is none yet) has the form's HTML to swap in and the item to read.
 
+- **A link says whether it replaces its panel: `data-in-place`.** The script followed any link in a panel that led to the page's own path by replacing the panel,
+  which it guessed from where the link led, so the markup of a link did not say what following it would do. The server declares it now, on the links that are the
+  panel's own: the sort links of a column, the pager's buttons, a filter's *Clear*, the ways on from an empty table and a failed panel's *Try again*. The script follows
+  those in place and every other link is a navigation, which is what a link is; it still refuses an address that is not this page's, since the panel is asked for at
+  the same path. A panel that reloads says so with `aria-busy`, which the stylesheet draws as the rows pulsing and out of reach: the rows are the ones that were there
+  (the script no longer builds a skeleton table, and a request that fails leaves them as they were). The search box's words are the page's own: *Searching…* is in a template that the
+  server wrote beside the box, a search that could not be made is the server's fragment with a 500, and a request that got no answer at all says "The search could not
+  be reached.", which is not that nothing matches. Left as it is, on purpose: the filter's submit still builds the address from its fields, dropping the empty ones, which
+  a browser without script sends and the server tolerates. The costs: an attribute on each of those links, which a new kind of link has to remember; and no
+  link that replaces its panel can be added without it, which is the point.
+
 - **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
   page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input
   (`input.files = ...`, from a `DataTransfer` of the first file), so the request is the browser's own multipart post, which a `fetch` would
@@ -770,7 +781,7 @@ design element.
   every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
   fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked.
 - **The search answers in HTML, with one renderer for the box and the page.** The same endpoint answers in HTML, not JSON: for
-  script, with `fragment=1`, the box's own list (the labels and the links, with `role="option"`), which it puts in the box; and
+  script, which asks with the `X-Webui-Leaf` header (named `search`, as a request for one panel is, and not with a parameter of the address; the answer varies by it and says so with `Vary`), the box's own list (the labels and the links, with `role="option"`), which it puts in the box; and
   without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the box's button submits to when
   there is no script to list the results as it is typed in. One renderer makes both, so they cannot disagree, and the script has
   no markup of its own to keep in step with the server's. The cost is that the script inserts server HTML (escaped by the
@@ -786,10 +797,13 @@ design element.
   as `data-tabs`), and the answer, the strip and the selected tab, replaces it; the address moves with
   `pushState`, and back and forward reload the page as they do for a panel. It is the page's own request, so the Guard
   runs and an id that names nothing is a 404. What it costs, and how it is paid:
-  - the other panels' links, forms and the Refresh button carry the selection in their addresses, and a panel that
-    moved has the panels around it asked for again (`settle`); that would read them all, which is what this is to
-    avoid, so the selection (`data-tabkey`, `tabs.tab`) is put right in place in every link, post form and filter of
-    the page instead, and the strips of other `Tabs` with it;
+    - the other panels' links, forms and the Refresh button carry the selection in their addresses, and a panel that
+    moved has the panels around it asked for again (`settle`, which asks `syncPanels`): a panel that is read and has links
+    that replace it is asked for and replaced, a form keeps what was typed and takes the action of the server's copy, and the strip
+    of another set of `Tabs` is replaced (its panel is not). The script does not know how an address is made: an earlier version put
+    the selection (`data-tabkey`, `tabs.tab`) right in place in every link, post form and filter of the page itself, which was
+    the client writing the application's addresses, and it is gone with the attribute. The cost is a request for each panel
+    that has such a link or form, where there was none, for the sake of the server writing every address;
   - a tab that has an editor or a diff is a plain navigation, since the language service and the files an editor is given
     are told to the page as it is made, from the panels it was made with, and a text with code in it is too when the page
     has no editor to colour it with; a tab that does not, and any answer that is not the `Tabs`, is the same, which is

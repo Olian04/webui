@@ -75,7 +75,7 @@ templ Panel(p PanelProps) {
 						Desc:  "The cause was logged on the server.",
 					}) {
 						if p.Retry != "" {
-							@Button(ButtonProps{Href: p.Retry, Variant: VariantGhost, Size: SizeSmall}) {
+							@Button(ButtonProps{Href: p.Retry, Variant: VariantGhost, Size: SizeSmall, Attrs: templ.Attributes{"data-in-place": true}}) {
 								Try again
 							}
 						}
