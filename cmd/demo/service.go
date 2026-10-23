@@ -71,12 +71,13 @@ type RetentionPolicy struct{ Days int }
 
 // Firmware is what the demo keeps of the last image that was uploaded to it: not the image, which is hashed as it arrives and never held, but what it was.
 type Firmware struct {
-	Name   string
-	Folder string // where the visitor's file was, when they chose a folder
-	Type   string // what the browser said it was, which is the visitor's word and not what it holds
-	Size   int
-	SHA256 string
-	At     string
+	Name    string
+	Folder  string // where the visitor's file was, when they chose a folder
+	Type    string // what the browser said it was, which is the visitor's word and not what it holds
+	Channel string // the release channel that the visitor chose
+	Size    int
+	SHA256  string
+	At      string
 }
 
 // SiteSummary is one site rolled up from its devices.

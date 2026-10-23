@@ -15,6 +15,13 @@ type FileUploadView struct {
 	// Path and Query are the page's current address, as its arguments and view state encode.
 	Path, Query map[string]string
 
+	// Form is the options that the visitor chooses beside the file, as a form with no submit that is drawn so (its fields are the inputs), with the defaults that Load
+	// gave; it is read-only when the panel is disabled.
+	Form FormView
+
+	Failed  bool        // the options could not be loaded or read: the panel says so, the page stands
+	Refusal *ir.Refusal // what Load said the visitor may be told, in place of "Could not load"
+
 	// Gate is what the panel is for this visitor: its Guard, asked with a file that has not arrived, refused them (Hidden), or disabled it, with a reason.
 	Gate Gate
 }

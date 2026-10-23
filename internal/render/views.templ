@@ -588,15 +588,21 @@ templ (r *Renderer) toolbarItems(v ToolbarView) {
 }
 
 // FileUpload is a panel for sending one file, of any size, to the app. It is a form of its own, which posts to the page: the leaf comes first, so that
-// the body says whose file it is before the file begins, and then the one file, which is not held anywhere on the way. It has no fields besides
-// the file. A visitor whom its Guard refuses with Disabled has the chooser and the button disabled, with the reason, and one whom it refuses
+// the body says whose file it is before the file begins, then the options that the visitor chooses beside it, a form's fields, which come first so that they can be
+// checked before any of the file is read, and then the one file, which is not held anywhere on the way. A visitor whom its Guard refuses with Disabled has the chooser and the button disabled, with the reason, and one whom it refuses
 // with any other error has no panel.
 templ (r *Renderer) FileUpload(v FileUploadView) {
-	if v.Gate.Drawn() {
+	if v.Failed {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Leaf: LeafID(v.Node.At)}) {
+		}
+	} else if v.Gate.Drawn() {
 		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}) {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: templ.Attributes{"enctype": "multipart/form-data"}}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 				<div class="panel-body pad">
+					for _, f := range v.Form.Node.Fields {
+						@r.formField(v.Form, f)
+					}
 					@c.Field(c.FieldProps{For: v.inputID(), Label: "File", Required: true, Rules: v.ruleLines(), Help: v.Node.Help}) {
 						@c.FileInput(c.FileInputProps{
 							ID: v.inputID(), Name: uploadField, Accept: rules.FileAccept(v.Node.Spec), Required: v.Gate.Reason == "", Attrs: v.attrs(),

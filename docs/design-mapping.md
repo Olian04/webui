@@ -40,6 +40,7 @@ into existence, and nothing is configured twice.
 | `Toolbar` | A row of controls with no frame: buttons, links and the values of the page's arguments, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons' |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
+| `FileUpload`, `Fields`, `Load` | The options beside the file: a form's inputs, above the file chooser in the same panel, with the defaults that `Load` gives and the rules and the `Select` choices of a form; bound before the file is read |
 | `FileUpload` | One panel containing a file chooser and a button, in a native `multipart/form-data` form of its own with the leaf first: one file, of any size up to its `MaxSize` (which has no default), handed to `Receive` as it arrives, with nothing held. `FileHandle` also has the folder (`Path`), the name as sent (`RawName`) and the type the browser said (`DeclaredType`). A drop zone with script (the `File` script), a Disabled Guard draws the chooser and button disabled with the reason and any other error leaves the panel out |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |

@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,12 +12,12 @@ import (
 // large to be held in memory, a firmware image or a backup on its way to an object store; a file that can be held is a [File] in a [Form], which
 // is part of a submission and is checked with the rest of it.
 //
-//	webui.FileUpload{
+//	webui.FileUpload[struct{}]{
 //		Title: "Upload firmware", Accept: []webui.FileKind{webui.FileAny}, MaxSize: 2 << 30,
-//		Receive: webui.Action[webui.FileHandle]{
+//		Receive: webui.Action[webui.FileHandle[struct{}]]{
 //			Label: "Upload",
 //			Guard: canEdit,
-//			Run: func(ctx context.Context, f webui.FileHandle) (webui.Outcome, error) {
+//			Run: func(ctx context.Context, f webui.FileHandle[struct{}]) (webui.Outcome, error) {
 //				_, err := bucket.PutObject(ctx, "firmware/"+f.Name, f.Reader) // streamed: nothing is held, in memory or on disk
 //				if err != nil {
 //					return webui.Outcome{}, err
@@ -26,7 +27,9 @@ import (
 //		},
 //	}
 //
-// A FileUpload has no model and loads nothing, so it is not generic: what Receive needs of the page it is on, it reads with [ArgsOf]. Receive is an
+// M is the options that the visitor chooses beside the file, as the model of a [Form] is what it edits: Load gives their defaults and Fields are the inputs, any accessor
+// that a form has (a [Bool], a [Select], a [String], with a Store and rules), which are checked as a form's are and bound to a copy of the loaded model before any of the file is
+// read. A panel with nothing to choose says struct{}, and has no Load and no Fields. What Receive needs of the page it is on, it reads with [ArgsOf]. Receive is an
 // [Action] whose subject is the [FileHandle], the file that is arriving, and its Run is the upload: it reads the file from
 // the handle's Reader, wherever it is to go, and says how it ended with an [Outcome], as any action does. The file is not held by the library, in
 // memory or on disk: Run reads it as it comes, and a Run that returns before the end of it is not an error, since what is left is thrown away.
@@ -45,7 +48,7 @@ import (
 // button disabled, with its message, and any other error leaves the panel out, as for a button. When the file arrives it is given the file, after
 // the first 512 bytes have been read (so that it can see the kind) and before anything more, so a visitor that it refuses has nothing more read from
 // them, and a browser that was sending a large file may see the connection closed for it. A page's own Guard runs first, and refuses the page.
-type FileUpload struct {
+type FileUpload[M any] struct {
 	// Title is the panel's heading.
 	Title string
 
@@ -64,13 +67,26 @@ type FileUpload struct {
 	// panel that is made for a large file: a MaxSize of 0, or less, is a compile error.
 	MaxSize int64
 
+	// Load gives the defaults of the options, which the inputs show. It is optional, and the zero M is the defaults without it. If it fails the panel says it could
+	// not load and the page stands, as a form's does.
+	Load func(ctx context.Context) (M, error)
+
+	// Fields are the inputs beside the file, in order, and what the visitor chooses with them is the Options that Receive is handed. They are a form's, so a field with a
+	// Store is an input and one without is shown, and a [Group] puts fields side by side. A [File] is not one of them: the file is the panel's. They come before the
+	// file in the page and in the request, which is what lets them be checked, and the action's Guard asked, before any of the file is read.
+	Fields []Accessor[M]
+
 	// Receive is the upload: the action whose Run is handed the file, and whose Label is the button, "Upload" unless it says. Its Guard decides
 	// whether the visitor may, and how the panel is drawn (see above); Confirm asks the visitor before the file is sent.
-	Receive Action[FileHandle]
+	Receive Action[FileHandle[M]]
 }
 
-// FileHandle is the file that is arriving, and the subject of a [FileUpload]'s Receive.
-type FileHandle struct {
+// FileHandle is the file that is arriving, and the subject of a [FileUpload]'s Receive. M is the panel's options.
+type FileHandle[M any] struct {
+	// Options is what the visitor chose beside the file, bound to a copy of what Load returned and checked by the rules of the fields. It is the visitor's word, and
+	// Run checks what it must not trust. When the panel is only being drawn it is what Load returned.
+	Options M
+
 	// Name is what the visitor's file was called, as a base name: never a path, with the control characters taken out and at most 255
 	// characters. It is the visitor's, so it is not to be used as a name on disk.
 	Name string
@@ -102,7 +118,7 @@ type FileHandle struct {
 }
 
 // ASSERT: FileUpload implements PageBody
-var _ PageBody = FileUpload{}
+var _ PageBody = FileUpload[struct{}]{}
 
 // headKind is whether a kind is told by the first bytes of a file alone, which is all that a panel that reads the file once can take.
 func headKind(k FileKind) bool {
@@ -114,8 +130,14 @@ func headKind(k FileKind) bool {
 	return false
 }
 
-func (f FileUpload) validateBody(v *bodyValidator) {
+func (f FileUpload[M]) validateBody(v *bodyValidator) {
 	validateAction(v, "FileUpload.Receive", f.Receive, false)
+	validateAccessors(v, f.Fields, accessorSite{where: "FileUpload.Fields", allowGroup: true, uniqueLbl: true})
+	for i, acc := range f.Fields {
+		if _, isFile := acc.(File[M]); isFile {
+			v.add(fmt.Sprintf("FileUpload.Fields[%d] is a File", i), "The file is the panel's own: the fields are what is chosen beside it. A form that takes a file with other fields is a Form.")
+		}
+	}
 	if f.MaxSize <= 0 {
 		v.add(fmt.Sprintf("FileUpload has MaxSize %d", f.MaxSize), "Set MaxSize to how many bytes the file may have: there is no default for a panel that is made for a large file.")
 	}
@@ -130,7 +152,7 @@ func (f FileUpload) validateBody(v *bodyValidator) {
 	}
 }
 
-func (f FileUpload) lowerBody(at ir.Addr) ir.Node {
+func (f FileUpload[M]) lowerBody(at ir.Addr) ir.Node {
 	spec := &ir.FileSpec{Max: f.MaxSize}
 	for _, k := range f.Accept {
 		spec.Kinds = append(spec.Kinds, k.ir())
@@ -142,12 +164,18 @@ func (f FileUpload) lowerBody(at ir.Addr) ir.Node {
 	if a.Role == RoleSecondary {
 		a.Role = RolePrimary // the one primary action of the panel
 	}
+	load := f.Load
+	if load == nil {
+		load = func(context.Context) (M, error) { var zero M; return zero, nil }
+	}
 	return &ir.FileUpload{
 		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec,
+		Options: &ir.Form{At: at, Load: eraseLoad(load), Fields: lowerAccessors(f.Fields, "f"), Bind: bindFunc[M], Submit: &ir.Action{}},
 		Receive: lowerAction(a),
-		Subject: func(in ir.Incoming, r io.Reader) any {
-			return FileHandle{
-				Name: in.Name, Path: in.Path, RawName: in.RawName, ContentType: in.ContentType, DeclaredType: in.DeclaredType,
+		Subject: func(in ir.Incoming, options any, r io.Reader) any {
+			m, _ := options.(M) // the zero M for options that are nil
+			return FileHandle[M]{
+				Options: m, Name: in.Name, Path: in.Path, RawName: in.RawName, ContentType: in.ContentType, DeclaredType: in.DeclaredType,
 				Kind: fileKindOf(in.Kind), Reader: r,
 			}
 		},

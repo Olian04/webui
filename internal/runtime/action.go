@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -181,17 +182,7 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		p.fail(w, r, page, req, fmt.Errorf("form load: %w", err))
 		return
 	}
-	values := map[string]string{}
-	selects := selectNames(n.Fields)
-	for k, v := range r.PostForm {
-		switch {
-		case strings.HasPrefix(k, "_") || len(v) == 0:
-		case selects[k]:
-			values[k] = strings.Join(v, ir.ListSep) // a select sends one value for each chosen option
-		default:
-			values[k] = v[0]
-		}
-	}
+	values := formValues(r.PostForm, n.Fields)
 
 	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) }) // what its selects' values are checked against
 	if err != nil {
@@ -227,6 +218,23 @@ func (p *Program) submit(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		}
 		p.leave(w, r, outcome, target)
 	}
+}
+
+// formValues are the values that a post sent for the fields of a form, by the field's name: the first of each, and for a select, which sends one
+// value for each option that is chosen, all of them. What the framework added (the names that begin with an underscore) is not a field's.
+func formValues(post url.Values, fields []ir.Field) map[string]string {
+	values := map[string]string{}
+	selects := selectNames(fields)
+	for k, v := range post {
+		switch {
+		case strings.HasPrefix(k, "_") || len(v) == 0:
+		case selects[k]:
+			values[k] = strings.Join(v, ir.ListSep)
+		default:
+			values[k] = v[0]
+		}
+	}
+	return values
 }
 
 // perform runs an action on its subject: its Guard, which refuses with a 403, and its Run, which
