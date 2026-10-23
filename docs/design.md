@@ -655,6 +655,8 @@ different product.
 - What script changes is said: a panel that is replaced says what it holds now in a status region that the page has (and its focus goes to its title if it was in it),
   a search says how many results it has, a toast is announced, and a panel that is asked for again on its own can be paused (WCAG 2.2.2) and says when it is done.
   A refused form has a title that says so, and the page opens with the focus on the first control that was refused.
+- A strip of tabs is a navigation named "Views" and its first three tabs (*Views: Overview, Devices, Alerts, …*), so that two strips on one page are two names. The box of a task
+  list item in a text is named *Task*, since the item's text is not in a label.
 - A control is described by the popover of its help and rules, which is referred to by id, and by its error when it is refused. A button in a row says which row it
   is of ("Drop", then the first cell's text for a reader), and a filter that is on says so in its name.
 - Focus is a visible 2px ring, never removed.

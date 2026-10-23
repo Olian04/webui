@@ -78,6 +78,10 @@ func Render(source string, opts Options) Result {
 	// A block that scrolls can be reached by keyboard. The only "<pre>" in the output is a
 	// code block's, since text is escaped.
 	html := strings.ReplaceAll(buf.String(), "<pre>", `<pre tabindex="0">`)
+	// The box of a task list item has no label of its own: the item's text follows it, and is not in a label. It is named for what it is, and is read as it is
+	// checked or not and disabled, before the text. Raw HTML is never rendered, so these are all goldmark's.
+	html = strings.ReplaceAll(html, `<input checked="" disabled="" type="checkbox">`, `<input checked="" disabled="" type="checkbox" aria-label="Task">`)
+	html = strings.ReplaceAll(html, `<input disabled="" type="checkbox">`, `<input disabled="" type="checkbox" aria-label="Task">`)
 	return Result{HTML: html, Highlight: highlight}
 }
 

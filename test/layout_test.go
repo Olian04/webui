@@ -395,3 +395,17 @@ func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAre(t *testing.T) {
 	assert.Contains(t, js, "Math.max(ms - render, 0)") // the delivery is what is left of the whole
 	assert.False(t, strings.Contains(js, "data-split"))
 }
+
+// Two strips of tabs on one page (side by side, or one in the tab of another) are two navigations, and a reader who lists the landmarks tells them
+// apart by their names, which are "Views" and what the first tabs are called.
+func TestEachStripOfTabsHasItsOwnName(t *testing.T) {
+	t.Parallel()
+
+	h := streamApp(webui.Split{
+		webui.Tabs{Panels: []webui.Tab{{Label: "One", Body: quickTable("A")}, {Label: "Two", Body: quickTable("B")}}},
+		webui.Tabs{Panels: []webui.Tab{{Label: "Red", Body: quickTable("C")}, {Label: "Green", Body: quickTable("D")}, {Label: "Blue", Body: quickTable("E")}, {Label: "Grey", Body: quickTable("F")}}},
+	})
+	body := serve(h, http.MethodGet, "/admin/p").Body.String()
+	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: One, Two">`)
+	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: Red, Green, Blue, …">`)
+}

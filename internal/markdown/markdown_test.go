@@ -334,3 +334,15 @@ func FuzzRenderWithATrustedOrigin(f *testing.F) {
 		}
 	})
 }
+
+// A box in a task list has no label (its text follows it, outside of one), so each is named, and the checked and the unchecked alike.
+func TestATaskListBoxIsNamed(t *testing.T) {
+	t.Parallel()
+
+	out := Render("- [x] done\n- [ ] todo\n", Options{}).HTML
+	has(t, out, `<input checked="" disabled="" type="checkbox" aria-label="Task">`)
+	has(t, out, `<input disabled="" type="checkbox" aria-label="Task">`)
+	if strings.Count(out, "<input") != strings.Count(out, `aria-label="Task"`) {
+		t.Errorf("a box has no name:\n%s", out)
+	}
+}
