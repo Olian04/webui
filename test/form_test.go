@@ -100,20 +100,26 @@ func TestAFieldTellsTheBrowserWhatToSayWhenItRefusesAValue(t *testing.T) {
 
 	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
 
-	ip := `data-validity="{&#34;patternMismatch&#34;:&#34;must be a valid IPv4 address&#34;,&#34;tooLong&#34;:&#34;Must be at most 15 characters.&#34;,&#34;tooShort&#34;:&#34;Must be at least 7 characters.&#34;,&#34;valueMissing&#34;:&#34;This field is required.&#34;}"`
-	assert.Contains(t, body, ip)
+	// One attribute for each message, named for the ValidityState property in kebab case.
+	for _, want := range []string{
+		`data-msg-pattern-mismatch="must be a valid IPv4 address"`, `data-msg-too-long="Must be at most 15 characters."`,
+		`data-msg-too-short="Must be at least 7 characters."`, `data-msg-value-missing="This field is required."`,
+		`data-msg-bad-input="Must be a whole number."`, `data-msg-range-overflow="Must be at most 100."`,
+		`data-msg-range-underflow="Must be at least 0."`, `data-msg-step-mismatch="Must be a whole number."`,
+	} {
+		assert.Contains(t, body, want)
+	}
 	assert.Contains(t, body, `title="must be a valid IPv4 address"`)
-
-	count := `data-validity="{&#34;badInput&#34;:&#34;Must be a whole number.&#34;,&#34;rangeOverflow&#34;:&#34;Must be at most 100.&#34;,&#34;rangeUnderflow&#34;:&#34;Must be at least 0.&#34;,&#34;stepMismatch&#34;:&#34;Must be a whole number.&#34;}"`
-	assert.Contains(t, body, count)
+	assert.False(t, strings.Contains(body, "data-validity")) // there is no JSON of them
 
 	// The ID has no Store: it is not a control, and has nothing to say.
-	assert.Equal(t, strings.Count(body, "data-validity="), 2)
+	assert.Equal(t, strings.Count(body, "data-msg-value-missing="), 1)
+	assert.Equal(t, strings.Count(body, "data-msg-range-overflow="), 1)
 
 	// A form that cannot be submitted has no controls to refuse anything.
 	f := okForm()
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
-	assert.False(t, strings.Contains(serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String(), "data-validity"))
+	assert.False(t, strings.Contains(serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String(), "data-msg-"))
 }
 
 func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.T) {
@@ -288,7 +294,7 @@ func TestAWritableSliderHoldsOnlyTheValuesAStepApart(t *testing.T) {
 	h := formApp(f)
 
 	body := serve(h, http.MethodGet, "/admin/device/dev1").Body.String()
-	assert.Contains(t, body, `&#34;stepMismatch&#34;:&#34;Must be 2 plus a multiple of 5.&#34;`)
+	assert.Contains(t, body, `data-msg-step-mismatch="Must be 2 plus a multiple of 5."`)
 	assert.Contains(t, body, `<span class="tip-item">In steps of 5</span>`)
 
 	for value, want := range map[string]int{"7": http.StatusSeeOther, "102": http.StatusSeeOther, "2": http.StatusSeeOther, "8": http.StatusUnprocessableEntity, "7.5": http.StatusUnprocessableEntity, "0": http.StatusUnprocessableEntity} {

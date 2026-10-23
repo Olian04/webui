@@ -60,7 +60,7 @@ func TestAMultilineStringIsATextAreaWithItsRules(t *testing.T) {
 	assert.Contains(t, body, ">\none\ntwo</textarea>")
 	assert.False(t, strings.Contains(body, `name="f1" type=`)) // not an input
 	assert.False(t, strings.Contains(body, "pattern="))
-	assert.Contains(t, body, `&#34;tooLong&#34;:&#34;Must be at most 12 characters.&#34;`) // the browser's words
+	assert.Contains(t, body, `data-msg-too-long="Must be at most 12 characters."`) // the browser's words
 }
 
 func TestALineBreakIsOneCharacterWhateverTheBrowserSent(t *testing.T) {

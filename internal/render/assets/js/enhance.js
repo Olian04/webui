@@ -332,36 +332,31 @@
 
   // The browser checks a form's constraints before it sends it, and says what it found in words of its own: "Please
   // match the format requested." The page knows what it means, and says it in the words the server uses beneath the
-  // field, through the Constraint Validation API. The server writes what to say for each way a value can fail, by the
-  // name of the ValidityState property that reports it, in data-validity; when a control reports itself invalid, the
-  // first of them that is true goes to setCustomValidity, and it is taken back when the value changes, since a
-  // custom message keeps a control invalid until it is. Without script the browser says its own words, and the
-  // pattern's message, which is the control's title.
+  // field, through the Constraint Validation API. The server writes what to say for each way a value can fail, as an
+  // attribute for each, data-msg- and the name of the ValidityState property that reports it in kebab case
+  // (data-msg-value-missing); when a control reports itself invalid, the first of them that is true goes to
+  // setCustomValidity, and it is taken back when the value changes, since a custom message keeps a control invalid until it
+  // is. Without script the browser says its own words, and the pattern's message, which is the control's title.
   // A pattern attribute is one expression, and a field that has more than one condition on its text (the text rules, which
   // are patterns to the browser, and the pattern) has them all in it, so the browser only says that the value does not
-  // match. data-parts has each condition as an expression with the words for it, in the order the server tests them,
-  // and the first that the value does not match is the one said. An expression that this browser cannot read leaves the
-  // words for the pattern as a whole.
-  function failedPart(raw, value) {
-    var parts;
-    try {
-      parts = JSON.parse(raw);
-    } catch (err) {
-      return '';
-    }
-    for (var i = 0; i < parts.length; i++) {
+  // match. data-part-N has each condition as an expression, and data-part-N-msg the words for it, in the order the server
+  // tests them, and the first that the value does not match is the one said. An expression that this browser cannot read
+  // leaves the words for the pattern as a whole.
+  function failedPart(el, value) {
+    for (var i = 0; el.hasAttribute('data-part-' + i); i++) {
+      var expr = el.getAttribute('data-part-' + i);
       var re = null;
       // The v flag is what the HTML specification compiles a pattern with, and u what a browser without it does.
       try {
-        re = new RegExp('^(?:' + parts[i][0] + ')$', 'v');
+        re = new RegExp('^(?:' + expr + ')$', 'v');
       } catch (err) {
         try {
-          re = new RegExp('^(?:' + parts[i][0] + ')$', 'u');
+          re = new RegExp('^(?:' + expr + ')$', 'u');
         } catch (err2) {
           return '';
         }
       }
-      if (!re.test(value)) return parts[i][1];
+      if (!re.test(value)) return el.getAttribute('data-part-' + i + '-msg') || '';
     }
     return '';
   }
@@ -369,23 +364,24 @@
   // The server's order: missing, then unreadable, then the length, the pattern, and the bounds.
   var VALIDITY_ORDER = ['valueMissing', 'typeMismatch', 'badInput', 'stepMismatch', 'tooShort', 'tooLong', 'patternMismatch', 'rangeUnderflow', 'rangeOverflow'];
 
+  function messageOf(el, reason) {
+    return el.getAttribute('data-msg-' + reason.replace(/[A-Z]/g, function (c) { return '-' + c.toLowerCase(); }));
+  }
+
+  function hasMessages(el) {
+    return !!el.attributes && Array.prototype.some.call(el.attributes, function (a) { return a.name.indexOf('data-msg-') === 0; });
+  }
+
   document.addEventListener(
     'invalid',
     function (e) {
       var el = e.target;
-      var raw = el.getAttribute && el.getAttribute('data-validity');
-      if (!raw) return;
-      var messages;
-      try {
-        messages = JSON.parse(raw);
-      } catch (err) {
-        return;
-      }
+      if (!hasMessages(el)) return;
       for (var i = 0; i < VALIDITY_ORDER.length; i++) {
         var reason = VALIDITY_ORDER[i];
-        if (el.validity[reason] && messages[reason]) {
-          var parts = reason === 'patternMismatch' && el.getAttribute('data-parts');
-          el.setCustomValidity((parts && failedPart(parts, el.value)) || messages[reason]);
+        var message = el.validity[reason] && messageOf(el, reason);
+        if (message) {
+          el.setCustomValidity((reason === 'patternMismatch' && failedPart(el, el.value)) || message);
           return;
         }
       }
@@ -395,7 +391,7 @@
 
   function takeBackValidity(e) {
     var el = e.target;
-    if (el.hasAttribute && el.hasAttribute('data-validity') && el.validity && el.validity.customError) el.setCustomValidity('');
+    if (hasMessages(el) && el.validity && el.validity.customError) el.setCustomValidity('');
   }
   document.addEventListener('input', takeBackValidity, true);
   document.addEventListener('change', takeBackValidity, true);

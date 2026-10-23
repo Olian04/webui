@@ -7,8 +7,9 @@
 // holds, which script cannot see: what is said here is only what a name, a size and the type that the browser gives can say, in the
 // words that the server uses.
 //
-// What the field takes is in data-file on the input, as JSON: {max, maxMessage, accept: [".png", "image/png", ...], kindMessage, image}.
-// image says that a file that is chosen may be shown if it is a picture.
+// What the field takes is in plain attributes of the input, in the words that the server uses: data-max-size (bytes) and data-max-message,
+// data-kind-message, and data-image, which says that a file that is chosen may be shown if it is a picture. The kinds are the input's own
+// accept attribute.
 //
 // A picture is small, and clicking it opens the file at its full size in a dialog. The picture of the stored file is the server's, with
 // its own dialog, which a button opens with an invoker command and so needs none of this. A picture of a file that is chosen is made here,
@@ -58,11 +59,13 @@
   }
 
   function config(input) {
-    try {
-      return JSON.parse(input.getAttribute('data-file'));
-    } catch (err) {
-      return null;
-    }
+    return {
+      max: Number(input.getAttribute('data-max-size')) || 0,
+      maxMessage: input.getAttribute('data-max-message') || '',
+      accept: input.accept ? input.accept.toLowerCase().split(',') : [],
+      kindMessage: input.getAttribute('data-kind-message') || '',
+      image: input.hasAttribute('data-image'),
+    };
   }
 
   // What is said of a file before it is sent, "" for nothing. The size is exact. The kind is only what the name and the type that the

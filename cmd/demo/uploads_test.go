@@ -118,7 +118,7 @@ func TestTheIngestFormLinksTheFileScriptAndTellsItWhatEachFieldTakes(t *testing.
 	h := handler(t)
 	body := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, body, `/_webui/file.`)
-	assert.Contains(t, body, `&#34;maxMessage&#34;:&#34;Must be at most 1 MiB.&#34;`)
+	assert.Contains(t, body, `data-max-message="Must be at most 1 MiB."`)
 
 	// A viewer has no chooser. The page still links the script, which is the page's and not the visitor's (the Guard that refuses them is
 	// asked per request), and it has nothing to do there.

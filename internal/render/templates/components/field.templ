@@ -107,11 +107,12 @@ type InputProps struct {
 	// Autocomplete is the input's autocomplete, when it has one.
 	Autocomplete string
 
-	// Validity is what the browser says for each way the value can fail a constraint, as JSON by the name of the
-	// property of the control's ValidityState (valueMissing, patternMismatch, ...), for script to give to
-	// setCustomValidity. Title is what a value that matches the pattern looks like, which a browser says after its own
+	// Validity is what the browser says for each way the value can fail a constraint, as an attribute for each: data-msg- and
+	// the name of the property of the control's ValidityState in kebab case (data-msg-value-missing, data-msg-pattern-mismatch, ...),
+	// for script to give to setCustomValidity; and, for a text with more than one condition, data-part-N, an expression, with
+	// data-part-N-msg, the words for it. Title is what a value that matches the pattern looks like, which a browser says after its own
 	// words when script is off.
-	Validity string
+	Validity templ.Attributes
 	Title    string
 
 	// Parts is, for a field that has more than one condition on its text, each of them as a JavaScript regular
@@ -163,12 +164,7 @@ templ Input(p InputProps) {
 		if p.Title != "" {
 			title={ p.Title }
 		}
-		if p.Validity != "" {
-			data-validity={ p.Validity }
-		}
-		if p.Parts != "" {
-			data-parts={ p.Parts }
-		}
+		{ p.Validity... }
 		if p.Autocomplete != "" {
 			autocomplete={ p.Autocomplete }
 		}
@@ -222,8 +218,8 @@ type FileInputProps struct {
 	Required bool
 	Invalid  bool
 
-	// Validity is what the browser says for each way the value can fail a constraint, as JSON (see InputProps).
-	Validity string
+	// Validity is what the browser says for each way the value can fail a constraint (see InputProps).
+	Validity templ.Attributes
 
 	// CurrentName is the stored file's name, "" for none; CurrentHref is where it is served, "" for no link; CurrentSize is
 	// how large it is, as read, "" for not knowing.
@@ -291,9 +287,7 @@ templ FileInput(p FileInputProps) {
 				accept={ p.Accept }
 			}
 			required?={ p.Required }
-			if p.Validity != "" {
-				data-validity={ p.Validity }
-			}
+			{ p.Validity... }
 			if p.Invalid {
 				aria-invalid="true"
 				aria-describedby={ p.ID + "-error" }
@@ -314,7 +308,7 @@ type TextareaProps struct {
 	Rules       Rules
 
 	// Validity is as for an Input.
-	Validity string
+	Validity templ.Attributes
 }
 
 templ Textarea(p TextareaProps) {
@@ -337,9 +331,7 @@ templ Textarea(p TextareaProps) {
 		if p.Rules.MaxLen > 0 {
 			maxlength={ strconv.Itoa(p.Rules.MaxLen) }
 		}
-		if p.Validity != "" {
-			data-validity={ p.Validity }
-		}
+		{ p.Validity... }
 		if p.Invalid {
 			aria-invalid="true"
 			aria-describedby={ p.ID + "-error" }
@@ -369,7 +361,7 @@ type SelectProps struct {
 	Multi    bool
 	Required bool
 	Invalid  bool
-	Validity string // as for an Input
+	Validity templ.Attributes // as for an Input
 }
 
 // size is how many options a list shows before it scrolls.
@@ -388,9 +380,7 @@ templ Select(p SelectProps) {
 			name={ p.Name }
 		}
 		required?={ p.Required }
-		if p.Validity != "" {
-			data-validity={ p.Validity }
-		}
+		{ p.Validity... }
 		if p.Multi {
 			multiple
 			size={ p.size() }
