@@ -51,8 +51,6 @@ func (a Email[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Email[M]) toolbarItem(M) {}
-
 // Phone projects a string field of M that holds a phone number. The browser draws a telephone input, which has a keypad on a phone and
 // checks nothing; the server checks that it is digits with the punctuation that numbers are written with ("+46 8 123 45", "(08) 123-45",
 // "0701234567 x12"), and at least one digit. There is no grammar for phone numbers, so it is not stricter than that.
@@ -105,8 +103,6 @@ func (a Phone[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Phone[M]) toolbarItem(M) {}
-
 // Website projects a string field of M that holds a web address, to be typed: the browser draws a web address input and refuses a value
 // that is not an address. Read, it is text; [URL] is the accessor that links. The server holds the value to more than the browser does,
 // which accepts any address with a scheme, "javascript:" among them: it is an http or https address with a host, since what is stored
@@ -149,8 +145,6 @@ func (a Website[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Website[M]) toolbarItem(M) {}
-
 // ColorPicker projects a string field of M that holds a colour, "#rrggbb", chosen with the browser's picker. A picker cannot be empty: a field
 // whose Load returns nothing shows black, and a submission always holds a colour, so it has no Required, and no rule of the length
 // or the text of a string. The server checks that what is submitted is "#" and six hex digits.
@@ -185,8 +179,6 @@ func (a ColorPicker[M]) label() string { return a.Label }
 func (a ColorPicker[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
-
-func (ColorPicker[M]) toolbarItem(M) {}
 
 // validateTextRules checks what the rules of a text say of themselves: that the pattern can be read by both engines, that the lengths
 // agree, and that no value could satisfy them all.

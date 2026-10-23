@@ -168,7 +168,4 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 		Load:    func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
 		Content: webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store},
 	}), "is a Secret in an editor")
-	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{
-		webui.String[webui.NoArgs]{Label: "Key", Secret: true, Load: func(webui.NoArgs) string { return "" }, Store: func(*webui.NoArgs, string) {}},
-	}}), "is a Secret in a toolbar")
 }

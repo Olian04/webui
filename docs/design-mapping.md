@@ -37,7 +37,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
-| `Toolbar` | A row of controls with no frame: buttons, links and the values of the page's arguments, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons' |
+| `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-leaf`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `FileUpload.Multiple`, with script | The chooser takes several files, a *Choose folder* button beside it takes a folder, a folder can be dropped on the frame, and the files are listed under it: each is sent in a request of its own with a native `<progress>` and then shows the server's words for it, green, amber or red, with a link when the outcome goes somewhere; *Cancel* stops the queue. Without script, one file, as before |
@@ -423,14 +423,15 @@ critical role.
 ### `Toolbar` → controls for the page
 
 A button is the same button as a form's, in the same three roles, small, left out or disabled with its reason as its `Guard`
-says. A `Link` in a toolbar is the same button as an anchor, left out when the page it leads to refuses the visitor. A toolbar with
-nothing left to draw is not drawn. An accessor is a value of the page's arguments, read: its label
-(dim, with a colon) and the value as a read-only form field shows it (badges, a number with its `Format`, a link, a dash for nothing), with
-its `Help` in the popover beside the label. A `Store` on it does nothing. There are no inputs: nothing in a toolbar changes the page's
-arguments, so there is no form for them, no *Apply* button and no address that applies them; the buttons post in one form, and a toolbar
-of links and values has no form at all. `Left` and `Right` are one row with a gap between the groups that takes what is left
-over; when there is not room for every control in a row, which script measures, the gap goes and the controls flow from the left in
-rows, as one group.
+says; it is an `Action[NoArgs]`, with no subject. A `Link[NoArgs, B]` in a toolbar is the same button as an anchor, left out when the page it
+leads to refuses the visitor. A toolbar with nothing left to draw is not drawn. A `Form` in a toolbar is a group (`role="group"`, named by its
+`Title`) of the values of the model it loads: each accessor's label (dim, with a colon) and the value as a read-only form field shows it (badges, a
+number with its `Format`, a link, a dash for nothing), with its `Help` in the popover beside the label. A `Store` on it does nothing, and there is
+no `Submit`, no `Desc` and no `Help` of the form itself. A form whose `Load` fails is its title and "Could not load" (or the refusal's words) in its place,
+and the rest of the row stands. There are no inputs: the buttons post in one form, and a toolbar of links and values has no form at all.
+`Left` and `Right` are one row with a gap between the groups that takes what is left over; when there is not room for every control in a row, which
+script measures, the gap goes and the controls flow from the left in rows, as one group. A form that returns `RefreshAfter` puts
+`data-refresh-after` on the toolbar and nothing else: a panel says "Updating…" in its head, but a toolbar has little room and a note in the row would move what is in it, so a visitor without script is not told to reload.
 
 ### `Table.BulkActions` → checkboxes that only exist when declared
 

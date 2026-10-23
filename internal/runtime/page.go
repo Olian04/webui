@@ -259,7 +259,7 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Markdown:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
 	case *ir.Toolbar:
-		return p.toolbar(ctx, req, page, n), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
 	case *ir.FileUpload:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) }), nil
 	case *ir.Form:

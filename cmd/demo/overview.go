@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
@@ -15,75 +16,83 @@ var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	Body: webui.Stack{
 		OverviewToolbar,
-		OverviewSync,
 		webui.Split{OverviewDevices, OverviewAlerts, OverviewEvents, OverviewSettings},
 	},
 }
 
-// The values of the landing page's toolbar are accessors of the page's arguments, which this page has none of: their Load reads
-// the system instead, which a toolbar may do, since a value is only read. A Store would do nothing here, and none is given.
+// Collector is what the landing page's toolbar shows of the system: its health and how big it is, in one model that is loaded together.
+type Collector struct {
+	SystemInfo
+	Devices int
+}
+
+// The values of the landing page's toolbar are accessors of the models its Forms load, as a Form panel's fields are: the same accessors would do
+// in either, and a Store on one would do nothing here, since a toolbar only shows.
 var (
-	overviewHealth = webui.Select[webui.NoArgs]{
+	overviewHealth = webui.Select[Collector]{
 		Label: "Health",
-		Load:  func(webui.NoArgs) []string { return []string{service.System().Health} },
+		Load:  func(c Collector) []string { return []string{c.Health} },
 		Options: []webui.Option{
 			{Value: "healthy", Tone: webui.ToneOK}, {Value: "degraded", Tone: webui.ToneWarning}, {Value: "down", Tone: webui.ToneCritical},
 		},
 	}
-	overviewVersion = webui.String[webui.NoArgs]{Label: "Version", Load: func(webui.NoArgs) string { return service.System().Version }}
-	overviewUptime  = webui.String[webui.NoArgs]{Label: "Uptime", Load: func(webui.NoArgs) string { return service.System().Uptime }}
-	overviewDevices = webui.Int[webui.NoArgs]{
-		Label: "Devices",
-		Load: func(webui.NoArgs) int {
-			_, total := service.Devices(nil, nil, Order{})
-			return total
-		},
-	}
-	overviewQueue = webui.Int[webui.NoArgs]{
+	overviewVersion = webui.String[Collector]{Label: "Version", Load: func(c Collector) string { return c.Version }}
+	overviewUptime  = webui.String[Collector]{Label: "Uptime", Load: func(c Collector) string { return c.Uptime }}
+	overviewDevices = webui.Int[Collector]{Label: "Devices", Load: func(c Collector) int { return c.Devices }}
+	overviewQueue   = webui.Int[Collector]{
 		Label: "Queue depth", Help: "Events that are waiting to be written.",
-		Load: func(webui.NoArgs) int { return service.System().Queue },
+		Load: func(c Collector) int { return c.Queue },
 	}
-	overviewDisk = webui.Slider[webui.NoArgs]{
+	overviewDisk = webui.Slider[Collector]{
 		Label: "Disk used (%)", Min: 0, Max: 100,
-		Load: func(webui.NoArgs) float64 { return service.System().DiskUsed },
+		Load: func(c Collector) float64 { return c.DiskUsed },
+	}
+	overviewSyncState = webui.String[SyncJob]{
+		Label: "Sync",
+		Load: func(j SyncJob) string {
+			if j.Running {
+				return fmt.Sprintf("Syncing, %d of %d devices", j.Read, j.Total)
+			}
+			return j.State
+		},
 	}
 )
 
+// loadSync is where the sync job is, for the toolbar that shows it. While it goes on it says that what it shows is not final, and the toolbar is
+// asked for again every two seconds, until it is done and the answer stops saying so.
+func loadSync(context.Context) (SyncJob, webui.Loaded) {
+	job := service.SyncJob()
+	if job.Running {
+		return job, webui.Ready().RefreshAfter(2 * time.Second)
+	}
+	return job, webui.Ready()
+}
+
 // OverviewToolbar is the status of the collector at a glance, in the row that is a Toolbar: the values of the system, read-only, from the
-// left edge, and at the right edge a button, which only an editor is offered (a viewer's Guard refuses it, so for them it is left out).
-var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
-	Left: []webui.ToolbarItem[webui.NoArgs]{overviewHealth, overviewVersion, overviewUptime, overviewDevices, overviewQueue, overviewDisk},
-	Right: []webui.ToolbarItem[webui.NoArgs]{
+// left edge, in a Form that loads them together, and at the right edge the job that Sync now starts, in a Form of its own model, and the button,
+// which only an editor is offered (a viewer's Guard refuses it, so for them it is left out). The sync job is not final while it goes on, so the
+// toolbar is asked for again until it is done.
+var OverviewToolbar = webui.Toolbar{
+	Left: []webui.ToolbarItem{
+		webui.Form[Collector]{
+			Title: "System",
+			Load: func(context.Context) (Collector, webui.Loaded) {
+				_, devices := service.Devices(nil, nil, Order{})
+				return Collector{SystemInfo: service.System(), Devices: devices}, webui.Ready()
+			},
+			Fields: []webui.Accessor[Collector]{overviewHealth, overviewVersion, overviewUptime, overviewDevices, overviewQueue, overviewDisk},
+		},
+	},
+	Right: []webui.ToolbarItem{
+		webui.Form[SyncJob]{Title: "Sync", Load: loadSync, Fields: []webui.Accessor[SyncJob]{overviewSyncState}},
 		webui.Action[webui.NoArgs]{
 			Label: "Sync now", Role: webui.RolePrimary,
 			Confirm: "Sync every device now? It reads each one and may take a while.",
 			Guard:   canEdit[webui.NoArgs],
 			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
-				service.StartSync() // it goes on in the background, and the panel beside it follows it
+				service.StartSync() // it goes on in the background, and the toolbar follows it
 				return webui.Success("Sync started"), nil
 			},
-		},
-	},
-}
-
-// OverviewSync follows the job that Sync now starts. A job takes time, so the button only starts it and the panel that shows it says when it
-// is not final: while the job goes on its Load returns Loaded.RefreshAfter, and a page with script asks for the panel again every two seconds and
-// replaces it, until it is done and the Load stops saying so. Without script the panel says to reload.
-var OverviewSync = webui.Form[SyncJob]{
-	Title: "Sync",
-	Desc:  "Sync now starts a job that takes eight seconds. This panel is asked for again every two seconds while it goes on, and stops when it is done.",
-	Load: func(context.Context) (SyncJob, webui.Loaded) {
-		job := service.SyncJob()
-		if job.Running {
-			return job, webui.Ready().RefreshAfter(2 * time.Second)
-		}
-		return job, webui.Ready()
-	},
-	Fields: []webui.Accessor[SyncJob]{
-		webui.Group[SyncJob]{
-			webui.String[SyncJob]{Label: "State", Load: func(j SyncJob) string { return j.State }},
-			webui.Int[SyncJob]{Label: "Devices read", Load: func(j SyncJob) int { return j.Read }},
-			webui.Int[SyncJob]{Label: "Devices", Load: func(j SyncJob) int { return j.Total }},
 		},
 	},
 }

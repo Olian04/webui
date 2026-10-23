@@ -256,16 +256,16 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 	t.Parallel()
 
 	var open atomic.Bool
-	refused := func(context.Context, toolArgs) error {
+	refused := func(context.Context, webui.NoArgs) error {
 		if open.Load() {
 			return nil
 		}
 		return errors.New("no")
 	}
-	run := func(context.Context, toolArgs) (webui.Outcome, error) { return webui.Success("done"), nil }
-	h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{
-		Left:  []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "One", Guard: refused, Run: run}},
-		Right: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "Two", Run: run}},
+	run := func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Success("done"), nil }
+	h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{
+		Left:  []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "One", Guard: refused, Run: run}},
+		Right: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Two", Run: run}},
 	}}}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/tools").Body.String()
@@ -274,8 +274,8 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 	assert.Contains(t, body, `name="_act" value="1">Two</button>`)                   // and is still the second
 
 	// With every button refused, no toolbar is drawn: not an empty row, and not a form.
-	h = webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar[toolArgs]{
-		Left: []webui.ToolbarItem[toolArgs]{webui.Action[toolArgs]{Label: "One", Guard: refused, Run: run}},
+	h = webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{
+		Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "One", Guard: refused, Run: run}},
 	}}}}.MustCompile("/admin")
 	body = serve(h, http.MethodGet, "/admin/tools").Body.String()
 	assert.False(t, strings.Contains(body, "data-toolbar"))
@@ -299,7 +299,7 @@ func TestALinkToAPageThatRefusesTheVisitorIsNotDrawn(t *testing.T) {
 		Columns:  []webui.Accessor[parcel]{parcelName},
 		RowClick: webui.Link[parcel, webui.NoArgs]{Page: dest, Args: args},
 	}
-	bar := webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{webui.Link[webui.NoArgs, webui.NoArgs]{
+	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, webui.NoArgs]{
 		Label: "Open it", Page: dest, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 	}}}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Stack{bar, table}}, dest}}.MustCompile("/admin")
@@ -323,7 +323,7 @@ func TestAPageGuardThatPanicsOnTheWayToALinkHidesTheLink(t *testing.T) {
 
 	var logs bytes.Buffer
 	dest := webui.Page[webui.NoArgs]{Path: "/dest", Body: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { panic("the page guard fell over") }}
-	bar := webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{webui.Link[webui.NoArgs, webui.NoArgs]{
+	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, webui.NoArgs]{
 		Label: "Open it", Page: dest, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 	}}}
 	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logs, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: bar}, dest}}.MustCompile("/admin")

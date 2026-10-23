@@ -139,17 +139,17 @@ var Devices = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{DevicesToolbar, DevicesTable},
 }
 
-// DevicesToolbar is the controls of the list, which are of the page's arguments, here none. A Link to another page is at the
-// left edge, and an Action, a button that posts and says how it ended, as every action does, is at the right. When the page
-// is too narrow for both at the edges they flow together from the left.
-var DevicesToolbar = webui.Toolbar[webui.NoArgs]{
-	Left: []webui.ToolbarItem[webui.NoArgs]{
+// DevicesToolbar is the controls of the list. A Link to another page is at the left edge, and an Action, a button that posts and says how it
+// ended, as every action does, is at the right. Neither has a model of its own: they are of the page, which an Action reads with ArgsOf if it needs
+// it, and here it needs none. When the page is too narrow for both at the edges they flow together from the left.
+var DevicesToolbar = webui.Toolbar{
+	Left: []webui.ToolbarItem{
 		webui.Link[webui.NoArgs, webui.NoArgs]{
 			Label: "Create device", Role: webui.RolePrimary, Page: NewDevicePage,
 			Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 		},
 	},
-	Right: []webui.ToolbarItem[webui.NoArgs]{
+	Right: []webui.ToolbarItem{
 		webui.Action[webui.NoArgs]{
 			Label:   "Sync now",
 			Confirm: "Sync every device now? It reads each one and may take a while.",

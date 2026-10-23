@@ -403,10 +403,10 @@ captions), items in 12.5px text-tertiary; its text is also the icon's accessible
 **A question that a button asks** is a native dialog over a 50% dim: at most 420px wide or the window less 32px, 16px and 18px of padding,
 the raised surface and a strong border, 13.5px text, a ghost *Cancel* (which has the focus) and the action's own small button.
 
-**A toolbar** is a row with no frame: it wraps, with 8px between rows and 10px between controls, bottom-aligned. A value is its label, in
+**A toolbar** is a row with no frame: it wraps, with 8px between rows and 10px between controls, bottom-aligned. A value (of a form that the toolbar loads, which a group names for a screen reader) is its label, in
 text-secondary and followed by a colon, and what it is, in the text colour, 13px, at least 32px tall; buttons are small. The gap between
 the left controls and the right ones takes what is left, and is gone when script finds that they do not fit in one row, and they flow
-from the left. A toolbar with nothing to draw is not drawn; one whose options could not be read is an empty panel that says so.
+from the left. A toolbar with nothing to draw is not drawn; one whose options could not be read is an empty panel that says so; a form of it that could not be loaded is its title and "Could not load" in place, the rest standing. One that is not final is asked for again and says nothing in the row, where a note would move what is in it.
 
 **Checkboxes** are 15px, 2px radius, filling solid primary with a white check
 when set.

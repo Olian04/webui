@@ -85,8 +85,6 @@ func (a String[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (String[M]) toolbarItem(M) {}
-
 // StringRules is declarative validation for a string value.
 // Scalar zero means "no constraint". Pattern is a pointer because the
 // expression needs a user-facing message.
@@ -190,8 +188,6 @@ func (a Int[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Int[M]) toolbarItem(M) {}
-
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
 type NumberRules[T int | float64] struct {
@@ -261,8 +257,6 @@ func (a Float[M]) label() string { return a.Label }
 func (a Float[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
-
-func (Float[M]) toolbarItem(M) {}
 
 // Group composes accessors inside a form. It is not a table column;
 // Compile rejects Group listed in Columns.
@@ -355,8 +349,6 @@ func (a Select[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Select[M]) toolbarItem(M) {}
-
 // Option is one value a [Select] can hold.
 type Option struct {
 	// Value is what is stored: what Load returns and what Store is handed. It is not empty.
@@ -410,8 +402,6 @@ func (a URL[M]) label() string { return a.Label }
 func (a URL[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
-
-func (URL[M]) toolbarItem(M) {}
 
 // Datetime projects a string field of M that holds an ISO 8601 moment, such as
 // "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
@@ -468,8 +458,6 @@ func (a Datetime[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-func (Datetime[M]) toolbarItem(M) {}
-
 // Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
 // and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
 // Zero is "not set": it shows as nothing, and clearing the picker stores it. For a
@@ -516,8 +504,6 @@ func (a Timestamp[M]) label() string { return a.Label }
 func (a Timestamp[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
-
-func (Timestamp[M]) toolbarItem(M) {}
 
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
@@ -569,8 +555,6 @@ func (a Slider[M]) label() string { return a.Label }
 func (a Slider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
-
-func (Slider[M]) toolbarItem(M) {}
 
 // Tone is the semantic meaning of a badge.
 type Tone string
@@ -693,6 +677,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 	case File[M]:
 		common(a.Label, a.Load == nil, "func(M) *FileInfo")
 		validateFile(v, at, a)
+		if site.where == "Toolbar" {
+			v.add(at+" is a File in a toolbar", "A toolbar shows values and takes no input, and a file is a form's input: put it in a Form panel.")
+		}
 	case Int[M]:
 		common(a.Label, a.Load == nil, "func(M) int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)

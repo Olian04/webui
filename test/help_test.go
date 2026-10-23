@@ -111,8 +111,9 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 func TestHelpIsOnAToolbarValue(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{
-		webui.String[webui.NoArgs]{Label: "Q", Help: "Search by name.", Load: func(webui.NoArgs) string { return "" }, Store: func(*webui.NoArgs, string) {}},
-	}}}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[note]{
+		Title: "Search", Load: func(context.Context) (note, webui.Loaded) { return note{}, webui.Ready() },
+		Fields: []webui.Accessor[note]{webui.String[note]{Label: "Q", Help: "Search by name.", Load: func(note) string { return "" }}},
+	}}}}}}.MustCompile("/admin")
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), `aria-label="Help: Search by name."`)
 }

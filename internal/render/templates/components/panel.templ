@@ -58,6 +58,26 @@ func refreshIn(ctx context.Context) int {
 	return int((d + time.Second - 1) / time.Second)
 }
 
+// RefreshAttrs are the attributes of a leaf's root that say it is not final, for script to obey: data-refresh-after, the delay in whole seconds. A leaf
+// that is final has none.
+func RefreshAttrs(ctx context.Context) templ.Attributes {
+	if n := refreshIn(ctx); n > 0 {
+		return templ.Attributes{"data-refresh-after": strconv.Itoa(n)}
+	}
+	return nil
+}
+
+// RefreshNote says to the reader that the leaf drawn with ctx is not final: that it is updating, with script, and when to reload, without. A leaf
+// that is final says nothing.
+templ RefreshNote(ctx context.Context) {
+	if n := refreshIn(ctx); n > 0 {
+		<span class="refresh-note">
+			<span class="refresh-js">Updating…</span>
+			<span class="refresh-nojs">Updating, reload in { strconv.Itoa(n) } s</span>
+		</span>
+	}
+}
+
 // Refused is what a panel says in place of "Could not load" when its Load returned a refusal: a title for the status, the
 // message, and a link on, when there is one.
 type Refused struct {
@@ -69,9 +89,7 @@ templ Panel(p PanelProps) {
 		class={ "panel", templ.KV("grows", p.Grows) }
 		if p.Leaf != "" {
 			data-leaf={ p.Leaf }
-			if n := refreshIn(ctx); n > 0 {
-				data-refresh-after={ strconv.Itoa(n) }
-			}
+			{ RefreshAttrs(ctx)... }
 		}
 	>
 		<div class="panel-head">
@@ -82,11 +100,8 @@ templ Panel(p PanelProps) {
 			if p.Failed {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
 			}
-			if n := refreshIn(ctx); n > 0 && p.Leaf != "" {
-				<span class="refresh-note">
-					<span class="refresh-js">Updating…</span>
-					<span class="refresh-nojs">Updating, reload in { strconv.Itoa(n) } s</span>
-				</span>
+			if p.Leaf != "" {
+				@RefreshNote(ctx)
 			}
 		</div>
 		<div class="panel-body">

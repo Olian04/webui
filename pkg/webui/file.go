@@ -132,7 +132,7 @@ type Upload struct {
 // limit, after the page's Guard has run, so a visitor that the page refuses has nothing read from them. An action's own Guard runs after
 // the form has been bound, so the file has been received when it refuses. A program that takes uploads sets ReadTimeout on its server, which ReadHeaderTimeout does not bound.
 //
-// It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar], which shows values and
+// It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar]'s [Form], which shows values and
 // has only a name to show of a file, and an [Editor]'s content is a [String] by its type.
 type File[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the column in the address and in a [Query].

@@ -267,7 +267,7 @@ design element.
   empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
   unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
-  state costs. In a `Toolbar` they are values to read, computed from the page's arguments (which are plain values, with no nil) by their `Load`.
+  state costs. In a `Toolbar`'s `Form` they are values to read, computed from the model by their `Load`.
 
 - **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a
   type on `String`. The first version was a typed `String.Input`, and it needed a compile error for every field of `String` that
@@ -622,29 +622,37 @@ design element.
   changed once (`return x, nil` is `return x, webui.Ready()`, and an error is `webui.Failed(err)`), where `return m, err` of a store no longer passes through
   as it is; the server is asked for as long as a page is open and visible (visitors × panels ÷ interval), with no cap of its own, so a `Load` that never stops
   saying it is a fault of the application; a panel with a form in it is replaced when nothing in it has focus, so it is for panels that show state; a
-  toolbar's values have no `Load` to say it with, which a `ToolbarForm` is to give them; and a job that no panel shows has nothing to poll, so the
-  application adds one.
+  a toolbar says it through a `Form` in it; and a job that no panel shows has nothing to poll, so the application adds one.
 
 ## Toolbar
 
-- **A `Toolbar` is a row of controls for the page, and its type is the page's arguments** (`Toolbar[A]`, items of `A`).
-  It is a leaf and not a panel (no frame), in a `Stack` with what it is for. What the controls are about is what a page
-  is: its arguments. A `Page` has no model of its own, and an `Action[M]` is a mutation of an `M`, so the subject of a
-  toolbar's `Action` is the arguments, whose `Guard` can gate by them and whose `Run` reads them, and `ArgsOf(ctx)`
-  gives the same. `Link[A, B]` is the existing `Link` with a `Label` and a `Role`, built from the arguments instead of
-  a row. The type is checked: a `Toolbar[X]` on a page of `Y` is a compile error, so nothing is asserted wrongly at run time.
-  The items are a sealed interface (`ToolbarItem[A]`), which `Action`, `Link` and the accessors satisfy by a method that takes `A`, so an
-  accessor of another type does not fit.
+- **A `Toolbar` is a row of controls for the page, with no type parameter, and its values are a `Form` that it loads.** It is a leaf and not
+  a panel (no frame), in a `Stack` with what it is for. It was `Toolbar[A]`, typed by the page's arguments, with the arguments handed to its `Action`s and
+  `Link`s and read by its accessors, but a type parameter of a leaf is the model that the leaf's own `Load` fills and the leaf then reads, and a toolbar had
+  no `Load`: the arguments were passed through it, which is what `ArgsOf(ctx)` is for, and the values it showed were computed from them or from a global, with
+  nothing to say that they were still changing. Now the buttons are the existing `Action[NoArgs]` and `Link[NoArgs, B]` (no `ToolbarAction`, no
+  `ToolbarLink`: a button with no model has the empty one, and reads the page with `ArgsOf`), and the values are a plain `Form[M]` in the toolbar's item list,
+  which already has a `Load`, fields and a title. The item list is a sealed interface, `ToolbarItem`, whose method takes `NoArgs`: `Action[M]`, `Link[M, B]`
+  and `Form[M]` have such a method, and `Action[M]` and `Link[M, B]` match it only when `M` is `NoArgs`, so a button with a subject of its own does not
+  compile (the accessors have no such method any more, so an accessor is not an item). The toolbar is the leaf, and so what is refreshed: a `Form`'s
+  `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-leaf` and `data-refresh-after`, without a note: a panel says "Updating…" in its head, but a toolbar's row has little room
+  and an inline note moves what is in it, so a visitor without script is not told to reload one. A form in a toolbar is a group (`role="group"`, named by its `Title`, which is required), is read-only (no `Submit`),
+  has no `Desc` or `Help` of its own and no field that is multiline, secret or a file; the compile says so, with what to do. A form whose `Load` fails is
+  its title and "Could not load" (or a refusal's words) in its place, and the rest of the toolbar stands, where a failed read of a select's options still
+  fails the whole toolbar. The costs: every toolbar was changed once (the type parameter, the accessors, the subject of the buttons); a `Form` in a
+  toolbar is a restricted use of a general type, checked when the app compiles; a slow `Load` holds the whole toolbar, as a panel's holds its panel; and
+  the toolbar now has a `data-leaf`, so `syncPanels` asks for it again after a panel or tab moves, which also keeps the address its buttons post to right.
+  Writable fields, a `Form`'s `Submit` drawn in the toolbar, are not here.
 
 - **A toolbar shows values and has no inputs.** It once had inputs that wrote the page's arguments, and they were removed outright: an input that changes
   the page needed what a `Form` already is (a form and a request path of its own, a way of reporting a refused value, and script to apply it, or a
-  button without), and a toolbar of values with no button still carried a form. What remains is what a toolbar is good for: buttons, links, and the values of the page's arguments to read. An accessor in a
-  toolbar is its label and its value as a read-only form field shows it; its `Store` is ignored, as a table ignores it, so
-  the one accessor declaration serves a form, a table and a toolbar (a compile error for a `Store` there was weighed and dropped for that: it
-  would have forced a second declaration of any accessor shared with a form). A page whose arguments the visitor sets is for a `Form`,
+  button without), and a toolbar of values with no button still carried a form. What remains is what a toolbar is good for: buttons, links, and values to read. An accessor in a
+  toolbar's `Form` is its label and its value as a read-only form field shows it; its `Store` is ignored, as a table ignores it, so
+  the one accessor declaration serves a form, a table and a toolbar's form (a compile error for a `Store` there was weighed and dropped for that: it
+  would have forced a second declaration of any accessor shared with a form). A page whose arguments the visitor sets is for a `Form` panel,
   or for links to the page with other arguments. The cost is that a page's argument that only a link sets, such as a window, cannot be
-  chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be an argument (`Optional*`, `Bool`, `URL`) are
-  toolbar items too, computed from the arguments by their `Load`; `Secret` and `Multiline` stay refused (nothing to read, and one line of text).
+  chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be a form's input (`Optional*`, `Bool`, `URL`) fit a toolbar's form too,
+  computed from the model by their `Load`; `Secret`, `Multiline` and `File` are refused (nothing to read, one line of text, and an input).
   A toolbar with a button has one form, which posts the buttons, and one with only links and values has none.
 
 - **A toolbar has two groups, `Left` and `Right`, and they are one row.** A gap between the groups takes what the page has
@@ -699,7 +707,7 @@ design element.
   text, a bound that is not a finite number and a column the table does not have never arrive, and a typed filter is cut at 200
   characters. A multi-select is repeated parameters (`devices.filter.status=a&devices.filter.status=b`), which is also what a
   form of checkboxes submits; a range is `devices.min.occurrences=300&devices.max.occurrences=500`. Nothing on the page sets its
-  query arguments: they come from the address (a link, `Open`), and a `Toolbar` can show their values but not change them.
+  query arguments: they come from the address (a link, `Open`), and a `Toolbar` can show their values (a `Form` that reads them with `ArgsOf`) but not change them.
 
 - A link inside a panel that changes only that panel's arguments
   fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
