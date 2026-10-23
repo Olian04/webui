@@ -674,3 +674,171 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 	}}}}.Compile("/admin")
 	assert.NoError(t, err)
 }
+
+// postFragment posts the one file of a panel as the upload script does: a request for the panel's HTML, which carries the leaf's header.
+func postFragment(h http.Handler, filename, content string) *httptest.ResponseRecorder {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	_ = w.WriteField("_leaf", "p")
+	hdr := textproto.MIMEHeader{}
+	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+filename+`"`)
+	part, _ := w.CreatePart(hdr)
+	_, _ = part.Write([]byte(content))
+	_ = w.Close()
+	req := httptest.NewRequest(http.MethodPost, "/admin/up", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	req.Header.Set("X-Webui-Leaf", "p")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// A post that script made, which asks for the panel's HTML, is answered with HTML: one list item with the tone and the text of the outcome, and no flash
+// and no redirect, which a browser that navigates is given. Nothing of it is data.
+func TestAFileUploadThatScriptSendsIsAnsweredWithAnHTMLFragment(t *testing.T) {
+	t.Parallel()
+
+	for name, c := range map[string]struct {
+		outcome webui.Outcome
+		err     error
+		status  int
+		tone    string
+		text    string
+	}{
+		"success": {outcome: webui.Success("Stored it"), status: 200, tone: "ok", text: "Stored it"},
+		"warning": {outcome: webui.Warning("Stored it slowly"), status: 200, tone: "warn", text: "Stored it slowly"},
+		"failure": {outcome: webui.Failure("The bucket is full"), status: 200, tone: "bad", text: "The bucket is full"},
+		"error":   {err: errors.New("boom"), status: 200, tone: "bad", text: "Something went wrong. The cause was logged on the server."},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+				f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
+					_, _ = io.Copy(io.Discard, h.Reader)
+					return c.outcome, c.err
+				}
+			})
+			rec := postFragment(s.h, "a.bin", "data")
+			assert.Equal(t, rec.Code, c.status)
+			assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+			assert.Equal(t, rec.Header().Get("Location"), "")
+			assert.Equal(t, flashOf(rec), "") // no flash: the HTML is the answer
+			body := strings.TrimSpace(rec.Body.String())
+			assert.True(t, strings.HasPrefix(body, `<li class="upload-result" data-tone="`+c.tone+`">`) && strings.HasSuffix(body, `</li>`))
+			assert.Contains(t, body, `<span class="upload-text">`+c.text+`</span>`)
+			assert.False(t, strings.Contains(body, "<a ")) // it goes nowhere else
+		})
+	}
+}
+
+// The text is the server's, and is escaped; a file that was refused says so in the same item.
+func TestAnUploadFragmentEscapesTheTextAndSaysWhatWasRefused(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
+	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="upload-text">Choose a PNG file.</span>`)
+
+	named := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
+			_, _ = io.Copy(io.Discard, h.Reader)
+			return webui.Success("Uploaded " + h.Name), nil
+		}
+	})
+	body := postFragment(named.h, "<b>x.bin", "data").Body.String()
+	assert.False(t, strings.Contains(body, "<b>"))
+	assert.Contains(t, body, "Uploaded &lt;b&gt;x.bin")
+}
+
+// An outcome that goes somewhere is a link in the answer: the next action is in the HTML, and the script does not need to know it.
+func TestAnUploadFragmentOffersALinkToWhereTheOutcomeGoes(t *testing.T) {
+	t.Parallel()
+
+	noop := webui.Action[webui.FileHandle[struct{}]]{Run: func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
+		return webui.Success("ok"), nil
+	}}
+	done := webui.Page[webui.NoArgs]{Path: "/done", Body: webui.FileUpload[struct{}]{MaxSize: 1, Receive: noop}}
+	up := webui.FileUpload[struct{}]{
+		MaxSize: 1 << 20,
+		Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(ctx context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
+			_, _ = io.Copy(io.Discard, h.Reader)
+			return webui.Success("Uploaded").Then(webui.Open(ctx, done, webui.NoArgs{})), nil
+		}},
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: up}, done}}.MustCompile("/admin")
+	body := postFragment(h, "a.bin", "data").Body.String()
+	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm upload-next" href="/admin/done">Continue</a>`)
+	assert.Contains(t, body, `data-tone="ok"`)
+}
+
+// A page that refuses the visitor refuses a post of script's as it does any: with the status, and the words as the HTML of the item.
+func TestAFileUploadPostOnAPageTheVisitorMayNotOpenIsRefusedAsAFragment(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil, func(p *webui.Page[webui.NoArgs]) {
+		p.Guard = func(context.Context, webui.NoArgs) error { return errors.New("requires the editor role") }
+	})
+	rec := postFragment(s.h, "a.bin", "data")
+	assert.Equal(t, rec.Code, http.StatusForbidden)
+	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="upload-text">requires the editor role</span>`)
+	assert.Equal(t, s.count(), 0)
+}
+
+// The panel tells the script how it sends, in data-upload, and the chooser takes one file without script: the script is what lets it take several, so that a post
+// never drops files that the visitor chose.
+func TestAFileUploadTellsTheScriptWhetherItTakesSeveralAndTakesOneWithout(t *testing.T) {
+	t.Parallel()
+
+	one := serve(newUploadShop(nil).h, http.MethodGet, "/admin/up").Body.String()
+	assert.Contains(t, one, `data-upload="{&#34;multiple&#34;:false}"`)
+	several := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Multiple = true })
+	body := serve(several.h, http.MethodGet, "/admin/up").Body.String()
+	assert.Contains(t, body, `data-upload="{&#34;multiple&#34;:true}"`)
+	input := body[strings.Index(body, `<input`+""):]
+	input = input[strings.Index(input, `type="file"`)-10:]
+	input = input[:strings.Index(input, ">")]
+	assert.False(t, strings.Contains(input, "multiple")) // not in the markup: script adds it
+	assert.False(t, strings.Contains(input, "webkitdirectory"))
+}
+
+// The scripts are linked where they are used, and the upload's after the file's, which has made the chooser a drop zone when it runs.
+func TestThePageLinksTheUploadScriptOnlyForAFileUploadAndAfterTheFileScript(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil)
+	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
+	file, upload := strings.Index(body, `/_webui/file.`), strings.Index(body, `/_webui/upload.`)
+	assert.True(t, file >= 0 && upload > file)
+	assert.Contains(t, body, `<script src="`+assetURL(t, s.h, "upload.js")+`" defer></script>`)
+	assert.False(t, strings.Contains(serve(newFileShop(plainFile()).h, http.MethodGet, "/admin/f").Body.String(), "/_webui/upload."))
+	assert.False(t, strings.Contains(serve(newShop().h, http.MethodGet, "/admin/device/dev1").Body.String(), "/_webui/upload."))
+}
+
+// There is no script test harness, so this is what the shipped file carries: that it sends with a request that reports progress, to the form's own address, with the
+// header that asks for HTML; that it reads the answer as HTML and nothing else, with no data format to interpret and no markup of its own from it; and that every function
+// that it calls is one that it has.
+func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil)
+	js := serve(s.h, http.MethodGet, assetURL(t, s.h, "upload.js")).Body.String()
+	for _, want := range []string{
+		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(LEAF_HEADER, leaf)", "'X-Webui-Leaf'", "new FormData()", "data.append('file', item.file,",
+		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.upload-result", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
+		"'webui:changed'", "form[data-upload]", "aria-busy", "aria-live", "a.upload-next", "window.location.assign(next.href)", "X-Webui-Leaf",
+	} {
+		assert.Contains(t, js, want)
+	}
+	for _, fn := range []string{"element", "config", "fromFiles", "walk", "controls", "enhance", "enhanceAll", "setItems", "busy", "show", "finish", "send"} {
+		assert.Contains(t, js, "function "+fn+"(")
+	}
+	assert.False(t, strings.Contains(js, "xhr.response)")) // nothing is read as data
+	assert.False(t, strings.Contains(js, "JSON.parse(xhr"))
+	assert.False(t, strings.Contains(js, ".json()"))
+	assert.False(t, strings.Contains(js, "innerHTML"))
+	assert.False(t, strings.Contains(js, "fetch("))
+	assert.False(t, strings.Contains(js, "createObjectURL"))
+
+	enhance := serve(s.h, http.MethodGet, assetURL(t, s.h, "enhance.js")).Body.String()
+	assert.Contains(t, enhance, "'webui:changed'") // the panels around an upload are asked for again, as HTML, after it
+}

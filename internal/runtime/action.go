@@ -332,6 +332,14 @@ func (p *Program) leave(w http.ResponseWriter, r *http.Request, outcome ir.Outco
 // flashRedirect sends the user to target with a 303, so that a reload does not repeat the POST, and
 // text as a toast on the page they arrive at, which rides a flash cookie.
 func (p *Program) flashRedirect(w http.ResponseWriter, r *http.Request, target, text string, tone render.ToastTone) {
+	if wantsFragment(r) {
+		next := target
+		if next == r.URL.RequestURI() {
+			next = "" // staying where it is is not something to offer a link to
+		}
+		p.writeResult(w, r, http.StatusOK, tone, text, next)
+		return
+	}
 	p.setFlash(w, r, text, tone)
 	//nolint:gosec // G710: target is this request's own path, an address Open resolved, or one local accepted.
 	http.Redirect(w, r, target, http.StatusSeeOther)

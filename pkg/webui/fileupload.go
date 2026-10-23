@@ -76,6 +76,11 @@ type FileUpload[M any] struct {
 	// file in the page and in the request, which is what lets them be checked, and the action's Guard asked, before any of the file is read.
 	Fields []Accessor[M]
 
+	// Multiple lets the visitor choose several files, and folders, to send in one go. A request is still one file: with script the files are sent one after
+	// another, each with a progress bar and a result of its own, and Receive is called for each, with the options that were chosen. Without script the panel takes
+	// one file, as it always did, so that a post never drops files without saying. A folder's files have their folder in [FileHandle.Path].
+	Multiple bool
+
 	// Receive is the upload: the action whose Run is handed the file, and whose Label is the button, "Upload" unless it says. Its Guard decides
 	// whether the visitor may, and how the panel is drawn (see above); Confirm asks the visitor before the file is sent.
 	Receive Action[FileHandle[M]]
@@ -169,7 +174,7 @@ func (f FileUpload[M]) lowerBody(at ir.Addr) ir.Node {
 		load = func(context.Context) (M, error) { var zero M; return zero, nil }
 	}
 	return &ir.FileUpload{
-		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec,
+		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec, Multiple: f.Multiple,
 		Options: &ir.Form{At: at, Load: eraseLoad(load), Fields: lowerAccessors(f.Fields, "f"), Bind: bindFunc[M], Submit: &ir.Action{}},
 		Receive: lowerAction(a),
 		Subject: func(in ir.Incoming, options any, r io.Reader) any {

@@ -78,6 +78,9 @@ type Doc struct {
 
 	// File is whether the page has a file to be chosen, which script lets be dropped, shows a preview of, and checks early.
 	File bool
+
+	// Upload is whether the page has a file upload panel, whose file script sends, with a progress bar, as a request of its own.
+	Upload bool
 }
 
 // Here is a page and the arguments of the address it was asked at, by name: the path ones,
@@ -140,6 +143,9 @@ type Renderer struct {
 	// uploads is the same for a file that can be chosen, for the script that handles one.
 	uploads map[string]bool
 
+	// queues is the same for a file upload panel, for the script that sends its files.
+	queues map[string]bool
+
 	// contexts is every file an editor's Context holds, by the name it is served as, and secret keys
 	// the addresses that unlock them.
 	contexts map[string]*contextEntry
@@ -174,10 +180,11 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 		return nil, err
 	}
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
-	r.phones, r.uploads = map[string]bool{}, map[string]bool{}
+	r.phones, r.uploads, r.queues = map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, p := range app.Pages {
 		r.phones[p.PathTemplate] = editsPhone(p.Body)
 		r.uploads[p.PathTemplate] = editsFile(p.Body)
+		r.queues[p.PathTemplate] = hasUpload(p.Body)
 	}
 	r.buildContexts()
 	for _, p := range app.Pages {

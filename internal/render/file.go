@@ -26,6 +26,20 @@ func editsFile(body ir.Node) bool {
 	return found
 }
 
+// hasUpload is whether a page body has a file upload panel.
+func hasUpload(body ir.Node) bool {
+	found := false
+	ir.Walk(body, func(n ir.Node) {
+		if _, ok := n.(*ir.FileUpload); ok {
+			found = true
+		}
+	})
+	return found
+}
+
+// NeedsUpload is whether page links the script that sends the files of a file upload panel, because it has one.
+func (r *Renderer) NeedsUpload(page *ir.Page) bool { return r.queues[page.PathTemplate] }
+
 // NeedsFile is whether page links the script that handles a file chooser, because it has one.
 func (r *Renderer) NeedsFile(page *ir.Page) bool { return r.uploads[page.PathTemplate] }
 

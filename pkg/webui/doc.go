@@ -322,7 +322,13 @@
 // that order. Those names are stable.
 //
 // It is a native form with one file and a button, and the chooser is the same frame that
-// a file can be dropped on. The Guard is asked when the panel is drawn, which draws it
+// a file can be dropped on. With script the file is sent by the page, as a request of its own
+// with a progress bar, and what the server answers is HTML: a list item with the outcome's
+// words and, when the outcome goes somewhere, a link to it, which is put in the page as it is.
+// With Multiple the chooser takes several files and has a button for a folder, and a folder can
+// be dropped on it; the files are sent one after another, each with its own bar and its own
+// result, and Receive is called for each, with the options that were chosen. Without script
+// the panel takes one file and posts it, as it always did. The Guard is asked when the panel is drawn, which draws it
 // disabled for [Disabled] and leaves it out for any other error, and again when the file
 // arrives, after its first 512 bytes, which tell its kind, and before more. MaxSize has no
 // default, since how large is the app's to say, and is held to as the file is read.

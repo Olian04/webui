@@ -137,6 +137,8 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 			Title: "Upload firmware", Desc: "A FileUpload: one file, of any size up to its MaxSize, handed to Receive as it arrives. The demo hashes it as it is read and keeps only what it was.",
 			Help:    "The image to roll out to the collectors. It is hashed on the way in, and not kept.",
 			MaxSize: 2 << 30,
+			// With script, several files and folders can be chosen and are sent one after another, with a progress bar and a result for each.
+			Multiple: true,
 			// What is chosen beside the file: fields of a form, checked before any of the file is read, and handed to Receive as f.Options.
 			Load: func(context.Context) (FirmwareChoice, error) {
 				return FirmwareChoice{Taken: "refuse", Channel: "stable"}, nil

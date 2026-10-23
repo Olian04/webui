@@ -24,7 +24,7 @@ func editsPhone(body ir.Node) bool {
 func (r *Renderer) NeedsPhone(page *ir.Page) bool { return r.phones[page.PathTemplate] }
 
 // scripts are the page's scripts: the one every page has, the phone's for a page that edits a number, and the file's for a page that
-// has a file to choose.
+// has a file to choose, and the upload's for one that has a file upload panel.
 func (r *Renderer) scripts(d Doc) []string {
 	s := []string{r.AssetHref("enhance.js")}
 	if d.Phone {
@@ -32,6 +32,9 @@ func (r *Renderer) scripts(d Doc) []string {
 	}
 	if d.File {
 		s = append(s, r.AssetHref("file.js"))
+	}
+	if d.Upload {
+		s = append(s, r.AssetHref("upload.js")) // after file.js, which has made the chooser a drop zone by the time that this runs
 	}
 	return s
 }

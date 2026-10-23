@@ -597,7 +597,7 @@ templ (r *Renderer) FileUpload(v FileUploadView) {
 		}
 	} else if v.Gate.Drawn() {
 		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}) {
-			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: templ.Attributes{"enctype": "multipart/form-data"}}) {
+			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: v.formAttrs()}) {
 				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
 				<div class="panel-body pad">
 					for _, f := range v.Form.Node.Fields {
@@ -620,6 +620,18 @@ templ (r *Renderer) FileUpload(v FileUploadView) {
 			}
 		}
 	}
+}
+
+// UploadResult is what a file upload that script sent answers with: one list item, with the tone and the text of the outcome, and, when the outcome
+// goes somewhere, a link to it. Script puts it in the list of the files that it is sending, and reads nothing of it: the server's words and its next action are
+// the HTML.
+templ UploadResult(tone ToastTone, text string, next string) {
+	<li class="upload-result" data-tone={ string(tone) }>
+		<span class="upload-text">{ text }</span>
+		if next != "" {
+			<a class="btn btn-ghost btn-sm upload-next" href={ templ.URL(next) }>Continue</a>
+		}
+	</li>
 }
 
 // Tabs is the strip and the selected panel, in one element, so that a layout that arranges its children (a Split puts

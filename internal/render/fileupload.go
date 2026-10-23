@@ -1,6 +1,7 @@
 package render
 
 import (
+	"fmt"
 	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/ir"
@@ -42,3 +43,8 @@ func (v FileUploadView) attrs() templ.Attributes {
 
 // ruleLines are what the panel says of itself in the popover beside the label: what it takes, and how large.
 func (v FileUploadView) ruleLines() []string { return rules.FileLines(v.Node.Spec) }
+
+// formAttrs are the attributes of the panel's form: that it sends a file, and what script is told of how, as JSON in data-upload.
+func (v FileUploadView) formAttrs() templ.Attributes {
+	return templ.Attributes{"enctype": "multipart/form-data", "data-upload": fmt.Sprintf(`{"multiple":%t}`, v.Node.Multiple)}
+}

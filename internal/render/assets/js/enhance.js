@@ -293,6 +293,23 @@
     });
   }
 
+  // Something that script did on the server, a file that was sent, may have changed what the other panels show: they are asked for again, from the
+  // server, as they are by a link that replaces one. A panel that is a form is left alone, since it holds what the visitor has typed; a table is not,
+  // though it has a form for its filters, which are in the address and so are asked for again with it.
+  document.addEventListener('webui:changed', function (e) {
+    var from = e.detail && e.detail.leaf;
+    $$('[data-leaf]').forEach(function (leaf) {
+      var id = leaf.getAttribute('data-leaf');
+      if (id === from || ($('form', leaf) && !$('table', leaf))) return;
+      fetchLeaf(id, location.pathname + location.search)
+        .then(function (next) {
+          var current = $(leafSelector(id));
+          if (current) current.replaceWith(next);
+        })
+        .catch(function () {});
+    });
+  });
+
   document.addEventListener('click', function (e) {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
