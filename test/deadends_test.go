@@ -42,7 +42,7 @@ func TestACrossOriginPostIsRefusedInThePageAndAsAFragmentForScript(t *testing.T)
 
 	fragment := post(s.h, "/admin/device/dev1", form, cross, func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") })
 	assert.Equal(t, fragment.Code, http.StatusForbidden)
-	assert.Contains(t, fragment.Body.String(), `<li class="upload-result" data-tone="bad">`)
+	assert.Contains(t, fragment.Body.String(), `<li class="result" data-tone="bad">`)
 	assert.Contains(t, fragment.Body.String(), "came from another site")
 	assert.Equal(t, len(s.saved), 0)
 }
@@ -125,7 +125,7 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 	rec := post(h, "/admin/records/x", nil, func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") })
 	assert.Equal(t, rec.Code, http.StatusNotFound)
 	assert.Contains(t, rec.Body.String(), "There is no record x.")
-	assert.Contains(t, rec.Body.String(), `<a class="btn btn-ghost btn-sm upload-next" href="/admin/records">Continue</a>`)
+	assert.Contains(t, rec.Body.String(), `<a class="btn btn-ghost btn-sm result-next" href="/admin/records">Continue</a>`)
 }
 
 // A parent in the breadcrumb that the visitor may not open is its words and no link, and Cancel is not drawn to lead to it: neither leads them to a 403 that nothing on
@@ -175,4 +175,42 @@ func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 	assert.Contains(t, said, `<span class="panel-note dim">Locked by the release</span>`)
 	silent := page(func(context.Context, struct{}) error { return errors.New("no") })
 	assert.False(t, strings.Contains(silent, "panel-note"))
+}
+
+// The contract for a post that script makes, for any panel: it carries the header of the leaf, and is answered in HTML with a status that says how it went. An accepted
+// action is the item with a 200, a refused one the item with a 422, a Guard's refusal the item with a 403 and an error the item with a 500; a form that was refused is
+// the form itself, drawn again, with the 422. None of it is a redirect, a cookie or data.
+func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing.T) {
+	t.Parallel()
+
+	leaf := func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") }
+
+	s := newShop()
+	ok := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"), leaf)
+	assert.Equal(t, ok.Code, http.StatusOK)
+	assert.Equal(t, ok.Header().Get("Location"), "")
+	assert.Equal(t, flashOf(ok), "")
+	assert.Contains(t, ok.Body.String(), `<li class="result" data-tone="ok">`)
+
+	// Refused by a rule: the form, drawn again with what was typed and what was refused, and nothing round it.
+	refused := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"), leaf)
+	assert.Equal(t, refused.Code, http.StatusUnprocessableEntity)
+	body := refused.Body.String()
+	assert.Contains(t, body, "must be a valid IPv4 address")
+	assert.Contains(t, body, `value="nope"`)
+	assert.False(t, strings.Contains(body, "<!doctype") || strings.Contains(body, `class="sidebar"`))
+	assert.Contains(t, body, `data-leaf="p"`)
+
+	// The same post without the header is as it always was: a page, with the 422.
+	page := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"))
+	assert.Equal(t, page.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, page.Body.String(), `class="sidebar"`)
+
+	// A Guard that refuses the visitor is a 403, which is not the answer to what was sent being refused.
+	guarded := newUploadShop(func(f *webui.FileUpload[struct{}]) {
+		f.Receive.Guard = func(context.Context, webui.FileHandle[struct{}]) error { return errors.New("requires the editor role") }
+	})
+	denied := postFragment(guarded.h, "a.bin", "data")
+	assert.Equal(t, denied.Code, http.StatusForbidden)
+	assert.Contains(t, denied.Body.String(), `data-tone="bad"><span class="result-text">requires the editor role</span>`)
 }

@@ -327,7 +327,8 @@
 // It is a native form with one file and a button, and the chooser is the same frame that
 // a file can be dropped on. With script the file is sent by the page, as a request of its own
 // with a progress bar, and what the server answers is HTML: a list item with the outcome's
-// words and, when the outcome goes somewhere, a link to it, which is put in the page as it is.
+// words and, when the outcome goes somewhere, a link to it, which is put in the page as it is,
+// with a status that says how it went (200 accepted, 422 refused, 403 not permitted, 500 failed).
 // With Multiple the chooser takes several files and has a button for a folder, and a folder can
 // be dropped on it; the files are sent one after another, each with its own bar and its own
 // result, and Receive is called for each, with the options that were chosen. Without script

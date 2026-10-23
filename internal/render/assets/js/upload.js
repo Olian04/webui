@@ -3,11 +3,12 @@
 // and a button, and the browser posts one file, which is all that it needs.
 //
 // The server answers script with HTML and nothing else. A post that carries X-Webui-Leaf (the header that a request for one panel's HTML
-// carries) is answered with one list item: the tone and the text of the outcome, and a link when the outcome goes somewhere. It is put in
-// the list as it is, and nothing is read from it but a link to follow when every file went well. What is sent is the form: its controls, in
-// order, and then the one file, which the server reads while it arrives.
+// carries) is answered with one list item: the tone and the text of the outcome, and a link when the outcome goes somewhere, with a status that
+// says how it went, as HTTP does. The item is put in the list as it is, and nothing is read from it but a link to follow when every file went
+// well, which is every status that was a success. What is sent is the form: its controls, in order, and then the one file, which the server
+// reads while it arrives.
 //
-// What the form is told is in data-upload, as JSON: {multiple}. With multiple the chooser takes several files, a folder can be chosen with a
+// What the form is told is its own attributes: data-upload marks it, and data-multiple says that the chooser takes several files, a folder can be chosen with a
 // button beside it and a folder can be dropped on the frame; each file of a folder is sent with its folder in its name ("photos/2024/a.jpg"),
 // which the server reads as its path. file.js has made the chooser a drop zone by the time that this runs, and is left alone for a panel that
 // takes one file.
@@ -21,14 +22,6 @@
     if (className) el.className = className;
     if (text) el.textContent = text;
     return el;
-  }
-
-  function config(form) {
-    try {
-      return JSON.parse(form.getAttribute('data-upload'));
-    } catch (err) {
-      return null;
-    }
   }
 
   // A file is sent with the name that says where it was: a folder's files carry the folder, which is what a browser sends for a folder that
@@ -106,10 +99,10 @@
 
   function enhance(form) {
     if (form.hasAttribute('data-upload-ready')) return;
-    var cfg = config(form);
+    var multiple = form.hasAttribute('data-multiple');
     var input = form.querySelector('input[type="file"][name="file"]');
     var leafInput = form.querySelector('input[name="_leaf"]');
-    if (!cfg || !input || input.disabled || !leafInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
+    if (!input || input.disabled || !leafInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
     form.setAttribute('data-upload-ready', '');
 
     var leaf = leafInput.value;
@@ -147,11 +140,11 @@
         rows.push(li);
         list.appendChild(li);
       });
-      list.hidden = !items.length || !cfg.multiple;
+      list.hidden = !items.length || !multiple;
       list._rows = rows;
     }
 
-    if (cfg.multiple) {
+    if (multiple) {
       input.multiple = true;
       var picker = element('input');
       picker.type = 'file';
@@ -220,17 +213,18 @@
     function show(li, xhr) {
       var progress = li.querySelector('progress');
       if (progress) progress.remove();
+      li._ok = !!xhr && xhr.status >= 200 && xhr.status < 300; // how it went is the status, which is what HTTP says
       var result = null;
       if (xhr && xhr.responseText) {
         var doc = new DOMParser().parseFromString(xhr.responseText, 'text/html');
-        result = doc.querySelector('li.upload-result');
+        result = doc.querySelector('li.result');
       }
       if (result) {
         li.setAttribute('data-tone', result.getAttribute('data-tone') || '');
         for (var node = result.firstChild; node; node = node.nextSibling) li.appendChild(document.importNode(node, true));
       } else {
         li.setAttribute('data-tone', 'bad');
-        li.appendChild(element('span', 'upload-text', 'The upload could not be completed.'));
+        li.appendChild(element('span', 'result-text', 'The upload could not be completed.'));
       }
       li.setAttribute('data-state', 'done');
     }
@@ -240,8 +234,8 @@
       var all = rows.length > 0;
       var next = null;
       rows.forEach(function (li) {
-        if (li.getAttribute('data-tone') !== 'ok' && li.getAttribute('data-tone') !== 'warn') all = false;
-        next = li.querySelector('a.upload-next') || next;
+        if (li._ok !== true) all = false; // a file that was refused, or not sent, or cancelled, is not a success
+        next = li.querySelector('a.result-next') || next;
       });
       items = [];
       clearing = true;
@@ -261,7 +255,7 @@
           if (rows[skipped].getAttribute('data-state') !== 'done') {
             rows[skipped].setAttribute('data-state', 'done');
             rows[skipped].setAttribute('data-tone', 'warn');
-            rows[skipped].appendChild(element('span', 'upload-text', 'Not sent.'));
+            rows[skipped].appendChild(element('span', 'result-text', 'Not sent.'));
           }
         }
         finish(rows);
@@ -307,7 +301,7 @@
         li.setAttribute('data-state', 'done');
         li.setAttribute('data-tone', 'warn');
         if (progress.parentNode) progress.remove();
-        li.appendChild(element('span', 'upload-text', 'Cancelled.'));
+        li.appendChild(element('span', 'result-text', 'Cancelled.'));
         send(rows, index + 1);
       };
       xhr.send(data);
