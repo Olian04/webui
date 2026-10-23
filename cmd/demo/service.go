@@ -69,7 +69,7 @@ type Blob struct {
 
 type RetentionPolicy struct{ Days int }
 
-// Firmware is what the demo keeps of the last image that was uploaded to it: not the image, which is hashed as it arrives and never held, but what it was.
+// Firmware is what the demo keeps of an image that was uploaded to it: not the image, which is hashed as it arrives and never held, but what it was.
 type Firmware struct {
 	Name    string
 	Folder  string // where the visitor's file was, when they chose a folder
@@ -124,7 +124,7 @@ type Service struct {
 	rule      string // the paging rule, TypeScript
 	retention RetentionPolicy
 	audit     []AuditEntry // newest first
-	firmware  Firmware
+	firmware  []Firmware   // every image that was uploaded, newest first
 	started   time.Time
 }
 
@@ -499,15 +499,26 @@ func (s *Service) Audit(offset, limit int) []AuditEntry {
 	return slices.Clone(s.audit[lo:hi])
 }
 
+// Firmware is the image that was uploaded last, and the zero Firmware when none was.
 func (s *Service) Firmware() Firmware {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.firmware
+	if len(s.firmware) == 0 {
+		return Firmware{}
+	}
+	return s.firmware[0]
+}
+
+// FirmwareHistory is every image that was uploaded, newest first.
+func (s *Service) FirmwareHistory() []Firmware {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.firmware)
 }
 
 func (s *Service) SetFirmware(f Firmware) {
 	s.mu.Lock()
-	s.firmware = f
+	s.firmware = slices.Insert(s.firmware, 0, f)
 	s.mu.Unlock()
 	s.record("uploaded firmware", f.Name)
 }

@@ -252,3 +252,17 @@ func TestTheFirmwarePanelTakesWhatIsChosenBesideTheFile(t *testing.T) {
 	assert.True(t, choices >= 0 && file > choices)
 	assert.Contains(t, body, "Release channel")
 }
+
+// Every image that was uploaded is in the history, newest first, with what was kept of it.
+func TestTheFirmwareHistoryListsEveryUploadNewestFirst(t *testing.T) {
+	h := handler(t)
+	assert.Contains(t, get(h, "/admin/firmware").Body.String(), "Upload history")
+	for _, name := range []string{"one.bin", "two.bin", "three.bin"} {
+		assert.Equal(t, flashOf(postFirmware(h, name, []byte(name)))[:9], "oReceived")
+	}
+	body := get(h, "/admin/firmware").Body.String()
+	one, two, three := strings.Index(body, "one.bin"), strings.Index(body, "two.bin"), strings.Index(body, "three.bin")
+	assert.True(t, three >= 0 && two > three && one > two)
+	sum := sha256.Sum256([]byte("one.bin"))
+	assert.Contains(t, body, hex.EncodeToString(sum[:]))
+}

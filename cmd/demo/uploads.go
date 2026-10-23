@@ -179,18 +179,15 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 				},
 			},
 		},
-		webui.Form[Firmware]{
-			Title: "Last upload",
-			Load:  func(context.Context) (Firmware, error) { return service.Firmware(), nil },
-			Fields: []webui.Accessor[Firmware]{
-				webui.Group[Firmware]{
-					webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
-					webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},
-				},
-				webui.Group[Firmware]{
-					webui.String[Firmware]{Label: "Release channel", Load: func(f Firmware) string { return f.Channel }},
-					webui.String[Firmware]{Label: "Type said by the browser", Load: func(f Firmware) string { return f.Type }},
-				},
+		// Every image that was uploaded, newest first: what was kept of each, and none of the file.
+		webui.Table[Firmware]{
+			Title: "Upload history", Desc: "Every image that was uploaded, newest first. Only what it was is kept: the file is hashed as it arrives and never held.",
+			Rows: func(context.Context) ([]Firmware, error) { return service.FirmwareHistory(), nil },
+			Columns: []webui.Accessor[Firmware]{
+				webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
+				webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},
+				webui.String[Firmware]{Label: "Channel", Load: func(f Firmware) string { return f.Channel }},
+				webui.String[Firmware]{Label: "Type said by the browser", Load: func(f Firmware) string { return f.Type }},
 				webui.Int[Firmware]{Label: "Bytes", Load: func(f Firmware) int { return f.Size }},
 				webui.String[Firmware]{Label: "SHA-256", Load: func(f Firmware) string { return f.SHA256 }},
 				webui.String[Firmware]{Label: "Received", Load: func(f Firmware) string { return f.At }},
