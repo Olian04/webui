@@ -92,6 +92,9 @@ templ ExternalLinks(items []LinkEntry) {
 						@Icon(IconProps{Name: it.Icon, Class: "menu-icon"})
 					}
 					<span>{ it.Label }</span>
+					if it.NewTab {
+						<span class="sr-only"> (opens in a new tab)</span>
+					}
 				</a>
 			}
 		</div>

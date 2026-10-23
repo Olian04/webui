@@ -152,7 +152,7 @@ func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
 	// Nothing that can take the focus has it taken away with no replacement: an outline is made transparent, which is drawn in forced colors, and not none.
 	for _, rule := range regexp.MustCompile(`([^{}]+)\{[^{}]*outline:\s*none;[^{}]*\}`).FindAllStringSubmatch(css, -1) {
 		selector := strings.TrimSpace(rule[1])
-		if selector != ".search input" && selector != ".rowlink:focus-visible" {
+		if selector != ".search input" && selector != ".rowlink:focus-visible" && selector != "main:focus" {
 			t.Errorf("%q takes the outline away", selector)
 		}
 	}
@@ -176,4 +176,111 @@ func TestANarrowWindowKeepsItsSearch(t *testing.T) {
 	narrow = narrow[:strings.Index(narrow, "\n}\n")]
 	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(narrow))
 	assert.Contains(t, narrow, ".search .kbd")
+}
+
+// --- structure and semantics ---------------------------------------------------------------------------------------------------------------------
+
+// A page has one h1, its name, which the eye finds in the breadcrumb and a reader who goes by headings finds here; its panels are h2. The way past the chrome
+// is the first thing in the page, and the content is where it leads.
+func TestAPageHasOneH1TheSkipLinkAndTheLandmarksForReaders(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	assert.Equal(t, strings.Count(body, "<h1"), 1)
+	assert.Contains(t, body, `<main id="main" tabindex="-1" class="scroll"><h1 class="sr-only">Devices</h1>`)
+	assert.Contains(t, body, `<h2 class="panel-title">Devices</h2>`) // the panels are one level down
+	assert.True(t, strings.Index(body, `<body><a class="skip" href="#main">Skip to content</a>`) > 0)
+	// The status bar is the page's footer, named, so that its text is in a landmark.
+	assert.Contains(t, body, `<footer class="statusbar" aria-label="Page status">`)
+
+	// A state that stops the visitor is the h2 of a page that has its h1, and the page that has no shell has its own.
+	missing := serve(h, http.MethodGet, "/admin/nothing-here").Body.String()
+	assert.False(t, strings.Contains(missing, `<p class="state-title">`))
+	assert.Contains(t, missing, `<h2 class="state-title">`)
+	assert.Equal(t, strings.Count(missing, "<h1"), 1)
+}
+
+// A header cell says which way it heads, a column of selection boxes has a name in text that is there when the box is not, and a pager says whose pages it turns.
+func TestATableHasScopedHeadersAndANamedPager(t *testing.T) {
+	t.Parallel()
+
+	h := guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", nil)}, []webui.Action[[]parcel]{{
+		Label: "Bag", Run: func(context.Context, []parcel) (webui.Outcome, error) { return webui.Success("bagged"), nil },
+	}}, nil)
+	body := serve(h, http.MethodGet, "/admin/t").Body.String()
+	assert.Equal(t, strings.Count(body, `<th scope="col"`), strings.Count(body, "<th "))
+	assert.Contains(t, body, `<th scope="col" class="pick"><span class="sr-only">Select</span>`)
+	assert.Contains(t, body, `<nav class="pager" aria-label="Table pages">`)
+	// A button in a row is of that row, and so is its box, by the text of its first cell.
+	assert.Contains(t, body, `>Drop <span class="sr-only">a</span></button>`)
+	assert.Contains(t, body, `aria-label="Select a"`)
+}
+
+// A filter that narrows its column says so in its name, which its icon says to the eye.
+func TestAFilterThatIsOnSaysSoInItsName(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	off := serve(h, http.MethodGet, "/admin/device").Body.String()
+	assert.Contains(t, off, `aria-label="Filter ID"><i`)
+	on := serve(h, http.MethodGet, "/admin/device?devices.filter.id=dev0").Body.String()
+	assert.Contains(t, on, `aria-label="Filter ID (on)"><i`)
+	assert.Contains(t, on, `aria-label="Filter Status"><i`) // the others are not
+}
+
+// What describes a control is the popover of its help and rules, which is read where it is referred to though it is not drawn, and the error beneath it.
+func TestAControlIsDescribedByItsHelpAndItsError(t *testing.T) {
+	t.Parallel()
+
+	h := helpedApp(helpedName("What the collector calls itself.", webui.StringRules{MaxLen: 8}))
+	body := serve(h, http.MethodGet, "/admin/h").Body.String()
+	assert.Contains(t, body, `id="p-f0-help"`)               // the text of the popover has an id
+	assert.Contains(t, body, `aria-describedby="p-f0-help"`) // and the input is described by it
+	assert.False(t, strings.Contains(body, `aria-invalid`))
+
+	// Refused, it is described by both: the help, and then what is wrong.
+	rec := post(h, "/admin/h", formValues("f0", "far too long a name"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), `aria-invalid="true" aria-describedby="p-f0-help p-f0-error"`)
+
+	// A field with nothing to say has nothing to be described by.
+	plain := serve(helpedApp(helpedName("", webui.StringRules{})), http.MethodGet, "/admin/h").Body.String()
+	assert.False(t, strings.Contains(plain, "aria-describedby"))
+}
+
+// A result is told by its word as well as its border: a result that went wrong says so to a reader whose app worded it any way at all.
+func TestAUploadResultSaysItsToneInAWord(t *testing.T) {
+	t.Parallel()
+
+	rec := postFragment(newUploadShop(nil).h, "firmware.txt", "words")
+	assert.Contains(t, rec.Body.String(), `<span class="sr-only">`)
+	assert.Contains(t, rec.Body.String(), `: </span>`)
+	assert.Contains(t, rec.Body.String(), `data-tone=`)
+}
+
+// A question that must be answered is an alert dialog, a link that opens a tab of its own says so to a reader, and the theme switch is a switch.
+func TestControlsHaveTheRolesAReaderExpects(t *testing.T) {
+	t.Parallel()
+
+	h := guardedParcels(nil, []webui.Action[parcel]{{Label: "Drop", Confirm: "Drop it?", Run: noop("Drop")}}, nil, nil)
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), `class="confirm" role="alertdialog"`)
+
+	links := serve(linksApp(item("Docs", "https://example.com/help"), item("Home", "/logout")), http.MethodGet, "/admin/device").Body.String()
+	assert.Contains(t, links, `<span>Docs</span> <span class="sr-only">(opens in a new tab)</span>`)
+	assert.False(t, strings.Contains(strings.SplitN(links, "Home</span>", 2)[1][:30], "opens in a new tab"))
+
+	assert.Contains(t, links, `type="checkbox" role="switch" aria-label="Light theme"`)
+}
+
+// A change of the fragment alone, which following the skip link is, fires popstate as going back does, and must not reload the page: it would send the
+// focus back to the top, which is where the skip link is. Only another address is another state.
+func TestAFragmentOnlyChangeDoesNotReloadThePage(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	assert.Contains(t, js, "if (location.pathname + location.search !== shownAt) location.reload();")
+	assert.False(t, strings.Contains(js, "history.pushState(null, '', href);\n"+"      shownAt")) // the address is noted where it is pushed, once
+	assert.Equal(t, strings.Count(js, "moveTo(href);"), 2)
 }

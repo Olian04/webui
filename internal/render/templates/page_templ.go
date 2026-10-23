@@ -34,6 +34,9 @@ type PageProps struct {
 	Streaming  bool
 	StatusLive templ.Component
 	StatusLate templ.Component
+
+	// Heading is the page's name, for the h1 that the shell holds (see [AppShellProps]).
+	Heading string
 }
 
 func Page(p PageProps) templ.Component {
@@ -96,6 +99,7 @@ func Page(p PageProps) templ.Component {
 				Streaming:  p.Streaming,
 				StatusLive: p.StatusLive,
 				StatusLate: p.StatusLate,
+				Heading:    p.Heading,
 			}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var3), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

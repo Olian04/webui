@@ -48,8 +48,8 @@ func TestADisabledRowActionIsDrawnDisabledWithItsMessageAndStillRefused(t *testi
 	})}, nil, nil)
 
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `name="_act" value="row:0:a">Drop</button>`)
-	assert.Contains(t, body, `<span class="gate" data-guard="Already dropped" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:b" disabled>Drop</button><span class="sr-only">Not available: Already dropped</span></span>`)
+	assert.Contains(t, body, `name="_act" value="row:0:a">Drop`)
+	assert.Contains(t, body, `<span class="gate" data-guard="Already dropped" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:b" disabled>Drop <span class="sr-only">b</span></button><span class="sr-only">Not available: Already dropped</span></span>`)
 
 	rec := post(h, "/admin/t", formValues("_act", "row:0:b"))
 	assert.Equal(t, flashOf(rec), "eAlready dropped") // the message is what is told to the one who asks by hand
@@ -120,7 +120,7 @@ func TestAnActionThatIsNotDrawnLeavesTheOthersTheirPositions(t *testing.T) {
 	h := guardedParcels(nil, actions, nil, nil)
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.False(t, strings.Contains(body, ">First<"))
-	assert.Contains(t, body, `value="row:1:a">Second</button>`)
+	assert.Contains(t, body, `value="row:1:a">Second`)
 	assert.Contains(t, body, `id="confirm-p-r0a1"`) // the dialog's id has the position too
 
 	post(h, "/admin/t", formValues("_act", "row:1:a"))

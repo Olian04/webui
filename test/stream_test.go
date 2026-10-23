@@ -205,19 +205,21 @@ func TestAPageSentAsItIsBuiltIsTheSamePageAsOneSentWhole(t *testing.T) {
 		for _, re := range []string{`datetime="[^"]*"`, `title="The HTML was built [^"]*"`, `>built [^<]*<`, `data-build title="[^"]*">[^<]*<`} {
 			s = regexp.MustCompile(re).ReplaceAllString(s, "~")
 		}
-		return s
+		// The status bar is a landmark when it is whole, and the end of it that follows a bar that is sent as it is built is not one.
+		s = strings.Replace(s, `<footer class="statusbar" aria-label="Page status">`, `<div class="statusbar">`, 1)
+		return strings.Replace(s, `</footer>`, `</div>`, 1)
 	}
 	// A page that is sent as it is built has marks that it is still arriving, and its bar in two parts: the request
 	// with the shell, and how the page came to be at the end. Put back together it is the bar of the page that is whole.
 	unmarked := func(s string) string {
 		for _, re := range []string{
-			`<div class="statusbar statusbar-live">.*?</span></span></div>`,
+			`<footer class="statusbar statusbar-live" aria-label="Page status">.*?</span></span></footer>`,
 			`<div class="arriving"[^>]*>.*?</div>`,
 			`<i class="arrived" hidden></i>`,
 		} {
 			s = regexp.MustCompile(re).ReplaceAllString(s, "")
 		}
-		s = strings.Replace(s, `<main class="scroll scroll-arriving">`, `<main class="scroll">`, 1)
+		s = strings.Replace(s, `<main id="main" tabindex="-1" class="scroll scroll-arriving">`, `<main id="main" tabindex="-1" class="scroll">`, 1)
 		return strings.Replace(s, `<div class="statusbar-late">`, `<div class="statusbar"><span class="method" data-method>GET</span> <span class="url" data-url>/admin/p</span>`, 1)
 	}
 	assert.Equal(t, mask(unmarked(streamed.all())), mask(whole.all()))
@@ -404,9 +406,9 @@ func TestAStreamedPageSaysThatItIsStillArrivingUntilItIsWhole(t *testing.T) {
 	waitFor(t, "the first flush", func() bool { return rec.flushCount() > 0 })
 
 	sent := string(rec.sentSoFar())
-	assert.Contains(t, sent, `<div class="statusbar statusbar-live">`) // the request is on screen at once,
-	assert.Contains(t, sent, `class="status-meta status-loading"`)     // with the mark that the rest is to come
-	assert.Contains(t, sent, `<div class="arriving"`)                  // and the spinner is with the content so far
+	assert.Contains(t, sent, `<footer class="statusbar statusbar-live" aria-label="Page status">`) // the request is on screen at once,
+	assert.Contains(t, sent, `class="status-meta status-loading"`)                                 // with the mark that the rest is to come
+	assert.Contains(t, sent, `<div class="arriving"`)                                              // and the spinner is with the content so far
 	assert.Contains(t, sent, `class="scroll scroll-arriving"`)
 	assert.False(t, strings.Contains(sent, `class="arrived"`)) // which nothing has yet taken back
 	assert.False(t, strings.Contains(sent, `statusbar-late`))

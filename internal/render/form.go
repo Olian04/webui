@@ -208,7 +208,7 @@ func phoneInput(v FormView, f ir.Field, fv fieldView) *c.PhoneInputProps {
 	}
 	p := &c.PhoneInputProps{
 		ID: fv.ID, Name: fv.Name, CCName: fv.Name + PhoneCountrySuffix, Value: national, Placeholder: f.Placeholder,
-		Required: fv.Rules.Required, Invalid: fv.Error != "",
+		Required: fv.Rules.Required, Invalid: fv.Error != "", Help: fv.hasHelp(),
 	}
 	for _, country := range phoneCountries() {
 		groups := make([]string, len(country.Groups))
@@ -222,6 +222,9 @@ func phoneInput(v FormView, f ir.Field, fv fieldView) *c.PhoneInputProps {
 	}
 	return p
 }
+
+// hasHelp is whether the field has the popover of help and rules beside its label, which is what describes its control (see c.Field).
+func (fv fieldView) hasHelp() bool { return fv.Field.Help != "" || len(fv.RuleLines) > 0 }
 
 // PhoneCountrySuffix is what a phone number's name has added to it for the name of the selector of its country.
 const PhoneCountrySuffix = ".cc"

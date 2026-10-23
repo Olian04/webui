@@ -57,6 +57,7 @@ type ColumnProps struct {
 
 templ Column(p ColumnProps) {
 	<th
+		scope="col"
 		class={ p.Align.cell(), templ.KV("sorted", p.SortDir != SortNone) }
 		if p.Width != "" {
 			style={ "width:" + p.Width }
@@ -161,7 +162,8 @@ templ Cell(p CellProps) {
 // operations. A table that declares none has no checkbox column at all — not a
 // disabled one. Absence is the configuration.
 templ SelectAllColumn() {
-	<th class="pick">
+	<th scope="col" class="pick">
+		<span class="sr-only">Select</span>
 		<input class="checkbox" type="checkbox" data-pickall aria-label="Select all rows"/>
 	</th>
 }
@@ -238,6 +240,7 @@ type PagerProps struct {
 	Offset   int
 	Size     int
 	Total    int
+	Label    string // the table it pages, which names the pager
 	PrevHref string
 	NextHref string
 	Export   []ExportLink
@@ -302,14 +305,22 @@ templ pagerButton(href string) {
 templ Pager(p PagerProps) {
 	<div class="pager-info">{ p.rangeLabel() }</div>
 	@exportLinks(p.Export, p.ExportNote)
-	<div class="pager">
+	<nav class="pager" aria-label={ pagesLabel(p.Label) }>
 		@pagerButton(p.PrevHref) {
 			Previous
 		}
 		@pagerButton(p.NextHref) {
 			Next
 		}
-	</div>
+	</nav>
+}
+
+// pagesLabel names a pager for the table it pages, so that the pagers of a page are told apart.
+func pagesLabel(table string) string {
+	if table == "" {
+		return "Pages"
+	}
+	return table + " pages"
 }
 
 // CursorPagerProps is the footer of a table paged by a cursor: no range and no total,
@@ -321,6 +332,9 @@ type CursorPagerProps struct {
 	// Start is the number of the first row on the page, from 1, or 0 when it is not
 	// known: the footer then says how many rows there are and not which.
 	Start int
+
+	// Label is the table it pages, which names the pager.
+	Label string
 
 	FirstHref string
 	PrevHref  string
@@ -360,7 +374,7 @@ func (p CursorPagerProps) rows() string {
 templ CursorPager(p CursorPagerProps) {
 	<div class="pager-info">{ p.info() }</div>
 	@exportLinks(p.Export, p.ExportNote)
-	<div class="pager">
+	<nav class="pager" aria-label={ pagesLabel(p.Label) }>
 		@pagerButton(p.FirstHref) {
 			First page
 		}
@@ -370,5 +384,5 @@ templ CursorPager(p CursorPagerProps) {
 		@pagerButton(p.NextHref) {
 			Next
 		}
-	</div>
+	</nav>
 }

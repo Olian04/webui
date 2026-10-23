@@ -1,6 +1,7 @@
 package render
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -232,7 +233,7 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 
 func (r *Renderer) pager(v TableView) c.PagerProps {
 	prev, next := r.pagerLinks(v)
-	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v), ExportNote: exportNote(v)}
+	p := c.PagerProps{Label: v.label(), Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v), ExportNote: exportNote(v)}
 	if v.Total < 0 {
 		p.Size = len(v.Rows) // the range ends at the last row there is
 		if len(v.Rows) == 0 {
@@ -461,6 +462,25 @@ type filterView struct {
 	Carry  []carried
 	Clear  string // the address without this filter, "" when none is set
 	On     bool
+}
+
+// summary is what the filter's button is called: the column it narrows, and that it is narrowed, which the icon says to the eye with its colour.
+func (f filterView) summary() string {
+	if f.On {
+		return "Filter " + f.Label + " (on)"
+	}
+	return "Filter " + f.Label
+}
+
+// rowName is what a row is called, for the buttons in it: the text of its first cell, and when it has none its key. A screen reader reads a
+// column of "Dismiss" and "Delete" as the same button, unless each says what it is of.
+func rowName(ctx context.Context, cols []columnView, row any, key string) string {
+	if len(cols) > 0 {
+		if shown := strings.TrimSpace(cols[0].Field.Shown(ctx, row)); shown != "" {
+			return shown
+		}
+	}
+	return key
 }
 
 // name is what an option of the filter says: for a select, its label, and otherwise the value.

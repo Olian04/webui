@@ -229,7 +229,7 @@
     try {
       var next = await fetchLeaf(id, href, ctl.signal);
       el.replaceWith(next);
-      if (push) history.pushState(null, '', href);
+      if (push) moveTo(href);
       settle(href, next);
     } catch (err) {
       if (err && err.name === 'AbortError') return true; // a newer request took over
@@ -512,7 +512,7 @@
       noteResponse(tpl.content, performance.now() - started);
       set.replaceWith(next);
       showActiveTab(next, scrolled);
-      history.pushState(null, '', href);
+      moveTo(href);
       settle(href, next);
       var active = $('.tab.active', next);
       if (focused && active) active.focus();
@@ -537,9 +537,15 @@
   });
 
   // The address is the truth. Going back or forward to a panel state reloads
-  // the page, which is correct and needs no history bookkeeping.
+  // the page, which is correct and needs no history bookkeeping. A change of the fragment alone (the skip link, a link to
+  // a heading) is not another state of the page, and fires the same event, so it is left to the browser.
+  var shownAt = location.pathname + location.search;
+  function moveTo(href) {
+    history.pushState(null, '', href);
+    shownAt = href;
+  }
   window.addEventListener('popstate', function () {
-    location.reload();
+    if (location.pathname + location.search !== shownAt) location.reload();
   });
 
   /* ------------------------------ column filters --------------------------- */

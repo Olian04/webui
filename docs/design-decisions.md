@@ -916,6 +916,20 @@ design element.
 
 ## Shell and theme
 
+- **A page has one h1, a way past the chrome, and landmarks for the readers who go by them.** The audit found no h1 (the page's name was only the breadcrumb and
+  the title), no skip link (the sidebar, search and menus come before the content), a status bar outside every landmark, header cells with no `scope`, a column of
+  "Dismiss" buttons that were the same button to a reader, a filter that was on and said nothing, a control whose help was in a popover that nothing referred to, and
+  a state page title that was a paragraph. Now the shell holds an `h1` with the last crumb's label, hidden with `.sr-only` (the breadcrumb is where the page's name is
+  seen, and a second, drawn, heading would repeat it; a panel is an h2, and a state page's title an h2 beneath it), a `Skip to content` link first in the body that
+  leads to `main` (`tabindex="-1"` so that following it starts reading there), the status bar as a `footer` named *Page status* (the late half of a streamed bar is not
+  a landmark of its own), `scope="col"` on every header cell and a word for the empty header of the selection column, a pager that is a `nav` named for its table,
+  a row's buttons and selection box named by the text of its first cell, a filter that is on named *(on)*, the popover of a field's help and rules given an id that the
+  input is `aria-describedby` (with the error after it), an upload result that says *Done*, *Warning* or *Failed* before its words, the confirm dialog an
+  `alertdialog`, the theme switch a `switch`, and a link that opens a tab saying so. The costs: the h1 is not seen, so a sighted reader does not have the page's name
+  twice; the text of a row's first cell is long for a button's name when it is a long name (it is read, and not drawn); and markup that apps' own tests match changed
+  (the state title, the status bar, the pager, the row buttons). Not done: a breadcrumb as an ordered list, a fixed label for the collapse button, and a focusable
+  scrolling body for a table with nothing in it to tab to, which are small and wait for a reason.
+
 - **The app answers the visitor's display preferences, and its ordinary look keeps the quiet edge of a control.** There were no rules for `forced-colors`,
   `prefers-contrast` and only the spinners for `prefers-reduced-motion`, found by the accessibility audit (a checked checkbox was a background and vanished
   in Windows high contrast, a focus ring was a shadow with `outline: none`, the active tab and entry were fills). Now a forced-colors block draws what meant

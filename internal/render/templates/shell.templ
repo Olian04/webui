@@ -51,9 +51,14 @@ type AppShellProps struct {
 	Streaming  bool
 	StatusLive templ.Component
 	StatusLate templ.Component
+
+	// Heading is the page's name, which the page has no heading for of its own (its panels are h2): it is the one h1, for a reader
+	// who goes by headings, and is not drawn, since the breadcrumb is where the eye finds it.
+	Heading string
 }
 
 templ AppShell(p AppShellProps) {
+	<a class="skip" href="#main">Skip to content</a>
 	if p.Streaming && p.StatusLive != nil {
 		@p.StatusLive
 	}
@@ -65,7 +70,10 @@ templ AppShell(p AppShellProps) {
 			if p.TopBar != nil {
 				@p.TopBar
 			}
-			<main class={ "scroll", templ.KV("scroll-arriving", p.Streaming) }>
+			<main id="main" tabindex="-1" class={ "scroll", templ.KV("scroll-arriving", p.Streaming) }>
+				if p.Heading != "" {
+					<h1 class="sr-only">{ p.Heading }</h1>
+				}
 				if p.Streaming {
 					<div class="arriving" role="status" aria-label="The rest of the page is loading">
 						<span class="spin" aria-hidden="true"></span>

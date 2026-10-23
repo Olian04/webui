@@ -117,6 +117,17 @@ const (
 	ToastError   = c.ToneCritical
 )
 
+// resultTone is a result's tone in a word, since a border and a tint are not read.
+func resultTone(t ToastTone) string {
+	switch t {
+	case ToastError:
+		return "Failed"
+	case ToastWarning:
+		return "Warning"
+	}
+	return "Done"
+}
+
 // TabLink is one entry in a tab strip.
 type TabLink = c.Tab
 

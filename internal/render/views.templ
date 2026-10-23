@@ -22,6 +22,7 @@ templ (r *Renderer) Document(d Doc) {
 		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query),
 		Status:      r.statusBar(d, c.StatusBar),
 		Toasts:      toastRegion(d.Toasts),
+		Heading:     d.Title,
 		Streaming:   d.Streaming,
 		StatusLive:  r.statusBar(d, c.StatusBarLive),
 		StatusLate:  r.statusBar(d, c.StatusBarLate),
@@ -246,7 +247,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 				@c.Column(c.ColumnProps{Label: col.Field.Label, Align: col.Align, SortHref: col.SortHref, SortDir: col.SortDir, Filter: col.Filter})
 			}
 			if actions {
-				<th class="actions"><span class="sr-only">Actions</span></th>
+				<th scope="col" class="actions"><span class="sr-only">Actions</span></th>
 			}
 		}
 		@c.TableBody() {
@@ -293,7 +294,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	}
 	if v.Node.Feed {
 		first, prev, next := r.feedLinks(v)
-		return c.CursorPager(c.CursorPagerProps{Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next, Sorted: v.Q.Sort != "", Export: r.exportLinks(v), ExportNote: exportNote(v)})
+		return c.CursorPager(c.CursorPagerProps{Label: v.label(), Rows: len(v.Rows), Start: v.Q.Start, FirstHref: first, PrevHref: prev, NextHref: next, Sorted: v.Q.Sort != "", Export: r.exportLinks(v), ExportNote: exportNote(v)})
 	}
 	return c.Pager(r.pager(v))
 }
@@ -301,7 +302,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, actions bool) {
 	@c.Row(c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}) {
 		if v.selectable() {
-			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select row " + v.Keys[i]})
+			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select " + rowName(ctx, cols, row, v.Keys[i])})
 		}
 		for j, col := range cols {
 			@r.cell(col, row, v.Hrefs[i], v.clicks(i), v.rowClickValue(i), j == 0)
@@ -316,6 +317,7 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, act
 							Confirm: act.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
 						}) {
 							{ act.Label }
+							<span class="sr-only">{ rowName(ctx, cols, row, v.Keys[i]) }</span>
 						}
 					}
 				}
@@ -500,7 +502,7 @@ templ (r *Renderer) input(fv fieldView) {
 					</span>
 					@c.Input(c.InputProps{
 						ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type, Mono: true, Class: "range-number", Placeholder: fv.Placeholder,
-						Invalid: fv.Error != "", Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
+						Invalid: fv.Error != "", Help: fv.hasHelp(), Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
 					})
 				</div>
 			case fv.ReadOnly:
@@ -516,12 +518,12 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.Field.File != nil:
 				@c.FileInput(c.FileInputProps{
 					ID: fv.ID, Name: fv.Name, Accept: rules.FileAccept(fv.Field.File), Required: fv.Rules.Required && fv.Stored == nil,
-					Invalid: fv.Error != "", Validity: fv.Validity,
+					Invalid: fv.Error != "", Help: fv.hasHelp(), Validity: fv.Validity,
 					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentThumb: fv.currentThumb(), CurrentSize: fv.currentSize(), Remove: fv.removable(), Attrs: fv.Attrs,
 				})
 			case fv.Field.Multiline:
 				@c.Textarea(c.TextareaProps{
-					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
+					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(),
 					Rules: fv.Rules, Validity: fv.Validity,
 				})
 			case fv.Phone != nil:
@@ -529,12 +531,12 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
-					Required: fv.Rules.Required, Invalid: fv.Error != "", Validity: fv.Validity,
+					Required: fv.Rules.Required, Invalid: fv.Error != "", Help: fv.hasHelp(), Validity: fv.Validity,
 				})
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Placeholder, Invalid: fv.Error != "",
+					Placeholder: fv.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(),
 					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Autocomplete: fv.Autocomplete, Attrs: fv.Attrs,
 				})
 		}
@@ -732,6 +734,7 @@ templ (r *Renderer) FileUpload(v FileUploadView) {
 // to it. Script puts it where the result goes, and reads nothing of it but that link: the server's words and its next action are the HTML, and how it went is the status.
 templ Result(tone ToastTone, text string, next string) {
 	<li class="result" data-tone={ string(tone) }>
+		<span class="sr-only">{ resultTone(tone) }: </span>
 		<span class="result-text">{ text }</span>
 		if next != "" {
 			<a class="btn btn-ghost btn-sm result-next" href={ templ.URL(next) }>Continue</a>
@@ -762,7 +765,7 @@ templ Tabs(label string, strip []c.Tab, content templ.Component, id string) {
 // numeric column a minimum and a maximum, and any other takes text.
 templ (r *Renderer) filterMenu(v TableView, fv filterView) {
 	<details class={ "filter", templ.KV("on", fv.On) }>
-		<summary class="filter-btn" title={ "Filter " + fv.Label } aria-label={ "Filter " + fv.Label }>
+		<summary class="filter-btn" title={ fv.summary() } aria-label={ fv.summary() }>
 			@c.Icon(c.IconProps{Name: c.IconFilter})
 		</summary>
 		<div class="filter-pop">

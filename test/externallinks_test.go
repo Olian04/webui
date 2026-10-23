@@ -37,7 +37,7 @@ func TestTheExternalLinksButtonOpensTheAppsLinksAsWritten(t *testing.T) {
 	assert.Contains(t, body, `<summary class="iconbtn" title="External links" aria-label="External links">`)
 	// Used as written: the mount prefix is not added to a path, and a web or mail
 	// address is left alone.
-	assert.Contains(t, body, `<a class="menu-item" href="/logout"><i class="fa-solid fa-right-from-bracket menu-icon" aria-hidden="true"></i><span>Log out</span></a>`)
+	assert.Contains(t, body, `<a class="menu-item" href="/logout"><i class="fa-solid fa-right-from-bracket menu-icon" aria-hidden="true"></i><span>Log out</span> </a>`)
 	assert.Contains(t, body, `<a class="menu-item" href="mailto:ops@example.com">`)
 	// A web address opens in a tab of its own, which cannot reach back into this one.
 	assert.Contains(t, body, `href="https://example.com/help" target="_blank" rel="noopener noreferrer"`)

@@ -2349,6 +2349,7 @@ select.input[multiple] option:checked {
   font-size: 17px;
   font-weight: 600;
   margin: 0 0 5px;
+  line-height: inherit;
 }
 .state-desc {
   color: var(--text-2);
@@ -2359,7 +2360,7 @@ select.input[multiple] option:checked {
   max-width: 840px;
   margin: 8px auto 0;
 }
-.compile h2 {
+.compile h1 {
   color: var(--red);
   font-size: 22px;
   font-weight: 600;
@@ -3125,4 +3126,24 @@ thead th .filter-pop a {
     --text-2: var(--text);
     --text-3: var(--text-2);
   }
+}
+
+/* A link to the content, first in the page, that a keyboard user can take instead of tabbing past the whole of the chrome: it is out of sight until
+   it has the focus. */
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--raise);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+  border-radius: 2px;
+}
+.skip:focus {
+  top: 8px;
+}
+main:focus {
+  outline: none; /* it takes the focus when the skip link is followed, to start reading from, and is not a control */
 }
