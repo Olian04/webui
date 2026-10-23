@@ -29,8 +29,8 @@ var shopList = webui.Page[webui.NoArgs]{
 	Path: shopListPath,
 	Nav:  webui.Nav{Label: "Shop"},
 	Body: webui.Table[Device]{
-		Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-			return webui.Window[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, nil
+		Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			return webui.Window[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, webui.Ready()
 		},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Page: shopDetail,
@@ -43,7 +43,7 @@ var shopList = webui.Page[webui.NoArgs]{
 var shopDetail = webui.Page[shopItemArgs]{
 	Path: shopDetailPath,
 	Body: webui.Form[Device]{
-		Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.0.1"}, nil },
+		Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.0.1"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{formID, formIP},
 		Submit: shopSave,
 	},
@@ -78,8 +78,8 @@ func TestLinkAcceptsAPageIDInPlaceOfAPage(t *testing.T) {
 	list := webui.Page[webui.NoArgs]{
 		Path: shopListPath,
 		Body: webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
 			},
 			// The destination named by its ID, not by the page.
 			RowClick: webui.Link[Device, shopItemArgs]{

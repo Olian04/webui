@@ -55,7 +55,9 @@ func newFileShop(file func(*fileShop) webui.File[attachment], opts ...func(*webu
 		Rules: webui.StringRules{MinLen: 3},
 	}
 	page := webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
-		Load:   func(context.Context) (attachment, error) { return attachment{Title: "Report", Held: s.held}, nil },
+		Load: func(context.Context) (attachment, webui.Loaded) {
+			return attachment{Title: "Report", Held: s.held}, webui.Ready()
+		},
 		Fields: []webui.Accessor[attachment]{title, file(s)},
 		Submit: webui.Action[attachment]{Run: func(_ context.Context, a attachment) (webui.Outcome, error) {
 			s.mu.Lock()
@@ -513,7 +515,7 @@ func TestAFileIsCheckedWhenTheAppCompiles(t *testing.T) {
 	problems := func(f webui.File[attachment]) string {
 		var all string
 		page := webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
-			Load:   func(context.Context) (attachment, error) { return attachment{}, nil },
+			Load:   func(context.Context) (attachment, webui.Loaded) { return attachment{}, webui.Ready() },
 			Fields: []webui.Accessor[attachment]{f},
 		}}
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page}}) {
@@ -539,7 +541,7 @@ func TestAFileInATableIsItsNameAndALink(t *testing.T) {
 		{Title: "b"},
 	}
 	table := webui.Table[attachment]{
-		Rows: func(context.Context) ([]attachment, error) { return rows, nil },
+		Rows: func(context.Context) ([]attachment, webui.Loaded) { return rows, webui.Ready() },
 		Columns: []webui.Accessor[attachment]{
 			webui.String[attachment]{Label: "Title", Load: func(a attachment) string { return a.Title }},
 			webui.File[attachment]{Label: "File", Load: func(a attachment) *webui.FileInfo { return a.Held }},
@@ -566,7 +568,7 @@ func TestTheSizeOfAFileIsTheAppsToSayWithNoCeilingAndNoOverflow(t *testing.T) {
 		}
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
-		Load:   func(context.Context) (attachment, error) { return attachment{Title: "Report"}, nil },
+		Load:   func(context.Context) (attachment, webui.Loaded) { return attachment{Title: "Report"}, webui.Ready() },
 		Fields: []webui.Accessor[attachment]{file("One"), file("Two"), file("Three")},
 		Submit: webui.Action[attachment]{Run: func(context.Context, attachment) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	}}}}.MustCompile("/admin")
@@ -583,7 +585,7 @@ func TestAFileOfAnySizeCompilesAndANegativeOneDoesNot(t *testing.T) {
 
 	file := func(size int64) webui.App {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
-			Load: func(context.Context) (attachment, error) { return attachment{}, nil },
+			Load: func(context.Context) (attachment, webui.Loaded) { return attachment{}, webui.Ready() },
 			Fields: []webui.Accessor[attachment]{webui.File[attachment]{
 				Label: "F", MaxSize: size, Load: func(attachment) *webui.FileInfo { return nil }, Store: func(*attachment, *webui.Upload) {},
 			}},

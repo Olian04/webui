@@ -22,10 +22,10 @@ func noteApp(start note) (http.Handler, func() note) {
 		saved = start
 	)
 	form := webui.Form[note]{
-		Load: func(context.Context) (note, error) {
+		Load: func(context.Context) (note, webui.Loaded) {
 			mu.Lock()
 			defer mu.Unlock()
-			return saved, nil
+			return saved, webui.Ready()
 		},
 		Fields: []webui.Accessor[note]{
 			webui.String[note]{Label: "Title", Load: func(n note) string { return n.Title }, Store: func(n *note, v string) { n.Title = v }},
@@ -82,14 +82,16 @@ func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
 	t.Parallel()
 
 	body := webui.String[note]{Label: "Body", Multiline: true, Load: func(n note) string { return n.Body }}
-	notes := func(context.Context) ([]note, error) { return []note{{Title: "a", Body: "one\ntwo\nthree\nfour"}}, nil }
+	notes := func(context.Context) ([]note, webui.Loaded) {
+		return []note{{Title: "a", Body: "one\ntwo\nthree\nfour"}}, webui.Ready()
+	}
 	h := webui.App{Pages: webui.Pages{
 		webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[note]{
 			Title: "Notes", Rows: notes, Export: true,
 			Columns: []webui.Accessor[note]{webui.String[note]{Label: "Title", Load: func(n note) string { return n.Title }}, body},
 		}},
 		webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[note]{
-			Load:   func(context.Context) (note, error) { return note{Body: "one\ntwo"}, nil },
+			Load:   func(context.Context) (note, webui.Loaded) { return note{Body: "one\ntwo"}, webui.Ready() },
 			Fields: []webui.Accessor[note]{body},
 		}},
 	}}.MustCompile("/admin")
@@ -117,7 +119,7 @@ func TestAMultilineStringIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	form := func(s webui.String[note]) webui.PageBody {
 		return webui.Form[note]{
-			Load:   func(context.Context) (note, error) { return note{}, nil },
+			Load:   func(context.Context) (note, webui.Loaded) { return note{}, webui.Ready() },
 			Fields: []webui.Accessor[note]{s},
 			Submit: webui.Action[note]{Run: func(context.Context, note) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}

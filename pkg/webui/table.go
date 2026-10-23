@@ -104,17 +104,18 @@ type Table[M any] struct {
 	// Use Rows when the rows are all at hand or cheap to list in full, such as a
 	// slice in memory or a small query. It is all that most tables need.
 	//
-	// If Rows, Load or Feed returns an error the panel says "Could not load", the cause is
+	// If Rows, Load or Feed returns [Failed] the panel says "Could not load", the cause is
 	// logged and the rest of the page stands. The error's text is not shown to the
-	// visitor, since it may name things they should not see. Return no rows, not an
-	// error, for a table that is empty.
+	// visitor, since it may name things they should not see. Return no rows, not
+	// a failure, for a table that is empty. A table that shows a job that is still going
+	// returns [Loaded.RefreshAfter].
 	//
 	// Rows is called on every request that needs the table's rows: each page load,
 	// sort, filter, page change, row action, and search. The library keeps nothing
 	// between requests, so if listing is costly, cache it in your app (see the package
 	// documentation on a table's sources, and Example_caching), or use Load.
 	// Set exactly one of Rows, Load and Feed.
-	Rows func(ctx context.Context) ([]M, error)
+	Rows func(ctx context.Context) ([]M, Loaded)
 
 	// Load returns one page of rows, and does the filtering, sorting and paging
 	// itself. It receives the window, the sort and the filters as a [Query], and
@@ -123,7 +124,7 @@ type Table[M any] struct {
 	// Use Load when the source can do that work better than the library, or is too
 	// large to list in full, such as a database table or a remote API. Set exactly one of
 	// Rows, Load and Feed.
-	Load func(ctx context.Context, q Query) (Window[M], error)
+	Load func(ctx context.Context, q Query) (Window[M], Loaded)
 
 	// Feed is for a source that pages by a cursor, also called a continuation token,
 	// such as an object store's listing or a feed of events. The rows come in the order
@@ -149,7 +150,7 @@ type Table[M any] struct {
 	// far as the address can remember, which is further for short cursors; the oldest
 	// pages are forgotten first, and First page is always there. Set exactly one of
 	// Rows, Load and Feed.
-	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, err error)
+	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, loaded Loaded)
 
 	// Export puts two links in the table's footer, CSV and JSON, that download its rows.
 	// The file holds every row the table's sort and filters keep (a feed has no filters, and
@@ -222,7 +223,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	switch {
 	case sources == 0:
 		v.add("a Table has none of Rows, Load and Feed",
-			"Set Rows to func(ctx) ([]M, error) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
+			"Set Rows to func(ctx) ([]M, Loaded) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
 	case sources > 1:
 		v.add("a Table has more than one of Rows, Load and Feed",
 			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor, sorting only the page on screen and with no filters.")
@@ -344,9 +345,9 @@ func queryOf(q ir.Query, labels map[string]string) Query {
 func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) (ir.Window, error) {
 	if t.Rows != nil {
 		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-			all, err := t.Rows(ctx)
-			if err != nil {
-				return ir.Window{}, refused(err)
+			all, loaded := t.Rows(ctx)
+			if err := loaded.apply(ctx); err != nil {
+				return ir.Window{}, err
 			}
 			items := convert.Any(all)
 			window, total := tablequery.Apply(items, columns, q)
@@ -355,9 +356,9 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 	}
 	if t.Feed != nil {
 		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-			rows, next, err := t.Feed(ctx, q.After, q.Limit)
-			if err != nil {
-				return ir.Window{}, refused(err)
+			rows, next, loaded := t.Feed(ctx, q.After, q.Limit)
+			if err := loaded.apply(ctx); err != nil {
+				return ir.Window{}, err
 			}
 			items := convert.Any(rows)
 			if q.Sort != "" {
@@ -369,9 +370,9 @@ func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(cont
 		}
 	}
 	return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-		rows, err := t.Load(ctx, queryOf(q, labels))
-		if err != nil {
-			return ir.Window{}, refused(err)
+		rows, loaded := t.Load(ctx, queryOf(q, labels))
+		if err := loaded.apply(ctx); err != nil {
+			return ir.Window{}, err
 		}
 		items := convert.Any(rows.Items)
 		total := rows.Total

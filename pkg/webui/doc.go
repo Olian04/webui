@@ -22,7 +22,7 @@
 //		Nav:  webui.Nav{Label: "Devices", Icon: "display"},
 //		Body: webui.Table[Device]{
 //			Title:   "Devices",
-//			Rows:    func(context.Context) ([]Device, error) { return service.Devices(), nil },
+//			Rows:    func(context.Context) ([]Device, webui.Loaded) { return service.Devices(), webui.Ready() },
 //			Columns: []webui.Accessor[Device]{ID, IP},
 //		},
 //	}
@@ -293,7 +293,7 @@
 //
 //	webui.FileUpload[Release]{
 //		Title: "Upload firmware", MaxSize: 2 << 30,
-//		Load:   func(ctx context.Context) (Release, error) { return Release{Channel: "stable"}, nil }, // the defaults
+//		Load:   func(ctx context.Context) (Release, webui.Loaded) { return Release{Channel: "stable"}, webui.Ready() }, // the defaults
 //		Fields: []webui.Accessor[Release]{channel},                                                   // beside the file
 //		Receive: webui.Action[webui.FileHandle[Release]]{
 //			Guard: canEdit,
@@ -485,6 +485,14 @@
 // Save asks is not saved by Enter in a field.
 //
 // Confirm cannot be set on a RowClick, which has no button to ask from.
+//
+// # Following a job
+//
+// An action that starts something long (a backup, a sync) only starts it, and returns [Success] as any action does. The panel that shows the
+// job is what follows it up: its Load reads the state of the job, and while the job is not done returns [Loaded.RefreshAfter], which says that the
+// panel is not final and is to be asked for again. A page with script asks for the panel again after that time and replaces it, until an answer does
+// not say it; a page without script says how long to wait and the visitor reloads. The request that asks again is the same GET that loads the
+// panel, so nothing has to be safe to repeat.
 //
 // # Controls that a visitor may not use
 //
@@ -788,9 +796,9 @@
 // with the message to show and, from [Refusal.WithLink], a link on. A page's Guard that
 // returns one answers with its status (a 404 for a record that is not there, a 401 for
 // a credential that is missing, with a link to set it up), and any other error from a
-// Guard is a 403 with its text, as before. A panel's Load that returns one says it in
+// Guard is a 403 with its text, as before. A panel's Load that fails with one says it in
 // the panel with its link, and the page stays as it is, because a page that has begun
-// to be sent has its status already; any other error from a Load is "Could not load",
+// to be sent has its status already; any other [Failed] from a Load is "Could not load",
 // with the cause logged and never shown. A Refusal is not logged: it is not a failure.
 //
 // # Compile errors

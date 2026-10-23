@@ -37,7 +37,7 @@ type Markdown[M any] struct {
 	Desc string
 
 	// Load returns the model that holds the text.
-	Load func(ctx context.Context) (M, error)
+	Load func(ctx context.Context) (M, Loaded)
 
 	// Content is the markdown. Its Label names the text to a screen reader.
 	Content String[M]

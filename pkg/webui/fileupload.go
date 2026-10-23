@@ -69,7 +69,7 @@ type FileUpload[M any] struct {
 
 	// Load gives the defaults of the options, which the inputs show. It is optional, and the zero M is the defaults without it. If it fails the panel says it could
 	// not load and the page stands, as a form's does.
-	Load func(ctx context.Context) (M, error)
+	Load func(ctx context.Context) (M, Loaded)
 
 	// Fields are the inputs beside the file, in order, and what the visitor chooses with them is the Options that Receive is handed. They are a form's, so a field with a
 	// Store is an input and one without is shown, and a [Group] puts fields side by side. A [File] is not one of them: the file is the panel's. They come before the
@@ -171,7 +171,7 @@ func (f FileUpload[M]) lowerBody(at ir.Addr) ir.Node {
 	}
 	load := f.Load
 	if load == nil {
-		load = func(context.Context) (M, error) { var zero M; return zero, nil }
+		load = func(context.Context) (M, Loaded) { var zero M; return zero, Ready() }
 	}
 	return &ir.FileUpload{
 		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec, Multiple: f.Multiple,

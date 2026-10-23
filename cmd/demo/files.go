@@ -108,7 +108,7 @@ var fileRowClick = webui.Link[FileEntry, FileArgs]{
 func fileTable(title string, folder func(context.Context) []string) webui.Table[FileEntry] {
 	return webui.Table[FileEntry]{
 		Title:    title,
-		Rows:     func(ctx context.Context) ([]FileEntry, error) { return entriesIn(folder(ctx)), nil },
+		Rows:     func(ctx context.Context) ([]FileEntry, webui.Loaded) { return entriesIn(folder(ctx)), webui.Ready() },
 		Columns:  []webui.Accessor[FileEntry]{FileName, FileKind, FileSize},
 		RowClick: fileRowClick,
 	}
@@ -140,7 +140,7 @@ func fileNote(path []string) FileNote {
 func fileNotePanel(path func(context.Context) []string) webui.Markdown[FileNote] {
 	return webui.Markdown[FileNote]{
 		Title:   "About this path",
-		Load:    func(ctx context.Context) (FileNote, error) { return fileNote(path(ctx)), nil },
+		Load:    func(ctx context.Context) (FileNote, webui.Loaded) { return fileNote(path(ctx)), webui.Ready() },
 		Content: FileNoteText,
 	}
 }

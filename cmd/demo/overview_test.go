@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -14,7 +15,7 @@ import (
 func TestTheLandingPageShowsTheCollectorInAToolbarAndFourPanels(t *testing.T) {
 	body := get(handler(t), "/admin/").Body.String()
 
-	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel grows"`)]
+	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel`)] // the toolbar, up to the first panel after it
 	for _, label := range []string{"Health", "Version", "Uptime", "Devices", "Queue depth", "Disk used (%)"} {
 		assert.Contains(t, bar, `<span class="toolbar-lbl">`+label+`</span>`)
 	}
@@ -36,7 +37,7 @@ func TestTheLandingPageShowsTheCollectorInAToolbarAndFourPanels(t *testing.T) {
 // A viewer sees what they may use: the toolbar is values only, with no button and no form, the alerts have no button, and the form is read.
 func TestTheLandingPageForAViewerIsWhatTheyMayUse(t *testing.T) {
 	body := get(handlerAs(t, Viewer), "/admin/").Body.String()
-	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel grows"`)]
+	bar := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel`)] // the toolbar, up to the first panel after it
 	assert.Contains(t, bar, `<span class="toolbar-lbl">Health</span>`)
 	assert.False(t, strings.Contains(bar, "<form") || strings.Contains(bar, "btn"))
 	assert.False(t, strings.Contains(body, ">Dismiss</button>"))
@@ -60,4 +61,24 @@ func TestTheSettingsFormOnTheLandingPageSavesTheSettings(t *testing.T) {
 	refused := post(h, "/admin/", url.Values{"_leaf": {leaf[0][1]}, "f0_0": {"7"}})
 	assert.Equal(t, refused.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, refused.Body.String(), "Must be at most 1.")
+}
+
+// Sync now starts a job and the panel that follows it says it is not final for as long as it goes on: it asks to be asked again, and when it is
+// done it does not, which is what ends it.
+func TestTheSyncPanelAsksToBeAskedAgainWhileTheJobGoesOn(t *testing.T) {
+	h := handler(t)
+	idle := get(h, "/admin/").Body.String()
+	assert.Contains(t, idle, `>Idle<`)
+	assert.False(t, strings.Contains(idle, "data-refresh-after"))
+
+	service.StartSync()
+	going := get(h, "/admin/").Body.String()
+	assert.Contains(t, going, `data-refresh-after="2"`)
+	assert.Contains(t, going, "Syncing")
+	assert.Contains(t, going, "Updating, reload in 2 s")
+
+	service.sync = time.Now().Add(-syncTime) // it has been going as long as it takes
+	done := get(h, "/admin/").Body.String()
+	assert.Contains(t, done, ">Done<")
+	assert.False(t, strings.Contains(done, "data-refresh-after"))
 }

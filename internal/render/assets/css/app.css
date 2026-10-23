@@ -928,6 +928,17 @@ html.js .search-submit {
 .panel-status.bad {
   color: var(--red);
 }
+/* A panel that is not final says so beside its title: with script it is asked for again, and without it, it says when to reload. */
+.refresh-note {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+html.js .refresh-nojs,
+html:not(.js) .refresh-js {
+  display: none;
+}
 .panel-body {
   padding: 0 0 0;
   min-width: 0;

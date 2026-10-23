@@ -28,7 +28,7 @@ func TestArgsOfPanicsOutsideAPage(t *testing.T) {
 	assert.Equal(t, got, any("webui: ArgsOf: no compiled app in this context"))
 }
 
-func panicApp(load func(ctx context.Context) (Device, error)) http.Handler {
+func panicApp(load func(ctx context.Context) (Device, webui.Loaded)) http.Handler {
 	page := webui.Page[pageArgs]{
 		Path: "/device/{id}",
 		Body: webui.Form[Device]{Load: load, Fields: []webui.Accessor[Device]{formID}},
@@ -39,9 +39,9 @@ func panicApp(load func(ctx context.Context) (Device, error)) http.Handler {
 func TestAWrongArgumentTypeIsA500NotADroppedConnection(t *testing.T) {
 	t.Parallel()
 
-	h := panicApp(func(ctx context.Context) (Device, error) {
+	h := panicApp(func(ctx context.Context) (Device, webui.Loaded) {
 		webui.ArgsOf[webui.NoArgs](ctx) // the page's arguments are pageArgs
-		return Device{}, nil
+		return Device{}, webui.Ready()
 	})
 	rec := serve(h, http.MethodGet, "/admin/device/a")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
@@ -52,7 +52,7 @@ func TestAWrongArgumentTypeIsA500NotADroppedConnection(t *testing.T) {
 func TestAnyPanicInAClosureIsRecoveredTheSameWay(t *testing.T) {
 	t.Parallel()
 
-	h := panicApp(func(context.Context) (Device, error) { panic("db password is hunter2") })
+	h := panicApp(func(context.Context) (Device, webui.Loaded) { panic("db password is hunter2") })
 	rec := serve(h, http.MethodGet, "/admin/device/a")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 	assert.False(t, strings.Contains(rec.Body.String(), "hunter2"))
@@ -62,12 +62,12 @@ func TestThePageStillServesAfterAPanic(t *testing.T) {
 	t.Parallel()
 
 	calls := 0
-	h := panicApp(func(context.Context) (Device, error) {
+	h := panicApp(func(context.Context) (Device, webui.Loaded) {
 		calls++
 		if calls == 1 {
 			panic("once")
 		}
-		return Device{Id: "a"}, nil
+		return Device{Id: "a"}, webui.Ready()
 	})
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/device/a").Code, http.StatusInternalServerError)
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/device/a").Code, http.StatusOK)

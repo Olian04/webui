@@ -68,8 +68,8 @@ var Devices = webui.Page[webui.NoArgs]{
  Body: webui.Table[Device]{
   Title: "Devices",
   // Rows is every row. The library sorts, filters and pages them.
-  Rows: func(context.Context) ([]Device, error) {
-   return []Device{{"dev_1", "10.0.0.1"}, {"dev_2", "10.0.0.2"}}, nil
+  Rows: func(context.Context) ([]Device, webui.Loaded) {
+   return []Device{{"dev_1", "10.0.0.1"}, {"dev_2", "10.0.0.2"}}, webui.Ready()
   },
   Columns: []webui.Accessor[Device]{ID, IP},
  },

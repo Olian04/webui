@@ -75,11 +75,12 @@ func Example_caching() {
 
 	var listings int
 	devices := &memo[[]device]{ttl: 5 * time.Second}
-	list := func(ctx context.Context) ([]device, error) {
-		return devices.get(ctx, func(context.Context) ([]device, error) {
+	list := func(ctx context.Context) ([]device, webui.Loaded) {
+		rows, err := devices.get(ctx, func(context.Context) ([]device, error) {
 			listings++ // the slow call: a query, or another service
 			return []device{{"dev_1", "10.0.0.1"}, {"dev_2", "192.168.1.2"}}, nil
 		})
+		return rows, webui.Failed(err)
 	}
 
 	page := webui.Page[webui.NoArgs]{
@@ -88,8 +89,10 @@ func Example_caching() {
 			// Rows is called on every page load, sort, filter and page change: all served from one listing.
 			webui.Table[device]{Title: "Devices", Rows: list, Columns: []webui.Accessor[device]{id, ip}},
 			webui.Form[device]{
-				Title:  "Edit",
-				Load:   func(context.Context) (device, error) { return device{ID: "dev_1", IP: "10.0.0.1"}, nil },
+				Title: "Edit",
+				Load: func(context.Context) (device, webui.Loaded) {
+					return device{ID: "dev_1", IP: "10.0.0.1"}, webui.Ready()
+				},
 				Fields: []webui.Accessor[device]{id, ip},
 				Submit: webui.Action[device]{Run: func(context.Context, device) (webui.Outcome, error) {
 					devices.invalidate() // what it changed is not what the table shows any more

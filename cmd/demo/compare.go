@@ -34,7 +34,7 @@ var CompareDevices = webui.Table[Device]{
 	Title:    "Devices",
 	Desc:     "The devices that the address names.",
 	PageSize: 5,
-	Rows: func(ctx context.Context) ([]Device, error) {
+	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
 		args := webui.ArgsOf[CompareArgs](ctx)
 		var out []Device
 		for _, id := range args.Device {
@@ -50,7 +50,7 @@ var CompareDevices = webui.Table[Device]{
 				}
 			}
 		}
-		return out, nil
+		return out, webui.Ready()
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -67,7 +67,7 @@ var Compare = webui.Page[CompareArgs]{
 		webui.Markdown[Handbook]{
 			Title:   "Compare devices",
 			Desc:    "Query parameters that repeat.",
-			Load:    func(context.Context) (Handbook, error) { return Handbook{Text: compareHelp}, nil },
+			Load:    func(context.Context) (Handbook, webui.Loaded) { return Handbook{Text: compareHelp}, webui.Ready() },
 			Content: HandbookText,
 		},
 		CompareDevices,

@@ -43,7 +43,7 @@ func returnsApp() http.Handler {
 	details := webui.Page[detailsArgs]{
 		Path: "/device/{id}",
 		Body: webui.Form[Device]{
-			Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.1.0"}, nil },
+			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.1.0"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP},
 			Submit: webui.Action[Device]{Run: run},
 		},
@@ -117,7 +117,7 @@ func TestBackWithNowhereToGoStaysWhereTheUserIs(t *testing.T) {
 
 	// A form on a page with no breadcrumb parent, and opened directly.
 	page := webui.Page[webui.NoArgs]{Path: "/solo", Body: webui.Form[Device]{
-		Load:   func(context.Context) (Device, error) { return Device{Id: "a"}, nil },
+		Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{formID, formIP},
 		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) {
 			return webui.Failure("Nope").Back(), nil
@@ -182,7 +182,7 @@ func TestAnOutcomeCannotSayMoreThanOneThingAboutWhereToGo(t *testing.T) {
 		},
 	} {
 		page := webui.Page[webui.NoArgs]{Path: "/solo", Body: webui.Form[Device]{
-			Load:   func(context.Context) (Device, error) { return Device{Id: "a"}, nil },
+			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP},
 			Submit: webui.Action[Device]{Run: func(ctx context.Context, _ Device) (webui.Outcome, error) { return outcome(ctx), nil }},
 		}}
@@ -200,8 +200,8 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 	act := func(o webui.Outcome) http.Handler {
 		table := webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},

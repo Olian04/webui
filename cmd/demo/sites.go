@@ -52,7 +52,7 @@ var Sites = webui.Page[webui.NoArgs]{
 var SitesTable = webui.Table[SiteSummary]{
 	Title: "Sites",
 	Desc:  "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
-	Rows:  func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
+	Rows:  func(context.Context) ([]SiteSummary, webui.Loaded) { return service.Sites(), webui.Ready() },
 	RowClick: webui.Link[SiteSummary, SiteArgs]{
 		Page: SiteDetail,
 		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
@@ -79,7 +79,7 @@ var SiteDetail = webui.Page[SiteArgs]{
 	// the devices that match. The page says what a site is as a result, and SearchRows, for
 	// rows that are held in memory, does the matching over the fields it is given.
 	Search: webui.SearchRows(
-		func(context.Context) ([]SiteSummary, error) { return service.Sites(), nil },
+		func(context.Context) ([]SiteSummary, webui.Loaded) { return service.Sites(), webui.Ready() },
 		func(s SiteSummary) webui.Hit[SiteArgs] {
 			return webui.Hit[SiteArgs]{Args: SiteArgs{Name: s.Name}, Title: s.Name, Desc: s.Health()}
 		},
@@ -101,10 +101,10 @@ var SiteDetail = webui.Page[SiteArgs]{
 var SiteDevices = webui.Table[Device]{
 	Title:    "Devices",
 	PageSize: 5,
-	Rows: func(ctx context.Context) ([]Device, error) {
+	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
 		// The page says which site; the user's filters narrow within it.
 		devices, _ := service.Devices(map[string][]string{Site.Label: {webui.ArgsOf[SiteArgs](ctx).Name}}, nil, Order{})
-		return devices, nil
+		return devices, webui.Ready()
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -115,8 +115,8 @@ var SiteDevices = webui.Table[Device]{
 
 var SiteAlerts = webui.Table[Alert]{
 	Title: "Open alerts",
-	Rows: func(ctx context.Context) ([]Alert, error) {
-		return service.AlertsAt(webui.ArgsOf[SiteArgs](ctx).Name), nil
+	Rows: func(ctx context.Context) ([]Alert, webui.Loaded) {
+		return service.AlertsAt(webui.ArgsOf[SiteArgs](ctx).Name), webui.Ready()
 	},
 	RowClick: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,

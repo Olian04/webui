@@ -45,7 +45,7 @@ var System = webui.Page[webui.NoArgs]{
 var SystemStatus = webui.Form[SystemInfo]{
 	Title:  "Collector",
 	Desc:   "A Form with no Submit: read-only, nothing to save.",
-	Load:   func(context.Context) (SystemInfo, error) { return service.System(), nil },
+	Load:   func(context.Context) (SystemInfo, webui.Loaded) { return service.System(), webui.Ready() },
 	Fields: []webui.Accessor[SystemInfo]{webui.Group[SystemInfo]{Version, Health}, webui.Group[SystemInfo]{Uptime, Queue}, DiskUsed},
 }
 
@@ -68,16 +68,16 @@ var Audit = webui.Page[webui.NoArgs]{
 		PageSize: 8,
 		// A feed is exported from its first page to its last, whatever page is on screen.
 		Export: true,
-		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, error) {
+		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, webui.Loaded) {
 			// The cursor is where the page starts. It is whatever the source likes, so long
 			// as it can read it back; here, an index. Asking for one row more than a page is
 			// how this source knows there is a next one.
 			start, _ := strconv.Atoi(after)
 			rows := service.Audit(start, limit+1)
 			if len(rows) <= limit {
-				return rows, "", nil
+				return rows, "", webui.Ready()
 			}
-			return rows[:limit], strconv.Itoa(start + limit), nil
+			return rows[:limit], strconv.Itoa(start + limit), webui.Ready()
 		},
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},

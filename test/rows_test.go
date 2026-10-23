@@ -16,14 +16,14 @@ import (
 
 // rowsApp is a table that only says what its rows are: 25 devices, and nothing
 // about sorting, filtering or paging. The library does those from the columns.
-func rowsApp(load func(context.Context) ([]Device, error)) http.Handler {
+func rowsApp(load func(context.Context) ([]Device, webui.Loaded)) http.Handler {
 	if load == nil {
-		load = func(context.Context) ([]Device, error) {
+		load = func(context.Context) ([]Device, webui.Loaded) {
 			var all []Device
 			for i := range 25 {
 				all = append(all, Device{Id: fmt.Sprintf("dev%02d", i), Ip: "10.0.0.1", Count: (i * 7) % 25, Duration: 1})
 			}
-			return all, nil
+			return all, webui.Ready()
 		}
 	}
 	page := webui.Page[webui.NoArgs]{
@@ -123,7 +123,9 @@ func TestAFilterShrinksTheTotalAndThePagesNotJustTheRows(t *testing.T) {
 func TestRowsThatFailFailThePanelNotThePage(t *testing.T) {
 	t.Parallel()
 
-	h := rowsApp(func(context.Context) ([]Device, error) { return nil, errors.New("db password is hunter2") })
+	h := rowsApp(func(context.Context) ([]Device, webui.Loaded) {
+		return nil, webui.Failed(errors.New("db password is hunter2"))
+	})
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Could not load")
@@ -136,8 +138,10 @@ func TestATableNeedsExactlyOneOfRowsAndLoad(t *testing.T) {
 	page := func(table webui.Table[Device]) webui.App {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}}}
 	}
-	rows := func(context.Context) ([]Device, error) { return nil, nil }
-	load := func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil }
+	rows := func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() }
+	load := func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Ready()
+	}
 
 	var neither string
 	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {
@@ -164,8 +168,8 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{
 		Path: "/device",
 		Body: webui.Table[Device]{
-			Rows: func(context.Context) ([]Device, error) {
-				return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, nil
+			Rows: func(context.Context) ([]Device, webui.Loaded) {
+				return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, webui.Ready()
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
@@ -194,10 +198,10 @@ func storageTable(rows bool) http.Handler {
 		Columns: []webui.Accessor[Device]{formID, class},
 	}
 	if rows {
-		tbl.Rows = func(context.Context) ([]Device, error) { return items, nil }
+		tbl.Rows = func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }
 	} else {
-		tbl.Load = func(context.Context, webui.Query) (webui.Window[Device], error) {
-			return webui.Window[Device]{Items: items, Total: len(items)}, nil
+		tbl.Load = func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			return webui.Window[Device]{Items: items, Total: len(items)}, webui.Ready()
 		}
 	}
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/o", Body: tbl}}}.MustCompile("")

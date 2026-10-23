@@ -45,7 +45,7 @@ func wait(ctx context.Context, d time.Duration) {
 func intro(text string) webui.Form[Note] {
 	return webui.Form[Note]{
 		Title:  "What this page shows",
-		Load:   func(context.Context) (Note, error) { return Note{Text: text}, nil },
+		Load:   func(context.Context) (Note, webui.Loaded) { return Note{Text: text}, webui.Ready() },
 		Fields: []webui.Accessor[Note]{NoteLook},
 	}
 }
@@ -55,13 +55,13 @@ func backend(title string, d time.Duration, rows int) webui.Table[Probe] {
 	return webui.Table[Probe]{
 		Title:   title,
 		Columns: []webui.Accessor[Probe]{ProbePanel, ProbeBackend},
-		Rows: func(ctx context.Context) ([]Probe, error) {
+		Rows: func(ctx context.Context) ([]Probe, webui.Loaded) {
 			wait(ctx, d)
 			out := make([]Probe, rows)
 			for i := range out {
 				out[i] = Probe{Panel: title + " " + strconv.Itoa(i+1), Backend: d.String()}
 			}
-			return out, nil
+			return out, webui.Ready()
 		},
 	}
 }
@@ -116,9 +116,9 @@ func stamped(title string, d time.Duration) webui.Table[Stamp] {
 	return webui.Table[Stamp]{
 		Title:   title,
 		Columns: []webui.Accessor[Stamp]{StampPanel, StampReadAt},
-		Rows: func(ctx context.Context) ([]Stamp, error) {
+		Rows: func(ctx context.Context) ([]Stamp, webui.Loaded) {
 			wait(ctx, d)
-			return []Stamp{{Panel: title, ReadAt: time.Now().Format("15:04:05.000")}}, nil
+			return []Stamp{{Panel: title, ReadAt: time.Now().Format("15:04:05.000")}}, webui.Ready()
 		},
 	}
 }
@@ -172,14 +172,14 @@ var LoadingFailures = webui.Page[webui.NoArgs]{
 		webui.Table[Probe]{
 			Title:   "Load returns an error",
 			Columns: []webui.Accessor[Probe]{ProbePanel, ProbeBackend},
-			Rows: func(ctx context.Context) ([]Probe, error) {
+			Rows: func(ctx context.Context) ([]Probe, webui.Loaded) {
 				wait(ctx, 50*time.Millisecond)
-				return nil, errors.New("the backend is unavailable")
+				return nil, webui.Failed(errors.New("the backend is unavailable"))
 			},
 		},
 		webui.Form[Probe]{
 			Title: "Load panics",
-			Load: func(ctx context.Context) (Probe, error) {
+			Load: func(ctx context.Context) (Probe, webui.Loaded) {
 				wait(ctx, 100*time.Millisecond)
 				panic("this panel's backend fell over")
 			},
@@ -198,8 +198,10 @@ var LoadingWhole = webui.Page[webui.NoArgs]{
 		intro("This page has a code editor, and an editor needs its script and stylesheet in the head of the page, which is sent first. So it is not sent as it is built: nothing of it arrives until the 400 ms panel has answered, and then all of it does, as one piece. Compare with 'In order'."),
 		backend("Slow (400 ms)", 400*time.Millisecond, 3),
 		webui.Editor[Note]{
-			Title:    "A code editor",
-			Load:     func(context.Context) (Note, error) { return Note{Text: "{\n  \"built\": \"whole\"\n}\n"}, nil },
+			Title: "A code editor",
+			Load: func(context.Context) (Note, webui.Loaded) {
+				return Note{Text: "{\n  \"built\": \"whole\"\n}\n"}, webui.Ready()
+			},
 			Content:  NoteText,
 			Language: webui.LangJSON,
 		},

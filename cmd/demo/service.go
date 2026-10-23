@@ -127,6 +127,19 @@ type Service struct {
 	audit     []AuditEntry // newest first
 	firmware  []Firmware   // every image that was uploaded, newest first
 	started   time.Time
+
+	// sync is the job that the landing page's Sync now starts: when it began, zero for none, which takes syncTime to read every device.
+	sync time.Time
+}
+
+// syncTime is how long the demo's sync job takes: long enough to be followed, which is what a panel that refreshes itself is for.
+const syncTime = 8 * time.Second
+
+// SyncJob is where the sync job is, for a panel to show: what it is doing, and how many devices it has read of how many.
+type SyncJob struct {
+	State       string
+	Read, Total int
+	Running     bool
 }
 
 var service = newService()
@@ -194,6 +207,34 @@ func (s *Service) Sync() int {
 	s.mu.Unlock()
 	s.record("synced devices", fmt.Sprintf("%d devices", n))
 	return n
+}
+
+// StartSync starts reading every device, which takes syncTime and goes on without anyone waiting for it. One that is going is not started again.
+func (s *Service) StartSync() {
+	s.mu.Lock()
+	running := !s.sync.IsZero() && time.Since(s.sync) < syncTime
+	if !running {
+		s.sync = time.Now()
+	}
+	s.mu.Unlock()
+	if !running {
+		s.record("started a sync", "every device")
+	}
+}
+
+// SyncJob is the state of the job that StartSync started: how far it has got, by the time it has been going.
+func (s *Service) SyncJob() SyncJob {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	total := len(s.devices)
+	if s.sync.IsZero() {
+		return SyncJob{State: "Idle", Total: total}
+	}
+	elapsed := time.Since(s.sync)
+	if elapsed >= syncTime {
+		return SyncJob{State: "Done", Read: total, Total: total}
+	}
+	return SyncJob{State: "Syncing", Read: int(float64(total) * elapsed.Seconds() / syncTime.Seconds()), Total: total, Running: true}
 }
 
 // record adds to the audit trail, newest first. The caller holds no lock.

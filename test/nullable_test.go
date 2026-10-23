@@ -38,10 +38,10 @@ func limitsApp(start limits, fields ...webui.Accessor[limits]) (http.Handler, fu
 		fields = []webui.Accessor[limits]{limitRate, limitRatio, limitLevel, limitPaused}
 	}
 	form := webui.Form[limits]{
-		Load: func(context.Context) (limits, error) {
+		Load: func(context.Context) (limits, webui.Loaded) {
 			mu.Lock()
 			defer mu.Unlock()
-			return saved, nil
+			return saved, webui.Ready()
 		},
 		Fields: fields,
 		Submit: webui.Action[limits]{Run: func(_ context.Context, l limits) (webui.Outcome, error) {
@@ -158,7 +158,7 @@ func TestAReadOnlyNullableFieldShowsADashForNothingAndTheValueOtherwise(t *testi
 func limitsTable(rows ...limits) http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[limits]{
 		Title: "Items", Export: true,
-		Rows: func(context.Context) ([]limits, error) { return rows, nil },
+		Rows: func(context.Context) ([]limits, webui.Loaded) { return rows, webui.Ready() },
 		Columns: []webui.Accessor[limits]{
 			webui.String[limits]{Label: "Name", Load: func(l limits) string { return l.Name }},
 			limitRate, limitRatio, limitLevel, limitPaused,
@@ -230,7 +230,7 @@ func TestNullableFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 	problems := func(fields ...webui.Accessor[limits]) string {
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/l", Body: webui.Form[limits]{
-			Load:   func(context.Context) (limits, error) { return limits{}, nil },
+			Load:   func(context.Context) (limits, webui.Loaded) { return limits{}, webui.Ready() },
 			Fields: fields,
 			Submit: webui.Action[limits]{Run: func(context.Context, limits) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}}}}) {

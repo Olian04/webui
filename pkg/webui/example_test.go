@@ -31,7 +31,7 @@ var Devices = webui.Page[webui.NoArgs]{
 	Nav:  webui.Nav{Label: "Devices", Icon: "display"},
 	Body: webui.Table[Device]{
 		Title:   "Devices",
-		Rows:    func(context.Context) ([]Device, error) { return devices, nil },
+		Rows:    func(context.Context) ([]Device, webui.Loaded) { return devices, webui.Ready() },
 		Columns: []webui.Accessor[Device]{ID, IP},
 	},
 }

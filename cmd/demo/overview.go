@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -15,6 +15,7 @@ var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	Body: webui.Stack{
 		OverviewToolbar,
+		OverviewSync,
 		webui.Split{OverviewDevices, OverviewAlerts, OverviewEvents, OverviewSettings},
 	},
 }
@@ -58,8 +59,31 @@ var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
 			Confirm: "Sync every device now? It reads each one and may take a while.",
 			Guard:   canEdit[webui.NoArgs],
 			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
-				return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
+				service.StartSync() // it goes on in the background, and the panel beside it follows it
+				return webui.Success("Sync started"), nil
 			},
+		},
+	},
+}
+
+// OverviewSync follows the job that Sync now starts. A job takes time, so the button only starts it and the panel that shows it says when it
+// is not final: while the job goes on its Load returns Loaded.RefreshAfter, and a page with script asks for the panel again every two seconds and
+// replaces it, until it is done and the Load stops saying so. Without script the panel says to reload.
+var OverviewSync = webui.Form[SyncJob]{
+	Title: "Sync",
+	Desc:  "Sync now starts a job that takes eight seconds. This panel is asked for again every two seconds while it goes on, and stops when it is done.",
+	Load: func(context.Context) (SyncJob, webui.Loaded) {
+		job := service.SyncJob()
+		if job.Running {
+			return job, webui.Ready().RefreshAfter(2 * time.Second)
+		}
+		return job, webui.Ready()
+	},
+	Fields: []webui.Accessor[SyncJob]{
+		webui.Group[SyncJob]{
+			webui.String[SyncJob]{Label: "State", Load: func(j SyncJob) string { return j.State }},
+			webui.Int[SyncJob]{Label: "Devices read", Load: func(j SyncJob) int { return j.Read }},
+			webui.Int[SyncJob]{Label: "Devices", Load: func(j SyncJob) int { return j.Total }},
 		},
 	},
 }
@@ -69,9 +93,9 @@ var OverviewDevices = webui.Table[Device]{
 	Title:    "Devices",
 	Desc:     "The same table as the Devices page's, with fewer columns. Every header sorts and filters, and a row opens its device.",
 	PageSize: 9,
-	Rows: func(context.Context) ([]Device, error) {
+	Rows: func(context.Context) ([]Device, webui.Loaded) {
 		devices, _ := service.Devices(nil, nil, Order{})
-		return devices, nil
+		return devices, webui.Ready()
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -85,7 +109,7 @@ var OverviewAlerts = webui.Table[Alert]{
 	Title:    "Open alerts",
 	Desc:     "A row opens the alert. Dismiss is for editors, and says why it is disabled for a critical alert.",
 	PageSize: 9,
-	Rows:     func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+	Rows:     func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
 	Key:      func(a Alert) string { return a.ID },
 	RowClick: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,
@@ -100,7 +124,7 @@ var OverviewEvents = webui.Table[Event]{
 	Title:    "Recent events",
 	Desc:     "What the devices did in the last hour. A table of its own kind of row, in the same Split as the others.",
 	PageSize: 8,
-	Rows:     func(context.Context) ([]Event, error) { return service.Events(0), nil },
+	Rows:     func(context.Context) ([]Event, webui.Loaded) { return service.Events(0), webui.Ready() },
 	Columns:  []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 
@@ -108,7 +132,7 @@ var OverviewEvents = webui.Table[Event]{
 var OverviewSettings = webui.Form[Settings]{
 	Title:  "Collector settings",
 	Desc:   "A few of the Ingest page's fields: a number with a slider, a choice of yes, no or neither, an email, a phone number with its country, a web address, a date and a colour.",
-	Load:   func(context.Context) (Settings, error) { return service.Settings(), nil },
+	Load:   func(context.Context) (Settings, webui.Loaded) { return service.Settings(), webui.Ready() },
 	Submit: webui.Action[Settings]{Label: "Save", Guard: canEdit[Settings], Run: SaveIngest.Run},
 	Fields: []webui.Accessor[Settings]{
 		webui.Group[Settings]{SampleRate, MaxLoad},

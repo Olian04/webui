@@ -61,9 +61,9 @@ func TestSketchTypes(t *testing.T) {
 			return nil
 		},
 		Body: webui.Form[Device]{
-			Load: func(ctx context.Context) (Device, error) {
+			Load: func(ctx context.Context) (Device, webui.Loaded) {
 				_ = webui.ArgsOf[DetailsArgs](ctx)
-				return Device{}, nil
+				return Device{}, webui.Ready()
 			},
 			Submit: webui.Action[Device]{
 				Guard: func(_ context.Context, d Device) error {
@@ -86,8 +86,8 @@ func TestSketchTypes(t *testing.T) {
 		Path: "/device",
 		Nav:  DevicesNav,
 		Body: webui.Table[Device]{
-			Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{}, nil
+			Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{}, webui.Ready()
 			},
 			RowClick: webui.Link[Device, DetailsArgs]{
 				Page: Details,

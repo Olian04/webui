@@ -14,8 +14,8 @@ type okArgs struct {
 	Id string
 }
 
-func okRows(context.Context, webui.Query) (webui.Window[Device], error) {
-	return webui.Window[Device]{}, nil
+func okRows(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+	return webui.Window[Device]{}, webui.Ready()
 }
 
 func idCol() webui.Accessor[Device] {
@@ -108,10 +108,10 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		{"reserved path", webui.Page[okArgs]{Path: "/_webui/x", Body: webui.Stack{}}, "reserved prefix"},
 		{"form without load", webui.Page[okArgs]{Path: "/a", Body: webui.Form[Device]{}}, "a Form has no Load"},
 		{"RE2", webui.Page[okArgs]{Path: "/a", Body: webui.Form[Device]{
-			Load: func(context.Context) (Device, error) { return Device{}, nil }, Fields: []webui.Accessor[Device]{badPattern},
+			Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }, Fields: []webui.Accessor[Device]{badPattern},
 		}}, "RE2"},
 		{"duplicate form labels", webui.Page[okArgs]{Path: "/a", Body: webui.Form[Device]{
-			Load: func(context.Context) (Device, error) { return Device{}, nil }, Fields: dupLabel,
+			Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }, Fields: dupLabel,
 		}}, `label "ID" is used twice`},
 		{"group in columns", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{group},
@@ -175,7 +175,7 @@ func TestPanelsOfOneTabsMayRepeatATable(t *testing.T) {
 
 	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}}
 	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
-		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, error) { return Device{}, nil }}, shared}},
+		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }}, shared}},
 		{Label: "Raw", Body: shared},
 	}}}}}
 	_, err := app.Compile("/admin")

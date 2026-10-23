@@ -22,11 +22,11 @@ func slowApp() http.Handler {
 	table := func(title string, delay time.Duration) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
+			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
 				if !sleep(ctx, delay) {
-					return webui.Window[Device]{}, ctx.Err()
+					return webui.Window[Device]{}, webui.Failed(ctx.Err())
 				}
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		}
@@ -36,9 +36,9 @@ func slowApp() http.Handler {
 		Body: webui.Stack{
 			webui.Form[Device]{
 				Title: "Form",
-				Load: func(ctx context.Context) (Device, error) {
+				Load: func(ctx context.Context) (Device, webui.Loaded) {
 					sleep(ctx, slowForm)
-					return Device{Id: "x"}, nil
+					return Device{Id: "x"}, webui.Ready()
 				},
 				Fields: []webui.Accessor[Device]{formID},
 			},
@@ -79,14 +79,14 @@ func BenchmarkPageFastPanels(b *testing.B) {
 	table := func(title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/fast", Body: webui.Stack{
-		webui.Form[Device]{Title: "Form", Load: func(context.Context) (Device, error) { return Device{Id: "x"}, nil }, Fields: []webui.Accessor[Device]{formID}},
+		webui.Form[Device]{Title: "Form", Load: func(context.Context) (Device, webui.Loaded) { return Device{Id: "x"}, webui.Ready() }, Fields: []webui.Accessor[Device]{formID}},
 		table("One"), table("Two"), table("Three"),
 	}}}}.MustCompile("/admin")
 	b.ReportAllocs()

@@ -23,10 +23,10 @@ func credentialApp(start credential) (http.Handler, func() credential) {
 		saved = start
 	)
 	form := webui.Form[credential]{
-		Load: func(context.Context) (credential, error) {
+		Load: func(context.Context) (credential, webui.Loaded) {
 			mu.Lock()
 			defer mu.Unlock()
-			return saved, nil
+			return saved, webui.Ready()
 		},
 		Fields: []webui.Accessor[credential]{
 			webui.String[credential]{
@@ -133,7 +133,7 @@ func TestASecretIsNotSearchable(t *testing.T) {
 
 	secret := webui.String[Device]{Label: "Key", Secret: true, Load: func(d Device) string { return d.Ip }, Store: func(*Device, string) {}}
 	h := searchApp(webui.SearchRows(
-		func(context.Context) ([]Device, error) { return searchDevices(), nil },
+		func(context.Context) ([]Device, webui.Loaded) { return searchDevices(), webui.Ready() },
 		deviceHit, secret,
 	), nil)
 	assert.Equal(t, len(search(t, h, "10.0.0.1").Results), 0)
@@ -153,7 +153,7 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	form := func(s webui.String[credential]) webui.PageBody {
 		return webui.Form[credential]{
-			Load:   func(context.Context) (credential, error) { return credential{}, nil },
+			Load:   func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
 			Fields: []webui.Accessor[credential]{s},
 			Submit: webui.Action[credential]{Run: func(context.Context, credential) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}
@@ -161,11 +161,11 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load})), "is a Secret but has no Store")
 	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store, Rules: webui.StringRules{Required: true}})), "is a Secret and Required")
 	assert.Contains(t, problems(webui.Table[credential]{
-		Rows:    func(context.Context) ([]credential, error) { return nil, nil },
+		Rows:    func(context.Context) ([]credential, webui.Loaded) { return nil, webui.Ready() },
 		Columns: []webui.Accessor[credential]{webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store}},
 	}), "is a Secret in a table")
 	assert.Contains(t, problems(webui.Editor[credential]{
-		Load:    func(context.Context) (credential, error) { return credential{}, nil },
+		Load:    func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
 		Content: webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store},
 	}), "is a Secret in an editor")
 	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{

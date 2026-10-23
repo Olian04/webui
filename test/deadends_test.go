@@ -68,8 +68,8 @@ func TestTheAddressIsNotValidPageLeadsOnToThePageWithoutItsArguments(t *testing.
 func TestAFailedPanelLeadsOnToTryAgain(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) {
-		return webui.Window[Device]{}, errors.New("down")
+	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Failed(errors.New("down"))
 	})
 	body := serve(h, http.MethodGet, "/admin/device?q=x").Body.String()
 	assert.Contains(t, body, "Could not load")
@@ -82,8 +82,8 @@ func TestATableThatShowsNothingLeadsOnToItsFirstPageAndToItselfWithoutFilters(t 
 	t.Parallel()
 
 	// Past the end of the rows there are: the way on is the first page.
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) {
-		return webui.Window[Device]{Total: 25}, nil
+	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{Total: 25}, webui.Ready()
 	})
 	past := serve(h, http.MethodGet, "/admin/device?devices.offset=100").Body.String()
 	assert.Contains(t, past, "This page is past the end.")
@@ -92,7 +92,9 @@ func TestATableThatShowsNothingLeadsOnToItsFirstPageAndToItselfWithoutFilters(t 
 	assert.False(t, strings.Contains(past, "Clear the filters"))
 
 	// Filtered to nothing: the way on is the table without its filters, and the page that it was on is dropped with them.
-	empty, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil })
+	empty, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Ready()
+	})
 	filtered := serve(empty, http.MethodGet, "/admin/device?devices.filter.id=zzz").Body.String()
 	assert.Contains(t, filtered, "Clear the filters")
 	assert.Contains(t, filtered, `href="/admin/device"`)
@@ -144,7 +146,7 @@ func TestABreadcrumbParentAndACancelThatLeadToARefusedPageAreLeftOut(t *testing.
 			},
 		}
 		child := webui.Page[webui.NoArgs]{Path: "/a/b", Body: webui.Form[struct{}]{
-			Load:   func(context.Context) (struct{}, error) { return struct{}{}, nil },
+			Load:   func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, webui.Ready() },
 			Submit: webui.Action[struct{}]{Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}
 		h := webui.App{Pages: webui.Pages{parent, child}}.MustCompile("/admin")
@@ -166,7 +168,7 @@ func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 
 	page := func(guard func(context.Context, struct{}) error) string {
 		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[struct{}]{
-			Load:   func(context.Context) (struct{}, error) { return struct{}{}, nil },
+			Load:   func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, webui.Ready() },
 			Submit: webui.Action[struct{}]{Guard: guard, Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}}}.MustCompile("/admin")
 		return serve(h, http.MethodGet, "/admin/f").Body.String()

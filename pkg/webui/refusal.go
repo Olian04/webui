@@ -18,9 +18,9 @@ import (
 //		return nil
 //	}
 //
-// The page's Guard runs before anything is loaded, so its status is the page's. A panel's Load may return one too, to say
+// The page's Guard runs before anything is loaded, so its status is the page's. A panel's Load may fail with one too ([Failed] of it), to say
 // that what it shows is not there: the panel says it, with its link, and the page stays as it is, since a page that has begun to be sent
-// has its status already. Any other error from either is as it was: a Guard's is a 403 with its text, and a Load's is "Could not
+// has its status already. Any other error from either is as it was: a Guard's is a 403 with its text, and a Load's [Failed] is "Could not
 // load", with the cause logged and not shown. A Refusal is for what a visitor may be told, and is not logged.
 type Refusal struct {
 	status  int

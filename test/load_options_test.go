@@ -50,7 +50,9 @@ func issueTeam(s *teams) webui.Select[issue] {
 
 func issueForm(s *teams, saved *issue) http.Handler {
 	form := webui.Form[issue]{
-		Load:   func(context.Context) (issue, error) { return issue{Name: "a", Team: []string{"red"}}, nil },
+		Load: func(context.Context) (issue, webui.Loaded) {
+			return issue{Name: "a", Team: []string{"red"}}, webui.Ready()
+		},
 		Fields: []webui.Accessor[issue]{issueTeam(s)},
 		Submit: webui.Action[issue]{Run: func(_ context.Context, t issue) (webui.Outcome, error) {
 			*saved = t
@@ -106,7 +108,9 @@ func TestASelectThatIsReadSaysWhatTheOptionsReadNow(t *testing.T) {
 	s := &teams{}
 	s.set(webui.Option{Value: "red", Label: "Red team", Tone: webui.ToneCritical})
 	form := webui.Form[issue]{
-		Load:   func(context.Context) (issue, error) { return issue{Team: []string{"red", "gone"}}, nil },
+		Load: func(context.Context) (issue, webui.Loaded) {
+			return issue{Team: []string{"red", "gone"}}, webui.Ready()
+		},
 		Fields: []webui.Accessor[issue]{webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load}},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: form}}}.MustCompile("/admin")
@@ -126,11 +130,11 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 	var mu sync.Mutex
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title: "Issues",
-		Load: func(_ context.Context, q webui.Query) (webui.Window[issue], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[issue], webui.Loaded) {
 			mu.Lock()
 			asked = append(asked, q.Filters)
 			mu.Unlock()
-			return webui.Window[issue]{Items: []issue{{Name: "a", Team: []string{"red"}}}, Total: 1}, nil
+			return webui.Window[issue]{Items: []issue{{Name: "a", Team: []string{"red"}}}, Total: 1}, webui.Ready()
 		},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
@@ -169,8 +173,8 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title: "Issues",
-		Rows: func(context.Context) ([]issue, error) {
-			return []issue{{Name: "a", Team: []string{"red"}}, {Name: "b", Team: []string{"mauve"}}}, nil
+		Rows: func(context.Context) ([]issue, webui.Loaded) {
+			return []issue{{Name: "a", Team: []string{"red"}}, {Name: "b", Team: []string{"mauve"}}}, webui.Ready()
 		},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
@@ -238,7 +242,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(a webui.Select[task]) string {
 		page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
-			Rows: func(context.Context) ([]task, error) { return nil, nil }, Columns: []webui.Accessor[task]{a},
+			Rows: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page}}) {
@@ -252,7 +256,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	// A Store with a source is a select with something to choose from.
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Form[task]{
-		Load:   func(context.Context) (task, error) { return task{}, nil },
+		Load:   func(context.Context) (task, webui.Loaded) { return task{}, webui.Ready() },
 		Fields: []webui.Accessor[task]{webui.Select[task]{Label: "S", Load: load, Store: func(*task, []string) {}, LoadOptions: source}},
 	}}
 	_, err := webui.App{Pages: webui.Pages{page}}.Compile("/admin")
@@ -268,7 +272,9 @@ func TestAnExportSaysWhatTheOptionsReadNow(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title:  "Issues",
 		Export: true,
-		Rows:   func(context.Context) ([]issue, error) { return []issue{{Name: "a", Team: []string{"red"}}}, nil },
+		Rows: func(context.Context) ([]issue, webui.Loaded) {
+			return []issue{{Name: "a", Team: []string{"red"}}}, webui.Ready()
+		},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
@@ -287,7 +293,7 @@ func TestASearchFindsARowByWhatTheOptionsReadNow(t *testing.T) {
 	s.set(webui.Option{Value: "10.0.0.1", Label: "Edge router"})
 	byTeam := webui.Select[Device]{Label: "Role", Load: func(d Device) []string { return []string{d.Ip} }, LoadOptions: s.load}
 	h := searchApp(webui.SearchRows(
-		func(context.Context) ([]Device, error) { return searchDevices(), nil },
+		func(context.Context) ([]Device, webui.Loaded) { return searchDevices(), webui.Ready() },
 		deviceHit, byTeam,
 	), nil)
 	got := search(t, h, "edge")

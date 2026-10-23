@@ -140,8 +140,8 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 			// With script, several files and folders can be chosen and are sent one after another, with a progress bar and a result for each.
 			Multiple: true,
 			// What is chosen beside the file: fields of a form, checked before any of the file is read, and handed to Receive as f.Options.
-			Load: func(context.Context) (FirmwareChoice, error) {
-				return FirmwareChoice{Taken: "refuse", Channel: "stable"}, nil
+			Load: func(context.Context) (FirmwareChoice, webui.Loaded) {
+				return FirmwareChoice{Taken: "refuse", Channel: "stable"}, webui.Ready()
 			},
 			Fields: []webui.Accessor[FirmwareChoice]{
 				webui.Select[FirmwareChoice]{
@@ -189,7 +189,7 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 		// Every image that was uploaded, newest first: what was kept of each, and none of the file.
 		webui.Table[Firmware]{
 			Title: "Upload history", Desc: "Every image that was uploaded, newest first. Only what it was is kept: the file is hashed as it arrives and never held.",
-			Rows: func(context.Context) ([]Firmware, error) { return service.FirmwareHistory(), nil },
+			Rows: func(context.Context) ([]Firmware, webui.Loaded) { return service.FirmwareHistory(), webui.Ready() },
 			Columns: []webui.Accessor[Firmware]{
 				webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
 				webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},

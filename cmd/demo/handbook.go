@@ -60,12 +60,12 @@ func handbookPanel(title, file, desc string) webui.Markdown[Handbook] {
 	return webui.Markdown[Handbook]{
 		Title: title,
 		Desc:  desc,
-		Load: func(context.Context) (Handbook, error) {
+		Load: func(context.Context) (Handbook, webui.Loaded) {
 			text, err := handbookFiles.ReadFile("handbook/" + file)
 			if err != nil {
-				return Handbook{}, fmt.Errorf("handbook: %w", err)
+				return Handbook{}, webui.Failed(fmt.Errorf("handbook: %w", err))
 			}
-			return Handbook{Text: string(text)}, nil
+			return Handbook{Text: string(text)}, webui.Ready()
 		},
 		Content: HandbookText,
 

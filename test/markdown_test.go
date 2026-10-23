@@ -19,7 +19,7 @@ var handbookText = webui.String[handbook]{Label: "Handbook", Load: func(h handbo
 func markdownApp(text string) http.Handler {
 	return editorApp(webui.Markdown[handbook]{
 		Title:   "Handbook",
-		Load:    func(context.Context) (handbook, error) { return handbook{Text: text}, nil },
+		Load:    func(context.Context) (handbook, webui.Loaded) { return handbook{Text: text}, webui.Ready() },
 		Content: handbookText,
 	})
 }
@@ -73,8 +73,8 @@ func TestAMarkdownRefreshesAsALeafOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Stack{
-		webui.Markdown[handbook]{Title: "Handbook", Load: func(context.Context) (handbook, error) { return handbook{Text: "# Hello"}, nil }, Content: handbookText},
-		webui.Markdown[handbook]{Title: "Other", Load: func(context.Context) (handbook, error) { return handbook{Text: "# Second"}, nil }, Content: handbookText},
+		webui.Markdown[handbook]{Title: "Handbook", Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: "# Hello"}, webui.Ready() }, Content: handbookText},
+		webui.Markdown[handbook]{Title: "Other", Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: "# Second"}, webui.Ready() }, Content: handbookText},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e", nil)
 	req.Header.Set("X-Webui-Leaf", "p.1")
@@ -91,7 +91,9 @@ func TestAFailingMarkdownLoadFailsThePanelAndNotThePage(t *testing.T) {
 
 	h := editorApp(webui.Markdown[handbook]{
 		Title: "Handbook", Content: handbookText,
-		Load: func(context.Context) (handbook, error) { return handbook{}, errors.New("store secret-bucket is gone") },
+		Load: func(context.Context) (handbook, webui.Loaded) {
+			return handbook{}, webui.Failed(errors.New("store secret-bucket is gone"))
+		},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, "Could not load")
@@ -104,7 +106,7 @@ func TestAMarkdownIsOnlyEverRead(t *testing.T) {
 	assert.Equal(t, post(markdownApp("# x"), "/admin/e", formValues("f0", "x")).Code, http.StatusMethodNotAllowed)
 
 	store := webui.String[handbook]{Label: "Handbook", Load: func(h handbook) string { return h.Text }, Store: func(h *handbook, v string) { h.Text = v }}
-	load := func(context.Context) (handbook, error) { return handbook{}, nil }
+	load := func(context.Context) (handbook, webui.Loaded) { return handbook{}, webui.Ready() }
 	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Content: handbookText}), "a Markdown has no Load")
 	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load, Content: store}), "a Markdown has a Store")
 	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load}), "Markdown.Content")
@@ -116,7 +118,7 @@ func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) 
 	text := handbook{Text: "[here](/e) and [there](/device/d1?minutes=5) and [out](//evil.example/x) and [odd](/\\evil.example)"}
 	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Markdown[handbook]{
 		Title: "Handbook", Content: handbookText,
-		Load: func(context.Context) (handbook, error) { return text, nil },
+		Load: func(context.Context) (handbook, webui.Loaded) { return text, webui.Ready() },
 	}}
 	for prefix, want := range map[string]string{"/admin": "/admin", "/a/b": "/a/b", "": ""} {
 		h := webui.App{Pages: webui.Pages{page}}.MustCompile(prefix)
@@ -131,7 +133,7 @@ func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) 
 func markdownWithOrigins(text string, origins ...string) webui.Markdown[handbook] {
 	return webui.Markdown[handbook]{
 		Title: "Handbook", Content: handbookText, TrustedOrigins: origins,
-		Load: func(context.Context) (handbook, error) { return handbook{Text: text}, nil },
+		Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: text}, webui.Ready() },
 	}
 }
 

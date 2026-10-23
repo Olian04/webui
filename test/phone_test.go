@@ -109,7 +109,7 @@ func TestAnEditablePhoneIsASelectorOfCountriesAndAnInputInTheHTMLAndItsPageLinks
 
 	// A page with no phone to edit does not link it, and neither does one whose phone is only read.
 	plain := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Form[contact]{
-		Load:   func(context.Context) (contact, error) { return contact{Phone: "+46701234567"}, nil },
+		Load:   func(context.Context) (contact, webui.Loaded) { return contact{Phone: "+46701234567"}, webui.Ready() },
 		Fields: []webui.Accessor[contact]{webui.Phone[contact]{Label: "Phone", Load: func(c contact) string { return c.Phone }}},
 	}}}}.MustCompile("/admin")
 	body = serve(plain, http.MethodGet, "/admin/p").Body.String()
@@ -167,7 +167,7 @@ func TestADefaultCountryIsOneOfTheCountries(t *testing.T) {
 	problems := func(code string) string {
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: webui.Form[contact]{
-			Load:   func(context.Context) (contact, error) { return contact{}, nil },
+			Load:   func(context.Context) (contact, webui.Loaded) { return contact{}, webui.Ready() },
 			Fields: []webui.Accessor[contact]{field(code)},
 			Submit: webui.Action[contact]{Run: func(context.Context, contact) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}}}}) {

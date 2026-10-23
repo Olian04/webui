@@ -24,7 +24,7 @@ func editor(language webui.Language) http.Handler {
 			Label: "Text", Load: func(d doc) string { return d.Text }, Store: func(d *doc, v string) { d.Text = v },
 		},
 		Submit: webui.Action[doc]{Run: func(context.Context, doc) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
-		Load:   func(context.Context) (doc, error) { return doc{}, nil },
+		Load:   func(context.Context) (doc, webui.Loaded) { return doc{}, webui.Ready() },
 	}}}}.MustCompile("/admin")
 }
 

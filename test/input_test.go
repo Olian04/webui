@@ -31,7 +31,7 @@ func contactApp(start contact, fields ...webui.Accessor[contact]) (http.Handler,
 		fields = []webui.Accessor[contact]{contactEmail, contactSite, contactPhone, contactColor}
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: webui.Form[contact]{
-		Load:   func(context.Context) (contact, error) { return saved, nil },
+		Load:   func(context.Context) (contact, webui.Loaded) { return saved, webui.Ready() },
 		Fields: fields,
 		Submit: webui.Action[contact]{Run: func(_ context.Context, c contact) (webui.Outcome, error) {
 			saved = c
@@ -113,7 +113,7 @@ func TestTheRulesOfAFormattedAccessorAreCheckedWhenTheAppCompiles(t *testing.T) 
 	problems := func(field webui.Accessor[contact]) string {
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: webui.Form[contact]{
-			Load:   func(context.Context) (contact, error) { return contact{}, nil },
+			Load:   func(context.Context) (contact, webui.Loaded) { return contact{}, webui.Ready() },
 			Fields: []webui.Accessor[contact]{field},
 			Submit: webui.Action[contact]{Run: func(context.Context, contact) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}}}}) {
@@ -134,7 +134,9 @@ func TestAnInputKindIsATableCellAsText(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[contact]{
-		Rows:    func(context.Context) ([]contact, error) { return []contact{{Email: "a@example.com"}}, nil },
+		Rows: func(context.Context) ([]contact, webui.Loaded) {
+			return []contact{{Email: "a@example.com"}}, webui.Ready()
+		},
 		Columns: []webui.Accessor[contact]{contactEmail},
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/s").Body.String()
@@ -146,7 +148,7 @@ func TestAnInputKindIsATableCellAsText(t *testing.T) {
 func dayApp(start contact) (http.Handler, func() contact) {
 	saved := start
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/d", Body: webui.Form[contact]{
-		Load: func(context.Context) (contact, error) { return saved, nil },
+		Load: func(context.Context) (contact, webui.Loaded) { return saved, webui.Ready() },
 		Fields: []webui.Accessor[contact]{
 			webui.Timestamp[contact]{Label: "Ends", DateOnly: true, Load: func(c contact) int { return c.Ends }, Store: func(c *contact, v int) { c.Ends = v }},
 			webui.Datetime[contact]{Label: "Day", DateOnly: true, Load: func(c contact) string { return c.Day }, Store: func(c *contact, v string) { c.Day = v }},
@@ -197,7 +199,7 @@ func TestADateOnlyColumnShowsTheDayAndItsFilterIsDates(t *testing.T) {
 	ends := int(time.Date(2027, 1, 15, 13, 45, 0, 0, time.UTC).Unix())
 	table := func(dateOnly bool) string {
 		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[contact]{
-			Rows: func(context.Context) ([]contact, error) { return []contact{{Ends: ends}}, nil },
+			Rows: func(context.Context) ([]contact, webui.Loaded) { return []contact{{Ends: ends}}, webui.Ready() },
 			Columns: []webui.Accessor[contact]{
 				webui.Timestamp[contact]{Label: "Ends", DateOnly: dateOnly, Load: func(c contact) int { return c.Ends }},
 			},

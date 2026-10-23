@@ -21,7 +21,7 @@ type detailsArgs struct{ Id string }
 
 // tableApp serves 25 devices, ten to a page, and records the Query the loader
 // was handed.
-func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], error)) (http.Handler, *webui.Query) {
+func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded)) (http.Handler, *webui.Query) {
 	var (
 		mu   sync.Mutex
 		last webui.Query
@@ -32,7 +32,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], err
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(ctx context.Context, q webui.Query) (webui.Window[Device], error) {
+			Load: func(ctx context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 				mu.Lock()
 				last = q
 				mu.Unlock()
@@ -44,7 +44,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], err
 					all = append(all, Device{Id: fmt.Sprintf("dev%02d", i), Ip: "10.0.0.1", Count: i, Duration: 1})
 				}
 				end := min(q.Offset+q.Limit, len(all))
-				return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, nil
+				return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
 			},
 			PageSize: 10,
 			RowClick: webui.Link[Device, detailsArgs]{
@@ -141,12 +141,12 @@ func TestTableDropsUndeclaredSortKeys(t *testing.T) {
 func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+	h, _ := tableApp(func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 		items := make([]Device, 10)
 		for i := range items {
 			items[i] = Device{Id: fmt.Sprintf("d%d", q.Offset+i)}
 		}
-		return webui.Window[Device]{Items: items}, nil // Total left zero: unknown
+		return webui.Window[Device]{Items: items}, webui.Ready() // Total left zero: unknown
 	})
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, "1–10")
@@ -157,8 +157,8 @@ func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
 func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) {
-		return webui.Window[Device]{}, errors.New("db password is hunter2")
+	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Failed(errors.New("db password is hunter2"))
 	})
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -170,7 +170,9 @@ func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 func TestTableEmpty(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil })
+	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Ready()
+	})
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, "Nothing to show")
 	assert.Contains(t, body, "No results")
@@ -183,9 +185,9 @@ func twoTables() (http.Handler, *[2]webui.Query) {
 	table := func(i int) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: fmt.Sprintf("T%d", i), PageSize: 5,
-			Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+			Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 				seen[i] = q
-				return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 50}, nil
+				return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 50}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		}
@@ -460,14 +462,14 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 
 	var asked int
 	page := webui.Page[webui.NoArgs]{Path: "/device", Body: webui.Table[Device]{
-		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 			asked = q.Limit
 			var all []Device
 			for i := range 60 {
 				all = append(all, Device{Id: fmt.Sprintf("dev%02d", i)})
 			}
 			end := min(q.Offset+q.Limit, len(all))
-			return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, nil
+			return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}}
@@ -484,9 +486,9 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 func viewTable(title string, seen *webui.Query) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
-		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 			*seen = q
-			return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 1}, nil
+			return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 	}

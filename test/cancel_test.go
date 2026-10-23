@@ -30,8 +30,8 @@ func cancelApp(redirectToPlain bool) http.Handler {
 
 	rows := func(dest webui.PageRef[cancelArgs]) webui.Table[Device] {
 		return webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
 			},
 			RowClick: webui.Link[Device, cancelArgs]{
 				Page: dest,
@@ -41,7 +41,7 @@ func cancelApp(redirectToPlain bool) http.Handler {
 		}
 	}
 	form := webui.Form[Device]{
-		Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.0.1"}, nil },
+		Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.0.1"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{formID, formIP},
 		Submit: webui.Action[Device]{Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
 			if d.Ip == "10.0.0.9" {

@@ -27,9 +27,9 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	table := func(i int, title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
 				loads[i].Add(1)
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		}
@@ -41,7 +41,7 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 			webui.Split{
 				webui.Form[Device]{
 					Title:  "Form",
-					Load:   func(context.Context) (Device, error) { loads[0].Add(1); return Device{Id: "x"}, nil },
+					Load:   func(context.Context) (Device, webui.Loaded) { loads[0].Add(1); return Device{Id: "x"}, webui.Ready() },
 					Fields: []webui.Accessor[Device]{formID},
 				},
 				table(1, "Events"),
@@ -267,7 +267,7 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
 	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
 		Title:   "Blobs",
-		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+		Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, state, tags, blobSize},
 	}}}}.MustCompile("/admin")

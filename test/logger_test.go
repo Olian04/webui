@@ -23,18 +23,20 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 		Body: webui.Stack{
 			webui.Table[blob]{
 				Title:   "Formatted",
-				Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+				Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 				Key:     func(b blob) string { return b.Name },
 				Columns: []webui.Accessor[blob]{blobName, broken},
 			},
 			webui.Table[blob]{
-				Title:   "Unavailable",
-				Rows:    func(context.Context) ([]blob, error) { return nil, errors.New("the backend is down") },
+				Title: "Unavailable",
+				Rows: func(context.Context) ([]blob, webui.Loaded) {
+					return nil, webui.Failed(errors.New("the backend is down"))
+				},
 				Columns: []webui.Accessor[blob]{blobName},
 			},
 		},
 		Search: webui.SearchRows(
-			func(context.Context) ([]blob, error) { return blobs(), nil },
+			func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 			func(b blob) webui.Hit[webui.NoArgs] { return webui.Hit[webui.NoArgs]{Title: b.Name} },
 			broken,
 		),
@@ -46,7 +48,7 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 	crash := webui.Page[webui.NoArgs]{
 		Path: "/crash",
 		Body: webui.Form[Device]{
-			Load:   func(context.Context) (Device, error) { panic("load") },
+			Load:   func(context.Context) (Device, webui.Loaded) { panic("load") },
 			Fields: []webui.Accessor[Device]{formID},
 		},
 	}
@@ -126,7 +128,7 @@ func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
 	crash := webui.Page[webui.NoArgs]{
 		Path: "/crash",
 		Body: webui.Form[Device]{
-			Load:   func(context.Context) (Device, error) { panic("load") },
+			Load:   func(context.Context) (Device, webui.Loaded) { panic("load") },
 			Fields: []webui.Accessor[Device]{formID},
 		},
 	}
