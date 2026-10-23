@@ -12,6 +12,12 @@ server-rendered UI, with **no HTML, CSS or JavaScript to write**.
   and dark mode, with no setup.
 - **Works without JavaScript.** Every control is a real link or form, and a tiny
   script only makes it snappier.
+- **HTML is the state.** The server answers with HTML and nothing else: a page, a panel
+  that script asks for, the result of an upload. Each response holds the links, forms and
+  buttons that the visitor can use in that state, which is hypermedia as the engine of
+  application state, and script only asks for that HTML and puts it in the page. The
+  thinking is [htmx's](https://htmx.org/essays/hypermedia-driven-applications): see
+  [HATEOAS](https://htmx.org/essays/hateoas).
 - **Secure by default.** CSRF protection and a strict content security policy out of
   the box, plus guards per page and per action. A visitor never sees nav entries or
   search results they can't open, and a control that a Guard refuses is left out, or

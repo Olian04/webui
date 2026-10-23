@@ -23,9 +23,12 @@ type FileUpload struct {
 
 // Incoming is what is known of a file when it begins to arrive: its first bytes have been read, and nothing more.
 type Incoming struct {
-	Name        string
-	ContentType string
-	Kind        FileKind
+	Name         string // the base name, made safe
+	Path         string // the folder that the file was sent in, made safe, "" for none
+	RawName      string // the name exactly as the browser sent it, a path and all
+	ContentType  string // what the first bytes hold
+	DeclaredType string // the media type that the browser said, "" when it said none
+	Kind         FileKind
 }
 
 // Addr reports the node's position in the body tree.

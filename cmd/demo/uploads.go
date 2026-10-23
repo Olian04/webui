@@ -146,7 +146,7 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 						return webui.Outcome{}, err //nolint:wrapcheck // a failing read of the body, which the library answers
 					}
 					digest := hex.EncodeToString(sum.Sum(nil))
-					service.SetFirmware(Firmware{Name: f.Name, Size: int(size), SHA256: digest, At: time.Now().Format("Jan 2 15:04")})
+					service.SetFirmware(Firmware{Name: f.Name, Folder: f.Path, Type: f.DeclaredType, Size: int(size), SHA256: digest, At: time.Now().Format("Jan 2 15:04")})
 					return webui.Success("Received " + f.Name + ", sha256 " + digest[:12] + "…"), nil
 				},
 			},
@@ -157,6 +157,10 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 			Fields: []webui.Accessor[Firmware]{
 				webui.Group[Firmware]{
 					webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
+					webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},
+				},
+				webui.Group[Firmware]{
+					webui.String[Firmware]{Label: "Type said by the browser", Load: func(f Firmware) string { return f.Type }},
 					webui.Int[Firmware]{Label: "Bytes", Load: func(f Firmware) int { return f.Size }},
 				},
 				webui.String[Firmware]{Label: "SHA-256", Load: func(f Firmware) string { return f.SHA256 }},

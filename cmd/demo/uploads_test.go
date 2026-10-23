@@ -205,6 +205,7 @@ func TestTheFirmwarePanelHashesAFileAsItArrivesAndKeepsOnlyWhatItWas(t *testing.
 
 	after := get(h, "/admin/firmware").Body.String()
 	assert.Contains(t, after, "collector-1.2.bin")
+	assert.Contains(t, after, "application/octet-stream") // what the browser said, which the test's post says
 	assert.Contains(t, after, hex.EncodeToString(sum[:]))
 	assert.Contains(t, after, strconv.Itoa(len(data)))
 }

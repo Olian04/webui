@@ -137,7 +137,9 @@ func TestAFileUploadHandsTheFileToRunAsItArrives(t *testing.T) {
 	got := s.last()
 	assert.DeepEqual(t, got.data, pngBytes)
 	assert.NoError(t, got.err)
-	assert.Equal(t, got.handle, webui.FileHandle{Name: "x.png", ContentType: "image/png", Kind: webui.FilePNG})
+	assert.Equal(t, got.handle, webui.FileHandle{
+		Name: "x.png", Path: "photos", RawName: "../../photos/x.png", ContentType: "image/png", DeclaredType: "application/octet-stream", Kind: webui.FilePNG,
+	})
 }
 
 // The file is read as it comes: Run has the first of it while the browser has not yet sent the rest, which is what lets a file of any size go on to a store.
@@ -435,4 +437,65 @@ func TestFileUploadsAtTheSameTimeAreEachTheirOwn(t *testing.T) {
 		sizes[len(r.data)] = true
 	}
 	assert.Equal(t, len(sizes), 20)
+}
+
+// typedUpload posts the one file of a panel with a filename and a Content-Type of the test's choosing, which is what the browser says of a file
+// and what a folder's files carry in their names.
+func typedUpload(h http.Handler, filename, declared, content string) *httptest.ResponseRecorder {
+	var body bytes.Buffer
+	w := multipart.NewWriter(&body)
+	_ = w.WriteField("_leaf", "p")
+	hdr := textproto.MIMEHeader{}
+	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+filename+`"`)
+	if declared != "" {
+		hdr.Set("Content-Type", declared)
+	}
+	part, _ := w.CreatePart(hdr)
+	_, _ = part.Write([]byte(content))
+	_ = w.Close()
+	req := httptest.NewRequest(http.MethodPost, "/admin/up", &body)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	return rec
+}
+
+// The type that the browser said is the visitor's word and is handed over beside what the first bytes hold, without its parameters.
+func TestAFileUploadHandsOverTheTypeThatTheBrowserSaid(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil)
+	for declared, want := range map[string]string{
+		"application/json":                "application/json",
+		"Application/JSON; charset=utf-8": "application/json",
+		"application/octet-stream":        "application/octet-stream",
+		"":                                "",
+		"not a media type":                "",
+	} {
+		assert.Equal(t, typedUpload(s.h, "a.json", declared, `{"a": 1}`).Code, http.StatusSeeOther)
+		got := s.last().handle
+		assert.Equal(t, got.DeclaredType, want)
+		assert.Equal(t, got.ContentType, "text/plain; charset=utf-8") // what it holds, which is not what was said
+	}
+}
+
+// A file that was sent in a folder has the folder apart from its name, made safe, and what the browser sent as it was.
+func TestAFileUploadHandsOverTheFolderAndTheNameAsSent(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil)
+	for raw, want := range map[string]struct{ name, path string }{
+		"a.jpg":             {"a.jpg", ""},
+		"photos/2024/a.jpg": {"a.jpg", "photos/2024"},
+		`photos\2024\a.jpg`: {"a.jpg", "photos/2024"},
+		"../../etc/passwd":  {"passwd", "etc"},
+		"a/../../b/c.txt":   {"c.txt", "a/b"},
+		"dir/":              {"file", "dir"},
+	} {
+		assert.Equal(t, typedUpload(s.h, raw, "", "data").Code, http.StatusSeeOther)
+		got := s.last().handle
+		assert.Equal(t, got.Name, want.name)
+		assert.Equal(t, got.Path, want.path)
+		assert.Equal(t, got.RawName, raw) // as the browser sent it, so that the app can say that it was changed
+	}
 }

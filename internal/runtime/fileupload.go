@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 
@@ -55,6 +56,32 @@ func (c *capped) Read(b []byte) (int, error) {
 	return n, err //nolint:wrapcheck // the body's own error, which the action sees as it is
 }
 
+// maxRawName is the most of the name that a browser sent that is kept as it was sent.
+const maxRawName = 4096
+
+// rawFileName is the name that the browser gave the file, as it sent it, with its path: a part's FileName is the base name only, which is
+// what a folder that the visitor chose would lose.
+func rawFileName(part *multipart.Part) string {
+	_, params, err := mime.ParseMediaType(part.Header.Get("Content-Disposition"))
+	if err != nil {
+		return ""
+	}
+	name := params["filename"]
+	if len(name) > maxRawName {
+		name = name[:maxRawName]
+	}
+	return name
+}
+
+// declaredType is the media type that the browser said the file has, without its parameters, or "" when it said none or something that is not one.
+func declaredType(part *multipart.Part) string {
+	mediaType, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
+	if err != nil {
+		return ""
+	}
+	return mediaType
+}
+
 // uploadAct hands a file to a FileUpload's action as it arrives. Its first bytes are read, to tell what it is, and then it is the action's
 // subject: the Guard, which refuses a visitor before any more is read, and the Run, which reads the rest, and answers with an outcome as any
 // action does. What the action leaves unread is thrown away, to the limit of the body, so that the browser is answered and not reset.
@@ -74,7 +101,10 @@ func (p *Program) uploadAct(w http.ResponseWriter, r *http.Request, page *ir.Pag
 	if wrong != "" {
 		kind = ir.FileAny
 	}
-	in := ir.Incoming{Name: rules.UploadName(part.FileName()), ContentType: sniffed, Kind: kind}
+	raw := rawFileName(part)
+	in := ir.Incoming{
+		Name: rules.UploadName(raw), Path: rules.UploadPath(raw), RawName: raw, ContentType: sniffed, DeclaredType: declaredType(part), Kind: kind,
+	}
 	file := &capped{r: io.MultiReader(bytes.NewReader(head), part), left: n.Spec.Max}
 
 	action := *n.Receive
