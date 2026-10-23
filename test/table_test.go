@@ -312,8 +312,12 @@ func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
 	assert.False(t, strings.Contains(body, `name="devices.filter.occurrences"`))
 	assert.False(t, strings.Contains(body, `name="devices.filter.rate"`))
 
-	// The form is a plain GET back to the page, so it works without script.
-	assert.Contains(t, body, `<form class="filter-pop" method="get" action="/admin/device" data-filter-form>`)
+	// The form is a plain GET back to the page, so it works without script. It stands beside the table, not in it (the table may be a form of
+	// its own, and a form cannot be in a form), and the controls of the popover say that it is theirs.
+	assert.Contains(t, body, `<form id="p-filter-c0" method="get" action="/admin/device" data-filter-form>`)
+	assert.Contains(t, body, `<div class="filter-pop">`)
+	assert.Contains(t, body, `form="p-filter-c2" type="number" step="any" name="devices.min.occurrences"`)
+	assert.Contains(t, body, `<button class="btn btn-primary btn-sm" type="submit" form="p-filter-c2">Apply</button>`)
 }
 
 func TestFiltersAreNamedByLabelInTheAddressAndInQuery(t *testing.T) {
@@ -368,13 +372,12 @@ func TestAnActiveFilterShowsAndCanBeCleared(t *testing.T) {
 
 	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 2)
 	assert.Contains(t, body, `value="dev0"`) // the text, as typed
-	assert.Contains(t, body, `type="checkbox" name="devices.filter.status" value="healthy" checked>`)
+	assert.Contains(t, body, `type="checkbox" form="p-filter-c1" name="devices.filter.status" value="healthy" checked>`)
 	assert.False(t, strings.Contains(body, `value="degraded" checked`))
 
 	// Applying one column's filter carries everything else and drops every offset;
 	// the filter being replaced is not carried.
-	id := body[strings.Index(body, `aria-label="Filter ID"><i class="fa-solid fa-filter"`):]
-	id = id[:strings.Index(id, `<div class="filter-title">ID</div>`)]
+	id := formOf(body, "p-filter-c0")
 	assert.Contains(t, id, `name="devices.sort" value="id"`)
 	assert.Contains(t, id, `name="devices.filter.status" value="healthy"`)
 	assert.False(t, strings.Contains(id, `devices.offset`))
@@ -441,13 +444,11 @@ func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
 	assert.Contains(t, body, `name="devices.max.occurrences" value="9.5"`)
 
 	// Applying another column keeps these bounds; applying this one replaces them.
-	idForm := body[strings.Index(body, `aria-label="Filter ID"><i class="fa-solid fa-filter"`):]
-	idForm = idForm[:strings.Index(idForm, `<div class="filter-title">ID</div>`)]
+	idForm := formOf(body, "p-filter-c0")
 	assert.Contains(t, idForm, `name="devices.min.occurrences" value="5"`)
 	assert.Contains(t, idForm, `name="devices.max.occurrences" value="9.5"`)
 
-	own := body[strings.Index(body, `aria-label="Filter Occurrences"><i class="fa-solid fa-filter"`):]
-	own = own[:strings.Index(own, `<div class="filter-title">Occurrences</div>`)]
+	own := formOf(body, "p-filter-c2")
 	assert.False(t, strings.Contains(own, `devices.min.occurrences`))
 	assert.False(t, strings.Contains(own, `devices.max.occurrences`))
 	assert.False(t, strings.Contains(own, `devices.offset`))
@@ -546,4 +547,14 @@ func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
 	// The second Tabs keeps its selection under "tabs-2".
 	body := serve(h, http.MethodGet, "/p?tabs-2.tab=more").Body.String()
 	assert.Contains(t, body, `<a class="tab active" href="/p?tabs-2.tab=more" aria-current="page">More</a>`)
+}
+
+// formOf is the filter form with an id, from its start tag to its end: the controls that it carries from the address, which the form of a
+// column's filter holds beside the table.
+func formOf(body, id string) string {
+	i := strings.Index(body, `<form id="`+id+`"`)
+	if i < 0 {
+		return ""
+	}
+	return body[i : i+strings.Index(body[i:], "</form>")]
 }

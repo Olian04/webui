@@ -83,6 +83,9 @@ type columnView struct {
 	SortHref string
 	SortDir  c.SortDir
 	Filter   templ.Component
+
+	// FilterForm is the form that Filter's controls belong to, drawn beside the table and not in it (see filterForm).
+	FilterForm templ.Component
 }
 
 // columns resolves the header: alignment from the value kind, and the sort
@@ -99,7 +102,8 @@ func (r *Renderer) columns(v TableView) []columnView {
 			col.SortHref, col.SortDir = r.sortLink(v, f.Key)
 		}
 		if f.Key != "" && !f.NoFilter && !v.Node.Feed { // a feed is one sequence, which there is nothing to filter
-			col.Filter = r.filterMenu(v, f)
+			fv := r.filter(v, f)
+			col.Filter, col.FilterForm = r.filterMenu(v, fv), r.filterForm(fv)
 		}
 		out[i] = col
 	}
@@ -450,6 +454,9 @@ type filterView struct {
 	Min     string
 	Max     string
 
+	// FormID is the id of the filter's form, which is drawn beside the table: the controls name it with form=.
+	FormID string
+
 	Action string
 	Carry  []carried
 	Clear  string // the address without this filter, "" when none is set
@@ -461,7 +468,7 @@ func (f filterView) name(option string) string { return f.Field.LabelOf(option) 
 
 func (r *Renderer) filter(v TableView, f ir.Field) filterView {
 	id := v.Node.ID
-	fv := filterView{Label: f.Label, Field: f, Action: r.PageHref(v.Page, v.Path, nil)}
+	fv := filterView{Label: f.Label, Field: f, Action: r.PageHref(v.Page, v.Path, nil), FormID: fieldID(v.Node.At, "filter-"+f.Name)}
 	gone := []string{} // the address parameters this filter owns
 	if f.Ranged() {
 		fv.Numeric = true

@@ -208,7 +208,7 @@ func storageTable(rows bool) http.Handler {
 }
 
 // classBoxes is the checkbox of each choice in the Class filter.
-var classBoxes = regexp.MustCompile(`class="checkbox" type="checkbox" name="objects\.filter\.class" value="([^"]*)"`)
+var classBoxes = regexp.MustCompile(`class="checkbox" type="checkbox" form="[^"]*" name="objects\.filter\.class" value="([^"]*)"`)
 
 func TestABadgeOfARowsTableFiltersByTheValuesItsRowsHold(t *testing.T) {
 	t.Parallel()

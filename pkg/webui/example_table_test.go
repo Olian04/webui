@@ -70,7 +70,7 @@ func ExampleTable() {
 	req.Header.Set("X-Webui-Leaf", "search") // as the box's script asks for its list: with the header that a request for one panel carries
 	handler.ServeHTTP(rec, req)
 
-	group := regexp.MustCompile(`<div class="pal-label">(.*?)</div>`).FindStringSubmatch(rec.Body.String())
+	group := regexp.MustCompile(`<div class="pal-label"[^>]*>(.*?)</div>`).FindStringSubmatch(rec.Body.String())
 	link := regexp.MustCompile(`<a class="pal-item" role="option" href="(.*?)">\s*<span>(.*?)</span>`).FindStringSubmatch(rec.Body.String())
 	fmt.Println(group[1], link[2], link[1])
 	// Output:

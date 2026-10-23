@@ -97,7 +97,7 @@ func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
 	}}.MustCompile("/admin")
 
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), "<span class=\"multiline\">one\ntwo\nthree\nfour</span>")
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/f").Body.String(), `<div class="static"><span class="multiline">one`+"\n"+`two</span></div>`)
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/f").Body.String(), `aria-labelledby="p-f0-label"><span class="multiline">one`+"\n"+`two</span></div>`)
 	// The file holds every line, quoted, in one cell.
 	csv := serve(h, http.MethodGet, "/admin/t?notes.export=csv").Body.String()
 	assert.Contains(t, csv, "\"one\ntwo\nthree\nfour\"")

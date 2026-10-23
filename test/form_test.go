@@ -61,7 +61,7 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 
 	// ID has no Store: shown as output, not as an input that is refused, and never
 	// submitted (no name).
-	assert.Contains(t, body, `<div class="static">dev1</div>`)
+	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_0-label">dev1</div>`)
 	assert.False(t, strings.Contains(body, `value="dev1"`))
 	assert.False(t, strings.Contains(body, `name="f0_0"`))
 
@@ -136,7 +136,7 @@ func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.
 	// And nothing in it can be changed: every field is read-only, and none is submitted.
 	assert.False(t, strings.Contains(body, `name="f`))
 	assert.False(t, strings.Contains(body, "<input class=\"input"))
-	assert.Contains(t, body, `<div class="static">10.0.0.1</div>`)
+	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_1-label">10.0.0.1</div>`)
 	assert.False(t, strings.Contains(body, "must be a valid"))
 }
 
@@ -160,7 +160,7 @@ func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testin
 
 	// The ID has no Store: its field is the quiet kind, and says it is empty.
 	assert.Contains(t, body, `<div class="field field-static">`)
-	assert.Contains(t, body, `<div class="static"><span class="dim" aria-hidden="true">—</span> <span class="sr-only">empty</span></div>`)
+	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_0-label"><span class="dim" aria-hidden="true">—</span> <span class="sr-only">empty</span></div>`)
 	// The IP, which can be edited, is an input in an ordinary field.
 	assert.Contains(t, body, `name="f0_1"`)
 	assert.Equal(t, strings.Count(body, `field-static`), 1)

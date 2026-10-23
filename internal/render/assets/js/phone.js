@@ -77,10 +77,9 @@
     }
 
     input.addEventListener('input', show);
-    select.addEventListener('change', function () {
-      show();
-      input.focus();
-    });
+    // The focus stays on the selector: a change fires for each arrow key on a closed one, and moving the focus then leaves a keyboard
+    // user one country to choose.
+    select.addEventListener('change', show);
   }
 
   function enhanceAll(root) {
