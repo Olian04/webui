@@ -515,11 +515,14 @@ browser; they are plain links, and work without script.
 **Toasts** stack bottom-right above the status bar: raised surface, 3px left
 border in the semantic colour (green for a confirmation, amber for something to be
 aware of, red for a failure), a 13.5/500 title and an optional 12.5
-text-secondary line, rising 6px on entry and dismissing after 3.4s. The timer holds
-while a toast is hovered or has focus. A close button (×) at the right dismisses it at
-once; it is a label for a visually hidden radio, and the stylesheet hides the toast
-whose radio is chosen, so it works with scripting disabled, where a toast otherwise
-stays until the next page.
+text-secondary line, rising 6px on entry. A confirmation dismisses itself after 8s, the timer
+holding while a toast is hovered or has focus; a warning or a failure stays until it is dismissed, since
+the message about what went wrong is the one that must not be missed. Each toast is its own live region,
+an alert for a failure and a status for the rest, and script puts the ones that came with the page in
+again once it has loaded, since a live region is announced for what is added to it. A close button (×)
+at the right dismisses it at once: a button with script, and without script a label for a visually hidden
+radio, and the stylesheet hides the toast whose radio is chosen, where a toast otherwise stays until the
+next page.
 
 **Field errors** appear under the field in 12/critical with a 13px icon, and
 the field takes the invalid border. Two kinds of rejection are shown
@@ -640,6 +643,9 @@ different product.
 - A page has one h1, the page's name (the last crumb), which is not drawn: the breadcrumb is where the eye finds it, and a panel is an h2. A state that stops
   the visitor (404, 403, a refusal) is an h2 under that h1. The first thing in the body is a link to the content ("Skip to content", out of sight until it has the
   focus), the status bar is the page's footer landmark, and the pager is a navigation named for its table.
+- What script changes is said: a panel that is replaced says what it holds now in a status region that the page has (and its focus goes to its title if it was in it),
+  a search says how many results it has, a toast is announced, and a panel that is asked for again on its own can be paused (WCAG 2.2.2) and says when it is done.
+  A refused form has a title that says so, and the page opens with the focus on the first control that was refused.
 - A control is described by the popover of its help and rules, which is referred to by id, and by its error when it is refused. A button in a row says which row it
   is of ("Drop", then the first cell's text for a reader), and a filter that is on says so in its name.
 - Focus is a visible 2px ring, never removed.

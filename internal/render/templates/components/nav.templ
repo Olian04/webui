@@ -16,7 +16,7 @@ type SidebarProps struct {
 }
 
 templ Sidebar(p SidebarProps) {
-	<aside class="sidebar">
+	<aside class="sidebar" id="sidebar">
 		if p.Home != "" {
 			<a class="side-brand" href={ p.Home } title={ p.Brand }>
 				@brandMark(p)
@@ -56,7 +56,7 @@ templ SidebarFooter() {
 // widens it again. It needs script, and its state is a browser preference, so it
 // lives in the footer with the other session switches.
 templ SidebarCollapse() {
-	<button class="side-row side-collapse" type="button" data-sidebar-toggle aria-expanded="true" title="Collapse sidebar">
+	<button class="side-row side-collapse" type="button" data-sidebar-toggle aria-expanded="true" aria-controls="sidebar" title="Collapse sidebar">
 		<span>Collapse</span>
 		@Icon(IconProps{Name: IconChevron, Class: "side-collapse-icon"})
 	</button>

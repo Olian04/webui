@@ -91,6 +91,10 @@ type fieldView struct {
 	// Attrs are attributes for the input that script reads, such as the mark of a phone number.
 	Attrs templ.Attributes
 
+	// Autofocus is whether the page opens with the focus on this control: it is the first that was refused, so that a person who is told that something is
+	// wrong is put at it, with the error read to them as what describes it.
+	Autofocus bool
+
 	// Phone is the country and the national number of an editable phone number, nil for any other field.
 	Phone *c.PhoneInputProps
 
@@ -105,6 +109,19 @@ type fieldView struct {
 // editable is whether the visitor can change a field: it has a Store, and the
 // form can be submitted by them. A form with no Submit, or whose Submit is refused
 // to the visitor, is only read.
+// firstInvalid is the label of the first field, in the order they are drawn, that was refused, "" when none was.
+func (v FormView) firstInvalid() string {
+	if len(v.Errors) == 0 {
+		return ""
+	}
+	for f := range ir.Leaves(v.Node.Fields) {
+		if v.Errors[f.Label] != "" {
+			return f.Label
+		}
+	}
+	return ""
+}
+
 func (v FormView) editable(f ir.Field) bool {
 	return f.Writable() && v.Node.Submit != nil && !v.SubmitRefused
 }
@@ -123,6 +140,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		Rules:     htmlRules(f, editable),
 	}
 	fv.Validity, fv.Title = validity(f, editable)
+	fv.Autofocus = editable && v.Errors[f.Label] != "" && v.firstInvalid() == f.Label
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
 	} else if f.Get != nil {

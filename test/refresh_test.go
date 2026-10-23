@@ -33,7 +33,7 @@ func TestAPanelWhoseLoadIsNotFinalSaysSoAndOnlyThatPanelDoes(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/s").Body.String()
 	assert.Equal(t, strings.Count(body, "data-refresh-after="), 1)
 	assert.Contains(t, body, `data-refresh-after="5"`)
-	assert.Contains(t, body, `<span class="refresh-js">Updating…</span>`)
+	assert.Contains(t, body, `<span class="refresh-js" data-refresh-state>Updating…</span>`)
 	assert.Contains(t, body, `<span class="refresh-nojs">Updating, reload in 5 s</span>`)
 	// It is the first table's panel that carries it, and the second has no say.
 	first := body[strings.Index(body, `data-leaf="p.0"`):]

@@ -512,6 +512,7 @@ a.side-brand:hover {
   background: none;
   border: 0;
   outline: none;
+  color: var(--text); /* typed text is not quiet text, though the box around it is */
   font-size: 13px;
 }
 .search input::placeholder {
@@ -1595,6 +1596,15 @@ td .multiline {
 .panel-foot .btn[hidden] {
   display: none;
 }
+/* The queue is out of sight and still there for a reader while it has nothing to show, which is what lets what is put in it be announced. */
+.upload-queue[data-quiet] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
 .upload-item {
   display: flex;
   flex-wrap: wrap;
@@ -1990,6 +2000,20 @@ select.input[multiple] option:checked {
   .toast-close {
     display: grid;
   }
+}
+/* With script the dismiss control is a button, and without it the label for a radio: each is shown only where it works. */
+button.toast-close {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+}
+html:not(.js) .toast-close-js,
+html.js .toast-close-nojs {
+  display: none;
+}
+html.js button.toast-close-js {
+  display: grid;
 }
 .toast-close:hover {
   background: var(--hover);
@@ -3146,4 +3170,23 @@ thead th .filter-pop a {
 }
 main:focus {
   outline: none; /* it takes the focus when the skip link is followed, to start reading from, and is not a control */
+}
+
+/* The pause of a panel that is asked for again on its own is a quiet link beside the words that say it is. */
+.refresh-pause {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--blue-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+button.file-thumb-chosen {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
 }

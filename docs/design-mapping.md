@@ -484,7 +484,7 @@ what the user typed, since a refusal did nothing and a reload may send it again.
 
 | Constructor | Accepted? | Visual |
 |---|---|---|
-| `Success(msg)` | yes | A toast with a green left border, 3.4s; none when `msg` is empty |
+| `Success(msg)` | yes | A toast with a green left border, dismissing itself after 8s; none when `msg` is empty |
 | `Warning(msg)` | yes | The same with an amber border: it was done, and the user should be aware of `msg` |
 | `Failure(msg)` | no | The form shown again with what was typed, and a toast with a red border saying `msg` |
 | `Reject(Field(...)...)` | no | The form shown again with what was typed, an invalid border + ring on each named field and its message beneath, and a "Not saved" toast |

@@ -114,7 +114,12 @@
 
     var list = element('ul', 'upload-queue');
     list.setAttribute('aria-live', 'polite');
-    list.hidden = true;
+    // The queue is a live region from the start, and is only out of sight while it has nothing to show: a region that appears with its content is not announced.
+    function quiet(on) {
+      if (on) list.setAttribute('data-quiet', '');
+      else list.removeAttribute('data-quiet');
+    }
+    quiet(true);
     (form.querySelector('.panel-body') || form).appendChild(list);
 
     var cancel = element('button', 'btn btn-ghost btn-sm', 'Cancel');
@@ -140,7 +145,7 @@
         rows.push(li);
         list.appendChild(li);
       });
-      list.hidden = !items.length || !multiple;
+      quiet(!items.length || !multiple);
       list._rows = rows;
     }
 
@@ -202,11 +207,17 @@
     });
 
     function busy(on) {
+      // The button that was pressed is disabled while files are sent, and a disabled button cannot hold the focus: it goes to the one that cancels, and back to
+      // the button when it is done, instead of to the page.
+      var focused = form.contains(document.activeElement);
+      var onCancel = document.activeElement === cancel;
       if (on) panel.setAttribute('aria-busy', 'true');
       else panel.removeAttribute('aria-busy');
       if (submit) submit.disabled = on;
       input.disabled = on;
       cancel.hidden = !on;
+      if (on && focused) cancel.focus();
+      else if (!on && (onCancel || document.activeElement === document.body)) (submit || input).focus();
     }
 
     // The outcome of a file: the server's list item, which is put in the file's row as it is, with its tone.
@@ -318,7 +329,7 @@
       e.preventDefault();
       if (running) return;
       stopped = false;
-      list.hidden = false;
+      quiet(false);
       var rows = list._rows;
       rows.forEach(function (li) {
         li.removeAttribute('data-tone');

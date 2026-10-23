@@ -131,6 +131,7 @@
       shown.textContent = '';
       clear.hidden = !file;
       input.classList.remove('invalid');
+      input.removeAttribute('aria-invalid');
       if (!file) {
         input.setCustomValidity('');
         return;
@@ -139,6 +140,7 @@
       input.setCustomValidity(said);
       if (said) {
         input.classList.add('invalid');
+        input.setAttribute('aria-invalid', 'true');
         input.reportValidity();
         return;
       }
@@ -155,9 +157,10 @@
           canvas.width = Math.max(1, Math.round(full.naturalWidth * ratio));
           canvas.height = Math.max(1, Math.round(full.naturalHeight * ratio));
           canvas.getContext('2d').drawImage(full, 0, 0, canvas.width, canvas.height);
-          var link = element('a', 'file-thumb-chosen');
-          link.href = '#';
+          var link = element('button', 'file-thumb-chosen');
+          link.type = 'button';
           link.title = 'Preview ' + file.name;
+          link.setAttribute('aria-label', 'Preview ' + file.name);
           var img = element('img', '');
           img.alt = '';
           img.src = canvas.toDataURL('image/png');

@@ -203,7 +203,7 @@ func TestAToastCanBeDismissedWithoutScript(t *testing.T) {
 	h := outcomeApp()
 	_, _, _, body := submitIP(h, "10.0.0.3")
 	// The button is a label for a hidden radio, in a group of its own.
-	assert.Contains(t, body, `<label class="toast-close" title="Dismiss"><input class="sr-only" type="radio" name="toast-0" aria-label="Dismiss">`)
+	assert.Contains(t, body, `<label class="toast-close toast-close-nojs" title="Dismiss"><input class="sr-only" type="radio" name="toast-0" aria-label="Dismiss">`)
 
 	// The stylesheet hides the toast whose radio is chosen: the markup and the rule
 	// are one mechanism, so a change to either has to keep both.

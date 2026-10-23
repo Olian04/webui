@@ -111,6 +111,9 @@ type InputProps struct {
 
 	// Help says that the field has a popover of help and rules beside its label, which describes the control.
 	Help bool
+
+	// Autofocus is the control that the page opens with the focus on: the first that was refused.
+	Autofocus bool
 	Rules       Rules
 
 	// Class is a class of the caller's own, besides the input's.
@@ -183,6 +186,7 @@ templ Input(p InputProps) {
 		if p.Invalid {
 			aria-invalid="true"
 		}
+		autofocus?={ p.Autofocus }
 		if d := describedBy(p.ID, p.Help, p.Invalid); d != "" {
 			aria-describedby={ d }
 		}
@@ -199,6 +203,7 @@ type PhoneInputProps struct {
 	Required         bool
 	Invalid          bool
 	Help             bool // as for an Input
+	Autofocus        bool // as for an Input
 	Countries        []PhoneCountry
 }
 
@@ -219,7 +224,7 @@ templ PhoneInput(p PhoneInputProps) {
 		</select>
 		@Input(InputProps{
 			ID: p.ID, Name: p.Name, Value: p.Value, Type: "tel", Placeholder: p.Placeholder, Invalid: p.Invalid,
-			Rules: Rules{Required: p.Required}, Help: p.Help, Autocomplete: "tel-national", Attrs: templ.Attributes{"inputmode": "tel"},
+			Rules: Rules{Required: p.Required}, Help: p.Help, Autofocus: p.Autofocus, Autocomplete: "tel-national", Attrs: templ.Attributes{"inputmode": "tel"},
 		})
 	</div>
 }
@@ -235,6 +240,9 @@ type FileInputProps struct {
 
 	// Help says that the field has a popover of help and rules beside its label, which describes the control.
 	Help bool
+
+	// Autofocus is the control that the page opens with the focus on: the first that was refused.
+	Autofocus bool
 
 	// Validity is what the browser says for each way the value can fail a constraint (see InputProps).
 	Validity templ.Attributes
@@ -309,7 +317,8 @@ templ FileInput(p FileInputProps) {
 			if p.Invalid {
 				aria-invalid="true"
 			}
-			if d := describedBy(p.ID, p.Help, p.Invalid); d != "" {
+			autofocus?={ p.Autofocus }
+		if d := describedBy(p.ID, p.Help, p.Invalid); d != "" {
 				aria-describedby={ d }
 			}
 			{ p.Attrs... }
@@ -328,6 +337,9 @@ type TextareaProps struct {
 
 	// Help says that the field has a popover of help and rules beside its label, which describes the control.
 	Help bool
+
+	// Autofocus is the control that the page opens with the focus on: the first that was refused.
+	Autofocus bool
 	Rules       Rules
 
 	// Validity is as for an Input.
@@ -358,6 +370,7 @@ templ Textarea(p TextareaProps) {
 		if p.Invalid {
 			aria-invalid="true"
 		}
+		autofocus?={ p.Autofocus }
 		if d := describedBy(p.ID, p.Help, p.Invalid); d != "" {
 			aria-describedby={ d }
 		}
@@ -389,6 +402,9 @@ type SelectProps struct {
 
 	// Help says that the field has a popover of help and rules beside its label, which describes the control.
 	Help bool
+
+	// Autofocus is the control that the page opens with the focus on: the first that was refused.
+	Autofocus bool
 	Validity templ.Attributes // as for an Input
 }
 
@@ -416,6 +432,7 @@ templ Select(p SelectProps) {
 		if p.Invalid {
 			aria-invalid="true"
 		}
+		autofocus?={ p.Autofocus }
 		if d := describedBy(p.ID, p.Help, p.Invalid); d != "" {
 			aria-describedby={ d }
 		}
