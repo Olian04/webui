@@ -47,12 +47,12 @@ func TestTheStatusBarSaysHowThePageCameToBe(t *testing.T) {
 	// The badge for a page that was not built for the request is there for the script to show.
 	assert.Contains(t, body, `data-stale hidden`)
 
-	// The browser's own tools get the same time, and a panel fetched again says when it was built.
+	// The browser's own tools get the time too, in the standard header, and there is no header of the framework's for it.
 	assert.True(t, regexp.MustCompile(`^build;dur=\d+(\.\d)?$`).MatchString(rec.Header().Get("Server-Timing")))
-	assert.Equal(t, rec.Header().Get("X-Webui-Built"), built.Format(time.RFC3339Nano))
+	assert.Equal(t, rec.Header().Get("X-Webui-Built"), "")
 }
 
-func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInItsHeaders(t *testing.T) {
+func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInElementsThatFollowIt(t *testing.T) {
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/s", nil)
@@ -60,8 +60,16 @@ func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInItsHeaders(t *testing.T) {
 	rec := httptest.NewRecorder()
 	statusApp().ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
-	_, err := time.Parse(time.RFC3339Nano, rec.Header().Get("X-Webui-Built"))
-	assert.NoError(t, err)
+	body := rec.Body.String()
+	assert.Equal(t, rec.Header().Get("X-Webui-Built"), "")
 	assert.True(t, strings.HasPrefix(rec.Header().Get("Server-Timing"), "build;dur="))
-	assert.False(t, strings.Contains(rec.Body.String(), "statusbar")) // a panel is not the page
+	assert.False(t, strings.Contains(body, "statusbar")) // a panel is not the page
+	// It is followed by the two elements of the bar that it says, each with what it replaces.
+	oob := body[strings.Index(body, "<div hidden data-oob>"):]
+	assert.True(t, regexp.MustCompile(`data-build data-replaces="\[data-build\]"[^>]*>\d+(\.\d)? ms<`).MatchString(oob))
+	m := regexp.MustCompile(`data-built data-replaces="\[data-built\]" datetime="([^"]+)"`).FindStringSubmatch(oob)
+	assert.NotNil(t, m)
+	_, err := time.Parse(time.RFC3339Nano, m[1])
+	assert.NoError(t, err)
+	assert.True(t, strings.Index(body, "<div hidden data-oob>") > strings.Index(body, `data-leaf="p"`)) // after the panel, which is what the script puts in its place
 }

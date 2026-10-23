@@ -228,7 +228,7 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 
 func (r *Renderer) pager(v TableView) c.PagerProps {
 	prev, next := r.pagerLinks(v)
-	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v)}
+	p := c.PagerProps{Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v), ExportNote: exportNote(v)}
 	if v.Total < 0 {
 		p.Size = len(v.Rows) // the range ends at the last row there is
 		if len(v.Rows) == 0 {
@@ -236,6 +236,27 @@ func (r *Renderer) pager(v TableView) c.PagerProps {
 		}
 	}
 	return p
+}
+
+// ExportCap is how many rows an export has at most: a download is built in memory, so there is an end to it.
+const ExportCap = 100_000
+
+// exportNote is what the footer says beside the export links when the download may not have every row: the table has more than
+// ExportCap, or does not say how many it has. It is "" when the whole table fits.
+func exportNote(v TableView) string {
+	if v.Total >= 0 && v.Total <= ExportCap {
+		return ""
+	}
+	return "cut at " + thousands(ExportCap) + " rows"
+}
+
+// thousands is n with a comma between each three digits: 100000 is "100,000".
+func thousands(n int) string {
+	s := strconv.Itoa(n)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
 }
 
 // exportLinks are the links that download a table, for its footer: its sort and filters are kept,

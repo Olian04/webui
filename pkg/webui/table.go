@@ -161,10 +161,9 @@ type Table[M any] struct {
 	// Rows exports every row. A Load table is asked for them a batch at a time, from
 	// Offset 0, until it returns an empty window or the Total is reached, and a Feed is
 	// followed from its first page to its last, so a source that pages must not repeat rows
-	// when it is asked for the next. An export is cut at 100,000 rows, and the response
-	// says so in the header X-Webui-Export-Truncated, with the number of rows in the file; so does an
-	// export that stopped because the source hands out the same batch again, as one that ignores Offset
-	// does when it has no Total. It runs the page's Guard, as any
+	// when it is asked for the next. An export is cut at 100,000 rows, and the footer of a table that may have more says so beside the export links
+	// (when its Total is more than that, or is not known). An export also stops when the source hands out the same batch again, as one
+	// that ignores Offset does when it has no Total, which is logged. It runs the page's Guard, as any
 	// request for the page does.
 	//
 	// A CSV cell is the text the table shows, except that a number is written as a number,

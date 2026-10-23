@@ -19,6 +19,7 @@ import (
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/render"
 )
 
 const (
@@ -27,15 +28,11 @@ const (
 	exportBatch = 500
 
 	// maxExportRows bounds an export. It is a download of a table that is too large to list, so
-	// there has to be an end to it; the response says when it was cut.
-	maxExportRows = 100_000
+	// there has to be an end to it; the footer of a table that may have more rows than this says so, beside its export links.
+	maxExportRows = render.ExportCap
 
 	// exportTimeout bounds the whole export, which is many requests to a source.
 	exportTimeout = 60 * time.Second
-
-	// exportTruncatedHeader is set on an export that may be incomplete, to the number of rows in it: it
-	// was cut at maxExportRows, or stopped at a source that repeats itself.
-	exportTruncatedHeader = "X-Webui-Export-Truncated"
 )
 
 // exportFormats are the files a table can be downloaded as, by the value of its export parameter.
@@ -87,7 +84,7 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 		return
 	}
 	if truncated {
-		p.log.Warn("webui: a table export was cut", "page", page.PathTemplate, "table", n.ID, "rows", maxExportRows)
+		p.log.Warn("webui: a table export was cut", "page", page.PathTemplate, "table", n.ID, "rows", len(rows))
 	}
 
 	p.m.Export(page.PathTemplate, format)
@@ -97,9 +94,6 @@ func (p *Program) export(w http.ResponseWriter, r *http.Request, page *ir.Page, 
 	// The file is named for the table in the address, or "table".
 	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": cmp.Or(n.ID, "table") + kind.ext}))
 	h.Set("Cache-Control", "no-store")
-	if truncated {
-		h.Set(exportTruncatedHeader, strconv.Itoa(len(rows)))
-	}
 	_, _ = w.Write(kind.encode(n.Columns, rows)) //nolint:gosec // G705: rows written as CSV or JSON, with a download content type, never HTML.
 }
 

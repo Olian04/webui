@@ -51,11 +51,6 @@ func securedFor(policy string, log *slog.Logger, next http.Handler) http.Handler
 // build the page that answers it.
 type startedKey struct{}
 
-// BuiltHeader is when a response's HTML was built, as the page's script reads it for the status
-// bar of a panel that was fetched again. Date says when the response was sent and is the
-// second's, so it is not the one.
-const BuiltHeader = "X-Webui-Built"
-
 // startedAt is when the request arrived.
 func startedAt(r *http.Request) time.Time {
 	if started, ok := r.Context().Value(startedKey{}).(time.Time); ok {
@@ -64,16 +59,14 @@ func startedAt(r *http.Request) time.Time {
 	return time.Now()
 }
 
-// timing stamps a response with when its HTML was built and how long that took from the
-// request's arrival, for the status bar and, as Server-Timing, for the browser's own tools. It
-// returns both, so a full page can say them too.
+// timing stamps a response with how long it took to build from the request's arrival, as Server-Timing, for the browser's own tools. It
+// returns that and when it was built, so that the status bar can say both in the HTML: a full page in its bar, a panel in an element
+// that follows it (see render.StatusUpdate).
 func timing(w http.ResponseWriter, r *http.Request) (built time.Time, took time.Duration) {
 	built = time.Now().UTC()
 	if started, ok := r.Context().Value(startedKey{}).(time.Time); ok {
 		took = built.Sub(started)
 	}
-	h := w.Header()
-	h.Set("Server-Timing", "build;dur="+strconv.FormatFloat(float64(took.Microseconds())/1000, 'f', 1, 64))
-	h.Set(BuiltHeader, built.Format(time.RFC3339Nano))
+	w.Header().Set("Server-Timing", "build;dur="+strconv.FormatFloat(float64(took.Microseconds())/1000, 'f', 1, 64))
 	return built, took
 }
