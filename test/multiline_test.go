@@ -128,7 +128,4 @@ func TestAMultilineStringIsCheckedWhenTheAppCompiles(t *testing.T) {
 		Rules: webui.StringRules{Pattern: &webui.PatternRule{Expr: `[a-z]+`}}})), "is Multiline and has a Pattern")
 	assert.Contains(t, problems(form(webui.String[note]{Label: "Body", Multiline: true, Load: load, Store: store,
 		Rules: webui.StringRules{Contains: "x"}})), "is Multiline and has a text rule")
-	assert.Contains(t, problems(webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{
-		webui.String[webui.NoArgs]{Label: "Body", Multiline: true, Load: func(webui.NoArgs) string { return "" }, Store: func(*webui.NoArgs, string) {}},
-	}}), "is Multiline in a toolbar")
 }

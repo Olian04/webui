@@ -91,8 +91,9 @@ does, and they let you design before you look up names.
 - **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: a `File` in a form is held in memory for the request and `Store` is handed it
   to copy, a file too large for that is a `FileUpload` panel whose `Receive` action reads it as a stream, and `Load` says what is kept. Do not
   look for a place in the library to put them, or to serve them from.
-- **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, not a panel, and it shows values and does not take input: a page
-  whose arguments the visitor sets is a `Form`.
+- **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, not a panel, with no type parameter: its buttons are
+  `Action[webui.NoArgs]` and `Link[webui.NoArgs, B]` (the page's arguments come from `webui.ArgsOf(ctx)`), and its values are a read-only `Form` of
+  a model that it loads, which may return `webui.Ready().RefreshAfter(d)` to have the toolbar asked for again. A toolbar takes no input: that is a `Form` panel.
 
 ## How to build an app
 

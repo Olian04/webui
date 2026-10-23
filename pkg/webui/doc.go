@@ -139,7 +139,7 @@
 //
 // A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
 // [Markdown] are leaves; they load their own data and refresh on their own, a
-// [Toolbar] is a leaf that is a row of controls, and a [FileUpload] is a leaf that is a
+// [Toolbar] is a leaf that is a row of controls and the values of its forms, and a [FileUpload] is a leaf that is a
 // panel for sending one large file. [Stack], [Split] and [Tabs] arrange
 // other bodies and nest:
 //
@@ -353,17 +353,18 @@
 //
 // A [Toolbar] is a row of controls for the page it is on, such as "Create device" above
 // a list of devices. It is not a panel, so it has no frame, and it sits on the page in
-// a [Stack] with what it is for. Its type is the page's argument type, and everything
-// in it is about the page's arguments as they are for the request:
+// a [Stack] with what it is for. It has no type parameter, because it has no model of its
+// own: its buttons are about the page, which they read from the request with [ArgsOf], and
+// what it shows is in its [Form]s, each of which loads a model of its own:
 //
 //	Body: webui.Stack{
-//		webui.Toolbar[DevicesArgs]{
-//			Left: []webui.ToolbarItem[DevicesArgs]{
-//				webui.Link[DevicesArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: newDeviceArgs},
-//				webui.Action[DevicesArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
+//		webui.Toolbar{
+//			Left: []webui.ToolbarItem{
+//				webui.Link[webui.NoArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: newDeviceArgs},
+//				webui.Action[webui.NoArgs]{Label: "Sync now", Guard: canEdit, Run: syncNow},
 //			},
-//			Right: []webui.ToolbarItem[DevicesArgs]{
-//				webui.Select[DevicesArgs]{Label: "Site", Load: loadSite, Options: sites},
+//			Right: []webui.ToolbarItem{
+//				webui.Form[Health]{Title: "Collector", Load: loadHealth, Fields: []webui.Accessor[Health]{Status, Queue}},
 //			},
 //		},
 //		DevicesTable,
@@ -374,24 +375,27 @@
 // no longer room for them all in a row, they flow from the left in rows, as one group,
 // the Left ones first.
 //
-// An [Action] is a button that posts, and its Run is handed the page's arguments and
-// says how it ended with an [Outcome], as any action does. Its Guard decides whether
-// the visitor may, and the same check draws the button or leaves it out, and refuses
-// the request (see Controls that a visitor may not use). A [Link] is a button that goes
-// to another page, with a Label and a Role, built from the page's arguments; it is a
-// real link, so it works in a new tab and with a keyboard, and it is left out for a
-// visitor whom the page it leads to refuses. A toolbar whose controls are all left out
-// is not drawn.
+// An [Action] of [NoArgs] is a button that posts, and its Run says how it ended with an
+// [Outcome], as any action does. It has no subject: a toolbar has no model to give it, and an
+// Action or a [Link] of anything else does not compile. Its Guard decides whether the visitor
+// may, and the same check draws the button or leaves it out, and refuses the request (see
+// Controls that a visitor may not use). A [Link] of [NoArgs] is a button that goes to another
+// page, with a Label and a Role, built from the request; it is a real link, so it works in a
+// new tab and with a keyboard, and it is left out for a visitor whom the page it leads to
+// refuses. A toolbar whose controls are all left out is not drawn.
 //
-// An accessor is a value of the page's arguments, shown read-only: its Label and what
-// its Load reads from them, as a read-only form field or a table cell shows it (a
-// [Select] as its badges, a number with its Format, a [Bool] as Yes or No, a dash when
-// there is nothing). A Store on it is ignored, as it is in a table, so one accessor
-// serves a form, a table and a toolbar (a [File] and a [Group] are the exceptions, and
-// are not toolbar items). A toolbar has no inputs, and no form of its own: nothing in
-// it changes the page's arguments, and a toolbar of links and values has nothing to
-// submit. A page whose arguments the visitor sets is for a [Form], or for [Link]s to
-// the page with other arguments.
+// A [Form] is a group of values, read-only: the model its Load returns, shown as its fields'
+// labels and values in a row, as a read-only form field or a table cell shows them (a [Select]
+// as its badges, a number with its Format, a [Bool] as Yes or No, a dash when there is nothing),
+// under its Title, which names the group. The accessors are the ones a form panel uses, and a
+// Store on one is ignored, as it is in a table. A Form in a toolbar has no Submit, Desc or
+// Help, and no field that is multiline, secret or a file: a toolbar has no inputs, and a Form
+// panel is for editing. Several Forms of different models may share a toolbar, and a Form
+// whose Load fails says so in its place and leaves the rest of the toolbar as it was.
+//
+// The toolbar is the leaf that refreshes, as any panel is: a Form whose Load returns
+// [Loaded.RefreshAfter] has the whole toolbar asked for again (see Following a job), after the
+// shortest delay of its Forms.
 //
 // # Tables
 //

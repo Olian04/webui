@@ -42,8 +42,8 @@ func refusalApp(log *slog.Logger) http.Handler {
 		},
 		Body: webui.Stack{
 			// Something that posts, so that the page has a POST to refuse.
-			webui.Toolbar[recordArgs]{Left: []webui.ToolbarItem[recordArgs]{
-				webui.Action[recordArgs]{Label: "Close", Run: func(context.Context, recordArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }},
+			webui.Toolbar{Left: []webui.ToolbarItem{
+				webui.Action[webui.NoArgs]{Label: "Close", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 			}},
 			webui.Table[Device]{
 				Title: "Events",

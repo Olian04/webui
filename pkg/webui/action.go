@@ -101,8 +101,10 @@ func (Action[M]) toolbarItem(M) {}
 
 func (a Action[M]) validateButton(v *bodyValidator, at string) { validateAction(v, at, a, true) }
 
+// toolbarButton is a toolbar's button: it has no subject, so what the runtime hands over is ignored, and the action is done to the zero M, which is
+// NoArgs, the only subject that a toolbar's item can have.
 func (a Action[M]) toolbarButton() ir.ToolbarItem {
-	return ir.ToolbarItem{Label: a.Label, Role: ir.Role(a.Role), Action: lowerAction(a)}
+	return ir.ToolbarItem{Label: a.Label, Role: ir.Role(a.Role), Action: lowerActionWith[M, M](a, func(any) M { var none M; return none })}
 }
 
 func lowerAction[M any](a Action[M]) *ir.Action {

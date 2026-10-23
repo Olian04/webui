@@ -34,7 +34,7 @@ type Link[M, A any] struct {
 	// Page is the destination: a [Page] with arguments A, or its [PageID].
 	Page PageRef[A]
 
-	// Args builds the destination's arguments from a row, or, in a [Toolbar], from the page's arguments.
+	// Args builds the destination's arguments from a row, or, in a [Toolbar], from the request, where the page's are [ArgsOf]: a toolbar's link has no subject, and is a Link of [NoArgs].
 	Args func(ctx context.Context, m M) A
 
 	// Label and Role are the button's text and style, in a [Toolbar], where a link is a button. A table's
@@ -80,8 +80,11 @@ func (l Link[M, A]) validateButton(v *bodyValidator, at string) {
 	l.validateRow(v)
 }
 
+// toolbarButton is a toolbar's link: its Args are built with no subject, so what the runtime hands over is ignored, and the zero M, which is NoArgs,
+// is what they are given.
 func (l Link[M, A]) toolbarButton() ir.ToolbarItem {
 	link, _ := l.lowerRow()
+	link.Args = func(ctx context.Context, _ any) any { var none M; return l.Args(ctx, none) }
 	return ir.ToolbarItem{Label: l.Label, Role: ir.Role(l.Role), Link: link}
 }
 

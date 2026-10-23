@@ -43,7 +43,7 @@ func confirmApp(confirm string, guard func(context.Context, parcel) error) (http
 		Fields: []webui.Accessor[parcel]{parcelName},
 		Submit: webui.Action[parcel]{Label: "Save", Confirm: confirm, Run: done("form")},
 	}
-	bar := webui.Toolbar[webui.NoArgs]{Left: []webui.ToolbarItem[webui.NoArgs]{webui.Action[webui.NoArgs]{
+	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{
 		Label: "Sync", Confirm: confirm,
 		Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
 			ran["toolbar"]++

@@ -1425,7 +1425,16 @@ html:not(.js) .actionbar .dim {
 .toolbar > form {
   display: contents;
 }
-/* A value of the page's arguments, read: its label and what it is. */
+/* The values of one form of the toolbar are a group of their own, in the row as if each were an item of it: the gaps are the toolbar's, and the group
+   wraps within itself when it is wider than the row. */
+.toolbar-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  min-width: 0;
+}
+/* A value of a model that the toolbar loaded, read: its label and what it is. */
 .toolbar-value {
   display: inline-flex;
   align-items: center;
@@ -1441,6 +1450,9 @@ html:not(.js) .actionbar .dim {
 }
 .toolbar-val {
   color: var(--text);
+}
+.toolbar-val.bad {
+  color: var(--red);
 }
 /* The left controls and the right ones are one row with a gap between them that takes what is left over, so the right ones
    are at the right edge. When there is no room for them all in a row (script says so, with .wrapped), the gap is gone and

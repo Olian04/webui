@@ -618,7 +618,7 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
 		}
 	} else if v.drawn() {
-		<div class="toolbar" data-toolbar>
+		<div class="toolbar" data-toolbar data-leaf={ LeafID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
 			if v.hasActions() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
 					<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
@@ -627,6 +627,7 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 			} else {
 				@r.toolbarItems(v)
 			}
+			@c.RefreshNote(ctx)
 		</div>
 	}
 }
@@ -648,23 +649,47 @@ templ (r *Renderer) toolbarItems(v ToolbarView) {
 				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
 					{ it.Label }
 				}
-			case it.Field != nil:
-				{{ shown := it.Field.Shown(ctx, v.Args) }}
+			case it.Form != nil:
+				@r.toolbarForm(it.Form, v.form(i))
+		}
+	}
+}
+
+// toolbarForm is the values of one model of a toolbar, read-only, in a group that its Title names: each is its label and what the accessor
+// reads from the model, as a read-only form field shows it. A model that could not be loaded is its Title and that, or the refusal's words,
+// and the rest of the toolbar is as it was.
+templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
+	<span class="toolbar-form" role="group" aria-label={ f.Title }>
+		if loaded.Failed {
+			<span class="toolbar-value">
+				<span class="toolbar-lbl">{ f.Title }</span>
+				<span class="toolbar-val bad">
+					if loaded.Refusal != nil {
+						{ loaded.Refusal.Message }
+					} else {
+						Could not load
+					}
+				</span>
+			</span>
+		} else {
+			for field := range ir.Leaves(f.Fields) {
+				{{ shown := field.Shown(ctx, loaded.Model) }}
 				<span class="toolbar-value">
-					<span class="toolbar-lbl">{ it.Field.Label }</span>
-					if it.Field.Help != "" {
-						@c.InfoTip(c.InfoTipProps{Help: it.Field.Help})
+					<span class="toolbar-lbl">{ field.Label }</span>
+					if field.Help != "" {
+						@c.InfoTip(c.InfoTipProps{Help: field.Help})
 					}
 					<span class="toolbar-val">
 						if shown == "" {
 							@dash()
 						} else {
-							@value(*it.Field, shown, v.Args)
+							@value(field, shown, loaded.Model)
 						}
 					</span>
 				</span>
+			}
 		}
-	}
+	</span>
 }
 
 // FileUpload is a panel for sending one file, of any size, to the app. It is a form of its own, which posts to the page: the leaf comes first, so that
