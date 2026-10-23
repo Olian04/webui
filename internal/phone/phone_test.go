@@ -1,7 +1,6 @@
 package phone
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -39,7 +38,7 @@ func TestWhatCanBeAPhoneNumber(t *testing.T) {
 	}
 }
 
-func TestEveryCountryIsDescribedOnceAndTheScriptCanReadThemAll(t *testing.T) {
+func TestEveryCountryIsDescribedOnce(t *testing.T) {
 	t.Parallel()
 
 	seen := map[string]bool{}
@@ -66,8 +65,78 @@ func TestEveryCountryIsDescribedOnceAndTheScriptCanReadThemAll(t *testing.T) {
 		}
 	}
 	assert.True(t, Known("SE") && Known("US") && !Known("ZZ") && !Known("se"))
+}
 
-	var read []map[string]any
-	assert.NoError(t, json.Unmarshal(JSON(), &read))
-	assert.Equal(t, len(read), len(All()))
+func TestANumberIsOfTheCountryWhoseCodeIsTheLongestThatItStartsWith(t *testing.T) {
+	t.Parallel()
+
+	for digits, iso := range map[string]string{"46701234567": "SE", "358401234567": "FI", "14155552671": "US", "4915123456789": "DE"} {
+		c, ok := CountryOf(digits)
+		assert.True(t, ok)
+		assert.Equal(t, c.ISO, iso)
+	}
+	_, ok := CountryOf("0701234567")
+	assert.False(t, ok)
+	_, ok = CountryOf("")
+	assert.False(t, ok)
+
+	c, national, ok := Split("+46 70 123 45 67")
+	assert.True(t, ok)
+	assert.Equal(t, [2]string{c.ISO, national}, [2]string{"SE", "701234567"})
+	_, _, ok = Split("070 123 45 67")
+	assert.False(t, ok)
+	_, _, ok = Split("+46 70 123 x12")
+	assert.False(t, ok)
+}
+
+func TestADigitsOfANationalNumberAreSpacedAsTheCountryHasThem(t *testing.T) {
+	t.Parallel()
+
+	se, _ := ByISO("SE")
+	assert.Equal(t, Spaced(se, "701234567"), "70 123 45 67")
+	assert.Equal(t, Spaced(se, "7012"), "70 12")
+	assert.Equal(t, Spaced(se, ""), "")
+	assert.Equal(t, Spaced(se, "70123456789"), "70 123 45 67 89") // the rest is one group
+	af, _ := ByISO("AF")                                          // no groups known: threes, and no lone digit at the end
+	assert.Equal(t, Spaced(af, "7012345"), "701 234 5"[:0]+"701 2345")
+	assert.Equal(t, Spaced(af, "701234"), "701 234")
+}
+
+func TestACountryAndANationalNumberMakeAnE164NumberAsTheNationalFormatAllows(t *testing.T) {
+	t.Parallel()
+
+	for _, c := range []struct{ iso, in, want string }{
+		{"SE", "070 123 45 67", "+46701234567"}, // the trunk 0 is dropped
+		{"SE", "70 123 45 67", "+46701234567"},
+		{"SE", "(070) 123-45.67", "+46701234567"},
+		{"US", "415 555 2671", "+14155552671"},           // a country with no trunk 0 keeps a 0 that it has
+		{"SE", "+49 151 2345 6789", "+49 151 2345 6789"}, // a whole number has its own code, whatever was chosen
+		{"", "070 123 45 67", "070 123 45 67"},           // no country: as typed
+		{"ZZ", "070 123 45 67", "070 123 45 67"},         // a country that is not one
+		{"SE", "070 123 x12", "070 123 x12"},             // an extension is not composed, and is held to the rules as it is
+		{"SE", "call me", "call me"},
+		{"SE", "   ", ""},
+		{"SE", "---", "---"},
+	} {
+		assert.Equal(t, Compose(c.iso, c.in), c.want)
+	}
+}
+
+func TestACountryIsFoundInTheLanguagesOfTheVisitor(t *testing.T) {
+	t.Parallel()
+
+	for header, want := range map[string]string{
+		"sv-SE,sv;q=0.9,en;q=0.8": "SE",
+		"en-US,en;q=0.9":          "US",
+		"en;q=0.8, de-DE;q=0.9":   "DE", // the likelier first
+		"en, fr-ZZ, nb-NO":        "NO", // a region that is not in the list is passed over
+		"en":                      "",
+		"":                        "",
+		"zh-Hans-CN":              "CN",
+		"pt_BR":                   "BR",
+		"*":                       "",
+		"en-US;q=oops":            "US",
+	} {
+		assert.Equal(t, FromLanguages(header), want)
+	}
 }

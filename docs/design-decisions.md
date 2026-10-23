@@ -288,20 +288,26 @@ design element.
   `ColorPicker`. A phone number is checked only for being digits and the punctuation of one, since there is no grammar for them.
   A color picker cannot be empty, so an empty `Load` shows black.
 
-- **With script, a phone number is a country and a national number.** The input is the one `type="tel"` it is without script;
-  script, in a file of its own that only a page that edits a number links, puts a selector of the calling code in front of it,
-  spaces the national number as it is typed, and sends E.164 in a hidden input that has the field's name, which the server stores
-  as it is (a number written with a code is normalised to the same form with no script too). E.164 was chosen over keeping the
-  spaces: one number then has one form, so it can be compared, searched and dialled, and the spacing is only how it is shown.
+- **A phone number is a country and a national number, in the HTML.** The server draws the selector of the calling code and the
+  `type="tel"` input that holds the national number, and composes the number from the two when they are posted (`<name>.cc` and
+  `<name>`); E.164 is stored, with no spaces. The script, in a file of its own that only a page that edits a number links, only spaces
+  the digits as they are typed, by the grouping that the chosen option says; it builds nothing, holds no list of countries, has no hidden
+  input, and does not guess a country. E.164 was chosen over keeping the spaces: one number then has one form, so it can be compared,
+  searched and dialled, and the spacing is only how it is shown. This is the hypermedia audit's finding of the one script that built a
+  control from data and decided what was sent. The costs: about 250 `<option>`s in the HTML of each page that edits a number, where it
+  was one blob that the browser cached with the script; the visitor's country is guessed from `Accept-Language`, by the server, which
+  makes the page vary on it, and is the region of the language and not where the visitor is; the example that the empty input showed
+  for the country chosen is dropped (a field's own `Placeholder` stays); and a number pasted whole with its `+` is read by the server,
+  and not moved into the selector by script.
 - **The grouping of a phone number is data, and approximate.** The spacing is data, not code: groupings for about twenty
   countries where the national format is known, and threes for the rest, which is approximate and says so; `libphonenumber`
   metadata would be right for every country and is 80 to 150 kB and a licence to carry. The countries are a Go table,
-  `internal/phone`, which is also what the server validates `DefaultCountry` with and what the script is given (as the first
-  line of `phone.js`, generated with it), so what the script offers is what the server accepts. The costs: the numbering plan of
+  `internal/phone`, which is also what the server validates `DefaultCountry` with and what the options of the selector are drawn
+  from, so what is offered is what the server accepts. The costs: the numbering plan of
   `+1` has more countries than the US and Canada, which are not listed (a number of one of them is typed as `+1 242 …`, and is
   still the right number); a number that is already stored without a code, or with an extension, is not split, since doing so
   would change it, and stays the plain input until it is cleared; and the length and pattern rules of the field are not the
-  browser's with script, because what is typed there is the national part and the rule is about the number that is sent: the
+  browser's, because what is typed there is the national part and the rule is about the number that is sent: the
   server holds it to them, in a page that says so beneath the field.
 
 - **`DateOnly` makes a moment a day.** A date and time picker asks for a time of day that a date of birth, a renewal or a deadline

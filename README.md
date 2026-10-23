@@ -223,7 +223,7 @@ This half is for people changing the library.
 | `internal/runtime`    | The compiled app: routes, the request pipeline (a slow page is streamed in order), actions (an accepted one is redirected, a refused form is answered with the page and a 422), flash, search, export, and `Open`.                      |
 | `internal/render`     | The IR and loaded data as HTML, and the assets. `templates/components` is the component library.                                                                             |
 | `internal/favicon`    | Scales `Brand.Logo` into the favicons, and an image into a thumbnail for `webui.Thumbnail`.                                                                                  |
-| `internal/phone`      | Countries, calling codes, how a national number is spaced, and E.164; the data of the phone script is made from it.                                                          |
+| `internal/phone`      | Countries, calling codes, how a national number is spaced, and E.164; the options of a phone field's selector are drawn from it.                                                          |
 | `internal/editorctx`  | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service.                                                                  |
 | `internal/convert`    | List conversions between the declaration, the IR and the response.                                                                                                           |
 | `internal/assetserve` | Serves the files that never change: a hash in the name, a year's cache, compression and 304.                                                                                 |

@@ -20,7 +20,7 @@ type submission struct {
 // form loads a form leaf and builds its view. sub is nil on a plain GET.
 // A failed Load fails that panel, not the page.
 func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.Form, sub *submission) templ.Component {
-	view := render.FormView{Node: n, Page: page}
+	view := render.FormView{Node: n, Page: page, Languages: req.Languages}
 	// A select that reads its options has them as they are for this request. A source that fails fails the panel.
 	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) })
 	if err != nil {

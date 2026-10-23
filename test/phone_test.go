@@ -3,10 +3,12 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -40,26 +42,70 @@ func TestAPhoneIsStoredAsE164WhenItHasACountryCodeAndAsTypedWhenItHasNone(t *tes
 	}
 }
 
-func TestAnEditablePhoneIsMarkedForScriptAndItsPageLinksTheScriptThatSplitsIt(t *testing.T) {
+// selectedCountry is the ISO code of the option of a phone's selector that the page says is selected, "" for none.
+func selectedCountry(body string) string {
+	m := regexp.MustCompile(`<option value="([A-Z]{2})"[^>]*selected`).FindStringSubmatch(body)
+	if m == nil {
+		return ""
+	}
+	return m[1]
+}
+
+func TestAnEditablePhoneIsASelectorOfCountriesAndAnInputInTheHTMLAndItsPageLinksTheScriptThatSpacesIt(t *testing.T) {
 	t.Parallel()
 
 	h, _ := phoneForm("SE")
 	body := serve(h, http.MethodGet, "/admin/c").Body.String()
+	assert.Contains(t, body, `<div class="phone" data-phone>`)
+	assert.Contains(t, body, `<select class="input phone-cc" name="f0.cc" aria-label="Country calling code">`)
+	assert.Contains(t, body, `<option value="SE" data-code="46" data-groups="2,3,2,2" data-trunk selected>+46 Sweden</option>`)
+	assert.Equal(t, strings.Count(body, "<option value="), len(phone.All())+1) // every country, and none
+	assert.Equal(t, selectedCountry(body), "SE")
 	assert.Contains(t, body, `name="f0" type="tel" value=""`)
-	assert.Contains(t, body, ` data-country="SE" data-phone>`)
+	assert.Contains(t, body, `autocomplete="tel-national"`)
+	assert.Contains(t, body, `inputmode="tel"`)
 	script := regexp.MustCompile(`src="(/admin/_webui/phone\.[0-9a-f]+\.js)"`).FindStringSubmatch(body)
 	assert.Equal(t, len(script), 2)
 
-	// Without a default country the input says only that it is a phone.
-	none, _ := phoneForm("")
-	assert.False(t, strings.Contains(serve(none, http.MethodGet, "/admin/c").Body.String(), "data-country"))
+	// What is stored shows as the national number of its country, and a number with no country of its own as it was typed.
+	held, _ := contactApp(contact{Phone: "+46701234567"}, contactPhone)
+	body = serve(held, http.MethodGet, "/admin/c").Body.String()
+	assert.Equal(t, selectedCountry(body), "SE")
+	assert.Contains(t, body, `value="70 123 45 67"`)
+	typed, _ := contactApp(contact{Phone: "070-123 45 67"}, contactPhone)
+	body = serve(typed, http.MethodGet, "/admin/c").Body.String()
+	assert.Equal(t, selectedCountry(body), "")
+	assert.Contains(t, body, `value="070-123 45 67"`)
 
-	// The script is the countries of the server, then the script.
+	// With no country of the field the visitor's languages choose, the likeliest first, and with none of them there is none.
+	none, _ := phoneForm("")
+	lang := func(header string) string {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/admin/c", nil)
+		if header != "" {
+			req.Header.Set("Accept-Language", header)
+		}
+		none.ServeHTTP(rec, req)
+		assert.Contains(t, strings.Join(rec.Header().Values("Vary"), ","), "Accept-Language")
+		return selectedCountry(rec.Body.String())
+	}
+	assert.Equal(t, lang("sv-SE,sv;q=0.9,en;q=0.8"), "SE")
+	assert.Equal(t, lang("en;q=0.5, de-DE;q=0.9"), "DE")
+	assert.Equal(t, lang("en"), "")
+	assert.Equal(t, lang(""), "")
+	// The field's own country is not the visitor's to change.
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/admin/c", nil)
+	req.Header.Set("Accept-Language", "de-DE")
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, selectedCountry(rec.Body.String()), "SE")
+
+	// The script no longer carries the countries, nor builds anything: they are the page's.
 	js := serve(h, http.MethodGet, script[1])
 	assert.Equal(t, js.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(js.Body.String(), `self.webuiPhoneCountries=[{"i":"AF","n":"Afghanistan","c":"93"}`))
-	assert.Contains(t, js.Body.String(), `{"i":"SE","n":"Sweden","c":"46","g":[2,3,2,2],"t":1}`)
-	assert.Contains(t, js.Body.String(), "A phone number, edited with script")
+	assert.False(t, strings.Contains(js.Body.String(), "webuiPhoneCountries"))
+	assert.False(t, strings.Contains(js.Body.String(), "createElement"))
+	assert.Contains(t, js.Body.String(), "data-groups")
 
 	// A page with no phone to edit does not link it, and neither does one whose phone is only read.
 	plain := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Form[contact]{
@@ -71,6 +117,40 @@ func TestAnEditablePhoneIsMarkedForScriptAndItsPageLinksTheScriptThatSplitsIt(t 
 	assert.False(t, strings.Contains(body, "data-phone"))
 	assert.Contains(t, body, "+46701234567")
 	assert.False(t, strings.Contains(serve(contactAppEmailOnly(), http.MethodGet, "/admin/c").Body.String(), "phone."))
+}
+
+func TestACountryAndANationalNumberAreOneNumberThatThePostHoldsToTheRulesAndStores(t *testing.T) {
+	t.Parallel()
+
+	h, saved := phoneForm("")
+	for _, c := range []struct{ cc, in, want string }{
+		{"SE", "070 123 45 67", "+46701234567"},
+		{"SE", "70 123 45 67", "+46701234567"},
+		{"US", "(415) 555-2671", "+14155552671"},
+		{"SE", "+49 151 2345 6789", "+4915123456789"}, // a whole number has its own code
+		{"", "070 123 45 67", "070 123 45 67"},        // no country: as typed
+		{"SE", "", ""},
+	} {
+		assert.Equal(t, post(h, "/admin/c", formValues("f0.cc", c.cc, "f0", c.in)).Code, http.StatusSeeOther)
+		assert.Equal(t, saved().Phone, c.want)
+	}
+
+	// A number that is refused keeps the country that was chosen, as it was typed, in the form that answers.
+	rec := post(h, "/admin/c", formValues("f0.cc", "SE", "f0", "call me"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), "Enter a phone number.")
+	assert.Equal(t, selectedCountry(rec.Body.String()), "SE")
+	assert.Contains(t, rec.Body.String(), `value="call me"`)
+}
+
+func TestAPhoneInAGroupIsComposedToo(t *testing.T) {
+	t.Parallel()
+
+	h, saved := contactApp(contact{}, webui.Group[contact]{contactEmail, contactPhone})
+	body := serve(h, http.MethodGet, "/admin/c").Body.String()
+	assert.Contains(t, body, `name="f0_1.cc"`)
+	assert.Equal(t, post(h, "/admin/c", formValues("f0_0", "a@example.com", "f0_1.cc", "SE", "f0_1", "070 123 45 67")).Code, http.StatusSeeOther)
+	assert.Equal(t, saved().Phone, "+46701234567")
 }
 
 func contactAppEmailOnly() http.Handler {

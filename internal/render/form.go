@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,9 +9,11 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/phone"
 	c "github.com/Olian04/webui/internal/render/templates/components"
 	"github.com/Olian04/webui/internal/rules"
 	"github.com/a-h/templ"
@@ -32,6 +35,9 @@ type FormView struct {
 	// raw input, not the model: otherwise the bad value disappears and the
 	// form looks like it reset.
 	Values map[string]string
+
+	// Languages is the Accept-Language the visitor sent, which a phone number that has no country starts at the country of.
+	Languages string
 
 	// Errors is the message for each rejected field, by label.
 	Errors map[string]string
@@ -84,6 +90,9 @@ type fieldView struct {
 
 	// Attrs are attributes for the input that script reads, such as the mark of a phone number.
 	Attrs templ.Attributes
+
+	// Phone is the country and the national number of an editable phone number, nil for any other field.
+	Phone *c.PhoneInputProps
 
 	// Stored is the file that the model holds, for a file field that is edited, and nil for none.
 	Stored *ir.StoredFile
@@ -161,12 +170,8 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		fv.Type, fv.Autocomplete = "password", "new-password"
 	case f.Rules.Format != "":
 		fv.Type = string(f.Rules.Format)
-		if f.Rules.Format == ir.FormatTel {
-			// Script splits the number in a country and the rest, which is why it is marked, and which country it starts at.
-			fv.Attrs = templ.Attributes{"data-phone": true}
-			if f.Country != "" {
-				fv.Attrs["data-country"] = f.Country
-			}
+		if f.Rules.Format == ir.FormatTel && editable {
+			fv.Phone = phoneInput(v, f, fv)
 		}
 		if f.Rules.Format == ir.FormatColor && fv.Value == "" {
 			fv.Value = "#000000" // a picker cannot be empty: a field with no color is black
@@ -181,6 +186,46 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 	}
 	return fv
 }
+
+// phoneCountries are the countries of a phone number's selector, by name, which is how a visitor looks for one.
+var phoneCountries = sync.OnceValue(func() []phone.Country {
+	all := slices.Clone(phone.All())
+	slices.SortFunc(all, func(a, b phone.Country) int { return strings.Compare(a.Name, b.Name) })
+	return all
+})
+
+// phoneInput is an editable phone number as the selector and the input that hold it. The number is held as E.164, or as the text that
+// was typed after a rejection, and shows as the national number in the country it is of: the country that was chosen, which a
+// rejected number keeps when it is not one that has its own, else the field's DefaultCountry, else the country of the visitor's
+// language. The server does what script used to: script only spaces the digits as they are typed.
+func phoneInput(v FormView, f ir.Field, fv fieldView) *c.PhoneInputProps {
+	national, iso := fv.Value, ""
+	if country, rest, ok := phone.Split(fv.Value); ok {
+		national, iso = phone.Spaced(country, rest), country.ISO
+	} else if typed, ok := v.Values[f.Name+PhoneCountrySuffix]; ok {
+		iso = typed // refused as it was typed, which is not a number that has its own country
+	} else if fv.Value == "" {
+		iso = cmp.Or(f.Country, phone.FromLanguages(v.Languages))
+	}
+	p := &c.PhoneInputProps{
+		ID: fv.ID, Name: fv.Name, CCName: fv.Name + PhoneCountrySuffix, Value: national, Placeholder: f.Placeholder,
+		Required: fv.Rules.Required, Invalid: fv.Error != "",
+	}
+	for _, country := range phoneCountries() {
+		groups := make([]string, len(country.Groups))
+		for i, g := range country.Groups {
+			groups[i] = strconv.Itoa(g)
+		}
+		p.Countries = append(p.Countries, c.PhoneCountry{
+			ISO: country.ISO, Label: "+" + country.Code + " " + country.Name, Code: country.Code, Groups: strings.Join(groups, ","),
+			Trunk: country.Trunk, Selected: country.ISO == iso,
+		})
+	}
+	return p
+}
+
+// PhoneCountrySuffix is what a phone number's name has added to it for the name of the selector of its country.
+const PhoneCountrySuffix = ".cc"
 
 // choices are the options of an editable select, each with whether the field holds it: from what was
 // typed, after a rejection, or from the model. A value the field holds that is not an option

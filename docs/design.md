@@ -389,8 +389,8 @@ height and weight exactly.
 the height only. A password, a telephone, a date, a date and time and a colour input are the browser's own control, in the input's
 surface, border and focus ring; a colour fills the whole field.
 
-**A phone number with script** is a segment: a selector of the country calling code (9.5em wide, square where it meets the number) joined
-to the input, which holds the national number spaced as it is read. What is sent is E.164, in a hidden input.
+**A phone number** is a segment: a selector of the country calling code (9.5em wide, square where it meets the number) joined
+to the input, which holds the national number, spaced as it is read when there is script. Both are in the page, and the server makes E.164 of them.
 
 **A choice with script** (`select`) is badges in the field and a popover list below it, 30px to a row with a 15px checkbox (round when only one
 may be chosen), flipping above when there is no room below and no taller than 260px, which scrolls. Without script it is the browser's own

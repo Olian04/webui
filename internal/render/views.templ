@@ -522,6 +522,8 @@ templ (r *Renderer) input(fv fieldView) {
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "",
 					Rules: fv.Rules, Validity: fv.Validity,
 				})
+			case fv.Phone != nil:
+				@c.PhoneInput(*fv.Phone)
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,

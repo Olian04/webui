@@ -8,7 +8,7 @@
 | `internal/ir`      | Handoff between declaration and runtime. No transport, no generics.               |
 | `internal/args`    | Path/query encode-decode, `webui` tags, optionality.                              |
 | `internal/rules`   | Pattern syntax both engines read, text rules, the constraint check, the format checks (email, web address, phone, colour), the check of an uploaded file by what it holds, and HTML attrs from `Rules`. |
-| `internal/phone`   | Countries and calling codes, how a national number is spaced, E.164 normalising and the check of a phone number. The renderer generates `phone.js` from it (data first, then `assets/js/phone.js`). |
+| `internal/phone`   | Countries and calling codes, how a national number is spaced, E.164 normalising and the check of a phone number. The renderer draws the country selector of a phone field from it, and the server composes the number from the selector and the input; `phone.js` only spaces digits. |
 | `internal/favicon` | Scale an image to fit a square, with its proportions or padded (stdlib only): the favicons from `Brand.Logo`, and the thumbnails of `webui.Thumbnail`. |
 | `internal/rank`    | How well a search result matches what was typed: the score that orders the results.   |
 | `internal/convert` | List conversions between the declaration, the IR and the response.                    |

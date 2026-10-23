@@ -57,9 +57,9 @@ func (Email[M]) toolbarItem(M) {}
 // checks nothing; the server checks that it is digits with the punctuation that numbers are written with ("+46 8 123 45", "(08) 123-45",
 // "0701234567 x12"), and at least one digit. There is no grammar for phone numbers, so it is not stricter than that.
 // A number written with a country code ("+46 70 123 45 67") is stored as E.164, "+46701234567", with no spaces: one
-// form of each number to search, compare and dial. A number without one is stored as it was typed. With script the input is
-// split in two: a selector of the country calling code, and the national number, which is spaced for reading as it is
-// typed (see DefaultCountry), and the value that is sent is E.164. Otherwise it is a [String].
+// form of each number to search, compare and dial. A number without one is stored as it was typed. The input is
+// split in two: a selector of the country calling code, and the national number, which script spaces for reading as it is
+// typed (see DefaultCountry); the server makes the one number of them. Otherwise it is a [String].
 type Phone[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
 	// column in the address and in a [Query].
@@ -80,8 +80,8 @@ type Phone[M any] struct {
 	Placeholder string
 
 	// DefaultCountry is the country that the selector starts at when the field has no number, by its ISO 3166 alpha-2
-	// code ("SE"). Without it script takes the country of the browser's language, when that is in the list, and otherwise
-	// leaves it to the visitor. A number that is there is shown with the country its code says.
+	// code ("SE"). Without it the server takes the country of the visitor's Accept-Language, when that is in the list,
+	// and otherwise leaves it to the visitor. A number that is there is shown with the country its code says.
 	DefaultCountry string
 
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
