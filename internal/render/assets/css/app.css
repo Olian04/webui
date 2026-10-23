@@ -2084,6 +2084,14 @@ html.js button.toast-close-js {
   padding: 8px 12px;
   border-top: 1px solid var(--border);
 }
+/* How to leave an editor, which holds the Tab key: drawn by script, with the editor, since without it the textarea does not. */
+.code-hint {
+  margin: 0;
+  padding: 4px 12px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-2);
+}
 .code-host {
   position: absolute;
   inset: 0;

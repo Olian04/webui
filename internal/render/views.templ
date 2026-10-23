@@ -878,6 +878,7 @@ templ (r *Renderer) editorBody(v FormView) {
 						aria-invalid="true"
 						aria-describedby={ fv.ID + "-error" }
 					}
+					{ fv.Validity... }
 				>{ "\n" + fv.Value }</textarea>
 			}
 		</div>

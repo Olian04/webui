@@ -1194,7 +1194,12 @@
   // "k".
   var isMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
 
+  // Not in an editor, where Ctrl+K and Cmd+K begin its chords (Ctrl+K Ctrl+C comments the lines), and not with Shift or Alt,
+  // which are other shortcuts of the editor and of the browser. A keyboard leaves the editor with Esc and then Tab (it says
+  // so beside the editor), and the shortcut is the page's again.
   function isShortcut(e) {
+    if (e.shiftKey || e.altKey) return false;
+    if (e.target && e.target.closest && e.target.closest('.code-host')) return false;
     return (e.metaKey || e.ctrlKey) && ((e.key || '').toLowerCase() === 'k' || e.code === 'KeyK');
   }
 
