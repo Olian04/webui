@@ -63,22 +63,27 @@ func TestTheSettingsFormOnTheLandingPageSavesTheSettings(t *testing.T) {
 	assert.Contains(t, refused.Body.String(), "Must be at most 1.")
 }
 
-// Sync now starts a job and the panel that follows it says it is not final for as long as it goes on: it asks to be asked again, and when it is
+// Sync now starts a job and the toolbar that follows it says it is not final for as long as it goes on: it asks to be asked again, and when it is
 // done it does not, which is what ends it.
-func TestTheSyncPanelAsksToBeAskedAgainWhileTheJobGoesOn(t *testing.T) {
+func TestTheToolbarAsksToBeAskedAgainWhileTheSyncJobGoesOn(t *testing.T) {
 	h := handler(t)
-	idle := get(h, "/admin/").Body.String()
+	bar := func() string {
+		body := get(h, "/admin/").Body.String()
+		return body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel`)]
+	}
+	idle := bar()
 	assert.Contains(t, idle, `>Idle<`)
 	assert.False(t, strings.Contains(idle, "data-refresh-after"))
 
 	service.StartSync()
-	going := get(h, "/admin/").Body.String()
+	going := bar()
+	assert.Contains(t, going, `data-leaf="p.0"`)
 	assert.Contains(t, going, `data-refresh-after="2"`)
-	assert.Contains(t, going, "Syncing")
-	assert.Contains(t, going, "Updating, reload in 2 s")
+	assert.Contains(t, going, "Syncing, 0 of ")
+	assert.False(t, strings.Contains(going, "refresh-note")) // the row has no room for it
 
 	service.sync = time.Now().Add(-syncTime) // it has been going as long as it takes
-	done := get(h, "/admin/").Body.String()
+	done := bar()
 	assert.Contains(t, done, ">Done<")
 	assert.False(t, strings.Contains(done, "data-refresh-after"))
 }
