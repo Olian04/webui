@@ -750,17 +750,21 @@ html.js .search-submit {
 :is(.split, .stack, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body:has(> form) {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
   display: flex;
   flex-direction: column;
 }
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form {
+:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
 :is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
   flex: 1 1 auto;
+}
+/* A column's filter is the controls in its header and a form beside the table, which they name with form=: the form has nothing to show. */
+form[data-filter-form] {
+  display: none;
 }
 @media (max-width: 1100px) {
   .split {

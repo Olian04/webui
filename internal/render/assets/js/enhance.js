@@ -743,6 +743,7 @@
       var count = $('[data-selcount]', bar);
       if (count) count.textContent = n + ' selected';
       $$('button[name="_act"], button[data-confirm-open]', bar).forEach(function (b) {
+        if (b.closest('.gate')) return; // a button that its Guard disabled is not made enabled by a selection
         b.disabled = n === 0; // a bulk action over nothing is not an action
       });
     });
@@ -1050,6 +1051,18 @@
     askRemote(palette.query);
     drawPalette();
   }
+
+  // The box is a combobox over a listbox only when script fills the listbox: without script it is a text input in a form with a button, and says
+  // nothing of a popup that cannot open.
+  (function () {
+    var input = paletteInput();
+    var box = paletteBox();
+    if (!input || !box) return;
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', box.id);
+    input.setAttribute('aria-autocomplete', 'list');
+  })();
 
   document.addEventListener('focusin', function (e) {
     if (e.target.matches('[data-palette-input]')) openPalette();

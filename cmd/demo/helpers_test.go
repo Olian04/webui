@@ -39,7 +39,7 @@ func handlerAs(t *testing.T, role Role) http.Handler {
 type searchResult struct{ Group, Title, Href string }
 
 var (
-	searchLabel = regexp.MustCompile(`<div class="pal-label">(.*?)</div>`)
+	searchLabel = regexp.MustCompile(`<div class="pal-label"[^>]*>(.*?)</div>`)
 	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>`)
 )
 

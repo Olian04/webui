@@ -61,7 +61,13 @@ templ Field(p FieldProps) {
 	<div class={ "field", templ.KV("field-static", p.Static) }>
 		if p.Label != "" {
 			<div class="lbl-row">
-				<label class="lbl" id={ p.For + "-label" } for={ p.For }>
+				<label
+					class="lbl"
+					id={ p.For + "-label" }
+					if !p.Static {
+						for={ p.For }
+					}
+				>
 					{ p.Label }
 					if p.Required {
 						<span class="req" aria-hidden="true">*</span>
@@ -411,6 +417,9 @@ type CheckboxProps struct {
 	Value   string
 	Label   string
 	Checked bool
+
+	// Form is the id of the form that the checkbox belongs to when it is not inside it, "" for the one it is in.
+	Form string
 }
 
 templ Checkbox(p CheckboxProps) {
@@ -420,6 +429,9 @@ templ Checkbox(p CheckboxProps) {
 		}
 		class="checkbox"
 		type="checkbox"
+		if p.Form != "" {
+			form={ p.Form }
+		}
 		if p.Name != "" {
 			name={ p.Name }
 		}

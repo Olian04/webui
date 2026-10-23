@@ -117,5 +117,5 @@ func TestTheSearchScriptHasNoResultsOfItsOwn(t *testing.T) {
 	assert.False(t, strings.Contains(js, "Searching…")) // the page's own words for it are in a template, which the server wrote
 	assert.Contains(t, js, "nothing typed, nothing to find")
 	page := serve(searchApp(rowsSearch(), nil), http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, page, `<template data-palette-pending><div class="pal-empty">Searching…</div></template>`)
+	assert.Contains(t, page, `<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>`)
 }

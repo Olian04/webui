@@ -23,7 +23,7 @@ type searchResponse struct {
 }
 
 var (
-	searchLabel = regexp.MustCompile(`<div class="pal-label">(.*?)</div>`)
+	searchLabel = regexp.MustCompile(`<div class="pal-label"[^>]*>(.*?)</div>`)
 	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>(?:\s*<span class="mono">(.*?)</span>)?\s*</a>`)
 )
 
@@ -232,8 +232,10 @@ func TestSearchBoxKnowsWhereToAskOnlyWhenAPageOffersSearch(t *testing.T) {
 	with := searchApp(rowsSearch(), nil)
 	body := serve(with, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `data-search-url="/admin/_webui/search"`)
-	assert.Contains(t, body, `role="combobox"`)
 	assert.Contains(t, body, `role="listbox"`)
+	// The box says it is a combobox only when script fills the listbox: without script it is a text input and a button.
+	assert.False(t, strings.Contains(body, `role="combobox"`))
+	assert.False(t, strings.Contains(body, `aria-expanded="false" aria-controls="palette"`))
 
 	without := searchApp(nil, nil)
 	assert.False(t, strings.Contains(serve(without, http.MethodGet, "/admin/device").Body.String(), "data-search-url"))

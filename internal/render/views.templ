@@ -114,8 +114,8 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 		if r.search {
 			<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
 			// What the box says while a question is out, in the page's own words: script puts it there and has no words of its own for it.
-			<template data-palette-pending><div class="pal-empty">Searching…</div></template>
-			<template data-palette-down><div class="pal-empty">The search could not be reached.</div></template>
+			<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>
+			<template data-palette-down><div class="pal-empty" role="presentation">The search could not be reached.</div></template>
 		}
 	}
 }
@@ -137,13 +137,10 @@ templ (r *Renderer) sidebarFooter() {
 	</div>
 }
 
-// searchAttrs describes the search box to the page script: a listbox it fills, and where to ask for the results of the pages
+// searchAttrs describes the search box to the page script: where to ask for the results of the pages
 // that offer Search.
 func (r *Renderer) searchAttrs() templ.Attributes {
-	return templ.Attributes{
-		"role": "combobox", "aria-expanded": "false", "aria-controls": "palette",
-		"aria-autocomplete": "list", "data-search-url": r.AssetHref("search"),
-	}
+	return templ.Attributes{"data-search-url": r.AssetHref("search")}
 }
 
 func (r *Renderer) logoHref() string {
@@ -207,6 +204,11 @@ templ (r *Renderer) Table(v TableView) {
 			}
 		} else {
 			@r.tableContent(v, cols)
+		}
+		for _, col := range cols {
+			if col.FilterForm != nil {
+				@col.FilterForm
+			}
 		}
 	}
 }
@@ -504,7 +506,7 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.ReadOnly:
 				// A value that cannot be changed, a badge and a bar among them: shown as
 				// output, and not as an input that is refused. An empty one says so with a dash.
-				<div class="static">
+				<div class="static" role="group" aria-labelledby={ fv.ID + "-label" }>
 					if fv.Value == "" && (fv.Field.Display == ir.DisplayText || fv.Field.Display == ir.DisplayTime || fv.Field.Display == ir.DisplayLink || fv.Field.Display == ir.DisplaySelect) {
 						@dash()
 					} else {
@@ -758,26 +760,22 @@ templ Tabs(label string, strip []c.Tab, content templ.Component, id string) {
 // <details> holding a GET form, so it opens, submits and clears without script.
 // A column with a fixed set of options offers a multi-select of exactly those, a
 // numeric column a minimum and a maximum, and any other takes text.
-templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
-	{{ fv := r.filter(v, f) }}
+templ (r *Renderer) filterMenu(v TableView, fv filterView) {
 	<details class={ "filter", templ.KV("on", fv.On) }>
 		<summary class="filter-btn" title={ "Filter " + fv.Label } aria-label={ "Filter " + fv.Label }>
 			@c.Icon(c.IconProps{Name: c.IconFilter})
 		</summary>
-		<form class="filter-pop" method="get" action={ fv.Action } data-filter-form>
-			for _, h := range fv.Carry {
-				<input type="hidden" name={ h.Name } value={ h.Value }/>
-			}
+		<div class="filter-pop">
 			<div class="filter-title">{ fv.Label }</div>
 			if fv.Numeric && fv.Moment {
 				<div class="filter-range moment">
 					<label>
 						<span>From</span>
-						<input class="input" type={ fv.boundType() } name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
+						<input class="input" form={ fv.FormID } type={ fv.boundType() } name={ fv.MinKey } value={ fv.Min } aria-label={ "From " + fv.Label + " (UTC)" }/>
 					</label>
 					<label>
 						<span>To</span>
-						<input class="input" type={ fv.boundType() } name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
+						<input class="input" form={ fv.FormID } type={ fv.boundType() } name={ fv.MaxKey } value={ fv.Max } aria-label={ "To " + fv.Label + " (UTC)" }/>
 					</label>
 					<span class="filter-note">UTC</span>
 				</div>
@@ -785,18 +783,18 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 				<div class="filter-range">
 					<label>
 						<span>Min</span>
-						<input class="input" type="number" step="any" name={ fv.MinKey } value={ fv.Min } aria-label={ "Minimum " + fv.Label }/>
+						<input class="input" form={ fv.FormID } type="number" step="any" name={ fv.MinKey } value={ fv.Min } aria-label={ "Minimum " + fv.Label }/>
 					</label>
 					<label>
 						<span>Max</span>
-						<input class="input" type="number" step="any" name={ fv.MaxKey } value={ fv.Max } aria-label={ "Maximum " + fv.Label }/>
+						<input class="input" form={ fv.FormID } type="number" step="any" name={ fv.MaxKey } value={ fv.Max } aria-label={ "Maximum " + fv.Label }/>
 					</label>
 				</div>
 			} else if fv.Options != nil {
 				<div class="filter-options">
 					for _, opt := range fv.Options {
 						<label class="filter-opt">
-							@c.Checkbox(c.CheckboxProps{Name: fv.Key, Value: opt, Checked: slices.Contains(fv.Chosen, opt)})
+							@c.Checkbox(c.CheckboxProps{Name: fv.Key, Value: opt, Checked: slices.Contains(fv.Chosen, opt), Form: fv.FormID})
 							<span>{ fv.name(opt) }</span>
 						</label>
 					}
@@ -804,6 +802,7 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 			} else {
 				<input
 					class="input"
+					form={ fv.FormID }
 					type="search"
 					name={ fv.Key }
 					value={ fv.text() }
@@ -818,12 +817,23 @@ templ (r *Renderer) filterMenu(v TableView, f ir.Field) {
 						Clear
 					}
 				}
-				@c.Button(c.ButtonProps{Variant: c.VariantPrimary, Size: c.SizeSmall}) {
+				@c.Button(c.ButtonProps{Variant: c.VariantPrimary, Size: c.SizeSmall, Attrs: templ.Attributes{"form": fv.FormID}}) {
 					Apply
 				}
 			</div>
-		</form>
+		</div>
 	</details>
+}
+
+// filterForm is the form that a column's filter is the controls of. It is not the popover: a table that has actions is itself one form, and
+// a form cannot be in a form (the browser drops the inner one, and its button then posts the table's). So the controls of the popover say
+// which form is theirs, with form=, and this one, a plain GET back to the page that works without script, stands beside the table.
+templ (r *Renderer) filterForm(fv filterView) {
+	<form id={ fv.FormID } method="get" action={ fv.Action } data-filter-form>
+		for _, h := range fv.Carry {
+			<input type="hidden" name={ h.Name } value={ h.Value }/>
+		}
+	</form>
 }
 
 // editorBody is a code editor's text. It is a textarea when the visitor can edit it and
@@ -950,24 +960,42 @@ templ (r *Renderer) unified(v DiffView) {
 // option is the box's, whose items are the options of its listbox. A search that found nothing says so.
 templ SearchList(groups []SearchGroup, option bool) {
 	if len(groups) == 0 {
-		<div class="pal-empty">Nothing matches.</div>
+		<div
+			class="pal-empty"
+			if option {
+				role="presentation"
+			}
+		>Nothing matches.</div>
 	}
 	for _, g := range groups {
-		<div class="pal-label">{ g.Label }</div>
-		for _, h := range g.Hits {
-			<a
-				class="pal-item"
-				if option {
-					role="option"
-				}
-				href={ templ.SafeURL(h.Href) }
-			>
-				<span>{ h.Title }</span>
-				if h.Desc != "" {
-					<span class="mono">{ h.Desc }</span>
-				}
-			</a>
+		if option {
+			// A listbox holds options, or groups of them: the label names its group, and is not read a second time.
+			<div role="group" aria-label={ g.Label }>
+				<div class="pal-label" aria-hidden="true">{ g.Label }</div>
+				@searchHits(g.Hits, option)
+			</div>
+		} else {
+			<div class="pal-label">{ g.Label }</div>
+			@searchHits(g.Hits, option)
 		}
+	}
+}
+
+// searchHits are the items of one group of a search's results.
+templ searchHits(hits []SearchHit, option bool) {
+	for _, h := range hits {
+		<a
+			class="pal-item"
+			if option {
+				role="option"
+			}
+			href={ templ.SafeURL(h.Href) }
+		>
+			<span>{ h.Title }</span>
+			if h.Desc != "" {
+				<span class="mono">{ h.Desc }</span>
+			}
+		</a>
 	}
 }
 
