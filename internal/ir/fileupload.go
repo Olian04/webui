@@ -13,6 +13,9 @@ type FileUpload struct {
 	// Spec is what the panel takes: its Kinds and its Max. Only the kinds that the first bytes tell are allowed, since the file is read once, by the app.
 	Spec *FileSpec
 
+	// Multiple says that script may take several files, and folders, in one go, and sends them one at a time. A post is always one file.
+	Multiple bool
+
 	// Receive is the action that does the upload: its Run is handed the file as its subject, which Subject makes, and its Label is the button.
 	Receive *Action
 

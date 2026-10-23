@@ -1538,6 +1538,54 @@ td .multiline {
 .file-preview[hidden] {
   display: none;
 }
+/* With script, the files of an upload panel are listed as they are sent: each with a progress bar, then the server's words for it. */
+.upload-queue {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.upload-queue[hidden],
+.panel-foot .btn[hidden] {
+  display: none;
+}
+.upload-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  font-size: 13px;
+}
+.upload-name {
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+.upload-item progress {
+  flex: 1 1 120px;
+  max-width: 240px;
+  height: 6px;
+  accent-color: var(--blue);
+}
+.upload-item[data-tone='ok'] {
+  border-color: var(--green-bd);
+  background: var(--green-bg);
+}
+.upload-item[data-tone='warn'] {
+  border-color: var(--orange-bd);
+  background: var(--orange-bg);
+}
+.upload-item[data-tone='bad'] {
+  border-color: var(--red-bd);
+  background: var(--red-bg);
+}
+.upload-text {
+  flex: 1 1 auto;
+}
 .file-hint {
   color: var(--text-3);
   font-size: 12px;

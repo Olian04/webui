@@ -162,7 +162,7 @@ func TestTheFileScriptDoesWhatItSaysItDoes(t *testing.T) {
 	}
 	assert.False(t, strings.Contains(js, "createObjectURL")) // a blob: address is not one that the content security policy lets an image have
 	assert.False(t, strings.Contains(js, "svg"))
-	assert.False(t, strings.Contains(js, "fetch(")) // the post is the browser's own, from the input
+	assert.False(t, strings.Contains(js, "fetch(")) // the post is the browser's own, from the input (upload.js, for a FileUpload, sends its own: see fileupload_test.go)
 
 	csp := serve(s.h, http.MethodGet, "/admin/f").Header().Get("Content-Security-Policy")
 	assert.Contains(t, csp, "img-src 'self' data:")

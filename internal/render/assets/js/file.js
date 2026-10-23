@@ -2,7 +2,7 @@
 // not one of the kinds the field takes is said to be so before the request is sent, and a file that is chosen and not sent can be
 // cleared. Without this script the field is the browser's own file chooser and the form is posted as it is, which is all that it needs.
 //
-// The input stays the control. A drop puts the file in it, as if it had been chosen, so what is sent is the browser's own multipart
+// The input stays the control (a file upload panel is the exception, whose post upload.js makes with its own request, one file at a time). A drop puts the file in it, as if it had been chosen, so what is sent is the browser's own multipart
 // post, from the input, and not a request that script makes. The server is told nothing of any of this and checks the file by what it
 // holds, which script cannot see: what is said here is only what a name, a size and the type that the browser gives can say, in the
 // words that the server uses.

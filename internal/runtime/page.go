@@ -141,9 +141,18 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 	req, raw, status, refusal := p.admit(r, page, parser)
 	switch {
 	case status != 0 && r.Method == http.MethodPost:
-		// A POST is answered with a redirect, to the page, which answers the same request with the 400 or the 403.
+		// A POST is answered with a redirect, to the page, which answers the same request with the 400 or the 403. A POST that script made, for a
+		// panel, is answered with the refusal itself, as a fragment, since a redirect would give it the whole of the page.
 		if r.Context().Err() == nil {
-			p.again(w, r)
+			if wantsFragment(r) {
+				text := "That request was not understood."
+				if status == http.StatusForbidden && refusal != nil {
+					text = refusal.Error()
+				}
+				p.writeResult(w, r, status, render.ToastError, text, "")
+			} else {
+				p.again(w, r)
+			}
 		}
 	case status == http.StatusBadRequest:
 		p.state(w, r, status, page, raw, render.BadRequest())
@@ -288,7 +297,7 @@ func (p *Program) pageDoc(ctx context.Context, page *ir.Page, req *Request, cont
 		Here:    render.Here{Page: page.PathTemplate, Path: pathVals, Query: query},
 		Content: content,
 	}
-	doc.Phone, doc.File = p.render.NeedsPhone(page), p.render.NeedsFile(page)
+	doc.Phone, doc.File, doc.Upload = p.render.NeedsPhone(page), p.render.NeedsFile(page), p.render.NeedsUpload(page)
 	if req != nil {
 		doc.Code = req.code
 	}

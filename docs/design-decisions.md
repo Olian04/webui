@@ -338,7 +338,7 @@ design element.
   upload by script (below). The costs: a visitor that the Guard refuses has only the first 512 bytes of the file read, and a browser that was sending a
   large file may see the connection closed; a `Run` that fails after a partial write to a store leaves it for the app to clean up, which the library cannot,
   not knowing the store; and the browser's own load indicator is the only progress, since the input stays the control and the post is the browser's own
-  (the earlier decision), which an `XMLHttpRequest` with a `<progress>` would reverse, and is a decision of its own.
+  (the earlier decision), which the script below reverses for this panel.
 
 - **What is chosen beside the file is the panel's model: `FileUpload[M]`.** The first version had no inputs and was not generic, since a panel's type parameter is its loaded model and
   it had none; an app that moved to it needed a choice beside the file ("replace if it exists", a storage class, a folder) that was made before the file was sent, and a second step
@@ -376,6 +376,24 @@ design element.
   also text, and `42` is JSON and CSV. The order is the library's and is not API, since an app that wants another can say it
   with the kinds it lists. The cost: a CSV is any text that parses as records (a line of words is one), which sniffing cannot
   tell apart; a text file with a byte-order mark or in UTF-16 is not text; and `FileAny` knows only what was sniffed.
+
+- **A `FileUpload` with script sends its files one at a time, with a progress bar, and the server answers each in HTML.** Several files, a folder, a result for each file
+  and a progress bar are one feature, because they all need what a plain form post cannot do: a request for each file that script makes. So `upload.js`, linked only by a page
+  that has a `FileUpload` and after `file.js`, takes over the form's submit: for each chosen file, in order, it sends the form's controls and then the file (with its
+  folder in its name, which the server reads as `Path`) with an `XMLHttpRequest`, for the progress events that `fetch` has none of, to the form's own address, with the
+  `X-Webui-Leaf` header that a request for one panel's HTML carries. A POST with that header is answered with **HTML, never data**: one list item with the outcome's
+  tone and text and, when the outcome goes somewhere, a link to it (a refused page Guard is the same item with the 403), written at the places where a flash and a
+  redirect are, so every other post is unchanged. The script puts the item in the file's row as it is and reads nothing from it but that link: when every file went
+  well and the last outcome went somewhere it follows the link, as a browser that was redirected would, and the panels around it (tables) are asked for again from the
+  server by a `webui:changed` event that `enhance.js` answers, so that what was just sent is in them. A `Cancel` aborts the request in flight and marks the rest "Not
+  sent". `Multiple` is the one option, and a folder is not a second: it adds `multiple` to the chooser (by script, never in the markup, so that without script a post
+  never drops files that were chosen), a *Choose folder* button on a hidden `webkitdirectory` input, and the expansion of a folder that is dropped with
+  `webkitGetAsEntry`. This **reverses "the input stays the control" for this panel**: its post, with script, is the script's request and not the browser's own form post,
+  and the two are kept in step by sending the same controls in the same order; the post without script is still the browser's, and is what the server tests use. Dropped:
+  several files in one request (a result for each, partial success, and no progress either); a JSON answer that the script would turn into markup (the server answers script with
+  HTML, which the decisions log opens with); and a reload after the last file (it loses the results, and a refused file is the thing to read). The costs: a second way to send
+  a form to keep in step with the first, for this panel only; a script of about 300 lines with no test harness, whose behaviour is checked in a browser by hand and its tokens by
+  the tests; a progress bar per file and not of the whole queue; and a request for each file, which for hundreds of small files is slower than one.
 
 - **A file chooser has script for a drop, a picture and an early word, and the input stays the control.** `file.js`, linked only by a
   page that has a file to choose, as `phone.js` is for a number, puts the chooser in a drop zone and puts what is dropped in the input
