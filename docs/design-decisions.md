@@ -916,6 +916,18 @@ design element.
 
 ## Shell and theme
 
+- **The app answers the visitor's display preferences, and its ordinary look keeps the quiet edge of a control.** There were no rules for `forced-colors`,
+  `prefers-contrast` and only the spinners for `prefers-reduced-motion`, found by the accessibility audit (a checked checkbox was a background and vanished
+  in Windows high contrast, a focus ring was a shadow with `outline: none`, the active tab and entry were fills). Now a forced-colors block draws what meant
+  something with the system's colours or an outline, an outline that was none is a transparent one (drawn there and nowhere else), reduced motion stops
+  animations and transitions and dims a busy panel in place of pulsing it, and `prefers-contrast: more` takes the edges and the quiet text up to full strength.
+  Text that a reader needs moved from `--text-3` (3.2 to 3.55:1) to `--text-2`, and `--text-3` is for decoration only, so the hierarchy of the greys stays.
+  **The edge of a control is not raised by default.** It was tried, as `--control-bd` at 3:1 for WCAG 1.4.11 (the quiet edge is 1.6:1), and it made the form
+  fields hard to look at: the density of the app is its design. So the ordinary edge is the border's, `--control-bd-strong` is what a visitor who asks for more
+  contrast gets, and the ordinary look does not meet 1.4.11 for the edge of an input, a checkbox or the switch, which is the cost; what tells a person where a
+  field is, besides its edge, is its label, its fill (`--input-bg`, a step from the panel) and its position. A test holds the strong edge to 3:1 and the quiet text
+  to 4.5:1 in both themes. Not checkable in the browser pane, and so not tried: forced colors and reduced motion themselves, which a run on Windows would be.
+
 - No cross-document view transition. The shell's regions were named and the page opted in
   (`@view-transition { navigation: auto; }`), which cross-faded the content in 180ms. Its first frames are white, in dark mode too, because the browser shows its own default background while it makes the transition, which no rule of the page reaches: measured in Chrome 155, a white frame in about 3 of 8 navigations, and none with the transition skipped. Styles on the transition were tried, and none changed how often it came. The page that is on screen is held until the next has something to paint, as for any
   navigation, which does not flash, and a shell that is the same on every page does not appear to move. What it
