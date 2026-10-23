@@ -5,23 +5,16 @@
 Build admin panels in pure Go. Declare your pages and webui serves a fast,
 server-rendered UI, with **no HTML, CSS or JavaScript to write**.
 
-- **Zero frontend.** Pages, tables, forms and actions are plain Go values.
-- **Type-safe.** The compiler ties each link to its page and each argument to its
-  path, and `Compile` catches the rest at startup, with a fix for each.
-- **Batteries included.** Sorting, filtering, pagination, search, validation, toasts
-  and dark mode, with no setup.
-- **Works without JavaScript.** Every control is a real link or form, and a tiny
-  script only makes it snappier.
-- **HTML is the state.** The server answers with HTML and nothing else: a page, a panel
-  that script asks for, the result of an upload. Each response holds the links, forms and
-  buttons that the visitor can use in that state, which is hypermedia as the engine of
-  application state, and script only asks for that HTML and puts it in the page. The
-  thinking is [htmx's](https://htmx.org/essays/hypermedia-driven-applications): see
-  [HATEOAS](https://htmx.org/essays/hateoas).
-- **Secure by default.** CSRF protection and a strict content security policy out of
-  the box, plus guards per page and per action. A visitor never sees nav entries or
-  search results they can't open, and a control that a Guard refuses is left out, or
-  disabled with its reason, as the Guard says.
+- **Zero frontend.** Declare pages, tables, forms and actions as plain Go values.
+- **Type-safe.** The compiler checks your links and arguments.
+- **Batteries included.** Sorting, filtering, pagination, search, validation, uploads and dark mode.
+- **Progressive enhancement.** Every control is a real link or form, so it works without
+  JavaScript.
+- **Hypermedia-driven.** A hypermedia-driven application (HDA) built on HATEOAS
+  (Hypermedia as the Engine of Application State): the server answers with HTML that carries
+  every action available in that state.
+- **Secure by default.** CSRF protection, a strict content security policy, and guards per
+  page and per action.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
