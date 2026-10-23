@@ -240,6 +240,60 @@
     return true;
   }
 
+  /* ------------------------ a panel that is not final ---------------------- */
+
+  // A panel whose Load said that it is not final (a job that it shows is still going) has data-refresh-after, the seconds to wait, and says so in its head.
+  // It is asked for again after that, the same GET with the header that asks for one panel, and replaced by the answer, which says so again or does not: the
+  // server ends the loop by not saying it, and script has no end of its own. A poll is not a navigation: the address does not move, nothing is pushed, and
+  // the panels around it have nothing new to say. It waits while the tab is hidden, and while focus is in the panel, which a reader or someone typing would
+  // lose; and a request that fails ends it, with the panel as it was, which still says to reload.
+  var armed = new WeakSet();
+
+  function armRefresh(scope) {
+    $$('[data-leaf][data-refresh-after]', scope).concat(scope.matches && scope.matches('[data-leaf][data-refresh-after]') ? [scope] : []).forEach(function (el) {
+      if (armed.has(el)) return;
+      armed.add(el);
+      var secs = parseInt(el.getAttribute('data-refresh-after'), 10);
+      if (secs > 0) setTimeout(function () { pollLeaf(el, secs); }, secs * 1000);
+    });
+  }
+
+  async function pollLeaf(el, secs) {
+    if (!el.isConnected) return; // replaced since: the one that replaced it has its own say
+    var id = el.getAttribute('data-leaf');
+    if (document.hidden) {
+      document.addEventListener('visibilitychange', function again() {
+        if (document.hidden) return;
+        document.removeEventListener('visibilitychange', again);
+        pollLeaf(el, secs);
+      });
+      return;
+    }
+    if (el.contains(document.activeElement) || inflight.has(id)) {
+      setTimeout(function () { pollLeaf(el, secs); }, secs * 1000);
+      return;
+    }
+    var ctl = new AbortController();
+    inflight.set(id, ctl);
+    try {
+      var next = await fetchLeaf(id, location.pathname + location.search, ctl.signal);
+      if (el.isConnected) el.replaceWith(next);
+    } catch (err) {
+      // The panel stays as it was, and says to reload.
+    } finally {
+      if (inflight.get(id) === ctl) inflight.delete(id);
+    }
+  }
+
+  armRefresh(document);
+  new MutationObserver(function (changes) {
+    changes.forEach(function (c) {
+      c.addedNodes.forEach(function (n) {
+        if (n.nodeType === 1) armRefresh(n);
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+
   // After one panel, or a strip of tabs, moved to a new address, the others hold addresses of the old one: the sort and pager links of the panels around it, the
   // links of the other strips of tabs, and the action of a form, which is where it posts to and so where it comes back to. This script does not know how an address is
   // made, so it does not put the new one in: it asks the server for those panels at the new address, which writes them. A panel that is read, and has links that replace

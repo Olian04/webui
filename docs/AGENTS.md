@@ -61,7 +61,8 @@ state. A script feature gets an HTML fragment from the server, through the `X-We
 for every leaf in HTML and never with a redirect or a cookie: the item (`li.result`, with `a.result-next` for where the outcome goes) with the status of how it went (200 accepted, 422 refused,
 403 the Guard, 500 a failure), or, for a form that was refused, the form again with the 422; the script reads the status and the link, never a tone. Never add a JSON
 endpoint or a response that a script has to interpret, and do not build markup in script from data. `upload.js` is the example: the server answers each file it sends with a list
-item, and the script puts it in the page as it is.
+item, and the script puts it in the page as it is. A panel that a job is shown in follows it the same way: its `Load` calls `webui.RefreshAfter`, the panel's head says
+"Updating" and carries `data-refresh-after`, and `enhance.js` asks for the panel again after that time, until an answer does not say it.
 
 ## Dependency direction
 

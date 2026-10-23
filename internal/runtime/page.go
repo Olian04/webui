@@ -253,21 +253,21 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Tabs:
 		return p.tabs(ctx, req, page, n)
 	case *ir.Table:
-		return p.table(ctx, req, page, n), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.table(ctx, req, page, n) }), nil
 	case *ir.Diff:
-		return p.diff(ctx, req, page, n), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) }), nil
 	case *ir.Markdown:
-		return p.markdown(ctx, req, page, n), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
 	case *ir.Toolbar:
 		return p.toolbar(ctx, req, page, n), nil
 	case *ir.FileUpload:
-		return p.fileUpload(ctx, req, page, n), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) }), nil
 	case *ir.Form:
 		var sub *submission
 		if req.sub != nil && req.subLeaf == render.LeafID(n.At) {
 			sub = req.sub
 		}
-		return p.form(ctx, req, page, n, sub), nil
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.form(ctx, req, page, n, sub) }), nil
 	default:
 		return nil, errors.New("runtime: node kind not served")
 	}

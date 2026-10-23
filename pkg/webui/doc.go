@@ -486,6 +486,14 @@
 //
 // Confirm cannot be set on a RowClick, which has no button to ask from.
 //
+// # Following a job
+//
+// An action that starts something long (a backup, a sync) only starts it, and returns [Success] as any action does. The panel that shows the
+// job is what follows it up: its Load reads the state of the job, and while the job is not done calls [RefreshAfter], which says that the panel
+// is not final and is to be asked for again. A page with script asks for the panel again after that time and replaces it, until an answer does
+// not say it; a page without script says how long to wait and the visitor reloads. The request that asks again is the same GET that loads the
+// panel, so nothing has to be safe to repeat.
+//
 // # Controls that a visitor may not use
 //
 // An action's Guard decides whether the visitor may do it, and what it returns decides

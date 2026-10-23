@@ -1,6 +1,11 @@
 package components
 
-import "strings"
+import (
+	"context"
+	"strconv"
+	"strings"
+	"time"
+)
 
 // PanelProps is the unit of content: a bordered region with a 32px header.
 // Title and Desc are what make a grid of panels readable — a Split of two
@@ -36,6 +41,23 @@ type PanelProps struct {
 	Footer templ.Component
 }
 
+type refreshKey struct{}
+
+// WithRefresh is ctx for drawing a panel that its Load said is not final: it is to be asked for again after d. The panel says so, to the
+// reader in its head and to script in data-refresh-after, the delay in whole seconds, which script obeys until an answer does not say it.
+func WithRefresh(ctx context.Context, d time.Duration) context.Context {
+	return context.WithValue(ctx, refreshKey{}, d)
+}
+
+// refreshIn is the seconds after which the panel drawn with ctx is to be asked for again, 0 for a panel that is final.
+func refreshIn(ctx context.Context) int {
+	d, _ := ctx.Value(refreshKey{}).(time.Duration)
+	if d <= 0 {
+		return 0
+	}
+	return int((d + time.Second - 1) / time.Second)
+}
+
 // Refused is what a panel says in place of "Could not load" when its Load returned a refusal: a title for the status, the
 // message, and a link on, when there is one.
 type Refused struct {
@@ -47,6 +69,9 @@ templ Panel(p PanelProps) {
 		class={ "panel", templ.KV("grows", p.Grows) }
 		if p.Leaf != "" {
 			data-leaf={ p.Leaf }
+			if n := refreshIn(ctx); n > 0 {
+				data-refresh-after={ strconv.Itoa(n) }
+			}
 		}
 	>
 		<div class="panel-head">
@@ -56,6 +81,12 @@ templ Panel(p PanelProps) {
 			}
 			if p.Failed {
 				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
+			}
+			if n := refreshIn(ctx); n > 0 && p.Leaf != "" {
+				<span class="refresh-note">
+					<span class="refresh-js">Updating…</span>
+					<span class="refresh-nojs">Updating, reload in { strconv.Itoa(n) } s</span>
+				</span>
 			}
 		</div>
 		<div class="panel-body">

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -15,6 +15,7 @@ var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	Body: webui.Stack{
 		OverviewToolbar,
+		OverviewSync,
 		webui.Split{OverviewDevices, OverviewAlerts, OverviewEvents, OverviewSettings},
 	},
 }
@@ -58,8 +59,31 @@ var OverviewToolbar = webui.Toolbar[webui.NoArgs]{
 			Confirm: "Sync every device now? It reads each one and may take a while.",
 			Guard:   canEdit[webui.NoArgs],
 			Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
-				return webui.Success(fmt.Sprintf("Synced %d devices", service.Sync())), nil
+				service.StartSync() // it goes on in the background, and the panel beside it follows it
+				return webui.Success("Sync started"), nil
 			},
+		},
+	},
+}
+
+// OverviewSync follows the job that Sync now starts. A job takes time, so the button only starts it and the panel that shows it says when it
+// is not final: while the job goes on its Load calls RefreshAfter, and a page with script asks for the panel again every two seconds and
+// replaces it, until it is done and the Load stops saying so. Without script the panel says to reload.
+var OverviewSync = webui.Form[SyncJob]{
+	Title: "Sync",
+	Desc:  "Sync now starts a job that takes eight seconds. This panel is asked for again every two seconds while it goes on, and stops when it is done.",
+	Load: func(ctx context.Context) (SyncJob, error) {
+		job := service.SyncJob()
+		if job.Running {
+			webui.RefreshAfter(ctx, 2*time.Second)
+		}
+		return job, nil
+	},
+	Fields: []webui.Accessor[SyncJob]{
+		webui.Group[SyncJob]{
+			webui.String[SyncJob]{Label: "State", Load: func(j SyncJob) string { return j.State }},
+			webui.Int[SyncJob]{Label: "Devices read", Load: func(j SyncJob) int { return j.Read }},
+			webui.Int[SyncJob]{Label: "Devices", Load: func(j SyncJob) int { return j.Total }},
 		},
 	},
 }
