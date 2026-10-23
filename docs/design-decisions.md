@@ -635,8 +635,8 @@ design element.
   which already has a `Load`, fields and a title. The item list is a sealed interface, `ToolbarItem`, whose method takes `NoArgs`: `Action[M]`, `Link[M, B]`
   and `Form[M]` have such a method, and `Action[M]` and `Link[M, B]` match it only when `M` is `NoArgs`, so a button with a subject of its own does not
   compile (the accessors have no such method any more, so an accessor is not an item). The toolbar is the leaf, and so what is refreshed: a `Form`'s
-  `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-leaf` and `data-refresh-after`, with the note at the end
-  of the row, as for a panel. A form in a toolbar is a group (`role="group"`, named by its `Title`, which is required), is read-only (no `Submit`),
+  `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-leaf` and `data-refresh-after`, without a note: a panel says "Updating…" in its head, but a toolbar's row has little room
+  and an inline note moves what is in it, so a visitor without script is not told to reload one. A form in a toolbar is a group (`role="group"`, named by its `Title`, which is required), is read-only (no `Submit`),
   has no `Desc` or `Help` of its own and no field that is multiline, secret or a file; the compile says so, with what to do. A form whose `Load` fails is
   its title and "Could not load" (or a refusal's words) in its place, and the rest of the toolbar stands, where a failed read of a select's options still
   fails the whole toolbar. The costs: every toolbar was changed once (the type parameter, the accessors, the subject of the buttons); a `Form` in a

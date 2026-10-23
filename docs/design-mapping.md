@@ -37,7 +37,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
-| `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-leaf`), so it refreshes as a panel does, with `data-refresh-after` and a note at the end of the row |
+| `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-leaf`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `FileUpload.Multiple`, with script | The chooser takes several files, a *Choose folder* button beside it takes a folder, a folder can be dropped on the frame, and the files are listed under it: each is sent in a request of its own with a native `<progress>` and then shows the server's words for it, green, amber or red, with a link when the outcome goes somewhere; *Cancel* stops the queue. Without script, one file, as before |
@@ -431,7 +431,7 @@ no `Submit`, no `Desc` and no `Help` of the form itself. A form whose `Load` fai
 and the rest of the row stands. There are no inputs: the buttons post in one form, and a toolbar of links and values has no form at all.
 `Left` and `Right` are one row with a gap between the groups that takes what is left over; when there is not room for every control in a row, which
 script measures, the gap goes and the controls flow from the left in rows, as one group. A form that returns `RefreshAfter` puts
-`data-refresh-after` on the toolbar and "Updating…" (with script) or "Updating, reload in N s" (without) at the end of the row.
+`data-refresh-after` on the toolbar and nothing else: a panel says "Updating…" in its head, but a toolbar has little room and a note in the row would move what is in it, so a visitor without script is not told to reload.
 
 ### `Table.BulkActions` → checkboxes that only exist when declared
 

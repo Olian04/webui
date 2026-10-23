@@ -284,7 +284,8 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	root = root[:strings.Index(root, ">")]
 	assert.Contains(t, root, `data-leaf="p"`)
 	assert.Contains(t, root, `data-refresh-after="4"`)
-	assert.Contains(t, body, `<span class="refresh-nojs">Updating, reload in 4 s</span>`)
+	// A toolbar has little room, and a note in the row would move what is in it: it says nothing that is seen.
+	assert.False(t, strings.Contains(body, "refresh-note"))
 	assert.Equal(t, strings.Count(body, "data-refresh-after="), 1)
 
 	// Asked for alone, as script does, the toolbar answers with its own root first, which carries it.

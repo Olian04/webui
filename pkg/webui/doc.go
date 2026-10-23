@@ -395,7 +395,7 @@
 //
 // The toolbar is the leaf that refreshes, as any panel is: a Form whose Load returns
 // [Loaded.RefreshAfter] has the whole toolbar asked for again (see Following a job), after the
-// shortest delay of its Forms.
+// shortest delay of its Forms. Unlike a panel, a toolbar says nothing of it in the row, which has little room; without script it is not refreshed.
 //
 // # Tables
 //
