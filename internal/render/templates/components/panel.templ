@@ -20,6 +20,9 @@ type PanelProps struct {
 	// Refused is, for a panel whose Load said what the visitor may be told, in place of "Could not load".
 	Refused *Refused
 
+	// Retry is where a failed panel leads on to try again: the address of the page it is on, which asks for it again. "" for none.
+	Retry string
+
 	// Leaf names this panel so a link inside it can replace it on its own. A
 	// panel that cannot be replaced independently leaves it empty.
 	Leaf string
@@ -69,8 +72,14 @@ templ Panel(p PanelProps) {
 					@EmptyState(EmptyStateProps{
 						Icon:  IconAlert,
 						Title: "Could not load",
-						Desc:  "The cause was logged on the server. Refresh to try again.",
-					})
+						Desc:  "The cause was logged on the server.",
+					}) {
+						if p.Retry != "" {
+							@Button(ButtonProps{Href: p.Retry, Variant: VariantGhost, Size: SizeSmall}) {
+								Try again
+							}
+						}
+					}
 				}
 			} else {
 				{ children... }

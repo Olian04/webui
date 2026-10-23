@@ -144,6 +144,29 @@ func (r *Renderer) tableHref(v TableView, set map[string]string, drop ...string)
 	return r.PageHref(v.Page, v.Path, query)
 }
 
+// emptyLinks are the ways on from a table that shows nothing: to its first page when it is past the end of what there is, and to the table without its filters when
+// some are set, "" for each that does not apply. The empty state says why there is nothing, and these are what the visitor can do about it.
+func (r *Renderer) emptyLinks(v TableView) (first, unfiltered string) {
+	id := v.Node.ID
+	pages := []string{args.ViewKey(id, "offset"), args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)}
+	if v.Q.Offset > 0 || v.Query[args.ViewKey(id, "after")] != "" {
+		first = r.tableHref(v, nil, pages...)
+	}
+	if len(v.Q.Filters)+len(v.Q.Ranges) > 0 {
+		// The filters are in the address under the column's name, which is not the key that the query holds them by, so they are found by what they begin with.
+		lo, hi := args.RangeKeys(id, "")
+		prefixes := []string{args.FilterKey(id, ""), lo, hi}
+		drop := slices.Clone(pages)
+		for key := range v.Query {
+			if slices.ContainsFunc(prefixes, func(prefix string) bool { return strings.HasPrefix(key, prefix) }) {
+				drop = append(drop, key)
+			}
+		}
+		unfiltered = r.tableHref(v, nil, drop...)
+	}
+	return first, unfiltered
+}
+
 // pagerLinks are the previous and next addresses; "" means there is none.
 func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 	size := v.Node.PageSize

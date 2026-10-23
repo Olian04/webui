@@ -47,7 +47,7 @@ func TestADisabledActionIsDrawnWithItsReasonAndStillRefused(t *testing.T) {
 	body := get(h, "/admin/alert").Body.String()
 	assert.Contains(t, body, `class="pick"`)
 	assert.Contains(t, body, `class="actionbar"`)
-	assert.Contains(t, body, `<span class="gate" data-guard="A critical alert is acknowledged, not dismissed">`)
+	assert.Contains(t, body, `<span class="gate" data-guard="A critical alert is acknowledged, not dismissed" tabindex="0">`)
 
 	var critical, other string
 	for _, a := range service.OpenAlerts() {

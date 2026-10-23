@@ -192,7 +192,7 @@ templ (r *Renderer) Table(v TableView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal),
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
 		Leaf:   LeafID(v.Node.At),
 		Grows:  true,
 		Footer: r.tableFooter(v),
@@ -248,11 +248,23 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 			if len(v.Rows) == 0 {
 				@c.Row(c.RowProps{}) {
 					@c.Cell(c.CellProps{ColSpan: v.width()}) {
+						{{ first, unfiltered := r.emptyLinks(v) }}
 						@c.EmptyState(c.EmptyStateProps{
 							Icon:  c.IconSearch,
 							Title: "Nothing to show",
 							Desc:  emptyHint(v),
-						})
+						}) {
+							if first != "" {
+								@c.Button(c.ButtonProps{Href: first, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+									Go to the first page
+								}
+							}
+							if unfiltered != "" {
+								@c.Button(c.ButtonProps{Href: unfiltered, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+									Clear the filters
+								}
+							}
+						}
 					}
 				}
 			}
@@ -265,7 +277,7 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 
 func emptyHint(v TableView) string {
 	if v.Q.Offset > 0 {
-		return "This page is past the end. Go back to the first page."
+		return "This page is past the end."
 	}
 	return "No rows were returned for the current arguments."
 }
@@ -387,7 +399,7 @@ templ (r *Renderer) Form(v FormView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal),
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		@c.Form(c.FormProps{
@@ -407,10 +419,16 @@ templ (r *Renderer) Form(v FormView) {
 			if v.Node.Submit != nil && v.SubmitRefused {
 				// A visitor who may not save has nothing to save or cancel: the footer
 				// offers the way back, or no footer when there is no way back.
-				if v.CancelHref != "" {
+				if v.CancelHref != "" || v.SubmitReason != "" {
 					<div class="panel-foot end">
-						@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
-							Back
+						if v.SubmitReason != "" {
+							// Why it is only read, in words, when its Guard said (Disabled): the visitor is told, and not left to wonder.
+							<span class="panel-note dim">{ v.SubmitReason }</span>
+						}
+						if v.CancelHref != "" {
+							@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+								Back
+							}
 						}
 					</div>
 				}
@@ -516,6 +534,63 @@ templ (r *Renderer) input(fv fieldView) {
 	}
 }
 
+// BadRequest is the content of a 400: an argument that did not parse. When the address has arguments, it leads on to the page without them,
+// since a visitor is not asked to edit an address.
+templ BadRequest(bare string) {
+	@c.StatePage(c.StatePageProps{
+		Icon: c.IconAlert, Title: "That address is not valid",
+		Desc: "One of the arguments in it could not be read.",
+	}) {
+		if bare != "" {
+			@c.Button(c.ButtonProps{Href: bare, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+				Open the page without them
+			}
+		}
+	}
+}
+
+// ServerError is the content of a 500. The cause is logged, never shown. It leads on to the same address, to try again.
+templ ServerError(again string) {
+	@c.StatePage(c.StatePageProps{
+		Icon: c.IconAlert, Title: "Something went wrong",
+		Desc: "The page could not be built. The cause was logged on the server.",
+	}) {
+		if again != "" {
+			@c.Button(c.ButtonProps{Href: again, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+				Try again
+			}
+		}
+	}
+}
+
+// MethodNotAllowed is the content of a 405: what the address does answer, and a link to open it when it answers a GET.
+templ MethodNotAllowed(allow string, open string) {
+	@c.StatePage(c.StatePageProps{
+		Icon: c.IconAlert, Title: "That is not how this address is used",
+		Desc: "It answers " + allow + ".",
+	}) {
+		if open != "" {
+			@c.Button(c.ButtonProps{Href: open, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+				Open it
+			}
+		}
+	}
+}
+
+// CrossOrigin is the content of a post that came from another site, which is refused: a link to open the address as a visit.
+templ CrossOrigin(open string) {
+	@c.StatePage(c.StatePageProps{
+		Icon: c.IconLock, Title: "Not permitted",
+		Desc: "That request came from another site, and was refused.",
+	}) {
+		if open != "" {
+			@c.Button(c.ButtonProps{Href: open, Variant: c.VariantGhost, Size: c.SizeSmall}) {
+				Open the page
+			}
+		}
+	}
+}
+
 // Refused is the content of a page that a Guard refused with a status of its own, with what it said and, when it gave one,
 // a link on from there.
 templ Refused(ref *ir.Refusal) {
@@ -535,7 +610,7 @@ templ Refused(ref *ir.Refusal) {
 // not room for them all in a row, and then the gap is gone and they flow as one.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Failed: true, Leaf: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
 		}
 	} else if v.drawn() {
 		<div class="toolbar" data-toolbar>
@@ -593,7 +668,7 @@ templ (r *Renderer) toolbarItems(v ToolbarView) {
 // with any other error has no panel.
 templ (r *Renderer) FileUpload(v FileUploadView) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Leaf: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
 		}
 	} else if v.Gate.Drawn() {
 		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}) {
@@ -780,7 +855,7 @@ templ (r *Renderer) Diff(v DiffView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal),
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body code-body">
@@ -804,7 +879,7 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal),
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
 		Leaf:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body pad">

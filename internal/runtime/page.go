@@ -85,7 +85,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 		}
 		ctx := r.Context()
 		if table, format, bad := exportOf(r, leaves); bad {
-			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest())
+			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest(bareAddress(r)))
 			return
 		} else if table != nil {
 			p.export(w, r, page, req, table, format)
@@ -145,17 +145,21 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 		// panel, is answered with the refusal itself, as a fragment, since a redirect would give it the whole of the page.
 		if r.Context().Err() == nil {
 			if wantsFragment(r) {
-				text := "That request was not understood."
-				if status == http.StatusForbidden && refusal != nil {
+				text, next := "That request was not understood.", ""
+				var ref *ir.Refusal
+				switch {
+				case errors.As(refusal, &ref):
+					text, next = ref.Message, ref.Href // what the Guard said, and where it leads on
+				case status == http.StatusForbidden && refusal != nil:
 					text = refusal.Error()
 				}
-				p.writeResult(w, r, status, render.ToastError, text, "")
+				p.writeResult(w, r, status, render.ToastError, text, next)
 			} else {
 				p.again(w, r)
 			}
 		}
 	case status == http.StatusBadRequest:
-		p.state(w, r, status, page, raw, render.BadRequest())
+		p.state(w, r, status, page, raw, render.BadRequest(bareAddress(r)))
 	case status != 0 && r.Context().Err() == nil: // a visitor who has gone is answered nothing
 		var ref *ir.Refusal
 		if errors.As(refusal, &ref) {
@@ -290,6 +294,14 @@ func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nod
 func (p *Program) pageDoc(ctx context.Context, page *ir.Page, req *Request, content templ.Component) render.Doc {
 	pathVals, query := p.address(page, req)
 	crumbs := p.render.Crumbs(page, pathVals, p.crumbLabels(ctx, page, req, pathVals))
+	for i := 1; i < len(crumbs); i++ {
+		// A parent that the visitor may not open is its words and no link, as a link to a page that refuses them is left out of a toolbar: it would
+		// lead them to a 403 that nothing on the page had told them of.
+		if crumbs[i].Href != "" && !p.mayLead(ctx, page, crumbs[i].Href) {
+			crumbs = slices.Clone(crumbs)
+			crumbs[i].Href = ""
+		}
+	}
 	doc := render.Doc{
 		Title:   render.Title(crumbs),
 		Crumbs:  crumbs,
@@ -336,6 +348,14 @@ func (p *Program) state(w http.ResponseWriter, r *http.Request, status int, page
 	p.write(w, r, status, p.pageDoc(r.Context(), page, req, content))
 }
 
+// bareAddress is the request's address without its query, to lead on to when an argument in it could not be read: "" when there was no query to drop.
+func bareAddress(r *http.Request) string {
+	if r.URL.RawQuery == "" {
+		return ""
+	}
+	return r.URL.Path
+}
+
 // fail is a load or render failure: the cause is logged and never shown.
 func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, err error) {
 	if r.Context().Err() != nil {
@@ -346,7 +366,7 @@ func (p *Program) fail(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 		p.refuse(w, r, "Something went wrong. The cause was logged on the server.") // a POST is answered with a redirect
 		return
 	}
-	p.writePage(w, r, http.StatusInternalServerError, page, req, render.ServerError())
+	p.writePage(w, r, http.StatusInternalServerError, page, req, render.ServerError(r.URL.RequestURI()))
 }
 
 // crumbTimeout bounds the Crumb funcs of one page, all of them together: they are on the way of every full page.

@@ -83,7 +83,13 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 	budget := fileBudget(leaves)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := p.cross.Check(r); err != nil {
-			http.Error(w, "cross-origin request refused", http.StatusForbidden)
+			if wantsFragment(r) {
+				p.writeResult(w, r, http.StatusForbidden, render.ToastError, "That request came from another site, and was refused.", "")
+				return
+			}
+			p.write(w, r, http.StatusForbidden, render.Doc{
+				Title: "Not permitted", Crumbs: []render.Crumb{p.render.Home(), {Label: "Not permitted"}}, Content: render.CrossOrigin(r.URL.RequestURI()),
+			})
 			return
 		}
 		w.Header().Set("Cache-Control", "no-store")
@@ -291,7 +297,7 @@ func selectNames(fields []ir.Field) map[string]bool {
 // from, else the breadcrumb parent, else where the user already is.
 func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) string {
 	path, _ := req.encode(page)
-	return cmp.Or(p.returnHref(req, page, path), r.URL.RequestURI())
+	return cmp.Or(p.returnHref(r.Context(), req, page, path), r.URL.RequestURI())
 }
 
 // returnToForm answers a refused submission with the page, its form drawn again with what the user typed and what

@@ -309,22 +309,6 @@ func Forbidden(reason string) templ.Component {
 	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: reason})
 }
 
-// BadRequest is the content of a 400: an argument that did not parse.
-func BadRequest() templ.Component {
-	return c.StatePage(c.StatePageProps{
-		Icon: c.IconAlert, Title: "That address is not valid",
-		Desc: "One of the arguments in it could not be read. Remove the arguments from the address and try again.",
-	})
-}
-
-// ServerError is the content of a 500. The cause is logged, never shown.
-func ServerError() templ.Component {
-	return c.StatePage(c.StatePageProps{
-		Icon: c.IconAlert, Title: "Something went wrong",
-		Desc: "The page could not be built. The cause was logged on the server.",
-	})
-}
-
 // themeCSS renders the app's colours as overrides of the design's tokens, for
 // each of light and dark. A hover colour, a readable text tint and a badge's
 // faint background and border are derived from the one colour, per mode, with

@@ -33,7 +33,7 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	n = resolved
 	view.Node = n
 	view.Path, view.Query = req.encode(page)
-	view.CancelHref = p.returnHref(req, page, view.Path)
+	view.CancelHref = p.returnHref(ctx, req, page, view.Path)
 
 	if sub != nil {
 		view.Model, view.Values = sub.model, sub.values
@@ -54,7 +54,8 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	// is no second authorisation rule to keep in sync. A form that may not be saved is read, whichever
 	// error says so: there is no disabled form to draw that is any use to the visitor.
 	if n.Submit != nil && n.Submit.Guard != nil {
-		view.SubmitRefused = !p.gateOf(page, "the Submit of a form", func() error { return n.Submit.Guard(ctx, view.Model) }).Open()
+		gate := p.gateOf(page, "the Submit of a form", func() error { return n.Submit.Guard(ctx, view.Model) })
+		view.SubmitRefused, view.SubmitReason = !gate.Open(), gate.Reason
 	}
 	if n.Editor != nil {
 		// A language service goes only to an editor that can be edited by this visitor:
@@ -73,15 +74,20 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 // for: back to the page the user came from, when a link says so, and otherwise to the
 // parent in the breadcrumb, when there is one that is not the app's home. It is empty
 // when there is neither.
-func (p *Program) returnHref(req *Request, page *ir.Page, path map[string]string) string {
-	if req.From != "" {
-		return req.From
+func (p *Program) returnHref(ctx context.Context, req *Request, page *ir.Page, path map[string]string) string {
+	href := req.From
+	if href == "" {
+		crumbs := p.render.Crumbs(page, path, nil) // only where they lead
+		if len(crumbs) < 3 {
+			return ""
+		}
+		href = crumbs[len(crumbs)-2].Href
 	}
-	crumbs := p.render.Crumbs(page, path, nil) // only where they lead
-	if len(crumbs) < 3 {
+	// A way back that the visitor may not open is no way back: Cancel and Back are left out, and not drawn to lead to a 403.
+	if href == "" || !p.mayLead(ctx, page, href) {
 		return ""
 	}
-	return crumbs[len(crumbs)-2].Href
+	return href
 }
 
 // formKind is what a form's panel is called in the metrics: a code editor is not a form to

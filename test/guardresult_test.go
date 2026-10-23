@@ -49,7 +49,7 @@ func TestADisabledRowActionIsDrawnDisabledWithItsMessageAndStillRefused(t *testi
 
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, body, `name="_act" value="row:0:a">Drop</button>`)
-	assert.Contains(t, body, `<span class="gate" data-guard="Already dropped"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:b" disabled>Drop</button></span>`)
+	assert.Contains(t, body, `<span class="gate" data-guard="Already dropped" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:b" disabled>Drop</button><span class="sr-only">Not available: Already dropped</span></span>`)
 
 	rec := post(h, "/admin/t", formValues("_act", "row:0:b"))
 	assert.Equal(t, flashOf(rec), "eAlready dropped") // the message is what is told to the one who asks by hand
@@ -178,7 +178,7 @@ func TestABulkActionIsDrawnIfItsGuardAcceptsAnyOneRow(t *testing.T) {
 		return webui.Disabled("Nothing here can be bagged")
 	}), nil)
 	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="Nothing here can be bagged">`)
+	assert.Contains(t, body, `<span class="gate" data-guard="Nothing here can be bagged" tabindex="0">`)
 	assert.Contains(t, body, `class="pick"`)
 
 	// And the Guard that decided the button also refuses the request, which names its own selection.

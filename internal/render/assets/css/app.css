@@ -1033,21 +1033,30 @@ html.js .search-submit {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.gate:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 /* A reason is centred over its control, and anchored to the near side when script finds the control at an edge of the window. */
-.gate[data-edge='left']:hover::after {
+.gate[data-edge='left']:hover::after,
+.gate[data-edge='left']:focus-visible::after {
   left: 0;
   transform: none;
 }
-.gate[data-edge='right']:hover::after {
+.gate[data-edge='right']:hover::after,
+.gate[data-edge='right']:focus-visible::after {
   left: auto;
   right: 0;
   transform: none;
 }
-.gate[data-below]:hover::after {
+.gate[data-below]:hover::after,
+.gate[data-below]:focus-visible::after {
   bottom: auto;
   top: calc(100% + 6px);
 }
-.gate:hover::after {
+.gate:hover::after,
+.gate:focus-visible::after {
   content: attr(data-guard);
   position: absolute;
   bottom: calc(100% + 6px);
@@ -1539,6 +1548,10 @@ td .multiline {
   display: none;
 }
 /* With script, the files of an upload panel are listed as they are sent: each with a progress bar, then the server's words for it. */
+.panel-foot .panel-note {
+  margin-right: auto;
+  font-size: 12.5px;
+}
 .upload-queue {
   list-style: none;
   margin: 8px 0 0;
@@ -2700,7 +2713,9 @@ td.actions:focus-within {
   z-index: 2;
 }
 td.actions .gate:hover::after,
-.panel-foot .gate:hover::after {
+td.actions .gate:focus-visible::after,
+.panel-foot .gate:hover::after,
+.panel-foot .gate:focus-visible::after {
   left: auto;
   right: 0;
   transform: none;

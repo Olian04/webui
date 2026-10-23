@@ -40,6 +40,9 @@ type FormView struct {
 	// may not submit is offered a Back button in place of Save and Cancel.
 	SubmitRefused bool
 
+	// SubmitReason is why the viewer may not submit, in the words of the Guard that said Disabled, and "" when it said nothing (or the form is not refused).
+	SubmitReason string
+
 	// CancelHref is where Cancel, or Back, goes, "" for neither.
 	CancelHref string
 
