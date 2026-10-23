@@ -3,6 +3,7 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -105,4 +106,70 @@ func TestTheBoxesListboxHoldsOnlyOptionsAndGroups(t *testing.T) {
 	page := serve(h, http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	assert.False(t, strings.Contains(page, `role="option"`))
 	assert.Contains(t, page, `<div class="pal-label">Devices</div>`)
+}
+
+// --- display preferences -------------------------------------------------------------------------------------------------------------------------
+
+// The text that a reader needs is not in the colour that is for decoration: --text-3 is a step under what a person can be asked to read.
+func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
+	t.Parallel()
+
+	h, _ := phoneForm("SE")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	for _, selector := range []string{
+		".search input::placeholder", ".input::placeholder", ".kbd", ".refresh-note", ".pager-export-note", ".file-hint", ".msel-hint", ".udiff-n",
+		".status-loading", ".sb-opt", ".filter-btn", ".filter-note",
+	} {
+		rule := regexp.MustCompile(regexp.QuoteMeta(selector) + `\s*\{[^}]*\}`).FindString(css)
+		assert.True(t, rule != "")
+		assert.False(t, strings.Contains(rule, "--text-3"))
+	}
+}
+
+// Windows high contrast and the like take every colour that a page chose, so what is drawn with a background or a shadow, a checked box, a focus ring,
+// the active tab, goes unless it is drawn again with the system's colours, or with an outline or a border, which stay.
+func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
+	t.Parallel()
+
+	h, _ := phoneForm("SE")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+
+	forced := css[strings.Index(css, "@media (forced-colors: active) {"):]
+	forced = forced[:strings.Index(forced, "\n}\n")]
+	for _, want := range []string{
+		".checkbox:checked", "background: Highlight;", "background: HighlightText;", ".msel-opt.on .msel-check", // a checked box is seen
+		".input:focus", ".msel-field:focus-visible", ".side-resize:focus-visible", "outline-color: Highlight;", // focus is seen
+		".tab.active", ".nav-item.active", ".pal-item.active", // where the reader is
+	} {
+		assert.Contains(t, forced, want)
+	}
+	assert.Contains(t, css, "@media (prefers-contrast: more) {")
+
+	// Nothing that can take the focus has it taken away with no replacement: an outline is made transparent, which is drawn in forced colors, and not none.
+	for _, rule := range regexp.MustCompile(`([^{}]+)\{[^{}]*outline:\s*none;[^{}]*\}`).FindAllStringSubmatch(css, -1) {
+		selector := strings.TrimSpace(rule[1])
+		if selector != ".search input" && selector != ".rowlink:focus-visible" {
+			t.Errorf("%q takes the outline away", selector)
+		}
+	}
+
+	motion := css[strings.Index(css, "@media (prefers-reduced-motion: reduce) {"):]
+	motion = motion[:strings.Index(motion, "\n}\n")]
+	for _, want := range []string{"animation-duration: 0.01ms !important;", "animation-iteration-count: 1 !important;", "transition-duration: 0.01ms !important;", ".spin {"} {
+		assert.Contains(t, motion, want)
+	}
+	// What was drawn for a reader that moves is a still cue when it does not: a panel that is busy is dimmed.
+	assert.Contains(t, motion, "[data-leaf][aria-busy='true'] tbody")
+}
+
+// A narrow window, which is what 320 pixels and 400 percent make of any, keeps its search.
+func TestANarrowWindowKeepsItsSearch(t *testing.T) {
+	t.Parallel()
+
+	h, _ := phoneForm("SE")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	narrow := css[strings.Index(css, "@media (max-width: 820px) {"):]
+	narrow = narrow[:strings.Index(narrow, "\n}\n")]
+	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(narrow))
+	assert.Contains(t, narrow, ".search .kbd")
 }

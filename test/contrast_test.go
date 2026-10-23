@@ -110,6 +110,16 @@ func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 			check("--text-2 on "+surface.label, contrast(colour("text-2").over(surface.bg), surface.bg), 4.5)
 			check("--text-3 on "+surface.label+" (decoration only)", contrast(colour("text-3").over(surface.bg), surface.bg), 3)
 		}
+		// The quiet text is read on every surface it is drawn on, and the hover of a row is one of them.
+		input, raise := colour("input-bg"), colour("raise")
+		hovered := colour("hover").over(panel)
+		check("--text-2 on a hovered row", contrast(colour("text-2").over(hovered), hovered), 4.5)
+		check("--text-2 on the raised surface", contrast(colour("text-2").over(raise), raise), 4.5)
+		check("--text-2 on an input", contrast(colour("text-2").over(input), input), 4.5)
+		check("--blue-text on a hovered row", contrast(colour("blue-text").over(hovered), hovered), 4.5)
+		// The edge of a control is what tells a person where it is: 3:1 against what it is drawn on.
+		check("--control-bd on an input", contrast(colour("control-bd").over(input), input), 3)
+		check("--control-bd on the panel", contrast(colour("control-bd").over(panel), panel), 3)
 		check("--blue-text on panel", contrast(colour("blue-text").over(panel), panel), 4.5)
 		check("white on --blue (primary button)", contrast(white, colour("blue")), 4.5)
 		check("white on --blue-hover", contrast(white, colour("blue-hover")), 4.5)

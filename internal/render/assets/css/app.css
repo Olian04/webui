@@ -13,6 +13,7 @@
   --input-bg: #0e0f12;
   --border: rgba(204, 204, 220, 0.11);
   --border-2: rgba(204, 204, 220, 0.22);
+  --control-bd: rgba(204, 204, 220, 0.5); /* the edge of a control: 3:1 against what it sits on, which a decoration\'s edge is not */
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
   --text-3: rgba(204, 204, 220, 0.45);
@@ -27,9 +28,9 @@
   --orange: #ff9830;
   --orange-bg: rgba(255, 152, 48, 0.14);
   --orange-bd: rgba(255, 152, 48, 0.3);
-  --red: #f2686c;
-  --red-bg: rgba(242, 104, 108, 0.14);
-  --red-bd: rgba(242, 104, 108, 0.3);
+  --red: #f57a7d;
+  --red-bg: rgba(245, 122, 125, 0.14);
+  --red-bd: rgba(245, 122, 125, 0.3);
   --red-solid: #d03a3f;
   --red-solid-hover: #bd3237;
   --shadow: 0 4px 12px rgb(0 0 0/0.55);
@@ -42,6 +43,7 @@
   --input-bg: #ffffff;
   --border: rgba(36, 41, 46, 0.12);
   --border-2: rgba(36, 41, 46, 0.24);
+  --control-bd: rgba(36, 41, 46, 0.55);
   --text: #24292e;
   --text-2: #5c6269;
   --text-3: #85888e;
@@ -74,6 +76,7 @@
     --input-bg: #ffffff;
     --border: rgba(36, 41, 46, 0.12);
     --border-2: rgba(36, 41, 46, 0.24);
+    --control-bd: rgba(36, 41, 46, 0.55);
     --text: #24292e;
     --text-2: #5c6269;
     --text-3: #85888e;
@@ -219,7 +222,7 @@ html.sidebar-dragging .side-resize::after {
   background: var(--blue);
 }
 .side-resize:focus-visible {
-  outline: none;
+  outline: 2px solid transparent;
 }
 html.sidebar-dragging,
 html.sidebar-dragging * {
@@ -396,7 +399,7 @@ a.side-brand:hover {
 .slider {
   position: absolute;
   inset: 0;
-  background: var(--border-2);
+  background: var(--control-bd);
   border-radius: 99px;
   cursor: pointer;
   transition: background-color 0.13s;
@@ -498,6 +501,7 @@ a.side-brand:hover {
 .search:focus-within {
   border-color: var(--blue);
   box-shadow: 0 0 0 2px var(--ring);
+  outline: 2px solid transparent;
 }
 .search input {
   flex: 1;
@@ -508,7 +512,7 @@ a.side-brand:hover {
   font-size: 13px;
 }
 .search input::placeholder {
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .search .fa-solid {
   width: 14px;
@@ -539,7 +543,7 @@ html.js .search-submit {
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-3);
+  color: var(--text-2);
   border: 1px solid var(--border);
   border-radius: 2px;
   padding: 0 4px;
@@ -936,7 +940,7 @@ form[data-filter-form] {
 .refresh-note {
   margin-left: auto;
   font-size: 12px;
-  color: var(--text-3);
+  color: var(--text-2);
   white-space: nowrap;
 }
 html.js .refresh-nojs,
@@ -1008,7 +1012,7 @@ html:not(.js) .refresh-js {
   border-color: var(--blue-hover);
 }
 .btn-secondary {
-  border-color: var(--border-2);
+  border-color: var(--control-bd);
   color: var(--text);
 }
 .btn-secondary:hover {
@@ -1207,7 +1211,7 @@ th.pick {
   appearance: none;
   width: 15px;
   height: 15px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--control-bd);
   border-radius: 2px;
   background: var(--input-bg);
   cursor: pointer;
@@ -1295,7 +1299,7 @@ html:not(.js) .actionbar .dim {
 .pager-export-label,
 .pager-export-note {
   font-size: 12.5px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .empty {
   padding: 44px 16px;
@@ -1498,9 +1502,9 @@ select.input {
   font-size: 13.5px;
   background: var(--input-bg);
   color: var(--text);
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--control-bd);
   border-radius: 2px;
-  outline: none;
+  outline: 2px solid transparent;
   transition:
     border-color 0.11s,
     box-shadow 0.11s;
@@ -1624,7 +1628,7 @@ td .multiline {
   flex: 1 1 auto;
 }
 .file-hint {
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 12px;
 }
 .file-preview img {
@@ -1729,7 +1733,7 @@ input[type='file'].input::file-selector-button:hover {
   background: var(--hover);
 }
 .input::placeholder {
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .input:focus {
   border-color: var(--blue);
@@ -1765,9 +1769,9 @@ select.input[multiple] option {
 }/* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
    they are marked here, with the tint a selected row of a table has. */
 select.input[multiple] option:checked {
-  background: color-mix(in srgb, var(--blue) 22%, var(--panel));
-  color: var(--text);
-  font-weight: 500;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 600;
 }
 /* With script a select is a field that shows what is chosen as the badges it is when read, over a
    list of the options, each ticked by a click. The <select> stays in the form, hidden, and is what
@@ -1790,7 +1794,7 @@ select.input[multiple] option:checked {
 .msel.open .msel-field {
   border-color: var(--blue);
   box-shadow: 0 0 0 2px var(--ring);
-  outline: none;
+  outline: 2px solid transparent;
 }
 .msel-field.invalid {
   border-color: var(--red);
@@ -1800,7 +1804,7 @@ select.input[multiple] option:checked {
   box-shadow: 0 0 0 2px var(--ring-bad);
 }
 .msel-hint {
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 13.5px;
 }
 .msel-chevron {
@@ -1865,7 +1869,7 @@ select.input[multiple] option:checked {
   place-content: center;
   width: 15px;
   height: 15px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--control-bd);
   border-radius: 2px;
   background: var(--input-bg);
 }
@@ -2037,7 +2041,7 @@ select.input[multiple] option:checked {
   white-space: pre;
   overflow: auto;
   resize: none;
-  outline: none;
+  outline: 2px solid transparent;
 }
 .code-text {
   background: var(--input-bg);
@@ -2093,7 +2097,7 @@ select.input[multiple] option:checked {
     SFMono-Regular,
     Menlo,
     monospace;
-  outline: none;
+  outline: 2px solid transparent;
 }
 .udiff:focus-visible {
   box-shadow: inset 0 0 0 2px var(--ring);
@@ -2123,7 +2127,7 @@ select.input[multiple] option:checked {
 .udiff-n {
   padding-right: 8px;
   text-align: right;
-  color: var(--text-3);
+  color: var(--text-2);
   user-select: none;
 }
 .udiff-m {
@@ -2439,7 +2443,7 @@ select.input[multiple] option:checked {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 @supports selector(:has(*)) {
   .statusbar-live:has(~ .statusbar-late) .status-loading {
@@ -2469,7 +2473,7 @@ select.input[multiple] option:checked {
   white-space: nowrap;
 }
 .sb-opt {
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .sb-timing + .sb-opt::before {
   content: var(--sep);
@@ -2579,9 +2583,22 @@ html.js .status-meta [data-built] {
   border-width: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .arriving .spin,
-  .status-loading .spin {
-    animation-duration: 2.4s;
+  /* Nothing moves that does not have to: a change is a change of state, at once, and nothing loops. A busy panel is still known to be busy,
+     by a static cue, and a spinner is its first frame. */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-leaf][aria-busy='true'] tbody {
+    opacity: 0.6;
+  }
+  .spin {
+    animation: none;
+    border-top-color: var(--blue-text);
   }
 }
 
@@ -2690,7 +2707,14 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
   .side-row {
     justify-content: center;
   }
+  /* A narrow window keeps its search, smaller, and without the key it names (there is no keyboard to press it on, as often as not). */
   .search {
+    width: auto;
+    flex: 1 1 90px;
+    max-width: 200px;
+    min-width: 0;
+  }
+  .search .kbd {
     display: none;
   }
 }
@@ -2844,7 +2868,7 @@ a.ext:hover {
   width: 20px;
   height: 20px;
   border-radius: 2px;
-  color: var(--text-3);
+  color: var(--text-2);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.12s;
@@ -2942,7 +2966,7 @@ th.num .filter-pop {
 }
 .filter-note {
   font-size: 11.5px;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 .filter-range label {
   display: flex;
@@ -2960,4 +2984,140 @@ th.num .filter-pop {
 /* A header link is a sort link; the buttons in the popover are not. */
 thead th .filter-pop a {
   display: inline-flex;
+}
+
+/* ------------------------- display preferences --------------------------- */
+
+/* A link in running text is told from the text round it by more than its colour. */
+.md a,
+.file-current a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The option that the arrow keys are on is marked by more than a fill, which is a tenth of a step from the box it is in. */
+.pal-item.active,
+.msel-opt.active {
+  outline: 2px solid var(--blue);
+  outline-offset: -2px;
+}
+
+/* A control that is scrolled to is not left under the status bar, or under a table's sticky header. */
+.scroll {
+  scroll-padding-bottom: 36px;
+}
+.panel.grows > .panel-body {
+  scroll-padding-top: 34px;
+}
+
+/* A ring that is inside a box that clips is drawn inside it. */
+.tab:focus-visible,
+.nav-item:focus-visible {
+  outline-offset: -2px;
+}
+
+/* A column's filter is a target of at least 24 pixels, and a touch screen, which has no hover to bring it out, is shown it. */
+.filter-btn {
+  min-width: 24px;
+  min-height: 24px;
+}
+@media (hover: none) {
+  .filter-btn {
+    opacity: 1;
+  }
+}
+
+/* A window short enough that fixed bars would be a third of it lets the status bar scroll with the page. */
+@media (max-height: 480px) {
+  .statusbar {
+    position: static;
+  }
+}
+
+/* Windows high contrast and the like: the browser takes every colour a page chose and gives it the user's. What a page drew with a background or a
+   shadow is then gone, so what means something is drawn again with the system colours, or with a border or an outline, which stay. */
+@media (forced-colors: active) {
+  .checkbox:checked,
+  .md input[type='checkbox']:checked,
+  .msel-opt.on .msel-check {
+    forced-color-adjust: none;
+    background: Highlight;
+    border-color: Highlight;
+  }
+  .checkbox:checked::after,
+  .md input[type='checkbox']:checked::after,
+  .msel-opt.on .msel-check::after {
+    forced-color-adjust: none;
+    background: HighlightText;
+  }
+  .switch input:checked + .slider {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .slider {
+    border: 1px solid ButtonText;
+  }
+  .slider::before {
+    forced-color-adjust: none;
+    background: ButtonText;
+  }
+  .switch input:checked + .slider::before {
+    background: HighlightText;
+  }
+  .input:focus,
+  .search:focus-within,
+  .msel-field:focus-visible,
+  .msel.open .msel-field,
+  .code-text:focus,
+  .code-view:focus-visible,
+  .udiff:focus-visible,
+  .side-resize:focus-visible {
+    outline-color: Highlight;
+  }
+  .side-resize:hover::after,
+  .side-resize:focus-visible::after,
+  html.sidebar-dragging .side-resize::after {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .tab:not(.active) {
+    border-bottom-color: Canvas;
+  }
+  .tab.active {
+    border-bottom-color: Highlight;
+  }
+  .nav-item.active {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .nav-item.active::before {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  .pal-item.active,
+  .msel-opt.active {
+    outline-color: Highlight;
+  }
+  .file-drop.dragging {
+    outline: 2px dashed Highlight;
+  }
+  .gauge-track {
+    border: 1px solid CanvasText;
+  }
+  .gauge-fill {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+}
+
+/* A visitor who asked for more contrast gets the edges of things and the quiet text at the strength of the ordinary. */
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme='dark'],
+  [data-theme='light'] {
+    --border: var(--control-bd);
+    --border-2: var(--control-bd);
+    --text-2: var(--text);
+    --text-3: var(--text);
+  }
 }
