@@ -658,6 +658,10 @@ different product.
 - A control is described by the popover of its help and rules, which is referred to by id, and by its error when it is refused. A button in a row says which row it
   is of ("Drop", then the first cell's text for a reader), and a filter that is on says so in its name.
 - Focus is a visible 2px ring, never removed.
+- A target for a pointer is 24px by 24px or has room round it (WCAG 2.5.8): a 24px circle on it touches no other target. The dense look keeps its
+  smaller controls (a row's link is 16px high, an information icon 13px, a checkbox 15px, the splitter 7px wide), which pass by that room and not by
+  their size, so a control is not put beside another of them closer than that. A sortable header's link, which has a filter button beside it and
+  can be a few pixels wide in a narrow column, is 24px at least, and axe-core is run for it on the demo's pages at a desktop and a phone width.
 - Every interactive element is a real link or a real button, so keyboard
   traversal and "open in new tab" work without any extra handling.
 - Descriptions are the information icon's accessible name and also appear in a

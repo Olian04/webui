@@ -399,3 +399,15 @@ func TestTheUploadKeepsItsLiveRegionAndTheFocus(t *testing.T) {
 	assert.Contains(t, file, "element('button', 'file-thumb-chosen')")
 	assert.Contains(t, file, "input.setAttribute('aria-invalid', 'true');")
 }
+
+// A column too narrow for its title leaves a sortable header's link a few pixels wide, beside the filter button, which a pointer cannot be asked to hit
+// (WCAG 2.5.8): the link is 24px at least each way. The other small controls pass by the room round them, which a stylesheet cannot be tested for.
+func TestASortableHeaderLinkIsAtLeast24pxToHit(t *testing.T) {
+	t.Parallel()
+
+	h, _ := phoneForm("SE")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	rule := regexp.MustCompile(`thead th a\s*\{[^}]*\}`).FindString(css)
+	assert.Contains(t, rule, "min-width: 24px;")
+	assert.Contains(t, rule, "min-height: 24px;")
+}

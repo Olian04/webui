@@ -1131,6 +1131,9 @@ thead th a {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  /* A column too narrow for its title leaves a link of a few pixels, next to the filter button: 24px at least, which is what a pointer needs. */
+  min-width: 24px;
+  min-height: 24px;
   cursor: pointer;
 }
 thead th a:hover {

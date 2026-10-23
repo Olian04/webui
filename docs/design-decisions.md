@@ -944,6 +944,14 @@ design element.
   (the state title, the status bar, the pager, the row buttons). Not done: a breadcrumb as an ordered list, a fixed label for the collapse button, and a focusable
   scrolling body for a table with nothing in it to tab to, which are small and wait for a reason.
 
+- **Controls are not enlarged to 24px for a pointer where they have the room WCAG 2.5.8 allows instead.** The accessibility audit counted the controls
+  under 24px (a row's link, an information icon, the checkboxes, the header links, the splitter) and proposed a hit area for each. Measured with the icon font
+  loaded and the script's classes on, axe-core finds only one that fails, a sortable header's link at phone width, 12px wide next to the filter button, and
+  that is given a 24px minimum. The rest pass by the spacing exception (no other target within a 24px circle of them), which is conformance and not
+  a workaround, and the dense look is the design (the density of the app), so they stay as they are. The cost: it holds only while they are not put
+  closer together, so a new control beside one of them has to leave that room, and a touch screen has small targets that the rule allows. An earlier
+  count of twenty-two came from running axe on pages whose icon font had not loaded, which shrinks every icon button; the method is to load it.
+
 - **The app answers the visitor's display preferences, and its ordinary look keeps the quiet edge of a control.** There were no rules for `forced-colors`,
   `prefers-contrast` and only the spinners for `prefers-reduced-motion`, found by the accessibility audit (a checked checkbox was a background and vanished
   in Windows high contrast, a focus ring was a shadow with `outline: none`, the active tab and entry were fills). Now a forced-colors block draws what meant
