@@ -34,7 +34,7 @@ func contextEditor(fsys fstest.MapFS, language webui.Language, guard func(contex
 			Guard: guard,
 			Run:   func(context.Context, doc) (webui.Outcome, error) { return webui.Success("Saved"), nil },
 		},
-		Load: func(context.Context) (doc, error) { return doc{}, nil },
+		Load: func(context.Context) (doc, webui.Loaded) { return doc{}, webui.Ready() },
 	}}}}.MustCompile("/admin")
 }
 
@@ -159,7 +159,7 @@ func TestTwoEditorsGivenOneFolderHandOverEachFileOnce(t *testing.T) {
 		Title: "Doc", Language: webui.LangTypeScript, Context: folder(),
 		Content: webui.String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }, Store: func(d *doc, v string) { d.Text = v }},
 		Submit:  webui.Action[doc]{Run: func(context.Context, doc) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
-		Load:    func(context.Context) (doc, error) { return doc{}, nil },
+		Load:    func(context.Context) (doc, webui.Loaded) { return doc{}, webui.Ready() },
 	}
 	second := editor
 	second.Title = "Another"

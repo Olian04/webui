@@ -27,7 +27,7 @@ func noop(string) func(context.Context, parcel) (webui.Outcome, error) {
 // guardedParcels is a table of the two parcels with the actions given, on a page of its own.
 func guardedParcels(logger *slog.Logger, actions []webui.Action[parcel], bulk []webui.Action[[]parcel], click webui.RowClick[parcel]) http.Handler {
 	table := webui.Table[parcel]{
-		Rows: func(context.Context) ([]parcel, error) { return parcelsData, nil }, Key: func(p parcel) string { return p.Name },
+		Rows: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }, Key: func(p parcel) string { return p.Name },
 		Columns: []webui.Accessor[parcel]{parcelName}, Actions: actions, BulkActions: bulk, RowClick: click,
 	}
 	return webui.App{Logger: logger, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
@@ -191,7 +191,7 @@ func TestATableWithNoRowsDrawsNoBulkAction(t *testing.T) {
 	t.Parallel()
 
 	table := webui.Table[parcel]{
-		Rows: func(context.Context) ([]parcel, error) { return nil, nil }, Key: func(p parcel) string { return p.Name },
+		Rows: func(context.Context) ([]parcel, webui.Loaded) { return nil, webui.Ready() }, Key: func(p parcel) string { return p.Name },
 		Columns: []webui.Accessor[parcel]{parcelName},
 		BulkActions: []webui.Action[[]parcel]{{
 			Label: "Bag",
@@ -295,7 +295,7 @@ func TestALinkToAPageThatRefusesTheVisitorIsNotDrawn(t *testing.T) {
 	}}
 	args := func(context.Context, parcel) webui.NoArgs { return webui.NoArgs{} }
 	table := webui.Table[parcel]{
-		Rows: func(context.Context) ([]parcel, error) { return parcelsData, nil }, Key: func(p parcel) string { return p.Name },
+		Rows: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }, Key: func(p parcel) string { return p.Name },
 		Columns:  []webui.Accessor[parcel]{parcelName},
 		RowClick: webui.Link[parcel, webui.NoArgs]{Page: dest, Args: args},
 	}

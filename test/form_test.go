@@ -41,9 +41,9 @@ func okForm() webui.Form[Device] {
 	return webui.Form[Device]{
 		Title: "Configuration",
 		Desc:  "One device.",
-		Load: func(ctx context.Context) (Device, error) {
+		Load: func(ctx context.Context) (Device, webui.Loaded) {
 			a := webui.ArgsOf[detailsArgs](ctx)
-			return Device{Id: a.Id, Ip: "10.0.0.1", Count: 7}, nil
+			return Device{Id: a.Id, Ip: "10.0.0.1", Count: 7}, webui.Ready()
 		},
 		Fields: []webui.Accessor[Device]{webui.Group[Device]{formID, formIP}, formCount},
 		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }},
@@ -155,7 +155,7 @@ func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testin
 	t.Parallel()
 
 	f := okForm()
-	f.Load = func(context.Context) (Device, error) { return Device{Ip: "10.0.0.1"}, nil } // an empty ID
+	f.Load = func(context.Context) (Device, webui.Loaded) { return Device{Ip: "10.0.0.1"}, webui.Ready() } // an empty ID
 	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
 
 	// The ID has no Store: its field is the quiet kind, and says it is empty.
@@ -170,7 +170,7 @@ func TestAPlaceholderIsShownInAnEmptyInputOfAnyKind(t *testing.T) {
 	t.Parallel()
 
 	f := webui.Form[Device]{
-		Load: func(context.Context) (Device, error) { return Device{}, nil },
+		Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{
 			webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.Ip }, Store: func(d *Device, v string) { d.Ip = v }, Placeholder: "10.0.0.1"},
 			webui.Int[Device]{Label: "Count", Load: func(d Device) int { return d.Count }, Store: func(d *Device, v int) { d.Count = v }, Placeholder: "how many"},
@@ -199,7 +199,9 @@ func TestFormLoadFailureFailsThePanel(t *testing.T) {
 	t.Parallel()
 
 	f := okForm()
-	f.Load = func(context.Context) (Device, error) { return Device{}, errors.New("db down: hunter2") }
+	f.Load = func(context.Context) (Device, webui.Loaded) {
+		return Device{}, webui.Failed(errors.New("db down: hunter2"))
+	}
 	rec := serve(formApp(f), http.MethodGet, "/admin/device/dev1")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Could not load")

@@ -23,7 +23,7 @@ type Diff[M any] struct {
 	Desc string
 
 	// Load returns the model that holds both texts.
-	Load func(ctx context.Context) (M, error)
+	Load func(ctx context.Context) (M, Loaded)
 
 	// Original is the text that was, and Modified the text that is. Their labels name
 	// the two sides, and must differ.

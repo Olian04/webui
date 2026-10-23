@@ -33,22 +33,22 @@ type Hit[A any] struct {
 // matching: a row is a result when any of the fields, as they are shown, contains what the
 // visitor typed, ignoring case. The best matches of its hits, by Title and Desc, are the ones kept when there
 // are more than the limit, and the global search orders every page's results the same way. rows is called on every search, and nothing is kept between
-// them. hit says what a row is as a result.
+// them. hit says what a row is as a result. rows is the Rows of a table as it is, so that one function serves both; a refresh that it says is for a panel, and a search does not ask for one.
 //
 //	Search: webui.SearchRows(loadAlerts,
 //		func(a Alert) webui.Hit[AlertArgs] {
 //			return webui.Hit[AlertArgs]{Args: AlertArgs{ID: a.ID}, Title: a.ID, Desc: a.Message}
 //		},
 //		AlertID, AlertDevice, Message),
-func SearchRows[M, A any](rows func(ctx context.Context) ([]M, error), hit func(M) Hit[A], fields ...Accessor[M]) func(ctx context.Context, query string, limit int) ([]Hit[A], error) {
+func SearchRows[M, A any](rows func(ctx context.Context) ([]M, Loaded), hit func(M) Hit[A], fields ...Accessor[M]) func(ctx context.Context, query string, limit int) ([]Hit[A], error) {
 	cols := lowerAccessors(fields, "s")
 	return func(ctx context.Context, query string, limit int) ([]Hit[A], error) {
 		if rows == nil || hit == nil || len(fields) == 0 {
 			return nil, errors.New("webui: SearchRows needs rows, a hit and at least one field")
 		}
-		all, err := rows(ctx)
-		if err != nil {
-			return nil, err
+		all, loaded := rows(ctx)
+		if loaded.err != nil {
+			return nil, loaded.err
 		}
 		fields, err := ir.ResolveChoices(ctx, cols) // a select that reads its options, for what it says
 		if err != nil {

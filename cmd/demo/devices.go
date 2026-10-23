@@ -177,11 +177,11 @@ var DevicesTable = webui.Table[Device]{
 	// handed the window, the sort and the filters and does that work. Every
 	// other table in the demo says only what its rows are, with Rows, and
 	// leaves the rest to the library.
-	Load: func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+	Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 		// A column is named by its Label. The numeric columns, Occurrences and
 		// Rate / s, arrive as bounds.
 		devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
-		return webui.Window[Device]{Items: devices, Total: total}, nil
+		return webui.Window[Device]{Items: devices, Total: total}, webui.Ready()
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
@@ -199,7 +199,7 @@ var NewDevicePage = webui.Page[webui.NoArgs]{
 	Body: webui.Form[Device]{
 		Title: "New device",
 		Desc:  "The same fields as a device's own form, over a device that does not exist yet.",
-		Load:  func(context.Context) (Device, error) { return Device{Status: "healthy"}, nil },
+		Load:  func(context.Context) (Device, webui.Loaded) { return Device{Status: "healthy"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{
 			IP,
 			webui.Group[Device]{Status, SiteChoice},
@@ -261,10 +261,10 @@ var Details = webui.Page[DeviceArgs]{
 var DeviceForm = webui.Form[Device]{
 	Title: "Configuration",
 	Desc:  "A Form leaf. Fields whose accessor declares no Store render read-only.",
-	Load: func(ctx context.Context) (Device, error) {
+	Load: func(ctx context.Context) (Device, webui.Loaded) {
 		args := webui.ArgsOf[DeviceArgs](ctx)
 		d, _ := service.Device(args.ID)
-		return d, nil
+		return d, webui.Ready()
 	},
 	Fields: []webui.Accessor[Device]{
 		// A Group puts its fields side by side; it is layout, with no frame.
@@ -299,7 +299,7 @@ var SaveDevice = webui.Action[Device]{
 var RecentEvents = webui.Table[Event]{
 	Title:   "Recent events",
 	Desc:    "The last 15 minutes, whatever the Raw events tab shows.",
-	Rows:    func(context.Context) ([]Event, error) { return service.Events(15), nil },
+	Rows:    func(context.Context) ([]Event, webui.Loaded) { return service.Events(15), webui.Ready() },
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 
@@ -307,8 +307,8 @@ var RecentEvents = webui.Table[Event]{
 var RawEvents = webui.Table[Event]{
 	Title: "Raw events",
 	Desc:  "Narrowed by ?minutes= (as the alerts' links do): all of them without.",
-	Rows: func(ctx context.Context) ([]Event, error) {
-		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), nil
+	Rows: func(ctx context.Context) ([]Event, webui.Loaded) {
+		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), webui.Ready()
 	},
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }

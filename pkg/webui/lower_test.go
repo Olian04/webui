@@ -32,11 +32,11 @@ func fixture() App {
 		Path: "/device/{id}",
 		Body: Tabs{Panels: []Tab{
 			{Label: "Overview", Body: Form[dev]{
-				Load:   func(context.Context) (dev, error) { return dev{Id: "d1", Ip: "1.2.3.4"}, nil },
+				Load:   func(context.Context) (dev, Loaded) { return dev{Id: "d1", Ip: "1.2.3.4"}, Ready() },
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
 				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
-			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Window[dev], error) { return Window[dev]{}, nil }}}}},
+			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Window[dev], Loaded) { return Window[dev]{}, Ready() }}}}},
 		}},
 	}
 	list := Page[listArgs]{
@@ -44,8 +44,8 @@ func fixture() App {
 		Nav:  Nav{Label: "Devices"},
 		Body: Table[dev]{
 			Title: "Devices",
-			Load: func(context.Context, Query) (Window[dev], error) {
-				return Window[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, nil
+			Load: func(context.Context, Query) (Window[dev], Loaded) {
+				return Window[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, Ready()
 			},
 			PageSize: 2,
 			Key:      func(d dev) string { return d.Id },

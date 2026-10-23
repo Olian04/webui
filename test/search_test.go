@@ -102,7 +102,7 @@ func searchApp(search func(context.Context, string, int) ([]webui.Hit[detailsArg
 // rowsSearch is a page's Search made from the devices in memory.
 func rowsSearch() func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
 	return webui.SearchRows(
-		func(context.Context) ([]Device, error) { return searchDevices(), nil },
+		func(context.Context) ([]Device, webui.Loaded) { return searchDevices(), webui.Ready() },
 		deviceHit, searchID, searchIP, searchSite,
 	)
 }
@@ -369,14 +369,14 @@ func TestSearchRowsNeedsRowsAHitAndAField(t *testing.T) {
 
 	for name, s := range map[string]func(context.Context, string, int) ([]webui.Hit[detailsArgs], error){
 		"no rows":  webui.SearchRows[Device, detailsArgs](nil, deviceHit, searchID),
-		"no hit":   webui.SearchRows[Device, detailsArgs](func(context.Context) ([]Device, error) { return nil, nil }, nil, searchID),
-		"no field": webui.SearchRows(func(context.Context) ([]Device, error) { return nil, nil }, deviceHit),
+		"no hit":   webui.SearchRows[Device, detailsArgs](func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() }, nil, searchID),
+		"no field": webui.SearchRows(func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() }, deviceHit),
 	} {
 		if _, err := s(context.Background(), "x", 8); err == nil {
 			t.Errorf("%s: no error", name)
 		}
 	}
-	failing := webui.SearchRows(func(context.Context) ([]Device, error) { return nil, errors.New("down") }, deviceHit, searchID)
+	failing := webui.SearchRows(func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Failed(errors.New("down")) }, deviceHit, searchID)
 	_, err := failing(context.Background(), "x", 8)
 	assert.Error(t, err)
 }

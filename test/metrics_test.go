@@ -34,7 +34,7 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 				return []webui.Hit[thingArgs]{{Args: thingArgs{ID: "a"}, Title: "A"}}, nil
 			},
 			Body: webui.Form[thing]{
-				Load:   func(context.Context) (thing, error) { return thing{Name: "x"}, loadErr },
+				Load:   func(context.Context) (thing, webui.Loaded) { return thing{Name: "x"}, webui.Failed(loadErr) },
 				Fields: []webui.Accessor[thing]{thingName},
 				Submit: webui.Action[thing]{
 					Guard: func(_ context.Context, t thing) error {
@@ -59,8 +59,8 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 			Path: "/things", Nav: webui.Nav{Label: "Things"},
 			Body: webui.Table[thing]{
 				Title: "Things",
-				Load: func(context.Context, webui.Query) (webui.Window[thing], error) {
-					return webui.Window[thing]{Items: []thing{{Name: "a"}}, Total: 1}, loadErr
+				Load: func(context.Context, webui.Query) (webui.Window[thing], webui.Loaded) {
+					return webui.Window[thing]{Items: []thing{{Name: "a"}}, Total: 1}, webui.Failed(loadErr)
 				},
 				Key:     func(t thing) string { return t.Name },
 				Columns: []webui.Accessor[thing]{thingName},

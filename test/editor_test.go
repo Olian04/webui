@@ -25,8 +25,8 @@ var (
 	snippetOld  = webui.String[snippet]{Label: "Before", Load: func(s snippet) string { return s.Before }}
 )
 
-func loadSnippet(context.Context) (snippet, error) {
-	return snippet{Text: "{\"a\": 1,\n\"b\": 2}\n", Before: "{\"a\": 1}\n"}, nil
+func loadSnippet(context.Context) (snippet, webui.Loaded) {
+	return snippet{Text: "{\"a\": 1,\n\"b\": 2}\n", Before: "{\"a\": 1}\n"}, webui.Ready()
 }
 
 // editorApp has one page, with the leaf as its body, and records what was saved.
@@ -152,7 +152,9 @@ func TestAFailingEditorLoadFailsThePanelAndNotThePage(t *testing.T) {
 
 	h := editorApp(webui.Editor[snippet]{
 		Title: "Config", Content: snippetView,
-		Load: func(context.Context) (snippet, error) { return snippet{}, errors.New("disk secret-path unreadable") },
+		Load: func(context.Context) (snippet, webui.Loaded) {
+			return snippet{}, webui.Failed(errors.New("disk secret-path unreadable"))
+		},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, "Could not load")
@@ -204,7 +206,9 @@ func TestAFailingDiffLoadFailsThePanelAndNotThePage(t *testing.T) {
 
 	h := editorApp(webui.Diff[snippet]{
 		Title: "Changes", Original: snippetOld, Modified: snippetView,
-		Load: func(context.Context) (snippet, error) { return snippet{}, errors.New("db secret-host is down") },
+		Load: func(context.Context) (snippet, webui.Loaded) {
+			return snippet{}, webui.Failed(errors.New("db secret-host is down"))
+		},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, "Could not load")

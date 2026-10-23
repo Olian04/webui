@@ -36,9 +36,9 @@ func TestAPagesPanelsLoadAtTheSameTime(t *testing.T) {
 	table := func(title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
+			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
 				meet(ctx, &arrived, 4, &met)
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		}
@@ -46,8 +46,11 @@ func TestAPagesPanelsLoadAtTheSameTime(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		webui.Split{
 			webui.Form[Device]{
-				Title:  "Form",
-				Load:   func(ctx context.Context) (Device, error) { meet(ctx, &arrived, 4, &met); return Device{Id: "x"}, nil },
+				Title: "Form",
+				Load: func(ctx context.Context) (Device, webui.Loaded) {
+					meet(ctx, &arrived, 4, &met)
+					return Device{Id: "x"}, webui.Ready()
+				},
 				Fields: []webui.Accessor[Device]{formID},
 			},
 			table("One"),
@@ -78,22 +81,22 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		webui.Table[Device]{
 			Title: "Fine",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
 				others.Add(1)
-				return webui.Window[Device]{}, nil
+				return webui.Window[Device]{}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		},
 		webui.Form[Device]{
 			Title:  "Broken",
-			Load:   func(context.Context) (Device, error) { panic("the backend fell over") },
+			Load:   func(context.Context) (Device, webui.Loaded) { panic("the backend fell over") },
 			Fields: []webui.Accessor[Device]{formID},
 		},
 		webui.Table[Device]{
 			Title: "Also fine",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
 				others.Add(1)
-				return webui.Window[Device]{}, nil
+				return webui.Window[Device]{}, webui.Ready()
 			},
 			Columns: []webui.Accessor[Device]{formID},
 		},
@@ -115,8 +118,10 @@ func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		webui.Table[Device]{
-			Title:   "Table",
-			Load:    func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil },
+			Title: "Table",
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{}, webui.Ready()
+			},
 			Columns: []webui.Accessor[Device]{formID},
 		},
 		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: webui.LangJSON},

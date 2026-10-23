@@ -549,7 +549,9 @@ func newChoiceShop(edit func(*webui.FileUpload[choice])) *choiceShop {
 	s := &choiceShop{}
 	up := webui.FileUpload[choice]{
 		Title: "Upload", MaxSize: 5 << 20,
-		Load: func(context.Context) (choice, error) { return choice{Note: "a note", Channel: "stable"}, nil },
+		Load: func(context.Context) (choice, webui.Loaded) {
+			return choice{Note: "a note", Channel: "stable"}, webui.Ready()
+		},
 		Fields: []webui.Accessor[choice]{
 			webui.String[choice]{
 				Label: "Note", Rules: webui.StringRules{MinLen: 3},

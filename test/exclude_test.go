@@ -33,13 +33,13 @@ func leftOutApp(source string) (http.Handler, *webui.Query) {
 	devices := []Device{{Id: "b", Ip: "10.0.0.2", Count: 1}, {Id: "a", Ip: "10.0.0.1", Count: 2}, {Id: "c", Ip: "10.0.0.3", Count: 3}}
 	table := webui.Table[Device]{Title: "Devices", Columns: columnsLeftOut()}
 	if source == "rows" {
-		table.Rows = func(context.Context) ([]Device, error) { return devices, nil }
+		table.Rows = func(context.Context) ([]Device, webui.Loaded) { return devices, webui.Ready() }
 	} else {
-		table.Load = func(_ context.Context, q webui.Query) (webui.Window[Device], error) {
+		table.Load = func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
 			mu.Lock()
 			last = q
 			mu.Unlock()
-			return webui.Window[Device]{Items: devices, Total: len(devices)}, nil
+			return webui.Window[Device]{Items: devices, Total: len(devices)}, webui.Ready()
 		}
 	}
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/d", Body: table}}}.MustCompile("/admin"), &last

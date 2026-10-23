@@ -97,14 +97,14 @@ func newGated() *gated { return &gated{asked: make(chan struct{}), release: make
 func (g *gated) table(title string) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
-		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
+		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
 			close(g.asked)
 			select {
 			case <-g.release:
 			case <-ctx.Done():
-				return webui.Window[Device]{}, ctx.Err()
+				return webui.Window[Device]{}, webui.Failed(ctx.Err())
 			}
-			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}
@@ -113,8 +113,8 @@ func (g *gated) table(title string) webui.Table[Device] {
 func quickTable(title string) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
-		Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+		Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}
@@ -179,12 +179,12 @@ func TestAPageSentAsItIsBuiltIsTheSamePageAsOneSentWhole(t *testing.T) {
 	table := func(title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title, Columns: []webui.Accessor[Device]{formID},
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
+			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
 				mu.Lock()
 				d := delay
 				mu.Unlock()
 				sleep(ctx, d)
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 			},
 		}
 	}
@@ -279,7 +279,7 @@ func TestAPanelThatPanicsAfterThePageBeganToBeSentSaysSoAndThePageStands(t *test
 	slow := newGated()
 	broken := webui.Form[Device]{
 		Title: "Broken", Fields: []webui.Accessor[Device]{formID},
-		Load: func(context.Context) (Device, error) { panic("the backend fell over") },
+		Load: func(context.Context) (Device, webui.Loaded) { panic("the backend fell over") },
 	}
 	h := streamApp(webui.Stack{slow.table("Slow"), broken, quickTable("After")})
 	rec := newStreamRecorder()
@@ -361,9 +361,9 @@ func TestAVisitorWhoLeavesAPageThatIsBeingSentStopsItsPanels(t *testing.T) {
 func delayedTable(title string, d time.Duration) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
-		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
+		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
 			sleep(ctx, d)
-			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, nil
+			return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}

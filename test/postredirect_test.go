@@ -29,7 +29,7 @@ func counted(runs *atomic.Int32) http.Handler {
 	page := webui.Page[detailsArgs]{
 		Path: "/device/{id}",
 		Body: webui.Form[Device]{
-			Load:   func(context.Context) (Device, error) { return Device{Id: "a", Ip: "10.0.0.1"}, nil },
+			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.0.1"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP, formCount},
 			Submit: webui.Action[Device]{Run: run},
 		},

@@ -74,7 +74,7 @@ func TestSearchRowsKeepsTheBestMatchesAndNotTheFirstOnes(t *testing.T) {
 
 	rows := []Device{{Id: "a-gate-b"}, {Id: "my gate"}, {Id: "gate"}, {Id: "gateway"}, {Id: "agate"}}
 	search := webui.SearchRows(
-		func(context.Context) ([]Device, error) { return rows, nil },
+		func(context.Context) ([]Device, webui.Loaded) { return rows, webui.Ready() },
 		func(d Device) webui.Hit[webui.NoArgs] { return webui.Hit[webui.NoArgs]{Title: d.Id} },
 		searchID,
 	)

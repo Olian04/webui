@@ -60,7 +60,7 @@ var Alerts = webui.Page[webui.NoArgs]{
 		// there is no query code on this page.
 		// With Rows, an export is every row the sort and filters keep, with nothing to write.
 		Export: true,
-		Rows:   func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+		Rows:   func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
@@ -84,7 +84,7 @@ var AlertDetails = webui.Page[AlertArgs]{
 	Path: "/alert/{id}",
 	// The alerts are findable from the search box, by any of the fields given.
 	Search: webui.SearchRows(
-		func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+		func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
 		func(a Alert) webui.Hit[AlertArgs] {
 			return webui.Hit[AlertArgs]{Args: AlertArgs{ID: a.ID}, Title: a.ID, Desc: a.Severity + " · " + a.Message}
 		},
@@ -106,10 +106,10 @@ var AlertDetails = webui.Page[AlertArgs]{
 var AlertForm = webui.Form[Alert]{
 	Title: "Alert",
 	Desc:  "A Form whose fields are all read-only, with one action.",
-	Load: func(ctx context.Context) (Alert, error) {
+	Load: func(ctx context.Context) (Alert, webui.Loaded) {
 		args := webui.ArgsOf[AlertArgs](ctx)
 		a, _ := service.Alert(args.ID)
-		return a, nil
+		return a, webui.Ready()
 	},
 	Fields: []webui.Accessor[Alert]{
 		webui.Group[Alert]{AlertID, Severity},
@@ -141,13 +141,13 @@ var AcknowledgeAlert = webui.Action[Alert]{
 // arguments, query ones too.
 var AlertDeviceTable = webui.Table[Device]{
 	Title: "Device",
-	Rows: func(ctx context.Context) ([]Device, error) {
+	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
 		alert, _ := service.Alert(webui.ArgsOf[AlertArgs](ctx).ID)
 		device, ok := service.Device(alert.Device)
 		if !ok {
-			return nil, nil
+			return nil, webui.Ready()
 		}
-		return []Device{device}, nil
+		return []Device{device}, webui.Ready()
 	},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,

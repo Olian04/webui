@@ -56,13 +56,13 @@ func blobApp() http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{
 		Path: "/b",
 		Search: webui.SearchRows(
-			func(context.Context) ([]blob, error) { return blobs(), nil },
+			func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 			func(b blob) webui.Hit[webui.NoArgs] { return webui.Hit[webui.NoArgs]{Title: b.Name} },
 			blobName, blobSize, blobPct,
 		),
 		Body: webui.Table[blob]{
 			Title:   "Blobs",
-			Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+			Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 			Key:     func(b blob) string { return b.Name },
 			Columns: []webui.Accessor[blob]{blobName, blobSize, blobPct, blobMade, blobSeen},
 			Export:  true,
@@ -165,7 +165,7 @@ func TestAFieldThatCanBeEditedHoldsTheValueAndOneThatCannotReadsAsItsFormat(t *t
 	editable := webui.Int[sized]{Label: "Size", Load: func(s sized) int { return s.Size }, Store: func(s *sized, v int) { s.Size = v }, Format: human}
 	readOnly := webui.Int[sized]{Label: "Was", Load: func(s sized) int { return s.Size }, Format: human}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Form[sized]{
-		Load:   func(context.Context) (sized, error) { return sized{Size: 1 << 20}, nil },
+		Load:   func(context.Context) (sized, webui.Loaded) { return sized{Size: 1 << 20}, webui.Ready() },
 		Fields: []webui.Accessor[sized]{editable, readOnly},
 		Submit: webui.Action[sized]{Run: func(_ context.Context, s sized) (webui.Outcome, error) {
 			saved = s
@@ -186,9 +186,9 @@ func TestALoadTableShowsTheFormatAndIsHandedTheValuesSort(t *testing.T) {
 	var asked webui.Query
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/l", Body: webui.Table[blob]{
 		Title: "Loaded",
-		Load: func(_ context.Context, q webui.Query) (webui.Window[blob], error) {
+		Load: func(_ context.Context, q webui.Query) (webui.Window[blob], webui.Loaded) {
 			asked = q
-			return webui.Window[blob]{Items: blobs(), Total: 3}, nil
+			return webui.Window[blob]{Items: blobs(), Total: 3}, webui.Ready()
 		},
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, blobSize},
@@ -207,7 +207,7 @@ func TestAFormatThatPanicsIsLoggedAndTheValueIsShownAsItIs(t *testing.T) {
 	broken := webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: func(int) string { panic("boom") }}
 	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logged, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[blob]{
 		Title:   "Broken",
-		Rows:    func(context.Context) ([]blob, error) { return blobs(), nil },
+		Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, broken},
 	}}}}.MustCompile("/admin")

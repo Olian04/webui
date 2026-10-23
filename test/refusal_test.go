@@ -47,8 +47,8 @@ func refusalApp(log *slog.Logger) http.Handler {
 			}},
 			webui.Table[Device]{
 				Title: "Events",
-				Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], error) {
-					return webui.Window[Device]{}, nil
+				Load: func(_ context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+					return webui.Window[Device]{}, webui.Ready()
 				},
 				Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 			},
@@ -133,20 +133,22 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/stuff", Body: webui.Stack{
 		webui.Table[Device]{
 			Title: "Gone",
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{}, webui.NotFound("This device was deleted.").WithLink("See the others", webui.Open(ctx, recordsPath, webui.NoArgs{}))
+			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{}, webui.Failed(webui.NotFound("This device was deleted.").WithLink("See the others", webui.Open(ctx, recordsPath, webui.NoArgs{})))
 			},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},
 		webui.Form[Device]{
-			Title:  "Details",
-			Load:   func(context.Context) (Device, error) { return Device{}, webui.Forbidden("Not for you.") },
+			Title: "Details",
+			Load: func(context.Context) (Device, webui.Loaded) {
+				return Device{}, webui.Failed(webui.Forbidden("Not for you."))
+			},
 			Fields: []webui.Accessor[Device]{formID},
 		},
 		webui.Table[Device]{
 			Title: "Broken",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{}, errors.New("the database is down")
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{}, webui.Failed(errors.New("the database is down"))
 			},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},

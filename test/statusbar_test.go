@@ -18,8 +18,8 @@ func statusApp() http.Handler {
 		Path: "/s",
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},

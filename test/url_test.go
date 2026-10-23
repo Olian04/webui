@@ -24,10 +24,10 @@ func linkApp(urls ...string) http.Handler {
 		webui.URL[Device]{Label: "Site", Load: func(d Device) string { return d.Ip }},
 		webui.URL[Device]{Label: "File", Text: "Download", Load: func(d Device) string { return d.Ip }},
 	}
-	table := webui.Table[Device]{Title: "Links", Columns: cols, Rows: func(context.Context) ([]Device, error) { return items, nil }}
+	table := webui.Table[Device]{Title: "Links", Columns: cols, Rows: func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }}
 	detail := webui.Form[Device]{
 		Title:  "One",
-		Load:   func(context.Context) (Device, error) { return items[0], nil },
+		Load:   func(context.Context) (Device, webui.Loaded) { return items[0], webui.Ready() },
 		Fields: []webui.Accessor[Device]{cols[2], cols[3]},
 	}
 	return webui.App{Pages: webui.Pages{

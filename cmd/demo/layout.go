@@ -20,7 +20,7 @@ func editable(title string, fields ...string) webui.Form[Note] {
 	}
 	return webui.Form[Note]{
 		Title:  title,
-		Load:   func(context.Context) (Note, error) { return Note{Text: "text"}, nil },
+		Load:   func(context.Context) (Note, webui.Loaded) { return Note{Text: "text"}, webui.Ready() },
 		Fields: accessors,
 		Submit: webui.Action[Note]{Run: func(context.Context, Note) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	}
@@ -55,9 +55,9 @@ func compactDevices(title string, size int) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title:    title,
 		PageSize: size,
-		Rows: func(context.Context) ([]Device, error) {
+		Rows: func(context.Context) ([]Device, webui.Loaded) {
 			devices, _ := service.Devices(nil, nil, Order{})
-			return devices, nil
+			return devices, webui.Ready()
 		},
 		RowClick: webui.Link[Device, DeviceArgs]{
 			Page: Details,
@@ -72,7 +72,7 @@ func compactAlerts(title string) webui.Table[Alert] {
 	return webui.Table[Alert]{
 		Title:    title,
 		PageSize: 5,
-		Rows:     func(context.Context) ([]Alert, error) { return service.OpenAlerts(), nil },
+		Rows:     func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
 			Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },

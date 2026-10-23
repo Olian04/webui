@@ -603,19 +603,27 @@ design element.
   a hand-made request is not asked and a Guard is what refuses. A row action's dialog is named by the row's position and the
   action's, never the key, so nothing a row says is in an id. A `RowClick` action has no button and may not have one.
 
-- **A job is followed by the panel that shows it, which says that it is not final.** A button that starts something long was first thought of as an
-  action result that says "ask me again" (a `RetryAfter`), which the client would answer by posting the same action again. That makes the action
-  something that must be safe to repeat, a POST used for what a GET does, and a cookie that has to carry the form of the retry; it was dropped for
-  the view saying it: the action only starts the job and returns `Success`, and the `Load` of the panel that shows the job calls
-  `webui.RefreshAfter(ctx, d)` while it is not done. The panel (only its own, since panels are built at once and each has its own hint in the context)
-  says so in its head and in `data-refresh-after`, the delay in whole seconds; with script `enhance.js` asks for that panel again after that time, with
+- **A job is followed by the panel that shows it, which says that it is not final, in the value its `Load` returns.** A button that starts something long
+  was first thought of as an action result that says "ask me again" (a `RetryAfter`), which the client would answer by posting the same action again. That makes
+  the action something that must be safe to repeat, a POST used for what a GET does, and a cookie that has to carry the form of the retry; it was dropped for
+  the view saying it: the action only starts the job and returns `Success`, and the panel that shows the job returns `webui.Ready().RefreshAfter(d)` from its
+  `Load` while it is not done.
+  A `Load` now returns a `Loaded` beside the model, in place of the `error` it returned, as an action's `Run` returns an `Outcome`: `webui.Ready()`,
+  `webui.Failed(err)` (a `Refusal` in it is still the visitor's to be told, and a failed load does not refresh), and `.RefreshAfter(d)`. The error was a
+  native return value that could say only that it failed; a value of our own can say more as the library does, and `Loaded` is where the next thing a load can
+  say goes without another break. It is the return of `Table.Rows`, `Table.Load`, `Table.Feed`, `Form.Load`, `Diff.Load`, `Markdown.Load`, `Editor.Load`
+  and `FileUpload.Load`, and of the rows that `SearchRows` takes, so that one function serves a table and its search. A source of options, an action's
+  `Run` and an accessor's projection keep what they return. The panel (only its own, since panels are built at once and each has its own hint in the
+  context) says so in its head and in `data-refresh-after`, the delay in whole seconds; with script `enhance.js` asks for that panel again after that time, with
   the header that asks for one panel, and replaces it, and the answer says so again or does not, which is what ends it. Without script the head says
   "Updating, reload in 5 s" and the visitor reloads. This is the standard polling idiom of hypermedia applications, and the loop that was wanted: the
-  request that asks again can say it again. The delay is at least a second, and the shortest of several calls counts. The script waits while the tab
-  is hidden and while focus is inside the panel, which a reader or someone typing would lose, and a failed request ends it with the panel as it was. The
-  costs: the server is asked for as long as a page is open and visible (visitors × panels ÷ interval), with no cap of its own, so a `Load` that never
-  stops saying it is a fault of the application; a panel with a form in it is replaced when nothing in it has focus, so it is for panels that show state;
-  a toolbar's values have no context to call it with and do not refresh; and a job that no panel shows has nothing to poll, so the application adds one.
+  request that asks again can say it again. The delay is at least a second. The script waits while the tab is hidden and while focus is inside the panel,
+  which a reader or someone typing would lose, and a failed request ends it with the panel as it was. The costs: every `Load` of every application is
+  changed once (`return x, nil` is `return x, webui.Ready()`, and an error is `webui.Failed(err)`), where `return m, err` of a store no longer passes through
+  as it is; the server is asked for as long as a page is open and visible (visitors × panels ÷ interval), with no cap of its own, so a `Load` that never stops
+  saying it is a fault of the application; a panel with a form in it is replaced when nothing in it has focus, so it is for panels that show state; a
+  toolbar's values have no `Load` to say it with, which a `ToolbarForm` is to give them; and a job that no panel shows has nothing to poll, so the
+  application adds one.
 
 ## Toolbar
 

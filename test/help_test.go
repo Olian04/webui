@@ -18,7 +18,7 @@ type helped struct {
 
 func helpedApp(fields ...webui.Accessor[helped]) http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", Body: webui.Form[helped]{
-		Load:   func(context.Context) (helped, error) { return helped{Name: "n", Count: 2}, nil },
+		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
 		Fields: fields,
 		Submit: webui.Action[helped]{Run: func(context.Context, helped) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	}}}}.MustCompile("/admin")
@@ -87,7 +87,7 @@ func TestAReadOnlyFieldShowsItsHelpAndEveryKindOfAccessorHasOne(t *testing.T) {
 		webui.Bool[helped]{Label: "P", Help: help, Load: func(_ helped) *bool { return nil }},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", Body: webui.Form[helped]{
-		Load:   func(context.Context) (helped, error) { return helped{Name: "n", Count: 2}, nil },
+		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
 		Fields: fields,
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/h").Body.String()
@@ -102,7 +102,7 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 	assert.Contains(t, body, `aria-label="Help: In a group."`)
 
 	table := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[helped]{
-		Rows:    func(context.Context) ([]helped, error) { return []helped{{Name: "n"}}, nil },
+		Rows:    func(context.Context) ([]helped, webui.Loaded) { return []helped{{Name: "n"}}, webui.Ready() },
 		Columns: []webui.Accessor[helped]{helpedName("Not in a table.", webui.StringRules{})},
 	}}}}.MustCompile("/admin")
 	assert.False(t, strings.Contains(serve(table, http.MethodGet, "/admin/t").Body.String(), "Not in a table."))

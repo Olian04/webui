@@ -13,7 +13,9 @@ import (
 
 func addressForm(rules webui.StringRules) webui.Form[Device] {
 	return webui.Form[Device]{
-		Load: func(context.Context) (Device, error) { return Device{Ip: "https://a.example.org"}, nil },
+		Load: func(context.Context) (Device, webui.Loaded) {
+			return Device{Ip: "https://a.example.org"}, webui.Ready()
+		},
 		Fields: []webui.Accessor[Device]{webui.String[Device]{
 			Label: "Address", Load: func(d Device) string { return d.Ip }, Store: func(d *Device, v string) { d.Ip = v }, Rules: rules,
 		}},

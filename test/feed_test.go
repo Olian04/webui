@@ -27,7 +27,7 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 4,
-		Feed: func(_ context.Context, after string, limit int) ([]Device, string, error) {
+		Feed: func(_ context.Context, after string, limit int) ([]Device, string, webui.Loaded) {
 			*seen = append(*seen, asked{after, limit})
 			start, _ := strconv.Atoi(after)
 			var rows []Device
@@ -35,9 +35,9 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 				rows = append(rows, Device{Id: fmt.Sprintf("o%d", i)})
 			}
 			if start+limit >= 10 {
-				return rows, "", nil
+				return rows, "", webui.Ready()
 			}
-			return rows, strconv.Itoa(start + limit), nil
+			return rows, strconv.Itoa(start + limit), webui.Ready()
 		},
 		Key:     func(d Device) string { return d.Id },
 		Columns: []webui.Accessor[Device]{formID},
@@ -125,12 +125,12 @@ func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testi
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, error) {
+		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			n := 0
 			if after != "" {
 				n, _ = strconv.Atoi(after[:3])
 			}
-			return []Device{{Id: "x"}}, fmt.Sprintf("%03d", n+1) + long, nil
+			return []Device{{Id: "x"}}, fmt.Sprintf("%03d", n+1) + long, webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}
@@ -215,9 +215,9 @@ func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) 
 	var got []string
 	tbl := webui.Table[Device]{
 		Title: "Objects",
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, error) {
+		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			got = append(got, after)
-			return []Device{{Id: "x"}}, "a b&c=d/é", nil
+			return []Device{{Id: "x"}}, "a b&c=d/é", webui.Ready()
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}
@@ -251,8 +251,8 @@ func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
 	t.Parallel()
 
 	tbl := webui.Table[Device]{
-		Feed: func(context.Context, string, int) ([]Device, string, error) {
-			return nil, "", errors.New("bucket secret-name is gone")
+		Feed: func(context.Context, string, int) ([]Device, string, webui.Loaded) {
+			return nil, "", webui.Failed(errors.New("bucket secret-name is gone"))
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}
@@ -265,7 +265,7 @@ func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
 func TestATableTakesExactlyOneSource(t *testing.T) {
 	t.Parallel()
 
-	feed := func(context.Context, string, int) ([]Device, string, error) { return nil, "", nil }
+	feed := func(context.Context, string, int) ([]Device, string, webui.Loaded) { return nil, "", webui.Ready() }
 	problems := func(tbl webui.Table[Device]) string {
 		tbl.Columns = []webui.Accessor[Device]{formID}
 		var all string
@@ -287,9 +287,9 @@ func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, error) {
+		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			n, _ := strconv.Atoi(after)
-			return []Device{{Id: "x"}}, strconv.Itoa(n + 1), nil // there is always another
+			return []Device{{Id: "x"}}, strconv.Itoa(n + 1), webui.Ready() // there is always another
 		},
 		Columns: []webui.Accessor[Device]{formID},
 	}

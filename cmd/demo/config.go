@@ -33,7 +33,7 @@ var (
 var ConfigEditor = webui.Editor[Config]{
 	Title: "Collector configuration",
 	Desc:  "An Editor with a Store on its Content. JSON, so its language service checks the syntax: break a bracket to see it. Its Context holds a schema, so a value that does not fit is marked too: try a sample of 2, a sink kind that is not stdout, file or http, or a missing listen.",
-	Load:  func(context.Context) (Config, error) { return service.Config(), nil },
+	Load:  func(context.Context) (Config, webui.Loaded) { return service.Config(), webui.Ready() },
 
 	Content:  ConfigText,
 	Language: webui.LangJSON,
@@ -51,7 +51,7 @@ var ConfigEditor = webui.Editor[Config]{
 var ConfigDiff = webui.Diff[Config]{
 	Title:    "Changes since the last deploy",
 	Desc:     "A Diff: the deployed text on the left, the saved text on the right.",
-	Load:     func(context.Context) (Config, error) { return service.Config(), nil },
+	Load:     func(context.Context) (Config, webui.Loaded) { return service.Config(), webui.Ready() },
 	Original: DeployedText,
 	Modified: SavedText,
 	Language: webui.LangJSON,

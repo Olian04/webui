@@ -26,21 +26,21 @@ func ExampleTable() {
 	details := webui.Page[deviceArgs]{
 		Path: "/device/{id}",
 		Search: webui.SearchRows(
-			func(context.Context) ([]device, error) { return devices, nil },
+			func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() },
 			func(d device) webui.Hit[deviceArgs] {
 				return webui.Hit[deviceArgs]{Args: deviceArgs{ID: d.ID}, Title: d.ID, Desc: d.IP}
 			},
 			id, ip,
 		),
 		Body: webui.Form[device]{
-			Load: func(ctx context.Context) (device, error) {
+			Load: func(ctx context.Context) (device, webui.Loaded) {
 				want := webui.ArgsOf[deviceArgs](ctx).ID
 				for _, d := range devices {
 					if d.ID == want {
-						return d, nil
+						return d, webui.Ready()
 					}
 				}
-				return device{}, fmt.Errorf("no device %q", want)
+				return device{}, webui.Failed(fmt.Errorf("no device %q", want))
 			},
 			Fields: []webui.Accessor[device]{id, ip},
 		},
@@ -51,7 +51,7 @@ func ExampleTable() {
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[device]{
 			Title: "Devices",
-			Rows:  func(context.Context) ([]device, error) { return devices, nil },
+			Rows:  func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() },
 			RowClick: webui.Link[device, deviceArgs]{
 				Page: details,
 				Args: func(_ context.Context, d device) deviceArgs { return deviceArgs{ID: d.ID} },

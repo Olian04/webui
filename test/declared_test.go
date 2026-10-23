@@ -36,10 +36,12 @@ func TestTheLinksThatReplaceTheirPanelAreDeclaredByTheServer(t *testing.T) {
 	assert.Contains(t, body, `data-in-place>Previous</a>`)
 
 	// An empty table's ways on, and a failed panel's retry, are declared too.
-	empty, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil })
+	empty, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Ready()
+	})
 	assert.Contains(t, serve(empty, http.MethodGet, "/admin/device?devices.filter.id=zzz").Body.String(), `data-in-place>Clear the filters`)
-	failed, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], error) {
-		return webui.Window[Device]{}, errors.New("down")
+	failed, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+		return webui.Window[Device]{}, webui.Failed(errors.New("down"))
 	})
 	assert.Contains(t, serve(failed, http.MethodGet, "/admin/device").Body.String(), `data-in-place>Try again</a>`)
 }

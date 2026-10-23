@@ -26,7 +26,7 @@ var (
 	RuleEditor = webui.Editor[Rule]{
 		Title: "Paging rule",
 		Desc:  "An Editor in TypeScript. With the language service imported, the types are checked as you type: this text has three errors to find and fix, and completion and hover work as in an IDE. Signal, Rule, rules and pageOnCall are not declared here: they come from the editor's Context, as do the compiler options (strict, no DOM).",
-		Load:  func(context.Context) (Rule, error) { return Rule{Source: service.Rule()}, nil },
+		Load:  func(context.Context) (Rule, webui.Loaded) { return Rule{Source: service.Rule()}, webui.Ready() },
 
 		Content:  RuleSource,
 		Language: webui.LangTypeScript,

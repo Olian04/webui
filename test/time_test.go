@@ -31,14 +31,16 @@ func objectsApp(seen *webui.Query) http.Handler {
 		{Name: "d", Modified: "not a date", Created: 1791500000},
 	}
 	cols := []webui.Accessor[object]{objName, objModified, objCreated}
-	rows := webui.Table[object]{Title: "Objects", Columns: cols, Rows: func(context.Context) ([]object, error) { return items, nil }}
-	load := webui.Table[object]{Title: "Loaded", Columns: cols, Load: func(_ context.Context, q webui.Query) (webui.Window[object], error) {
+	rows := webui.Table[object]{Title: "Objects", Columns: cols, Rows: func(context.Context) ([]object, webui.Loaded) { return items, webui.Ready() }}
+	load := webui.Table[object]{Title: "Loaded", Columns: cols, Load: func(_ context.Context, q webui.Query) (webui.Window[object], webui.Loaded) {
 		*seen = q
-		return webui.Window[object]{Items: items, Total: len(items)}, nil
+		return webui.Window[object]{Items: items, Total: len(items)}, webui.Ready()
 	}}
 	detail := webui.Form[object]{
-		Title:  "Object",
-		Load:   func(context.Context) (object, error) { return object{Modified: "2026-10-09T11:27:00Z"}, nil },
+		Title: "Object",
+		Load: func(context.Context) (object, webui.Loaded) {
+			return object{Modified: "2026-10-09T11:27:00Z"}, webui.Ready()
+		},
 		Fields: []webui.Accessor[object]{objModified, objCreated},
 	}
 	return webui.App{Pages: webui.Pages{
@@ -115,8 +117,8 @@ func editMoments(stored *object) http.Handler {
 	made := webui.Timestamp[object]{Label: "Created", Load: func(o object) int { return o.Created }, Store: func(o *object, v int) { o.Created = v }}
 	form := webui.Form[object]{
 		Title: "Object",
-		Load: func(context.Context) (object, error) {
-			return object{Modified: "2026-10-09T11:27:00Z", Created: 1791540000}, nil
+		Load: func(context.Context) (object, webui.Loaded) {
+			return object{Modified: "2026-10-09T11:27:00Z", Created: 1791540000}, webui.Ready()
 		},
 		Fields: []webui.Accessor[object]{when, made},
 		Submit: webui.Action[object]{Run: func(_ context.Context, o object) (webui.Outcome, error) {

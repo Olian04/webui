@@ -25,7 +25,9 @@ func ExamplePageID() {
 	detail := webui.Page[itemArgs]{
 		Path: "/item/{id}",
 		Body: webui.Form[item]{
-			Load:   func(ctx context.Context) (item, error) { return item{ID: webui.ArgsOf[itemArgs](ctx).ID}, nil },
+			Load: func(ctx context.Context) (item, webui.Loaded) {
+				return item{ID: webui.ArgsOf[itemArgs](ctx).ID}, webui.Ready()
+			},
 			Fields: []webui.Accessor[item]{id},
 			Submit: webui.Action[item]{
 				Run: func(ctx context.Context, _ item) (webui.Outcome, error) {
@@ -40,7 +42,7 @@ func ExamplePageID() {
 		Path: listPath,
 		Nav:  webui.Nav{Label: "Items"},
 		Body: webui.Table[item]{
-			Rows: func(context.Context) ([]item, error) { return []item{{ID: "a", Name: "Alpha"}}, nil },
+			Rows: func(context.Context) ([]item, webui.Loaded) { return []item{{ID: "a", Name: "Alpha"}}, webui.Ready() },
 			RowClick: webui.Link[item, itemArgs]{
 				Page: detail,
 				Args: func(_ context.Context, i item) itemArgs { return itemArgs{ID: i.ID} },

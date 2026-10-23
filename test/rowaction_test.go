@@ -25,7 +25,7 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 		Nav:  webui.Nav{Label: "Entries"},
 		Body: webui.Table[Device]{
 			Title: "Entries",
-			Rows:  func(context.Context) ([]Device, error) { return entries, nil },
+			Rows:  func(context.Context) ([]Device, webui.Loaded) { return entries, webui.Ready() },
 			Key:   func(d Device) string { return d.Id },
 			RowClick: webui.Action[Device]{
 				Guard: guard,

@@ -75,9 +75,11 @@ var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", Body: webui.Stack{}}
 var BrokenTable = webui.Page[webui.NoArgs]{
 	Path: "/broken/source",
 	Body: webui.Table[Device]{
-		Title:   "Events",
-		Rows:    func(context.Context) ([]Device, error) { return nil, nil },
-		Load:    func(context.Context, webui.Query) (webui.Window[Device], error) { return webui.Window[Device]{}, nil },
+		Title: "Events",
+		Rows:  func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() },
+		Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			return webui.Window[Device]{}, webui.Ready()
+		},
 		Columns: []webui.Accessor[Device]{DeviceID},
 	},
 }
@@ -87,7 +89,7 @@ var BrokenPattern = webui.Page[webui.NoArgs]{
 	Path: "/broken/pattern",
 	Body: webui.Form[Note]{
 		Title: "A code",
-		Load:  func(context.Context) (Note, error) { return Note{}, nil },
+		Load:  func(context.Context) (Note, webui.Loaded) { return Note{}, webui.Ready() },
 		Fields: []webui.Accessor[Note]{webui.String[Note]{
 			Label: "Code",
 			Load:  func(n Note) string { return n.Text },

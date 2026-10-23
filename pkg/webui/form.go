@@ -28,10 +28,11 @@ type Form[M any] struct {
 	// Load returns the model the form shows. On submit it is loaded again, and the
 	// submitted values are applied to it, so a field with no Store keeps its value.
 	//
-	// If Load returns an error the panel says "Could not load", the cause is logged
+	// If Load returns [Failed] the panel says "Could not load", the cause is logged
 	// and the rest of the page stands. The error's text is not shown to the visitor,
-	// since it may name things they should not see.
-	Load func(ctx context.Context) (M, error)
+	// since it may name things they should not see. A form that shows something that is
+	// still changing returns [Loaded.RefreshAfter].
+	Load func(ctx context.Context) (M, Loaded)
 
 	// Submit is what the form's button does. Without a Run the form is read-only, and
 	// so it is for a visitor its Guard refuses: every field is shown but not editable,

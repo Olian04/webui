@@ -33,7 +33,7 @@ type Editor[M any] struct {
 
 	// Load returns the model the editor shows. On submit it is loaded again, and the
 	// text is applied to it, as with a [Form].
-	Load func(ctx context.Context) (M, error)
+	Load func(ctx context.Context) (M, Loaded)
 
 	// Content is the text: Load reads it, and Store, if there is one, writes what was
 	// saved. Without Store the editor is a viewer. Its Label names the editor to a

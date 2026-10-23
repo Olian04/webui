@@ -72,9 +72,9 @@ func newShop() *shop {
 		},
 		Body: webui.Form[Device]{
 			Title: "Device",
-			Load: func(ctx context.Context) (Device, error) {
+			Load: func(ctx context.Context) (Device, webui.Loaded) {
 				a := webui.ArgsOf[detailsArgs](ctx)
-				return Device{Id: a.Id, Ip: "10.0.0.1", Count: 3}, nil
+				return Device{Id: a.Id, Ip: "10.0.0.1", Count: 3}, webui.Ready()
 			},
 			Fields: []webui.Accessor[Device]{formID, ip, count},
 			Submit: webui.Action[Device]{
@@ -102,8 +102,8 @@ func newShop() *shop {
 		Path: "/device", Nav: webui.Nav{Label: "Devices"},
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], error) {
-				return webui.Window[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, nil
+			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+				return webui.Window[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, webui.Ready()
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},
