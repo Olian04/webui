@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"net/http"
+	"strings"
 
 	"github.com/a-h/templ"
 
@@ -67,5 +68,20 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	if err != nil {
 		return nil, err
 	}
-	return render.Tabs("Views", strip, content, render.LeafID(n.At)), nil
+	return render.Tabs(tabsName(n), strip, content, render.LeafID(n.At)), nil
+}
+
+// tabsName is what a strip of tabs is called by a reader who lists the landmarks of the page: "Views" and the first of its tabs, so that two strips
+// on one page (side by side, or one in the tab of another) are not one name, and no name has to be asked of the application for it.
+func tabsName(n *ir.Tabs) string {
+	const most = 3
+	var labels []string
+	for i, t := range n.Tabs {
+		if i == most {
+			labels = append(labels, "…")
+			break
+		}
+		labels = append(labels, t.Label)
+	}
+	return "Views: " + strings.Join(labels, ", ")
 }
