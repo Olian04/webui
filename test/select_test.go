@@ -64,7 +64,7 @@ func TestASelectThatIsEditedIsAListToChooseFrom(t *testing.T) {
 
 	// One value: a drop-down list, with the choice that is held selected. It is required, so the
 	// empty option asks for a choice.
-	assert.Contains(t, body, `<select data-select id="p-f1" class="input" name="f1" required data-validity="{&#34;valueMissing&#34;:&#34;This field is required.&#34;}">`)
+	assert.Contains(t, body, `<select data-select id="p-f1" class="input" name="f1" required data-msg-value-missing="This field is required.">`)
 	assert.Contains(t, body, `<option value="">Choose…</option>`)
 	assert.Contains(t, body, `<option value="done" data-badge="badge-ok" selected>Done</option>`)
 	assert.Contains(t, body, `<option value="open" data-badge="badge-warn">Open</option>`) // an option says its label

@@ -124,7 +124,7 @@ design element.
   (the server, beneath the field) and `Validity` (the browser) both use, and a test keeps them equal. `Validity` is a map
   by the names of the properties of the control's `ValidityState` (`valueMissing`, `tooShort`, `tooLong`,
   `patternMismatch`, `rangeUnderflow`, `rangeOverflow`, `badInput`, `stepMismatch`), the standard
-  vocabulary of the Constraint Validation API, put in a `data-validity` attribute of each editable input and select.
+  vocabulary of the Constraint Validation API, put in an attribute for each, named for the property in kebab case (`data-msg-value-missing`, `data-msg-pattern-mismatch`), on each editable input and select. They were one JSON object in `data-validity`, which the script parsed; one attribute is a plain value that the script reads and the HTML says.
 - **With script the browser's words are the server's, and are taken back when the value changes.** When a control
   reports itself invalid (the `invalid` event), the first reason that is true, in the order the server checks, goes to
   `setCustomValidity`, which the browser then shows in its own bubble; it is taken back when the value changes, since a custom
@@ -162,7 +162,7 @@ design element.
   matches when it holds the rule, and the input's one `pattern` is all of them and the field's own as lookaheads
   (`(?=(?:...)$)`), which is the browser's alone: the server never runs them as patterns, which is why a
   pattern may have no lookahead and a text rule may. When the field has more than one condition on its text, the
-  browser can only say that the pattern does not match, so `data-parts` carries each condition with its words and
+  browser can only say that the pattern does not match, so `data-part-N` carries each condition, with `data-part-N-msg` its words, and
   `enhance.js` gives `setCustomValidity` the first that the value fails (the order the server tests them), which
   keeps the page and the server saying the same thing; without script the browser says its own words and the title,
   which holds every message. Case is exact. A text no value can hold (a line break, `StartsWith` with a
@@ -438,7 +438,7 @@ design element.
   have meant widening it for this.
 - **The picture of a chosen image is a `data:` address, small, and never SVG.** Only PNG, JPEG, GIF and WebP are drawn, and only
   up to 4 MiB, since a data address is held in the page (SVG is a document that can run script, and is not drawn). The size and
-  the kind are told to the script by the server in `data-file`, in the words the server uses, through `setCustomValidity`, so
+  the kind are told to the script by the server in plain attributes of the input (`data-max-size`, `data-max-message`, `data-kind-message` and `data-image`, with the kinds in the input's own `accept`), in the words the server uses, through `setCustomValidity`, so
   the browser's own message appears and the form does not submit. The kind check is a hint: it goes by the type that the browser
   gives and the extension, and a file that has no type is not refused, since a wrong refusal here is worse than a right one
   late; the server is the check. The cost: a page of a form that a visitor may only read still links the script, which is the
@@ -597,7 +597,7 @@ design element.
   the button would have made, with its `_act` and nothing else new on the server. `window.confirm()` was weighed and
   dropped: it needs script, cannot be styled, and is blocked in some embeds. The costs, in the docs: invoker commands
   need Chrome and Edge 135, Firefox 144, Safari 26.2, so `enhance.js` adds a small click handler for an older browser, and an
-  older one with no script cannot open the dialog, and so cannot do the action (it fails closed, which is the safe way);
+  older one with no script cannot open the dialog, and so cannot do the action (it fails closed, which is the safe way; a page of its own to confirm on, reached by a link, was weighed in the hypermedia audit and dropped, since it would serve only a browser that is both without commands and without script, and would add a page for each confirming action and a way to carry a bulk selection in an address);
   a form whose Save asks is not submitted by Enter in a field, because Enter clicks the form's first submit button, which
   would be the one in the closed dialog, so a disabled one is put ahead of it; and it asks the visitor, not the server, so
   a hand-made request is not asked and a Guard is what refuses. A row action's dialog is named by the row's position and the

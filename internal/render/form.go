@@ -3,7 +3,6 @@ package render
 import (
 	"cmp"
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"slices"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/phone"
@@ -97,9 +97,8 @@ type fieldView struct {
 	// Stored is the file that the model holds, for a file field that is edited, and nil for none.
 	Stored *ir.StoredFile
 
-	// Validity, Parts and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
-	Validity string
-	Parts    string
+	// Validity and Title are what an editable field tells the browser to say when it is refused: see [c.InputProps].
+	Validity templ.Attributes
 	Title    string
 }
 
@@ -123,7 +122,7 @@ func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldV
 		Type:      "text",
 		Rules:     htmlRules(f, editable),
 	}
-	fv.Validity, fv.Parts, fv.Title = validity(f, editable)
+	fv.Validity, fv.Title = validity(f, editable)
 	if raw, ok := v.Values[f.Name]; ok {
 		fv.Value = raw
 	} else if f.Get != nil {
@@ -270,9 +269,9 @@ func fieldID(at ir.Addr, name string) string {
 // A field that has more than one condition on what the value is, the text rules and the pattern, has them as parts too: a
 // pattern attribute is one expression, so the browser cannot say which of them a value fails, and script, given each
 // with the words that the server says for it, finds the first that fails and says that one.
-func validity(f ir.Field, editable bool) (messages, parts, title string) {
+func validity(f ir.Field, editable bool) (attrs templ.Attributes, title string) {
 	if !editable {
-		return "", "", ""
+		return nil, ""
 	}
 	kind := f.Kind
 	if f.Display == ir.DisplayTime || f.Display == ir.DisplaySelect {
@@ -285,10 +284,11 @@ func validity(f ir.Field, editable bool) (messages, parts, title string) {
 			m = nil
 		}
 	}
-	if len(m) > 0 {
-		if b, err := json.Marshal(m); err == nil {
-			messages = string(b)
+	for reason, message := range m {
+		if attrs == nil {
+			attrs = templ.Attributes{}
 		}
+		attrs["data-msg-"+kebab(reason)] = message
 	}
 	text := kind == ir.KindString && f.Display != ir.DisplayTime && f.Display != ir.DisplaySelect
 	if ps := rules.Parts(f.Rules); text && rules.HasText(f.Rules) {
@@ -298,18 +298,31 @@ func validity(f ir.Field, editable bool) (messages, parts, title string) {
 		}
 		title = strings.Join(msgs, " ")
 		if len(ps) > 1 {
-			pairs := make([][2]string, len(ps))
-			for i, p := range ps {
-				pairs[i] = [2]string{p.Expr, p.Message}
+			if attrs == nil {
+				attrs = templ.Attributes{}
 			}
-			if b, err := json.Marshal(pairs); err == nil {
-				parts = string(b)
+			for i, p := range ps {
+				attrs["data-part-"+strconv.Itoa(i)] = p.Expr
+				attrs["data-part-"+strconv.Itoa(i)+"-msg"] = p.Message
 			}
 		}
 	} else if p := f.Rules.Pattern; p != nil {
 		title = p.Message
 	}
-	return messages, parts, title
+	return attrs, title
+}
+
+// kebab is the name of a ValidityState property as an attribute name has it: "valueMissing" is "value-missing".
+func kebab(name string) string {
+	var b strings.Builder
+	for _, r := range name {
+		if unicode.IsUpper(r) {
+			b.WriteByte('-')
+			r = unicode.ToLower(r)
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // htmlRules is the one place ir.Rules becomes HTML constraint attributes. A

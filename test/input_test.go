@@ -51,8 +51,8 @@ func TestAStringInputIsTheInputOfItsKindAndAnEmptyColorIsBlack(t *testing.T) {
 	assert.Contains(t, body, `name="f2" type="tel" value="+46 8 123"`)
 	assert.Contains(t, body, `name="f3" type="color" value="#000000"`) // a picker cannot be empty
 	// The browser says what the server would say, for the two it checks.
-	assert.Contains(t, body, `&#34;typeMismatch&#34;:&#34;Enter an email address.&#34;`)
-	assert.Contains(t, body, `&#34;typeMismatch&#34;:&#34;Enter a web address that starts with http:// or https://.&#34;`)
+	assert.Contains(t, body, `data-msg-type-mismatch="Enter an email address."`)
+	assert.Contains(t, body, `data-msg-type-mismatch="Enter a web address that starts with http:// or https://."`)
 	assert.Contains(t, body, `<span class="tip-item">A web address, http or https</span>`)
 
 	set, _ := contactApp(contact{Color: "#2f9e8f"}, contactColor)

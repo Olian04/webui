@@ -39,7 +39,7 @@ func TestTextRulesAreThePatternOfTheInputAndAreListedWithItsRules(t *testing.T) 
 	assert.Contains(t, one, `pattern="https:\/\/[\s\S]*"`)
 	assert.Contains(t, one, `title="Must start with &#34;https://&#34;."`)
 	assert.Contains(t, one, `<span class="tip-item">Starts with &#34;https://&#34;</span>`)
-	assert.False(t, strings.Contains(one, "data-parts")) // one condition: the browser's words are the only ones to say
+	assert.False(t, strings.Contains(one, "data-part-")) // one condition: the browser's words are the only ones to say
 
 	rules := webui.StringRules{
 		StartsWith: "https://", EndsWith: ".org", NotContains: " ",
@@ -47,8 +47,10 @@ func TestTextRulesAreThePatternOfTheInputAndAreListedWithItsRules(t *testing.T) 
 	}
 	many := serve(addressApp(rules), http.MethodGet, "/admin/a").Body.String()
 	assert.Contains(t, many, `pattern="(?=(?:https:\/\/[\s\S]*)$)(?=(?:[\s\S]*\.org)$)(?=(?:(?![\s\S]* )[\s\S]*)$)(?=(?:[a-z0-9.\/:\-]+)$)[\s\S]*"`)
-	assert.Contains(t, many, `data-parts="[[&#34;https:\\/\\/[\\s\\S]*&#34;,&#34;Must start with \&#34;https://\&#34;.&#34;]`)
-	assert.Contains(t, many, `&#34;must be a lowercase address&#34;]]"`)
+	// Each condition is an attribute, with the words for it in another, in the order the server tests them.
+	assert.Contains(t, many, `data-part-0="https:\/\/[\s\S]*" data-part-0-msg="Must start with &#34;https://&#34;."`)
+	assert.Contains(t, many, `data-part-3="[a-z0-9.\/:\-]+" data-part-3-msg="must be a lowercase address"`)
+	assert.False(t, strings.Contains(many, "data-parts"))
 	for _, line := range []string{`Starts with &#34;https://&#34;`, `Ends with &#34;.org&#34;`, `Does not contain &#34; &#34;`, "must be a lowercase address"} {
 		assert.Contains(t, many, `<span class="tip-item">`+line+`</span>`)
 	}
@@ -56,7 +58,7 @@ func TestTextRulesAreThePatternOfTheInputAndAreListedWithItsRules(t *testing.T) 
 	// Without a rule of the kind there is nothing of it in the page: the pattern is what it was written as.
 	plain := serve(addressApp(webui.StringRules{Pattern: &webui.PatternRule{Expr: `[a-z]+`, Message: "letters"}}), http.MethodGet, "/admin/a").Body.String()
 	assert.Contains(t, plain, `pattern="[a-z]+"`)
-	assert.False(t, strings.Contains(plain, "data-parts"))
+	assert.False(t, strings.Contains(plain, "data-part-"))
 }
 
 func TestARefusedTextIsSaidInTheWordsOfTheRule(t *testing.T) {

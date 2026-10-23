@@ -1,7 +1,7 @@
 package render
 
 import (
-	"encoding/json"
+	"strconv"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/rules"
@@ -43,29 +43,24 @@ func (r *Renderer) NeedsUpload(page *ir.Page) bool { return r.queues[page.PathTe
 // NeedsFile is whether page links the script that handles a file chooser, because it has one.
 func (r *Renderer) NeedsFile(page *ir.Page) bool { return r.uploads[page.PathTemplate] }
 
-// fileClient is what script is told of a file chooser, in the words the server uses: how large a file may be and what it takes, so that
-// it can say so before the request is sent, and whether a picture can be shown of the file that is chosen.
-// The server checks all of it again, by what the file holds, which script cannot see.
-type fileClient struct {
-	Max         int64    `json:"max"`
-	MaxMessage  string   `json:"maxMessage"`
-	Accept      []string `json:"accept,omitempty"`
-	KindMessage string   `json:"kindMessage,omitempty"`
-	Image       bool     `json:"image,omitempty"` // a file that is chosen is shown, if it is a picture
-}
-
 // fileAttrs are the attributes of a file chooser that script reads.
 func fileAttrs(f ir.Field) templ.Attributes { return fileAttrsOf(f.File) }
 
-// fileAttrsOf is fileAttrs for what a file input takes.
+// fileAttrsOf is fileAttrs for what a file input takes. Script is told in words that the server uses, one attribute for each, so that it can
+// say so before the request is sent: data-max-size (bytes) and data-max-message, data-kind-message for a field that takes only some kinds
+// (the kinds themselves are the input's own accept attribute), and data-image when a file that is chosen is shown if it is a picture. data-file
+// is what marks the input. The server checks all of it again, by what the file holds, which script cannot see.
 func fileAttrsOf(spec *ir.FileSpec) templ.Attributes {
-	c := fileClient{
-		Max: spec.Max, MaxMessage: rules.FileTooLarge(spec.Max), Accept: rules.FileAccepts(spec),
-		KindMessage: rules.FileWrongKind(spec), Image: rules.AcceptsImages(spec),
+	attrs := templ.Attributes{
+		"data-file":        "",
+		"data-max-size":    strconv.FormatInt(spec.Max, 10),
+		"data-max-message": rules.FileTooLarge(spec.Max),
 	}
-	b, err := json.Marshal(c)
-	if err != nil {
-		return nil
+	if m := rules.FileWrongKind(spec); m != "" {
+		attrs["data-kind-message"] = m
 	}
-	return templ.Attributes{"data-file": string(b)}
+	if rules.AcceptsImages(spec) {
+		attrs["data-image"] = true
+	}
+	return attrs
 }

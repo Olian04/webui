@@ -35,7 +35,7 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `data-parts="`)
+	assert.Contains(t, body, `data-part-0="`)
 	for _, line := range []string{`Does not start with &#34;-&#34;`, `Does not end with &#34;-&#34;`, `Does not contain &#34;--&#34;`, "must be lowercase letters, digits and dashes"} {
 		assert.Contains(t, body, `<span class="tip-item">`+line+`</span>`)
 	}

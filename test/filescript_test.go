@@ -2,10 +2,10 @@ package webui_test
 
 import (
 	"context"
-	"encoding/json"
 	"html"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -15,23 +15,35 @@ import (
 
 // fileData is what the page tells the script of a file chooser, as the input carries it.
 type fileData struct {
-	Max         int64    `json:"max"`
-	MaxMessage  string   `json:"maxMessage"`
-	Accept      []string `json:"accept"`
-	KindMessage string   `json:"kindMessage"`
-	Image       bool     `json:"image"`
+	Max         int64
+	MaxMessage  string
+	Accept      []string
+	KindMessage string
+	Image       bool
 }
 
-// dataOf reads the data-file attribute of the page's file input.
+// dataOf reads what the page's file input tells the script: its plain attributes, and the accept attribute that is its kinds.
 func dataOf(t *testing.T, body string) fileData {
 	t.Helper()
 
-	m := regexp.MustCompile(`data-file="([^"]*)"`).FindStringSubmatch(body)
-	if m == nil {
-		t.Fatal("the file input carries no data-file")
+	input := regexp.MustCompile(`<input[^>]* data-file[ =>][^>]*>`).FindString(body)
+	if input == "" {
+		t.Fatal("the page has no file input that carries data-file")
 	}
-	var d fileData
-	assert.NoError(t, json.Unmarshal([]byte(html.UnescapeString(m[1])), &d))
+	attr := func(name string) string {
+		m := regexp.MustCompile(`[ ]` + name + `="([^"]*)"`).FindStringSubmatch(input)
+		if m == nil {
+			return ""
+		}
+		return html.UnescapeString(m[1])
+	}
+	d := fileData{MaxMessage: attr("data-max-message"), KindMessage: attr("data-kind-message"), Image: strings.Contains(input, " data-image")}
+	size, err := strconv.ParseInt(attr("data-max-size"), 10, 64)
+	assert.NoError(t, err)
+	d.Max = size
+	if accept := attr("accept"); accept != "" {
+		d.Accept = strings.Split(accept, ",")
+	}
 	return d
 }
 
