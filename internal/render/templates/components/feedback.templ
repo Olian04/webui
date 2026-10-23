@@ -5,10 +5,11 @@ import (
 	"time"
 )
 
-// ToastRegion is the live region toasts arrive in. It is rendered once per
-// document, empty, so that a toast added later is announced.
+// ToastRegion is where toasts sit. It is not a live region itself: each toast is, with the role of what it says (an alert for what went wrong, a status
+// for the rest), and script puts the ones that came with the page in again once it has loaded, since a live region is announced for what is added to it and
+// not for what it held when the page was drawn.
 templ ToastRegion() {
-	<div class="toasts" data-toasts role="status" aria-live="polite">
+	<div class="toasts" data-toasts>
 		{ children... }
 	</div>
 }
@@ -24,21 +25,31 @@ type ToastProps struct {
 	Name  string
 }
 
-// Toast is a message, with a button to dismiss it that works without script: the
-// button is a label for a visually hidden radio, and the stylesheet hides the toast
-// whose radio is chosen. It is focusable by keyboard, where Space chooses it.
+// Toast is a message, with a button to dismiss it. With script it is a button; without, it is a label for a visually hidden radio, and the stylesheet hides
+// the toast whose radio is chosen, which is how it works there and is focusable by keyboard, where Space chooses it. A toast that says that something went wrong,
+// or to be aware of something, stays until it is dismissed.
 templ Toast(p ToastProps) {
-	<div class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) }>
+	<div
+		class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) }
+		if p.Tone == ToneCritical {
+			role="alert"
+		} else {
+			role="status"
+		}
+	>
 		<div class="toast-text">
 			<div class="toast-title">{ p.Title }</div>
 			if p.Desc != "" {
 				<div class="toast-desc">{ p.Desc }</div>
 			}
 		</div>
-		<label class="toast-close" title="Dismiss">
+		<label class="toast-close toast-close-nojs" title="Dismiss">
 			<input class="sr-only" type="radio" name={ p.Name } aria-label="Dismiss"/>
 			@Icon(IconProps{Name: IconClose})
 		</label>
+		<button class="toast-close toast-close-js" type="button" title="Dismiss" aria-label="Dismiss" data-toast-dismiss>
+			@Icon(IconProps{Name: IconClose})
+		</button>
 	</div>
 }
 

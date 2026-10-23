@@ -93,6 +93,9 @@ templ AppShell(p AppShellProps) {
 	} else if p.Status != nil {
 		@p.Status
 	}
+	// What script changes without a navigation (a panel that is replaced, a search that answers) is said here, in words, once, to a reader whom a changed
+	// panel tells nothing. It is empty when the page is drawn, which is what makes what is put in it a change that is announced.
+	<div class="sr-only" role="status" aria-live="polite" data-announce></div>
 	if p.Toasts != nil {
 		@p.Toasts
 	}

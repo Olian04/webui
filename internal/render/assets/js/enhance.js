@@ -21,6 +21,32 @@
     return '[data-leaf="' + CSS.escape(id) + '"]';
   }
 
+  // What this script changes without a navigation is said once, in words, in a status region that the page has and that is empty until then, so that a reader
+  // whom a panel that was replaced tells nothing is told that it was, and what it holds now.
+  function announce(text) {
+    var region = $('[data-announce]');
+    if (!region) return;
+    region.textContent = '';
+    setTimeout(function () {
+      region.textContent = text;
+    }, 60);
+  }
+
+  // A panel in words: its title, and how much of it is shown when it says (a table's range).
+  function describeLeaf(leaf, what) {
+    var title = $('.panel-title', leaf);
+    var info = $('.pager-info', leaf);
+    return (title ? title.textContent.trim() : leaf.hasAttribute('data-toolbar') ? 'Toolbar' : 'Panel') + ' ' + what + (info ? ': ' + info.textContent.trim() : '');
+  }
+
+  // The focus of a panel that was replaced while it was in it goes to the new panel's title, which is where a reader starts reading it, and not to the page.
+  function refocus(next) {
+    var title = $('.panel-title', next);
+    if (!title) return;
+    title.tabIndex = -1;
+    title.focus({ preventScroll: true });
+  }
+
   /* ------------------------------ status bar ------------------------------ */
 
   // The honesty bar: say what is in flight, and what the screen now shows.
@@ -149,45 +175,72 @@
 
   /* -------------------------------- toasts -------------------------------- */
 
-  // Toasts the server rendered (a saved form, a rejected one) dismiss
-  // themselves; without script they stay until the next page, which is fine.
-  // The time left is kept while one is hovered or has focus, so a message being
-  // read, or about to be dismissed with the button, does not vanish under the
-  // pointer. The button works without script (see .toast-close).
-  var TOAST_MS = 3400;
+  // Toasts the server rendered (a saved form, a rejected one) are put in again once the page has loaded, since a live region is announced for what is added
+  // to it and not for what it held when the page was drawn. One that says that something went well goes by itself, after long enough to read it; one that
+  // says that something went wrong, or to be aware of, stays until it is dismissed, since a message about a failure is the one that must not be missed. The time
+  // left is kept while one is hovered or has focus, so a message being read does not vanish under the pointer. The button works without script (see
+  // .toast-close-nojs).
+  var TOAST_MS = 8000;
+
+  function leaveToast(el) {
+    el.classList.add('out');
+    setTimeout(function () {
+      el.remove();
+    }, 220);
+  }
+
+  function watchToast(el) {
+    if (el.classList.contains('err') || el.classList.contains('warn')) return;
+    var left = TOAST_MS;
+    var since = 0;
+    var timer = 0;
+    function run() {
+      since = Date.now();
+      timer = setTimeout(function () {
+        leaveToast(el);
+      }, left);
+    }
+    function hold() {
+      if (!timer) return;
+      clearTimeout(timer);
+      timer = 0;
+      left -= Date.now() - since;
+    }
+    el.addEventListener('mouseenter', hold);
+    el.addEventListener('focusin', hold);
+    el.addEventListener('mouseleave', function () {
+      if (!timer && !el.matches(':focus-within')) run();
+    });
+    el.addEventListener('focusout', function () {
+      if (!timer && !el.matches(':hover')) run();
+    });
+    run();
+  }
 
   function dismissToasts() {
-    $$('.toast').forEach(function (el) {
-      var left = TOAST_MS;
-      var since = 0;
-      var timer = 0;
-      function run() {
-        since = Date.now();
-        timer = setTimeout(leave, left);
-      }
-      function hold() {
-        if (!timer) return;
-        clearTimeout(timer);
-        timer = 0;
-        left -= Date.now() - since;
-      }
-      function leave() {
-        el.classList.add('out');
-        setTimeout(function () {
-          el.remove();
-        }, 220);
-      }
-      el.addEventListener('mouseenter', hold);
-      el.addEventListener('focusin', hold);
-      el.addEventListener('mouseleave', function () {
-        if (!timer && !el.matches(':focus-within')) run();
-      });
-      el.addEventListener('focusout', function () {
-        if (!timer && !el.matches(':hover')) run();
-      });
-      run();
+    var region = $('[data-toasts]');
+    if (!region) return;
+    $$('.toast', region).forEach(function (toast) {
+      var again = toast.cloneNode(true);
+      toast.remove();
+      setTimeout(function () {
+        region.appendChild(again);
+        watchToast(again);
+      }, 150);
     });
   }
+
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest('[data-toast-dismiss]');
+    if (!button) return;
+    var toast = button.closest('.toast');
+    var focused = toast.contains(document.activeElement);
+    leaveToast(toast);
+    if (focused) {
+      var main = $('main');
+      if (main) main.focus(); // the button the focus was on is gone: it goes to where the page's content starts, not to nothing
+    }
+  });
 
   /* ------------------------------ panel refresh --------------------------- */
 
@@ -227,8 +280,11 @@
     el.setAttribute('aria-busy', 'true');
     status('GET', href, 'panel ' + id);
     try {
+      var hadFocus = el.contains(document.activeElement);
       var next = await fetchLeaf(id, href, ctl.signal);
       el.replaceWith(next);
+      if (hadFocus) refocus(next);
+      announce(describeLeaf(next, 'updated'));
       if (push) moveTo(href);
       settle(href, next);
     } catch (err) {
@@ -260,6 +316,7 @@
 
   async function pollLeaf(el, secs) {
     if (!el.isConnected) return; // replaced since: the one that replaced it has its own say
+    if (el.hasAttribute('data-paused')) return; // the reader stopped it, and starts it again with the same button
     var id = el.getAttribute('data-leaf');
     if (document.hidden) {
       document.addEventListener('visibilitychange', function again() {
@@ -277,13 +334,42 @@
     inflight.set(id, ctl);
     try {
       var next = await fetchLeaf(id, location.pathname + location.search, ctl.signal);
-      if (el.isConnected) el.replaceWith(next);
+      if (el.isConnected) {
+        el.replaceWith(next);
+        // A poll that finds the same thing going on says nothing, which a reader would not want said every few seconds; the one that finds it done says so.
+        if (!next.hasAttribute('data-refresh-after')) announce(describeLeaf(next, 'is up to date'));
+      }
     } catch (err) {
       // The panel stays as it was, and says to reload.
     } finally {
       if (inflight.get(id) === ctl) inflight.delete(id);
     }
   }
+
+  // A panel that is asked for again on its own, which is information that changes while it is read, can be stopped by the person who reads it, and started
+  // again: it is not asked for while it is paused, and is asked for at once when it is not.
+  document.addEventListener('click', function (e) {
+    var button = e.target.closest('[data-refresh-pause]');
+    var leaf = button && button.closest('[data-leaf]');
+    if (!leaf) return;
+    var state = $('[data-refresh-state]', leaf);
+    var title = $('.panel-title', leaf);
+    var name = title ? title.textContent.trim() : 'Panel';
+    if (leaf.hasAttribute('data-paused')) {
+      leaf.removeAttribute('data-paused');
+      button.setAttribute('aria-pressed', 'false');
+      button.textContent = 'Pause';
+      if (state) state.textContent = 'Updating…';
+      announce(name + ' is updating again');
+      pollLeaf(leaf, parseInt(leaf.getAttribute('data-refresh-after'), 10) || 2);
+    } else {
+      leaf.setAttribute('data-paused', '');
+      button.setAttribute('aria-pressed', 'true');
+      button.textContent = 'Resume';
+      if (state) state.textContent = 'Paused';
+      announce(name + ' updates are paused');
+    }
+  });
 
   armRefresh(document);
   new MutationObserver(function (changes) {
@@ -314,7 +400,7 @@
           .then(function (next) {
             if (replaces) {
               var current = $(leafSelector(id));
-              if (current) current.replaceWith(next);
+              if (current && !current.contains(document.activeElement)) current.replaceWith(next); // not from under someone who is typing in it
               return;
             }
             var fresh = $$('form[method="post"]', next);
@@ -360,7 +446,7 @@
       fetchLeaf(id, location.pathname + location.search)
         .then(function (next) {
           var current = $(leafSelector(id));
-          if (current) current.replaceWith(next);
+          if (current && !current.contains(document.activeElement)) current.replaceWith(next);
         })
         .catch(function () {});
     });
@@ -880,7 +966,6 @@
     if (!btn) return;
     var collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
     btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
   }
 
   document.addEventListener('change', function (e) {
@@ -975,6 +1060,17 @@
 
     box.classList.add('open');
     input.setAttribute('aria-expanded', 'true');
+    paletteStatus(palette.state === 'loading' ? 'Searching' : palette.items.length === 1 ? '1 result' : palette.items.length ? palette.items.length + ' results' : 'No results');
+  }
+
+  // The box says in words, as a status, what it holds: a reader who is typing is told that there are results, and how many, without leaving the field.
+  function paletteStatus(text) {
+    var region = $('[data-palette-status]');
+    if (!region) return;
+    region.textContent = '';
+    setTimeout(function () {
+      region.textContent = text;
+    }, 60);
   }
 
   function setActive(i) {
@@ -997,6 +1093,8 @@
     var box = paletteBox();
     var input = paletteInput();
     if (box) box.classList.remove('open');
+    var said = $('[data-palette-status]');
+    if (said) said.textContent = '';
     if (input) {
       input.setAttribute('aria-expanded', 'false');
       input.removeAttribute('aria-activedescendant');
@@ -1141,6 +1239,7 @@
         break;
       case 'Escape':
         closePalette();
+        e.stopPropagation(); // one Escape closes one thing: not this and a filter that is open behind it
         break;
       case 'Tab':
         closePalette();
@@ -1188,6 +1287,7 @@
     field.setAttribute('aria-controls', id + '-list');
     var labelled = document.getElementById(id + '-label');
     if (labelled) field.setAttribute('aria-labelledby', id + '-label');
+    if (required) field.setAttribute('aria-required', 'true');
     ['aria-invalid', 'aria-describedby'].forEach(function (name) {
       if (sel.hasAttribute(name)) field.setAttribute(name, sel.getAttribute(name));
     });
@@ -1264,6 +1364,15 @@
     function changed() {
       field.classList.remove('invalid');
       field.removeAttribute('aria-invalid');
+      var made = document.getElementById(id + '-error');
+      if (made && made.hasAttribute('data-made')) {
+        made.remove(); // what this script said of a choice that was missing, which is made
+        var rest = (field.getAttribute('aria-describedby') || '').split(' ').filter(function (d) {
+          return d && d !== id + '-error';
+        });
+        if (rest.length) field.setAttribute('aria-describedby', rest.join(' '));
+        else field.removeAttribute('aria-describedby');
+      }
       sel.dispatchEvent(new Event('change', { bubbles: true }));
       draw();
     }
@@ -1412,6 +1521,18 @@
             e.preventDefault();
             field.classList.add('invalid');
             field.setAttribute('aria-invalid', 'true');
+            // The <select> that would have said what is wrong is hidden, so what it would have said is said here, in its words, and read as an alert.
+            var err = document.getElementById(id + '-error');
+            if (!err) {
+              err = make('div', 'err', sel.getAttribute('data-msg-value-missing') || 'This field is required.');
+              err.id = id + '-error';
+              err.setAttribute('role', 'alert');
+              err.setAttribute('data-made', '');
+              wrap.parentNode.appendChild(err);
+            }
+            var described = (field.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+            if (described.indexOf(err.id) < 0) described.push(err.id);
+            field.setAttribute('aria-describedby', described.join(' '));
             field.focus();
           }
         });
@@ -1430,6 +1551,8 @@
     wrap.appendChild(list);
     sel.parentNode.insertBefore(wrap, sel);
     draw();
+    // The page opens with the focus on the first control that was refused, and the <select> that has it is the one that was just hidden.
+    if (sel.hasAttribute('autofocus')) field.focus();
   }
 
   function closeSelects(except) {

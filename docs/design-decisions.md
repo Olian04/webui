@@ -916,6 +916,20 @@ design element.
 
 ## Shell and theme
 
+- **What script changes is said, and the focus is kept.** The audit found that a panel that was replaced (a sort, a page, a filter, a poll) dropped the focus to the page
+  and said nothing, that a toast was in a live region that already held it when the page was drawn (which is not announced) and went after 3.4s including the
+  ones about failures, that a refused form had the title of the page before it and no focus on what was refused, that the page's polling could not be stopped, that
+  the upload's button was disabled while it held the focus and its live region was created hidden, and that the search's results were not counted aloud. Now the shell
+  has an empty status region, `data-announce`, that script writes into ("Devices updated: 11–20 of 42"), the focus that was in a replaced panel goes to the new one's
+  title, a panel that is replaced in the background is not from under someone typing in it, a toast is its own live region (an alert for a failure, a status for the rest) and
+  is put in again once the page has loaded, a confirmation stays 8s and a warning or failure until dismissed, its dismiss control a button with script and the radio's
+  label without, a refused form's title says so and the first refused control has `autofocus` (script moves it to the custom select that replaced the `<select>`, and a
+  required one that was left empty says what is missing as an alert), the upload's focus goes to *Cancel* and back, its queue is out of sight and not hidden, the search says
+  how many results it has in a status region, and a panel that polls has a *Pause* that stops it until *Resume*, and says when it finishes. The costs: a toast that stays
+  must be dismissed, which is a step more than it was; the toolbar's polling has no pause, since the row has no room for the control (it is the one place a person cannot
+  stop it); the toasts that come with a page are announced a moment after it loads, by being put in again, which moves them in the DOM; and without script nothing is
+  announced, though nothing needs to be, since each action is a page.
+
 - **A page has one h1, a way past the chrome, and landmarks for the readers who go by them.** The audit found no h1 (the page's name was only the breadcrumb and
   the title), no skip link (the sidebar, search and menus come before the content), a status bar outside every landmark, header cells with no `scope`, a column of
   "Dismiss" buttons that were the same button to a reader, a filter that was on and said nothing, a control whose help was in a popover that nothing referred to, and

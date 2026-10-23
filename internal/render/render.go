@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -29,7 +30,12 @@ type Crumb = c.Crumb
 
 // Doc is one full document: the shell plus the page's content.
 type Doc struct {
-	Title   string
+	Title string
+
+	// Refused is how many fields of a form that was posted were refused, for the title of the page that answers it: a page whose title is the same as
+	// the one before it says nothing to a reader of what happened.
+	Refused int
+
 	Crumbs  []Crumb
 	Active  string // path template of the nav entry to light, or ""
 	Content templ.Component
@@ -554,4 +560,15 @@ func refusalIcon(status int) c.IconName {
 		return c.IconSearch
 	}
 	return c.IconLock
+}
+
+// refusedTitle is the title of the page that answers a form that was refused: it says so first, with how many fields, and then what the page is.
+func refusedTitle(refused int, title string) string {
+	switch {
+	case refused == 1:
+		return "Not saved, 1 field needs attention — " + title
+	case refused > 1:
+		return "Not saved, " + strconv.Itoa(refused) + " fields need attention — " + title
+	}
+	return title
 }

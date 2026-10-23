@@ -13,7 +13,7 @@ import (
 // Document is the shell around one page's content.
 templ (r *Renderer) Document(d Doc) {
 	@t.Page(t.PageProps{
-		Title:       r.title(d.Title),
+		Title:       refusedTitle(d.Refused, r.title(d.Title)),
 		Early:       r.early(),
 		Stylesheets: r.styles(),
 		Scripts:     r.scripts(d),
@@ -114,6 +114,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 		}
 		if r.search {
 			<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
+			<div class="sr-only" role="status" aria-live="polite" data-palette-status></div>
 			// What the box says while a question is out, in the page's own words: script puts it there and has no words of its own for it.
 			<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>
 			<template data-palette-down><div class="pal-empty" role="presentation">The search could not be reached.</div></template>
@@ -502,7 +503,7 @@ templ (r *Renderer) input(fv fieldView) {
 					</span>
 					@c.Input(c.InputProps{
 						ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type, Mono: true, Class: "range-number", Placeholder: fv.Placeholder,
-						Invalid: fv.Error != "", Help: fv.hasHelp(), Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
+						Invalid: fv.Error != "", Help: fv.hasHelp(), Autofocus: fv.Autofocus, Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title,
 					})
 				</div>
 			case fv.ReadOnly:
@@ -518,12 +519,12 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.Field.File != nil:
 				@c.FileInput(c.FileInputProps{
 					ID: fv.ID, Name: fv.Name, Accept: rules.FileAccept(fv.Field.File), Required: fv.Rules.Required && fv.Stored == nil,
-					Invalid: fv.Error != "", Help: fv.hasHelp(), Validity: fv.Validity,
+					Invalid: fv.Error != "", Help: fv.hasHelp(), Autofocus: fv.Autofocus, Validity: fv.Validity,
 					CurrentName: fv.currentName(), CurrentHref: fv.currentHref(), CurrentThumb: fv.currentThumb(), CurrentSize: fv.currentSize(), Remove: fv.removable(), Attrs: fv.Attrs,
 				})
 			case fv.Field.Multiline:
 				@c.Textarea(c.TextareaProps{
-					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(),
+					ID: fv.ID, Name: fv.Name, Value: fv.Value, Placeholder: fv.Field.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(), Autofocus: fv.Autofocus,
 					Rules: fv.Rules, Validity: fv.Validity,
 				})
 			case fv.Phone != nil:
@@ -531,12 +532,12 @@ templ (r *Renderer) input(fv fieldView) {
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
-					Required: fv.Rules.Required, Invalid: fv.Error != "", Help: fv.hasHelp(), Validity: fv.Validity,
+					Required: fv.Rules.Required, Invalid: fv.Error != "", Help: fv.hasHelp(), Autofocus: fv.Autofocus, Validity: fv.Validity,
 				})
 			default:
 				@c.Input(c.InputProps{
 					ID: fv.ID, Name: fv.Name, Value: fv.Value, Type: fv.Type,
-					Placeholder: fv.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(),
+					Placeholder: fv.Placeholder, Invalid: fv.Error != "", Help: fv.hasHelp(), Autofocus: fv.Autofocus,
 					Rules: fv.Rules, Validity: fv.Validity, Title: fv.Title, Autocomplete: fv.Autocomplete, Attrs: fv.Attrs,
 				})
 		}

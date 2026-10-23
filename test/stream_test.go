@@ -147,7 +147,7 @@ func TestAPageWithASlowPanelIsSentWhileItWaitsAndThePanelsFollowInOrder(t *testi
 	<-slow.asked
 	waitFor(t, "the first flush", func() bool { return rec.flushCount() > 0 })
 	sent := string(rec.sentSoFar())
-	assert.Contains(t, sent, `<aside class="sidebar">`)
+	assert.Contains(t, sent, `<aside class="sidebar" id="sidebar">`)
 	assert.Contains(t, sent, "First-row")
 	assert.False(t, strings.Contains(sent, "Slow-row"))
 	assert.False(t, strings.Contains(rec.all(), "</html>")) // and not the end of the page

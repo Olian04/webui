@@ -755,7 +755,7 @@ func ActionBar() templ.Component {
 			templ_7745c5c3_Var30 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"actionbar\"><strong data-selcount>0 selected</strong> <span class=\"dim\" aria-hidden=\"true\">·</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<div class=\"actionbar\"><strong data-selcount role=\"status\">0 selected</strong> <span class=\"dim\" aria-hidden=\"true\">·</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

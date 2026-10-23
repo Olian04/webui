@@ -72,7 +72,8 @@ func RefreshAttrs(ctx context.Context) templ.Attributes {
 templ RefreshNote(ctx context.Context) {
 	if n := refreshIn(ctx); n > 0 {
 		<span class="refresh-note">
-			<span class="refresh-js">Updating…</span>
+			<span class="refresh-js" data-refresh-state>Updating…</span>
+			<button class="refresh-pause refresh-js" type="button" aria-pressed="false" data-refresh-pause>Pause</button>
 			<span class="refresh-nojs">Updating, reload in { strconv.Itoa(n) } s</span>
 		</span>
 	}

@@ -2,10 +2,13 @@ package webui_test
 
 import (
 	"context"
+	"encoding/base64"
 	"net/http"
+	"net/http/httptest"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -124,6 +127,9 @@ func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
 		assert.True(t, rule != "")
 		assert.False(t, strings.Contains(rule, "--text-3"))
 	}
+
+	// What is typed in the search box is text too, and the box around it is quiet, so the input says its own colour.
+	assert.Contains(t, regexp.MustCompile(`\.search input\s*\{[^}]*\}`).FindString(css), "color: var(--text);")
 }
 
 // Windows high contrast and the like take every colour that a page chose, so what is drawn with a background or a shadow, a checked box, a focus ring,
@@ -242,7 +248,7 @@ func TestAControlIsDescribedByItsHelpAndItsError(t *testing.T) {
 	// Refused, it is described by both: the help, and then what is wrong.
 	rec := post(h, "/admin/h", formValues("f0", "far too long a name"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), `aria-invalid="true" aria-describedby="p-f0-help p-f0-error"`)
+	assert.Contains(t, rec.Body.String(), `aria-invalid="true" autofocus aria-describedby="p-f0-help p-f0-error"`)
 
 	// A field with nothing to say has nothing to be described by.
 	plain := serve(helpedApp(helpedName("", webui.StringRules{})), http.MethodGet, "/admin/h").Body.String()
@@ -283,4 +289,113 @@ func TestAFragmentOnlyChangeDoesNotReloadThePage(t *testing.T) {
 	assert.Contains(t, js, "if (location.pathname + location.search !== shownAt) location.reload();")
 	assert.False(t, strings.Contains(js, "history.pushState(null, '', href);\n"+"      shownAt")) // the address is noted where it is pushed, once
 	assert.Equal(t, strings.Count(js, "moveTo(href);"), 2)
+}
+
+// --- announcements and focus -----------------------------------------------------------------------------------------------------------------
+
+// Each toast is its own live region with the role of what it says, the region that holds them is not one (a live region that is nested in another is read
+// twice), and what dismisses one is a button where there is script, and the label of a radio where there is not.
+func TestAToastIsItsOwnLiveRegionAndHasAButton(t *testing.T) {
+	t.Parallel()
+
+	h := outcomeApp()
+	toast := func(flash string) string {
+		r, _ := http.NewRequest(http.MethodGet, "/admin/device/a", nil)
+		r.Header.Set("Cookie", "webui_flash="+base64.RawURLEncoding.EncodeToString([]byte(flash)))
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w.Body.String()
+	}
+	body := toast("oFine")
+	assert.Contains(t, body, `<div class="toasts" data-toasts>`)
+	assert.False(t, strings.Contains(body, `data-toasts role=`))
+	assert.Contains(t, body, `<div class="toast" role="status">`)
+	assert.Contains(t, toast("wCareful"), `<div class="toast warn" role="status">`)
+	assert.Contains(t, body, `<button class="toast-close toast-close-js" type="button" title="Dismiss" aria-label="Dismiss" data-toast-dismiss>`)
+	assert.Contains(t, body, `<label class="toast-close toast-close-nojs" title="Dismiss">`)
+
+	assert.Contains(t, toast("eBad"), `<div class="toast err" role="alert">`)
+
+	// The page has a place to say what script changes, empty until it does.
+	assert.Contains(t, body, `<div class="sr-only" role="status" aria-live="polite" data-announce></div>`)
+}
+
+// A refused form is told in its title, and the page opens with the focus on the first control that was refused, which is read with what is wrong as its
+// description, and on only that one.
+func TestARefusedFormSaysSoInItsTitleAndFocusesTheFirstControlThatWasRefused(t *testing.T) {
+	t.Parallel()
+
+	h := formApp(okForm())
+	rec := post(h, "/admin/device/dev1", formValues("f0_1", "not an address", "f1", "700"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	body := rec.Body.String()
+	assert.Contains(t, body, "<title>Not saved, 2 fields need attention — ")
+	assert.Equal(t, strings.Count(body, " autofocus"), 1)
+	first := body[strings.Index(body, `name="f0_1"`):]
+	assert.True(t, strings.Index(first, " autofocus") < strings.Index(first, `name="f1"`)) // the IP, which comes first, and not the count
+	assert.Contains(t, body, `autofocus aria-describedby="p-f0_1-help p-f0_1-error"`)
+
+	// A page that is not an answer to a refusal has no such title, and nothing is focused for it.
+	ok := serve(h, http.MethodGet, "/admin/device/dev1").Body.String()
+	assert.False(t, strings.Contains(ok, "Not saved"))
+	assert.False(t, strings.Contains(ok, " autofocus"))
+}
+
+// What script does to the page without a navigation is said, and the focus is kept where it would be lost: these are the tokens of the shipped script, since
+// there is no harness for it.
+func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	for _, want := range []string{
+		// A panel that is replaced says what it holds now, and takes the focus that was in it to its title.
+		"function announce(text)", "describeLeaf(next, 'updated')", "if (hadFocus) refocus(next);", "title.tabIndex = -1;",
+		// Panels that are replaced in the background are not from under someone who is typing in them.
+		"if (current && !current.contains(document.activeElement)) current.replaceWith(next); // not from under",
+		// A panel that is asked for again can be stopped, and says when it is done.
+		"[data-refresh-pause]", "if (el.hasAttribute('data-paused')) return;", "describeLeaf(next, 'is up to date')",
+		// Toasts: put in again to be announced, an error stays, a message that went well stays long enough to read.
+		"var TOAST_MS = 8000;", "if (el.classList.contains('err') || el.classList.contains('warn')) return;", "[data-toast-dismiss]", "var again = toast.cloneNode(true);",
+		// A choice that is required says so, and says what is missing; the page opens with the focus on the field that was refused.
+		"field.setAttribute('aria-required', 'true');", "err.setAttribute('role', 'alert');", "if (sel.hasAttribute('autofocus')) field.focus();",
+		// The search says how many results it has, and one Escape closes one thing.
+		"function paletteStatus(text)", "e.stopPropagation(); // one Escape closes one thing",
+	} {
+		assert.Contains(t, js, want)
+	}
+	assert.Equal(t, strings.Count(js, "!current.contains(document.activeElement)"), 2)
+	// The sidebar's button keeps its name, and says what it controls and whether it is open.
+	assert.False(t, strings.Contains(js, "'Expand sidebar'"))
+	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	assert.Contains(t, body, `aria-expanded="true" aria-controls="sidebar" title="Collapse sidebar"`)
+	assert.Contains(t, body, `<aside class="sidebar" id="sidebar">`)
+	assert.Contains(t, serve(searchApp(rowsSearch(), nil), http.MethodGet, "/admin/device").Body.String(), `<div class="sr-only" role="status" aria-live="polite" data-palette-status></div>`)
+}
+
+// The panel that polls has a pause, which only script can honour, and the selection's count is a status.
+func TestAPanelThatIsAskedForAgainCanBePausedAndASelectionCountIsAStatus(t *testing.T) {
+	t.Parallel()
+
+	body := serve(refreshApp(webui.Ready().RefreshAfter(5*time.Second)), http.MethodGet, "/admin/s").Body.String()
+	assert.Contains(t, body, `<button class="refresh-pause refresh-js" type="button" aria-pressed="false" data-refresh-pause>Pause</button>`)
+
+	bulk := serve(guardedParcels(nil, nil, []webui.Action[[]parcel]{{Label: "Bag", Run: func(context.Context, []parcel) (webui.Outcome, error) { return webui.Success("bagged"), nil }}}, nil), http.MethodGet, "/admin/t").Body.String()
+	assert.Contains(t, bulk, `<strong data-selcount role="status">0 selected</strong>`)
+}
+
+// The upload's queue is a live region from the start, out of sight and not hidden, the focus does not fall to the page when the button it was on is disabled,
+// and the preview of a chosen image is a button.
+func TestTheUploadKeepsItsLiveRegionAndTheFocus(t *testing.T) {
+	t.Parallel()
+
+	s := newUploadShop(nil)
+	up := serve(s.h, http.MethodGet, assetURL(t, s.h, "upload.js")).Body.String()
+	for _, want := range []string{"quiet(true);", "if (on && focused) cancel.focus();", "(submit || input).focus();"} {
+		assert.Contains(t, up, want)
+	}
+	assert.False(t, strings.Contains(up, "list.hidden"))
+	file := serve(s.h, http.MethodGet, assetURL(t, s.h, "file.js")).Body.String()
+	assert.Contains(t, file, "element('button', 'file-thumb-chosen')")
+	assert.Contains(t, file, "input.setAttribute('aria-invalid', 'true');")
 }

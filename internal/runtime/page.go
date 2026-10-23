@@ -315,6 +315,9 @@ func (p *Program) pageDoc(ctx context.Context, page *ir.Page, req *Request, cont
 	doc.Phone, doc.File, doc.Upload = p.render.NeedsPhone(page), p.render.NeedsFile(page), p.render.NeedsUpload(page)
 	if req != nil {
 		doc.Code = req.code
+		if req.sub != nil {
+			doc.Refused = len(req.sub.errs)
+		}
 	}
 	return doc
 }

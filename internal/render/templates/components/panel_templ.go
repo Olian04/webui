@@ -99,14 +99,14 @@ func RefreshNote(ctx context.Context) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if n := refreshIn(ctx); n > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"refresh-note\"><span class=\"refresh-js\">Updating…</span> <span class=\"refresh-nojs\">Updating, reload in ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"refresh-note\"><span class=\"refresh-js\" data-refresh-state>Updating…</span> <button class=\"refresh-pause refresh-js\" type=\"button\" aria-pressed=\"false\" data-refresh-pause>Pause</button> <span class=\"refresh-nojs\">Updating, reload in ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 76, Col: 67}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 77, Col: 67}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -178,7 +178,7 @@ func Panel(p PanelProps) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Leaf)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 91, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 92, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -200,7 +200,7 @@ func Panel(p PanelProps) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(p.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 96, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 97, Col: 36}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -262,7 +262,7 @@ func Panel(p PanelProps) templ.Component {
 							var templ_7745c5c3_Var10 string
 							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Refused.Label)
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 113, Col: 25}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 114, Col: 25}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 							if templ_7745c5c3_Err != nil {
@@ -416,7 +416,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.name())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 170, Col: 65}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 171, Col: 65}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -442,7 +442,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 176, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 177, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -465,7 +465,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(p.Help)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 181, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 182, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -480,7 +480,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(p.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 184, Col: 12}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 185, Col: 12}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -494,7 +494,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 			var templ_7745c5c3_Var18 string
 			templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(p.Text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 186, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 187, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 			if templ_7745c5c3_Err != nil {
@@ -512,7 +512,7 @@ func InfoTip(p InfoTipProps) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(line)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 188, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 189, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
