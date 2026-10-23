@@ -121,7 +121,7 @@ func serveUpload(w http.ResponseWriter, r *http.Request) {
 
 // FirmwareChoice is what a visitor chooses beside the firmware image, which is the model of the upload panel: the options, with the defaults that Load gives.
 type FirmwareChoice struct {
-	Taken   string // what to do when an image of the same name is the last one: "refuse" or "replace"
+	Taken   string // what to do when an image of the same name was uploaded already: "refuse" it, or "replace" it, which removes the old one from the history
 	Channel string // "stable" or "beta"
 }
 
@@ -143,7 +143,7 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 			},
 			Fields: []webui.Accessor[FirmwareChoice]{
 				webui.Select[FirmwareChoice]{
-					Label: "If the last image has the same name", Required: true,
+					Label: "If an image has the same name", Required: true,
 					Options: []webui.Option{{Value: "refuse", Label: "Refuse it"}, {Value: "replace", Label: "Replace it"}},
 					Load:    func(c FirmwareChoice) []string { return []string{c.Taken} },
 					Store:   func(c *FirmwareChoice, v []string) { c.Taken = v[0] },
@@ -165,8 +165,10 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 				},
 				Run: func(_ context.Context, f webui.FileHandle[FirmwareChoice]) (webui.Outcome, error) {
 					// A choice that is made beside the file is known before it is read, so a refusal costs none of it: what Run did not read is thrown away.
-					if last := service.Firmware(); last.Name == f.Name && f.Options.Taken != "replace" {
-						return webui.Failure(f.Name + " is the last image: choose to replace it to upload it again"), nil
+					fw := Firmware{Name: f.Name, Folder: f.Path}
+					replace := f.Options.Taken == "replace"
+					if service.HasFirmware(fw.Key()) && !replace {
+						return webui.Failure(fw.Key() + " was uploaded already: choose to replace it to upload it again"), nil
 					}
 					sum := sha256.New()
 					size, err := io.Copy(sum, f.Reader) // all of it, as it comes: this is how the file is known to be whole
@@ -174,7 +176,10 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 						return webui.Outcome{}, err //nolint:wrapcheck // a failing read of the body, which the library answers
 					}
 					digest := hex.EncodeToString(sum.Sum(nil))
-					service.SetFirmware(Firmware{Name: f.Name, Folder: f.Path, Channel: f.Options.Channel, Type: f.DeclaredType, Size: int(size), SHA256: digest, At: time.Now().Format("Jan 2 15:04")})
+					fw.Channel, fw.Type, fw.Size, fw.SHA256, fw.At = f.Options.Channel, f.DeclaredType, int(size), digest, time.Now().Format("Jan 2 15:04")
+					if !service.SetFirmware(fw, replace) { // another upload of the name came first, while this one was being read
+						return webui.Failure(fw.Key() + " was uploaded already: choose to replace it to upload it again"), nil
+					}
 					return webui.Success("Received " + f.Name + ", sha256 " + digest[:12] + "…"), nil
 				},
 			},

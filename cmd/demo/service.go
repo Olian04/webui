@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 	"sync"
@@ -499,14 +500,14 @@ func (s *Service) Audit(offset, limit int) []AuditEntry {
 	return slices.Clone(s.audit[lo:hi])
 }
 
-// Firmware is the image that was uploaded last, and the zero Firmware when none was.
-func (s *Service) Firmware() Firmware {
+// Key is what names an image: its folder and its name, as it was uploaded.
+func (f Firmware) Key() string { return path.Join(f.Folder, f.Name) }
+
+// HasFirmware is whether an image of that key was uploaded.
+func (s *Service) HasFirmware(key string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if len(s.firmware) == 0 {
-		return Firmware{}
-	}
-	return s.firmware[0]
+	return slices.ContainsFunc(s.firmware, func(f Firmware) bool { return f.Key() == key })
 }
 
 // FirmwareHistory is every image that was uploaded, newest first.
@@ -516,11 +517,21 @@ func (s *Service) FirmwareHistory() []Firmware {
 	return slices.Clone(s.firmware)
 }
 
-func (s *Service) SetFirmware(f Firmware) {
+// SetFirmware records an upload at the top of the history. An image of the same key that was uploaded already is refused, unless replace says to
+// take its place, which removes the old entry. It is false for a refusal, which is decided under the lock, so that two uploads of one name at once
+// cannot both be recorded.
+func (s *Service) SetFirmware(f Firmware, replace bool) bool {
 	s.mu.Lock()
+	taken := slices.ContainsFunc(s.firmware, func(old Firmware) bool { return old.Key() == f.Key() })
+	if taken && !replace {
+		s.mu.Unlock()
+		return false
+	}
+	s.firmware = slices.DeleteFunc(s.firmware, func(old Firmware) bool { return old.Key() == f.Key() })
 	s.firmware = slices.Insert(s.firmware, 0, f)
 	s.mu.Unlock()
-	s.record("uploaded firmware", f.Name)
+	s.record("uploaded firmware", f.Key())
+	return true
 }
 
 func (s *Service) Settings() Settings {
