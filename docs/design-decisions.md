@@ -812,7 +812,13 @@ design element.
   - a tab that has an editor or a diff is a plain navigation, since the language service and the files an editor is given
     are told to the page as it is made, from the panels it was made with, and a text with code in it is too when the page
     has no editor to colour it with; a tab that does not, and any answer that is not the `Tabs`, is the same, which is
-    what the link was before;
+    what the link was before. Moving the editor's configuration into the panel, so that a tab could bring its own editor, was
+    weighed in the hypermedia audit and dropped: the editor script already mounts an editor that arrives in a swapped panel,
+    but what the panel would need to bring (its stylesheet, a module script that script has to run, the worker of each language
+    service, the context files, and language services that are switched on when an editor needs one and not when the page
+    loads) is a rebuilt Monaco bundle and about a hundred and fifty lines of script that has no test harness, for a request
+    that was a navigation anyway, and a navigation is what a link does, not a departure from hypermedia. The page's editor
+    configuration stays one JSON data island in its head, which the script reads once, and the server owns what is in it;
   - a tab that was read is read again when it is chosen again: there is no cache, which is the app's.
 
 - A page with no `Label` lights the entry of its nearest ancestor path (the longest
