@@ -75,8 +75,22 @@ type FileHandle struct {
 	// characters. It is the visitor's, so it is not to be used as a name on disk.
 	Name string
 
+	// Path is the folder that the file was sent in when the visitor chose a folder to send ("photos/2024" for "photos/2024/a.jpg"), made safe: both kinds of slash separate
+	// it, empty elements and "." and ".." are dropped (a ".." is not followed, so "a/../b" is "a/b"), control characters are taken out, an element has at most 255
+	// characters and there are at most 32. It never has a slash at either end, and is "" for a file that was not sent in a folder. It is the visitor's, and is for the app
+	// to use as the folder of the object it makes, never to open on a disk as it is.
+	Path string
+
+	// RawName is the file's name exactly as the browser sent it, with its path and anything that Name has taken out of it. It is the visitor's and not safe, and is not to be
+	// used as a name: it is for telling the visitor that their file's name was changed, by comparing it with Name and Path.
+	RawName string
+
 	// ContentType is what the first 512 bytes of the file hold, as a media type, and not what the browser said it was.
 	ContentType string
+
+	// DeclaredType is the media type that the browser said the file has (from its extension, usually), without its parameters, or "" when it said none. It is the visitor's, and
+	// is what to prefer for a name that the visitor chose, for a stored object's type, where the first 512 bytes say "text/plain" of a JSON file: it is not what the file holds.
+	DeclaredType string
 
 	// Kind is the kind that the first bytes say the file is: [FilePNG], [FileJPEG], [FileGIF], [FileWebP] or [FilePDF], and [FileAny] for any
 	// other file, which only a panel that takes any file lets in.
@@ -132,7 +146,10 @@ func (f FileUpload) lowerBody(at ir.Addr) ir.Node {
 		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec,
 		Receive: lowerAction(a),
 		Subject: func(in ir.Incoming, r io.Reader) any {
-			return FileHandle{Name: in.Name, ContentType: in.ContentType, Kind: fileKindOf(in.Kind), Reader: r}
+			return FileHandle{
+				Name: in.Name, Path: in.Path, RawName: in.RawName, ContentType: in.ContentType, DeclaredType: in.DeclaredType,
+				Kind: fileKindOf(in.Kind), Reader: r,
+			}
 		},
 	}
 }

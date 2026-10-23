@@ -124,13 +124,11 @@ func Size(n int64) string {
 	return strconv.FormatFloat(math.Round(x*10)/10, 'f', -1, 64) + " " + units[i]
 }
 
-// UploadName is the name of a file as it is kept: the base name only, since a browser may send a path, with the control
-// characters taken out and at most 255 characters, and never empty or a dot.
-func UploadName(raw string) string {
-	raw = strings.ReplaceAll(raw, `\`, "/")
-	if i := strings.LastIndex(raw, "/"); i >= 0 {
-		raw = raw[i+1:]
-	}
+// maxUploadPath is the most elements of the folder of an uploaded file that are kept.
+const maxUploadPath = 32
+
+// cleanElement is one element of a name or of a folder as it is kept: with the control characters taken out, trimmed, and at most 255 characters.
+func cleanElement(raw string) string {
 	raw = strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) || r == utf8.RuneError {
 			return -1
@@ -141,10 +139,43 @@ func UploadName(raw string) string {
 	if runes := []rune(raw); len(runes) > maxUploadName {
 		raw = string(runes[:maxUploadName])
 	}
+	return raw
+}
+
+// UploadName is the name of a file as it is kept: the base name only, since a browser may send a path, with the control
+// characters taken out and at most 255 characters, and never empty or a dot.
+func UploadName(raw string) string {
+	raw = strings.ReplaceAll(raw, `\`, "/")
+	if i := strings.LastIndex(raw, "/"); i >= 0 {
+		raw = raw[i+1:]
+	}
+	raw = cleanElement(raw)
 	if raw == "" || raw == "." || raw == ".." {
 		return "file"
 	}
 	return raw
+}
+
+// UploadPath is the folder that a file was sent in, from the name that the browser gave it, which is a path when the visitor chose a folder
+// ("photos/2024/a.jpg" is "photos/2024"): made safe, so that it never leaves the folder that the app puts it in. Both kinds of slash separate it, empty elements and the
+// elements "." and ".." are dropped (a ".." is not followed: "a/../b" is "a/b"), control characters are taken out, an element is at most 255 characters, and at most
+// 32 are kept. It has no slash at either end, and is "" for a file that was not sent in a folder.
+func UploadPath(raw string) string {
+	raw = strings.ReplaceAll(raw, `\`, "/")
+	i := strings.LastIndex(raw, "/")
+	if i < 0 {
+		return ""
+	}
+	var elements []string
+	for _, el := range strings.Split(raw[:i], "/") {
+		if el = cleanElement(el); el == "" || el == "." || el == ".." {
+			continue
+		}
+		if elements = append(elements, el); len(elements) == maxUploadPath {
+			break
+		}
+	}
+	return strings.Join(elements, "/")
 }
 
 // HeadSize is how many bytes of a file are read to tell what it is, which is what http.DetectContentType looks at.

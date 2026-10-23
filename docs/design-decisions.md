@@ -7,6 +7,13 @@ checked by the compiler, behaviour the library owns and infers instead of hooks 
 user implements, a static top-level declaration style, and everything working with
 JavaScript switched off.
 
+HTML is the state of the application, and the only thing the server answers a browser with (hypermedia as the engine of application state, as in
+[HATEOAS](https://htmx.org/essays/hateoas) and [hypermedia-driven applications](https://htmx.org/essays/hypermedia-driven-applications), whose thinking is a big
+inspiration here): a page, a panel that script asks for by `X-Webui-Leaf`, and whatever a script-made request is answered with are HTML, which holds the links, forms and
+buttons that a visitor can use in that state, and the script only asks for it and puts it in the page. There is no JSON endpoint, and a script does not learn what the
+server's states mean or build markup from data. What this costs: a script feature needs a fragment that the server renders, which is more work than a JSON answer, and a
+client that is not a browser has no data format to read.
+
 The user-facing behaviour is documented in the package documentation
 (`go doc github.com/Olian04/webui/pkg/webui`, or pkg.go.dev). `design.md` is the
 visual language, and `design-mapping.md` says which declared type produces which
@@ -334,6 +341,14 @@ design element.
   large file may see the connection closed; a `Run` that fails after a partial write to a store leaves it for the app to clean up, which the library cannot,
   not knowing the store; and the browser's own load indicator is the only progress, since the input stays the control and the post is the browser's own
   (the earlier decision), which an `XMLHttpRequest` with a `<progress>` would reverse, and is a decision of its own.
+
+- **A `FileHandle` says what the browser said, apart from what the library made safe.** `Name` is the base name, made safe, and is never a path; `Path` is the folder that a
+  file was sent in (a visitor who chose a folder), made safe by a rule that never lets it leave the folder the app puts it in (both slashes separate, empty, `.` and `..` elements are
+  dropped and a `..` is not followed, controls are taken out, elements and depth are bounded); `RawName` is the name exactly as sent, so that an app can tell the visitor that it
+  changed; `DeclaredType` is the media type the browser said, without parameters, beside `ContentType`, which is what the first bytes hold, since the visitor often knows better
+  what an object is (a `.json` file sniffs as `text/plain`). Go's `Part.FileName` applies `filepath.Base`, so the raw name is read from `Content-Disposition`. The costs: three
+  more fields on a type every upload sees, two of them the visitor's word and to be trusted with nothing; and there is **no test helper** in the public API: the names that a test posts (`_leaf`
+  and `file`) are documented as stable instead, which `httptest` and a few lines of `mime/multipart` can use.
 
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
   `FileJSON`, `FileCSV`, `FileText`, `FileAny`), and the server reads the first 512 bytes with `http.DetectContentType` for the

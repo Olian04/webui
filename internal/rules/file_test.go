@@ -132,3 +132,39 @@ func TestWhatTheFirstBytesTellIsKnownAtTheStart(t *testing.T) {
 	_, _, message = FileHead(&ir.FileSpec{Kinds: []ir.FileKind{ir.FilePNG}}, []byte("plain words"))
 	assert.Equal(t, message, "Choose a PNG file.")
 }
+
+// The folder of a file is what the browser sent it in, made safe: whatever it says, it never leaves the folder that the app puts it in.
+func TestTheFolderOfAFileIsMadeSafe(t *testing.T) {
+	t.Parallel()
+
+	for raw, want := range map[string]string{
+		"photos/2024/a.jpg":             "photos/2024",
+		`photos\2024\a.jpg`:             "photos/2024",
+		"a.jpg":                         "",
+		"":                              "",
+		"../../etc/passwd":              "etc",
+		"a/../../b/c.txt":               "a/b",
+		"./a/./b/c":                     "a/b",
+		"/abs/path/f":                   "abs/path",
+		`\\server\share\f.txt`:          "server/share",
+		"a//b///c/f":                    "a/b/c",
+		"dir/":                          "dir",
+		"/":                             "",
+		"a\x00b/c\x07d/f":               "ab/cd",
+		"  spaced / name /f":            "spaced/name",
+		"../..":                         "",
+		strings.Repeat("é", 300) + "/f": strings.Repeat("é", 255),
+		"bad\xffbyte/f":                 "badbyte",
+	} {
+		assert.Equal(t, UploadPath(raw), want)
+	}
+	// Deep folders are cut, at 32 elements.
+	deep := strings.Repeat("d/", 40) + "f"
+	assert.Equal(t, strings.Count(UploadPath(deep), "/"), 31)
+	// What is kept never has a way out of the folder in it.
+	for _, raw := range []string{"../x/f", "a/../../x/f", `..\..\x\f`, "a/%2e%2e/f"} {
+		for _, el := range strings.Split(UploadPath(raw), "/") {
+			assert.True(t, el != ".." && el != "." && !strings.ContainsAny(el, `\`))
+		}
+	}
+}

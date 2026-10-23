@@ -304,6 +304,15 @@
 //		},
 //	}
 //
+// A file that was chosen in a folder has the folder in [FileHandle.Path], made safe, apart
+// from its Name; [FileHandle.RawName] is the name as the browser sent it, to tell the visitor
+// that it was changed, and [FileHandle.DeclaredType] is the type that the browser said, which is
+// what to prefer for the type of what is stored when the visitor's word is better than the first
+// bytes. A test posts the panel's form as a browser does: a multipart body of the field "_leaf",
+// which is where the panel is in the page's Body ("p" when it is the Body, "p.0" for the first
+// of a [Stack], "p.1.0" for the first in the second, and so on), and then the field "file", in
+// that order. Those names are stable.
+//
 // It is a native form with one file and a button, and the chooser is the same frame that
 // a file can be dropped on. The Guard is asked when the panel is drawn, which draws it
 // disabled for [Disabled] and leaves it out for any other error, and again when the file
