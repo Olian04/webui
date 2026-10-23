@@ -245,3 +245,50 @@ func TestTheEditorAssetsAreImmutableGzippedAndNothingElseIsServed(t *testing.T) 
 		assert.True(t, serve(h, http.MethodGet, "/admin/_webui/monaco/"+p).Code != http.StatusOK) // never a file outside
 	}
 }
+
+// An editor that Monaco mounts over is used from the keyboard, so what the reader needs of the textarea that the server drew (which is
+// hidden then) has to reach the control that Monaco makes, and the page has to say how to leave it.
+func TestARequiredEditorSaysWhatItNeedsInTheWordsOfTheServer(t *testing.T) {
+	t.Parallel()
+
+	h := editorApp(webui.Editor[snippet]{
+		Title: "Config", Load: loadSnippet, Content: snippetText, Language: webui.LangJSON,
+		Submit: webui.Action[snippet]{Run: func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `required`)
+	assert.Contains(t, body, `data-msg-value-missing="`) // for script to say when the textarea is hidden and cannot
+}
+
+func TestTheEditorScriptLeavesTheEditorWithEscapeAndSaysHowAndSpeaksForTheControlItMakes(t *testing.T) {
+	t.Parallel()
+
+	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	entry := regexp.MustCompile(`src="(/admin/_webui/monaco/code-[A-Z0-9]+\.js)"`).FindStringSubmatch(body)
+	assert.True(t, entry != nil)
+	js := serve(h, http.MethodGet, entry[1]).Body.String()
+
+	for _, token := range []string{
+		"To leave the editor, press Esc and then Tab.", // how to leave it, in the page and not only in the manual
+		"tabFocusMode",         // and that it is done
+		"hc-black", "hc-light", // the high contrast themes, for forced colours and more contrast
+		"native-edit-context",    // the control Monaco makes where the browser has an EditContext
+		"data-confirm-open",      // Ctrl+S presses the button, so a button that asks, asks
+		"data-msg-value-missing", // a required editor says what is missing
+	} {
+		assert.Contains(t, js, token)
+	}
+	assert.False(t, strings.Contains(js, ".requestSubmit()")) // a form is never sent from a shortcut, past its button
+}
+
+func TestTheSearchShortcutIsLeftToAnEditorAndToTheBrowsersOwnKeys(t *testing.T) {
+	t.Parallel()
+
+	h, _ := phoneForm("SE")
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	shortcut := regexp.MustCompile(`function isShortcut\(e\) \{[^}]*\}[^}]*\}[^}]*\}`).FindString(js)
+	assert.True(t, shortcut != "")
+	assert.Contains(t, shortcut, "e.shiftKey || e.altKey")
+	assert.Contains(t, shortcut, `closest('.code-host')`)
+}

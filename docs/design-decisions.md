@@ -1132,6 +1132,15 @@ design element.
 - Without script the editor is a `textarea`, the viewer a `pre`, and a `Diff` a
   unified diff that the server makes. The script mounts Monaco over them and keeps
   the `textarea` as the editor has it, so the form posts as it always did.
+- The editor is used from the keyboard as well as it can be, and what it cannot be is said. Esc then Tab
+  leaves it (Monaco's own Ctrl+M does too, for every editor on the page, and says nothing), and the line
+  under it says so, for everyone and not only for those who would look for it. The costs: Esc does not leave
+  the editor while a selection, a list of suggestions or the find box could use it, so a reader may press it
+  twice; the hint takes a line of height from every editable editor; Cmd+K and Ctrl+K are not the search
+  inside an editor, where they are Monaco's (a reader leaves the editor first); and Cmd+S presses the
+  form's button, so with no button offered (a Guard) it does nothing, where it used to send the form past it. The
+  required message is made in the page, with the textarea hidden, as the required select's is, and the
+  server asks as well.
 
 ## Markdown
 

@@ -91,6 +91,16 @@ function isLight() {
   return chosen ? chosen === 'light' : matchMedia('(prefers-color-scheme: light)').matches;
 }
 
+// A reader who asked the system for its own colours, or for more contrast, is given Monaco's high contrast themes
+// as the base, which draw the editor's borders and its selection and its find matches with outlines and not by
+// colour alone. The application's colours are laid over them as over the others, and in forced colours they resolve
+// to the system's.
+const highContrast = matchMedia('(forced-colors: active), (prefers-contrast: more)');
+function themeBase() {
+  if (highContrast.matches) return isLight() ? 'hc-light' : 'hc-black';
+  return isLight() ? 'vs' : 'vs-dark';
+}
+
 function defineThemes() {
   const colors = {
     'editor.background': colour('--panel', '#181b1f'),
@@ -111,7 +121,7 @@ function defineThemes() {
     'diffEditor.insertedTextBackground': '#2ea04333',
     'diffEditor.removedTextBackground': '#f8514933',
   };
-  monaco.editor.defineTheme('webui', { base: isLight() ? 'vs' : 'vs-dark', inherit: true, rules: [], colors });
+  monaco.editor.defineTheme('webui', { base: themeBase(), inherit: true, rules: [], colors });
 }
 
 function applyTheme() {
@@ -120,6 +130,7 @@ function applyTheme() {
 }
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+highContrast.addEventListener('change', applyTheme);
 
 
 // --------------------------------------------------------------------- context
@@ -232,6 +243,121 @@ function host(el) {
   return box;
 }
 
+// What script says is said in the page's status region, which is there on every page (see enhance.js).
+function say(text) {
+  const region = document.querySelector('[data-announce]');
+  if (!region) return;
+  region.textContent = '';
+  setTimeout(() => {
+    region.textContent = text;
+  }, 60);
+}
+
+// An editor holds the Tab key, since it is a character in the text, and a keyboard has no other way out of it, so
+// the editor says how to leave (the page, beside the editor) and does it: Escape lets the next Tab move on, which
+// is what Monaco's own Ctrl+M does for every editor on the page and does not say. The editor holds Tab again at
+// the next key that is not a Tab, and when it loses the focus. Escape is left to what has a use for it first: a
+// list of suggestions, the find box, a snippet, a selection.
+const ESCAPE_LEAVES = [
+  'editorTextFocus',
+  '!suggestWidgetVisible',
+  '!findWidgetVisible',
+  '!parameterHintsVisible',
+  '!renameInputVisible',
+  '!editorHoverVisible',
+  '!inSnippetMode',
+  '!editorHasSelection',
+  '!editorHasMultipleSelections',
+  '!inlineSuggestionVisible',
+].join(' && ');
+
+function leavable(editor) {
+  const hold = () => editor.updateOptions({ tabFocusMode: false });
+  editor.addCommand(
+    monaco.KeyCode.Escape,
+    () => {
+      editor.updateOptions({ tabFocusMode: true });
+      say('Tab now moves focus out of the editor');
+    },
+    ESCAPE_LEAVES,
+  );
+  editor.onKeyDown((e) => {
+    if (!editor.getOption(monaco.editor.EditorOption.tabFocusMode)) return;
+    const k = monaco.KeyCode;
+    if ([k.Tab, k.Escape, k.Shift, k.Ctrl, k.Alt, k.Meta].includes(e.keyCode)) return;
+    hold();
+  });
+  editor.onDidBlurEditorText(hold);
+}
+
+// The control that a reader's keyboard is in is not the textarea that the server drew, which is hidden, but the
+// one Monaco makes (or the element that takes its place where the browser has an EditContext), so what the server
+// said about the field is said about that one: that it is required, that it was refused, and where the words are.
+function describeInput(editor, textarea, hint) {
+  const input = editor.getDomNode()?.querySelector('textarea.inputarea, .native-edit-context');
+  if (!input) return () => {};
+  const sync = () => {
+    const described = [textarea.getAttribute('aria-describedby'), hint.id].filter(Boolean).join(' ');
+    input.setAttribute('aria-describedby', described);
+    if (textarea.required || textarea.hasAttribute('data-required')) input.setAttribute('aria-required', 'true');
+    if (textarea.getAttribute('aria-invalid') === 'true') input.setAttribute('aria-invalid', 'true');
+    else input.removeAttribute('aria-invalid');
+  };
+  sync();
+  // Monaco writes some of these again when it takes the focus.
+  editor.onDidFocusEditorText(sync);
+  return sync;
+}
+
+// A required editor that is empty says so before the form leaves, as a required select does (see enhance.js): the
+// textarea that would have said so is hidden and cannot be pointed at, and the server asks as well.
+function required(editor, textarea, form, sync) {
+  if (!textarea.required) return;
+  textarea.required = false;
+  textarea.setAttribute('data-required', '');
+  const body = textarea.closest('.code-body');
+  const id = `${textarea.id}-error`;
+  const clear = () => {
+    const made = document.getElementById(id);
+    if (made && made.hasAttribute('data-made')) made.remove();
+    textarea.removeAttribute('aria-invalid');
+    textarea.setAttribute('aria-describedby', (textarea.getAttribute('aria-describedby') || '').split(' ').filter((x) => x && x !== id).join(' '));
+    if (!textarea.getAttribute('aria-describedby')) textarea.removeAttribute('aria-describedby');
+    sync();
+  };
+  form.addEventListener('submit', (e) => {
+    if (editor.getValue() !== '') return;
+    e.preventDefault();
+    let err = document.getElementById(id);
+    if (!err) {
+      err = document.createElement('div');
+      err.className = 'err code-error';
+      err.id = id;
+      err.setAttribute('role', 'alert');
+      err.setAttribute('data-made', '');
+      err.textContent = textarea.getAttribute('data-msg-value-missing') || 'This field is required.';
+      body.appendChild(err);
+    }
+    textarea.setAttribute('aria-invalid', 'true');
+    const described = (textarea.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+    if (!described.includes(id)) described.push(id);
+    textarea.setAttribute('aria-describedby', described.join(' '));
+    sync();
+    editor.focus();
+  });
+  editor.onDidChangeModelContent(() => {
+    if (document.getElementById(id)?.hasAttribute('data-made')) clear();
+  });
+}
+
+// Ctrl+S or Cmd+S is the form's button pressed, so that what the button does is done: a button that asks first
+// asks, and one that is not offered (a Guard that disabled it) is not pressed. The form is not sent from here.
+function save(form) {
+  const buttons = [...form.querySelectorAll('button')].filter((b) => !b.closest('dialog') && !b.disabled);
+  const button = buttons.find((b) => b.hasAttribute('data-confirm-open')) || buttons.find((b) => b.type === 'submit');
+  if (button) button.click();
+}
+
 function mountEditor(el) {
   const language = el.dataset.language || 'plaintext';
   const textarea = el.querySelector('textarea');
@@ -254,18 +380,28 @@ function mountEditor(el) {
     if (language === 'json') release = schemas(el.dataset.context, model);
     else program(language);
   }
+  let hint = null;
   if (textarea) {
     // The textarea is what the form posts, so it is kept as the editor has it.
     editor.onDidChangeModelContent(() => {
       textarea.value = editor.getValue();
     });
+    hint = document.createElement('p');
+    hint.className = 'code-hint';
+    hint.id = `${textarea.id}-hint`;
+    hint.textContent = 'Tab types a tab. To leave the editor, press Esc and then Tab.';
+    el.after(hint);
+    leavable(editor);
+    const sync = describeInput(editor, textarea, hint);
     const form = textarea.closest('form');
     if (form) {
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => form.requestSubmit());
+      required(editor, textarea, form, sync);
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => save(form));
     }
   }
   return () => {
     release();
+    if (hint) hint.remove();
     editor.dispose();
     if (model) model.dispose();
   };

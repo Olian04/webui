@@ -321,6 +321,15 @@ there is something to save); the body has no padding, and the editor fills it.
 its light or its dark theme.
 - **States.** Focus is an inset 2px ring in `--ring`; a refused text is an inset 2px ring in `--ring-bad`, with the
   reason under the editor in a rule-topped strip (8px 12px), where a form would put it under a field.
+- **From the keyboard.** Monaco holds the Tab key, since it is a character in the text, so a quiet line under an editable
+  editor (12px, `--text-2`, ruled above) says how to leave it: *Tab types a tab. To leave the editor, press Esc and then
+  Tab.* Esc, when nothing else has a use for it (suggestions, the find box, a snippet, a selection), lets the next Tab
+  move on, and the editor holds Tab again at the next other key and when it loses the focus. Cmd+K and Ctrl+K are
+  Monaco's chord prefix inside an editor, so the search shortcut is the page's again outside it. Cmd+S and Ctrl+S press
+  the form's button, so a button that asks first asks, and one that is not offered is not pressed. A required editor
+  that is empty says so as an alert, in the words the server uses, and keeps the focus; what the server drew on the
+  textarea (required, refused, the reason, the hint) is said by the control Monaco makes. With forced colours or
+  *more contrast* the editor is drawn on Monaco's high contrast theme.
 - **A diff** is the two texts side by side when its panel is 900px wide or more, and in one column, the lines of
   both interleaved, when it is not, following the panel as it is resized. Above it is a header row (12px,
   `--text-2`, ruled below) that names the sides: over each side when they are side by side, and as one line, *Deployed →
