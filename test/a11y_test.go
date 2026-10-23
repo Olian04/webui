@@ -143,7 +143,11 @@ func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
 	} {
 		assert.Contains(t, forced, want)
 	}
-	assert.Contains(t, css, "@media (prefers-contrast: more) {")
+	more := css[strings.Index(css, "@media (prefers-contrast: more) {"):]
+	more = more[:strings.Index(more, "\n}\n")]
+	assert.Contains(t, more, ":root:not([data-theme])") // the system's light theme, which a stored choice does not set, is one of the rules it must beat
+	assert.Contains(t, more, "--control-bd: var(--control-bd-strong);")
+	assert.Contains(t, more, "--border-2: var(--control-bd-strong);")
 
 	// Nothing that can take the focus has it taken away with no replacement: an outline is made transparent, which is drawn in forced colors, and not none.
 	for _, rule := range regexp.MustCompile(`([^{}]+)\{[^{}]*outline:\s*none;[^{}]*\}`).FindAllStringSubmatch(css, -1) {

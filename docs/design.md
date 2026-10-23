@@ -627,8 +627,15 @@ different product.
 - Every text colour a reader needs clears 4.5:1 on its surface in both themes:
   text, text-secondary, the semantic text colours, a badge's text on its own tint, and
   a white label on the primary and destructive fills, including on hover. Text
-  tertiary clears 3:1 and is for decoration only. A test computes these from the
-  stylesheet's tokens, so a palette edit that slips under fails.
+  tertiary clears 3:1 and is for decoration only: no text that is needed (a placeholder, a hint, the status bar's figures, a diff's line numbers) is in it.
+  A test computes these from the stylesheet's tokens, so a palette edit that slips under fails.
+- The edge of a control (an input, a checkbox, the switch) is the quiet border, 1.6:1, which is the look of the app and is below the 3:1 that WCAG 1.4.11
+  asks of it. A visitor who asks for more contrast (`prefers-contrast: more`) gets `--control-bd-strong`, which clears 3:1 on the control's own background
+  and on the panel, and the quiet text at the strength of the ordinary. The choice is the design's, and is recorded in the decisions log.
+- Windows high contrast (`forced-colors`) is drawn for: a checked box, the switch, the focus rings, the active tab, entry and option, and the gauge are drawn
+  again with the system's colours, an outline or a border, since a background or a shadow is gone there. A focus ring that a shadow draws has a transparent
+  outline beside it, which the browser draws in forced colors and not otherwise.
+- `prefers-reduced-motion` stops every animation and transition, and a panel that is busy is dimmed and does not pulse; nothing loops.
 - Status is never colour alone — every badge carries its word.
 - Focus is a visible 2px ring, never removed.
 - Every interactive element is a real link or a real button, so keyboard

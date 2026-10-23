@@ -117,9 +117,13 @@ func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 		check("--text-2 on the raised surface", contrast(colour("text-2").over(raise), raise), 4.5)
 		check("--text-2 on an input", contrast(colour("text-2").over(input), input), 4.5)
 		check("--blue-text on a hovered row", contrast(colour("blue-text").over(hovered), hovered), 4.5)
-		// The edge of a control is what tells a person where it is: 3:1 against what it is drawn on.
-		check("--control-bd on an input", contrast(colour("control-bd").over(input), input), 3)
-		check("--control-bd on the panel", contrast(colour("control-bd").over(panel), panel), 3)
+		// The edge of a control is what tells a person where it is: 3:1 against what it is drawn on, for a visitor who asks for more contrast.
+		// The ordinary edge is the quiet one (the same as a border's), which is the look of the app and the choice of its design.
+		check("--control-bd-strong on an input", contrast(colour("control-bd-strong").over(input), input), 3)
+		check("--control-bd-strong on the panel", contrast(colour("control-bd-strong").over(panel), panel), 3)
+		if tok["control-bd"] != "var(--border-2)" {
+			t.Errorf("%s: --control-bd is %q, want the ordinary edge, var(--border-2)", name, tok["control-bd"])
+		}
 		check("--blue-text on panel", contrast(colour("blue-text").over(panel), panel), 4.5)
 		check("white on --blue (primary button)", contrast(white, colour("blue")), 4.5)
 		check("white on --blue-hover", contrast(white, colour("blue-hover")), 4.5)
