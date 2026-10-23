@@ -725,8 +725,7 @@ design element.
   batch for ever, so a batch that is the same as the one before it, row for row, ends it. It is the whole batch and not its
   first row that is compared: a table whose rows are not unique has batches that begin with equal rows, and cutting those short
   would drop data without a word. `Feed` is followed from the first page to the last, ending at a cursor seen twice. An export
-  that may be incomplete (cut at the cap, or stopped at a repeating source) says so in the `X-Webui-Export-Truncated` header,
-  with the number of rows the file has, since a note in the file would be data. The whole file is built in memory before it is
+  that may be incomplete says so in the page, not in a header that nothing reads: the table's footer says *cut at 100,000 rows* beside the export links whenever the table has more rows than the cap, or does not say how many it has (a note in the file would be data). It is a note of the table and not of the download, since a download is a link whose response the page never sees; a source that repeats itself is a fault of the source and is logged, and the table does not know of it. The whole file is built in memory before it is
   written: a failure half way could not change the status, and the cap bounds it.
 
 - What a cell holds is decided once, for both files. CSV is the text the table shows, so
@@ -983,12 +982,12 @@ design element.
   What the status is, is decided before the first byte, so a Guard that refuses is still a 403; after it a panel that panics or
   cannot be built is drawn as a panel that could not load, and logged, where it would have been a 500. A page whose head depends
   on its panels (an editor, a diff or Markdown links its script and stylesheet) and a HEAD request are built whole. The
-  `Server-Timing` and `X-Webui-Built` headers say how long the first of the page took; the status bar, drawn last, says how long
+  `Server-Timing` header says how long the first of the page took; the status bar, drawn last, says how long
   all of it did.
 
 ## The status bar
 
-- The bar says how the page came to be: the server's render time, the delivery time after it (the network, the assets and the browser) and, without script only, when the HTML was built, as `Server-Timing` and `X-Webui-Built` on every page and panel response so the browser's own tools and the script read the same numbers. The render time is measured from the request's arrival at the app to the moment the document is rendered, so it includes the application's loaders and not the writing of the response.
+- The bar says how the page came to be: the server's render time, the delivery time after it (the network, the assets and the browser) and, without script only, when the HTML was built, in the HTML of a page, and in the elements that follow a panel's answer (see below), with the standard `Server-Timing` header on every response so the browser's own tools read the same number. There is no header of the framework's for it: a panel that is fetched again ends with a hidden element holding the two elements of the bar that it replaces, each saying which (`data-replaces="[data-build]"`, a selector), and the script that put the panel in its place puts them in theirs, which is all it knows of it. The cost is a few hundred bytes with every panel. The render time is measured from the request's arrival at the app to the moment the document is rendered, so it includes the application's loaders and not the writing of the response.
 - **JS off** is a `<noscript>` badge, so it is there exactly when script is off and costs
   nothing otherwise. It says what degrades, in its title.
 - **stale page** is a guess, and says so. The badge is hidden unless the page looks stale, and its title says why. A page is built for each request and sent

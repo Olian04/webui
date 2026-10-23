@@ -1277,7 +1277,8 @@ html:not(.js) .actionbar .dim {
   gap: 6px;
   margin-right: auto;
 }
-.pager-export-label {
+.pager-export-label,
+.pager-export-note {
   font-size: 12.5px;
   color: var(--text-3);
 }

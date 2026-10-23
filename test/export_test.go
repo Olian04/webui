@@ -172,7 +172,7 @@ func TestALoadTableThatIgnoresOffsetOrNeverEndsDoesNotLoopForEver(t *testing.T) 
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, len(records(t, rec.Body.String())), 3)
 	assert.Equal(t, calls, 2)
-	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "2") // it may be incomplete, and says how many rows it has
+	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "") // the footer says it, in the page: there is no header for it
 }
 
 func TestRowsThatAreNotUniqueAreNotTakenForASourceThatIgnoresOffset(t *testing.T) {
@@ -206,8 +206,27 @@ func TestAnExportIsCutAtTheLimitAndSaysSo(t *testing.T) {
 		return webui.Window[stock]{Items: items, Total: 250_000}, nil
 	}})
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
-	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "100000")
+	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "")
 	assert.Equal(t, len(records(t, rec.Body.String())), 100_001)
+}
+
+// A download that may not have every row says so in the footer, beside the links that download it: when the table has more rows than an export
+// holds, and when it does not say how many it has. One that fits does not.
+func TestTheFooterSaysWhenAnExportMayBeCut(t *testing.T) {
+	t.Parallel()
+
+	note := func(total int) bool {
+		h := stockApp(webui.Table[stock]{Load: func(context.Context, webui.Query) (webui.Window[stock], error) {
+			return webui.Window[stock]{Items: []stock{{Name: "bolt"}}, Total: total}, nil
+		}})
+		body := serve(h, http.MethodGet, "/admin/s").Body.String()
+		assert.Contains(t, body, "Download the rows as CSV")
+		return strings.Contains(body, `<span class="pager-export-note">cut at 100,000 rows</span>`)
+	}
+	assert.True(t, note(250_000))
+	assert.True(t, note(-1))
+	assert.False(t, note(100_000))
+	assert.False(t, note(1))
 }
 
 func TestAFeedIsFollowedFromItsFirstPageToItsLast(t *testing.T) {

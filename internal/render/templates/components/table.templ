@@ -241,6 +241,9 @@ type PagerProps struct {
 	PrevHref string
 	NextHref string
 	Export   []ExportLink
+
+	// ExportNote is what the footer says beside the export links of a download that may not have every row, "" for none.
+	ExportNote string
 }
 
 // ExportLink is a link that downloads the table's rows as a file. Label is what it says, and
@@ -254,7 +257,7 @@ type ExportLink struct {
 // exportLinks are the download links of a table footer, beside the range. They carry the
 // download attribute, so a script that refreshes a panel when a link leads to the same page
 // leaves them to the browser.
-templ exportLinks(links []ExportLink) {
+templ exportLinks(links []ExportLink, note string) {
 	if len(links) > 0 {
 		<div class="pager-export">
 			<span class="pager-export-label">Export</span>
@@ -267,6 +270,9 @@ templ exportLinks(links []ExportLink) {
 				}) {
 					{ l.Label }
 				}
+			}
+			if note != "" {
+				<span class="pager-export-note">{ note }</span>
 			}
 		</div>
 	}
@@ -295,7 +301,7 @@ templ pagerButton(href string) {
 
 templ Pager(p PagerProps) {
 	<div class="pager-info">{ p.rangeLabel() }</div>
-	@exportLinks(p.Export)
+	@exportLinks(p.Export, p.ExportNote)
 	<div class="pager">
 		@pagerButton(p.PrevHref) {
 			Previous
@@ -320,6 +326,9 @@ type CursorPagerProps struct {
 	PrevHref  string
 	NextHref  string
 	Export    []ExportLink
+
+	// ExportNote is what the footer says beside the export links of a download that may not have every row, "" for none.
+	ExportNote string
 
 	// Sorted says the rows on the page are in a sort of the viewer's choosing, which is of this
 	// page only: the page after it is ordered within itself, and the sequence is not.
@@ -350,7 +359,7 @@ func (p CursorPagerProps) rows() string {
 
 templ CursorPager(p CursorPagerProps) {
 	<div class="pager-info">{ p.info() }</div>
-	@exportLinks(p.Export)
+	@exportLinks(p.Export, p.ExportNote)
 	<div class="pager">
 		@pagerButton(p.FirstHref) {
 			First page

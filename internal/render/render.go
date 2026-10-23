@@ -205,6 +205,11 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 
 // hasTheme is whether the app restyles its colours, so a stylesheet of its own is linked, and hasLogo
 // whether it has a logo, which is then an asset.
+// StatusUpdate is the element that follows a panel's answer, saying how the answer came to be to the status bar of the page that asked.
+func StatusUpdate(built time.Time, took time.Duration) templ.Component {
+	return c.StatusUpdate(c.StatusBarProps{Built: built, BuildTime: took})
+}
+
 func (r *Renderer) hasTheme() bool { return r.app.Theme != (ir.Theme{}) }
 func (r *Renderer) hasLogo() bool  { return len(r.app.Brand.Logo) > 0 }
 

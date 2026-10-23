@@ -9,7 +9,6 @@
   'use strict';
 
   var LEAF_HEADER = 'X-Webui-Leaf';
-  var BUILT_HEADER = 'X-Webui-Built';
   var inflight = new Map();
 
   function $(selector, root) {
@@ -100,17 +99,15 @@
         ': the network, the assets and the browser, until the page was loaded. ' + millis(render + delivery) + ' in all.';
     }
   }
-  // A panel that was fetched again has its own build time, and the status bar says the latest.
-  function noteResponse(res, took) {
-    var built = res.headers.get(BUILT_HEADER);
-    var el = $('[data-built]');
-    if (built && el) {
-      el.setAttribute('datetime', built);
-      checkFresh('panel');
-    }
-    var dur = /dur=([\d.]+)/.exec(res.headers.get('Server-Timing') || '');
-    var build = $('[data-build]');
-    if (dur && build) build.textContent = millis(parseFloat(dur[1]));
+  // A panel that was fetched again says how it came to be in elements that follow it, each saying which element of the bar it replaces
+  // (data-replaces, a selector): they are put in their places, and the bar says the latest.
+  function noteResponse(fragment, took) {
+    fragment.querySelectorAll('[data-oob] > [data-replaces]').forEach(function (el) {
+      var old = $(el.getAttribute('data-replaces'));
+      el.removeAttribute('data-replaces');
+      if (old) old.replaceWith(el);
+    });
+    if ($('[data-built]')) checkFresh('panel');
     loaded(took);
   }
   // A page that is sent as it is built ends with a mark, which hides the spinner and the "loading" in the bar
@@ -214,7 +211,7 @@
     tpl.innerHTML = await res.text(); // our own markup, from our own origin
     var next = tpl.content.firstElementChild;
     if (!next || next.getAttribute(marker) !== id) throw new Error('not that panel');
-    noteResponse(res, performance.now() - started);
+    noteResponse(tpl.content, performance.now() - started);
     return next;
   }
 
@@ -462,7 +459,7 @@
       if (!next || next.getAttribute('data-tabs') !== id) throw new Error('not that tabs');
       if (next.querySelector(EDITORS)) throw new Error('needs the editor the page was made with');
       if (next.querySelector(CODE_BLOCKS) && !document.getElementById('webui-code')) throw new Error('needs the editor to colour code');
-      noteResponse(res, performance.now() - started);
+      noteResponse(tpl.content, performance.now() - started);
       set.replaceWith(next);
       showActiveTab(next, scrolled);
       history.pushState(null, '', href);
