@@ -134,14 +134,15 @@ func (p *Program) uploadAct(w http.ResponseWriter, r *http.Request, page *ir.Pag
 		p.refuse(w, r, unreadable(err))
 		return
 	}
-	if got == 0 {
-		p.refuse(w, r, rules.FileRequired()) // a chooser that was left alone sends an empty part
-		return
-	}
+	// A part that has a filename is a file that was chosen, whatever it holds: a chooser that was left alone sends no filename, and is no part of this, which the post that has
+	// none is answered "Choose a file." for. A file of no bytes is a file, which Run is handed to say what it makes of (a folder has them), and not "nothing chosen".
 	head = head[:got]
 	sniffed, kind, wrong := rules.FileHead(n.Spec, head)
 	if wrong != "" {
 		kind = ir.FileAny
+		if got == 0 {
+			wrong = "This file is empty." // an empty file is not a kind of file that the panel takes, and is not told so as if it were one
+		}
 	}
 	raw := rawFileName(part)
 	in := ir.Incoming{

@@ -321,6 +321,9 @@
 // of a [Stack], "p.1.0" for the first in the second, and so on), and then the field "file", in
 // that order. Those names are stable.
 //
+// A file of no bytes is a file, as a folder may have some: Run is handed it, with a reader that is at its
+// end, and "Choose a file." is for a post that has no file in it.
+//
 // It is a native form with one file and a button, and the chooser is the same frame that
 // a file can be dropped on. With script the file is sent by the page, as a request of its own
 // with a progress bar, and what the server answers is HTML: a list item with the outcome's
