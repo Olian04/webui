@@ -401,27 +401,45 @@ func TestAFileUploadOnAPageTheVisitorMayNotOpenHasNothingRead(t *testing.T) {
 	assert.Equal(t, s.count(), 0)
 }
 
-// A post with no file in it, or a chooser that was left alone, says to choose one.
-func TestAFileUploadWithNoFileSaysToChooseOne(t *testing.T) {
+// A post with no file in it, or a chooser that was left alone, says to choose one. A file of no bytes is a file: it is not "nothing chosen", which says the wrong thing of
+// a file that was chosen, and a folder has such files in it.
+func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T) {
 	t.Parallel()
 
 	s := newUploadShop(nil)
 	for name, parts := range map[string][]rawPart{
 		"no part":      {{"_leaf", "", "p"}},
 		"an empty one": {{"_leaf", "", "p"}, {"file", "", ""}},
-		"no bytes":     {{"_leaf", "", "p"}, {"file", "a.bin", ""}},
 	} {
-		rec := orderedPost(s.h, "/admin/up", nil, parts...)
-		assert.Equal(t, rec.Code, http.StatusSeeOther)
-		assert.Equal(t, flashOf(rec), "eChoose a file.")
-		_ = name
+		t.Run(name, func(t *testing.T) {
+			rec := orderedPost(s.h, "/admin/up", nil, parts...)
+			assert.Equal(t, rec.Code, http.StatusSeeOther)
+			assert.Equal(t, flashOf(rec), "eChoose a file.")
+		})
 	}
 	assert.Equal(t, s.count(), 0)
 
+	// A file with a name and no bytes is handed to Run, as any file is, with a reader that is at its end.
+	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "dir/installer.yaml", ""})
+	assert.Equal(t, flashOf(rec), "oUploaded installer.yaml")
+	assert.Equal(t, s.count(), 1)
+	assert.Equal(t, len(s.last().data), 0)
+	assert.Equal(t, s.last().handle.Path, "dir")
+
+	// One that the panel does not take by its kind is told that it is empty, and not that a kind of file is to be chosen.
+	png := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
+	assert.Equal(t, flashOf(orderedPost(png.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "a.png", ""})), "eThis file is empty.")
+	assert.Equal(t, png.count(), 0)
+
+	// The same as a fragment for script, which sends a folder's empty files as it sends the others.
+	fragment := postFragment(s.h, "dir/empty.txt", "")
+	assert.Contains(t, fragment.Body.String(), `data-tone="ok"`)
+	assert.False(t, strings.Contains(fragment.Body.String(), "Choose a file."))
+
 	// The file before the leaf is not anybody's.
-	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"file", "a.bin", "data"}, rawPart{"_leaf", "", "p"})
-	assert.Equal(t, flashOf(rec), "eThat request was not understood.")
-	assert.Equal(t, s.count(), 0)
+	before := orderedPost(s.h, "/admin/up", nil, rawPart{"file", "a.bin", "data"}, rawPart{"_leaf", "", "p"})
+	assert.Equal(t, flashOf(before), "eThat request was not understood.")
+	assert.Equal(t, s.count(), 2)
 }
 
 // Uploads that arrive together are each their own.

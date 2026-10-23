@@ -352,6 +352,11 @@ design element.
   parameter, a break from the version that was not generic; the Guard is asked after the options are bound, so a visitor it would refuse sees a field's message first when they post by
   hand without the fields; and the options are the visitor's word, which `Run` checks as it does anything else.
 
+- **A file of no bytes is a file.** A part that has a filename is a file that was chosen, whatever it holds: a chooser that was left alone sends no filename, and a post with none is
+  answered "Choose a file.", where the first version answered an empty file the same, which told a visitor who had sent a folder with `installer.yaml` in it, empty, to choose a file.
+  Run is handed an empty file as any other, with a reader that is at its end, and an app that has no use for one says so in its own words; a panel that takes only some kinds says "This file
+  is empty." and not that a kind is to be chosen. A `File` in a form, where an empty part is what a chooser that was left alone sends in some browsers, still takes it for nothing chosen.
+
 - **A `FileHandle` says what the browser said, apart from what the library made safe.** `Name` is the base name, made safe, and is never a path; `Path` is the folder that a
   file was sent in (a visitor who chose a folder), made safe by a rule that never lets it leave the folder the app puts it in (both slashes separate, empty, `.` and `..` elements are
   dropped and a `..` is not followed, controls are taken out, elements and depth are bounded); `RawName` is the name exactly as sent, so that an app can tell the visitor that it
