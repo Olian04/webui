@@ -59,7 +59,7 @@ templ Button(p ButtonProps) {
 		>
 			{ children... }
 		</button>
-		<dialog id={ p.ConfirmID } class="confirm" closedby="any" aria-labelledby={ p.ConfirmID + "-text" }>
+		<dialog id={ p.ConfirmID } class="confirm" role="alertdialog" closedby="any" aria-labelledby={ p.ConfirmID + "-text" }>
 			<p class="confirm-text" id={ p.ConfirmID + "-text" }>{ p.Confirm }</p>
 			<div class="confirm-foot">
 				<button class="btn btn-ghost btn-sm" type="button" commandfor={ p.ConfirmID } command="close" autofocus>Cancel</button>

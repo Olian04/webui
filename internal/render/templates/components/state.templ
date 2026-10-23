@@ -13,7 +13,7 @@ type StatePageProps struct {
 templ StatePage(p StatePageProps) {
 	<div class="state-page">
 		@Icon(IconProps{Name: p.Icon})
-		<p class="state-title">{ p.Title }</p>
+		<h2 class="state-title">{ p.Title }</h2>
 		if p.Desc != "" {
 			<p class="state-desc">{ p.Desc }</p>
 		}
@@ -40,7 +40,7 @@ type CompileErrorProps struct {
 
 templ CompileError(p CompileErrorProps) {
 	<div class="compile">
-		<h2>Failed to compile</h2>
+		<h1>Failed to compile</h1>
 		<p class="count">{ problemCount(len(p.Problems)) }</p>
 		for _, e := range p.Problems {
 			<section>

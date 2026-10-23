@@ -24,6 +24,9 @@ type PageProps struct {
 	Streaming  bool
 	StatusLive templ.Component
 	StatusLate templ.Component
+
+	// Heading is the page's name, for the h1 that the shell holds (see [AppShellProps]).
+	Heading string
 }
 
 templ Page(p PageProps) {
@@ -43,6 +46,7 @@ templ Page(p PageProps) {
 			Streaming:  p.Streaming,
 			StatusLive: p.StatusLive,
 			StatusLate: p.StatusLate,
+			Heading:    p.Heading,
 		}) {
 			{ children... }
 		}

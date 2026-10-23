@@ -71,7 +71,7 @@ func TestASelectThatIsEditedIsAListToChooseFrom(t *testing.T) {
 	assert.False(t, strings.Contains(body, `<option value="open" selected>`))
 
 	// Any number: a list, with each that is held selected, and a hint on how to choose several.
-	assert.Contains(t, body, `<select data-select id="p-f2" class="input" name="f2" multiple size="3">`)
+	assert.Contains(t, body, `name="f2" multiple size="3"`)
 	assert.Contains(t, body, `<option value="bug" data-badge="badge-mute" selected>bug</option>`)
 	assert.Contains(t, body, `<option value="ui" data-badge="badge-mute">UI</option>`)
 	assert.Contains(t, body, `<option value="docs" data-badge="badge-mute" selected>docs</option>`)

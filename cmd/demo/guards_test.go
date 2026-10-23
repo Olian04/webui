@@ -59,7 +59,7 @@ func TestADisabledActionIsDrawnWithItsReasonAndStillRefused(t *testing.T) {
 		}
 	}
 	assert.True(t, critical != "" && other != "")
-	assert.Contains(t, body, `value="row:0:`+other+`">Dismiss</button>`) // the button is a dialog's, whose own button submits
+	assert.Contains(t, body, `value="row:0:`+other+`">Dismiss`) // the button is a dialog's, whose own button submits
 
 	// A request that is made by hand is refused for the same reason,.
 	rec := post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"row:0:" + critical}})
@@ -79,7 +79,7 @@ func TestAnUnknownRecordIsA404WithALinkBack(t *testing.T) {
 		rec := get(handler(t), target)
 		assert.Equal(t, rec.Code, http.StatusNotFound)
 		body := rec.Body.String()
-		assert.Contains(t, body, `<p class="state-title">Not found</p>`)
+		assert.Contains(t, body, `<h2 class="state-title">Not found</h2>`)
 		assert.Contains(t, body, want.text)
 		assert.Contains(t, body, `<a class="btn btn-ghost btn-sm" href="`+want.href+`">`+want.label+`</a>`)
 	}

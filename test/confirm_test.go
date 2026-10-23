@@ -75,11 +75,11 @@ func TestAnActionThatConfirmsOpensADialogThatHoldsTheButtonThatSubmits(t *testin
 	// The row's button, the bulk action's and the toolbar's each open a dialog of their own, by an invoker command.
 	for _, id := range []string{"confirm-p.1-r0a0", "confirm-p.1-r1a0", "confirm-p.1-b0", "confirm-p.0-t0"} {
 		assert.Contains(t, body, `commandfor="`+id+`" command="show-modal"`)
-		assert.Contains(t, body, `<dialog id="`+id+`" class="confirm" closedby="any" aria-labelledby="`+id+`-text">`)
+		assert.Contains(t, body, `<dialog id="`+id+`" class="confirm" role="alertdialog" closedby="any" aria-labelledby="`+id+`-text">`)
 		assert.Contains(t, body, `<p class="confirm-text" id="`+id+`-text">Are you sure?</p>`)
 	}
 	// What the dialog submits is what the button would have: the same name and value, which the server reads as it did.
-	assert.Contains(t, body, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:a">Drop</button>`)
+	assert.Contains(t, body, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:a">Drop <span class="sr-only">a</span></button>`)
 	assert.Contains(t, body, `type="submit" name="_act" value="bulk:0">Drop all</button>`)
 	assert.Contains(t, body, `type="submit" name="_act" value="0">Sync</button>`)
 	assert.Contains(t, body, `command="close"`)

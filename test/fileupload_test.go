@@ -757,7 +757,7 @@ func TestAnUploadFragmentEscapesTheTextAndSaysWhatWasRefused(t *testing.T) {
 	t.Parallel()
 
 	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
-	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="result-text">Choose a PNG file.</span>`)
+	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">Choose a PNG file.</span>`)
 
 	named := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
@@ -800,7 +800,7 @@ func TestAFileUploadPostOnAPageTheVisitorMayNotOpenIsRefusedAsAFragment(t *testi
 	})
 	rec := postFragment(s.h, "a.bin", "data")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="result-text">requires the editor role</span>`)
+	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">requires the editor role</span>`)
 	assert.Equal(t, s.count(), 0)
 }
 

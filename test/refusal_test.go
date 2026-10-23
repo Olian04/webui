@@ -75,7 +75,7 @@ func TestAGuardThatRefusesWithAStatusAnswersWithIt(t *testing.T) {
 		rec := serve(h, http.MethodGet, "/admin/records/"+id)
 		assert.Equal(t, rec.Code, want.status)
 		body := rec.Body.String()
-		assert.Contains(t, body, `<p class="state-title">`+want.title+`</p>`)
+		assert.Contains(t, body, `<h2 class="state-title">`+want.title+`</h2>`)
 		assert.Contains(t, body, want.text)
 		assert.False(t, strings.Contains(body, "ran before anything was loaded"))
 		assert.False(t, strings.Contains(body, `class="panel`)) // and nothing was read

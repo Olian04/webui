@@ -29,7 +29,7 @@ func TestTheLandingPageShowsTheCollectorInAToolbarAndFourPanels(t *testing.T) {
 	assert.Contains(t, body, `1–9 of 37`) // the devices page, as the table on its own page does
 	assert.Contains(t, body, `1–9 of 11`) // and the alerts
 	assert.Contains(t, body, `1–8 of 8`)  // and the events, all of them
-	assert.Contains(t, body, `>Dismiss</button>`)
+	assert.Contains(t, body, `>Dismiss <span class="sr-only">`)
 	assert.Contains(t, body, `data-guard="A critical alert is acknowledged, not dismissed"`) // disabled, with its reason, for a critical alert
 	assert.Contains(t, body, `>Save</button>`)
 }

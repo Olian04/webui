@@ -309,7 +309,7 @@ func TestTableRendersSelectionBarAndOmitsTheRowActionsItsGuardRefuses(t *testing
 	s := newShop()
 	body := serve(s.h, http.MethodGet, "/admin/device").Body.String()
 
-	assert.Contains(t, body, `<th class="pick">`) // the checkbox column exists because bulk is declared
+	assert.Contains(t, body, `<th scope="col" class="pick">`) // the checkbox column exists because bulk is declared
 	assert.Equal(t, strings.Count(body, `name="_sel"`), 3)
 	assert.Contains(t, body, `<div class="actionbar"`)
 	assert.Contains(t, body, `name="_act" value="bulk:0">Acknowledge</button>`)
@@ -318,7 +318,7 @@ func TestTableRendersSelectionBarAndOmitsTheRowActionsItsGuardRefuses(t *testing
 
 	// The locked row's Guard returns an error that says nothing of how to draw it: the action is not there, and its row
 	// has an empty cell in the column that the other rows' actions are in.
-	assert.Equal(t, strings.Count(body, `>Delete</button>`), 2)
+	assert.Equal(t, strings.Count(body, `>Delete <span class="sr-only">`), 2)
 	assert.False(t, strings.Contains(body, `value="row:0:locked"`))
 	assert.Contains(t, body, `<td class="actions"></td>`)
 	assert.False(t, strings.Contains(body, `class="gate"`))

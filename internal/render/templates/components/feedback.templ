@@ -87,24 +87,24 @@ func (p StatusBarProps) took() string {
 }
 
 templ StatusBar(p StatusBarProps) {
-	<div class="statusbar">
+	<footer class="statusbar" aria-label="Page status">
 		@statusRequest(p)
 		@statusMeta(p)
 		@statusNetlog()
-	</div>
+	</footer>
 }
 
 // StatusBarLive is the bar of a page that is sent as it is built, in the part of it that is known when the page
 // begins: the request, and a mark that the rest, which is how the page came to be, is still to come. StatusBarLate
 // follows it when the page is whole, and covers the mark.
 templ StatusBarLive(p StatusBarProps) {
-	<div class="statusbar statusbar-live">
+	<footer class="statusbar statusbar-live" aria-label="Page status">
 		@statusRequest(p)
 		<span class="status-meta status-loading" role="status">
 			<span class="spin" aria-hidden="true"></span>
 			<span>loading</span>
 		</span>
-	</div>
+	</footer>
 }
 
 // StatusBarLate is what a page that is sent as it is built says of how it came to be, drawn when all of it has been

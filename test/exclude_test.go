@@ -66,7 +66,7 @@ func TestAColumnThatLeavesItselfOutHasNoSortLinkAndNoFilter(t *testing.T) {
 	assert.False(t, strings.Contains(body, `devices.min.occurrences`))
 
 	// Its header is only its name.
-	assert.Contains(t, body, `<th class=""><span class="th-in">Status </span></th>`)
+	assert.Contains(t, body, `<th scope="col" class=""><span class="th-in">Status </span></th>`)
 }
 
 // The address is the visitor's to edit, so a column that is left out is not a way in: what it asks for never reaches

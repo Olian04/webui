@@ -129,7 +129,7 @@ func plainFailure(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusInternalServerError)
-	_, _ = fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>Something went wrong</title><p>Something went wrong. <a href="%s">Try again</a>.</p>`,
+	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>Something went wrong</title><main><h1>Something went wrong</h1><p><a href="%s">Try again</a>.</p></main></html>`,
 		html.EscapeString(r.URL.RequestURI()))
 }
 

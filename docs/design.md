@@ -637,6 +637,11 @@ different product.
   outline beside it, which the browser draws in forced colors and not otherwise.
 - `prefers-reduced-motion` stops every animation and transition, and a panel that is busy is dimmed and does not pulse; nothing loops.
 - Status is never colour alone — every badge carries its word.
+- A page has one h1, the page's name (the last crumb), which is not drawn: the breadcrumb is where the eye finds it, and a panel is an h2. A state that stops
+  the visitor (404, 403, a refusal) is an h2 under that h1. The first thing in the body is a link to the content ("Skip to content", out of sight until it has the
+  focus), the status bar is the page's footer landmark, and the pager is a navigation named for its table.
+- A control is described by the popover of its help and rules, which is referred to by id, and by its error when it is refused. A button in a row says which row it
+  is of ("Drop", then the first cell's text for a reader), and a filter that is on says so in its name.
 - Focus is a visible 2px ring, never removed.
 - Every interactive element is a real link or a real button, so keyboard
   traversal and "open in new tab" work without any extra handling.

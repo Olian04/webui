@@ -148,6 +148,8 @@ templ Panel(p PanelProps) {
 //
 // Help is what the thing is for, in its own section above the rest, under the heading "Help:".
 type InfoTipProps struct {
+	// ID is the id of the popover's text, for a control that it describes to refer to ("" for none).
+	ID    string
 	Text  string
 	Lines []string
 	Help  string
@@ -167,7 +169,13 @@ func (p InfoTipProps) name() string {
 templ InfoTip(p InfoTipProps) {
 	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
 		@Icon(IconProps{Name: IconInfo, Class: "info"})
-		<span class="tip-body" aria-hidden="true">
+		<span
+			class="tip-body"
+			aria-hidden="true"
+			if p.ID != "" {
+				id={ p.ID }
+			}
+		>
 			if p.Help != "" {
 				<span class="tip-title">Help:</span>
 				<span class="tip-text">{ p.Help }</span>

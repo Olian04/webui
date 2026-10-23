@@ -37,7 +37,7 @@ func TestAFieldsHelpIsASectionOfThePopoverOfItsRulesAboveThem(t *testing.T) {
 	body := serve(helpedApp(helpedName("What the collector calls itself.", webui.StringRules{MaxLen: 8})), http.MethodGet, "/admin/h").Body.String()
 	// One tip, one icon: the help under its own heading, then the rules under theirs.
 	tip := `<span class="tip" tabindex="0" role="note" aria-label="Help: What the collector calls itself. Rules: Up to 8 characters"><i class="fa-solid fa-circle-info info" aria-hidden="true"></i>` +
-		`<span class="tip-body" aria-hidden="true"><span class="tip-title">Help:</span> <span class="tip-text">What the collector calls itself.</span> ` +
+		`<span class="tip-body" aria-hidden="true" id="p-f0-help"><span class="tip-title">Help:</span> <span class="tip-text">What the collector calls itself.</span> ` +
 		`<span class="tip-title">Rules:</span> <span class="tip-item">Up to 8 characters</span></span></span>`
 	assert.Contains(t, body, tip)
 	assert.Equal(t, strings.Count(body, `class="tip"`), 1)

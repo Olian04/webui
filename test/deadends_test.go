@@ -214,5 +214,5 @@ func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing
 	})
 	denied := postFragment(guarded.h, "a.bin", "data")
 	assert.Equal(t, denied.Code, http.StatusForbidden)
-	assert.Contains(t, denied.Body.String(), `data-tone="bad"><span class="result-text">requires the editor role</span>`)
+	assert.Contains(t, denied.Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">requires the editor role</span>`)
 }
