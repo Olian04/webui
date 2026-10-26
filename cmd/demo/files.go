@@ -130,11 +130,12 @@ func fileNote(path []string) FileNote {
 	if !ok {
 		return FileNote{Text: "There is nothing at `" + where + "`."}
 	}
-	text := "`" + where + "` is " + kind + ".\n\n"
+	var text strings.Builder
+	text.WriteString("`" + where + "` is " + kind + ".\n\n")
 	for i := range path {
-		text += fmt.Sprintf("- [%s](/files/%s)\n", path[i], strings.Join(path[:i+1], "/"))
+		fmt.Fprintf(&text, "- [%s](/files/%s)\n", path[i], strings.Join(path[:i+1], "/"))
 	}
-	return FileNote{Text: text + "\nBack to [all files](/files)."}
+	return FileNote{Text: text.String() + "\nBack to [all files](/files)."}
 }
 
 func fileNotePanel(path func(context.Context) []string) webui.Markdown[FileNote] {

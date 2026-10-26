@@ -49,7 +49,7 @@ func TestWhatAFieldTakesIsSaidInWords(t *testing.T) {
 		"png,image": "PNG, JPEG, GIF or WebP", "text": "text",
 	} {
 		var spec ir.FileSpec
-		for _, k := range strings.Split(kinds, ",") {
+		for k := range strings.SplitSeq(kinds, ",") {
 			if k != "" {
 				spec.Kinds = append(spec.Kinds, ir.FileKind(k))
 			}
@@ -163,7 +163,7 @@ func TestTheFolderOfAFileIsMadeSafe(t *testing.T) {
 	assert.Equal(t, strings.Count(UploadPath(deep), "/"), 31)
 	// What is kept never has a way out of the folder in it.
 	for _, raw := range []string{"../x/f", "a/../../x/f", `..\..\x\f`, "a/%2e%2e/f"} {
-		for _, el := range strings.Split(UploadPath(raw), "/") {
+		for el := range strings.SplitSeq(UploadPath(raw), "/") {
 			assert.True(t, el != ".." && el != "." && !strings.ContainsAny(el, `\`))
 		}
 	}

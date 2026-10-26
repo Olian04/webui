@@ -449,12 +449,10 @@ func TestFileUploadsAtTheSameTimeAreEachTheirOwn(t *testing.T) {
 	s := newUploadShop(nil)
 	var wg sync.WaitGroup
 	for i := range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			rec := upload(s.h, "a.bin", strings.Repeat("x", 1000+i), nil)
 			assert.Equal(t, flashOf(rec), "oUploaded a.bin")
-		}()
+		})
 	}
 	wg.Wait()
 	assert.Equal(t, s.count(), 20)

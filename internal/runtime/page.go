@@ -128,8 +128,7 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 	*r = *r.WithContext(With(r.Context(), req))
 	if page.Guard != nil {
 		if err := page.Guard(r.Context(), decoded); err != nil {
-			var ref *ir.Refusal
-			if errors.As(err, &ref) {
+			if ref, ok := errors.AsType[*ir.Refusal](err); ok {
 				return req, raw, ref.Status, err // its own: not found, not signed in, or not permitted
 			}
 			return req, raw, http.StatusForbidden, err
@@ -164,8 +163,7 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 	case status == http.StatusBadRequest:
 		p.state(w, r, status, page, raw, render.BadRequest(bareAddress(r)))
 	case status != 0 && r.Context().Err() == nil: // a visitor who has gone is answered nothing
-		var ref *ir.Refusal
-		if errors.As(refusal, &ref) {
+		if ref, ok := errors.AsType[*ir.Refusal](refusal); ok {
 			p.state(w, r, status, page, raw, render.Refused(ref))
 			return req, false
 		}

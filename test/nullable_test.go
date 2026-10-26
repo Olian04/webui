@@ -71,7 +71,7 @@ func TestAnAbsentValueIsAnEmptyInputAndAPresentOneIsFilledIn(t *testing.T) {
 	assert.Contains(t, body, `<option value="">—</option> <option value="true" data-badge="badge-mute">Yes</option><option value="false" data-badge="badge-mute">No</option>`)
 	assert.False(t, strings.Contains(body, "selected"))
 
-	some, _ := limitsApp(limits{Rate: ptr(0), Ratio: ptr(1.5), Level: ptr(7.0), Paused: ptr(false)})
+	some, _ := limitsApp(limits{Rate: new(0), Ratio: new(1.5), Level: new(7.0), Paused: new(false)})
 	body = serve(some, http.MethodGet, "/admin/l").Body.String()
 	assert.Contains(t, body, `name="f0" type="number" value="0"`) // zero is a value
 	assert.Contains(t, body, `name="f1" type="number" value="1.50"`)
@@ -82,7 +82,7 @@ func TestAnAbsentValueIsAnEmptyInputAndAPresentOneIsFilledIn(t *testing.T) {
 func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {
 	t.Parallel()
 
-	h, saved := limitsApp(limits{Rate: ptr(5), Ratio: ptr(2.5), Level: ptr(3.0), Paused: ptr(true)})
+	h, saved := limitsApp(limits{Rate: new(5), Ratio: new(2.5), Level: new(3.0), Paused: new(true)})
 
 	rec := post(h, "/admin/l", formValues("f0", "", "f1", "", "f2", "", "f3", ""))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -90,17 +90,17 @@ func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {
 
 	rec = post(h, "/admin/l", formValues("f0", "0", "f1", "0.25", "f2", "4", "f3", "false"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.DeepEqual(t, saved(), limits{Rate: ptr(0), Ratio: ptr(0.25), Level: ptr(4.0), Paused: ptr(false)})
+	assert.DeepEqual(t, saved(), limits{Rate: new(0), Ratio: new(0.25), Level: new(4.0), Paused: new(false)})
 
 	rec = post(h, "/admin/l", formValues("f0", "7", "f1", "", "f2", "", "f3", "true"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.DeepEqual(t, saved(), limits{Rate: ptr(7), Paused: ptr(true)})
+	assert.DeepEqual(t, saved(), limits{Rate: new(7), Paused: new(true)})
 }
 
 func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 	t.Parallel()
 
-	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: ptr(1), Max: ptr(10), Required: true},
+	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: new(1), Max: new(10), Required: true},
 		Load: func(l limits) *int { return l.Rate }, Store: func(l *limits, v *int) { l.Rate = v }}
 	paused := webui.Bool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
 	h, saved := limitsApp(limits{}, rate, paused)
@@ -117,17 +117,17 @@ func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 
 	rec = post(h, "/admin/l", formValues("f0", "3", "f1", "true"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.DeepEqual(t, saved(), limits{Rate: ptr(3), Paused: ptr(true)})
+	assert.DeepEqual(t, saved(), limits{Rate: new(3), Paused: new(true)})
 }
 
 func TestABoolRefusesWhatIsNotYesOrNo(t *testing.T) {
 	t.Parallel()
 
-	h, saved := limitsApp(limits{Paused: ptr(true)}, limitPaused)
+	h, saved := limitsApp(limits{Paused: new(true)}, limitPaused)
 	rec := post(h, "/admin/l", formValues("f0", "maybe"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "Choose from the options offered.")
-	assert.DeepEqual(t, saved(), limits{Paused: ptr(true)})
+	assert.DeepEqual(t, saved(), limits{Paused: new(true)})
 
 	// A number of a slider is held to its range and its steps, an absent one or not.
 	h, saved = limitsApp(limits{}, limitLevel)
@@ -149,7 +149,7 @@ func TestAReadOnlyNullableFieldShowsADashForNothingAndTheValueOtherwise(t *testi
 	assert.Equal(t, strings.Count(body, `<span class="dim" aria-hidden="true">—</span>`), 3)
 	assert.False(t, strings.Contains(body, `name="f0"`)) // none of them is an input
 
-	some, _ := limitsApp(limits{Rate: ptr(0), Level: ptr(0.0), Paused: ptr(false)}, readOnly...)
+	some, _ := limitsApp(limits{Rate: new(0), Level: new(0.0), Paused: new(false)}, readOnly...)
 	body = serve(some, http.MethodGet, "/admin/l").Body.String()
 	assert.False(t, strings.Contains(body, `aria-hidden="true">—</span>`))
 	assert.Contains(t, body, ">No<")
@@ -167,9 +167,9 @@ func limitsTable(rows ...limits) http.Handler {
 }
 
 var someLimits = []limits{
-	{Name: "a", Rate: ptr(30), Ratio: ptr(0.5), Level: ptr(5.0), Paused: ptr(true)},
+	{Name: "a", Rate: new(30), Ratio: new(0.5), Level: new(5.0), Paused: new(true)},
 	{Name: "b"},
-	{Name: "c", Rate: ptr(0), Level: ptr(0.0), Paused: ptr(false)},
+	{Name: "c", Rate: new(0), Level: new(0.0), Paused: new(false)},
 }
 
 func TestATableShowsADashWhereThereIsNoValueAndAZeroWhereThereIsOne(t *testing.T) {

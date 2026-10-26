@@ -429,7 +429,7 @@ func carry(query map[string]string, skip ...string) []carried {
 	rest := without(query, skip...)
 	var out []carried
 	for _, k := range slices.Sorted(maps.Keys(rest)) {
-		for _, part := range strings.Split(rest[k], ir.ListSep) {
+		for part := range strings.SplitSeq(rest[k], ir.ListSep) {
 			if part != "" {
 				out = append(out, carried{k, part})
 			}

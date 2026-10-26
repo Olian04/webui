@@ -19,13 +19,11 @@ func (p *Program) gateOf(page *ir.Page, what string, guard func() error) render.
 	if err == nil {
 		return render.Gate{}
 	}
-	var panicked *panicError
-	if errors.As(err, &panicked) {
+	if _, ok := errors.AsType[*panicError](err); ok {
 		p.log.Error("webui: a Guard panicked, so what it guards is not drawn", "page", page.PathTemplate, "err", err)
 		return render.Gate{Hidden: true}
 	}
-	var d *ir.Disabled
-	if errors.As(err, &d) {
+	if d, ok := errors.AsType[*ir.Disabled](err); ok {
 		return render.Gate{Reason: cmp.Or(d.Message, "Not allowed.")}
 	}
 	return render.Gate{Hidden: true}

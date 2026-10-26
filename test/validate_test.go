@@ -28,8 +28,7 @@ func compileErrors(t *testing.T, app webui.App) []webui.CompileError {
 	t.Helper()
 
 	_, err := app.Compile("/admin")
-	var first webui.CompileError
-	if !errors.As(err, &first) {
+	if _, ok := errors.AsType[webui.CompileError](err); !ok {
 		t.Fatalf("Compile error = %v, want it to wrap a CompileError", err)
 	}
 	all, ok := err.(interface{ Unwrap() []error })

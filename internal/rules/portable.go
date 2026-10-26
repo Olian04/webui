@@ -194,8 +194,8 @@ func (p *portableReader) repetition(of string, repeatable bool) {
 // isRepeat is whether the inside of braces is a count: digits, or digits, a comma and digits or none.
 func isRepeat(s string) bool {
 	lo, hi, comma := s, "", false
-	if i := strings.IndexByte(s, ','); i >= 0 {
-		lo, hi, comma = s[:i], s[i+1:], true
+	if before, after, ok := strings.Cut(s, ","); ok {
+		lo, hi, comma = before, after, true
 	}
 	digits := func(d string) bool {
 		for _, r := range d {

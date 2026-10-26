@@ -43,7 +43,7 @@ func loadToolState(ctx context.Context) (toolState, webui.Loaded) {
 var (
 	minutesInput = webui.Int[toolState]{ // the same accessors a form would use: their Store and Rules do nothing in a toolbar
 		Label: "Minutes", Load: func(a toolState) int { return a.Minutes }, Store: func(a *toolState, v int) { a.Minutes = v },
-		Rules: webui.NumberRules[int]{Min: ptr(1), Max: ptr(1440)},
+		Rules: webui.NumberRules[int]{Min: new(1), Max: new(1440)},
 	}
 	siteInput = webui.Select[toolState]{
 		Label: "Site", Load: func(a toolState) []string { return []string{a.Site} },

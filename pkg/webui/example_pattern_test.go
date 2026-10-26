@@ -11,8 +11,7 @@ import (
 func ExampleValidatePattern() {
 	for _, expr := range []string{`[a-z]+@example\.com`, `(?=.*\d)[a-z0-9]+`} {
 		err := webui.ValidatePattern(expr)
-		var pe *webui.PatternError
-		if errors.As(err, &pe) {
+		if pe, ok := errors.AsType[*webui.PatternError](err); ok {
 			fmt.Println("left out:", pe.Problem)
 			continue
 		}

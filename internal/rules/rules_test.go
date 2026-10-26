@@ -7,7 +7,7 @@ import (
 	"github.com/Olian04/webui/test/util/assert"
 )
 
-func ptr(f float64) *float64 { return &f }
+func ptr(f float64) *float64 { return new(f) }
 
 func TestCheck(t *testing.T) {
 	t.Parallel()

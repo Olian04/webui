@@ -45,7 +45,7 @@ func names(rs []any) []string {
 	return out
 }
 
-func f(x float64) *float64 { return &x }
+func f(x float64) *float64 { return new(x) }
 
 func TestNoQueryReturnsEveryRowInItsOrder(t *testing.T) {
 	got, total := Apply(rows(), cols, ir.Query{})

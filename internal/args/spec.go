@@ -135,7 +135,7 @@ func Placeholder(seg string) (name string, rest, ok bool) {
 // Placeholders lists the {name} segments of a path template, in order.
 func Placeholders(template string) []string {
 	var names []string
-	for _, seg := range strings.Split(template, "/") {
+	for seg := range strings.SplitSeq(template, "/") {
 		if name, _, ok := Placeholder(seg); ok {
 			names = append(names, name)
 		}
@@ -177,8 +177,7 @@ func Spec(t reflect.Type, template string) ([]ir.ArgSpec, []Problem) {
 		inPath[name] = true
 	}
 
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		name := Name(f)
 		if name == "" {
 			continue

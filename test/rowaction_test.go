@@ -30,8 +30,8 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 			RowClick: webui.Action[Device]{
 				Guard: guard,
 				Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
-					if strings.HasSuffix(d.Id, "/") {
-						return webui.Success("").Then(webui.Open(ctx, folderPath, detailsArgs{Id: strings.TrimSuffix(d.Id, "/")})), nil
+					if before, ok := strings.CutSuffix(d.Id, "/"); ok {
+						return webui.Success("").Then(webui.Open(ctx, folderPath, detailsArgs{Id: before})), nil
 					}
 					return webui.Success("").Then(webui.Open(ctx, objectPath, detailsArgs{Id: d.Id})), nil
 				},

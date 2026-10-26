@@ -25,11 +25,9 @@ var (
 	}
 	formCount = webui.Int[Device]{
 		Label: "Occurrences", Load: func(d Device) int { return d.Count }, Store: func(d *Device, v int) { d.Count = v },
-		Rules: webui.NumberRules[int]{Min: ptr(0), Max: ptr(100)},
+		Rules: webui.NumberRules[int]{Min: new(0), Max: new(100)},
 	}
 )
-
-func ptr[T any](v T) *T { return &v }
 
 func formApp(form webui.Form[Device]) http.Handler {
 	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
