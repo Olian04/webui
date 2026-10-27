@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"math"
 	"mime/multipart"
 	"net/http"
@@ -133,9 +134,7 @@ func multipartPostBody(h http.Handler, target string, values map[string]string, 
 
 func withLeaf(values map[string]string) map[string]string {
 	out := map[string]string{"_leaf": "p", "f0": "Report"}
-	for k, v := range values {
-		out[k] = v
-	}
+	maps.Copy(out, values)
 	return out
 }
 
@@ -478,12 +477,10 @@ func TestUploadsAtTheSameTimeAreEachTheirOwn(t *testing.T) {
 	s := newFileShop(plainFile(webui.FilePNG))
 	var wg sync.WaitGroup
 	for i := range 20 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			rec := multipartPost(s.h, "/admin/f", nil, part{"f1", "a.png", string(pngBytes) + strings.Repeat("x", i)})
 			assert.Equal(t, rec.Code, http.StatusSeeOther)
-		}()
+		})
 	}
 	wg.Wait()
 	assert.Equal(t, s.stores, 20)

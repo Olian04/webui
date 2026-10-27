@@ -215,8 +215,8 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 	}
 	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
 		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
-		if strings.HasPrefix(p.Nav.Icon, "fa-") {
-			fix = fmt.Sprintf("Write the icon's name without the \"fa-\" prefix: %q.", strings.TrimPrefix(p.Nav.Icon, "fa-"))
+		if after, ok := strings.CutPrefix(p.Nav.Icon, "fa-"); ok {
+			fix = fmt.Sprintf("Write the icon's name without the \"fa-\" prefix: %q.", after)
 		}
 		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
 	}

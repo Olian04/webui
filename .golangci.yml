@@ -5,14 +5,65 @@ run:
 
 linters:
   enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - copyloopvar
+    - dupword
+    - durationcheck
     - errcheck
+    - errorlint
+    - fatcontext
+    - gocheckcompilerdirectives
     - gosec
     - govet
     - ineffassign
+    - makezero
+    - mirror
+    - misspell
+    - nilnesserr
+    - nosprintfhostport
+    - predeclared
+    - reassign
     - revive
     - staticcheck
+    - thelper
+    - unconvert
+    - unparam
     - unused
+    - usestdlibvars
+    - wastedassign
   settings:
+    # Every analyzer of go vet, but the two that are about taste: the packing of a struct's fields
+    # (fieldalignment) and a name that hides another (shadow, which `err` in an `if` trips throughout).
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+        - shadow
+    # Every check, but the ones that ask for a package comment, a naming style or an error-string
+    # form that this code does not follow on purpose.
+    staticcheck:
+      checks:
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+    # Prose such as "a source that fails fails the panel" repeats a word on purpose.
+    dupword:
+      ignore:
+        - class
+        - fails
+        - is
+        - same
+    # `\other` in a path is not the word "ther".
+    misspell:
+      ignore-rules:
+        - ther
     revive:
       enable-all-rules: false
       enable-default-rules: false
@@ -32,3 +83,10 @@ linters:
         - name: unreachable-code
         - name: unused-parameter
         - name: var-declaration
+  exclusions:
+    rules:
+      # A test helper that is always given the same value is a helper that is easy to read, not a
+      # parameter that should be a constant.
+      - path: _test\.go
+        linters:
+          - unparam

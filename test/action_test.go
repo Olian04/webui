@@ -61,7 +61,7 @@ func newShop() *shop {
 	}
 	count := webui.Int[Device]{
 		Label: "Occurrences", Load: func(d Device) int { return d.Count }, Store: func(d *Device, v int) { d.Count = v },
-		Rules: webui.NumberRules[int]{Max: ptr(100)},
+		Rules: webui.NumberRules[int]{Max: new(100)},
 	}
 
 	var list webui.Page[webui.NoArgs]

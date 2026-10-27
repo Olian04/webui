@@ -30,7 +30,7 @@ var (
 // "dom.iterable"). A name outside it would be a file the service cannot find.
 var libs = func() map[string]bool {
 	m := map[string]bool{}
-	for _, name := range strings.Fields(`
+	for name := range strings.FieldsSeq(`
 		decorators decorators.legacy dom dom.asynciterable dom.iterable
 		es5 es6 es7 es2015 es2015.collection es2015.core es2015.generator es2015.iterable es2015.promise
 		es2015.proxy es2015.reflect es2015.symbol es2015.symbol.wellknown

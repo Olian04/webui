@@ -213,7 +213,7 @@ for (const c of d.cases) {
   }
 }
 console.log(JSON.stringify(out));`
-	cmd := exec.Command(node, "-e", script) //nolint:gosec // the node on the PATH is what the test is for
+	cmd := exec.CommandContext(t.Context(), node, "-e", script) //nolint:gosec // the node on the PATH is what the test is for
 	cmd.Stdin = strings.NewReader(string(in))
 	b, err := cmd.Output()
 	if err != nil {

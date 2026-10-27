@@ -22,7 +22,7 @@ type okArgs struct {
 func TestSpecResolvesNamesKindsAndPlacement(t *testing.T) {
 	t.Parallel()
 
-	specs, problems := Spec(reflect.TypeOf(okArgs{}), "/device/{id}")
+	specs, problems := Spec(reflect.TypeFor[okArgs](), "/device/{id}")
 	assert.Equal(t, len(problems), 0)
 	assert.DeepEqual(t, specs, []ir.ArgSpec{
 		{Name: "id", Field: "Id", Kind: ir.KindString, InPath: true},
@@ -42,7 +42,7 @@ func TestSpecReportsEveryProblem(t *testing.T) {
 		A    string `webui:"x"`
 		B    string `webui:"x"`
 	}
-	_, problems := Spec(reflect.TypeOf(bad{}), "/event/{id}")
+	_, problems := Spec(reflect.TypeFor[bad](), "/event/{id}")
 	assert.Equal(t, len(problems), 3)
 	assert.Equal(t, problems[0].Detail, "field When has unsupported type map[string]int")
 	assert.Contains(t, problems[1].Detail, `two fields both map to the argument "x"`)
@@ -54,7 +54,7 @@ func TestSpecReportsEveryProblem(t *testing.T) {
 func TestSpecRejectsNonStruct(t *testing.T) {
 	t.Parallel()
 
-	_, problems := Spec(reflect.TypeOf(0), "/x")
+	_, problems := Spec(reflect.TypeFor[int](), "/x")
 	assert.Equal(t, len(problems), 1)
 	assert.Contains(t, problems[0].Detail, "not a struct")
 }
@@ -62,7 +62,7 @@ func TestSpecRejectsNonStruct(t *testing.T) {
 func TestCodecRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	typ := reflect.TypeOf(okArgs{})
+	typ := reflect.TypeFor[okArgs]()
 	specs, _ := Spec(typ, "/device/{id}")
 	c := NewCodec(typ, specs)
 
@@ -80,7 +80,7 @@ func TestCodecRoundTrip(t *testing.T) {
 func TestCodecDecodeCollectsErrors(t *testing.T) {
 	t.Parallel()
 
-	typ := reflect.TypeOf(okArgs{})
+	typ := reflect.TypeFor[okArgs]()
 	specs, _ := Spec(typ, "/")
 	_, err := NewCodec(typ, specs).Decode(map[string]string{"offset": "x", "debug": "maybe"})
 	assert.Contains(t, err.Error(), "invalid argument")
@@ -91,7 +91,7 @@ func TestCodecDecodeCollectsErrors(t *testing.T) {
 func TestCodecEmptyValueIsAbsent(t *testing.T) {
 	t.Parallel()
 
-	typ := reflect.TypeOf(okArgs{})
+	typ := reflect.TypeFor[okArgs]()
 	specs, _ := Spec(typ, "/")
 	got, err := NewCodec(typ, specs).Decode(map[string]string{"offset": ""})
 	assert.NoError(t, err)
@@ -101,7 +101,7 @@ func TestCodecEmptyValueIsAbsent(t *testing.T) {
 func TestCodecEncodeRejectsZeroPathArg(t *testing.T) {
 	t.Parallel()
 
-	typ := reflect.TypeOf(okArgs{})
+	typ := reflect.TypeFor[okArgs]()
 	specs, _ := Spec(typ, "/device/{id}")
 	_, _, err := NewCodec(typ, specs).Encode(okArgs{})
 	assert.Equal(t, err.Error(), `path argument "id" is empty`)
@@ -116,7 +116,7 @@ func TestHrefEscapesAndSorts(t *testing.T) {
 }
 
 func FuzzCodecDecode(f *testing.F) {
-	typ := reflect.TypeOf(okArgs{})
+	typ := reflect.TypeFor[okArgs]()
 	specs, _ := Spec(typ, "/")
 	c := NewCodec(typ, specs)
 	f.Add("1", "true", "1.5")
@@ -156,7 +156,7 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 		Flags []bool
 		Named []tag
 	}
-	specs, problems := Spec(reflect.TypeOf(lists{}), "/device/{id}")
+	specs, problems := Spec(reflect.TypeFor[lists](), "/device/{id}")
 	assert.Equal(t, len(problems), 0)
 	assert.DeepEqual(t, specs, []ir.ArgSpec{
 		{Name: "id", Field: "ID", Kind: ir.KindString, InPath: true},
@@ -174,7 +174,7 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 		Nested [][]string
 		Maps   []map[string]string
 	}
-	_, problems = Spec(reflect.TypeOf(unsupported{}), "/x")
+	_, problems = Spec(reflect.TypeFor[unsupported](), "/x")
 	assert.Equal(t, len(problems), 3)
 	for _, p := range problems {
 		assert.Contains(t, p.Detail, "unsupported type")
@@ -183,7 +183,7 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 		ID   string
 		Tags []string
 	}
-	_, problems = Spec(reflect.TypeOf(segment{}), "/device/{id}/{tags}")
+	_, problems = Spec(reflect.TypeFor[segment](), "/device/{id}/{tags}")
 	assert.Equal(t, len(problems), 1) // not also that the path has no field for {tags}
 	assert.Contains(t, problems[0].Detail, "is one segment of the path")
 	assert.Contains(t, problems[0].Fix, "{tags...}")
@@ -204,9 +204,9 @@ func TestAFieldThatIsWrongIsNotAlsoMissing(t *testing.T) {
 		template string
 		want     string
 	}{
-		"an unsupported type in the path": {reflect.TypeOf(unsupported{}), "/event/{when}", "field When has unsupported type map[string]int"},
-		"a reserved name in the path":     {reflect.TypeOf(dotted{}), "/x/{a.b}", `maps to the argument "a.b"`},
-		"a slice for one segment":         {reflect.TypeOf(segment{}), "/x/{tags}", "is one segment of the path"},
+		"an unsupported type in the path": {reflect.TypeFor[unsupported](), "/event/{when}", "field When has unsupported type map[string]int"},
+		"a reserved name in the path":     {reflect.TypeFor[dotted](), "/x/{a.b}", `maps to the argument "a.b"`},
+		"a slice for one segment":         {reflect.TypeFor[segment](), "/x/{tags}", "is one segment of the path"},
 	} {
 		_, problems := Spec(c.typ, c.template)
 		if len(problems) != 1 {
@@ -217,7 +217,7 @@ func TestAFieldThatIsWrongIsNotAlsoMissing(t *testing.T) {
 	}
 
 	// A path that really has no field for a placeholder still says so, beside a field that is wrong.
-	_, problems := Spec(reflect.TypeOf(unsupported{}), "/event/{id}")
+	_, problems := Spec(reflect.TypeFor[unsupported](), "/event/{id}")
 	assert.Equal(t, len(problems), 2)
 	assert.Contains(t, problems[1].Detail, "the path declares {id} but unsupported has no field for it")
 }

@@ -186,8 +186,7 @@ func validateTextRules(v *bodyValidator, at string, r StringRules) {
 	if p := r.Pattern; p != nil {
 		if _, err := rules.Compile(p.Expr, p.Message); err != nil {
 			fix := "Rewrite the pattern in RE2 syntax."
-			var pe *rules.PatternError
-			if errors.As(err, &pe) {
+			if pe, ok := errors.AsType[*rules.PatternError](err); ok {
 				fix = pe.Fix
 			}
 			v.add(fmt.Sprintf("%s: %v", at, err), fix)

@@ -130,7 +130,7 @@ func checkSegments(name string, fv reflect.Value) error {
 // one, as a URL cannot tell "?tag=" from none.
 func setList(fv reflect.Value, kind ir.ValueKind, joined string) error {
 	var parts []string
-	for _, part := range strings.Split(joined, ir.ListSep) {
+	for part := range strings.SplitSeq(joined, ir.ListSep) {
 		if part != "" {
 			parts = append(parts, part)
 		}
@@ -251,7 +251,7 @@ func Href(template string, path, query map[string]string) string {
 	}
 	q := url.Values{}
 	for k, v := range query {
-		for _, part := range strings.Split(v, ir.ListSep) {
+		for part := range strings.SplitSeq(v, ir.ListSep) {
 			if part != "" {
 				q.Add(k, part) // a list is repeated parameters
 			}

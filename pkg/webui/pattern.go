@@ -36,8 +36,7 @@ func ValidatePattern(expr string) error {
 	if err == nil {
 		return nil
 	}
-	var pe *rules.PatternError
-	if errors.As(err, &pe) {
+	if pe, ok := errors.AsType[*rules.PatternError](err); ok {
 		return &PatternError{Expr: pe.Expr, Problem: pe.Problem, Fix: pe.Fix, message: pe.Error(), cause: pe.Unwrap()}
 	}
 	return &PatternError{Expr: expr, Problem: err.Error(), Fix: "Rewrite the pattern.", message: err.Error(), cause: err}

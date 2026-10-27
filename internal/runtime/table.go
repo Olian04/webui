@@ -85,13 +85,13 @@ func filtersOf(n *ir.Table, raw map[string]string) map[string][]string {
 		case col.OpenSet:
 			// The values are whatever the rows hold, which the library filters, so any
 			// value is safe to keep: one that no row has matches none.
-			for _, v := range strings.Split(value, ir.ListSep) {
+			for v := range strings.SplitSeq(value, ir.ListSep) {
 				if v != "" && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}
 			}
 		case col.Options != nil:
-			for _, v := range strings.Split(value, ir.ListSep) {
+			for v := range strings.SplitSeq(value, ir.ListSep) {
 				if slices.Contains(col.Options, v) && !slices.Contains(kept, v) {
 					kept = append(kept, v)
 				}

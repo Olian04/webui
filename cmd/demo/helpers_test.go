@@ -64,7 +64,10 @@ func searchResults(h http.Handler, q string) []searchResult {
 	return out
 }
 
-func handler(t *testing.T) http.Handler { return handlerAs(t, Editor) }
+func handler(t *testing.T) http.Handler {
+	t.Helper()
+	return handlerAs(t, Editor)
+}
 
 func get(h http.Handler, target string) *httptest.ResponseRecorder {
 	rec := httptest.NewRecorder()

@@ -46,7 +46,7 @@ func DecodeMark(s string) (ir.Mark, bool) {
 // oldest first.
 func DecodeTrail(id, joined string) []ir.Mark {
 	var out []ir.Mark
-	for _, part := range strings.Split(joined, ir.ListSep) {
+	for part := range strings.SplitSeq(joined, ir.ListSep) {
 		if m, ok := DecodeMark(part); ok {
 			out = append(out, m)
 		}

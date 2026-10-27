@@ -115,8 +115,7 @@ type adopter struct {
 // the first app counted too.
 func adopt[C prometheus.Collector](a *adopter, c C) C {
 	err := a.reg.Register(c)
-	var already prometheus.AlreadyRegisteredError
-	if errors.As(err, &already) {
+	if already, ok := errors.AsType[prometheus.AlreadyRegisteredError](err); ok {
 		if existing, ok := already.ExistingCollector.(C); ok {
 			return existing
 		}

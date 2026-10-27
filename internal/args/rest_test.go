@@ -17,7 +17,7 @@ type objectArgs struct {
 func objectCodec(t *testing.T) *Codec {
 	t.Helper()
 
-	typ := reflect.TypeOf(objectArgs{})
+	typ := reflect.TypeFor[objectArgs]()
 	specs, problems := Spec(typ, "/bucket/{bucket}/{key...}")
 	assert.Equal(t, len(problems), 0)
 	assert.Equal(t, specs[1].Kind, ir.KindStrings)
@@ -76,7 +76,7 @@ func TestAStringIsNotARestPlaceholdersType(t *testing.T) {
 	t.Parallel()
 
 	type text struct{ Key string }
-	_, problems := Spec(reflect.TypeOf(text{}), "/bucket/{key...}")
+	_, problems := Spec(reflect.TypeFor[text](), "/bucket/{key...}")
 	assert.Equal(t, len(problems), 1)
 	assert.Contains(t, problems[0].Detail, "{key...}, but Key is not a []string")
 	assert.Contains(t, problems[0].Fix, "one element for each")
@@ -90,25 +90,25 @@ func TestAListThatIsNotTheRestIsAQueryParameterOrAnError(t *testing.T) {
 		Tags []string
 	}
 	// Not in the path: a query parameter that repeats.
-	_, problems := Spec(reflect.TypeOf(tags{}), "/device/{id}")
+	_, problems := Spec(reflect.TypeFor[tags](), "/device/{id}")
 	assert.Equal(t, len(problems), 0)
 	// In the path, but one segment, or not the last: there is nothing for it to take.
 	for _, template := range []string{"/device/{id}/{tags}", "/device/{id}/{tags...}/more"} {
-		_, problems := Spec(reflect.TypeOf(tags{}), template)
+		_, problems := Spec(reflect.TypeFor[tags](), template)
 		if len(problems) == 0 {
 			t.Errorf("%s accepted a list that is not the rest", template)
 		}
 	}
-	_, problems = Spec(reflect.TypeOf(tags{}), "/device/{id}/{tags}")
+	_, problems = Spec(reflect.TypeFor[tags](), "/device/{id}/{tags}")
 	assert.Contains(t, problems[0].Detail, "is one segment of the path")
 
 	type maps struct{ N map[string]int }
-	_, problems = Spec(reflect.TypeOf(maps{}), "/x")
+	_, problems = Spec(reflect.TypeFor[maps](), "/x")
 	assert.Contains(t, problems[0].Detail, "unsupported type")
 }
 
 func FuzzARestPlaceholderRoundTrips(f *testing.F) {
-	typ := reflect.TypeOf(objectArgs{})
+	typ := reflect.TypeFor[objectArgs]()
 	specs, _ := Spec(typ, "/bucket/{bucket}/{key...}")
 	c := NewCodec(typ, specs)
 	f.Add("a", "b", "c")
@@ -139,7 +139,7 @@ func TestARestPlaceholderMayBeASliceOfADefinedStringTypeOrADefinedSliceType(t *t
 	t.Parallel()
 
 	type named struct{ Key segments }
-	typ := reflect.TypeOf(named{})
+	typ := reflect.TypeFor[named]()
 	specs, problems := Spec(typ, "/f/{key...}")
 	assert.Equal(t, len(problems), 0)
 	c := NewCodec(typ, specs)
@@ -151,7 +151,7 @@ func TestARestPlaceholderMayBeASliceOfADefinedStringTypeOrADefinedSliceType(t *t
 	assert.Equal(t, path["key"], "a/b")
 
 	type defined struct{ Key pathOf }
-	typ = reflect.TypeOf(defined{})
+	typ = reflect.TypeFor[defined]()
 	specs, _ = Spec(typ, "/f/{key...}")
 	got, err = NewCodec(typ, specs).Decode(map[string]string{"key": "x/y/z"})
 	assert.NoError(t, err)

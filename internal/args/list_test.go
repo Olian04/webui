@@ -26,7 +26,7 @@ type listArgs struct {
 func listCodec(t *testing.T) *Codec {
 	t.Helper()
 
-	typ := reflect.TypeOf(listArgs{})
+	typ := reflect.TypeFor[listArgs]()
 	specs, problems := Spec(typ, "/device/{id}")
 	assert.Equal(t, len(problems), 0)
 	return NewCodec(typ, specs)

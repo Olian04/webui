@@ -6,8 +6,6 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-func ptr[T any](v T) *T { return &v }
-
 var (
 	CollectorName = webui.String[Settings]{
 		Label: "Collector name",
@@ -38,7 +36,7 @@ var (
 		Load:  func(s Settings) int { return s.Port },
 		Store: func(s *Settings, v int) { s.Port = v },
 		// A zero lower bound is a real constraint, so bounds are pointers.
-		Rules: webui.NumberRules[int]{Required: true, Min: ptr(1), Max: ptr(65535)},
+		Rules: webui.NumberRules[int]{Required: true, Min: new(1), Max: new(65535)},
 	}
 	// A Float has a Precision (decimals shown) and rules like any number. The
 	// bounds are pointers, because a zero bound is a real constraint.
@@ -48,7 +46,7 @@ var (
 		Label: "Sample rate", Precision: 2, Help: "The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.",
 		Load:  func(s Settings) float64 { return s.SampleRate },
 		Store: func(s *Settings, v float64) { s.SampleRate = v },
-		Rules: webui.NumberRules[float64]{Required: true, Min: ptr(0.01), Max: ptr(1.0)},
+		Rules: webui.NumberRules[float64]{Required: true, Min: new(0.01), Max: new(1.0)},
 	}
 	// A Slider with a Store is a range input in a form, held to its range by the
 	// server too; without a Store it is a bar, as the System page shows.
@@ -63,7 +61,7 @@ var (
 		Label: "Burst limit (events/s)", Help: "Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.",
 		Load:  func(s Settings) *int { return s.Burst },
 		Store: func(s *Settings, v *int) { s.Burst = v },
-		Rules: webui.NumberRules[int]{Min: ptr(0), Max: ptr(100000)},
+		Rules: webui.NumberRules[int]{Min: new(0), Max: new(100000)},
 		// Shown in the input while it is empty.
 		Placeholder: "No limit",
 	}
@@ -121,7 +119,7 @@ var (
 		Label: "Retention (days)",
 		Load:  func(r RetentionPolicy) int { return r.Days },
 		Store: func(r *RetentionPolicy, v int) { r.Days = v },
-		Rules: webui.NumberRules[int]{Min: ptr(0), Max: ptr(365)},
+		Rules: webui.NumberRules[int]{Min: new(0), Max: new(365)},
 	}
 )
 

@@ -71,7 +71,7 @@ func Compressible(contentType string) bool {
 // AcceptsGzip reports whether the client accepts a gzip-encoded response: it lists
 // gzip, and not with a quality of zero.
 func AcceptsGzip(r *http.Request) bool {
-	for _, part := range strings.Split(r.Header.Get("Accept-Encoding"), ",") {
+	for part := range strings.SplitSeq(r.Header.Get("Accept-Encoding"), ",") {
 		coding, params, _ := strings.Cut(part, ";")
 		if !strings.EqualFold(strings.TrimSpace(coding), "gzip") {
 			continue

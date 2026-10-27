@@ -167,7 +167,7 @@ func UploadPath(raw string) string {
 		return ""
 	}
 	var elements []string
-	for _, el := range strings.Split(raw[:i], "/") {
+	for el := range strings.SplitSeq(raw[:i], "/") {
 		if el = cleanElement(el); el == "" || el == "." || el == ".." {
 			continue
 		}
