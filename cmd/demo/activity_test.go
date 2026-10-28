@@ -9,9 +9,9 @@ import (
 	"github.com/Olian04/webui/test/util/assert"
 )
 
-// The Activity page is what is new: a feed of alerts that lead to their own pages, releases that are on another site, the people on call with their pictures,
+// The Activity page is what is new: a list of alerts that lead to their own pages, releases that are on another site, the people on call with their pictures,
 // and the dashboards as cards in a row that scrolls.
-func TestTheActivityPageIsFeedsAndCards(t *testing.T) {
+func TestTheActivityPageIsListsAndCards(t *testing.T) {
 	body := get(handler(t), "/admin/activity").Body.String()
 
 	assert.Contains(t, body, `class="nav-item active" href="/admin/activity"`)
@@ -48,9 +48,9 @@ func TestTheReleasesAreOnAnotherSiteAndOpenATabOfTheirOwn(t *testing.T) {
 	assert.False(t, strings.Contains(releases, "releases.limit="))   // and there is no more to show
 }
 
-// A viewer has the same feed, and each alert is a link for them too, since the alert's own page lets a viewer in: an item whose page refuses the visitor is
+// A viewer has the same list, and each alert is a link for them too, since the alert's own page lets a viewer in: an item whose page refuses the visitor is
 // text and not a link.
-func TestAViewerHasTheSameFeedAndNoMoreThanTheyMayOpen(t *testing.T) {
+func TestAViewerHasTheSameListAndNoMoreThanTheyMayOpen(t *testing.T) {
 	body := get(handlerAs(t, Viewer), "/admin/activity").Body.String()
 	assert.Contains(t, body, `<a class="item-link" href="/admin/alert/`)
 }

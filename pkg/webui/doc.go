@@ -817,7 +817,7 @@
 //
 // # Items
 //
-// A [Feed] lists items of a model: each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. [Cards] are the same
+// A [List] lists items of a model: each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. [Cards] are the same
 // items as boxes, in a grid that wraps or, with Layout: CardsScroll, a row that scrolls sideways. They are for what is new, where a [Table] would be a column of cells.
 //
 // Their source is Load(ctx, limit), a plain list, which is asked for one more than is shown so that the leaf knows there is more. It shows PageSize items, five when that is left zero, and a Show more
@@ -826,7 +826,7 @@
 // address that opens in a tab of its own. Meta are the small facts, shown as they are in a cell and separated by a dot, and a fact with no value is left out. Badge is a [Select].
 //
 // Image is the address of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
-// policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleFeed].
+// policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleList].
 //
 // # Refusals
 //

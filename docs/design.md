@@ -523,7 +523,7 @@ colours the line and the bars are the text colour and the mark is the highlight.
 **Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
 label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
 
-**Items** are a feed, or cards. A feed is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
+**Items** are a list, or cards. A list is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
 headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
 square on the left, decoration with no text of its own since the headline names the item, in a box that holds its place so that the page does not move as pictures arrive. The facts are in order, a dot (`·`) before each but the
 first, in text-tertiary, and the dot goes with the fact it leads when the line wraps; a fact with no value is left out, and not shown as a dash. Cards are the same item as a box with a 1px border: the picture

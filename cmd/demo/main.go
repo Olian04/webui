@@ -14,7 +14,7 @@
 //	uploads.go   File: a logo and a certificate, kept by the app and served as downloads
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //	overview.go  the landing page, which shows the library all at once
-//	activity.go  what is new: a Feed (a headline, small facts, a badge, a picture, Show more), Cards in a row that scrolls
+//	activity.go  what is new: a List (a headline, small facts, a badge, a picture, Show more), Cards in a row that scrolls
 //	art.go       the pictures that page draws, made from a name and served from this site
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context

@@ -3,7 +3,7 @@ package ir
 import "context"
 
 // Items is a leaf that shows a list of items of a model, each as a headline with a line of small facts beneath it, and a picture and a badge when it has
-// them: a feed, which is a column of them, or cards, which are a grid or a row that scrolls. It shows the first of what its source gives and says there
+// them: a list, which is a column of them, or cards, which are a grid or a row that scrolls. It shows the first of what its source gives and says there
 // is more when there is, and it only reads.
 type Items struct {
 	At Addr

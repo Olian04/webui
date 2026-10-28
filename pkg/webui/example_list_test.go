@@ -10,15 +10,15 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
-// Story is one thing that a feed says.
+// Story is one thing that a list says.
 type Story struct {
 	Title, Age, Source, URL, Picture string
 	Points                           int
 }
 
-// A Feed lists items: a headline, a line of small facts, and, when it has them, a badge and a picture. Its source is a plain list, asked for one more than is shown,
+// A List lists items: a headline, a line of small facts, and, when it has them, a badge and a picture. Its source is a plain list, asked for one more than is shown,
 // which is how the leaf knows to offer Show more. A headline is text, and where it leads is Link (an address, which opens in a tab of its own) or Open (a page of the app).
-func ExampleFeed() {
+func ExampleList() {
 	stories := []Story{
 		{"Nginx has moved to GitHub", "3h", "mailman.nginx.org", "https://mailman.nginx.org/", "", 100},
 		{"Show HN: Wealthfolio", "6h", "wealthfolio.app", "https://wealthfolio.app/", "/img/wealthfolio.png", 389},
@@ -26,7 +26,7 @@ func ExampleFeed() {
 	}
 	page := webui.Page[webui.NoArgs]{
 		Path: "/news",
-		Body: webui.Feed[Story]{
+		Body: webui.List[Story]{
 			Title: "Latest", PageSize: 2,
 			Load: func(_ context.Context, limit int) ([]Story, webui.Loaded) {
 				return stories[:min(limit, len(stories))], webui.Ready()

@@ -144,7 +144,7 @@ type Nav struct {
 	Section string
 }
 
-// PageBody is what a page shows: a leaf, [Table], [Form], [Editor], [Diff], [Markdown], [Stat], [Feed], [Cards], [Toolbar] or [FileUpload], or a layout of them,
+// PageBody is what a page shows: a leaf, [Table], [Form], [Editor], [Diff], [Markdown], [Stat], [List], [Cards], [Toolbar] or [FileUpload], or a layout of them,
 // [Stack], [Split] or [Tabs]. Only this package implements it.
 type PageBody interface {
 	validateBody(v *bodyValidator)
@@ -221,7 +221,7 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
 	}
 	if p.Body == nil {
-		v.add("Body is nil", "Set Body to a Table, Form, Editor, Diff, Markdown, Stat, Feed, Cards, Toolbar, FileUpload, Stack, Split or Tabs.")
+		v.add("Body is nil", "Set Body to a Table, Form, Editor, Diff, Markdown, Stat, List, Cards, Toolbar, FileUpload, Stack, Split or Tabs.")
 		return v.errs
 	}
 	p.Body.validateBody(v)

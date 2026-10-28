@@ -9,7 +9,7 @@ import (
 )
 
 // The Activity page is what is new, rather than what there is: the pages above it are tables of rows and forms, and this one is lists of items that say what
-// happened, with a headline, a line of small facts and, where it has one, a picture. It is three of one idea. A Feed is a column of items; Cards are the same items as
+// happened, with a headline, a line of small facts and, where it has one, a picture. It is three of one idea. A List is a column of items; Cards are the same items as
 // a grid, or a row that scrolls; and each shows a few and a Show more link that shows more, in the address, so a copied link shows the same.
 //
 // The source of each is a plain list: it is asked for one more than is shown, which is how the leaf knows there are more without counting them.
@@ -66,9 +66,9 @@ var (
 
 // ActivityAlerts is the open alerts, newest first, each leading to the alert's own page: an Open is a Link, a real anchor, which is left out for an item whose page
 // refuses the visitor. The severity is a badge beside the headline, which says it in words as well as in colour.
-var ActivityAlerts = webui.Feed[Alert]{
+var ActivityAlerts = webui.List[Alert]{
 	Title:    "Open alerts",
-	Desc:     "The same alerts as the Alerts page's table, as a feed: a headline, the device and how long ago, and a badge for how bad. Show more shows more.",
+	Desc:     "The same alerts as the Alerts page's table, as a list: a headline, the device and how long ago, and a badge for how bad. Show more shows more.",
 	PageSize: 4,
 	Load: func(_ context.Context, limit int) ([]Alert, webui.Loaded) {
 		alerts := service.OpenAlerts()
@@ -85,7 +85,7 @@ var ActivityAlerts = webui.Feed[Alert]{
 
 // ActivityReleases is what has been published. Each is on another site, so its headline is a Link: it opens a tab of its own and says so, with the mark that a link
 // to another site has everywhere else. The facts are in order under it, with a dot between them.
-var ActivityReleases = webui.Feed[Release]{
+var ActivityReleases = webui.List[Release]{
 	Title:    "Releases",
 	PageSize: 4,
 	Load: func(_ context.Context, limit int) ([]Release, webui.Loaded) {
@@ -99,7 +99,7 @@ var ActivityReleases = webui.Feed[Release]{
 
 // ActivityOnCall is who looks after the collector: a list with a picture of each (an avatar, which is decoration, since the name is beside it) and a badge for whether they are on call.
 // The pictures are on this site (/art), so no origin is trusted; a picture from another origin needs TrustedOrigins, and is otherwise left out.
-var ActivityOnCall = webui.Feed[Person]{
+var ActivityOnCall = webui.List[Person]{
 	Title:    "People",
 	PageSize: 4,
 	Load: func(_ context.Context, limit int) ([]Person, webui.Loaded) {

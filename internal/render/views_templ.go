@@ -4457,7 +4457,7 @@ func (r *Renderer) statTile(t ir.StatTile, model any) c.StatTileProps {
 	return p
 }
 
-// Items renders a list of items as one panel: a feed's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
+// Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
 // one, then Show more when the source had more. Each part is shown as its field says to show it, as it is in a cell of a table.
 func (r *Renderer) Items(v ItemsView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

@@ -8,7 +8,7 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// ItemListProps is a list of items: a column (a feed), or cards in a grid that wraps or in a row that scrolls sideways.
+// ItemListProps is a list of items: a column (a list), or cards in a grid that wraps or in a row that scrolls sideways.
 type ItemListProps struct {
 	Cards  bool
 	Scroll bool
@@ -76,7 +76,7 @@ func ItemList(p ItemListProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<ul class=\"feed\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<ul class=\"list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -93,7 +93,7 @@ func ItemList(p ItemListProps) templ.Component {
 	})
 }
 
-// ItemProps is one item, as a row of a feed or as a card. Image is an address that has been checked: the picture is decoration and has no text of its own, since the headline
+// ItemProps is one item, as a row of a list or as a card. Image is an address that has been checked: the picture is decoration and has no text of its own, since the headline
 // names the item. The rest are slots, since an item places what it is given and knows nothing of what a headline or a fact is.
 type ItemProps struct {
 	Card  bool

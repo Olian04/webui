@@ -11,25 +11,25 @@ import (
 	"github.com/Olian04/webui/internal/markdown"
 )
 
-// Feed is a leaf that lists items of a model, newest first or in whatever order the source gives them: each has a headline, a line of small facts beneath it
+// List is a leaf that lists items of a model, newest first or in whatever order the source gives them: each has a headline, a line of small facts beneath it
 // (its age, its author, a count, where it came from), and, when it has them, a picture and a badge. It is for the things a page says "here is what is new" about,
 // where a [Table] would be a column of cells and a reader wants the headlines.
 //
 // It shows the first of what Load gives it, and, when there are more, a Show more link that shows PageSize more: a real link, so it works without
 // script, which with script replaces the list in place. How many are shown is in the address as the leaf's name and ".limit", as a table keeps its page. Nothing is kept
-// on the server. It only reads: a headline leads to where the item is, with [Feed.Open] or a [URL] headline, and a feed has no row actions.
+// on the server. It only reads: a headline leads to where the item is, with [List.Open] or a [URL] headline, and a list has no row actions.
 //
-// It is not [Table.Feed], which is a source for a table that pages by a cursor: a Feed is a way to show items, and its source is a plain list.
-type Feed[M any] struct {
-	// Title is the panel's heading, and names the leaf's view state in the address: "latest" for a Feed titled "Latest", and "feed" when it has none.
+// It is not [Table.Feed], which is a source for a table that pages by a cursor: a List is a way to show items, and its source is a plain list.
+type List[M any] struct {
+	// Title is the panel's heading, and names the leaf's view state in the address: "latest" for a List titled "Latest", and "list" when it has none.
 	Title string
 
 	// Desc is a description, shown in a popover from an information icon beside the title.
 	Desc string
 
 	// Load returns at most limit items, in the order they are shown. The limit is what is on screen plus one, so that the leaf can tell whether there
-	// are more: a source that has more than it was asked for is not asked again to count. Return no items, not a failure, for a feed that is empty. If Load returns
-	// [Failed] the panel says "Could not load", the cause is logged and the rest of the page stands. A feed of something that is still going returns [Loaded.RefreshAfter].
+	// are more: a source that has more than it was asked for is not asked again to count. Return no items, not a failure, for a list that is empty. If Load returns
+	// [Failed] the panel says "Could not load", the cause is logged and the rest of the page stands. A list of something that is still going returns [Loaded.RefreshAfter].
 	//
 	// Load is called on every request that needs the leaf's items, and the library keeps nothing between requests: if asking is costly, cache it in your app.
 	Load func(ctx context.Context, limit int) ([]M, Loaded)
@@ -77,10 +77,10 @@ const (
 	CardsScroll CardLayout = "scroll"
 )
 
-// Cards is a [Feed] whose items are cards: a picture over a headline, a badge and the line of small facts, in a grid that wraps or a row that scrolls. It has the same
+// Cards is a [List] whose items are cards: a picture over a headline, a badge and the line of small facts, in a grid that wraps or a row that scrolls. It has the same
 // source, the same Show more, and the same fields, and is for items that are looked at as much as read, such as videos or products.
 type Cards[M any] struct {
-	// Title, Desc, Load, PageSize, Headline, Open, Link, Meta, Image, Badge and TrustedOrigins are those of a [Feed].
+	// Title, Desc, Load, PageSize, Headline, Open, Link, Meta, Image, Badge and TrustedOrigins are those of a [List].
 	Title    string
 	Desc     string
 	Load     func(ctx context.Context, limit int) ([]M, Loaded)
@@ -99,15 +99,15 @@ type Cards[M any] struct {
 	Layout CardLayout
 }
 
-// ASSERT: Feed and Cards implement PageBody
+// ASSERT: List and Cards implement PageBody
 var (
-	_ PageBody = Feed[struct{}]{}
+	_ PageBody = List[struct{}]{}
 	_ PageBody = Cards[struct{}]{}
 )
 
-// itemsSpec is what a Feed and a Cards share, so that they are validated and lowered in one place.
+// itemsSpec is what a List and a Cards share, so that they are validated and lowered in one place.
 type itemsSpec[M any] struct {
-	what     string // "Feed" or "Cards"
+	what     string // "List" or "Cards"
 	cards    bool
 	scroll   bool
 	title    string
@@ -125,9 +125,9 @@ type itemsSpec[M any] struct {
 	layout   CardLayout
 }
 
-func (f Feed[M]) spec() itemsSpec[M] {
+func (f List[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
-		what: "Feed", title: f.Title, desc: f.Desc, load: f.Load, pageSize: f.PageSize,
+		what: "List", title: f.Title, desc: f.Desc, load: f.Load, pageSize: f.PageSize,
 		headline: f.Headline, open: f.Open, link: f.Link, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
 	}
 }
@@ -139,10 +139,10 @@ func (c Cards[M]) spec() itemsSpec[M] {
 	}
 }
 
-func (f Feed[M]) validateBody(v *bodyValidator)  { f.spec().validate(v) }
+func (f List[M]) validateBody(v *bodyValidator)  { f.spec().validate(v) }
 func (c Cards[M]) validateBody(v *bodyValidator) { c.spec().validate(v) }
 
-func (f Feed[M]) lowerBody(at ir.Addr) ir.Node  { return f.spec().lower(at) }
+func (f List[M]) lowerBody(at ir.Addr) ir.Node  { return f.spec().lower(at) }
 func (c Cards[M]) lowerBody(at ir.Addr) ir.Node { return c.spec().lower(at) }
 
 func (s itemsSpec[M]) validate(v *bodyValidator) {
@@ -197,7 +197,7 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 	}
 }
 
-// defaultItems is how many items a feed shows when it does not say.
+// defaultItems is how many items a list shows when it does not say.
 const defaultItems = 5
 
 func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
@@ -252,5 +252,5 @@ func itemsViewID(n *ir.Items) string {
 	if n.Cards {
 		return "cards"
 	}
-	return "feed"
+	return "list"
 }
