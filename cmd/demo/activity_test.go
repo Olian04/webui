@@ -75,3 +75,36 @@ func TestThePicturesOfThePageAreMadeFromTheirNamesAndAreTheSameEveryTime(t *test
 	assert.Equal(t, get(h, "/art/"+strings.Repeat("x", 80)+".png").Code, http.StatusNotFound)
 	assert.Equal(t, get(h, "/art/.png").Code, http.StatusNotFound)
 }
+
+// The release calendar is the month of the demo's day, with a mark on each day something was published and a link to the page that lists it.
+func TestTheReleaseCalendarMarksTheDaysSomethingWasPublishedAndLinksToThem(t *testing.T) {
+	body := get(handler(t), "/admin/activity").Body.String()
+	assert.Contains(t, body, `<h2 class="panel-title">Release calendar</h2>`)
+	assert.Contains(t, body, ">October 2026</h3>")
+	assert.Contains(t, body, `aria-current="date"`)                                                      // the 9th, which is the day of the demo's data
+	assert.Contains(t, body, `<a class="cal-day" href="/admin/activity/releases/2026-10-09"`)            // today, which has a release
+	assert.Contains(t, body, "Thursday 8 October 2026, 1 item")                                          // the beta, the day before
+	assert.Contains(t, body, `href="/admin/activity?release-calendar.month=2026-09"`)                    // and the month before, which is in the address
+	assert.False(t, strings.Contains(body, `href="/admin/activity/releases/2026-10-10"`))                // a day with nothing on it leads nowhere
+	assert.Contains(t, body, `<th scope="row" class="cal-wk"><span class="sr-only">Week </span>41</th>`) // the week of the 5th
+}
+
+func TestADayOfTheCalendarLeadsToAPageThatListsWhatWasPublishedOnIt(t *testing.T) {
+	h := handler(t)
+	rec := get(h, "/admin/activity/releases/2026-10-03")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	body := rec.Body.String()
+	assert.Contains(t, body, "2.4.0: a search that finds devices by tag")
+	assert.False(t, strings.Contains(body, "2.4.1"))
+	assert.Contains(t, body, `class="nav-item active" href="/admin/activity"`) // under the Activity page, so it lights it
+
+	assert.Equal(t, get(h, "/admin/activity/releases/not-a-day").Code, http.StatusNotFound)
+}
+
+// The month before has what was published in it, and the link back to the current month has no month in it.
+func TestTheCalendarOfAnotherMonthShowsItsOwnReleasesAndLinksBack(t *testing.T) {
+	body := get(handler(t), "/admin/activity?release-calendar.month=2026-09").Body.String()
+	assert.Contains(t, body, ">September 2026</h3>")
+	assert.Contains(t, body, `href="/admin/activity/releases/2026-09-25"`)
+	assert.Contains(t, body, `href="/admin/activity" data-in-place>Today</a>`)
+}

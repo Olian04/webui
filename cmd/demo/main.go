@@ -14,7 +14,7 @@
 //	uploads.go   File: a logo and a certificate, kept by the app and served as downloads
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //	overview.go  the landing page, which shows the library all at once
-//	activity.go  what is new: a Feed (a headline, small facts, a badge, a picture, Show more), Cards in a row that scrolls
+//	activity.go  what is new: a Feed (a headline, small facts, a badge, a picture, Show more), Cards in a row that scrolls, a Calendar of releases
 //	art.go       the pictures that page draws, made from a name and served from this site
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context
@@ -59,7 +59,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
+	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
 }
 
 var (

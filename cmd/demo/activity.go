@@ -4,9 +4,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
+
+// ActivityPath is the Activity page, named by a constant so that the page of a day can lead back to it.
+const ActivityPath webui.PageID[webui.NoArgs] = "/activity"
 
 // The Activity page is what is new, rather than what there is: the pages above it are tables of rows and forms, and this one is lists of items that say what
 // happened, with a headline, a line of small facts and, where it has one, a picture. It is three of one idea. A Feed is a column of items; Cards are the same items as
@@ -14,7 +18,7 @@ import (
 //
 // The source of each is a plain list: it is asked for one more than is shown, which is how the leaf knows there are more without counting them.
 var Activity = webui.Page[webui.NoArgs]{
-	Path: "/activity",
+	Path: ActivityPath,
 	Nav:  webui.Nav{Label: "Activity", Icon: "bolt", Section: "Platform"},
 	Body: webui.Stack{
 		webui.Split{
@@ -25,8 +29,54 @@ var Activity = webui.Page[webui.NoArgs]{
 			}},
 			ActivityOnCall,
 		},
-		ActivityDashboards,
+		webui.Split{ActivityCalendar, ActivityDashboards},
 	},
+}
+
+// ReleaseDayArgs is the day that a day of the calendar leads to: its date, as the calendar writes it in the address.
+type ReleaseDayArgs struct{ Date string }
+
+// ReleaseDay is what was published on one day, which is where a day of ActivityCalendar leads. Its path is under the Activity page's, so that the page lights Activity in the
+// menu, and it has no Nav of its own.
+var ReleaseDay = webui.Page[ReleaseDayArgs]{
+	Path: "/activity/releases/{date}",
+	Guard: func(ctx context.Context, a ReleaseDayArgs) error {
+		if _, err := time.Parse(time.DateOnly, a.Date); err != nil {
+			return webui.NotFound(fmt.Sprintf("There is no day %q.", a.Date)).WithLink("Back to the activity", webui.Open(ctx, ActivityPath, webui.NoArgs{}))
+		}
+		return nil
+	},
+	Body: webui.Feed[Release]{
+		Title: "Published",
+		Load: func(ctx context.Context, _ int) ([]Release, webui.Loaded) {
+			day, _ := time.Parse(time.DateOnly, webui.ArgsOf[ReleaseDayArgs](ctx).Date)
+			return service.ReleasesBetween(day, day.AddDate(0, 0, 1)), webui.Ready()
+		},
+		Headline: releaseTitle,
+		Link:     func(r Release) string { return r.Link },
+		Meta:     []webui.Accessor[Release]{releaseAuthor, releaseDownloads},
+		Badge:    releaseChannel,
+	},
+}
+
+// ActivityCalendar is the releases of a month, a day of it marked when something was published and a link when there is a page that says what. The source is asked for the days
+// that the grid shows, and the month is in the address, as "calendar.month", with real links to the months either side. A day is a day in UTC, and what the calendar takes for today is
+// the demo's own, since its data is of one day.
+var ActivityCalendar = webui.Calendar[Release]{
+	Title: "Release calendar",
+	Desc:  "The same releases, by the day they were published. A day with a dot has one or more, and leads to a page that lists them. The arrows change the month, in the address.",
+	Load: func(_ context.Context, span webui.Span) ([]Release, webui.Loaded) {
+		return service.ReleasesBetween(span.From, span.To), webui.Ready()
+	},
+	Date: func(r Release) time.Time { return r.When },
+	Open: webui.Link[webui.Day, ReleaseDayArgs]{
+		Page: ReleaseDay,
+		Args: func(_ context.Context, d webui.Day) ReleaseDayArgs {
+			return ReleaseDayArgs{Date: d.Date.Format(time.DateOnly)}
+		},
+	},
+	WeekNumbers: true,
+	Today:       func() time.Time { return epoch },
 }
 
 var (

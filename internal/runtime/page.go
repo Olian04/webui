@@ -212,6 +212,8 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 			keys = append(keys, args.ViewKey(node.ID, "tab"))
 		case *ir.Items:
 			keys = append(keys, args.ViewKey(node.ID, "limit"))
+		case *ir.Calendar:
+			keys = append(keys, args.ViewKey(node.ID, "month"))
 		case *ir.Table:
 			id := node.ID
 			if node.Feed {
@@ -268,6 +270,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.stat(ctx, req, page, n) }), nil
 	case *ir.Items:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.items(ctx, req, page, n) }), nil
+	case *ir.Calendar:
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.calendar(ctx, req, page, n) }), nil
 	case *ir.Toolbar:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
 	case *ir.FileUpload:

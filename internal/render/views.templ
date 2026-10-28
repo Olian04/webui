@@ -1051,6 +1051,21 @@ func (r *Renderer) item(v ItemsView, i int, row any) c.ItemProps {
 	return p
 }
 
+// Calendar renders a month as one panel: a grid of days, each marked when it has items and a link when it leads somewhere, with links to the months either side. It is a table,
+// so that a reader who goes by the grid is told each day's weekday and date and how many items there are.
+templ (r *Renderer) Calendar(v CalendarView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
+		Leaf: LeafID(v.Node.At),
+	}) {
+		<div class="panel-body cal-body">
+			@c.Calendar(r.calendarProps(v))
+		</div>
+	}
+}
+
 // unified is the changes as a unified diff, the way to read them without script.
 templ (r *Renderer) unified(v DiffView) {
 	<div class="udiff" role="region" tabindex="0" aria-label={ v.Node.Original.Label + " and " + v.Node.Modified.Label + ", compared" }>

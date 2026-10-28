@@ -532,6 +532,12 @@ above, 16:9 and the full width, then the headline, badge and facts at 10px by 12
 can be focused and moved by the arrow keys. Both end in a foot that says how many are shown, and, when there are more, *Show more*: a real link to the same page with a larger limit in the address (`latest.limit=8`),
 which with script replaces the list in place. An empty one says *Nothing here yet*. A picture is drawn only from this site or from an origin the page trusts, as for Markdown, and is otherwise left out.
 
+**Calendar** is a month as a table of days, in a panel. Above the grid is the month and year at 14/600, and at the right *Today* (only when another month is shown) and the arrows for the months either side: small
+secondary buttons that are real links, so that the month is in the address (`releases.month=2026-10`) and with script the panel is replaced in place. The grid is seven columns of equal width, in weeks of Monday to Sunday or, with
+`SundayFirst`, Sunday to Saturday, with weekday names at 11px in text-secondary and, with `WeekNumbers`, a first column of ISO week numbers at 11px in text-secondary. A day is a 32px-high cell with its numeral at 13px centred; a day of the week at the edge that
+is of another month is in text-secondary, and not in text-tertiary, which is for decoration, since it is still read; the day that is now has a 1px ring in the link text colour and a bold numeral, and `aria-current="date"`, so that it is not marked by colour alone; a day with items has a 4px dot under its numeral, in the
+colour of the numeral. A day that leads somewhere is a link in the link text colour. Every day is told in full to a reader who goes by the grid ("Thursday 3 September 2026, 2 items"), and the numeral and the dot are for the eye. In forced colours the ring is the highlight.
+
 **Bulk selection** adds a 34px checkbox column and, when anything is selected,
 an action bar above the header: a 10% primary tint strip with the count, the
 operations. When there are no bulk

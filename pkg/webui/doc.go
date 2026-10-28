@@ -828,6 +828,14 @@
 // Image is the address of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
 // policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleFeed].
 //
+// # Calendar
+//
+// A [Calendar] shows a month as a grid of days, each marked when something is on it, with a link when Open says where a day leads. Load is given a [Span], the days that the grid shows (the month, and the days of its
+// first and last weeks that are not of it), and Date says when an item is. A day is a day in UTC. The month is in the address as the leaf's name and ".month" ("releases.month=2026-10"), with real links to the months
+// either side and back to the current one, so it works without script and a copied link shows the same month. Open is a [Link] built from a [Day], and only a day with items has it. A week begins on Monday, or
+// on Sunday with SundayFirst, and WeekNumbers adds ISO 8601 week numbers, which are of Monday weeks. The day that is now is marked by more than colour, and each day is told in full to a reader who goes by the
+// grid. See [ExampleCalendar].
+//
 // # Refusals
 //
 // What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden],

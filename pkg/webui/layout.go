@@ -114,8 +114,8 @@ func childAddr(at ir.Addr, i int) ir.Addr {
 	return append(append(ir.Addr(nil), at...), i)
 }
 
-// assignViewIDs names the view state of every table, list of items and tabs on a page: the part
-// before the dot in "devices.sort", "latest.limit" and "tabs.tab". A table is named by its title,
+// assignViewIDs names the view state of every table, list of items, calendar and tabs on a page: the part
+// before the dot in "devices.sort", "latest.limit", "releases.month" and "tabs.tab". A table is named by its title,
 // spelled as the address spells any label, and a Tabs is "tabs". A name that
 // something else on screen already has gets "-2", then "-3". The panels of one Tabs
 // are never on screen together, so each starts from the names taken before the Tabs
@@ -158,6 +158,8 @@ func assignViewIDs(body ir.Node) {
 			n.ID = claim(base, taken)
 		case *ir.Items:
 			n.ID = claim(itemsViewID(n), taken)
+		case *ir.Calendar:
+			n.ID = claim(calendarViewID(n), taken)
 		}
 	}
 	walk(body, map[string]bool{})

@@ -138,10 +138,12 @@ type Throughput struct {
 	Hour int // the current hour of the day, as an index of the histories
 }
 
-// Release is a version of the collector that was published: what it is called, who made it, when, and how many have taken it.
+// Release is a version of the collector that was published: what it is called, who made it, when, and how many have taken it. Age says when in words, and When says it
+// as a moment, for a calendar.
 type Release struct {
 	ID, Title, Author, Age, Link, Channel string
 	Downloads                             int
+	When                                  time.Time
 }
 
 // Person is somebody who looks after the collector, and whether they are on call now.
@@ -586,15 +588,26 @@ func (s *Service) Throughput() Throughput {
 // Releases are what has been published, newest first, as many as are asked for. They are fixed, so that the demo and its tests read the same every time.
 func (s *Service) Releases(limit int) []Release {
 	all := []Release{
-		{"r9", "2.4.1: fixes a stall in the ingest queue", "Ada", "3h", "https://example.com/releases/2.4.1", "stable", 1204},
-		{"r8", "2.5.0-beta.2: per-site retention", "Linus", "1d", "https://example.com/releases/2.5.0-beta.2", "beta", 311},
-		{"r7", "2.4.0: a search that finds devices by tag", "Grace", "6d", "https://example.com/releases/2.4.0", "stable", 5420},
-		{"r6", "2.3.3: a gentler back-off when a site is down", "Ada", "2w", "https://example.com/releases/2.3.3", "stable", 8112},
-		{"r5", "2.5.0-beta.1: the first of per-site retention", "Linus", "3w", "https://example.com/releases/2.5.0-beta.1", "beta", 640},
-		{"r4", "2.3.2: security update for the sink library", "Grace", "1mo", "https://example.com/releases/2.3.2", "stable", 9051},
-		{"r3", "2.3.1: a fix for clocks that jump back", "Ada", "2mo", "https://example.com/releases/2.3.1", "stable", 7220},
+		{"r9", "2.4.1: fixes a stall in the ingest queue", "Ada", "3h", "https://example.com/releases/2.4.1", "stable", 1204, epoch.Add(-3 * time.Hour)},
+		{"r8", "2.5.0-beta.2: per-site retention", "Linus", "1d", "https://example.com/releases/2.5.0-beta.2", "beta", 311, epoch.AddDate(0, 0, -1)},
+		{"r7", "2.4.0: a search that finds devices by tag", "Grace", "6d", "https://example.com/releases/2.4.0", "stable", 5420, epoch.AddDate(0, 0, -6)},
+		{"r6", "2.3.3: a gentler back-off when a site is down", "Ada", "2w", "https://example.com/releases/2.3.3", "stable", 8112, epoch.AddDate(0, 0, -14)},
+		{"r5", "2.5.0-beta.1: the first of per-site retention", "Linus", "3w", "https://example.com/releases/2.5.0-beta.1", "beta", 640, epoch.AddDate(0, 0, -21)},
+		{"r4", "2.3.2: security update for the sink library", "Grace", "1mo", "https://example.com/releases/2.3.2", "stable", 9051, epoch.AddDate(0, 0, -30)},
+		{"r3", "2.3.1: a fix for clocks that jump back", "Ada", "2mo", "https://example.com/releases/2.3.1", "stable", 7220, epoch.AddDate(0, 0, -60)},
 	}
 	return all[:min(limit, len(all))]
+}
+
+// ReleasesBetween are the releases published in [from, to), whatever the day: what a calendar of them shows.
+func (s *Service) ReleasesBetween(from, to time.Time) []Release {
+	var out []Release
+	for _, r := range s.Releases(1 << 10) {
+		if !r.When.Before(from) && r.When.Before(to) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 // OnCall is who looks after the collector. The people are fixed.
