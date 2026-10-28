@@ -23,7 +23,7 @@ var Overview = webui.Page[webui.NoArgs]{
 
 // OverviewFigures is how the collector is doing, as a few figures each with its change since yesterday and its shape over the day: a Stat. A
 // tile's value is any accessor, shown as it is in a cell; its Change is a Delta, which says which way it moved and whether that is the good way
-// (a latency that falls is good news, so its Better is Lower), and its Trend is a Series, a line or bars, with the current hour marked.
+// (a latency that falls is good news, so it is LowerIsBetter), and its Trend is a Series, a line or bars, with the current hour marked.
 var OverviewFigures = webui.Stat[Throughput]{
 	Title: "Throughput",
 	Desc:  "How much the collector takes in, and how well, over the last day. Each figure has its change since yesterday and its shape over the day.",
@@ -37,7 +37,7 @@ var OverviewFigures = webui.Stat[Throughput]{
 		{
 			Label:  "Latency, 95th percentile",
 			Value:  webui.Float[Throughput]{Label: "Latency", Load: func(t Throughput) float64 { return t.Latency }, Format: func(v float64) string { return fmt.Sprintf("%.0f ms", v) }},
-			Change: webui.Delta[Throughput]{Label: "Since yesterday", Load: func(t Throughput) float64 { return t.LatencyChange }, Better: webui.Lower, Unit: " ms"},
+			Change: webui.Delta[Throughput]{Label: "Since yesterday", Load: func(t Throughput) float64 { return t.LatencyChange }, LowerIsBetter: true, Unit: " ms"},
 			Trend: webui.Series[Throughput]{
 				Label: "Latency over the day", Load: func(t Throughput) []float64 { return t.LatencyHistory }, Unit: " ms",
 				Style: webui.SeriesBars, Highlight: func(t Throughput) int { return t.Hour },
@@ -48,7 +48,7 @@ var OverviewFigures = webui.Stat[Throughput]{
 			Help:  "Events that were refused or could not be written.",
 			Value: webui.Int[Throughput]{Label: "Errors", Load: func(t Throughput) int { return t.Errors }},
 			Change: webui.Delta[Throughput]{
-				Label: "Since yesterday", Load: func(t Throughput) float64 { return t.ErrorsChange }, Better: webui.Lower, Precision: 0, Unit: "%",
+				Label: "Since yesterday", Load: func(t Throughput) float64 { return t.ErrorsChange }, LowerIsBetter: true, Precision: 0, Unit: "%",
 			},
 			Trend: webui.Series[Throughput]{Label: "Errors over the day", Load: func(t Throughput) []float64 { return t.ErrorsHistory }},
 		},
