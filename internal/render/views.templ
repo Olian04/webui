@@ -15,7 +15,6 @@ templ (r *Renderer) Document(d Doc) {
 	@t.Page(t.PageProps{
 		Title:       refusedTitle(d.Refused, r.title(d.Title)),
 		Early:       r.early(),
-		Theme:       r.pinned(),
 		Stylesheets: r.styles(),
 		Scripts:     r.scripts(d),
 		Head:        r.head(d.Code),
@@ -40,7 +39,7 @@ templ (r *Renderer) Document(d Doc) {
 // stylesheet does, and a stored choice (the theme switch) is the attribute that
 // prefs.js sets before first paint.
 templ (r *Renderer) early() {
-	<meta name="color-scheme" content={ r.colorScheme() }/>
+	<meta name="color-scheme" content="dark light"/>
 	@templ.Raw("<style>" + r.earlyStyle() + "</style>")
 }
 
@@ -98,7 +97,7 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
 // menu when the app declares one, and the theme as an icon button, which is a choice of the session and not of the page.
-// An app that has pinned its theme has no button for it. A page with no sidebar (bare) has the app's mark here too, before the breadcrumb, which begins with the brand's name.
+// A page with no sidebar (bare) has the app's mark here too, before the breadcrumb, which begins with the brand's name.
 // The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
@@ -111,9 +110,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
 			Attrs: templ.Attributes{"data-refresh": true},
 		})
-		if r.pinned() == "" {
-			@c.ThemeToggle()
-		}
+		@c.ThemeToggle()
 		if items := r.linkEntries(); len(items) > 0 {
 			@c.ExternalLinks(items)
 		}

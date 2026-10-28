@@ -119,40 +119,26 @@ type Brand struct {
 // close the declaration it is written into.
 type Color string
 
-// Mode is the theme an app is drawn in: left empty (ModeAuto) it is the viewer's choice
-// between light and dark, which they make with the button in the top bar and which
-// follows their system until they do. An app may pin itself to one.
-type Mode string
-
-const (
-	// ModeAuto leaves light or dark to the viewer. It is the default.
-	ModeAuto Mode = ""
-
-	// ModeDark draws the app in the dark theme only: the page has no theme button, and a
-	// choice that the viewer made in another app on the same site is not followed.
-	ModeDark Mode = "dark"
-
-	// ModeLight draws the app in the light theme only, in the same way.
-	ModeLight Mode = "light"
-)
-
 // Theme is what an app may restyle. Left at its zero value, the app has the design as it is.
 //
 // Four colours carry meaning: Accent, OK, Warning and Critical. Each is the colour as the
 // design draws it; the library derives the rest (hover, the readable text tint, the faint
 // background and border of a badge) and tunes them for light and dark, which are the
-// viewer's choice unless the app pins a Mode. They work in either.
+// viewer's choice and not the app's. A field left empty keeps the design's own colour.
 //
-// Canvas is the page's background, and from it the library derives every other surface, the
-// borders and the text, so that a theme is a whole look and not four spots of colour on the
-// design's own. It is one colour, which cannot be right in both light and dark, so it needs a
-// Mode: Canvas without one is a compile error. The presets (ThemeSlate, ThemeMidnight and
-// the others) are Themes of this kind, and an app may start from one and change a field.
+// Light and Dark are what the app gives one mode alone: a colour there wins over the
+// one given above, in that mode, and each has a Canvas, the page's background in that mode,
+// from which the library derives every other surface, the borders and the text, so that a theme
+// can be a whole look and not four spots of colour on the design's own. A Canvas is one colour,
+// which cannot be right in both light and dark, so it is given for the mode it is for, and an app
+// may give one for either or both. The viewer still chooses between the modes. The presets
+// (ThemeMidnight, ThemeForest and the others) are Themes of this kind, and an app may start
+// from one and change a field.
 //
 // Compile checks that what it derives can be read: the text on the surfaces it is drawn on
-// at 4.5:1, and what is only decoration at 3:1, in each mode the theme is drawn in. A colour
-// that fails is an error that names the field, the pair and what to change, and not a button
-// whose label is out of sight.
+// at 4.5:1, and what is only decoration at 3:1, in each mode. A colour that fails is an
+// error that names the field, the pair and what to change, and not a button whose label is
+// out of sight.
 type Theme struct {
 	// Accent is interactive: primary buttons, links, the active entry in the
 	// sidebar, the focus ring. White is drawn on it, so it must be deep enough for that.
@@ -161,19 +147,29 @@ type Theme struct {
 	// OK is healthy, saved: a badge with ToneOK, and the toast of a Success.
 	OK Color
 
-	// Warning is degraded, needs a look: a badge with ToneWarning.
+	// Warning is attention without failure: a badge with ToneWarning.
 	Warning Color
 
 	// Critical is failed, destructive: a badge with ToneCritical, error text, the
 	// destructive button, which has a white label.
 	Critical Color
 
-	// Canvas is the page's background in Mode, an opaque colour. The panels, what is raised
-	// above them, inputs, borders, hover and text are derived from it. It needs a Mode.
+	// Light is what the app gives the light theme alone.
+	Light ModeColors
+
+	// Dark is what the app gives the dark theme alone.
+	Dark ModeColors
+}
+
+// ModeColors are an app's colours for one mode, which win over the Theme's own in that mode. A field
+// left empty is the Theme's colour, or the design's if the Theme has none.
+type ModeColors struct {
+	// Canvas is the page's background in the mode, an opaque colour. The panels, what is raised
+	// above them, inputs, borders, hover and text are derived from it, lighter or darker as the mode asks.
 	Canvas Color
 
-	// Mode pins the app to the dark or the light theme. Empty, the viewer chooses.
-	Mode Mode
+	// Accent, OK, Warning and Critical are those of the Theme, for this mode only.
+	Accent, OK, Warning, Critical Color
 }
 
 // pageLike is Page[A] with the argument type erased so Pages can mix A.

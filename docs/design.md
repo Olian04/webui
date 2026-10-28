@@ -46,11 +46,11 @@ Dark is the default. Light is a complete, equal alternative — not an
 afterthought — and is selected by the same token set with different values.
 Nothing in the layout, spacing, or component structure changes between them.
 
-An app may pin itself to one of them with a `Mode`, and give the page a background of its own, a `Canvas`, from which every other surface, the borders and
+An app may give either of them a background of its own, a `Canvas` (`Dark.Canvas`, `Light.Canvas`), from which every other surface of that theme, the borders and
 the text are derived: the panel and what is raised are lifted from it, an input is sunk, and the text is the canvas pulled toward white (dark) or black (light), with the quiet
 text, the borders, the hover and the active state being that text at the strengths the design's own palettes give them. The result is a look of its own that keeps the design's structure:
-the presets (navy, near black, deep green, plum, warm white, sand) are six of them. A canvas is one colour, which cannot be right in both themes, so it needs the mode it is drawn in, and a
-pinned app has no theme button. An app that has not pinned a mode keeps the viewer's choice and may still change its four colours.
+the presets (navy, near black, deep green, plum, warm white, sand) are six of them, each with a canvas for both themes. A canvas is one colour, which cannot be right in both themes, so it is given for the one it is
+for. The viewer still chooses between the themes with the button in the top bar, and follows their system until they do: an app does not take that choice from them.
 
 ---
 

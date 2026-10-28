@@ -162,17 +162,18 @@ func TestAnAccentThatIsTooLightForTheLabelOfAButtonIsReported(t *testing.T) {
 func TestAStatusColourIsCheckedInTheModeItIsDrawnIn(t *testing.T) {
 	t.Parallel()
 
-	// Very dark: its tint is lightened for the dark theme and is not deep enough to be read in the light one? Neither: say which fails.
-	for _, p := range Check(Spec{Warning: "#fff200"}) {
+	// A yellow cannot be read on white: say in which theme it fails, and which field is to blame.
+	got := Check(Spec{Warning: "#fff200"})
+	if len(got) == 0 {
+		t.Fatal("a yellow that cannot be read on white was let through")
+	}
+	for _, p := range got {
 		if p.Field != "Warning" {
 			t.Errorf("blamed %s", p.Field)
 		}
-		if !strings.Contains(p.Detail, "theme") {
-			t.Errorf("an unpinned theme does not say which mode failed: %s", p.Detail)
+		if !strings.Contains(p.Detail, "in the light theme") && !strings.Contains(p.Detail, "in the dark theme") {
+			t.Errorf("a problem does not say which mode failed: %s", p.Detail)
 		}
-	}
-	if len(Check(Spec{Warning: "#fff200"})) == 0 {
-		t.Error("a yellow that cannot be read on white was let through")
 	}
 }
 
@@ -180,60 +181,104 @@ func TestACanvasDerivesSurfacesAndTextThatAreLegible(t *testing.T) {
 	t.Parallel()
 
 	for name, s := range map[string]Spec{
-		"navy":  {Canvas: "#0f1220", Mode: Dark},
-		"black": {Canvas: "#000000", Mode: Dark},
-		"green": {Canvas: "#0f1f1a", Mode: Dark},
-		"sand":  {Canvas: "#efe4d6", Mode: Light},
-		"white": {Canvas: "#ffffff", Mode: Light},
-		"grey":  {Canvas: "#f4f5f5", Mode: Light},
+		"navy":  {Dark: Colors{Canvas: "#0f1220"}},
+		"black": {Dark: Colors{Canvas: "#000000"}},
+		"green": {Dark: Colors{Canvas: "#0f1f1a"}},
+		"sand":  {Light: Colors{Canvas: "#efe4d6"}},
+		"white": {Light: Colors{Canvas: "#ffffff"}},
+		"grey":  {Light: Colors{Canvas: "#f4f5f5"}},
+		"both":  {Dark: Colors{Canvas: "#0f1220"}, Light: Colors{Canvas: "#eef0f9"}},
 	} {
 		if got := Check(s); len(got) != 0 {
 			t.Errorf("%s: %v", name, got)
 		}
 	}
 	// The design's own canvases are what the derivation gives the design's own surfaces, to within what the eye can tell.
-	d := Resolve(Spec{Canvas: "#111217", Mode: Dark})[0].Palette
+	d := Resolve(Spec{Dark: Colors{Canvas: "#111217"}})[0].Palette
 	for name, pair := range map[string][2]Color{"panel": {d.Panel, Base(Dark).Panel}, "raise": {d.Raise, Base(Dark).Raise}, "input": {d.Input, Base(Dark).Input}} {
 		near(t, name+" (dark)", Contrast(pair[0], pair[1]), 1, 0.06)
 	}
 }
 
-func TestACanvasOfTheWrongLightnessForItsModeIsReportedAgainstTheCanvas(t *testing.T) {
+func TestACanvasOfTheWrongLightnessForItsModeIsReportedAgainstTheCanvasOfThatMode(t *testing.T) {
 	t.Parallel()
 
-	for name, s := range map[string]Spec{
-		"white in the dark theme": {Canvas: "#ffffff", Mode: Dark},
-		"black in the light one":  {Canvas: "#000000", Mode: Light},
-		"a mid grey":              {Canvas: "#808080", Mode: Dark},
+	for name, tc := range map[string]struct {
+		spec  Spec
+		field string
+		fix   string
+	}{
+		"white in the dark theme": {Spec{Dark: Colors{Canvas: "#ffffff"}}, "Dark.Canvas", "darker colour for Theme.Dark.Canvas"},
+		"black in the light one":  {Spec{Light: Colors{Canvas: "#000000"}}, "Light.Canvas", "lighter colour for Theme.Light.Canvas"},
+		"a mid grey":              {Spec{Dark: Colors{Canvas: "#808080"}}, "Dark.Canvas", "darker colour for Theme.Dark.Canvas"},
 	} {
-		got := Check(s)
+		got := Check(tc.spec)
 		if len(got) == 0 {
 			t.Errorf("%s was let through", name)
 			continue
 		}
-		if got[0].Field != "Canvas" || !strings.Contains(got[0].Fix, "Canvas") {
+		if got[0].Field != tc.field || !strings.Contains(got[0].Fix, tc.fix) {
 			t.Errorf("%s: %+v", name, got[0])
 		}
 	}
-	if got := Check(Spec{Canvas: "#11121780", Mode: Dark}); len(got) == 0 || !strings.Contains(got[0].Detail, "not opaque") {
+	if got := Check(Spec{Dark: Colors{Canvas: "#11121780"}}); len(got) == 0 || !strings.Contains(got[0].Detail, "Theme.Dark.Canvas") || !strings.Contains(got[0].Detail, "not opaque") {
 		t.Errorf("a translucent canvas: %v", got)
 	}
 }
 
-func TestAPinnedModeIsDrawnInThatModeOnly(t *testing.T) {
+// A colour a mode gives wins over the one given for both, in that mode only.
+func TestAModesOwnColourWinsOverTheSharedOneInThatModeOnly(t *testing.T) {
 	t.Parallel()
 
-	if got := Resolve(Spec{Accent: "#1f7a6d"}); len(got) != 2 || got[0].Mode != Dark || got[1].Mode != Light {
-		t.Errorf("an unpinned spec is drawn in both modes: %v", got)
+	s := Spec{Accent: "#1f7a6d", Dark: Colors{Accent: "#4361e8"}}
+	if got := s.For(Dark).Accent; got != "#4361e8" {
+		t.Errorf("dark accent = %s", got)
 	}
-	got := Resolve(Spec{Accent: "#1f7a6d", Canvas: "#0f1220", Mode: Dark})
-	if len(got) != 1 || got[0].Mode != Dark {
-		t.Fatalf("a pinned spec is drawn in its mode: %v", got)
+	if got := s.For(Light).Accent; got != "#1f7a6d" {
+		t.Errorf("light accent = %s", got)
 	}
-	decls := strings.Join(got[0].Decls, "\n")
-	for _, want := range []string{"--canvas: #0f1220;", "--panel: ", "--text: ", "--blue: #1f7a6d;", "--blue-hover: color-mix(in srgb, #1f7a6d 88%, black);"} {
+	res := Resolve(s)
+	if res[0].Mode != Dark || res[1].Mode != Light {
+		t.Fatalf("modes are dark then light: %v %v", res[0].Mode, res[1].Mode)
+	}
+	if !strings.Contains(strings.Join(res[0].Decls, "\n"), "--blue: #4361e8;") || !strings.Contains(strings.Join(res[1].Decls, "\n"), "--blue: #1f7a6d;") {
+		t.Errorf("the declarations do not follow: %v / %v", res[0].Decls, res[1].Decls)
+	}
+}
+
+// A problem names the field that is responsible, as the declaration spells it: the mode's own where it gave the colour.
+func TestAProblemNamesTheFieldThatGaveTheColour(t *testing.T) {
+	t.Parallel()
+
+	shared := Check(Spec{Accent: "#2f9e8f"})
+	if len(shared) == 0 || shared[0].Field != "Accent" {
+		t.Errorf("a shared accent is blamed as Accent: %v", shared)
+	}
+	own := Check(Spec{Accent: "#1f7a6d", Light: Colors{Accent: "#2f9e8f"}})
+	if len(own) == 0 {
+		t.Fatal("a light accent that is too pale was let through")
+	}
+	for _, p := range own {
+		if p.Field != "Light.Accent" || !strings.Contains(p.Detail, "in the light theme") {
+			t.Errorf("blamed %s: %s", p.Field, p.Detail)
+		}
+	}
+}
+
+func TestOnlyTheModesThatSayAnythingHaveADeclaration(t *testing.T) {
+	t.Parallel()
+
+	res := Resolve(Spec{Dark: Colors{Canvas: "#0f1220"}})
+	if len(res[0].Decls) == 0 || len(res[1].Decls) != 0 {
+		t.Errorf("the mode that has a canvas has a stylesheet and the other has none: %d / %d", len(res[0].Decls), len(res[1].Decls))
+	}
+	decls := strings.Join(res[0].Decls, "\n")
+	for _, want := range []string{"--canvas: #0f1220;", "--panel: ", "--text: "} {
 		if !strings.Contains(decls, want) {
 			t.Errorf("no %q in\n%s", want, decls)
 		}
+	}
+	if !(Spec{}).Zero() || (Spec{Light: Colors{Accent: "#1f7a6d"}}).Zero() {
+		t.Error("Zero is the spec that says nothing")
 	}
 }

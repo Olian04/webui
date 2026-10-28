@@ -12,7 +12,7 @@
 | `internal/favicon` | Scale an image to fit a square, with its proportions or padded (stdlib only): the favicons from `Brand.Logo`, and the thumbnails of `webui.Thumbnail`. |
 | `internal/rank`    | How well a search result matches what was typed: the score that orders the results.   |
 | `internal/convert` | List conversions between the declaration, the IR and the response.                    |
-| `internal/theme`   | The colour arithmetic behind `webui.Theme`: parsing, `color-mix` in sRGB, WCAG contrast, the design's palettes in Go (a test keeps them equal to `app.css`), the tokens a `Canvas` and the four colours derive, and the check at `Compile` that they can be read. |
+| `internal/theme`   | The colour arithmetic behind `webui.Theme`: parsing, `color-mix` in sRGB, WCAG contrast, the design's palettes in Go (a test keeps them equal to `app.css`), the tokens a mode's `Canvas` and the four colours derive, and the check at `Compile` that they can be read. |
 | `internal/calendar` | The date arithmetic behind `webui.Calendar`: a month, the weeks of its grid with the weeks that begin on Monday or Sunday, the span they cover, ISO week numbers, and the month as the address spells it. Days are days in UTC. |
 | `internal/assetserve` | Serves files that never change: a content hash in the name, a year's cache, compression, 304. |
 | `internal/editorctx` | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service. |
@@ -45,7 +45,7 @@ The runnable `Example` functions in `pkg/webui` are the documentation's tests, a
 | `docs/design-decisions.md` | Why the API is shaped as it is, and what each decision costs. |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
-design token (the app's `webui.Theme` is the only thing that may override them: the four colours, and in a pinned mode a `Canvas` that the surfaces derive from); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
+design token (the app's `webui.Theme` is the only thing that may override them: the four colours, and for each mode a `Canvas` that its surfaces derive from); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 
