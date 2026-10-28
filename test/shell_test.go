@@ -127,7 +127,7 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	img.Set(1, 1, color.RGBA{R: 255, A: 255})
 	h := webui.App{
 		Brand: webui.Brand{Name: "Acme", Logo: img},
-		Theme: webui.Theme{Accent: "#ff6600"},
+		Theme: webui.Theme{Accent: "#c2410c"},
 	}.MustCompile("/admin")
 
 	page := serve(h, http.MethodGet, "/admin/").Body.String()
@@ -138,7 +138,7 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assetURL(t, h, "logo")
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css"))
-	assert.Contains(t, css.Body.String(), "--blue: #ff6600;")
+	assert.Contains(t, css.Body.String(), "--blue: #c2410c;")
 
 	base := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, base, "@media (prefers-color-scheme: light)")

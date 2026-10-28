@@ -783,8 +783,10 @@
 // it, such as signing out or the documentation, behind a button beside Refresh in the
 // top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
 // address opens in a tab of its own, and a path on this site in the same one. Its
-// Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#2f9e8f" that Compile refuses when it is anything else, and the library derives
-// the rest for light and dark, which follow the viewer's system. A [Nav] Icon is the
+// Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#1f7a6d" that Compile refuses when it is anything else, and the library derives
+// the rest for light and dark, which follow the viewer's system. A Theme may also give Light and Dark, each a [ModeColors], the page's Canvas in that mode, from which the surfaces, borders and
+// text of the mode are derived, and colours that win over the shared ones in that mode: a look of its own in each, with the viewer still choosing between the modes. Compile checks that what a Theme
+// derives can be read, and refuses one that cannot, naming the field and the pair. A [Nav] Icon is the
 // name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
 // itself.
 //

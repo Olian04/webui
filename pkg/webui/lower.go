@@ -110,7 +110,14 @@ func lowerNav(entries map[string]bool, n Nav, path string, dynamic bool) ir.Nav 
 }
 
 func lowerTheme(t Theme) ir.Theme {
-	return ir.Theme{Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical)}
+	return ir.Theme{
+		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
+		Light: lowerModeColors(t.Light), Dark: lowerModeColors(t.Dark),
+	}
+}
+
+func lowerModeColors(m ModeColors) ir.ModeColors {
+	return ir.ModeColors{Canvas: string(m.Canvas), Accent: string(m.Accent), OK: string(m.OK), Warning: string(m.Warning), Critical: string(m.Critical)}
 }
 
 func lowerExternalLinks(items []ExternalLink) []ir.ExternalLink {

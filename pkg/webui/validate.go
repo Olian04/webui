@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/render/assets"
+	"github.com/Olian04/webui/internal/theme"
 )
 
 // validate checks what the type system cannot, and never stops at the first
@@ -94,18 +95,48 @@ var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F
 
 func validateTheme(t Theme) []CompileError {
 	var errs []CompileError
-	for _, f := range []struct {
-		name  string
-		value Color
-	}{{"Accent", t.Accent}, {"OK", t.OK}, {"Warning", t.Warning}, {"Critical", t.Critical}} {
-		if f.value != "" && !hexColor.MatchString(string(f.value)) {
+	bad := false
+	check := func(name string, value Color) {
+		if value != "" && !hexColor.MatchString(string(value)) {
+			bad = true
 			errs = append(errs, CompileError{
-				Detail: fmt.Sprintf("Theme.%s is %q, which is not a hex colour", f.name, string(f.value)),
+				Detail: fmt.Sprintf("Theme.%s is %q, which is not a hex colour", name, string(value)),
 				Fix:    "Write it as #rgb, #rrggbb or #rrggbbaa, such as \"#3d71d9\".",
 			})
 		}
 	}
+	check("Accent", t.Accent)
+	check("OK", t.OK)
+	check("Warning", t.Warning)
+	check("Critical", t.Critical)
+	for _, m := range []struct {
+		name   string
+		colors ModeColors
+	}{{"Light", t.Light}, {"Dark", t.Dark}} {
+		check(m.name+".Canvas", m.colors.Canvas)
+		check(m.name+".Accent", m.colors.Accent)
+		check(m.name+".OK", m.colors.OK)
+		check(m.name+".Warning", m.colors.Warning)
+		check(m.name+".Critical", m.colors.Critical)
+	}
+	if bad {
+		return errs // what is not a colour has no contrast to check
+	}
+	for _, p := range theme.Check(specOf(t)) {
+		errs = append(errs, CompileError{Detail: p.Detail, Fix: p.Fix})
+	}
 	return errs
+}
+
+// specOf is the Theme as internal/theme reads it.
+func specOf(t Theme) theme.Spec {
+	mode := func(m ModeColors) theme.Colors {
+		return theme.Colors{Canvas: string(m.Canvas), Accent: string(m.Accent), OK: string(m.OK), Warning: string(m.Warning), Critical: string(m.Critical)}
+	}
+	return theme.Spec{
+		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
+		Light: mode(t.Light), Dark: mode(t.Dark),
+	}
 }
 
 // validateExternalLinks checks the app's external links: every one has a label and an

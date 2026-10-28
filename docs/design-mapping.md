@@ -125,7 +125,9 @@ leads the top bar and the name is the first breadcrumb.
 struct of static fields, one for each thing an app may restyle: `Accent`
 (interactive: primary buttons, links, the active entry, focus), and `OK`,
 `Warning` and `Critical` (the semantics a badge or a message carries). Each is a
-hex colour, checked at `Compile`.
+hex colour, checked at `Compile`. They are the colours of both modes. `Light` and `Dark` are what the app
+gives one mode alone, each a `ModeColors`: a `Canvas`, the page's background in that mode, and an `Accent`, `OK`,
+`Warning` or `Critical` that wins over the shared one in that mode.
 
 The design underneath is still tokens, and nothing in any component reads a
 literal value, but the app does not name them. It names a colour, and the
@@ -135,10 +137,16 @@ text tint, for a status colour its text tint and the faint background and border
 a badge, and for `Critical` also the solid fill of a destructive button. Dark lightens and light deepens,
 so one colour is right in both.
 
-Surfaces and text are not themeable on purpose. They are what makes light and
-dark differ, and light or dark is the viewer's choice, not the app's; a single
-colour cannot be right in both. A field left empty keeps the design's colour, so
-a zero `Theme` serves no `theme.css` at all.
+The surfaces and the text are what makes light and dark differ, and light or dark is the viewer's
+choice, not the app's, so a single colour cannot be right in both. An app that wants to say what they are says it for the mode it
+is for: `Dark.Canvas` and `Light.Canvas`, either or both, and the viewer still chooses between the modes. From a canvas the panel, the raised
+surface, the input, the borders, the hover and the text of that mode are derived (`internal/theme`), as numbers and not as `color-mix`, so that the check that follows is made on what the browser draws (a test compares
+them to a browser's own arithmetic). A mode with no canvas keeps the design's own surfaces.
+
+`Compile` checks that what it derived can be read, in each mode: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
+and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The library ships no themes of its own besides the design's light and dark.
+
+A field left empty keeps the design's colour, so a zero `Theme` serves no `theme.css` at all.
 
 ### `Page.Path`
 

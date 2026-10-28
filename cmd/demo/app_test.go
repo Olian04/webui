@@ -80,14 +80,19 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
 
 	a := app
-	a.Theme = themeFor("#2f9e8f")
+	a.Theme = themeFor("#1f7a6d")
 	themed, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #2f9e8f;")
+	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #1f7a6d;")
 	assert.Equal(t, linked(t, h, "theme.css"), "") // none by default
 
 	// A colour cannot break out of its declaration: that is a Compile error.
 	a.Theme = themeFor("red; } body { display: none")
+	_, err = a.Compile("/admin")
+	assert.Error(t, err)
+
+	// A colour that cannot carry a white label is refused too, and not drawn as a button whose label is out of sight.
+	a.Theme = themeFor("#a7f3d0")
 	_, err = a.Compile("/admin")
 	assert.Error(t, err)
 }

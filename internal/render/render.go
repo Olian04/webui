@@ -23,6 +23,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
 	c "github.com/Olian04/webui/internal/render/templates/components"
+	"github.com/Olian04/webui/internal/theme"
 )
 
 // Crumb is one breadcrumb. The last has no link.
@@ -338,10 +339,10 @@ func Forbidden(reason string) templ.Component {
 	return c.StatePage(c.StatePageProps{Icon: c.IconLock, Title: "Not permitted", Desc: reason})
 }
 
-// themeCSS renders the app's colours as overrides of the design's tokens, for
-// each of light and dark. A hover colour, a readable text tint and a badge's
-// faint background and border are derived from the one colour, per mode, with
-// color-mix, so the app names four colours and the design stays coherent.
+// themeCSS renders the app's theme as overrides of the design's tokens. A hover colour, a readable text
+// tint and a badge's faint background and border are derived from the one colour, per mode, with
+// color-mix, so the app names a few colours and the design stays coherent; the surfaces, the borders and
+// the text of a mode are derived from its Canvas the same way (internal/theme is where, and what is checked at Compile).
 //
 // The selectors are as specific as the stylesheet's theme blocks and come after
 // them: a stored choice (data-theme) wins, then the viewer's system preference.
@@ -352,7 +353,8 @@ func themeCSS(t ir.Theme) []byte {
 			fmt.Fprintf(&b, "%s {\n  %s\n}\n", selector, strings.Join(decls, "\n  "))
 		}
 	}
-	dark, light := themeDecls(t, true), themeDecls(t, false)
+	res := theme.Resolve(specOf(t))
+	dark, light := res[0].Decls, res[1].Decls
 	rule("html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark']", dark)
 	rule("html:root:root[data-theme='light']", light)
 	if len(light) > 0 {
@@ -363,42 +365,12 @@ func themeCSS(t ir.Theme) []byte {
 	return []byte(b.String())
 }
 
-// themeDecls are the token declarations for one mode. In dark a status colour
-// is lightened to read on a dark surface; in light it is deepened to read on a
-// light one.
-func themeDecls(t ir.Theme, dark bool) []string {
-	var out []string
-	mix := func(c string, pct int, with string) string {
-		return fmt.Sprintf("color-mix(in srgb, %s %d%%, %s)", c, pct, with)
+// specOf is the app's theme as internal/theme reads it.
+func specOf(t ir.Theme) theme.Spec {
+	mode := func(m ir.ModeColors) theme.Colors {
+		return theme.Colors{Canvas: m.Canvas, Accent: m.Accent, OK: m.OK, Warning: m.Warning, Critical: m.Critical}
 	}
-	if c := t.Accent; c != "" {
-		// The hover is deeper in both modes: a lighter fill under a white label
-		// loses the contrast it needs.
-		if dark {
-			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 88, "black")+";", "--blue-text: "+mix(c, 62, "white")+";")
-		} else {
-			out = append(out, "--blue: "+c+";", "--blue-hover: "+mix(c, 86, "black")+";", "--blue-text: "+mix(c, 80, "black")+";")
-		}
-	}
-	for _, s := range []struct{ name, c string }{{"green", t.OK}, {"orange", t.Warning}, {"red", t.Critical}} {
-		if s.c == "" {
-			continue
-		}
-		text := mix(s.c, 85, "black")
-		if dark {
-			text = mix(s.c, 60, "white")
-		}
-		out = append(out,
-			"--"+s.name+": "+text+";",
-			"--"+s.name+"-bg: "+mix(s.c, 14, "transparent")+";",
-			"--"+s.name+"-bd: "+mix(s.c, 30, "transparent")+";")
-		if s.name == "red" {
-			// The colour as given is the fill of a destructive button, which carries a
-			// white label; the text tint above is for text on the page.
-			out = append(out, "--red-solid: "+s.c+";", "--red-solid-hover: "+mix(s.c, 88, "black")+";")
-		}
-	}
-	return out
+	return theme.Spec{Accent: t.Accent, OK: t.OK, Warning: t.Warning, Critical: t.Critical, Light: mode(t.Light), Dark: mode(t.Dark)}
 }
 
 // brand is the app's name as the sidebar shows it, "Home" when it has none, so
@@ -512,6 +484,20 @@ func bySection[T any](items []T, section func(T) string) []group[T] {
 const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
+
+// earlyStyle is the page's colours before the stylesheet: each theme's canvas, which is the app's own where it has chosen
+// one. An app that has chosen none has the design's, which are earlyCSS.
+func (r *Renderer) earlyStyle() string {
+	t := r.app.Theme
+	if t.Dark.Canvas == "" && t.Light.Canvas == "" {
+		return earlyCSS
+	}
+	res := theme.Resolve(specOf(t))
+	dark, light := res[0].Palette.Canvas.Hex(), res[1].Palette.Canvas.Hex()
+	return fmt.Sprintf("html{background:%s;color-scheme:dark}", dark) +
+		fmt.Sprintf("html[data-theme='light']{background:%s;color-scheme:light}", light) +
+		fmt.Sprintf("@media (prefers-color-scheme:light){html:not([data-theme]){background:%s;color-scheme:light}}", light)
+}
 
 // linkEntries are the external links as the component draws them, grouped by Section
 // like the sidebar: the entries with no Section first, then each section in the order it

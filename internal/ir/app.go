@@ -58,7 +58,14 @@ type Favicon struct {
 }
 
 // Theme is resolved visual settings: the colours the app chose, as hex, or empty
-// for the design's own. The renderer turns them into CSS.
+// for the design's own. Light and Dark override them in one mode, and carry the
+// canvas that the surfaces of that mode are derived from. The renderer turns them into CSS.
 type Theme struct {
 	Accent, OK, Warning, Critical string
+	Light, Dark                   ModeColors
+}
+
+// ModeColors are an app's colours for one mode, empty where it has none.
+type ModeColors struct {
+	Canvas, Accent, OK, Warning, Critical string
 }

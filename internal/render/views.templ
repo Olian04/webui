@@ -40,7 +40,7 @@ templ (r *Renderer) Document(d Doc) {
 // prefs.js sets before first paint.
 templ (r *Renderer) early() {
 	<meta name="color-scheme" content="dark light"/>
-	@templ.Raw("<style>" + earlyCSS + "</style>")
+	@templ.Raw("<style>" + r.earlyStyle() + "</style>")
 }
 
 // head carries the one script that must run before first paint, so the stored
