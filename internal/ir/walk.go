@@ -35,6 +35,17 @@ func Markdowns(n Node) []*Markdown {
 	return out
 }
 
+// Itemses is every list of items under n, in the order the page shows them.
+func Itemses(n Node) []*Items {
+	var out []*Items
+	Walk(n, func(n Node) {
+		if i, ok := n.(*Items); ok {
+			out = append(out, i)
+		}
+	})
+	return out
+}
+
 // Editors is every form under n that is a code editor, in the order the page shows them.
 func Editors(n Node) []*Form {
 	var out []*Form

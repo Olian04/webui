@@ -229,6 +229,18 @@ func trusted(dest string, origins []string) (string, bool) {
 	return clean.String(), true
 }
 
+// Picture is the address a picture may be drawn from, written out again, and whether it may be drawn at all: a path on this site, which the application
+// serves, or an https address from one of the origins that were trusted. It is the rule that decides what a picture of text from outside may do on a page, so a leaf that
+// draws pictures from the data of a model asks it here and does not make a rule of its own: anything else, a scheme that is not https, another site's path
+// written with two slashes, an address with a user, or a character that a browser reads differently from a parser, is not drawn.
+func Picture(dest string, origins []string) (string, bool) {
+	dest = strings.TrimSpace(dest)
+	if local(dest) {
+		return dest, true
+	}
+	return trusted(dest, origins)
+}
+
 // hasUnsafe is whether an address holds what a browser reads differently from a parser: a
 // backslash, which it takes for a slash, whitespace and control characters, which it
 // strips or splits on.

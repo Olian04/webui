@@ -4,305 +4,433 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
-	"net/url"
-	"regexp"
-	"strconv"
+	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
 
-type asked struct {
-	after string
-	limit int
+// story is one thing of a feed: a headline, where it came from, how it did, and a picture.
+type story struct {
+	ID     string
+	Title  string
+	Age    string
+	Source string
+	Points int
+	Kind   string
+	Image  string
+	Link   string
 }
 
-// feedApp is a table of ten rows handed out four at a time by a cursor, which is the
-// index of the first row of the page, and the cursors it was asked for.
-func feedApp(seen *[]asked, act *[]string) http.Handler {
-	tbl := webui.Table[Device]{
-		Title:    "Objects",
-		PageSize: 4,
-		Feed: func(_ context.Context, after string, limit int) ([]Device, string, webui.Loaded) {
-			*seen = append(*seen, asked{after, limit})
-			start, _ := strconv.Atoi(after)
-			var rows []Device
-			for i := start; i < min(start+limit, 10); i++ {
-				rows = append(rows, Device{Id: fmt.Sprintf("o%d", i)})
-			}
-			if start+limit >= 10 {
-				return rows, "", webui.Ready()
-			}
-			return rows, strconv.Itoa(start + limit), webui.Ready()
+type storyArgs struct{ ID string }
+
+var (
+	pTitle  = webui.String[story]{Label: "Title", Load: func(p story) string { return p.Title }}
+	pLink   = func(p story) string { return p.Link }
+	pAge    = webui.String[story]{Label: "Age", Load: func(p story) string { return p.Age }}
+	pSource = webui.String[story]{Label: "Source", Load: func(p story) string { return p.Source }}
+	pPoints = webui.Int[story]{Label: "Points", Load: func(p story) int { return p.Points }, Format: func(n int) string { return fmt.Sprintf("%d points", n) }}
+	pKind   = webui.Select[story]{Label: "Kind", Load: func(p story) []string { return []string{p.Kind} }, Options: []webui.Option{
+		{Value: "live", Label: "Live", Tone: webui.ToneCritical}, {Value: "news", Label: "News"},
+	}}
+)
+
+var stories = []story{
+	{ID: "a", Title: "Show HN: Wealthfolio", Age: "6h", Source: "wealthfolio.app", Points: 389, Kind: "news", Link: "https://wealthfolio.app/"},
+	{ID: "b", Title: "Nginx has moved to GitHub", Age: "3h", Source: "mailman.nginx.org", Points: 100, Kind: "news", Link: "https://mailman.nginx.org/"},
+	{ID: "c", Title: "Infinity, realistic AI characters", Age: "2h", Source: "", Points: 71, Kind: "live", Link: "https://example.com/c"},
+	{ID: "d", Title: "A thermonuclear secondary", Age: "11h", Source: "blog.example", Points: 482, Kind: "news", Link: "https://example.com/d"},
+	{ID: "e", Title: "2M users but no money", Age: "12h", Source: "exercism.org", Points: 217, Kind: "news", Link: "https://example.com/e"},
+}
+
+// feedLoader serves the stories, and notes how many it was asked for.
+type feedLoader struct {
+	mu     sync.Mutex
+	limits []int
+}
+
+func (f *feedLoader) load(_ context.Context, limit int) ([]story, webui.Loaded) {
+	f.mu.Lock()
+	f.limits = append(f.limits, limit)
+	f.mu.Unlock()
+	return stories[:min(limit, len(stories))], webui.Ready()
+}
+
+func (f *feedLoader) asked() []int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]int(nil), f.limits...)
+}
+
+// feedPages is the page a feed is on, and the page its items open, which has an argument.
+func feedPages(body webui.PageBody, guard func(context.Context, storyArgs) error) (http.Handler, webui.Page[storyArgs]) {
+	detail := webui.Page[storyArgs]{Path: "/story/{id}", Guard: guard, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/e", Body: body}
+	return webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin"), detail
+}
+
+func openStory(detail webui.Page[storyArgs]) webui.Link[story, storyArgs] {
+	return webui.Link[story, storyArgs]{Page: detail, Args: func(_ context.Context, p story) storyArgs { return storyArgs{ID: p.ID} }}
+}
+
+func TestAFeedIsAColumnOfItemsEachWithAHeadlineAndALineOfFacts(t *testing.T) {
+	t.Parallel()
+
+	src := &feedLoader{}
+	h := editorApp(webui.Feed[story]{
+		Title: "Latest", Load: src.load, PageSize: 3,
+		Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pPoints, pSource},
+	})
+	rec := serve(h, http.MethodGet, "/admin/e")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	body := rec.Body.String()
+
+	assert.Contains(t, body, `<h2 class="panel-title">Latest</h2>`)
+	assert.Contains(t, body, `<ul class="feed">`)
+	assert.Equal(t, strings.Count(body, `<li class="item">`), 3) // PageSize, and not the one more that was asked for to know there is more
+	assert.Contains(t, body, `<span class="item-title">`)
+	assert.Contains(t, body, "Show HN: Wealthfolio")
+	assert.True(t, strings.Index(body, "Wealthfolio") < strings.Index(body, "Nginx") && strings.Index(body, "Nginx") < strings.Index(body, "Infinity")) // in the order given
+	assert.False(t, strings.Contains(body, "thermonuclear"))
+
+	// The facts are in order, with a dot between them and not after the last; a fact with no value (the third item has no source) is left out.
+	first := body[strings.Index(body, `<div class="item-meta">`):]
+	first = first[:strings.Index(first, "</div></div></li>")]
+	assert.True(t, strings.Index(first, "<span>6h</span>") < strings.Index(first, "<span>389 points</span>") && strings.Index(first, "<span>389 points</span>") < strings.Index(first, "<span>wealthfolio.app</span>"))
+	assert.Equal(t, strings.Count(first, `class="item-sep"`), 2) // between three facts
+	third := body[strings.Index(body, "Infinity"):]
+	third = third[:strings.Index(third, "</li>")]
+	assert.Equal(t, strings.Count(third, `class="item-sep"`), 1)
+	assert.False(t, strings.Contains(third, "dash"))
+	assert.False(t, strings.Contains(body, "<script>"))
+}
+
+func TestASourceIsAskedForOneMoreThanIsShownAndShowMoreIsARealLinkThatAsksForMore(t *testing.T) {
+	t.Parallel()
+
+	src := &feedLoader{}
+	h := editorApp(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle})
+
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.DeepEqual(t, src.asked(), []int{3})
+	assert.Equal(t, strings.Count(body, `<li class="item">`), 2)
+	assert.Contains(t, body, `<div class="pager-info">2 shown</div>`)
+	assert.Contains(t, body, `href="/admin/e?latest.limit=4"`) // the same page with more, in the address, so a copied link shows the same
+	assert.Contains(t, body, `data-in-place`)                  // with script it replaces the list, and without it is a navigation
+	assert.Contains(t, body, `Show more`)
+
+	// Following it shows four, and asks for five.
+	body = serve(h, http.MethodGet, "/admin/e?latest.limit=4").Body.String()
+	assert.DeepEqual(t, src.asked(), []int{3, 5})
+	assert.Equal(t, strings.Count(body, `<li class="item">`), 4)
+	assert.Contains(t, body, `href="/admin/e?latest.limit=6"`)
+
+	// The fifth is the last there is: the source gave no more than was asked for, so there is nothing more and no link.
+	body = serve(h, http.MethodGet, "/admin/e?latest.limit=5").Body.String()
+	assert.Equal(t, strings.Count(body, `<li class="item">`), 5)
+	assert.False(t, strings.Contains(body, "Show more"))
+	assert.False(t, strings.Contains(body, "pager-info"))
+}
+
+// The address says how many, and a hand-edited one cannot ask a source for more than a list may show, or for fewer than it shows at first.
+func TestTheLimitInTheAddressIsHeldToWhatAListMayShow(t *testing.T) {
+	t.Parallel()
+
+	src := &feedLoader{}
+	h := editorApp(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle})
+	for _, raw := range []string{"999999", "-5", "0", "x", ""} {
+		serve(h, http.MethodGet, "/admin/e?latest.limit="+raw)
+	}
+	assert.DeepEqual(t, src.asked(), []int{201, 3, 3, 3, 3})
+}
+
+func TestAFeedIsNamedInTheAddressByItsTitleAndTwoWithNoTitleAreTold(t *testing.T) {
+	t.Parallel()
+
+	src := &feedLoader{}
+	h := editorApp(webui.Stack{
+		webui.Feed[story]{Load: src.load, PageSize: 1, Headline: pTitle},
+		webui.Feed[story]{Load: src.load, PageSize: 1, Headline: pTitle},
+		webui.Cards[story]{Load: src.load, PageSize: 1, Headline: pTitle},
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `href="/admin/e?feed.limit=2"`)
+	assert.Contains(t, body, `href="/admin/e?feed-2.limit=2"`)
+	assert.Contains(t, body, `href="/admin/e?cards.limit=2"`)
+
+	// The state of one is not another's.
+	asked := len(src.asked())
+	serve(h, http.MethodGet, "/admin/e?feed-2.limit=3")
+	got := src.asked()[asked:]
+	slices.Sort(got)                         // the panels of a page load at the same time, so the order they asked in is not fixed
+	assert.DeepEqual(t, got, []int{2, 2, 4}) // the first feed and the cards at one past what they show, and the second feed at three, which is four
+}
+
+func TestAFeedRefreshesAsALeafOfItsOwn(t *testing.T) {
+	t.Parallel()
+
+	src := &feedLoader{}
+	h := editorApp(webui.Stack{
+		webui.Feed[story]{Title: "First", Load: src.load, PageSize: 1, Headline: pTitle},
+		webui.Feed[story]{Title: "Second", Load: src.load, PageSize: 2, Headline: pTitle},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/admin/e?second.limit=3", nil)
+	req.Header.Set("X-Webui-Leaf", "p.1")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	assert.Equal(t, rec.Code, http.StatusOK)
+	body := rec.Body.String()
+	assert.Equal(t, strings.Count(body, `<li class="item">`), 3)
+	assert.False(t, strings.Contains(body, "<html"))
+	assert.False(t, strings.Contains(body, ">First<"))
+	assert.Contains(t, body, `data-leaf="p.1"`)
+}
+
+func TestAFailingFeedLoadFailsThePanelAndNotThePage(t *testing.T) {
+	t.Parallel()
+
+	h := editorApp(webui.Feed[story]{
+		Title: "Latest", Headline: pTitle,
+		Load: func(context.Context, int) ([]story, webui.Loaded) {
+			return nil, webui.Failed(errors.New("store secret-bucket is gone"))
 		},
-		Key:     func(d Device) string { return d.Id },
-		Columns: []webui.Accessor[Device]{formID},
-		Actions: []webui.Action[Device]{{Label: "Open", Run: func(_ context.Context, d Device) (webui.Outcome, error) {
-			*act = append(*act, d.Id)
-			return webui.Success("done"), nil
-		}}},
-	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	})
+	rec := serve(h, http.MethodGet, "/admin/e")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Contains(t, rec.Body.String(), "Could not load")
+	assert.False(t, strings.Contains(rec.Body.String(), "secret-bucket"))
+	assert.False(t, strings.Contains(rec.Body.String(), `class="feed"`))
 }
 
-// pagerHref is the address a footer button of a page leads to, "" when it is disabled.
-func pagerHref(body, label string) string {
-	if strings.Contains(body, `disabled>`+label+`</button>`) {
-		return ""
-	}
-	m := regexp.MustCompile(`href="([^"]*)"[^>]*>` + label + `</a>`).FindStringSubmatch(body)
-	if m == nil {
-		return ""
-	}
-	return html.UnescapeString(m[1])
-}
-
-func TestAFeedIsHandedACursorAndAPageSizeAndPagesByNextPreviousAndFirstPage(t *testing.T) {
+func TestAFeedWithNoItemsSaysSoAndHasNoFoot(t *testing.T) {
 	t.Parallel()
 
-	var seen []asked
-	var act []string
-	h := feedApp(&seen, &act)
-
-	first := serve(h, http.MethodGet, "/f").Body.String()
-	assert.DeepEqual(t, seen[0], asked{"", 4})
-	assert.Contains(t, first, ">o0<")
-	assert.Contains(t, first, ">o3<")
-	assert.False(t, strings.Contains(first, ">o4<"))
-	assert.Contains(t, first, "Showing rows 1–4")       // which rows, not only how many
-	assert.Equal(t, pagerHref(first, "First page"), "") // on it already
-	assert.Equal(t, pagerHref(first, "Previous"), "")   // nothing before it
-
-	// Next carries the cursor, where the next page starts, and the page it leaves.
-	toSecond := pagerHref(first, "Next")
-	assert.Equal(t, toSecond, "/f?objects.after=4&objects.back=1%3A&objects.row=5")
-	second := serve(h, http.MethodGet, toSecond).Body.String()
-	assert.DeepEqual(t, seen[1], asked{"4", 4}) // the source is handed the cursor and the size, and no more
-	assert.Contains(t, second, ">o4<")
-	assert.Contains(t, second, "Showing rows 5–8")
-	assert.Equal(t, pagerHref(second, "First page"), "/f")
-	assert.Equal(t, pagerHref(second, "Previous"), "/f") // back to the first page, which has no cursor
-
-	third := serve(h, http.MethodGet, pagerHref(second, "Next")).Body.String()
-	assert.Contains(t, third, ">o9<")
-	assert.Contains(t, third, "Showing rows 9–10")
-	assert.Equal(t, pagerHref(third, "Next"), "") // no cursor came back: the last page
-
-	// Previous goes to the page before, and from there on again, as far back as it goes.
-	backToSecond := pagerHref(third, "Previous")
-	assert.Equal(t, backToSecond, toSecond)
-	assert.Contains(t, serve(h, http.MethodGet, backToSecond).Body.String(), "Showing rows 5–8")
+	h := editorApp(webui.Feed[story]{
+		Title: "Latest", Headline: pTitle,
+		Load: func(context.Context, int) ([]story, webui.Loaded) { return nil, webui.Ready() },
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, "Nothing here yet")
+	assert.False(t, strings.Contains(body, `<ul class="feed">`))
+	assert.False(t, strings.Contains(body, "Show more"))
 }
 
-func TestAFeedAddressWithNoRowOrTrailStillPagesAndSaysHowManyRows(t *testing.T) {
+// A feed of something that is still going asks to be asked again, as any panel does.
+func TestAFeedThatIsNotFinalIsAskedForAgain(t *testing.T) {
 	t.Parallel()
 
-	var seen []asked
-	var act []string
-	h := feedApp(&seen, &act)
-
-	// An address made by hand has a cursor and nothing else: which row it starts at and
-	// the way back are not known.
-	body := serve(h, http.MethodGet, "/f?objects.after=4").Body.String()
-	assert.Contains(t, body, "4 rows")
-	assert.Equal(t, pagerHref(body, "Previous"), "")
-	assert.Equal(t, pagerHref(body, "First page"), "/f")
-	assert.Equal(t, pagerHref(body, "Next"), "/f?objects.after=8&objects.back=0%3A4")
-	// Garbage in the trail or the row is no trail and no row.
-	junk := serve(h, http.MethodGet, "/f?objects.after=4&objects.row=-3&objects.back=x&objects.back=NaN:y").Body.String()
-	assert.Contains(t, junk, "4 rows")
-	assert.Equal(t, pagerHref(junk, "Previous"), "")
-}
-
-func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testing.T) {
-	t.Parallel()
-
-	long := strings.Repeat("c", 1000)
-	tbl := webui.Table[Device]{
-		Title:    "Objects",
-		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
-			n := 0
-			if after != "" {
-				n, _ = strconv.Atoi(after[:3])
-			}
-			return []Device{{Id: "x"}}, fmt.Sprintf("%03d", n+1) + long, webui.Ready()
+	h := editorApp(webui.Feed[story]{
+		Title: "Latest", Headline: pTitle,
+		Load: func(context.Context, int) ([]story, webui.Loaded) {
+			return stories[:1], webui.Ready().RefreshAfter(5 * 1e9)
 		},
-		Columns: []webui.Accessor[Device]{formID},
-	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
-
-	at := "/f"
-	var hops int
-	for range 12 {
-		next := pagerHref(serve(h, http.MethodGet, at).Body.String(), "Next")
-		assert.True(t, len(next) < 8000) // an address that browsers and servers accept
-		at = next
-		hops++
-	}
-	body := serve(h, http.MethodGet, at).Body.String()
-	assert.True(t, pagerHref(body, "Previous") != "")         // it still goes back
-	assert.True(t, pagerHref(body, "First page") != "")       // and the start is always there
-	assert.True(t, strings.Count(at, "objects.back=") < hops) // but not all the way
+	})
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-refresh-after="5"`)
 }
 
-func TestAFeedHasSortLinksButNoFiltersAndIgnoresTheFilterAndOffsetParameters(t *testing.T) {
+// ----------------------------------------------------------- headline and links
+
+func TestAHeadlineWithALinkLeadsToAnotherSiteAndOneWithAnOpenLeadsInTheApp(t *testing.T) {
 	t.Parallel()
 
-	var seen []asked
-	var act []string
-	h := feedApp(&seen, &act)
-	body := serve(h, http.MethodGet, "/f?objects.filter.id=zzz&objects.offset=3").Body.String()
+	src := &feedLoader{}
+	_, detail := feedPages(webui.Stack{}, nil)
 
-	assert.Contains(t, body, `objects.sort=id`) // the column can be sorted
-	assert.False(t, strings.Contains(body, `class="filter`))
-	assert.Contains(t, body, `aria-sort="none"`) // and is not, until asked
-	assert.DeepEqual(t, seen[0], asked{"", 4})   // the first page, whatever was asked of it
-	assert.Contains(t, body, ">o0<")
+	external, _ := feedPages(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Link: pLink}, nil)
+	body := serve(external, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `<a class="item-link ext" href="https://wealthfolio.app/" target="_blank" rel="noopener noreferrer">Show HN: Wealthfolio`)
+	assert.Contains(t, body, "(opens in a new tab)") // the mark that says so, for a reader
+
+	inApp, _ := feedPages(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Open: openStory(detail)}, nil)
+	body = serve(inApp, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `<a class="item-link" href="/admin/story/a">Show HN: Wealthfolio</a>`)
+	assert.False(t, strings.Contains(body, `target="_blank"`))
 }
 
-func TestAFeedIsSortedWithinThePageInHandAndTheSourceIsNotToldOfIt(t *testing.T) {
+// An item that leads to a page that refuses the visitor is its headline and nothing more: a link they cannot follow is not offered.
+func TestAnItemWhosePageRefusesTheVisitorIsNotALink(t *testing.T) {
 	t.Parallel()
 
-	var seen []asked
-	var act []string
-	h := feedApp(&seen, &act)
-
-	at := func(body string, ids ...string) {
-		t.Helper()
-		last := -1
-		for _, id := range ids {
-			i := strings.Index(body, ">"+id+"<")
-			assert.True(t, i > last)
-			last = i
+	src := &feedLoader{}
+	_, detail := feedPages(webui.Stack{}, nil)
+	refuses := func(_ context.Context, a storyArgs) error {
+		if a.ID == "b" {
+			return errors.New("not for you")
 		}
+		return nil
 	}
-
-	first := serve(h, http.MethodGet, "/f?objects.sort=id&objects.desc=true").Body.String()
-	at(first, "o3", "o2", "o1", "o0") // the page the source handed out, in the order asked
-	assert.Contains(t, first, `aria-sort="descending"`)
-	assert.Contains(t, first, "sorted within this page")
-	assert.DeepEqual(t, seen[len(seen)-1], asked{"", 4}) // the source is handed the cursor and the size
-
-	// The next page continues the sequence, and is ordered within itself, with the sort kept.
-	next := pagerHref(first, "Next")
-	assert.Contains(t, next, "objects.sort=id")
-	assert.Contains(t, next, "objects.desc=true")
-	second := serve(h, http.MethodGet, next).Body.String()
-	at(second, "o7", "o6", "o5", "o4")
-	assert.DeepEqual(t, seen[len(seen)-1], asked{"4", 4})
-
-	// Sorting a page stays on it: the cursor is in the link that sorts, and the other way is a click away.
-	asc := regexp.MustCompile(`<th[^>]*><span class="th-in"><a href="([^"]*)"`).FindStringSubmatch(second)
-	assert.NotNil(t, asc)
-	assert.Contains(t, html.UnescapeString(asc[1]), "objects.after=4")
-	ascending := serve(h, http.MethodGet, html.UnescapeString(asc[1])).Body.String()
-	at(ascending, "o4", "o5", "o6", "o7")
-
-	// A column the table has not got is no sort.
-	plain := serve(h, http.MethodGet, "/f?objects.sort=nope").Body.String()
-	at(plain, "o0", "o1", "o2", "o3")
-	assert.False(t, strings.Contains(plain, "sorted within this page"))
+	h, _ := feedPages(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle, Open: openStory(detail)}, refuses)
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `href="/admin/story/a`)
+	assert.False(t, strings.Contains(body, `href="/admin/story/b`))
+	assert.Contains(t, body, "Nginx has moved to GitHub") // still there, as text
 }
 
-func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) {
+func TestABadgeIsDrawnBesideTheHeadlineAsItIsInACell(t *testing.T) {
 	t.Parallel()
 
-	var got []string
-	tbl := webui.Table[Device]{
-		Title: "Objects",
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
-			got = append(got, after)
-			return []Device{{Id: "x"}}, "a b&c=d/é", webui.Ready()
-		},
-		Columns: []webui.Accessor[Device]{formID},
-	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
-
-	body := serve(h, http.MethodGet, "/f").Body.String()
-	assert.Contains(t, body, `href="/f?objects.after=a+b%26c%3Dd%2F%C3%A9&amp;objects.back=1%3A&amp;objects.row=2" data-in-place>Next`)
-	serve(h, http.MethodGet, "/f?objects.after="+url.QueryEscape("a b&c=d/é"))
-	assert.Equal(t, got[len(got)-1], "a b&c=d/é") // it comes back as it went
-
-	serve(h, http.MethodGet, "/f?objects.after="+strings.Repeat("x", 3000))
-	assert.Equal(t, got[len(got)-1], "") // too long to be one of ours
+	src := &feedLoader{}
+	h := editorApp(webui.Feed[story]{Title: "Latest", Load: src.load, PageSize: 3, Headline: pTitle, Badge: pKind})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, strings.Count(body, `class="badge badge-bad"`), 1) // the live one, which says Live in words and not only in red
+	assert.Contains(t, body, "Live")
+	assert.Equal(t, strings.Count(body, `class="item-head"`), 3)
 }
 
-func TestARowActionOfAFeedActsOnTheRowOfThePageItWasClickedOn(t *testing.T) {
+// ------------------------------------------------------------------- pictures
+
+func TestAPictureIsDrawnFromThisSiteOrATrustedOriginAndFromNowhereElse(t *testing.T) {
 	t.Parallel()
 
-	var seen []asked
-	var act []string
-	h := feedApp(&seen, &act)
+	for name, tc := range map[string]struct {
+		image string
+		drawn string // what the picture's address is, or "" when it is not drawn
+	}{
+		"this site":              {"/uploads/a.png", "/uploads/a.png"},
+		"a trusted origin":       {"https://cdn.example.com/a.png?w=40", "https://cdn.example.com/a.png?w=40"},
+		"a trusted origin, case": {"https://CDN.example.com/a.png", "https://cdn.example.com/a.png"},
+		"another origin":         {"https://evil.example/a.png", ""},
+		"not https":              {"http://cdn.example.com/a.png", ""},
+		"another site's path":    {"//evil.example/a.png", ""},
+		"a script":               {"javascript:alert(1)", ""},
+		"a data address":         {"data:image/svg+xml;base64,PHN2Zz4=", ""},
+		"a backslash":            {`/\evil.example/a.png`, ""},
+		"a user":                 {"https://u:p@cdn.example.com/a.png", ""},
+		"a space":                {"/a b.png", ""},
+		"nothing":                {"", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 
-	// The page at cursor 4 holds o4 to o7; the form posts to that address.
-	rec := post(h, "/f?objects.after=4", formValues("_act", "row:0:o5"))
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.DeepEqual(t, act, []string{"o5"})
-	assert.Equal(t, post(h, "/f?objects.after=4", formValues("_act", "row:0:o1")).Code, http.StatusSeeOther) // not there: refused with a message
-	assert.DeepEqual(t, act, []string{"o5"})
+			image := tc.image
+			h := editorApp(webui.Feed[story]{
+				Title: "Latest", Headline: pTitle, TrustedOrigins: []string{"https://cdn.example.com"},
+				Load: func(context.Context, int) ([]story, webui.Loaded) {
+					return []story{{ID: "a", Title: "X"}}, webui.Ready()
+				},
+				Image: func(story) string { return image },
+			})
+			body := serve(h, http.MethodGet, "/admin/e").Body.String()
+			if tc.drawn == "" {
+				assert.False(t, strings.Contains(body, "<img"))
+				assert.False(t, strings.Contains(body, "evil.example"))
+				assert.Contains(t, body, ">X<") // the item is still there, with no picture, as one that has none
+				return
+			}
+			assert.Contains(t, body, `<img class="item-img" src="`+tc.drawn+`" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`)
+		})
+	}
 }
 
-func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
+func TestThePolicyOfAPageThatTrustsAnOriginForPicturesHasItAndNoOtherPageDoes(t *testing.T) {
 	t.Parallel()
 
-	tbl := webui.Table[Device]{
-		Feed: func(context.Context, string, int) ([]Device, string, webui.Loaded) {
-			return nil, "", webui.Failed(errors.New("bucket secret-name is gone"))
-		},
-		Columns: []webui.Accessor[Device]{formID},
-	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
-	body := serve(h, http.MethodGet, "/f").Body.String()
-	assert.Contains(t, body, "Could not load")
-	assert.False(t, strings.Contains(body, "secret-name"))
+	src := &feedLoader{}
+	with := webui.Page[webui.NoArgs]{Path: "/with", Body: webui.Stack{
+		webui.Feed[story]{Title: "A", Load: src.load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://a.example", "https://shared.example"}},
+		webui.Cards[story]{Title: "B", Load: src.load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://shared.example", "https://B.example:443"}},
+	}}
+	without := webui.Page[webui.NoArgs]{Path: "/without", Body: webui.Feed[story]{Title: "C", Load: src.load, Headline: pTitle}}
+	h := webui.App{Pages: webui.Pages{with, without}}.MustCompile("/admin")
+
+	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example", 1)
+	assert.Equal(t, policyOf(h, "/admin/with"), want)
+	assert.Equal(t, policyOf(h, "/admin/without"), basePolicy)
 }
 
-func TestATableTakesExactlyOneSource(t *testing.T) {
+// ---------------------------------------------------------------------- cards
+
+func TestCardsAreAGridThatWrapsAndEachHasItsPictureOverItsHeadline(t *testing.T) {
 	t.Parallel()
 
-	feed := func(context.Context, string, int) ([]Device, string, webui.Loaded) { return nil, "", webui.Ready() }
-	problems := func(tbl webui.Table[Device]) string {
-		tbl.Columns = []webui.Accessor[Device]{formID}
-		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: tbl}}}) {
-			all += e.Error() + "\n"
-		}
-		return all
-	}
-	assert.Contains(t, problems(webui.Table[Device]{}), "none of Rows, Load and Feed")
-	assert.Contains(t, problems(webui.Table[Device]{Feed: feed, Load: okRows}), "more than one of Rows, Load and Feed")
+	src := &feedLoader{}
+	h := editorApp(webui.Cards[story]{
+		Title: "Videos", Load: src.load, PageSize: 2, Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pSource},
+		Image: func(p story) string { return "/img/" + p.ID + ".png" },
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `<ul class="cards">`)
+	assert.Equal(t, strings.Count(body, `<li class="item item-card">`), 2)
+	assert.True(t, strings.Index(body, `src="/img/a.png"`) < strings.Index(body, "Wealthfolio")) // the picture first
+	assert.Contains(t, body, `href="/admin/e?videos.limit=4"`)                                   // and the same Show more
+	assert.False(t, strings.Contains(body, "cards-scroller"))
 }
 
-func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
+func TestCardsInARowScrollSidewaysAndTheRowCanBeReachedByTheKeyboard(t *testing.T) {
 	t.Parallel()
 
-	// Each page of the way back costs its text and the parameter name carrying it, so
-	// hundreds of short cursors are as long an address as a few long ones. The trail is
-	// bounded by the address and not by the text alone.
-	tbl := webui.Table[Device]{
-		Title:    "Objects",
-		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
-			n, _ := strconv.Atoi(after)
-			return []Device{{Id: "x"}}, strconv.Itoa(n + 1), webui.Ready() // there is always another
-		},
-		Columns: []webui.Accessor[Device]{formID},
-	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	src := &feedLoader{}
+	h := editorApp(webui.Cards[story]{Title: "Videos", Load: src.load, PageSize: 3, Headline: pTitle, Layout: webui.CardsScroll})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `<div class="cards-scroller" tabindex="0" role="region" aria-label="Videos, scrolls sideways">`)
+	assert.Contains(t, body, `<ul class="cards cards-row">`)
+	assert.Equal(t, strings.Count(body, `<li class="item item-card">`), 3)
+}
 
-	at := "/f"
-	longest := 0
-	for range 800 {
-		at = pagerHref(serve(h, http.MethodGet, at).Body.String(), "Next")
-		longest = max(longest, len(at))
+// A Feed and a Tabs make the widget with two views of what is new: only the selected tab is read.
+func TestTabsOfFeedsAreReadOnlyForTheSelectedTab(t *testing.T) {
+	t.Parallel()
+
+	first, second := &feedLoader{}, &feedLoader{}
+	h := editorApp(webui.Tabs{Panels: []webui.Tab{
+		{Label: "Hacker News", Body: webui.Feed[story]{Title: "Hacker News", Load: first.load, Headline: pTitle}},
+		{Label: "Lobsters", Body: webui.Feed[story]{Title: "Lobsters", Load: second.load, Headline: pTitle}},
+	}})
+	serve(h, http.MethodGet, "/admin/e")
+	assert.Equal(t, len(first.asked()), 1)
+	assert.Equal(t, len(second.asked()), 0)
+	serve(h, http.MethodGet, "/admin/e?tabs.tab=lobsters")
+	assert.Equal(t, len(second.asked()), 1)
+}
+
+// ------------------------------------------------------------------- validate
+
+func TestAFeedOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
+	t.Parallel()
+
+	load := (&feedLoader{}).load
+	_, detail := feedPages(webui.Stack{}, nil)
+	act := webui.Action[story]{Label: "Go", Run: func(context.Context, story) (webui.Outcome, error) { return webui.Outcome{}, nil }}
+	for name, tc := range map[string]struct {
+		body webui.PageBody
+		want string
+	}{
+		"no load":               {webui.Feed[story]{Headline: pTitle}, "a Feed has no Load"},
+		"no headline":           {webui.Feed[story]{Load: load}, "Feed.Headline is nil"},
+		"a group headline":      {webui.Feed[story]{Load: load, Headline: webui.Group[story]{pTitle}}, "Feed.Headline is a Group"},
+		"a headline no load":    {webui.Feed[story]{Load: load, Headline: webui.String[story]{Label: "T"}}, "Feed.Headline has no Load"},
+		"a meta no label":       {webui.Feed[story]{Load: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, "Feed.Meta[0] has no Label"},
+		"a negative page":       {webui.Feed[story]{Load: load, Headline: pTitle, PageSize: -1}, "Feed.PageSize is negative"},
+		"an action open":        {webui.Feed[story]{Load: load, Headline: pTitle, Open: act}, "Feed.Open is an Action"},
+		"a url headline":        {webui.Feed[story]{Load: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, "Feed.Headline is a URL"},
+		"open and a link":       {webui.Feed[story]{Load: load, Headline: pTitle, Open: openStory(detail), Link: pLink}, "Feed has an Open and a Link"},
+		"a badge no load":       {webui.Feed[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, "Feed.Badge has no Load"},
+		"a badge with a store":  {webui.Feed[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, "Feed.Badge has a Store"},
+		"a bad origin":          {webui.Feed[story]{Load: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, `Feed.TrustedOrigins[0], "http://x.example", is not an origin`},
+		"origins and no image":  {webui.Feed[story]{Load: load, Headline: pTitle, TrustedOrigins: []string{"https://x.example"}}, "Feed has TrustedOrigins and no Image"},
+		"cards, no load":        {webui.Cards[story]{Headline: pTitle}, "a Cards has no Load"},
+		"an unknown layout":     {webui.Cards[story]{Load: load, Headline: pTitle, Layout: "carousel"}, `Cards.Layout is the unknown "carousel"`},
+		"cards, a bad headline": {webui.Cards[story]{Load: load}, "Cards.Headline is nil"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Contains(t, editorErrors(t, tc.body), tc.want)
+		})
 	}
-	assert.True(t, longest < 3500) // far below what a browser or a server refuses
-	body := serve(h, http.MethodGet, at).Body.String()
-	assert.True(t, pagerHref(body, "Previous") != "") // and it still goes back
-	assert.Contains(t, body, "Showing row 801")       // the number does not depend on the trail
+}
+
+// The link of an Open is checked as any is: it must name a page that is mounted, with the arguments that page takes.
+func TestAnOpenIsCheckedLikeAnyLink(t *testing.T) {
+	t.Parallel()
+
+	elsewhere := webui.Page[webui.NoArgs]{Path: "/elsewhere", Body: webui.Stack{}}
+	lost := webui.Link[story, webui.NoArgs]{Page: elsewhere, Args: func(context.Context, story) webui.NoArgs { return webui.NoArgs{} }}
+	got := editorErrors(t, webui.Feed[story]{Load: (&feedLoader{}).load, Headline: pTitle, Open: lost})
+	assert.Contains(t, got, `a link targets "/elsewhere", which is not mounted in this app`)
 }

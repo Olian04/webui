@@ -693,6 +693,117 @@ html.js .search-submit {
   height: 42px;
 }
 
+/* A list of items: a feed is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
+   facts, and a picture when it has one; the picture is a fixed box so that a page does not move as it loads. */
+.items-body {
+  padding: 0;
+}
+.feed,
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.feed .item {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.feed .item:first-child {
+  border-top: 0;
+}
+.item-img {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--hover);
+}
+.item-main {
+  min-width: 0;
+  flex: 1;
+}
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.item-title {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.item-link {
+  color: var(--blue-text);
+  text-decoration: none;
+}
+.item-link:hover {
+  text-decoration: underline;
+}
+.item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+/* A fact carries the dot that comes before it, so that when the line wraps the dot goes with the fact it leads and is not left at the end of the line above. */
+.item-fact {
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+.item-sep {
+  color: var(--text-3);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+.item-card {
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel);
+}
+.item-card .item-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+.item-card .item-main {
+  width: 100%;
+  padding: 10px 12px;
+}
+.cards-scroller {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.cards-row {
+  display: flex;
+  align-items: stretch;
+}
+.cards-row .item-card {
+  flex: 0 0 220px;
+  scroll-snap-align: start;
+}
+
 /* the app's menu: the button in the top bar and the list of its own links behind it */
 .menu {
   position: relative;

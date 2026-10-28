@@ -138,6 +138,24 @@ type Throughput struct {
 	Hour int // the current hour of the day, as an index of the histories
 }
 
+// Release is a version of the collector that was published: what it is called, who made it, when, and how many have taken it.
+type Release struct {
+	ID, Title, Author, Age, Link, Channel string
+	Downloads                             int
+}
+
+// Person is somebody who looks after the collector, and whether they are on call now.
+type Person struct {
+	Name, Role, Since string
+	OnCall            bool
+}
+
+// Dashboard is a board somebody made, in the tool that shows these: its owner, how many panels it has, and when it was last changed.
+type Dashboard struct {
+	Name, Owner, Updated string
+	Panels               int
+}
+
 // AuditEntry is something somebody did.
 type AuditEntry struct{ At, Actor, Action, Target string }
 
@@ -562,6 +580,43 @@ func (s *Service) Throughput() Throughput {
 		Errors:         7, ErrorsChange: 40,
 		ErrorsHistory: []float64{2, 1, 1, 2, 3, 2, 4, 3, 5, 4, 3, 5, 6, 4, 5, 7, 6, 8, 5, 6, 4, 5, 6, 7},
 		Hour:          23,
+	}
+}
+
+// Releases are what has been published, newest first, as many as are asked for. They are fixed, so that the demo and its tests read the same every time.
+func (s *Service) Releases(limit int) []Release {
+	all := []Release{
+		{"r9", "2.4.1: fixes a stall in the ingest queue", "Ada", "3h", "https://example.com/releases/2.4.1", "stable", 1204},
+		{"r8", "2.5.0-beta.2: per-site retention", "Linus", "1d", "https://example.com/releases/2.5.0-beta.2", "beta", 311},
+		{"r7", "2.4.0: a search that finds devices by tag", "Grace", "6d", "https://example.com/releases/2.4.0", "stable", 5420},
+		{"r6", "2.3.3: a gentler back-off when a site is down", "Ada", "2w", "https://example.com/releases/2.3.3", "stable", 8112},
+		{"r5", "2.5.0-beta.1: the first of per-site retention", "Linus", "3w", "https://example.com/releases/2.5.0-beta.1", "beta", 640},
+		{"r4", "2.3.2: security update for the sink library", "Grace", "1mo", "https://example.com/releases/2.3.2", "stable", 9051},
+		{"r3", "2.3.1: a fix for clocks that jump back", "Ada", "2mo", "https://example.com/releases/2.3.1", "stable", 7220},
+	}
+	return all[:min(limit, len(all))]
+}
+
+// OnCall is who looks after the collector. The people are fixed.
+func (s *Service) OnCall() []Person {
+	return []Person{
+		{"Ada Lovelace", "Primary", "since 08:00", true},
+		{"Grace Hopper", "Secondary", "since 08:00", true},
+		{"Linus Torvalds", "Platform", "off, back Monday", false},
+		{"Margaret Hamilton", "Platform", "off, back Tuesday", false},
+		{"Alan Turing", "Data", "off", false},
+	}
+}
+
+// Dashboards are the boards that exist.
+func (s *Service) Dashboards() []Dashboard {
+	return []Dashboard{
+		{"Ingest overview", "Ada", "2h", 12},
+		{"Sites", "Grace", "1d", 8},
+		{"Queue depth", "Linus", "3d", 5},
+		{"Disk and retention", "Margaret", "1w", 9},
+		{"Alert history", "Alan", "2w", 6},
+		{"Release health", "Ada", "1mo", 7},
 	}
 }
 
