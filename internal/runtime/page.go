@@ -256,6 +256,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) }), nil
 	case *ir.Markdown:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
+	case *ir.Stat:
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.stat(ctx, req, page, n) }), nil
 	case *ir.Toolbar:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
 	case *ir.FileUpload:

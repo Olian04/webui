@@ -120,6 +120,13 @@ var (
 		Label: "Rate / s", Max: 15, StepSize: 0.01,
 		Load: func(d Device) float64 { return d.Rate() },
 	}
+	// A Series is a small chart where it is read: the shape of the last hour, beside the figure. It has no axes, and its name has the points in
+	// words. A column of it is neither sorted nor filtered by.
+	Recent = webui.Series[Device]{
+		Label: "Last hour", Unit: "/s", Precision: 1,
+		Load: func(d Device) []float64 { return d.Recent() },
+		Help: "The rate in each of the last twelve five-minute windows.",
+	}
 )
 
 // The list has no arguments of its own: its paging, sorting and column filters
@@ -187,7 +194,7 @@ var DevicesTable = webui.Table[Device]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
 	},
-	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate},
+	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate, Recent},
 }
 
 // NewDevicePage is the form that makes a device: a Form of a model that is new, so what it loads is a zero Device. The

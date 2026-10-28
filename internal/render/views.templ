@@ -389,6 +389,10 @@ templ present(f ir.Field, text string, model any) {
 			} else {
 				{ text }
 			}
+		case ir.DisplayDelta:
+			@c.Delta(deltaProps(f, text, model))
+		case ir.DisplaySeries:
+			@c.Spark(sparkProps(f, model))
 		default:
 			if f.Multiline {
 				<span class="multiline">{ text }</span>
@@ -929,6 +933,42 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 			</article>
 		</div>
 	}
+}
+
+// Stat renders a stat leaf as one panel: a tile for each figure, each with its value, and its change and trend when it has them. A value, a
+// change and a trend are shown as the field says, as they are in a cell of a table.
+templ (r *Renderer) Stat(v StatView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
+		Leaf:   LeafID(v.Node.At),
+	}) {
+		<div class="panel-body">
+			@c.StatGrid(c.StatGridProps{}) {
+				for _, t := range v.Node.Tiles {
+					@c.StatTile(r.statTile(t, v.Model))
+				}
+			}
+		</div>
+	}
+}
+
+// statCell is one field of a tile, shown as it is in a table cell.
+templ statCell(f ir.Field, model any) {
+	@value(f, f.Shown(ctx, model), model)
+}
+
+// statTile is a tile as the component takes it.
+func (r *Renderer) statTile(t ir.StatTile, model any) c.StatTileProps {
+	p := c.StatTileProps{Label: t.Label, Help: t.Help, Value: statCell(t.Value, model)}
+	if t.Change != nil {
+		p.Change = statCell(*t.Change, model)
+	}
+	if t.Trend != nil {
+		p.Trend = statCell(*t.Trend, model)
+	}
+	return p
 }
 
 // unified is the changes as a unified diff, the way to read them without script.
