@@ -123,10 +123,11 @@ leads the top bar and the name is the first breadcrumb.
 
 `Theme` is the surface between the design and the application, and it is a
 struct of static fields, one for each thing an app may restyle: `Accent`
-(interactive: primary buttons, links, the active entry, focus), `OK`,
-`Warning` and `Critical` (the semantics a badge or a message carries), a `Canvas` (the page's
-background) and a `Mode` (the theme the app is pinned to). Each colour is a
-hex colour, checked at `Compile`.
+(interactive: primary buttons, links, the active entry, focus), and `OK`,
+`Warning` and `Critical` (the semantics a badge or a message carries). Each is a
+hex colour, checked at `Compile`. They are the colours of both modes. `Light` and `Dark` are what the app
+gives one mode alone, each a `ModeColors`: a `Canvas`, the page's background in that mode, and an `Accent`, `OK`,
+`Warning` or `Critical` that wins over the shared one in that mode.
 
 The design underneath is still tokens, and nothing in any component reads a
 literal value, but the app does not name them. It names a colour, and the
@@ -137,17 +138,29 @@ a badge, and for `Critical` also the solid fill of a destructive button. Dark li
 so one colour is right in both.
 
 The surfaces and the text are what makes light and dark differ, and light or dark is the viewer's
-choice, so a single colour cannot be right in both. An app that wants to say what they are says
-which one it is drawn in: `Mode` pins it, the document carries the mode and the script that keeps the viewer's choice leaves it alone, and the theme
-button is not drawn. Only then does a `Canvas` mean anything, and `Compile` refuses one without a `Mode`. From a canvas the panel, the raised
-surface, the input, the borders, the hover and the text are derived (`internal/theme`), as numbers and not as `color-mix`, so that the check that follows is made on what the browser draws (a test compares
-them to a browser's own arithmetic).
+choice, not the app's, so a single colour cannot be right in both. An app that wants to say what they are says it for the mode it
+is for: `Dark.Canvas` and `Light.Canvas`, either or both, and the viewer still chooses between the modes. From a canvas the panel, the raised
+surface, the input, the borders, the hover and the text of that mode are derived (`internal/theme`), as numbers and not as `color-mix`, so that the check that follows is made on what the browser draws (a test compares
+them to a browser's own arithmetic). A mode with no canvas keeps the design's own surfaces.
 
-`Compile` checks that what it derived can be read, in each mode the theme is drawn in: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
-and on its own badge. A failure is an error that names the field, the pair and what to change. The package-level presets (`ThemeMidnight`, `ThemeEmber`,
-`ThemeForest`, `ThemeViolet`, `ThemePaper`, `ThemeSand`) are `Theme` values of this kind, to use as they are or to copy and change.
+`Compile` checks that what it derived can be read, in each mode: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
+and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The package-level presets
+(`ThemeMidnight`, `ThemeEmber`, `ThemeForest`, `ThemeViolet`, `ThemePaper`, `ThemeSand`) are `Theme` values of this kind, with a canvas for each mode, to use as they are or to copy and change.
 
 A field left empty keeps the design's colour, so a zero `Theme` serves no `theme.css` at all.
+
+### `Page.Path`
+
+One page is one screen and one address. The path (a `PageID`) is both:
+
+- the address the user sees and shares, and
+- the breadcrumb trail, derived from its segments.
+
+Because pages are identified by template rather than by a route table, a
+breadcrumb parent and a cross-page link resolve to the same thing, and the
+compile step can prove a link's destination exists.
+
+---
 
 ## Arguments
 

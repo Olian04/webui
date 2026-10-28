@@ -342,11 +342,10 @@ func Forbidden(reason string) templ.Component {
 // themeCSS renders the app's theme as overrides of the design's tokens. A hover colour, a readable text
 // tint and a badge's faint background and border are derived from the one colour, per mode, with
 // color-mix, so the app names a few colours and the design stays coherent; the surfaces, the borders and
-// the text are derived from a Canvas the same way (internal/theme is where, and what is checked at Compile).
+// the text of a mode are derived from its Canvas the same way (internal/theme is where, and what is checked at Compile).
 //
-// An app that has not pinned a mode has a block for each of light and dark, as specific as the
-// stylesheet's own and after them: a stored choice (data-theme) wins, then the viewer's system preference.
-// One that has pinned a mode has the one block, for the attribute that the document carries.
+// The selectors are as specific as the stylesheet's theme blocks and come after
+// them: a stored choice (data-theme) wins, then the viewer's system preference.
 func themeCSS(t ir.Theme) []byte {
 	var b strings.Builder
 	rule := func(selector string, decls []string) {
@@ -355,10 +354,6 @@ func themeCSS(t ir.Theme) []byte {
 		}
 	}
 	res := theme.Resolve(specOf(t))
-	if t.Mode != "" {
-		rule("html:root:root[data-theme='"+t.Mode+"']", res[0].Decls)
-		return []byte(b.String())
-	}
 	dark, light := res[0].Decls, res[1].Decls
 	rule("html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark']", dark)
 	rule("html:root:root[data-theme='light']", light)
@@ -372,18 +367,10 @@ func themeCSS(t ir.Theme) []byte {
 
 // specOf is the app's theme as internal/theme reads it.
 func specOf(t ir.Theme) theme.Spec {
-	return theme.Spec{Accent: t.Accent, OK: t.OK, Warning: t.Warning, Critical: t.Critical, Canvas: t.Canvas, Mode: theme.Mode(t.Mode)}
-}
-
-// pinned is the theme the app is drawn in whatever the viewer prefers, "dark" or "light", or "" when it is theirs to choose.
-func (r *Renderer) pinned() string { return r.app.Theme.Mode }
-
-// colorScheme is what the page tells the browser of the themes it has, before it has the stylesheet.
-func (r *Renderer) colorScheme() string {
-	if m := r.pinned(); m != "" {
-		return m
+	mode := func(m ir.ModeColors) theme.Colors {
+		return theme.Colors{Canvas: m.Canvas, Accent: m.Accent, OK: m.OK, Warning: m.Warning, Critical: m.Critical}
 	}
-	return "dark light"
+	return theme.Spec{Accent: t.Accent, OK: t.OK, Warning: t.Warning, Critical: t.Critical, Light: mode(t.Light), Dark: mode(t.Dark)}
 }
 
 // brand is the app's name as the sidebar shows it, "Home" when it has none, so
@@ -498,15 +485,18 @@ const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`
 
-// earlyStyle is the page's colours before the stylesheet: both themes' canvases, or for an app that has pinned a mode the one canvas it is
-// drawn on, which is its own when it has chosen one.
+// earlyStyle is the page's colours before the stylesheet: each theme's canvas, which is the app's own where it has chosen
+// one. An app that has chosen none has the design's, which are earlyCSS.
 func (r *Renderer) earlyStyle() string {
-	m := r.pinned()
-	if m == "" {
+	t := r.app.Theme
+	if t.Dark.Canvas == "" && t.Light.Canvas == "" {
 		return earlyCSS
 	}
-	canvas := theme.Resolve(specOf(r.app.Theme))[0].Palette.Canvas
-	return fmt.Sprintf("html{background:%s;color-scheme:%s}", canvas.Hex(), m)
+	res := theme.Resolve(specOf(t))
+	dark, light := res[0].Palette.Canvas.Hex(), res[1].Palette.Canvas.Hex()
+	return fmt.Sprintf("html{background:%s;color-scheme:dark}", dark) +
+		fmt.Sprintf("html[data-theme='light']{background:%s;color-scheme:light}", light) +
+		fmt.Sprintf("@media (prefers-color-scheme:light){html:not([data-theme]){background:%s;color-scheme:light}}", light)
 }
 
 // linkEntries are the external links as the component draws them, grouped by Section

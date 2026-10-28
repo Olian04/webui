@@ -13,9 +13,6 @@ type PageProps struct {
 	Scripts     []string
 	Head        templ.Component
 
-	// Theme is the theme that the app is pinned to, "dark" or "light", or empty when the viewer chooses (see [DocumentProps]).
-	Theme string
-
 	Sidebar templ.Component
 	TopBar  templ.Component
 	Status  templ.Component
@@ -39,7 +36,6 @@ templ Page(p PageProps) {
 		Stylesheets: p.Stylesheets,
 		Scripts:     p.Scripts,
 		Head:        p.Head,
-		Theme:       p.Theme,
 	}) {
 		@AppShell(AppShellProps{
 			Sidebar: p.Sidebar,

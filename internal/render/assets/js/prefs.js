@@ -11,8 +11,7 @@
   var el = document.documentElement;
   el.classList.add('js');
   try {
-    // An app that is pinned to a theme says so on the document, and a choice made in another app on the same site is not followed.
-    var theme = el.hasAttribute('data-theme-pinned') ? null : localStorage.getItem('webui.theme');
+    var theme = localStorage.getItem('webui.theme');
     if (theme === 'dark' || theme === 'light') el.dataset.theme = theme;
     if (localStorage.getItem('webui.sidebar') === 'collapsed') el.dataset.sidebar = 'collapsed';
     // The width a person dragged the sidebar to, held to what fits this window: at least 180px, at most 480px and half the
