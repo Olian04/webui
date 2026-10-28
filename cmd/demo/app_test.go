@@ -94,12 +94,15 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	_, err = a.Compile("/admin")
 	assert.Error(t, err)
 
-	// A preset is a whole look, pinned to a mode, and an accent over it is the app's own change of a field; what cannot be read is refused.
+	// A preset is a whole look with a canvas for each mode, which the viewer still chooses between; an accent over it is the app's own change of a
+	// field, and what cannot be read is refused.
 	a.Theme, err = themeFor("", "forest")
 	assert.NoError(t, err)
-	pinned, err := a.Compile("/admin")
+	preset, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	assert.Contains(t, get(pinned, "/admin/").Body.String(), `data-theme="dark" data-theme-pinned`)
+	body := get(preset, "/admin/").Body.String()
+	assert.Contains(t, body, "html{background:#0f1f1a;color-scheme:dark}")
+	assert.Contains(t, body, "data-pref-toggle")
 	a.Theme, err = themeFor("#a7f3d0", "forest")
 	assert.NoError(t, err)
 	_, err = a.Compile("/admin")

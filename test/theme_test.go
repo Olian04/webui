@@ -66,97 +66,101 @@ func TestThemeCSSIsLinkedAfterTheStylesheet(t *testing.T) {
 	assert.True(t, app >= 0 && theme > app) // later in the cascade, so it wins
 }
 
-// A theme that is pinned is one look, in one mode: the document says which, the stylesheet has the one block for it and no
-// answer to the viewer's system, the page has no button for a choice that is not theirs, and the script that keeps their
-// choice leaves the document alone.
-func TestAPinnedThemeIsOneModeAndHasNoButtonForIt(t *testing.T) {
+// A canvas is given for a mode, and from it that mode's surfaces, borders and text are derived. The other mode keeps the design's own, and the
+// viewer still has the button and the system's choice: nothing is pinned.
+func TestACanvasForOneModeDerivesTheSurfacesOfThatModeAndLeavesTheOtherAlone(t *testing.T) {
 	t.Parallel()
 
-	theme := webui.Theme{Mode: webui.ModeDark, Canvas: "#0e1224", Accent: "#4361e8"}
+	theme := webui.Theme{Accent: "#4361e8", Dark: webui.ModeColors{Canvas: "#0e1224"}}
 	h := webui.App{Theme: theme, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, Body: webui.Stack{}}}}.MustCompile("/admin")
 	page := serve(h, http.MethodGet, "/admin/p").Body.String()
-
-	assert.Contains(t, page, `<html lang="en" data-theme="dark" data-theme-pinned>`)
-	assert.Contains(t, page, `<meta name="color-scheme" content="dark">`)
-	assert.Contains(t, page, "<style>html{background:#0e1224;color-scheme:dark}</style>") // the canvas it is drawn on, before the stylesheet
-	assert.False(t, strings.Contains(page, "data-pref-toggle"))                           // no button for a choice that is not the viewer's
-
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css")).Body.String()
-	assert.Contains(t, css, "html:root:root[data-theme='dark'] {")
-	assert.Contains(t, css, "--canvas: #0e1224;")
-	assert.Contains(t, css, "--blue: #4361e8;")
-	for _, absent := range []string{"[data-theme='light']", "prefers-color-scheme", ":not([data-theme])"} {
-		assert.False(t, strings.Contains(css, absent))
-	}
+
+	dark := css[:strings.Index(css, "html:root:root[data-theme='light']")]
+	assert.Contains(t, dark, "html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark'] {")
+	assert.Contains(t, dark, "--canvas: #0e1224;")
 	for _, token := range []string{"--panel:", "--raise:", "--input-bg:", "--text:", "--text-2:", "--text-3:", "--border:", "--border-2:", "--hover:", "--active:"} {
-		assert.Contains(t, css, token)
+		assert.Contains(t, dark, token)
 	}
+	// The light block has the accent, which is shared, and none of the surfaces, which the design keeps.
+	light := css[strings.Index(css, "html:root:root[data-theme='light'] {"):]
+	assert.Contains(t, light, "--blue: #4361e8;")
+	assert.False(t, strings.Contains(light, "--canvas:"))
+	assert.False(t, strings.Contains(light, "--panel:"))
 
+	// The canvas the page is drawn on before the stylesheet is the app's in the dark theme and the design's in the light.
+	assert.Contains(t, page, "html{background:#0e1224;color-scheme:dark}")
+	assert.Contains(t, page, "html[data-theme='light']{background:#f4f5f5;color-scheme:light}")
+
+	// Nothing is pinned: the viewer has the button and a document that carries no choice of the app's.
+	assert.Contains(t, page, `<html lang="en">`)
+	assert.Contains(t, page, "data-pref-toggle")
+	assert.Contains(t, page, `<meta name="color-scheme" content="dark light">`)
 	prefs := serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Body.String()
-	assert.Contains(t, prefs, "el.hasAttribute('data-theme-pinned') ? null : localStorage.getItem('webui.theme')")
+	assert.False(t, strings.Contains(prefs, "pinned"))
 }
 
-func TestALightPinIsTheLightBlockAndTheLightEarlyBackground(t *testing.T) {
+func TestACanvasForEachModeIsDerivedForBoth(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Theme: webui.Theme{Mode: webui.ModeLight, Canvas: "#efe4d6"}}.MustCompile("/admin")
+	css := themeCSS(t, webui.Theme{Dark: webui.ModeColors{Canvas: "#0e1224"}, Light: webui.ModeColors{Canvas: "#eef0f9"}})
+	assert.Contains(t, css, "--canvas: #0e1224;")
+	assert.Contains(t, css, "--canvas: #eef0f9;")
+	// The system's own preference gets the light block too, for a viewer who has not chosen.
+	assert.Contains(t, css, "@media (prefers-color-scheme: light) {\n  html:root:root:not([data-theme]) {")
+
+	h := webui.App{Theme: webui.Theme{Dark: webui.ModeColors{Canvas: "#0e1224"}, Light: webui.ModeColors{Canvas: "#eef0f9"}}}.MustCompile("/admin")
 	page := serve(h, http.MethodGet, "/admin/").Body.String()
-	assert.Contains(t, page, `data-theme="light" data-theme-pinned`)
-	assert.Contains(t, page, "<style>html{background:#efe4d6;color-scheme:light}</style>")
-	assert.Contains(t, serve(h, http.MethodGet, assetURL(t, h, "theme.css")).Body.String(), "html:root:root[data-theme='light'] {")
+	assert.Contains(t, page, "html{background:#0e1224;color-scheme:dark}")
+	assert.Contains(t, page, "html[data-theme='light']{background:#eef0f9;color-scheme:light}")
+	assert.Contains(t, page, "@media (prefers-color-scheme:light){html:not([data-theme]){background:#eef0f9;color-scheme:light}}")
 }
 
-// A mode with no canvas of its own is drawn on the design's own for it, and still pinned.
-func TestAPinWithNoCanvasKeepsTheDesignsOwnSurfaces(t *testing.T) {
+// A colour that a mode gives wins over the one given for both, in that mode only.
+func TestAModesOwnColourWinsOverTheSharedOneInThatModeOnly(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Theme: webui.Theme{Mode: webui.ModeLight}}.MustCompile("/admin")
-	page := serve(h, http.MethodGet, "/admin/").Body.String()
-	assert.Contains(t, page, "<style>html{background:#f4f5f5;color-scheme:light}</style>")
-	assert.False(t, strings.Contains(page, "data-pref-toggle"))
+	css := themeCSS(t, webui.Theme{Accent: "#1f7a6d", Light: webui.ModeColors{Accent: "#4361e8"}})
+	dark := css[:strings.Index(css, "html:root:root[data-theme='light']")]
+	light := css[strings.Index(css, "html:root:root[data-theme='light'] {"):]
+	assert.Contains(t, dark, "--blue: #1f7a6d;")
+	assert.Contains(t, light, "--blue: #4361e8;")
+	assert.False(t, strings.Contains(light, "--blue: #1f7a6d;"))
 }
 
-// Left to the viewer, an app has the button, and no document attribute that would pin it.
-func TestAnUnpinnedThemeLeavesTheChoiceToTheViewer(t *testing.T) {
+// A zero theme, and a theme that only gives the shared colours, have nothing the document or the script need to know of.
+func TestASharedColourLeavesTheDocumentAsItWas(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Theme: webui.Theme{Accent: "#1f7a6d"}}.MustCompile("/admin")
-	page := serve(h, http.MethodGet, "/admin/").Body.String()
+	page := serve(webui.App{Theme: webui.Theme{Accent: "#1f7a6d"}}.MustCompile("/admin"), http.MethodGet, "/admin/").Body.String()
 	assert.Contains(t, page, `<html lang="en">`)
 	assert.Contains(t, page, "data-pref-toggle")
 }
 
-// Every preset is a whole look that Compile accepts, in the mode it pins, and which has the one look it says.
-func TestEveryPresetCompilesAndPinsItsMode(t *testing.T) {
+// Every preset is a whole look that Compile accepts, with a canvas for each mode, and the viewer keeps the choice between them.
+func TestEveryPresetCompilesAndHasALookInEachMode(t *testing.T) {
 	t.Parallel()
 
-	for name, tc := range map[string]struct {
-		theme webui.Theme
-		mode  webui.Mode
-	}{
-		"Midnight": {webui.ThemeMidnight, webui.ModeDark},
-		"Ember":    {webui.ThemeEmber, webui.ModeDark},
-		"Forest":   {webui.ThemeForest, webui.ModeDark},
-		"Violet":   {webui.ThemeViolet, webui.ModeDark},
-		"Paper":    {webui.ThemePaper, webui.ModeLight},
-		"Sand":     {webui.ThemeSand, webui.ModeLight},
+	for name, theme := range map[string]webui.Theme{
+		"Midnight": webui.ThemeMidnight, "Ember": webui.ThemeEmber, "Forest": webui.ThemeForest,
+		"Violet": webui.ThemeViolet, "Paper": webui.ThemePaper, "Sand": webui.ThemeSand,
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tc.theme.Mode, tc.mode)
-			assert.True(t, tc.theme.Canvas != "" && tc.theme.Accent != "")
-			h, err := webui.App{Theme: tc.theme}.Compile("/admin")
+			assert.True(t, theme.Accent != "" && theme.Dark.Canvas != "" && theme.Light.Canvas != "")
+			h, err := webui.App{Theme: theme}.Compile("/admin")
 			assert.NoError(t, err)
 			page := serve(h, http.MethodGet, "/admin/").Body.String()
-			assert.Contains(t, page, `data-theme="`+string(tc.mode)+`" data-theme-pinned`)
-			assert.Contains(t, page, "<style>html{background:"+strings.ToLower(string(tc.theme.Canvas))+";color-scheme:"+string(tc.mode)+"}</style>")
+			assert.Contains(t, page, "html{background:"+strings.ToLower(string(theme.Dark.Canvas))+";color-scheme:dark}")
+			assert.Contains(t, page, "html[data-theme='light']{background:"+strings.ToLower(string(theme.Light.Canvas))+";color-scheme:light}")
+			assert.Contains(t, page, "data-pref-toggle")
 		})
 	}
 }
 
 // A preset is a value to start from: changing a field of a copy is a theme of its own, which is checked as any is, and does not
-// change the preset.
+// change the preset. The accent is shared, so changing it changes both modes.
 func TestAPresetCanBeCopiedAndChanged(t *testing.T) {
 	t.Parallel()
 
@@ -164,6 +168,8 @@ func TestAPresetCanBeCopiedAndChanged(t *testing.T) {
 	mine.Accent = "#1f7a6d"
 	_, err := webui.App{Theme: mine}.Compile("/admin")
 	assert.NoError(t, err)
+	css := themeCSS(t, mine)
+	assert.Equal(t, strings.Count(css, "--blue: #1f7a6d;"), 3) // dark, light, and light again for a viewer whose system asks for it
 	assert.Equal(t, webui.ThemeForest.Accent, webui.Color("#2a7f5f"))
 
 	mine.Accent = "#a7f3d0" // too light for a white label

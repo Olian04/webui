@@ -5,14 +5,21 @@ import (
 	"strings"
 )
 
-// Mode is the theme an app pins itself to, or none: a viewer's own choice between light and dark.
+// Mode is one of the two themes the design has: the viewer chooses between them.
 type Mode string
 
 const (
-	Auto  Mode = ""
 	Dark  Mode = "dark"
 	Light Mode = "light"
 )
+
+// Name is the mode as a field of a Theme is named: "Dark" or "Light".
+func (m Mode) Name() string {
+	if m == Light {
+		return "Light"
+	}
+	return "Dark"
+}
 
 // Tone is a status colour as the design uses it: the text tint, and the faint background and border of a badge.
 type Tone struct{ Text, BG, BD Color }
@@ -57,43 +64,101 @@ func Base(m Mode) Palette {
 	}
 }
 
-// Spec is the app's colours, as written (hex strings), and the mode it is pinned to. An empty field is the design's own.
+// Colors are an app's colours for one mode, as written (hex strings). An empty field is the design's own.
+type Colors struct {
+	// Canvas is the page's background in the mode, from which the other surfaces, the borders and the text are derived. It is one colour,
+	// which cannot be right in both modes, so there is one for each and none shared.
+	Canvas string
+
+	Accent, OK, Warning, Critical string
+}
+
+// Spec is the app's colours: those it gives for both modes, and in Light and Dark what it gives for one, which win over them in that mode.
 type Spec struct {
 	Accent, OK, Warning, Critical string
-	// Canvas is the page's background in the pinned Mode, from which the other surfaces, the borders and the text are derived.
-	// It is one colour, which cannot be right in both modes, so it needs a Mode.
-	Canvas string
-	Mode   Mode
+	Light, Dark                   Colors
 }
 
 // Zero is a Spec that says nothing: the design as it is, with no stylesheet of its own.
 func (s Spec) Zero() bool { return s == Spec{} }
 
-// Modes are the modes a Spec's colours are drawn in: the one it is pinned to, or both.
-func (s Spec) Modes() []Mode {
-	if s.Mode != Auto {
-		return []Mode{s.Mode}
+// block is what the app gave for one mode alone.
+func (s Spec) block(m Mode) Colors {
+	if m == Light {
+		return s.Light
 	}
-	return []Mode{Dark, Light}
+	return s.Dark
+}
+
+// For is the colours an app has in a mode: its own for the mode where it gave one, else those it gave for both.
+func (s Spec) For(m Mode) Colors {
+	own := s.block(m)
+	pick := func(own, shared string) string {
+		if own != "" {
+			return own
+		}
+		return shared
+	}
+	return Colors{
+		Canvas: own.Canvas,
+		Accent: pick(own.Accent, s.Accent), OK: pick(own.OK, s.OK), Warning: pick(own.Warning, s.Warning), Critical: pick(own.Critical, s.Critical),
+	}
+}
+
+// written is the field of the Theme that gave a mode a colour, as it is named ("Dark.Accent", or "Accent" where it is shared), and the colour as
+// the app wrote it, or "" if the design's own is in use.
+func (s Spec) written(m Mode, field string) (name, value string) {
+	own := s.block(m)
+	switch field {
+	case "Canvas":
+		value = own.Canvas
+	case "Accent":
+		value = own.Accent
+	case "OK":
+		value = own.OK
+	case "Warning":
+		value = own.Warning
+	case "Critical":
+		value = own.Critical
+	}
+	if value != "" {
+		return m.Name() + "." + field, value
+	}
+	switch field {
+	case "Accent":
+		value = s.Accent
+	case "OK":
+		value = s.OK
+	case "Warning":
+		value = s.Warning
+	case "Critical":
+		value = s.Critical
+	}
+	if value != "" {
+		return field, value
+	}
+	return "", ""
 }
 
 // Result is what a Spec becomes in one mode: the palette that is drawn, and the declarations that make the stylesheet draw it.
+// There are none where the app has said nothing for the mode.
 type Result struct {
 	Mode    Mode
 	Palette Palette
 	Decls   []string
 }
 
-// Resolve is what a Spec becomes, in each mode it covers.
+// Resolve is what a Spec becomes in dark and in light, in that order.
 func Resolve(s Spec) []Result {
 	var out []Result
-	for _, m := range s.Modes() {
+	for _, m := range []Mode{Dark, Light} {
+		c := s.For(m)
 		r := Result{Mode: m, Palette: Base(m)}
-		r.neutrals(s.Canvas)
-		r.accent(s.Accent)
-		r.tone("green", s.OK)
-		r.tone("orange", s.Warning)
-		r.tone("red", s.Critical)
+		r.neutrals(c.Canvas)
+		r.accent(c.Accent)
+		r.tone("green", c.OK)
+		r.tone("orange", c.Warning)
+		r.tone("red", c.Critical)
 		out = append(out, r)
 	}
 	return out
@@ -215,16 +280,19 @@ func (r *Result) tone(name, text string) {
 	}
 }
 
-// Problem is a colour of the app's that is not legible where the design draws it.
+// Problem is a colour of the app's that is not legible where the design draws it. Field is the field of the Theme that is
+// responsible, as it is named in the declaration: "Accent", "Dark.Canvas".
 type Problem struct{ Field, Detail, Fix string }
 
 // Check is what in the app's colours cannot be read: the text on the surfaces it is drawn on at 4.5:1, and what is only
-// decoration at 3:1, in each mode the colours are drawn in. A failure names the field of the Theme that is responsible, and the
-// pair that failed, so an app is not given a stylesheet whose button label or error text is out of sight.
+// decoration at 3:1, in each mode. A failure names the field of the Theme that is responsible, and the pair that failed, so
+// an app is not given a stylesheet whose button label or error text is out of sight.
 func Check(s Spec) []Problem {
 	var out []Problem
-	if c, ok := Parse(s.Canvas); ok && c.A < 1 {
-		out = append(out, Problem{"Canvas", fmt.Sprintf("Theme.Canvas is %q, which is not opaque", s.Canvas), "Write it as #rgb or #rrggbb: a background that lets the page behind show through has no colour to derive the others from."})
+	for _, m := range []Mode{Dark, Light} {
+		if c, ok := Parse(s.block(m).Canvas); ok && c.A < 1 {
+			out = append(out, Problem{m.Name() + ".Canvas", fmt.Sprintf("Theme.%s.Canvas is %q, which is not opaque", m.Name(), s.block(m).Canvas), "Write it as #rgb or #rrggbb: a background that lets the page behind show through has no colour to derive the others from."})
+		}
 	}
 	for _, r := range Resolve(s) {
 		out = append(out, checkMode(s, r)...)
@@ -234,73 +302,72 @@ func Check(s Spec) []Problem {
 
 func checkMode(s Spec, r Result) []Problem {
 	p := r.Palette
+	c := s.For(r.Mode)
+	canvas := r.Mode.Name() + ".Canvas"
 	var out []Problem
-	where := ""
-	if s.Mode == Auto {
-		where = " in the " + string(r.Mode) + " theme"
-	}
+	where := " in the " + string(r.Mode) + " theme"
 	direction := "darker"
 	if r.Mode == Light {
 		direction = "lighter"
 	}
 	// responsible is the field of the Theme that a failing pair is blamed on: the colour the app wrote if it wrote one, and otherwise the
-	// background that the design's own colour is drawn on.
-	responsible := func(field, written string) (string, string) {
-		if written != "" {
-			return field, fmt.Sprintf("Theme.%s is %q", field, written)
+	// canvas that the design's own colour is drawn on.
+	responsible := func(field string) (string, string) {
+		if name, value := s.written(r.Mode, field); name != "" {
+			return name, fmt.Sprintf("Theme.%s is %q", name, value)
 		}
-		return "Canvas", fmt.Sprintf("Theme.Canvas is %q, and the design's own %s colour", s.Canvas, strings.ToLower(field))
+		return canvas, fmt.Sprintf("Theme.%s is %q, and the design's own %s colour", canvas, c.Canvas, strings.ToLower(field))
 	}
-	need := func(field, written, what string, ratio, atLeast float64, fix string) {
+	need := func(field, what string, ratio, atLeast float64, fix string) {
 		if ratio >= atLeast {
 			return
 		}
-		f, subject := responsible(field, written)
-		if f == "Canvas" && s.Canvas == "" {
+		name, subject := responsible(field)
+		if name == canvas && c.Canvas == "" {
 			return // the design's own pair, which its own tests hold
 		}
-		out = append(out, Problem{f, fmt.Sprintf("%s: %s is %.1f:1%s, and %.1f:1 is needed", subject, what, ratio, where, atLeast), fix})
+		out = append(out, Problem{name, fmt.Sprintf("%s: %s is %.1f:1%s, and %.1f:1 is needed", subject, what, ratio, where, atLeast), fix})
 	}
 	hovered := p.Hover.Over(p.Panel)
 	solid := func(c Color) Color { return c.Over(p.Panel) } // a fill that is not opaque is seen over the page
 
-	canvasFix := "Choose a " + direction + " Canvas, or a different Mode: the text is derived from it."
+	canvasFix := "Choose a " + direction + " colour for Theme." + canvas + ": the surfaces, the borders and the text of the " + string(r.Mode) + " theme are derived from it."
 	for _, surface := range []struct {
 		label string
 		bg    Color
 	}{{"the panel", p.Panel}, {"the canvas", p.Canvas}} {
-		need("Canvas", s.Canvas, "its text on "+surface.label, Contrast(p.Text, surface.bg), 4.5, canvasFix)
-		need("Canvas", s.Canvas, "its quiet text on "+surface.label, Contrast(p.Text2, surface.bg), 4.5, canvasFix)
-		need("Canvas", s.Canvas, "its decorative text on "+surface.label, Contrast(p.Text3, surface.bg), 3, canvasFix)
+		need("Canvas", "its text on "+surface.label, Contrast(p.Text, surface.bg), 4.5, canvasFix)
+		need("Canvas", "its quiet text on "+surface.label, Contrast(p.Text2, surface.bg), 4.5, canvasFix)
+		need("Canvas", "its decorative text on "+surface.label, Contrast(p.Text3, surface.bg), 3, canvasFix)
 	}
-	need("Canvas", s.Canvas, "its quiet text on a hovered row", Contrast(p.Text2, hovered), 4.5, canvasFix)
-	need("Canvas", s.Canvas, "its quiet text on the raised surface", Contrast(p.Text2, p.Raise), 4.5, canvasFix)
-	need("Canvas", s.Canvas, "its quiet text on an input", Contrast(p.Text2, p.Input), 4.5, canvasFix)
-	need("Canvas", s.Canvas, "the edge of a control for a visitor who asks for more contrast, on the panel", Contrast(p.ControlHeavy, p.Panel), 3, canvasFix)
-	need("Canvas", s.Canvas, "the same edge on an input", Contrast(p.ControlHeavy, p.Input), 3, canvasFix)
+	need("Canvas", "its quiet text on a hovered row", Contrast(p.Text2, hovered), 4.5, canvasFix)
+	need("Canvas", "its quiet text on the raised surface", Contrast(p.Text2, p.Raise), 4.5, canvasFix)
+	need("Canvas", "its quiet text on an input", Contrast(p.Text2, p.Input), 4.5, canvasFix)
+	need("Canvas", "the edge of a control for a visitor who asks for more contrast, on the panel", Contrast(p.ControlHeavy, p.Panel), 3, canvasFix)
+	need("Canvas", "the same edge on an input", Contrast(p.ControlHeavy, p.Input), 3, canvasFix)
 
-	if s.Accent != "" || s.Canvas != "" {
+	if c.Accent != "" || c.Canvas != "" {
 		accentFix := "Choose a colour that is neither very light nor very dark: white is drawn on it, and its lighter or darker tint is drawn as text on the page."
-		need("Accent", s.Accent, "white on it, the label of a primary button", Contrast(white, solid(p.Blue)), 4.5, "Choose a darker colour: white is drawn on it.")
-		need("Accent", s.Accent, "white on its hover", Contrast(white, solid(p.BlueHover)), 4.5, "Choose a darker colour: white is drawn on it.")
-		need("Accent", s.Accent, "its text tint, for links, on the panel", Contrast(p.BlueText, p.Panel), 4.5, accentFix)
-		need("Accent", s.Accent, "its text tint on a hovered row", Contrast(p.BlueText, hovered), 4.5, accentFix)
+		need("Accent", "white on it, the label of a primary button", Contrast(white, solid(p.Blue)), 4.5, "Choose a darker colour: white is drawn on it.")
+		need("Accent", "white on its hover", Contrast(white, solid(p.BlueHover)), 4.5, "Choose a darker colour: white is drawn on it.")
+		need("Accent", "its text tint, for links, on the panel", Contrast(p.BlueText, p.Panel), 4.5, accentFix)
+		need("Accent", "its text tint on a hovered row", Contrast(p.BlueText, hovered), 4.5, accentFix)
 	}
-	if s.Critical != "" || s.Canvas != "" {
-		need("Critical", s.Critical, "white on it, the label of a destructive button", Contrast(white, solid(p.RedSolid)), 4.5, "Choose a darker colour: white is drawn on it.")
-		need("Critical", s.Critical, "white on its hover", Contrast(white, solid(p.RedSolidHover)), 4.5, "Choose a darker colour: white is drawn on it.")
+	if c.Critical != "" || c.Canvas != "" {
+		need("Critical", "white on it, the label of a destructive button", Contrast(white, solid(p.RedSolid)), 4.5, "Choose a darker colour: white is drawn on it.")
+		need("Critical", "white on its hover", Contrast(white, solid(p.RedSolidHover)), 4.5, "Choose a darker colour: white is drawn on it.")
 	}
 	for _, t := range []struct {
 		field, written string
 		tone           Tone
-	}{{"OK", s.OK, p.Green}, {"Warning", s.Warning, p.Orange}, {"Critical", s.Critical, p.Red}} {
-		if t.written == "" && s.Canvas == "" {
+	}{{"OK", c.OK, p.Green}, {"Warning", c.Warning, p.Orange}, {"Critical", c.Critical, p.Red}} {
+		if t.written == "" && c.Canvas == "" {
 			continue
 		}
 		fix := "Choose a colour that is neither very light nor very dark: its tint is drawn as text on the page and on its own badge."
-		need(t.field, t.written, "its text tint on the panel", Contrast(t.tone.Text, p.Panel), 4.5, fix)
+		need(t.field, "its text tint on the panel", Contrast(t.tone.Text, p.Panel), 4.5, fix)
 		badge := t.tone.BG.Over(p.Panel)
-		need(t.field, t.written, "its text tint on its own badge", Contrast(t.tone.Text, badge), 4.5, fix)
+		need(t.field, "its text tint on its own badge", Contrast(t.tone.Text, badge), 4.5, fix)
 	}
 	return out
 }
