@@ -49,3 +49,6 @@ dist/
 
 # The Monaco build: its dependencies are installed to build the committed assets
 tools/monaco/node_modules/
+
+# a binary that `go build ./cmd/demo` leaves here
+/demo
