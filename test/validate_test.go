@@ -238,8 +238,74 @@ func TestValidateThemeColours(t *testing.T) {
 	assert.Contains(t, all, `Theme.Critical is "#12345"`)
 	assert.False(t, strings.Contains(all, "Theme.Warning"))
 
-	for _, ok := range []webui.Color{"#fff", "#ffff", "#3d71d9", "#3D71D9CC"} {
+	for _, ok := range []webui.Color{"#36c", "#36cf", "#3d71d9", "#3D71D9FF"} {
 		_, err := webui.App{Theme: webui.Theme{Accent: ok}}.Compile("")
 		assert.NoError(t, err)
 	}
+}
+
+func TestAnAccentThatCannotCarryAWhiteLabelIsACompileErrorThatSaysWhatToChange(t *testing.T) {
+	t.Parallel()
+
+	for _, accent := range []webui.Color{"#2f9e8f", "#ff6600", "#fff"} {
+		errs := compileErrors(t, webui.App{Theme: webui.Theme{Accent: accent}})
+		assert.True(t, len(errs) > 0)
+		first := errs[0].Error()
+		assert.Contains(t, first, `Theme.Accent is "`+string(accent)+`": white on it, the label of a primary button is `)
+		assert.Contains(t, first, "4.5:1 is needed")
+		assert.Contains(t, first, "Choose a darker colour")
+	}
+}
+
+func TestAStatusColourThatCannotBeReadOnItsBadgeIsACompileError(t *testing.T) {
+	t.Parallel()
+
+	var all string
+	for _, e := range compileErrors(t, webui.App{Theme: webui.Theme{Warning: "#fff200"}}) {
+		all += e.Error() + "\n"
+	}
+	assert.Contains(t, all, `Theme.Warning is "#fff200": its text tint on the panel is `)
+	assert.Contains(t, all, "in the light theme") // the mode it fails in, since the app has not pinned one
+}
+
+func TestACanvasNeedsAModeAndAModeMustBeOne(t *testing.T) {
+	t.Parallel()
+
+	var all string
+	for _, e := range compileErrors(t, webui.App{Theme: webui.Theme{Canvas: "#0e1224"}}) {
+		all += e.Error() + "\n"
+	}
+	assert.Contains(t, all, "Theme.Canvas is set and Theme.Mode is not")
+	assert.Contains(t, all, "cannot be right in both light and dark")
+
+	all = ""
+	for _, e := range compileErrors(t, webui.App{Theme: webui.Theme{Mode: "sepia"}}) {
+		all += e.Error() + "\n"
+	}
+	assert.Contains(t, all, `Theme.Mode is "sepia", which is not a mode`)
+
+	_, err := webui.App{Theme: webui.Theme{Mode: webui.ModeDark, Canvas: "#0e1224"}}.Compile("")
+	assert.NoError(t, err)
+}
+
+func TestACanvasOfTheWrongLightnessForItsModeNamesTheCanvas(t *testing.T) {
+	t.Parallel()
+
+	errs := compileErrors(t, webui.App{Theme: webui.Theme{Mode: webui.ModeDark, Canvas: "#ffffff"}})
+	assert.True(t, len(errs) > 0)
+	first := errs[0].Error()
+	assert.Contains(t, first, `Theme.Canvas is "#ffffff": its text on the panel is `)
+	assert.Contains(t, first, "Choose a darker Canvas")
+
+	errs = compileErrors(t, webui.App{Theme: webui.Theme{Mode: webui.ModeLight, Canvas: "#000000"}})
+	assert.Contains(t, errs[0].Error(), "Choose a lighter Canvas")
+}
+
+// What is not a colour has no contrast to check, so the one error is the one about the colour.
+func TestAThemeThatHasABadColourIsNotAlsoCheckedForContrast(t *testing.T) {
+	t.Parallel()
+
+	errs := compileErrors(t, webui.App{Theme: webui.Theme{Accent: "red", Mode: webui.ModeDark, Canvas: "#ffffff"}})
+	assert.Equal(t, len(errs), 1)
+	assert.Contains(t, errs[0].Error(), `Theme.Accent is "red", which is not a hex colour`)
 }

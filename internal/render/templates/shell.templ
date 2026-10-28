@@ -10,11 +10,21 @@ type DocumentProps struct {
 	Stylesheets []string
 	Scripts     []string
 	Head        templ.Component
+
+	// Theme is the theme that the app is pinned to, "dark" or "light": the document says so, and the script that keeps the viewer's choice
+	// leaves it alone. Empty, the document names none, and the stylesheet follows the viewer's system until they choose.
+	Theme string
 }
 
 templ Document(p DocumentProps) {
 	<!DOCTYPE html>
-	<html lang="en">
+	<html
+		lang="en"
+		if p.Theme != "" {
+			data-theme={ p.Theme }
+			data-theme-pinned
+		}
+	>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>

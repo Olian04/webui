@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Olian04/webui/internal/render/assets"
+	"github.com/Olian04/webui/internal/theme"
 )
 
 // validate checks what the type system cannot, and never stops at the first
@@ -94,18 +95,50 @@ var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F
 
 func validateTheme(t Theme) []CompileError {
 	var errs []CompileError
+	bad := false
 	for _, f := range []struct {
 		name  string
 		value Color
-	}{{"Accent", t.Accent}, {"OK", t.OK}, {"Warning", t.Warning}, {"Critical", t.Critical}} {
+	}{{"Accent", t.Accent}, {"OK", t.OK}, {"Warning", t.Warning}, {"Critical", t.Critical}, {"Canvas", t.Canvas}} {
 		if f.value != "" && !hexColor.MatchString(string(f.value)) {
+			bad = true
 			errs = append(errs, CompileError{
 				Detail: fmt.Sprintf("Theme.%s is %q, which is not a hex colour", f.name, string(f.value)),
 				Fix:    "Write it as #rgb, #rrggbb or #rrggbbaa, such as \"#3d71d9\".",
 			})
 		}
 	}
+	switch t.Mode {
+	case ModeAuto, ModeDark, ModeLight:
+	default:
+		bad = true
+		errs = append(errs, CompileError{
+			Detail: fmt.Sprintf("Theme.Mode is %q, which is not a mode", string(t.Mode)),
+			Fix:    "Use ModeAuto (the viewer's choice), ModeDark or ModeLight.",
+		})
+	}
+	if t.Canvas != "" && t.Mode == ModeAuto {
+		bad = true
+		errs = append(errs, CompileError{
+			Detail: "Theme.Canvas is set and Theme.Mode is not: a background is one colour, which cannot be right in both light and dark",
+			Fix:    "Pin the theme with Mode: webui.ModeDark or webui.ModeLight, in which the Canvas is drawn, or leave Canvas empty to keep the design's own surfaces.",
+		})
+	}
+	if bad {
+		return errs // what is not a colour has no contrast to check
+	}
+	for _, p := range theme.Check(specOf(t)) {
+		errs = append(errs, CompileError{Detail: p.Detail, Fix: p.Fix})
+	}
 	return errs
+}
+
+// specOf is the Theme as internal/theme reads it.
+func specOf(t Theme) theme.Spec {
+	return theme.Spec{
+		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
+		Canvas: string(t.Canvas), Mode: theme.Mode(t.Mode),
+	}
 }
 
 // validateExternalLinks checks the app's external links: every one has a label and an

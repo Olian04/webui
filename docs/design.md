@@ -46,6 +46,12 @@ Dark is the default. Light is a complete, equal alternative — not an
 afterthought — and is selected by the same token set with different values.
 Nothing in the layout, spacing, or component structure changes between them.
 
+An app may pin itself to one of them with a `Mode`, and give the page a background of its own, a `Canvas`, from which every other surface, the borders and
+the text are derived: the panel and what is raised are lifted from it, an input is sunk, and the text is the canvas pulled toward white (dark) or black (light), with the quiet
+text, the borders, the hover and the active state being that text at the strengths the design's own palettes give them. The result is a look of its own that keeps the design's structure:
+the presets (navy, near black, deep green, plum, warm white, sand) are six of them. A canvas is one colour, which cannot be right in both themes, so it needs the mode it is drawn in, and a
+pinned app has no theme button. An app that has not pinned a mode keeps the viewer's choice and may still change its four colours.
+
 ---
 
 ## 3. Surfaces and elevation
@@ -649,7 +655,9 @@ different product.
   text, text-secondary, the semantic text colours, a badge's text on its own tint, and
   a white label on the primary and destructive fills, including on hover. Text
   tertiary clears 3:1 and is for decoration only: no text that is needed (a placeholder, a hint, the status bar's figures, a diff's line numbers) is in it.
-  A test computes these from the stylesheet's tokens, so a palette edit that slips under fails.
+  A test computes these from the stylesheet's tokens, so a palette edit that slips under fails. The app's own colours are held to the same numbers at `Compile`
+  (`internal/theme`): a `Theme` whose accent cannot carry a white label, whose status text cannot be read on its badge, or whose canvas leaves its derived text
+  under 4.5:1, in any mode it is drawn in, is a compile error that names the field and the pair, and not a page with a button whose label is out of sight.
 - The edge of a control (an input, a checkbox, the switch) is the quiet border, 1.6:1, which is the look of the app and is below the 3:1 that WCAG 1.4.11
   asks of it. A visitor who asks for more contrast (`prefers-contrast: more`) gets `--control-bd-strong`, which clears 3:1 on the control's own background
   and on the panel, and the quiet text at the strength of the ordinary. The choice is the design's, and is recorded in the decisions log.

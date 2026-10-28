@@ -18,13 +18,15 @@
 //	             /login, and the Guards read the role from the request's context
 //
 //	go run ./cmd/demo                        # http://localhost:7689/admin/
-//	go run ./cmd/demo -accent '#2f9e8f'      # override the theme's accent colour
+//	go run ./cmd/demo -accent '#1f7a6d'      # override the theme's accent colour
+//	go run ./cmd/demo -theme forest          # a preset: midnight, ember, forest, violet, paper or sand
 //	go run ./cmd/demo -broken                # the failed-to-compile page: three pages, broken in three ways
 package main
 
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -60,7 +62,8 @@ var app = webui.App{
 
 var (
 	broken = flag.Bool("broken", false, "declare three invalid pages, each broken in its own way, to see the compile error page")
-	accent = flag.String("accent", "", "override the theme's accent colour, such as '#2f9e8f'")
+	accent = flag.String("accent", "", "override the theme's accent colour, such as '#1f7a6d'")
+	preset = flag.String("theme", "", "start from a preset theme: midnight, ember, forest, violet, paper or sand")
 )
 
 // Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a
@@ -103,15 +106,29 @@ var BrokenPattern = webui.Page[webui.NoArgs]{
 // brokenPages are the pages that -broken adds, each broken in a way of its own.
 var brokenPages = webui.Pages{Broken, BrokenTable, BrokenPattern}
 
-// themeFor overrides the accent. A Theme is four colours (Accent, OK, Warning,
-// Critical); the library derives the rest and tunes it for light and dark, which
-// are the viewer's choice and not the app's. A value that is not a hex colour is
-// a Compile error, so a colour cannot break out of its declaration.
-func themeFor(accent string) webui.Theme {
-	if accent == "" {
-		return webui.Theme{}
+// presets are the library's themes by the name the -theme flag gives them.
+var presets = map[string]webui.Theme{
+	"midnight": webui.ThemeMidnight, "ember": webui.ThemeEmber, "forest": webui.ThemeForest,
+	"violet": webui.ThemeViolet, "paper": webui.ThemePaper, "sand": webui.ThemeSand,
+}
+
+// themeFor is the app's theme: a preset (a whole look, in a mode of its own), and over it an accent, as an app
+// would copy a preset and change a field. Both are optional, and with neither the design is as it is. The library
+// derives the rest, and Compile refuses a value that is not a hex colour, so a colour cannot break out of its
+// declaration, and one that cannot be read where it is drawn.
+func themeFor(accent, preset string) (webui.Theme, error) {
+	t := webui.Theme{}
+	if preset != "" {
+		p, ok := presets[preset]
+		if !ok {
+			return t, fmt.Errorf("no theme called %q: use midnight, ember, forest, violet, paper or sand", preset)
+		}
+		t = p
 	}
-	return webui.Theme{Accent: webui.Color(accent)}
+	if accent != "" {
+		t.Accent = webui.Color(accent)
+	}
+	return t, nil
 }
 
 func main() {
@@ -119,7 +136,10 @@ func main() {
 	flag.Parse()
 
 	a := app
-	a.Theme = themeFor(*accent)
+	var err error
+	if a.Theme, err = themeFor(*accent, *preset); err != nil {
+		log.Fatal(err)
+	}
 	a.Metrics = registry // what the app counts, to be served below with the program's own
 	if *broken {
 		a.Pages = append(slices.Clone(a.Pages), brokenPages...)

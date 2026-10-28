@@ -123,8 +123,9 @@ leads the top bar and the name is the first breadcrumb.
 
 `Theme` is the surface between the design and the application, and it is a
 struct of static fields, one for each thing an app may restyle: `Accent`
-(interactive: primary buttons, links, the active entry, focus), and `OK`,
-`Warning` and `Critical` (the semantics a badge or a message carries). Each is a
+(interactive: primary buttons, links, the active entry, focus), `OK`,
+`Warning` and `Critical` (the semantics a badge or a message carries), a `Canvas` (the page's
+background) and a `Mode` (the theme the app is pinned to). Each colour is a
 hex colour, checked at `Compile`.
 
 The design underneath is still tokens, and nothing in any component reads a
@@ -135,23 +136,18 @@ text tint, for a status colour its text tint and the faint background and border
 a badge, and for `Critical` also the solid fill of a destructive button. Dark lightens and light deepens,
 so one colour is right in both.
 
-Surfaces and text are not themeable on purpose. They are what makes light and
-dark differ, and light or dark is the viewer's choice, not the app's; a single
-colour cannot be right in both. A field left empty keeps the design's colour, so
-a zero `Theme` serves no `theme.css` at all.
+The surfaces and the text are what makes light and dark differ, and light or dark is the viewer's
+choice, so a single colour cannot be right in both. An app that wants to say what they are says
+which one it is drawn in: `Mode` pins it, the document carries the mode and the script that keeps the viewer's choice leaves it alone, and the theme
+button is not drawn. Only then does a `Canvas` mean anything, and `Compile` refuses one without a `Mode`. From a canvas the panel, the raised
+surface, the input, the borders, the hover and the text are derived (`internal/theme`), as numbers and not as `color-mix`, so that the check that follows is made on what the browser draws (a test compares
+them to a browser's own arithmetic).
 
-### `Page.Path`
+`Compile` checks that what it derived can be read, in each mode the theme is drawn in: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
+and on its own badge. A failure is an error that names the field, the pair and what to change. The package-level presets (`ThemeMidnight`, `ThemeEmber`,
+`ThemeForest`, `ThemeViolet`, `ThemePaper`, `ThemeSand`) are `Theme` values of this kind, to use as they are or to copy and change.
 
-One page is one screen and one address. The path (a `PageID`) is both:
-
-- the address the user sees and shares, and
-- the breadcrumb trail, derived from its segments.
-
-Because pages are identified by template rather than by a route table, a
-breadcrumb parent and a cross-page link resolve to the same thing, and the
-compile step can prove a link's destination exists.
-
----
+A field left empty keeps the design's colour, so a zero `Theme` serves no `theme.css` at all.
 
 ## Arguments
 

@@ -80,15 +80,31 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
 
 	a := app
-	a.Theme = themeFor("#2f9e8f")
+	var err error
+	a.Theme, err = themeFor("#1f7a6d", "")
+	assert.NoError(t, err)
 	themed, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #2f9e8f;")
+	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #1f7a6d;")
 	assert.Equal(t, linked(t, h, "theme.css"), "") // none by default
 
 	// A colour cannot break out of its declaration: that is a Compile error.
-	a.Theme = themeFor("red; } body { display: none")
+	a.Theme, err = themeFor("red; } body { display: none", "")
+	assert.NoError(t, err)
 	_, err = a.Compile("/admin")
+	assert.Error(t, err)
+
+	// A preset is a whole look, pinned to a mode, and an accent over it is the app's own change of a field; what cannot be read is refused.
+	a.Theme, err = themeFor("", "forest")
+	assert.NoError(t, err)
+	pinned, err := a.Compile("/admin")
+	assert.NoError(t, err)
+	assert.Contains(t, get(pinned, "/admin/").Body.String(), `data-theme="dark" data-theme-pinned`)
+	a.Theme, err = themeFor("#a7f3d0", "forest")
+	assert.NoError(t, err)
+	_, err = a.Compile("/admin")
+	assert.Error(t, err)
+	_, err = themeFor("", "sepia")
 	assert.Error(t, err)
 }
 

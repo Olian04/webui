@@ -12,6 +12,7 @@
 | `internal/favicon` | Scale an image to fit a square, with its proportions or padded (stdlib only): the favicons from `Brand.Logo`, and the thumbnails of `webui.Thumbnail`. |
 | `internal/rank`    | How well a search result matches what was typed: the score that orders the results.   |
 | `internal/convert` | List conversions between the declaration, the IR and the response.                    |
+| `internal/theme`   | The colour arithmetic behind `webui.Theme`: parsing, `color-mix` in sRGB, WCAG contrast, the design's palettes in Go (a test keeps them equal to `app.css`), the tokens a `Canvas` and the four colours derive, and the check at `Compile` that they can be read. |
 | `internal/assetserve` | Serves files that never change: a content hash in the name, a year's cache, compression, 304. |
 | `internal/editorctx` | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service. |
 | `internal/metrics` | The Prometheus metrics behind `App.Metrics`: it collects and serves none; collectors that already exist are reused. |
@@ -28,7 +29,7 @@
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
-`pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
+`pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `theme_presets` (the presets), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
 The demo's tests (`cmd/demo/*_test.go`) are one file for each part of the demo, named for it (`devices_test.go`, `alerts_test.go`, `settings_test.go`, `guards_test.go`, ...), and `helpers_test.go` has what they share (`handler`, `handlerAs`, `get`, `post`, `follow`, `flashOf`, `searchResults`). A test for a new or changed feature goes in the file of the page it is about, or in a file of its own for a new page, so that two changes to the demo do not edit one file. They share the demo's one in-memory service, so none runs in parallel.
 
@@ -43,7 +44,7 @@ The runnable `Example` functions in `pkg/webui` are the documentation's tests, a
 | `docs/design-decisions.md` | Why the API is shaped as it is, and what each decision costs. |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
-design token (the app's `webui.Theme` colours are the only ones it may override); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
+design token (the app's `webui.Theme` is the only thing that may override them: the four colours, and in a pinned mode a `Canvas` that the surfaces derive from); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 
