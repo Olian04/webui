@@ -14,6 +14,8 @@
 //	uploads.go   File: a logo and a certificate, kept by the app and served as downloads
 //	system.go    a read-only form; a page guarded for editors; an unknown total
 //	overview.go  the landing page, which shows the library all at once
+//	activity.go  what is new: a List (a headline, small facts, a badge, a picture, Show more), Cards in a row that scrolls
+//	art.go       the pictures that page draws, made from a name and served from this site
 //	auth.go      the surrounding authentication: sign in as a viewer or an editor at
 //	             /login, and the Guards read the role from the request's context
 //
@@ -55,7 +57,7 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
-	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
+	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook},
 }
 
 var (
@@ -146,6 +148,7 @@ func routes(app http.Handler) http.Handler {
 	mux.Handle("/admin/", authenticated(app))
 	mux.Handle("GET /uploads/{name}", authenticated(http.HandlerFunc(serveUpload))) // what a File holds, served by the app: see uploads.go
 	mux.Handle("GET /uploads/{name}/thumb", authenticated(http.HandlerFunc(serveThumb)))
+	mux.HandleFunc("GET /art/{name}", serveArt)          // the pictures of the Activity page: made from the name, on this site
 	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Metrics) in it
 	mux.HandleFunc("GET /login", loginPage)              // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))

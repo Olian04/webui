@@ -523,6 +523,14 @@ colours the line and the bars are the text colour and the mark is the highlight.
 **Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
 label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
 
+**Items** are a list, or cards. A list is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
+headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
+square on the left, decoration with no text of its own since the headline names the item, in a box that holds its place so that the page does not move as pictures arrive. The facts are in order, a dot (`·`) before each but the
+first, in text-tertiary, and the dot goes with the fact it leads when the line wraps; a fact with no value is left out, and not shown as a dash. Cards are the same item as a box with a 1px border: the picture
+above, 16:9 and the full width, then the headline, badge and facts at 10px by 12px. They are a grid of cards at least 200px wide that wraps, or a row of 220px cards that scrolls sideways and snaps, which is a region that
+can be focused and moved by the arrow keys. Both end in a foot that says how many are shown, and, when there are more, *Show more*: a real link to the same page with a larger limit in the address (`latest.limit=8`),
+which with script replaces the list in place. An empty one says *Nothing here yet*. A picture is drawn only from this site or from an origin the page trusts, as for Markdown, and is otherwise left out.
+
 **Bulk selection** adds a 34px checkbox column and, when anything is selected,
 an action bar above the header: a 10% primary tint strip with the count, the
 operations. When there are no bulk

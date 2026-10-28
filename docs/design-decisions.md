@@ -1205,7 +1205,7 @@ design element.
   compared as a parsed origin, never as a string prefix: `cdn.example.com.evil.example`,
   `cdn.example.com@evil.example`, a backslash, a protocol-relative address and a
   subdomain are all other origins and stay links.
-- The policy is set per page, at compile time, from the origins of the Markdown leaves
+- The policy is set per page, at compile time, from the origins of the Markdown leaves and of the lists of items (`List`, `Cards`)
   the page declares, tabs that are not selected included. It is not computed while a
   request is served: the header is written before the body is built, and a leaf
   refresh is a fetch inside a document that already has its policy. A page whose
@@ -1247,6 +1247,31 @@ design element.
 - **What it costs:** a new public leaf and two accessors, and the files that go with a leaf (the declaration, the node, the loader, the view, four registries in the runtime); an SVG in the
   page, which the content security policy allows as it is inline markup and not a fetch; two more display kinds for a table's width, export and search to know about; a series that cannot
   be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design is now a statement about axes and legends.
+
+## Lists and cards
+
+- **A list of items is not a table with the header taken off.** A `Table` is a list of rows with columns, which sort and filter and page, and have actions on a row and in a selection: every one of them is
+  about finding and changing a row. A list is about reading what is new, and has the opposite needs: a headline and a few facts, nothing to find by, nothing to change, and a place where the picture is. Making
+  it a presentation of `Table` was weighed (it was the first of the two designs offered for this change, and not the one chosen) and the leaf was made instead, so that it has no sort links, filters, bulk
+  actions or export to switch off, and no columns to read as a header.
+- **It is called `List`, and not `Feed`.** `Table.Feed` is a source that pages by a cursor, and a leaf with the same name reads as the same thing: a page with `Feed` in two places that mean different things. `List` is what it is, a list of items.
+- **`List` and `Cards` are one leaf with two drawings.** They have the same source, the same fields, the same Show more and the same view state, so they are one node in the IR (`ir.Items`) with one component,
+  and two public types that differ only in that `Cards` has a `Layout`. Duplicated fields are the cost of two types, and the types are kept apart because the name says how it is drawn.
+- **The source is a plain list, asked for one more than is shown.** `Load(ctx, limit)`. The library asks for `limit+1` to know that there is more without a count, and trims it. The other sources a table has
+  were not offered: a cursor needs a cursor in the address and a way back, and a list that needs one is a table (`Table.Feed`); a source that sorts and filters is a table. *Show more* adds to what is
+  shown, so it is a limit in the address, and nothing is kept on the server. It is capped at 200, so that a hand-edited address cannot ask a source for a million, and the cap is the leaf's and
+  not the app's: an app that wants more has a table.
+- **Show more is a link.** It is the same page with a larger limit, so it works without script, a copied link shows the same view, and with script it replaces the leaf in place as the sort and pager links of a table do.
+  What it costs: without script it is a navigation to the same page, which scrolls to the top, and each press asks the source for more than the last, so a long list asks again for what it showed.
+- **A headline is text, and where it leads is another field.** `Open` is a `Link` to a page of the app, built from the item, and is left out for an item whose page refuses the visitor; `Link` is an address,
+  which opens in a tab of its own with the mark that says so. A `URL` accessor was not used for the headline because its text is the same on every row: it is a column of links and not a headline.
+  An `Open` that is an `Action` was refused: an item is read, a link opens in a new tab, and an action is a POST.
+- **A picture is drawn only if the page may fetch it, by the rule that decides it for text.** The address of a picture is data (an RSS item's, a user's avatar), so it is held to what a `Markdown` picture is (`markdown.Picture`): a
+  path on this site, or an https address from an origin the author trusted, with the browser's reading of the address checked against the parser's. It is not drawn otherwise, and the item has no picture, as one that has none has
+  not: never a broken one. The origins are in the page's content security policy, and in no other page's. A picture is decoration (`alt=""`), in a box of its own size so that it does not move the page, loaded late and without a referrer.
+  What it costs: a remote thumbnail needs an origin named, which is a decision the author makes and not a default, and a list of pictures from many hosts is a proxy the app runs.
+- **Dropped:** row actions and selection (an item is read); sorting and filtering (a list's order is its source's); a cursor; infinite scroll (script that fetches as the reader scrolls is a second way to page, and not a link); a
+  carousel with arrows and dots (a row that scrolls, with the keyboard and the browser's own scroll, is what one is without script); and a picture of the item's own kind (a video player, an embed).
 
 ## Metrics
 

@@ -47,6 +47,8 @@ into existence, and nothing is configured twice.
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
 | `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
 | `Stat` | One panel containing a row of tiles, one for each figure of a model: its label, its value as an accessor shows it, and its change and its trend when it has them |
+| `List` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
+| `Cards` | A `List` whose items are cards, in a grid that wraps or a row that scrolls sideways |
 | `Delta` | A signed change, in a cell, a tile or a read-only field: an arrow, the number with its sign and unit, in green or red by whether the way it moved is the good one |
 | `Series` | A small chart of a list of numbers, a line or bars, as an SVG with its values in words as its name; not sorted or filtered by |
 | `Editor.Language`, `Diff.Language` | The highlighting of the text, and for an editor that can be edited the language service that may be loaded for it |
@@ -366,6 +368,15 @@ one, the label of its value), the value as its accessor shows it (a count, a bad
 it has a `Load`, its change (a `Delta`) and its trend (a `Series`). It only reads, and it refreshes as any panel does. It is the answer to *"37 devices, up 3 since yesterday"*
 before the table of them, and a page that needs more of a figure than a tile says has a `Table` for it.
 
+### `List` and `Cards` → a panel of items
+
+One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
+them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the leaf knows there is more without
+counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the leaf's title as the address spells any label, as a table's is), so it works without script and a copied link shows
+the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open` (a `Link` to a page of the app, left out for an item whose page refuses the visitor) or `Link` (an address, which
+opens in a tab of its own, as any link to another site does). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
+(`TrustedOrigins`, as for `Markdown`), decoration, and an address from anywhere else is not drawn. It only reads, and it refreshes as any panel does. It is not `Table.Feed`, which is a cursor source for a table.
+
 ### `Delta` and `Series` → what a figure moved and what shape it has
 
 Two accessors that are only read, so they work where an accessor does: a column, a tile, a read-only field of a form or a toolbar. A `Delta` is a `Float` that is shown with its sign and an arrow, in
@@ -567,6 +578,8 @@ Absences that are choices, not gaps:
   concepts. A control plane refreshes a leaf on demand; it does not poll. If
   this ever changes it should change as a declaration on a leaf, not as global
   chrome.
+- **No row actions and no selection in a list of items.** A `List` is read: an item leads somewhere, and a page that needs to change an item has a `Table` for it, which has row and bulk actions and
+  a `Key`. An item that is an `Action` would be a POST that cannot be opened in a new tab, which is not what a headline is.
 - **No axes, no legend and no multi-series chart.** A `Series` is a sparkline or a row of bars, the shape of a figure beside the figure, and it is
   drawn as part of a value (a cell, a tile) and not as a leaf of its own. A `Stat` is a row of tiles, not a chart. Both were added after this section said there
   should be no chart or statistic leaf, which was the rule while every leaf was a kind of text a model has: a figure with its change and its shape is that too, if it

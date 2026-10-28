@@ -206,8 +206,12 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 // whose destination page refuses the visitor, since a link they cannot follow is
 // not offered, and that is asked of the page's Guard once for each row.
 func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) []string {
+	return p.linkHrefs(ctx, req, page, n.RowClick, rows)
+}
+
+// linkHrefs is each item's destination through link, for a table's rows and a list's items alike: the same rules, so that an item leads where a row does.
+func (p *Program) linkHrefs(ctx context.Context, req *Request, page *ir.Page, link *ir.Link, rows []any) []string {
 	hrefs := make([]string, len(rows))
-	link := n.RowClick
 	if link == nil {
 		return hrefs
 	}
