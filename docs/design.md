@@ -48,9 +48,8 @@ Nothing in the layout, spacing, or component structure changes between them.
 
 An app may give either of them a background of its own, a `Canvas` (`Dark.Canvas`, `Light.Canvas`), from which every other surface of that theme, the borders and
 the text are derived: the panel and what is raised are lifted from it, an input is sunk, and the text is the canvas pulled toward white (dark) or black (light), with the quiet
-text, the borders, the hover and the active state being that text at the strengths the design's own palettes give them. The result is a look of its own that keeps the design's structure:
-the presets (navy, near black, deep green, plum, warm white, sand) are six of them, each with a canvas for both themes. A canvas is one colour, which cannot be right in both themes, so it is given for the one it is
-for. The viewer still chooses between the themes with the button in the top bar, and follows their system until they do: an app does not take that choice from them.
+text, the borders, the hover and the active state being that text at the strengths the design's own palettes give them. The result is a look of its own that keeps the design's structure. A canvas is one colour, which cannot be right in both themes, so it is given for the one it is
+for. The library ships no themes beyond these two: every look an app adds is one more to keep readable, and the check at `Compile` is what holds an app's own to it. The viewer still chooses between the themes with the button in the top bar, and follows their system until they do: an app does not take that choice from them.
 
 ---
 

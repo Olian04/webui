@@ -131,9 +131,8 @@ type Color string
 // from which the library derives every other surface, the borders and the text, so that a theme
 // can be a whole look and not four spots of colour on the design's own. A Canvas is one colour,
 // which cannot be right in both light and dark, so it is given for the mode it is for, and an app
-// may give one for either or both. The viewer still chooses between the modes. The presets
-// (ThemeMidnight, ThemeForest and the others) are Themes of this kind, and an app may start
-// from one and change a field.
+// may give one for either or both. The viewer still chooses between the modes, which are the
+// design's own light and dark: a Theme does not add a third.
 //
 // Compile checks that what it derives can be read: the text on the surfaces it is drawn on
 // at 4.5:1, and what is only decoration at 3:1, in each mode. A colour that fails is an

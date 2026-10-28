@@ -149,8 +149,7 @@ surface, the input, the borders, the hover and the text of that mode are derived
 them to a browser's own arithmetic). A mode with no canvas keeps the design's own surfaces.
 
 `Compile` checks that what it derived can be read, in each mode: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
-and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The package-level presets
-(`ThemeMidnight`, `ThemeEmber`, `ThemeForest`, `ThemeViolet`, `ThemePaper`, `ThemeSand`) are `Theme` values of this kind, with a canvas for each mode, to use as they are or to copy and change.
+and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The library ships no themes of its own besides the design's light and dark.
 
 A field left empty keeps the design's colour, so a zero `Theme` serves no `theme.css` at all.
 

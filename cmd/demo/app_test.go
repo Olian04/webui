@@ -80,34 +80,20 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
 
 	a := app
-	var err error
-	a.Theme, err = themeFor("#1f7a6d", "")
-	assert.NoError(t, err)
+	a.Theme = themeFor("#1f7a6d")
 	themed, err := a.Compile("/admin")
 	assert.NoError(t, err)
 	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #1f7a6d;")
 	assert.Equal(t, linked(t, h, "theme.css"), "") // none by default
 
 	// A colour cannot break out of its declaration: that is a Compile error.
-	a.Theme, err = themeFor("red; } body { display: none", "")
-	assert.NoError(t, err)
+	a.Theme = themeFor("red; } body { display: none")
 	_, err = a.Compile("/admin")
 	assert.Error(t, err)
 
-	// A preset is a whole look with a canvas for each mode, which the viewer still chooses between; an accent over it is the app's own change of a
-	// field, and what cannot be read is refused.
-	a.Theme, err = themeFor("", "forest")
-	assert.NoError(t, err)
-	preset, err := a.Compile("/admin")
-	assert.NoError(t, err)
-	body := get(preset, "/admin/").Body.String()
-	assert.Contains(t, body, "html{background:#0f1f1a;color-scheme:dark}")
-	assert.Contains(t, body, "data-pref-toggle")
-	a.Theme, err = themeFor("#a7f3d0", "forest")
-	assert.NoError(t, err)
+	// A colour that cannot carry a white label is refused too, and not drawn as a button whose label is out of sight.
+	a.Theme = themeFor("#a7f3d0")
 	_, err = a.Compile("/admin")
-	assert.Error(t, err)
-	_, err = themeFor("", "sepia")
 	assert.Error(t, err)
 }
 
