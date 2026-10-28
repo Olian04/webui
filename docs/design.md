@@ -510,7 +510,7 @@ surface with a link-coloured fill, sitting after a right-aligned number. It show
 where a value is in a range.
 
 **A change** is a signed number in a cell, a tile or a read-only field: an arrow, 10px, and the number with its sign and its unit (`+4.35%`, `−12 ms`, with the minus
-sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`Better`: a response
+sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`LowerIsBetter`: a response
 time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 at two decimals reads `0.00` and has no arrow and no colour, so that
 the text and the colour say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
 

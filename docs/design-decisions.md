@@ -1231,9 +1231,10 @@ design element.
   a column (a row of markets, with its change and its chart), a read-only field of a form or a toolbar, and a tile. `Stat` is the leaf that lays a few of them out as tiles, which
   is the one thing no existing leaf does: it has no rows and no fields to type into.
 - **The change says its direction in text, and its colour says whether it is good.** A colour alone says nothing to a reader who does not see it, and an arrow that is red does not say whether
-  a rise is bad or the thing it is of is. The text has the sign (and the minus sign, since a hyphen reads as a dash), the arrow repeats it, and the colour is the field's `Better`: a
+  a rise is bad or the thing it is of is. The text has the sign (and the minus sign, since a hyphen reads as a dash), the arrow repeats it, and the colour is the field's `LowerIsBetter`: a
   response time that falls is green, a rate of errors that falls is green, and a throughput that falls is red. A reader who does not see the colour is told "(better)" or "(worse)". A change that reads zero
   as it is shown (a rise of 0.001 with two decimals) has no sign, arrow or colour, so that the text and the colour are never two stories.
+  Which way is good is a boolean, `LowerIsBetter`, and not a typed direction: there are exactly two, and a boolean cannot hold a value that is not one, where a string type accepts any string and leaves the mistake to `Compile`.
 - **A series is drawn by the server, as an SVG, with its values in words as its name.** HTML is the state: the chart is markup the server made, not data that a script turns into
   markup, so it is there without script, in a table that is exported, and in a screen reader's list. Its name is *what it is, how many values, from where to where, the lowest and the
   highest*, and a file of it has the points, separated by semicolons. It has no axes and no scale: it is the shape beside the figure, and a figure that needs a scale is not this.

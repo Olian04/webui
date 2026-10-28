@@ -70,7 +70,7 @@ func (s Stat[M]) validateBody(v *bodyValidator) {
 		}
 		if t.Change.Load != nil {
 			validateDelta(v, at+".Change", t.Change)
-		} else if t.Change.Label != "" || t.Change.Unit != "" || t.Change.Precision != 0 || t.Change.Better != Higher {
+		} else if t.Change.Label != "" || t.Change.Unit != "" || t.Change.Precision != 0 || t.Change.LowerIsBetter {
 			v.add(at+".Change has no Load", "Set Load to func(M) float64, returning the change, or remove the Change: a tile with no Load has none.")
 		}
 		if t.Trend.Load != nil {

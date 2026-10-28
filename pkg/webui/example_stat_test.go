@@ -36,7 +36,7 @@ func ExampleStat() {
 				},
 				// A latency that falls is good news, so the fall is drawn as good.
 				Change: webui.Delta[Latency]{
-					Label: "Since yesterday", Better: webui.Lower, Unit: " ms",
+					Label: "Since yesterday", LowerIsBetter: true, Unit: " ms",
 					Load: func(l Latency) float64 { return l.Change },
 				},
 				Trend: webui.Series[Latency]{

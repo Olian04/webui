@@ -30,7 +30,7 @@ var (
 	rHealth  = webui.Select[reading]{Label: "Health", Load: func(r reading) []string { return r.Health }, Options: []webui.Option{{Value: "ok", Label: "healthy", Tone: webui.ToneOK}}}
 	rDisk    = webui.Slider[reading]{Label: "Disk", Min: 0, Max: 100, Load: func(r reading) float64 { return r.Disk }}
 	rChange  = webui.Delta[reading]{Label: "Change", Load: func(r reading) float64 { return r.Change }, Precision: 2, Unit: "%"}
-	rLatency = webui.Delta[reading]{Label: "Latency", Load: func(r reading) float64 { return r.Latency }, Better: webui.Lower, Unit: " ms"}
+	rLatency = webui.Delta[reading]{Label: "Latency", Load: func(r reading) float64 { return r.Latency }, LowerIsBetter: true, Unit: " ms"}
 	rTrend   = webui.Series[reading]{Label: "Devices over a day", Load: func(r reading) []float64 { return r.Points }}
 )
 
@@ -341,15 +341,14 @@ func TestAStatThatCannotBeDrawnIsACompileError(t *testing.T) {
 		body webui.PageBody
 		want string
 	}{
-		"no load":          {webui.Stat[reading]{Tiles: []webui.StatTile[reading]{{Value: rDevices}}}, "a Stat has no Load"},
-		"no tiles":         {webui.Stat[reading]{Load: load}, "a Stat has no Tiles"},
-		"nil value":        {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{}}}, "Stat.Tiles[0].Value is nil"},
-		"a group":          {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: webui.Group[reading]{rDevices}}}}, "Stat.Tiles[0].Value is a Group"},
-		"a value no load":  {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: webui.Int[reading]{Label: "X"}}}}, "Stat.Tiles[0].Value has no Load"},
-		"a change no load": {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Change: webui.Delta[reading]{Unit: "%"}}}}, "Stat.Tiles[0].Change has no Load"},
-		"a trend no load":  {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Trend: webui.Series[reading]{Label: "T"}}}}, "Stat.Tiles[0].Trend has no Load"},
-		"unknown better": {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Change: webui.Delta[reading]{
-			Load: func(reading) float64 { return 1 }, Better: "sideways"}}}}, `Stat.Tiles[0].Change has the unknown Better "sideways"`},
+		"no load":                        {webui.Stat[reading]{Tiles: []webui.StatTile[reading]{{Value: rDevices}}}, "a Stat has no Load"},
+		"no tiles":                       {webui.Stat[reading]{Load: load}, "a Stat has no Tiles"},
+		"nil value":                      {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{}}}, "Stat.Tiles[0].Value is nil"},
+		"a group":                        {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: webui.Group[reading]{rDevices}}}}, "Stat.Tiles[0].Value is a Group"},
+		"a value no load":                {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: webui.Int[reading]{Label: "X"}}}}, "Stat.Tiles[0].Value has no Load"},
+		"a change no load":               {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Change: webui.Delta[reading]{Unit: "%"}}}}, "Stat.Tiles[0].Change has no Load"},
+		"a trend no load":                {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Trend: webui.Series[reading]{Label: "T"}}}}, "Stat.Tiles[0].Trend has no Load"},
+		"a change with only a direction": {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Change: webui.Delta[reading]{LowerIsBetter: true}}}}, "Stat.Tiles[0].Change has no Load"},
 		"unknown style": {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Trend: webui.Series[reading]{
 			Load: func(reading) []float64 { return nil }, Style: "pie"}}}}, `Stat.Tiles[0].Trend has the unknown Style "pie"`},
 		"negative precision": {webui.Stat[reading]{Load: load, Tiles: []webui.StatTile[reading]{{Value: rDevices, Change: webui.Delta[reading]{
