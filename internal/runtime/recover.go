@@ -20,11 +20,19 @@ import (
 func (p *Program) recovered(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tw := &statusWriter{ResponseWriter: w}
-		// However the request ends, the sidebar's workers it started have finished when it does: a request that panicked or failed before
-		// it waited for them would otherwise leave them running past its end.
+		// However the request ends, the sidebar's workers and the panels it started have finished when it does: a request that panicked,
+		// failed, or was left by the visitor before it waited for them would otherwise leave them running past its end. Their context
+		// is the request's, so a Load that heeds it is done soon.
 		defer func() {
-			if req := From(r.Context()); req != nil && req.shell != nil {
+			req := From(r.Context())
+			if req == nil {
+				return
+			}
+			if req.shell != nil {
 				req.shell.join()
+			}
+			if req.panels != nil {
+				req.panels.settle()
 			}
 		}()
 		defer func() {
