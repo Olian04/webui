@@ -585,6 +585,7 @@ const (
 	numberPx  = 90  // a number as it is formatted, such as "520.6 KiB"
 	momentPx  = 110
 	barPx     = 140 // the bar and the number beside it
+	sparkPx   = 120 // a small chart, and the room round it
 	unknownPx = 110 // a select whose values are whatever its rows hold
 )
 
@@ -616,6 +617,8 @@ func columnNeed(f ir.Field) float64 {
 		}
 	case f.Display == ir.DisplaySlider:
 		cell = barPx
+	case f.Display == ir.DisplaySeries:
+		cell = sparkPx
 	case f.Display == ir.DisplayTime:
 		cell = momentPx
 	case f.Kind == ir.KindInt || f.Kind == ir.KindFloat:

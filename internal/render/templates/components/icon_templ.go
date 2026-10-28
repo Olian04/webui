@@ -15,21 +15,23 @@ import templruntime "github.com/a-h/templ/runtime"
 type IconName string
 
 const (
-	IconNone     IconName = ""
-	IconInfo     IconName = "circle-info"
-	IconAlert    IconName = "circle-exclamation"
-	IconLock     IconName = "lock"
-	IconSearch   IconName = "magnifying-glass"
-	IconRefresh  IconName = "rotate-right"
-	IconFilter   IconName = "filter"
-	IconChevron  IconName = "chevron-down"
-	IconGear     IconName = "gear"
-	IconClose    IconName = "xmark"
-	IconExternal IconName = "arrow-up-right-from-square"
-	IconSun      IconName = "sun"
-	IconMoon     IconName = "moon"
-	IconSortAsc  IconName = "chevron-up"
-	IconSortDesc IconName = "chevron-down"
+	IconNone      IconName = ""
+	IconInfo      IconName = "circle-info"
+	IconAlert     IconName = "circle-exclamation"
+	IconLock      IconName = "lock"
+	IconSearch    IconName = "magnifying-glass"
+	IconRefresh   IconName = "rotate-right"
+	IconFilter    IconName = "filter"
+	IconChevron   IconName = "chevron-down"
+	IconGear      IconName = "gear"
+	IconClose     IconName = "xmark"
+	IconExternal  IconName = "arrow-up-right-from-square"
+	IconArrowUp   IconName = "arrow-up"
+	IconArrowDown IconName = "arrow-down"
+	IconSun       IconName = "sun"
+	IconMoon      IconName = "moon"
+	IconSortAsc   IconName = "chevron-up"
+	IconSortDesc  IconName = "chevron-down"
 )
 
 // IconProps describes one icon. Icons are decorative by default: give Title a
@@ -98,7 +100,7 @@ func Icon(p IconProps) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 44, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 46, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -111,7 +113,7 @@ func Icon(p IconProps) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 45, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 47, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {

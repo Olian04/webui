@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"path"
 	"slices"
 	"strings"
@@ -29,6 +30,19 @@ var epoch = time.Date(2026, 10, 9, 11, 30, 0, 0, time.UTC)
 
 // Rate is occurrences per second.
 func (d Device) Rate() float64 { return float64(d.Count) / d.Duration }
+
+// Recent is the rate over the last twelve five-minute windows, the last of which is the current one. It is made from the device's own figures, so
+// that it is the same every time the demo is read: a real app would ask the store for the windows.
+func (d Device) Recent() []float64 {
+	rate, seed := d.Rate(), float64(d.Count)
+	out := make([]float64, 12)
+	for i := range out {
+		x := float64(i)
+		out[i] = max(0, rate*(1+0.35*math.Sin(seed+x*1.3)+0.2*math.Sin(seed*0.7+x*2.9)))
+	}
+	out[len(out)-1] = rate
+	return out
+}
 
 type Alert struct {
 	ID, Severity, Device, Message string
@@ -104,6 +118,24 @@ type SystemInfo struct {
 	Uptime   string
 	DiskUsed float64 // percent
 	Queue    int
+}
+
+// Throughput is how much the collector is taking in and how well it is doing, over the last day: each figure, how it moved since yesterday,
+// and its hourly values, the last of which is the current hour.
+type Throughput struct {
+	Rate        int // events per second
+	RateChange  float64
+	RateHistory []float64
+
+	Latency        float64 // the 95th percentile, in milliseconds
+	LatencyChange  float64
+	LatencyHistory []float64
+
+	Errors        int // per minute
+	ErrorsChange  float64
+	ErrorsHistory []float64
+
+	Hour int // the current hour of the day, as an index of the histories
 }
 
 // AuditEntry is something somebody did.
@@ -520,6 +552,19 @@ func (s *Service) Site(name string) (SiteSummary, bool) {
 }
 
 // System is made up too, but it changes: the uptime is real.
+// Throughput is how the collector has done over the last day. The figures are fixed, so that the demo and its tests read the same every time.
+func (s *Service) Throughput() Throughput {
+	return Throughput{
+		Rate: 1240, RateChange: 3.2,
+		RateHistory: []float64{820, 790, 760, 740, 750, 800, 900, 1020, 1100, 1160, 1190, 1210, 1230, 1220, 1235, 1250, 1270, 1260, 1240, 1180, 1100, 1010, 940, 1240},
+		Latency:     184, LatencyChange: -12,
+		LatencyHistory: []float64{140, 138, 135, 134, 136, 142, 150, 160, 172, 181, 188, 190, 195, 198, 201, 199, 205, 210, 207, 196, 188, 180, 172, 184},
+		Errors:         7, ErrorsChange: 40,
+		ErrorsHistory: []float64{2, 1, 1, 2, 3, 2, 4, 3, 5, 4, 3, 5, 6, 4, 5, 7, 6, 8, 5, 6, 4, 5, 6, 7},
+		Hour:          23,
+	}
+}
+
 func (s *Service) System() SystemInfo {
 	up := time.Since(s.started).Round(time.Minute)
 	return SystemInfo{

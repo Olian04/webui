@@ -1225,6 +1225,30 @@ design element.
   mistake is a cross-site script. It is pure Go, and was already in the module graph
   through the linter, so it adds nothing transitive.
 
+## Figures: Stat, Delta and Series
+
+- **A figure with its change and its shape is a kind of value, and a leaf for a few of them.** The design had no statistic or chart leaf on purpose (`design-mapping.md`): a leaf
+  showed a model, or a list of models, and each leaf was a kind of text a model has. A figure is that too, once it is an accessor, so the pieces are accessors first: `Delta` is a
+  signed number drawn with an arrow and a colour for whether the direction is good, and `Series` is a list of numbers drawn as a line or as bars. They work wherever an accessor does:
+  a column (a row of markets, with its change and its chart), a read-only field of a form or a toolbar, and a tile. `Stat` is the leaf that lays a few of them out as tiles, which
+  is the one thing no existing leaf does: it has no rows and no fields to type into.
+- **The change says its direction in text, and its colour says whether it is good.** A colour alone says nothing to a reader who does not see it, and an arrow that is red does not say whether
+  a rise is bad or the thing it is of is. The text has the sign (and the minus sign, since a hyphen reads as a dash), the arrow repeats it, and the colour is the field's `Better`: a
+  response time that falls is green, a rate of errors that falls is green, and a throughput that falls is red. A reader who does not see the colour is told "(better)" or "(worse)". A change that reads zero
+  as it is shown (a rise of 0.001 with two decimals) has no sign, arrow or colour, so that the text and the colour are never two stories.
+- **A series is drawn by the server, as an SVG, with its values in words as its name.** HTML is the state: the chart is markup the server made, not data that a script turns into
+  markup, so it is there without script, in a table that is exported, and in a screen reader's list. Its name is *what it is, how many values, from where to where, the lowest and the
+  highest*, and a file of it has the points, separated by semicolons. It has no axes and no scale: it is the shape beside the figure, and a figure that needs a scale is not this.
+  It is neither sorted nor filtered by. A value that is not a number is left out, and a `Highlight` is an index of the points as they were loaded, so that dropping one does not move
+  the mark.
+- **Dropped:** a `Chart` leaf with axes, a legend, a time range and several lines (the dashboard the design says it is not, and a place where the app's own panel or a link to the tool that
+  does it is the answer); a tile that draws a value of its own (a value is an accessor, so a badge, a bar and a formatted size are each themselves, and a tile keeps up with any new one for
+  free); sparklines made by script from data in an attribute (a second source of markup); and `Stat` taking a list of models for one tile each (the markets pattern is a `Table` with a
+  `Delta` and a `Series` column, which sorts, filters and pages).
+- **What it costs:** a new public leaf and two accessors, and the files that go with a leaf (the declaration, the node, the loader, the view, four registries in the runtime); an SVG in the
+  page, which the content security policy allows as it is inline markup and not a fetch; two more display kinds for a table's width, export and search to know about; a series that cannot
+  be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design is now a statement about axes and legends.
+
 ## Metrics
 
 - The app collects and does not serve. `App.Metrics` is a `prometheus.Registerer`, the

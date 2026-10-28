@@ -802,6 +802,19 @@
 // never sent to the server) and which a double click or Enter on the edge resets; the
 // icon rail that a narrow window, or the collapse button, makes has a width of its own.
 //
+// # Figures
+//
+// A [Stat] is a leaf that shows a few figures of one model as tiles. A tile's Value is any accessor that is read, so a count, a [Select] drawn as a badge,
+// a [Slider] as a bar and a formatted size are each themselves; its Change is a [Delta] and its Trend a [Series], both optional.
+//
+// A Delta is a signed change, shown with its sign and an arrow, green when the way it moved is the good one and red when it is not: Better is Higher
+// (a rise is good news, the default) or Lower (a response time). A change that reads zero as it is shown has no direction and no colour. A Series is a list
+// of numbers drawn as a small chart where it is read, a line (SeriesLine) or bars (SeriesBars), with the values in words as its name, so that a reader who
+// cannot see it has them. Both are accessors, so they work in a [Table] column (a Delta sorts and filters as a number, a Series is neither sorted nor
+// filtered by, and a file of a table holds the points separated by semicolons), and in a read-only field of a [Form] or a [Toolbar].
+//
+// See [ExampleStat].
+//
 // # Refusals
 //
 // What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden],

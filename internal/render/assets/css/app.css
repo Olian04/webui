@@ -599,6 +599,100 @@ html.js .search-submit {
   font-size: 14px;
 }
 
+/* A signed change: its arrow and its text, in the colour of whether the way it moved is the good one. The sign and the arrow are what say the
+   direction, so the colour is a second way of saying it. A change that reads zero has no colour. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.delta-ok {
+  color: var(--green);
+}
+.delta-bad {
+  color: var(--red);
+}
+.delta .delta-arrow {
+  width: 10px;
+  height: 10px;
+  font-size: 10px;
+}
+
+/* A small chart of a list of numbers: a line, or a bar for each. It has no axes: it is the shape of the figures, beside the figure, and its
+   name has the values in words. */
+.spark {
+  display: inline-block;
+  width: 96px;
+  height: 28px;
+  vertical-align: middle;
+  overflow: visible;
+}
+.spark-line {
+  fill: none;
+  stroke: var(--blue-text);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.spark-dot {
+  fill: var(--blue-text);
+}
+.spark-bar {
+  fill: var(--text-2);
+}
+.spark-bar.spark-mark {
+  fill: var(--blue-text);
+}
+
+/* The tiles of a Stat: a list of terms and values, in a row that wraps. A tile draws the lines on its own top and left, which a later tile
+   paints over the edge of an earlier one, and the grid clips at its own edge, so a last row with fewer tiles has no stray line. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  margin: 0;
+  overflow: hidden;
+}
+.stat {
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--panel);
+  box-shadow:
+    -1px 0 0 var(--border),
+    0 -1px 0 var(--border);
+}
+.stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.stat-value {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.stat-value .gauge {
+  font-size: 24px;
+}
+.stat-change {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.stat-trend {
+  margin: 8px 0 0;
+}
+.stat-trend .spark {
+  width: 144px; /* a tile has room for a larger chart than a cell does, in the same proportions */
+  height: 42px;
+}
+
 /* the app's menu: the button in the top bar and the list of its own links behind it */
 .menu {
   position: relative;
@@ -3101,6 +3195,16 @@ thead th .filter-pop a {
 /* Windows high contrast and the like: the browser takes every colour a page chose and gives it the user's. What a page drew with a background or a
    shadow is then gone, so what means something is drawn again with the system colours, or with a border or an outline, which stay. */
 @media (forced-colors: active) {
+  .spark-line {
+    stroke: CanvasText;
+  }
+  .spark-bar {
+    fill: CanvasText;
+  }
+  .spark-dot,
+  .spark-bar.spark-mark {
+    fill: Highlight;
+  }
   .checkbox:checked,
   .md input[type='checkbox']:checked,
   .msel-opt.on .msel-check {

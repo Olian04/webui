@@ -87,3 +87,29 @@ func TestTheToolbarAsksToBeAskedAgainWhileTheSyncJobGoesOn(t *testing.T) {
 	assert.Contains(t, done, ">Done<")
 	assert.False(t, strings.Contains(done, "data-refresh-after"))
 }
+
+// The landing page has the collector's throughput as figures: each tile has its value, how it moved since yesterday, and its shape over the day.
+// A latency that falls is good news and an error rate that rises is not, whichever way the arrow points.
+func TestTheLandingPageShowsThroughputAsTilesWithAChangeAndATrend(t *testing.T) {
+	body := get(handler(t), "/admin/").Body.String()
+	assert.Contains(t, body, `<h2 class="panel-title">Throughput</h2>`)
+	assert.Equal(t, strings.Count(body, `<div class="stat">`), 3)
+	assert.Contains(t, body, `<dd class="stat-value">1240</dd>`)
+	assert.Contains(t, body, `<dd class="stat-value">184 ms</dd>`)
+
+	assert.Contains(t, body, `<span>+3.2%</span>`)  // events are up, which is good
+	assert.Contains(t, body, `<span>−12 ms</span>`) // latency is down, which is good
+	assert.Contains(t, body, `<span>+40%</span>`)   // errors are up, which is not
+	tone := func(text string) string {
+		i := strings.Index(body, `<span>`+text+`</span>`)
+		return body[strings.LastIndex(body[:i], `<span class="delta`):i]
+	}
+	assert.Contains(t, tone("+3.2%"), "delta-ok")
+	assert.Contains(t, tone("−12 ms"), "delta-ok")
+	assert.Contains(t, tone("+40%"), "delta-bad")
+
+	// The trends: two lines and a row of bars with the current hour marked.
+	assert.Equal(t, strings.Count(body, `<polyline class="spark-line"`), 2) // the two lines of the tiles: this page's table has no chart column
+	assert.Contains(t, body, `class="spark-bar spark-mark"`)
+	assert.Contains(t, body, `aria-label="Latency over the day: 24 values, from 140 ms to 184 ms, lowest 134 ms, highest 210 ms"`)
+}

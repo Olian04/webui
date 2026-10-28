@@ -236,8 +236,8 @@ theme is on), and it is there only with script, since the choice it makes is kep
 
 An icon button beside the search. It reloads the page at the address it is on,
 state in the address and all. There is no time-range picker and no auto-refresh
-interval: this is a control plane, not a dashboard — it refreshes on demand, it
-does not poll. There is no row of page parameters: what a table shows is
+interval: a page refreshes on demand, or a panel that says it is not final asks for itself
+again, and nothing polls. There is no row of page parameters: what a table shows is
 filtered in its column headers (§10).
 
 ### Content
@@ -506,10 +506,23 @@ may carry a 6px leading dot in the same colour. A select that holds several valu
 is a badge for each, 4px apart, wrapping. Edited, a select is a 32px drop-down list in the
 style of an input, and with several values a list of up to six rows, with the chosen ones on a 22% primary tint.
 
-**Inline bars** are a cell display mode, not a chart: a 56×5 track on the hover
-surface with a link-coloured fill, sitting after a right-aligned number. This
-is the one place quantity is shown as a shape, and it is deliberately the
-smallest possible version of that idea.
+**Inline bars** are a cell display mode: a 56×5 track on the hover
+surface with a link-coloured fill, sitting after a right-aligned number. It shows
+where a value is in a range.
+
+**A change** is a signed number in a cell, a tile or a read-only field: an arrow, 10px, and the number with its sign and its unit (`+4.35%`, `−12 ms`, with the minus
+sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`Better`: a response
+time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 at two decimals reads `0.00` and has no arrow and no colour, so that
+the text and the colour say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
+
+**A series** is a small chart of a list of numbers, 96×28 (a table's column is 120px wide), with no axes and no scale: it is the shape of the figures beside the
+figure. A line is 1.5px in the link text colour, with a 5px dot on the last point or the one that is marked; bars stand on zero, in the secondary text colour, 70% of their
+slot wide, with the marked one in the link colour. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 ms to 184 ms,
+lowest 134 ms, highest 210 ms*), so a reader who cannot see it has them; a file of a table has them, separated by semicolons. It is neither sorted nor filtered by. In forced
+colours the line and the bars are the text colour and the mark is the highlight.
+
+**Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
+label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
 
 **Bulk selection** adds a 34px checkbox column and, when anything is selected,
 an action bar above the header: a 10% primary tint strip with the count, the
