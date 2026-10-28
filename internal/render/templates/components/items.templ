@@ -1,6 +1,6 @@
 package components
 
-// ItemListProps is a list of items: a column (a feed), or cards in a grid that wraps or in a row that scrolls sideways.
+// ItemListProps is a list of items: a column (a list), or cards in a grid that wraps or in a row that scrolls sideways.
 type ItemListProps struct {
 	Cards  bool
 	Scroll bool
@@ -19,13 +19,13 @@ templ ItemList(p ItemListProps) {
 			{ children... }
 		</ul>
 	} else {
-		<ul class="feed">
+		<ul class="list">
 			{ children... }
 		</ul>
 	}
 }
 
-// ItemProps is one item, as a row of a feed or as a card. Image is an address that has been checked: the picture is decoration and has no text of its own, since the headline
+// ItemProps is one item, as a row of a list or as a card. Image is an address that has been checked: the picture is decoration and has no text of its own, since the headline
 // names the item. The rest are slots, since an item places what it is given and knows nothing of what a headline or a fact is.
 type ItemProps struct {
 	Card  bool

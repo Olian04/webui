@@ -693,12 +693,12 @@ html.js .search-submit {
   height: 42px;
 }
 
-/* A list of items: a feed is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
+/* A list of items: a list is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
    facts, and a picture when it has one; the picture is a fixed box so that a page does not move as it loads. */
 .items-body {
   padding: 0;
 }
-.feed,
+.list,
 .cards {
   list-style: none;
   margin: 0;
@@ -710,11 +710,11 @@ html.js .search-submit {
   align-items: flex-start;
   min-width: 0;
 }
-.feed .item {
+.list .item {
   padding: 10px 14px;
   border-top: 1px solid var(--border);
 }
-.feed .item:first-child {
+.list .item:first-child {
   border-top: 0;
 }
 .item-img {

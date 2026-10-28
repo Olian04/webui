@@ -26,7 +26,7 @@ func limitOf(n *ir.Items, raw map[string]string) int {
 // items loads a list of items and builds its view. The source is asked for one more than is shown, which is how the leaf knows there is more without
 // counting. A failed Load fails that panel, not the page.
 func (p *Program) items(ctx context.Context, req *Request, page *ir.Page, n *ir.Items) templ.Component {
-	kind := "feed"
+	kind := "list"
 	if n.Cards {
 		kind = "cards"
 	}

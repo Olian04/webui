@@ -47,8 +47,8 @@ into existence, and nothing is configured twice.
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
 | `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
 | `Stat` | One panel containing a row of tiles, one for each figure of a model: its label, its value as an accessor shows it, and its change and its trend when it has them |
-| `Feed` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
-| `Cards` | A `Feed` whose items are cards, in a grid that wraps or a row that scrolls sideways |
+| `List` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
+| `Cards` | A `List` whose items are cards, in a grid that wraps or a row that scrolls sideways |
 | `Calendar` | One panel containing a month as a grid of days, each marked when it has items and a link when there is a page that says what is on it, with links to the months either side |
 | `Delta` | A signed change, in a cell, a tile or a read-only field: an arrow, the number with its sign and unit, in green or red by whether the way it moved is the good one |
 | `Series` | A small chart of a list of numbers, a line or bars, as an SVG with its values in words as its name; not sorted or filtered by |
@@ -150,8 +150,7 @@ surface, the input, the borders, the hover and the text of that mode are derived
 them to a browser's own arithmetic). A mode with no canvas keeps the design's own surfaces.
 
 `Compile` checks that what it derived can be read, in each mode: 4.5:1 for text, 3:1 for decoration, the white label on the accent and the destructive fill, a status text on the panel
-and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The package-level presets
-(`ThemeMidnight`, `ThemeEmber`, `ThemeForest`, `ThemeViolet`, `ThemePaper`, `ThemeSand`) are `Theme` values of this kind, with a canvas for each mode, to use as they are or to copy and change.
+and on its own badge. A failure is an error that names the field that is responsible (`Accent`, or `Dark.Canvas` for a canvas that the text cannot be read on), the pair and what to change. The library ships no themes of its own besides the design's light and dark.
 
 A field left empty keeps the design's colour, so a zero `Theme` serves no `theme.css` at all.
 
@@ -370,9 +369,9 @@ one, the label of its value), the value as its accessor shows it (a count, a bad
 it has a `Load`, its change (a `Delta`) and its trend (a `Series`). It only reads, and it refreshes as any panel does. It is the answer to *"37 devices, up 3 since yesterday"*
 before the table of them, and a page that needs more of a figure than a tile says has a `Table` for it.
 
-### `Feed` and `Cards` → a panel of items
+### `List` and `Cards` → a panel of items
 
-One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `Feed` is a column of
+One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
 them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the leaf knows there is more without
 counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the leaf's title as the address spells any label, as a table's is), so it works without script and a copied link shows
 the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open` (a `Link` to a page of the app, left out for an item whose page refuses the visitor) or `Link` (an address, which
@@ -589,7 +588,7 @@ Absences that are choices, not gaps:
   concepts. A control plane refreshes a leaf on demand; it does not poll. If
   this ever changes it should change as a declaration on a leaf, not as global
   chrome.
-- **No row actions and no selection in a list of items.** A `Feed` is read: an item leads somewhere, and a page that needs to change an item has a `Table` for it, which has row and bulk actions and
+- **No row actions and no selection in a list of items.** A `List` is read: an item leads somewhere, and a page that needs to change an item has a `Table` for it, which has row and bulk actions and
   a `Key`. An item that is an `Action` would be a POST that cannot be opened in a new tab, which is not what a headline is.
 - **No axes, no legend and no multi-series chart.** A `Series` is a sparkline or a row of bars, the shape of a figure beside the figure, and it is
   drawn as part of a value (a cell, a tile) and not as a leaf of its own. A `Stat` is a row of tiles, not a chart. Both were added after this section said there

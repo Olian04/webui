@@ -177,7 +177,7 @@ func TestAnotherPartOfTheAddressIsKeptByTheLinks(t *testing.T) {
 	src := &calendarSource{}
 	h := editorApp(webui.Stack{
 		webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember},
-		webui.Feed[story]{Title: "Latest", Load: (&feedLoader{}).load, PageSize: 2, Headline: pTitle},
+		webui.List[story]{Title: "Latest", Load: (&listLoader{}).load, PageSize: 2, Headline: pTitle},
 	})
 	body := serve(h, http.MethodGet, "/admin/e?latest.limit=4").Body.String()
 	assert.Contains(t, body, `href="/admin/e?latest.limit=4&amp;releases.month=2026-10"`)
@@ -277,7 +277,7 @@ func TestACalendarRefreshesAsALeafOfItsOwn(t *testing.T) {
 	src := &calendarSource{}
 	h := editorApp(webui.Stack{
 		webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember},
-		webui.Feed[story]{Title: "Latest", Load: (&feedLoader{}).load, PageSize: 1, Headline: pTitle},
+		webui.List[story]{Title: "Latest", Load: (&listLoader{}).load, PageSize: 1, Headline: pTitle},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e?releases.month=2026-10", nil)
 	req.Header.Set("X-Webui-Leaf", "p.0")
