@@ -49,6 +49,7 @@ into existence, and nothing is configured twice.
 | `Stat` | One panel containing a row of tiles, one for each figure of a model: its label, its value as an accessor shows it, and its change and its trend when it has them |
 | `List` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
 | `Cards` | A `List` whose items are cards, in a grid that wraps or a row that scrolls sideways |
+| `Calendar` | One panel containing a month as a grid of days, each marked when it has items and a link when there is a page that says what is on it, with links to the months either side |
 | `Delta` | A signed change, in a cell, a tile or a read-only field: an arrow, the number with its sign and unit, in green or red by whether the way it moved is the good one |
 | `Series` | A small chart of a list of numbers, a line or bars, as an SVG with its values in words as its name; not sorted or filtered by |
 | `Editor.Language`, `Diff.Language` | The highlighting of the text, and for an editor that can be edited the language service that may be loaded for it |
@@ -376,6 +377,15 @@ counting; *Show more* is a link to the same page with `<name>.limit` larger in t
 the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open` (a `Link` to a page of the app, left out for an item whose page refuses the visitor) or `Link` (an address, which
 opens in a tab of its own, as any link to another site does). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
 (`TrustedOrigins`, as for `Markdown`), decoration, and an address from anywhere else is not drawn. It only reads, and it refreshes as any panel does. It is not `Table.Feed`, which is a cursor source for a table.
+
+### `Calendar` → a panel of a month
+
+One panel. Header as above; the body is a table of whole weeks that holds a month, each day marked when something is on it. The source is `Load(ctx, Span)`, asked for the days that the grid shows (the month, and the days of the first and last weeks
+that are not of it, so that a day at the edge shows what is on it), and `Date` says when an item is, whose day in UTC it is on. The month is in the address as `<name>.month=2026-10`, where the name is the leaf's title as the address spells any
+label, as a table's is; the links to the months either side, and back to the current one, are real links to the same page with the rest of the address as it was, so it works without script and a copied link shows the same month, and with script it replaces the panel in place. A month that is
+not one, or not within 1900 to 2200, is the current month and not an error. `Open` is a `Link` built from a `Day` (its date and how many items are on it), shown only on a day with items and only if the visitor may follow it; the calendar does not own
+a list of the items of a day, and the page that does is the app's. A week begins on Monday, or on Sunday with `SundayFirst`; `WeekNumbers` adds the ISO week numbers, which are of weeks that begin on Monday, so it cannot be combined with `SundayFirst`. `Today` is the clock unless
+given, for a test or an app whose data is of another day. It only reads, and it refreshes as any panel does.
 
 ### `Delta` and `Series` → what a figure moved and what shape it has
 

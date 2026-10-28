@@ -1248,6 +1248,23 @@ design element.
   page, which the content security policy allows as it is inline markup and not a fetch; two more display kinds for a table's width, export and search to know about; a series that cannot
   be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design is now a statement about axes and legends.
 
+## Calendar
+
+- **A calendar is a month of days, and not a scheduler.** It shows what is on each day and where the day leads. It has no events with times, no week or day view, no dragging, no entry of new events: a page that needs those is an app of its own. The
+  pressure for them goes to `Open`, which leads to a page that the app writes, and to a `Table`, which has actions.
+- **The source is asked for the days the grid shows.** A calendar of a month has days of the weeks at its edges, and a day with something on it should show it whichever month it is looked at from, so `Load` is given a `Span` of whole weeks and not the month. What it costs: a source
+  that returns the month alone shows the edge days empty, which is a bug of the source and is visible; and the span is half-open, so that the source need not know the last moment of a day.
+- **A day is a day in UTC.** Every moment in the library is shown in UTC, and a calendar that took the visitor's zone would show a different grid to each visitor, and to the server and the browser. An app that keeps another zone reads
+  and builds its dates there, and gives the calendar the day at midnight UTC. What it costs: a visitor far from UTC sees an event of late evening on the next day, as every time in the app is.
+- **The month is in the address, and nothing is kept.** `<name>.month=2026-10`, as a table keeps its page and a list its limit. Previous, next and today are links, so that the calendar works without script, can be opened in a new tab and is copied as it is.
+  The current month is the default and has no month in its address. A month outside 1900 to 2200, or one that is not a month, is the current one: a hand-edited address is not an error, and cannot ask a source for the year 9999.
+- **A week begins on Monday, and not on the visitor's language.** The language a browser sends says little of where a person is, and a calendar whose weeks began on different days for two visitors who share a link would be a different calendar. The
+  author says `SundayFirst`. Week numbers are ISO 8601, which are of Monday weeks, so asking for both is a compile error and not a guess. Weekday names are English, as the rest of the library's words are.
+- **Today is not marked by colour alone, and a day is told in full.** The day that is now has a ring, a bold numeral and `aria-current="date"`; a day with items has a dot and its items are in the words a reader is told ("Thursday 3 September 2026, 2 items").
+  A numeral alone says neither.
+- **A day's link is `Open`, and it is a `Link`.** The calendar does not list the items of a day: a page that does is the app's, with the date as its argument. A day with no items has no link, a day whose page refuses the visitor has none, and an `Action` was refused, as it is for a list of items.
+- **Dropped:** events with times and durations; week and day views; dragging an event to another day; adding an event; a picker of a month or a year (the arrows and an address are the ways to go, and a year away is twelve links); and the visitor's locale.
+
 ## Lists and cards
 
 - **A list of items is not a table with the header taken off.** A `Table` is a list of rows with columns, which sort and filter and page, and have actions on a row and in a selection: every one of them is

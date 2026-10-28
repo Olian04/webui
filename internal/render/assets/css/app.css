@@ -3441,3 +3441,94 @@ button.file-thumb-chosen {
   padding: 0;
   cursor: pointer;
 }
+
+/* a calendar: a month as a table of days, the day that is now ringed and bold, a dot under a day with items */
+.cal-body {
+  padding: 12px 14px;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cal-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cal-steps {
+  display: flex;
+  gap: 4px;
+}
+.cal-step {
+  min-width: 24px;
+  justify-content: center;
+}
+.cal {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: center;
+}
+.cal th {
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+}
+.cal .cal-wk {
+  width: 2.5em;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+.cal-cell {
+  padding: 1px;
+}
+.cal-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+/* the days of another month are dimmed to the secondary text, and not to the tertiary, which is for decoration: they are still read */
+.cal-out .cal-day {
+  color: var(--text-2);
+}
+.cal-today .cal-day {
+  border-color: var(--blue-text);
+  font-weight: 700;
+}
+a.cal-day {
+  color: var(--blue-text);
+}
+a.cal-day:hover {
+  background: var(--hover);
+}
+/* the mark of a day with items: a dot under the numeral, in the text colour of the day so that it is as readable as the numeral is */
+.cal-marked .cal-day::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+@media (forced-colors: active) {
+  .cal-today .cal-day {
+    border-color: Highlight;
+  }
+}
