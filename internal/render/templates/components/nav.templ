@@ -1,9 +1,10 @@
 package components
 
 
-// The sidebar is the one piece of structure that never disappears. It does not
-// become a top bar and it does not become a menu button; below 820px it
-// collapses to an icon rail instead.
+// The sidebar is the one piece of structure that does not disappear, as long as
+// the app declares a list to show: the page leaves it out when no page has an
+// entry (see Renderer.hasSidebar). It does not become a top bar and it does not
+// become a menu button; below 820px it collapses to an icon rail instead.
 
 // Footer is a slot rather than part of { children... } because it sits outside
 // the scrolling nav: session switches are not navigation and must not scroll
@@ -36,12 +37,17 @@ templ Sidebar(p SidebarProps) {
 }
 
 templ brandMark(p SidebarProps) {
-	if p.Logo != "" {
-		<img class="logo-img" src={ p.Logo } alt=""/>
+	@BrandLogo(p.Logo)
+	<b>{ p.Brand }</b>
+}
+
+// BrandLogo is the app's mark: its logo, or the library's when it has none. It is decoration, since the brand's name is beside it.
+templ BrandLogo(logo string) {
+	if logo != "" {
+		<img class="logo-img" src={ logo } alt=""/>
 	} else {
 		<div class="logo" aria-hidden="true"><span></span></div>
 	}
-	<b>{ p.Brand }</b>
 }
 
 // SidebarFooter holds session-level switches. It is separated from the nav
@@ -60,14 +66,6 @@ templ SidebarCollapse() {
 		<span>Collapse</span>
 		@Icon(IconProps{Name: IconChevron, Class: "side-collapse-icon"})
 	</button>
-}
-
-// SidebarRow is one labelled control in the footer.
-templ SidebarRow(label string) {
-	<div class="side-row">
-		<span>{ label }</span>
-		{ children... }
-	</div>
 }
 
 templ NavSection(label string) {

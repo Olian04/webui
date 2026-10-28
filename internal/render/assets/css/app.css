@@ -486,6 +486,31 @@ a.side-brand:hover {
   align-items: center;
   gap: 6px;
 }
+/* The app's mark at the head of a top bar that has no sidebar to carry it. */
+.top-mark {
+  display: flex;
+  align-items: center;
+  margin-inline-end: 4px;
+}
+/* The theme as an icon button, in a top bar that has no sidebar to hold the switch: the sun in the dark theme and the moon in the light one,
+   the theme that a press brings. The theme is the attribute script sets, or else the system's choice, as the tokens' own are. */
+.theme-toggle .ti-moon {
+  display: none;
+}
+html[data-theme='light'] .theme-toggle .ti-sun {
+  display: none;
+}
+html[data-theme='light'] .theme-toggle .ti-moon {
+  display: inline-block;
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .theme-toggle .ti-sun {
+    display: none;
+  }
+  html:not([data-theme]) .theme-toggle .ti-moon {
+    display: inline-block;
+  }
+}
 .search {
   display: flex;
   align-items: center;

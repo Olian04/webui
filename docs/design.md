@@ -172,7 +172,12 @@ window), panel surface, full height, always visible. It never
 becomes a top bar and never turns into a hamburger — below 820px it collapses
 to a 56px icon rail instead, and a button in its footer collapses it to the same
 rail at any width (the choice is a browser preference). The structure of the
-application is the one thing that should not disappear.
+application is the one thing that should not disappear: when there is any.
+
+**An app has a sidebar when a page declares an entry for it.** It is drawn when any page has a `Nav` entry (a `Label`, or `NavEntries`), and not otherwise: where no page
+declares one there is nothing for a sidebar to list, the page has the width, and the app's author, who writes the declarations, is the one who decides. It is the declaration that decides
+and not what a visitor may open of it, so a page does not change shape with who is looking: a visitor whom every Guard refuses sees the sidebar with an empty list, as one whose list is short
+sees a short one. A detail page that has no entry of its own does not give the app a sidebar. Where there is none, the top bar begins with the app's mark, since the sidebar's brand is not there to show it. The collapse button and the resize handle have nothing to act on, and are not drawn.
 
 Its right edge is a handle, with script: a 7px hit area over the border, a `col-resize` cursor, and a 2px
 line in the accent colour on hover, on keyboard focus and while it is dragged. It is a window splitter: the arrow keys
@@ -200,7 +205,8 @@ title. The icon, or the initial that holds its place, keeps its size.
 
 ### Top bar
 
-48px, panel surface, sticky. Breadcrumbs on the left — parents at text-
+48px, panel surface, sticky. Where there is no sidebar the bar begins with the app's mark (its logo, or the library's own), 22px, as decoration, since the first
+breadcrumb is the brand's name and leads where the sidebar's brand would. Breadcrumbs on the left — parents at text-
 secondary, the current page at full strength and weight 500, separated by `›`
 at text-tertiary. On the right: a 290px search field (only when some page has a `Search`: the app's pages are in the sidebar, and the search finds the things they are for; without script it has a *Search* button joined to its right edge and answers with a page of results, and with script the button is gone and the results are listed beneath the box as it is typed in), then the page's *Refresh*
 icon button, then, when the app declares external links, a button (the arrow-out-of-box
@@ -215,7 +221,10 @@ its own.
 
 **The search palette** (the results under the box) is 360px wide with 30px items, as tall as the window leaves between the top bar and the
 status bar and scrolling inside, dimmed and out of reach while a newer question is pending. The box says the key that opens it (⌘K, or Ctrl K).
-The sidebar's foot has the collapse button and the theme switch.
+The sidebar's foot has the collapse button, and nothing else. **The theme** is an icon button at the right of every top bar, after Refresh and before the external links:
+the sun in the dark theme and the moon in the light one, the theme that a press brings, 16px in the icon-button treatment of Refresh. It was a labelled switch in the sidebar's foot, which a top bar
+without a sidebar had no room for, and one control in one place is the same for every app. It is a switch for a reader (`role="switch"`, named *Light theme*, `aria-checked` when the light
+theme is on), and it is there only with script, since the choice it makes is kept in the browser.
 
 ### Refresh
 
@@ -625,7 +634,7 @@ piece.
 
 ## 14. Responsive
 
-One breakpoint that matters: **820px**, where the sidebar collapses to a 56px
+One breakpoint that matters: **820px**, where the sidebar (when there is one) collapses to a 56px
 icon rail and the search field is dropped. Two minor ones: **1100px**, where a
 split becomes a single column, and **760px**, where paired form fields stack.
 

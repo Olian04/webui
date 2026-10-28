@@ -939,7 +939,7 @@ design element.
   a landmark of its own), `scope="col"` on every header cell and a word for the empty header of the selection column, a pager that is a `nav` named for its table,
   a row's buttons and selection box named by the text of its first cell, a filter that is on named *(on)*, the popover of a field's help and rules given an id that the
   input is `aria-describedby` (with the error after it), an upload result that says *Done*, *Warning* or *Failed* before its words, the confirm dialog an
-  `alertdialog`, the theme switch a `switch`, and a link that opens a tab saying so. The costs: the h1 is not seen, so a sighted reader does not have the page's name
+  `alertdialog`, the theme button a `switch`, and a link that opens a tab saying so. The costs: the h1 is not seen, so a sighted reader does not have the page's name
   twice; the text of a row's first cell is long for a button's name when it is a long name (it is read, and not drawn); and markup that apps' own tests match changed
   (the state title, the status bar, the pager, the row buttons). Not done: a breadcrumb as an ordered list, a fixed label for the collapse button, and a focusable
   scrolling body for a table with nothing in it to tab to, which are small and wait for a reason.
@@ -991,6 +991,18 @@ design element.
   click so that a page that is still being sent does not fight the reader, and at the end of the document). A link to
   another page starts at its top. What it costs: one more value on the device for the life of the tab, the path
   of the page it is for; and a page that is shorter than it was ends at its own end, as a scroll does.
+
+- **An app has a sidebar when a page declares an entry, and not otherwise.** The sidebar is drawn when any page has a `Nav` entry (a `Label`, or `NavEntries`). An app
+  whose pages declare none has no list to draw: the page has the width, and the mark of the app leads the top bar (the first crumb is the brand's name, and leads where the sidebar's
+  brand did). The theme, which was a labelled switch in the sidebar's foot, is an icon button after Refresh in every top bar, the sun in the dark theme and the moon in the light one: a
+  top bar has no room for a labelled switch, and one control in one place is the same whether the app has a sidebar or not (the switch was dropped from the sidebar, and its script with it). It is the declaration that decides, so the author of the app has the choice, as with every other part of the
+  design, and not an edge case of an app with one page (the README's first example has one page and an entry, and a sidebar). Dropped: a rule by the number of entries that a
+  visitor may open (a page that changes shape with who is looking, and with the data that `NavEntries` returns, so an app would have a sidebar on one request and none on the next);
+  a rule by the number of pages declared (a detail page with no entry would count); and a setting on `App` (the answer is a function of the entries, which the app already
+  declares, and a flag would let it disagree with them). What it costs: the sidebar's guarantee that the structure of the application never disappears (`design.md`) now has an exception, which
+  is the author's; a visitor whom every Guard refuses sees an empty list; the collapse and resize preferences a visitor chose are kept but do nothing in an app that has no sidebar; and the theme's
+  icon says what a press brings and not what is on, which a reader of the switch's state (`aria-checked`) has and a sighted one reads from the page. Not done: the icon of the theme that is on (a
+  sun in the light theme reads as "the sun is out" as easily as "press for the sun"), and a visitor's choice of three (light, dark, the system's), which the stored value cannot hold today.
 
 - The sidebar collapses to an icon rail from a button in its footer, and always below
   820px; the choice is a browser preference, so it stays out of the address. An entry

@@ -116,7 +116,7 @@ func TestTheSidebarKeepsItsScrollPositionFromOnePageToTheNext(t *testing.T) {
 	assert.Contains(t, js, "document.querySelector('.side-scroll')")
 
 	// What it looks for is the markup of the sidebar's list.
-	page := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
+	page := serve(navApp(), http.MethodGet, "/admin/device").Body.String() // an app with entries
 	assert.Contains(t, page, `<nav class="side-scroll"`)
 }
 

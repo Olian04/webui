@@ -121,7 +121,8 @@ func quickTable(title string) webui.Table[Device] {
 }
 
 func streamApp(body webui.PageBody) http.Handler {
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: body}}}.MustCompile("/admin")
+	// The page has an entry, which is what gives the app a sidebar, the first of the page that is sent.
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, Body: body}}}.MustCompile("/admin")
 }
 
 func get(h http.Handler, rec http.ResponseWriter, path string, mod ...func(*http.Request)) {

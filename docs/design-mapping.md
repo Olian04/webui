@@ -17,7 +17,7 @@ into existence, and nothing is configured twice.
 
 | Type | Becomes |
 |---|---|
-| `App` | The shell: sidebar (with script its edge can be dragged to a width of 180 to 480px, which the browser keeps), top bar (breadcrumbs, search, refresh), content, status bar |
+| `App` | The shell: sidebar (when a page declares an entry; with script its edge can be dragged to a width of 180 to 480px, which the browser keeps), top bar (breadcrumbs, search, refresh, the theme as an icon button, and with no sidebar the app's mark), content, status bar |
 | `Brand` | Sidebar brand row (logo mark + name), 48px, aligned with the top bar |
 | `Theme` | The four colours an app may restyle (`Accent`, `OK`, `Warning`, `Critical`), emitted as `theme.css` |
 | `Page` | One address, one screen |
@@ -105,7 +105,7 @@ into existence, and nothing is configured twice.
 
 ### `App` and `Brand`
 
-`App` is the whole screen. Its `Pages` populate the sidebar; the compiled app's lookup of pages by path is what makes a breadcrumb parent clickable and
+`App` is the whole screen. Its `Pages` populate the sidebar, when any of them declares an entry (an app whose pages declare none has no sidebar, and the page has the width instead; `design.md` §7); the compiled app's lookup of pages by path is what makes a breadcrumb parent clickable and
 what lets one page link to another without either knowing the other's address.
 
 The browser tab's icon is generated: `Brand.Logo` is scaled to 32 px (the tab)
@@ -116,7 +116,8 @@ app that declares its own.
 
 `Brand.Name` and `Brand.Logo` fill the 48px sidebar brand row. That row is
 exactly as tall as the top bar so the two horizontal rules line up across the
-whole window — the single most noticeable alignment in the layout.
+whole window — the single most noticeable alignment in the layout. With no sidebar the logo
+leads the top bar and the name is the first breadcrumb.
 
 ### `Theme`
 
@@ -184,7 +185,8 @@ the page is handed is what it declared.
 
 Straightforward: one page, one 32px entry, with the active treatment (Active
 background, full-strength text, 2px primary bar at the left edge) when it is
-the current page.
+the current page. An app in which no page has one draws no sidebar, so there is
+no entry to draw.
 
 `Nav.Icon` is the name of a Font Awesome Free solid icon, `"house"` for
 `fa-house`, drawn at the left of the entry. The renderer uses it as a class

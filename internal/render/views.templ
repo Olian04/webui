@@ -18,8 +18,8 @@ templ (r *Renderer) Document(d Doc) {
 		Stylesheets: r.styles(),
 		Scripts:     r.scripts(d),
 		Head:        r.head(d.Code),
-		Sidebar:     r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks),
-		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query),
+		Sidebar:     r.sidebarFor(d),
+		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query, !r.hasSidebar()),
 		Status:      r.statusBar(d, c.StatusBar),
 		Toasts:      toastRegion(d.Toasts),
 		Heading:     d.Title,
@@ -96,12 +96,13 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 }
 
 // topbar holds the breadcrumb and, on the right, the page search, Refresh, and the
-// menu when the app declares one.
+// menu when the app declares one, and the theme as an icon button, which is a choice of the session and not of the page.
+// A page with no sidebar (bare) has the app's mark here too, before the breadcrumb, which begins with the brand's name.
 // The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
-	@c.TopBar(c.TopBarProps{Crumbs: crumbs}) {
+templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
+	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare)}) {
 		if r.search {
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
 		}
@@ -109,6 +110,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 			Icon: c.IconRefresh, Title: "Refresh", Href: here,
 			Attrs: templ.Attributes{"data-refresh": true},
 		})
+		@c.ThemeToggle()
 		if items := r.linkEntries(); len(items) > 0 {
 			@c.ExternalLinks(items)
 		}
@@ -122,22 +124,18 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string) {
 	}
 }
 
-// sidebarFooter holds the one session switch there is. It needs script, so it
+// sidebarFooter holds the sidebar's own control, the one that narrows it to the rail. It needs script, so it
 // is absent without it; the stored choice is a browser preference, never an
 // argument, which is why it does not touch the URL.
 templ (r *Renderer) sidebarFooter() {
 	<div class="js-only">
 		@c.SidebarFooter() {
 			@c.SidebarCollapse()
-			@c.SidebarRow("Light theme") {
-				@c.Switch(c.SwitchProps{
-					ID: "pref-theme", Label: "Light theme", 
-					Attrs: templ.Attributes{"data-pref": "theme"},
-				})
-			}
 		}
 	</div>
 }
+
+
 
 // searchAttrs describes the search box to the page script: where to ask for the results of the pages
 // that offer Search.
