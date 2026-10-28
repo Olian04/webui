@@ -10,17 +10,6 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Direction says which way of a change is the good one.
-type Direction string
-
-const (
-	// Higher is the good direction: a rise is good news, as in throughput or revenue. It is the default.
-	Higher Direction = ""
-
-	// Lower is the good direction when a fall is good news, as in a response time or a rate of errors.
-	Lower Direction = "lower"
-)
-
 // Delta projects a change of M: a signed number, shown with its sign and an arrow, in the colour of whether the way it moved is
 // the good one. It is how a figure says "up 4.35%" or "down 12 ms" at a glance, in a table column, in a [Stat] tile, or in a read-only
 // form. It only reads: there is no Store.
@@ -35,8 +24,9 @@ type Delta[M any] struct {
 	// Load reads the change: positive when it went up, negative when it went down.
 	Load func(M) float64
 
-	// Better is the direction that is good news. It is Higher when left empty.
-	Better Direction
+	// LowerIsBetter says a fall is the good news, as in a response time or a rate of errors, so that a fall is drawn as good and a rise as bad.
+	// Left false, a rise is good, as in throughput or revenue.
+	LowerIsBetter bool
 
 	// Precision is the number of decimals shown. Zero shows the shortest exact representation.
 	Precision int
@@ -116,11 +106,6 @@ var (
 
 func validateDelta[M any](v *bodyValidator, at string, a Delta[M]) {
 	validatePrecision(v, at, a.Precision)
-	switch a.Better {
-	case Higher, Lower:
-	default:
-		v.add(fmt.Sprintf("%s has the unknown Better %q", at, string(a.Better)), "Use Higher, when a rise is good news, or Lower, when a fall is.")
-	}
 }
 
 func validateSeries[M any](v *bodyValidator, at string, a Series[M]) {
@@ -140,7 +125,7 @@ func lowerDelta[M any](a Delta[M], name string) ir.Field {
 	f.Get, f.Num = floatReads(a.Load, a.Precision)
 	f.Show = func(_ context.Context, m any) string { return deltaText(a.Load(m.(M)), a.Precision, a.Unit) }
 	f.Delta = &ir.Delta{
-		Lower: a.Better == Lower,
+		Lower: a.LowerIsBetter,
 		Sign:  func(m any) int { return deltaSign(a.Load(m.(M)), a.Precision) },
 	}
 	return f

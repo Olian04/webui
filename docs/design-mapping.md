@@ -390,7 +390,7 @@ given, for a test or an app whose data is of another day. It only reads, and it 
 ### `Delta` and `Series` → what a figure moved and what shape it has
 
 Two accessors that are only read, so they work where an accessor does: a column, a tile, a read-only field of a form or a toolbar. A `Delta` is a `Float` that is shown with its sign and an arrow, in
-a colour that says whether the direction is good (`Better: Lower` for a response time). It sorts, filters and exports on the number. A `Series` is a list of numbers drawn as a line or as bars, with
+a colour that says whether the direction is good (`LowerIsBetter: true` for a response time). It sorts, filters and exports on the number. A `Series` is a list of numbers drawn as a line or as bars, with
 `Highlight` for the point to mark and a text alternative made from its `Label` and its values. A column of `Series` has no sort link and no filter, and its cell in a file holds the points.
 
 ### `Table.Export` → two download links
