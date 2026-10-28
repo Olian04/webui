@@ -54,6 +54,16 @@ and `icons.txt` are generated from a Font Awesome Free download by
 `go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. `icons.txt`
 is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
 
+## Make invalid states unrepresentable
+
+Prefer a type error to an `App.Compile` error. Shape the declaration so that a wrong one does not compile, wherever that is possible:
+
+- a **boolean** where there are exactly two choices, and not a string type, which accepts any string and leaves the mistake to `Compile`;
+- a **typed value** that ties two things together (`PageID[A]`, so that a link's arguments are checked against the page's by the compiler);
+- a **separate field or type** where two settings cannot coexist, and no field that is only meaningful when another is set.
+
+Add a `Compile` check only when the type system cannot say it, it is not plausible to (it would need generics gymnastics or a type per combination), or it is not ergonomic (it would make the common declaration harder to write or read). That covers what depends on values or on other declarations (a path whose placeholder has no field, a link to a page that is not mounted, a colour that cannot be read), and "exactly one of" (`Table`'s `Rows`, `Load` and `Feed`: Go has no sum type, and a type for each source would make the common table harder to write). Every `Compile` check costs a test, an error message with a `Fix`, and a failure at startup instead of at the editor, so it is the second choice. When a review finds a `Compile` error that a different shape would have made impossible, change the shape.
+
 ## HTML is the state
 
 The server answers a browser with HTML and nothing else (see the opening of `design-decisions.md` and htmx's [HATEOAS](https://htmx.org/essays/hateoas) and
