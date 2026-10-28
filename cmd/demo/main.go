@@ -114,7 +114,7 @@ var presets = map[string]webui.Theme{
 	"violet": webui.ThemeViolet, "paper": webui.ThemePaper, "sand": webui.ThemeSand,
 }
 
-// themeFor is the app's theme: a preset (a whole look, in a mode of its own), and over it an accent, as an app
+// themeFor is the app's theme: a preset (a whole look, with a canvas for light and one for dark), and over it an accent, as an app
 // would copy a preset and change a field. Both are optional, and with neither the design is as it is. The library
 // derives the rest, and Compile refuses a value that is not a hex colour, so a colour cannot break out of its
 // declaration, and one that cannot be read where it is drawn.

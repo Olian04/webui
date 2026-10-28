@@ -23,9 +23,6 @@ type PageProps struct {
 	Scripts     []string
 	Head        templ.Component
 
-	// Theme is the theme that the app is pinned to, "dark" or "light", or empty when the viewer chooses (see [DocumentProps]).
-	Theme string
-
 	Sidebar templ.Component
 	TopBar  templ.Component
 	Status  templ.Component
@@ -115,7 +112,6 @@ func Page(p PageProps) templ.Component {
 			Stylesheets: p.Stylesheets,
 			Scripts:     p.Scripts,
 			Head:        p.Head,
-			Theme:       p.Theme,
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
