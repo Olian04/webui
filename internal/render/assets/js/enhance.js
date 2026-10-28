@@ -841,6 +841,26 @@
     });
   }
 
+  // The theme is an icon button in the top bar: the choice is a browser preference, kept in localStorage and put back by prefs.js before first paint.
+  function isLight() {
+    var explicit = document.documentElement.getAttribute('data-theme');
+    return explicit ? explicit === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
+  }
+  function syncThemeToggle() {
+    var btn = $('[data-pref-toggle="theme"]');
+    if (btn) btn.setAttribute('aria-checked', isLight() ? 'true' : 'false');
+  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-pref-toggle="theme"]');
+    if (!btn) return;
+    var theme = isLight() ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    try {
+      localStorage.setItem('webui.theme', theme);
+    } catch (err) {}
+    syncThemeToggle();
+  });
+
   // The sidebar's collapse button narrows it to the icon rail and back. The
   // choice is a browser preference, like the theme, so it stays out of the URL.
   document.addEventListener('click', function (e) {
@@ -978,14 +998,6 @@
       });
     }
     if (t.matches('[data-pickall], input[name="_sel"]')) syncSelection(t.closest('form'));
-
-    if (t.matches('[data-pref="theme"]')) {
-      var theme = t.checked ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', theme);
-      try {
-        localStorage.setItem('webui.theme', theme);
-      } catch (err) {}
-    }
   });
 
   // A slider is a number input with a range beside it, which only moves the number: the number is what is submitted. The
@@ -1613,13 +1625,8 @@
   var hint = $('.search .kbd');
   if (hint && !isMac) hint.textContent = 'Ctrl K';
 
-  var theme = $('[data-pref="theme"]');
-  if (theme) {
-    // Reflect what is on screen: an explicit choice, else the system's.
-    var explicit = document.documentElement.getAttribute('data-theme');
-    theme.checked = explicit ? explicit === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
-  }
   syncSidebarToggle();
+  syncThemeToggle();
   enhanceSidebarWidth();
   syncSelection(document);
   enhanceSelects(document);

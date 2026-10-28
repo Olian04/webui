@@ -135,7 +135,7 @@ host.
 | What | Kind | Set when | Holds | Lasts |
 | ---- | ---- | -------- | ----- | ----- |
 | `webui_flash` | Cookie, `HttpOnly`, `SameSite=Lax`, `Secure` over TLS, path is the mount prefix | A visitor's action is accepted (a `Success` or a `Warning`) | The message of the toast shown on the next page (up to 300 bytes, and no more than that action produced) | 60 seconds, and cleared as soon as a page shows it |
-| `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch | `light` or `dark` | Until the visitor changes it or clears site data |
+| `webui.theme` | `localStorage` | A visitor flips the light/dark theme switch (an icon button in the top bar) | `light` or `dark` | Until the visitor changes it or clears site data |
 | `webui.sidebar` | `localStorage` | A visitor collapses the sidebar | `collapsed` | Until the visitor expands it or clears site data |
 | `webui.sidebar.width` | `localStorage` | A visitor drags the sidebar's edge, or moves it with the arrow keys | The width in pixels, a whole number from 180 to 480 | Until the visitor resets it (Enter, or a double click on the edge) or clears site data |
 | `webui.sidebar.scroll` | `sessionStorage` | A visitor leaves a page | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page | Until the tab is closed |

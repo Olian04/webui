@@ -100,7 +100,7 @@ when the component set is not.
 | **Layout** | |
 | `layout.templ` | `Stack`, `Split`, `Tabs` |
 | **Navigation** | |
-| `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `SidebarRow`, `NavSection`, `NavItem` |
+| `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `NavSection`, `NavItem` |
 | `topbar.templ` | `TopBar`, `Search`, `ExternalLinks` |
 | **Feedback** | |
 | `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `StatusBar`, `StatusBarLive`, `StatusBarLate` |

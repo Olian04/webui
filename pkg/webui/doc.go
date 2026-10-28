@@ -788,6 +788,12 @@
 // name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
 // itself.
 //
+// There is a sidebar when any page declares an entry in it, with a Nav Label or with
+// NavEntries, and none when no page does: an app whose pages are all reached by link has
+// the width for its pages, and its top bar begins with the app's mark. The declaration
+// decides, and not what a visitor may open of it. The theme, light or dark, is an icon
+// button in the top bar of every app.
+//
 // The sidebar is 240px wide, and a label that is wider is cut short with an ellipsis,
 // its whole being its title. With script its edge can be dragged to a width of 180 to
 // 480px, no more than half the window, which the browser keeps (in its own storage,

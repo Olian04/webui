@@ -12,10 +12,15 @@ type Crumb struct {
 // carries the location the sidebar cannot show.
 type TopBarProps struct {
 	Crumbs []Crumb
+	// Mark leads the bar when there is no sidebar to carry the app's mark. It is decoration: the first crumb is the brand's name.
+	Mark templ.Component
 }
 
 templ TopBar(p TopBarProps) {
 	<header class="topbar">
+		if p.Mark != nil {
+			<span class="top-mark" aria-hidden="true">@p.Mark</span>
+		}
 		<nav class="crumbs" aria-label="Breadcrumb">
 			for i, c := range p.Crumbs {
 				if i > 0 {
@@ -32,6 +37,18 @@ templ TopBar(p TopBarProps) {
 			{ children... }
 		</div>
 	</header>
+}
+
+// ThemeToggle is the light or dark theme as one icon button, in every top bar. It shows the theme that a press
+// brings: the sun in the dark theme, the moon in the light one (the stylesheet picks, from the attribute script sets or from the system's choice). It is
+// a switch, named by the theme it turns on, so a reader is told whether the light theme is on. Script is what makes the choice, so the button is only there with it.
+templ ThemeToggle() {
+	<div class="js-only">
+		<button class="iconbtn theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Light theme" title="Light theme" data-pref-toggle="theme">
+			@Icon(IconProps{Name: IconSun, Class: "ti-sun"})
+			@Icon(IconProps{Name: IconMoon, Class: "ti-moon"})
+		</button>
+	</div>
 }
 
 // SearchProps is the search box: a form that goes to Action with what was typed as q. With script it is a box that lists

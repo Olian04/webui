@@ -451,6 +451,27 @@ func (r *Renderer) shown(hide map[string]bool, links map[string][]NavLink) []nav
 	return out
 }
 
+// hasSidebar is whether the app draws a list of places to go: it does when any page declares a Nav entry (a Label, or NavEntries), and not
+// otherwise. It is the declaration that decides, and not what a visitor may open of it, so that the author of the app says whether it has
+// a sidebar, and a page does not change shape for a visitor whose Guards hide what it lists.
+func (r *Renderer) hasSidebar() bool { return len(r.nav) > 0 }
+
+// topMark is the app's mark at the head of a top bar that has no sidebar to carry it, and nil when there is one.
+func (r *Renderer) topMark(bare bool) templ.Component {
+	if !bare {
+		return nil
+	}
+	return c.BrandLogo(r.logoHref())
+}
+
+// sidebarFor is the sidebar of a document, or nil when the app has none (see hasSidebar).
+func (r *Renderer) sidebarFor(d Doc) templ.Component {
+	if !r.hasSidebar() {
+		return nil
+	}
+	return r.sidebar(d.Home, d.Active, d.HideNav, d.NavLinks)
+}
+
 // lit is whether an entry is the one on screen: a page that lists several says which of them, and any
 // other is lit when it is the page's own entry, or the one the page borrows its place from.
 func (e navEntry) lit(active string) bool {

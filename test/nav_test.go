@@ -73,7 +73,8 @@ func TestTheBrandLinksToTheFirstPageThatNeedsNoArgumentsWhenNothingIsInTheNaviga
 	open := webui.Page[webui.NoArgs]{Path: "/overview", Body: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
 
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a class="side-brand" href="/admin/overview"`)
+	// No page declares an entry, so there is no sidebar: the brand is the first crumb, which leads where the sidebar's would.
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a href="/admin/overview">Home</a>`)
 }
 
 func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
@@ -83,9 +84,9 @@ func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
 	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/device/x").Body.String()
-	assert.False(t, strings.Contains(body, `<a class="side-brand"`))
-	assert.Contains(t, body, `<div class="side-brand">`)
-	assert.False(t, strings.Contains(body, `href="/admin/"`)) // nor is the first breadcrumb
+	assert.False(t, strings.Contains(body, `<a href="/admin/">Acme</a>`))
+	assert.Contains(t, body, `<span class="cur" aria-current="page">Acme</span>`) // plain text, as the first breadcrumb
+	assert.False(t, strings.Contains(body, `href="/admin/"`))
 }
 
 func TestWithoutALandingPageTheRootGoesToTheFirstEntry(t *testing.T) {

@@ -276,7 +276,8 @@ func TestControlsHaveTheRolesAReaderExpects(t *testing.T) {
 	assert.Contains(t, links, `<span>Docs</span> <span class="sr-only">(opens in a new tab)</span>`)
 	assert.False(t, strings.Contains(strings.SplitN(links, "Home</span>", 2)[1][:30], "opens in a new tab"))
 
-	assert.Contains(t, links, `type="checkbox" role="switch" aria-label="Light theme"`)
+	assert.Contains(t, links, `role="switch" aria-checked="false" aria-label="Light theme" title="Light theme" data-pref-toggle="theme"`)
+	assert.False(t, strings.Contains(links, `data-pref="theme"`)) // the sidebar has no switch of its own
 }
 
 // A change of the fragment alone, which following the skip link is, fires popstate as going back does, and must not reload the page: it would send the
