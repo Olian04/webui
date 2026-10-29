@@ -36,6 +36,7 @@ into existence, and nothing is configured twice.
 | `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
+| `Columns` / `Column.Weight` | One row of columns of unequal width, each as wide as its weight says; never narrower than 280px, so the last columns of a row that cannot hold them wrap to a row below |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
 | `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-leaf`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
@@ -285,6 +286,18 @@ next to each other without implying a relationship between them. Identical panel
 and a shared height do that work; the height says only *these are side by side*. Only
 panels that are direct children of the `Split` are stretched: a layout inside it, such as
 `Tabs`, is one cell, and its panel keeps its own height.
+
+### `Columns` and `Column.Weight`
+
+One row of columns, each as wide as its `Weight` says of the row, relative to the others (zero is 1, so the zero `Column` is as wide as any). 25/75 is `{1, 3}` and 25/50/25 is
+`{25, 50, 25}` or `{1, 2, 1}`; the weights are numbers and not a pattern, so that there is no syntax to get wrong, no sum that must be 100 and no count
+to match the children. A `Split` is two equal columns that wrap in twos (the overview's four panels are two rows of two), which is the wrong thing for a
+weight to be a part of; `Columns` is one row that never wraps by count, and wraps by width instead. A column is never narrower than 280px. A row that cannot hold all its
+columns at that width puts the last of them in a row below, and each row shares its width by weight in turn: 25/50/25 is a row of 25/50 above one of 25, and
+a narrower screen has three rows of one. The width is the stylesheet's to decide (a column grows by its weight from nothing, with the floor as its least width), so it
+needs no script and no breakpoint, and the rule is the same at every width. Where a column's exact share is under the floor and the row still holds its columns at it, the column is the floor
+and the others share the rest, so the proportions are held where they can be and the floor where they cannot. The columns of a row are as tall as the tallest; a panel in one takes the height,
+and a layout in one is one cell, as in a `Split`.
 
 ### `Tabs` and `Tab.Label`
 

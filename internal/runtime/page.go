@@ -258,6 +258,9 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Split:
 		kids, err := p.children(ctx, req, page, n.Children)
 		return render.Split(kids), err
+	case *ir.Columns:
+		kids, err := p.children(ctx, req, page, n.Children)
+		return render.Columns(kids, n.Weights), err
 	case *ir.Tabs:
 		return p.tabs(ctx, req, page, n)
 	case *ir.Table:

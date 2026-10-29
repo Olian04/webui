@@ -107,7 +107,7 @@ var LayoutColumns = webui.Page[webui.NoArgs]{
 	Path: "/layout/columns",
 	Nav:  webui.Nav{Label: "Columns in columns", Icon: "grip", Section: "Layout"},
 	Body: webui.Stack{
-		intro("A Split whose first child is a Split: three columns, two narrow and one wide. In the first block they are a list, a status and a wide table. In the second block the panels say how tall they are: those in the inner Split are as tall as each other, and the cell they are in is as tall as the panel beside it. Narrow the window below 1100 px and every Split becomes one column."),
+		intro("A Split whose first child is a Split: three columns, two narrow and one wide. In the first block they are a list, a status and a wide table. In the second block the panels say how tall they are: those in the inner Split are as tall as each other, and the cell they are in is as tall as the panel beside it. Narrow the window below 1100 px and every Split becomes one column. The Weighted columns page does it with weights instead."),
 		webui.Split{
 			webui.Split{
 				compactAlerts("Alerts"),
@@ -131,6 +131,36 @@ var LayoutColumns = webui.Page[webui.NoArgs]{
 				backend("Right pair, left", 0, 1),
 				backend("Right pair, right", 0, 5),
 			},
+		},
+	},
+}
+
+// Columns of unequal width. A Column has a Weight, which is its share of the row relative to the others: 1 and 3 is 25/75,
+// and 25, 50 and 25 is 25/50/25. A column is never narrower than 280 px, so when a row cannot hold all of its columns at that
+// width the last of them move to a row below, and each row shares its width by weight in turn. A Split, by comparison, is two equal columns.
+var LayoutWeights = webui.Page[webui.NoArgs]{
+	Path: "/layout/weights",
+	Nav:  webui.Nav{Label: "Weighted columns", Icon: "table-columns", Section: "Layout"},
+	Body: webui.Stack{
+		intro("Columns of unequal width, from the weights they are given: 25/75, 75/25 and 25/50/25 below, then four columns of equal weight. A column is never narrower than 280 px: narrow the window and the last column of a row moves to a row of its own, and each row shares its width by weight in turn, down to one column. The panels of a row are as tall as the tallest."),
+		webui.Columns{
+			{Weight: 1, Body: compactAlerts("Alerts: 1")},
+			{Weight: 3, Body: compactDevices("Devices: 3", 8)},
+		},
+		webui.Columns{
+			{Weight: 3, Body: compactDevices("Devices: 3", 8)},
+			{Weight: 1, Body: SystemStatus},
+		},
+		webui.Columns{
+			{Weight: 25, Body: compactAlerts("Alerts: 25")},
+			{Weight: 50, Body: compactDevices("Devices: 50", 8)},
+			{Weight: 25, Body: SystemStatus},
+		},
+		webui.Columns{
+			{Body: backend("One", 0, 2)},
+			{Body: backend("Two", 0, 4)},
+			{Body: backend("Three", 0, 1)},
+			{Body: backend("Four", 0, 3)},
 		},
 	},
 }

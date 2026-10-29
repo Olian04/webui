@@ -970,6 +970,27 @@ html.js .search-submit {
   gap: 8px;
   align-items: stretch;
 }
+/* Columns are one row of columns of unequal width. A column grows by its weight from nothing, so the columns of a row share it in the
+   proportion given, and is never narrower than --column-min: a row that cannot hold its columns at that width wraps its last ones onto
+   a row below, and each row shares its width by weight in turn, down to one column on a screen with room for no more. The columns of a
+   row are as tall as the tallest, and a panel in one takes the height. min() keeps the floor from being wider than the row itself. */
+.columns {
+  --column-min: 280px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: stretch;
+}
+.col {
+  flex: var(--w, 1) 1 0;
+  min-width: min(var(--column-min), 100%);
+  display: flex;
+  flex-direction: column;
+}
+.col > .panel,
+.col > :is(.stack, .split, .columns, .tabset) {
+  flex: 1 1 auto;
+}
 /* A column of panels beside a taller one, or under tabs beside one, has height to give. It goes to its tables,
    which share it, and to its last panel when it has none, so that the column ends where the row does and a
    panel's foot is at the bottom of its box. A Stack that is as tall as its content has none to give, so
@@ -985,19 +1006,19 @@ html.js .search-submit {
 /* A stretched panel's body takes the extra height, so its foot (a pager, the actions) is at the bottom of the
    box. A form is a body of its own inside the body, with its foot after its fields, so the form is a column
    that gives the fields the room. */
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body {
+:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
+:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
   display: flex;
   flex-direction: column;
 }
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
+:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
-:is(.split, .stack, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
+:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
   flex: 1 1 auto;
 }
 /* A column's filter is the controls in its header and a form beside the table, which they name with form=: the form has nothing to show. */
@@ -1027,7 +1048,8 @@ form[data-filter-form] {
 }
 [data-tabbody] > .panel,
 [data-tabbody] > .stack,
-[data-tabbody] > .split {
+[data-tabbody] > .split,
+[data-tabbody] > .columns {
   flex: 1 1 auto;
 }
 /* While a tab that was followed with script is on its way, what is shown stays, quieter, until the new tab replaces it. */
