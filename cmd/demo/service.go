@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"path"
 	"slices"
 	"strings"
@@ -29,6 +30,19 @@ var epoch = time.Date(2026, 10, 9, 11, 30, 0, 0, time.UTC)
 
 // Rate is occurrences per second.
 func (d Device) Rate() float64 { return float64(d.Count) / d.Duration }
+
+// Recent is the rate over the last twelve five-minute windows, the last of which is the current one. It is made from the device's own figures, so
+// that it is the same every time the demo is read: a real app would ask the store for the windows.
+func (d Device) Recent() []float64 {
+	rate, seed := d.Rate(), float64(d.Count)
+	out := make([]float64, 12)
+	for i := range out {
+		x := float64(i)
+		out[i] = max(0, rate*(1+0.35*math.Sin(seed+x*1.3)+0.2*math.Sin(seed*0.7+x*2.9)))
+	}
+	out[len(out)-1] = rate
+	return out
+}
 
 type Alert struct {
 	ID, Severity, Device, Message string
@@ -104,6 +118,44 @@ type SystemInfo struct {
 	Uptime   string
 	DiskUsed float64 // percent
 	Queue    int
+}
+
+// Throughput is how much the collector is taking in and how well it is doing, over the last day: each figure, how it moved since yesterday,
+// and its hourly values, the last of which is the current hour.
+type Throughput struct {
+	Rate        int // events per second
+	RateChange  float64
+	RateHistory []float64
+
+	Latency        float64 // the 95th percentile, in milliseconds
+	LatencyChange  float64
+	LatencyHistory []float64
+
+	Errors        int // per minute
+	ErrorsChange  float64
+	ErrorsHistory []float64
+
+	Hour int // the current hour of the day, as an index of the histories
+}
+
+// Release is a version of the collector that was published: what it is called, who made it, when, and how many have taken it. Age says when in words, and When says it
+// as a moment, for a calendar.
+type Release struct {
+	ID, Title, Author, Age, Link, Channel string
+	Downloads                             int
+	When                                  time.Time
+}
+
+// Person is somebody who looks after the collector, and whether they are on call now.
+type Person struct {
+	Name, Role, Since string
+	OnCall            bool
+}
+
+// Dashboard is a board somebody made, in the tool that shows these: its owner, how many panels it has, and when it was last changed.
+type Dashboard struct {
+	Name, Owner, Updated string
+	Panels               int
 }
 
 // AuditEntry is something somebody did.
@@ -520,6 +572,67 @@ func (s *Service) Site(name string) (SiteSummary, bool) {
 }
 
 // System is made up too, but it changes: the uptime is real.
+// Throughput is how the collector has done over the last day. The figures are fixed, so that the demo and its tests read the same every time.
+func (s *Service) Throughput() Throughput {
+	return Throughput{
+		Rate: 1240, RateChange: 3.2,
+		RateHistory: []float64{820, 790, 760, 740, 750, 800, 900, 1020, 1100, 1160, 1190, 1210, 1230, 1220, 1235, 1250, 1270, 1260, 1240, 1180, 1100, 1010, 940, 1240},
+		Latency:     184, LatencyChange: -12,
+		LatencyHistory: []float64{140, 138, 135, 134, 136, 142, 150, 160, 172, 181, 188, 190, 195, 198, 201, 199, 205, 210, 207, 196, 188, 180, 172, 184},
+		Errors:         7, ErrorsChange: 40,
+		ErrorsHistory: []float64{2, 1, 1, 2, 3, 2, 4, 3, 5, 4, 3, 5, 6, 4, 5, 7, 6, 8, 5, 6, 4, 5, 6, 7},
+		Hour:          23,
+	}
+}
+
+// Releases are what has been published, newest first, as many as are asked for. They are fixed, so that the demo and its tests read the same every time.
+func (s *Service) Releases(limit int) []Release {
+	all := []Release{
+		{"r9", "2.4.1: fixes a stall in the ingest queue", "Ada", "3h", "https://example.com/releases/2.4.1", "stable", 1204, epoch.Add(-3 * time.Hour)},
+		{"r8", "2.5.0-beta.2: per-site retention", "Linus", "1d", "https://example.com/releases/2.5.0-beta.2", "beta", 311, epoch.AddDate(0, 0, -1)},
+		{"r7", "2.4.0: a search that finds devices by tag", "Grace", "6d", "https://example.com/releases/2.4.0", "stable", 5420, epoch.AddDate(0, 0, -6)},
+		{"r6", "2.3.3: a gentler back-off when a site is down", "Ada", "2w", "https://example.com/releases/2.3.3", "stable", 8112, epoch.AddDate(0, 0, -14)},
+		{"r5", "2.5.0-beta.1: the first of per-site retention", "Linus", "3w", "https://example.com/releases/2.5.0-beta.1", "beta", 640, epoch.AddDate(0, 0, -21)},
+		{"r4", "2.3.2: security update for the sink library", "Grace", "1mo", "https://example.com/releases/2.3.2", "stable", 9051, epoch.AddDate(0, 0, -30)},
+		{"r3", "2.3.1: a fix for clocks that jump back", "Ada", "2mo", "https://example.com/releases/2.3.1", "stable", 7220, epoch.AddDate(0, 0, -60)},
+	}
+	return all[:min(limit, len(all))]
+}
+
+// ReleasesBetween are the releases published in [from, to), whatever the day: what a calendar of them shows.
+func (s *Service) ReleasesBetween(from, to time.Time) []Release {
+	var out []Release
+	for _, r := range s.Releases(1 << 10) {
+		if !r.When.Before(from) && r.When.Before(to) {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// OnCall is who looks after the collector. The people are fixed.
+func (s *Service) OnCall() []Person {
+	return []Person{
+		{"Ada Lovelace", "Primary", "since 08:00", true},
+		{"Grace Hopper", "Secondary", "since 08:00", true},
+		{"Linus Torvalds", "Platform", "off, back Monday", false},
+		{"Margaret Hamilton", "Platform", "off, back Tuesday", false},
+		{"Alan Turing", "Data", "off", false},
+	}
+}
+
+// Dashboards are the boards that exist.
+func (s *Service) Dashboards() []Dashboard {
+	return []Dashboard{
+		{"Ingest overview", "Ada", "2h", 12},
+		{"Sites", "Grace", "1d", 8},
+		{"Queue depth", "Linus", "3d", 5},
+		{"Disk and retention", "Margaret", "1w", 9},
+		{"Alert history", "Alan", "2w", 6},
+		{"Release health", "Ada", "1mo", 7},
+	}
+}
+
 func (s *Service) System() SystemInfo {
 	up := time.Since(s.started).Round(time.Minute)
 	return SystemInfo{

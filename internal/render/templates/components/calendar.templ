@@ -1,0 +1,103 @@
+package components
+
+// CalendarDayProps is one day of a calendar. Label is what a reader who goes by the grid is told, in full, since the numeral alone says neither the weekday nor how many items
+// there are; the numeral and the mark are for the eye.
+type CalendarDayProps struct {
+	Num     string
+	Label   string
+	Href    string // "" for a day that leads nowhere
+	Today   bool
+	Outside bool // a day of the week at the edge that is not of the month
+	Marked  bool // there are items on it
+}
+
+// CalendarWeekProps is a row of seven days, and the number of the week when the calendar shows them.
+type CalendarWeekProps struct {
+	Number string // "" for none
+	Days   []CalendarDayProps
+}
+
+// CalendarWeekday is a column's heading: the short name that is shown, and the whole one that is read.
+type CalendarWeekday struct {
+	Abbr, Name string
+}
+
+// CalendarProps is a month as a grid, with the links that change which month it is. A link is "" when it is not offered.
+type CalendarProps struct {
+	TitleID     string
+	Title       string
+	Prev, Next  string
+	Current     string // back to the current month, "" when it is the one that is shown
+	PrevLabel   string
+	NextLabel   string
+	Weekdays    []CalendarWeekday
+	WeekNumbers bool
+	Weeks       []CalendarWeekProps
+	LinkAttrs   templ.Attributes // what makes a link replace the calendar in place
+}
+
+templ Calendar(p CalendarProps) {
+	<div class="cal-wrap">
+		<div class="cal-nav">
+			<h3 class="cal-title" id={ p.TitleID }>{ p.Title }</h3>
+			<div class="cal-steps">
+				if p.Current != "" {
+					<a class="btn btn-secondary btn-sm" href={ p.Current } { p.LinkAttrs... }>Today</a>
+				}
+				if p.Prev != "" {
+					<a class="btn btn-secondary btn-sm cal-step" href={ p.Prev } { p.LinkAttrs... }>
+						<span aria-hidden="true">‹</span>
+						<span class="sr-only">{ p.PrevLabel }</span>
+					</a>
+				}
+				if p.Next != "" {
+					<a class="btn btn-secondary btn-sm cal-step" href={ p.Next } { p.LinkAttrs... }>
+						<span aria-hidden="true">›</span>
+						<span class="sr-only">{ p.NextLabel }</span>
+					</a>
+				}
+			</div>
+		</div>
+		<table class="cal" aria-labelledby={ p.TitleID }>
+			<thead>
+				<tr>
+					if p.WeekNumbers {
+						<th scope="col" class="cal-wk"><span class="sr-only">Week</span></th>
+					}
+					for _, d := range p.Weekdays {
+						<th scope="col" abbr={ d.Name }><span aria-hidden="true">{ d.Abbr }</span><span class="sr-only">{ d.Name }</span></th>
+					}
+				</tr>
+			</thead>
+			<tbody>
+				for _, w := range p.Weeks {
+					<tr>
+						if p.WeekNumbers {
+							<th scope="row" class="cal-wk"><span class="sr-only">Week </span>{ w.Number }</th>
+						}
+						for _, d := range w.Days {
+							<td
+								class={ "cal-cell", templ.KV("cal-today", d.Today), templ.KV("cal-out", d.Outside), templ.KV("cal-marked", d.Marked) }
+								if d.Today {
+									aria-current="date"
+								}
+							>
+								if d.Href != "" {
+									<a class="cal-day" href={ d.Href } { p.LinkAttrs... }>
+										<span aria-hidden="true">{ d.Num }</span>
+										<span class="sr-only">{ d.Label }</span>
+									</a>
+								} else {
+									<span class="cal-day">
+										<span aria-hidden="true">{ d.Num }</span>
+										<span class="sr-only">{ d.Label }</span>
+									</span>
+								}
+							</td>
+						}
+					</tr>
+				}
+			</tbody>
+		</table>
+	</div>
+}

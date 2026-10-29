@@ -1,0 +1,131 @@
+package components
+
+import "fmt"
+
+// DeltaProps is a signed change: its text, which carries the sign and the unit, which way it moved, and whether that is the good
+// way. The sign and the arrow say the direction, so the colour is never the only thing that does; the tone is what the direction means.
+type DeltaProps struct {
+	Text string
+	Sign int  // -1, 0 or 1: the arrow, and none for zero
+	Tone Tone // ToneOK, ToneCritical or neutral
+}
+
+func (p DeltaProps) class() string {
+	switch p.Tone {
+	case ToneOK:
+		return "delta delta-ok"
+	case ToneCritical:
+		return "delta delta-bad"
+	case TonePrimary, ToneWarning, ToneNeutral:
+	}
+	return "delta"
+}
+
+// verdict is what the colour means, for a reader who does not see it.
+func (p DeltaProps) verdict() string {
+	switch p.Tone {
+	case ToneOK:
+		return " (better)"
+	case ToneCritical:
+		return " (worse)"
+	case TonePrimary, ToneWarning, ToneNeutral:
+	}
+	return ""
+}
+
+templ Delta(p DeltaProps) {
+	<span class={ p.class() }>
+		if p.Sign > 0 {
+			@Icon(IconProps{Name: IconArrowUp, Class: "delta-arrow"})
+		} else if p.Sign < 0 {
+			@Icon(IconProps{Name: IconArrowDown, Class: "delta-arrow"})
+		}
+		<span>{ p.Text }</span>
+		if v := p.verdict(); v != "" {
+			<span class="sr-only">{ v }</span>
+		}
+	</span>
+}
+
+// SparkProps is a small chart of a list of numbers, already laid out: a polyline through the points, or a bar for each, in a box
+// of W by H. It is a picture that has the values in words as its name, so a reader who does not see it has them. The layout is the
+// caller's, since a component does not know what a series is.
+type SparkProps struct {
+	Label string // the series in words: the name of the picture
+	W, H  int
+	Bars  bool
+
+	// Line is the points of the polyline, "x,y x,y", and Dot the point that is marked on it.
+	Line   string
+	HasDot bool
+	DotX   string
+	DotY   string
+
+	Rects []SparkRect
+}
+
+// SparkRect is one bar, laid out. Mark says it is the one that is marked.
+type SparkRect struct {
+	X, Y, W, H string
+	Mark       bool
+}
+
+templ Spark(p SparkProps) {
+	<svg class={ "spark", templ.KV("spark-bars", p.Bars) } viewBox={ fmt.Sprintf("0 0 %d %d", p.W, p.H) } role="img" aria-label={ p.Label } focusable="false">
+		if p.Bars {
+			for _, r := range p.Rects {
+				<rect class={ "spark-bar", templ.KV("spark-mark", r.Mark) } x={ r.X } y={ r.Y } width={ r.W } height={ r.H } rx="1"></rect>
+			}
+		} else if p.Line != "" {
+			<polyline class="spark-line" points={ p.Line }></polyline>
+			if p.HasDot {
+				<circle class="spark-dot" cx={ p.DotX } cy={ p.DotY } r="2.5"></circle>
+			}
+		}
+	</svg>
+}
+
+// StatGridProps is the row of tiles of a Stat.
+type StatGridProps struct{}
+
+// StatGrid is a list of terms and their values, laid out as tiles that wrap: a reader who goes by structure has each figure's name and what it
+// is, and the grid is the tiles' separators.
+templ StatGrid(p StatGridProps) {
+	<dl class="stats">
+		{ children... }
+	</dl>
+}
+
+// StatTileProps is one figure. Its parts are slots because a tile places what it is given and knows nothing of a value, a change or a series.
+type StatTileProps struct {
+	Label string
+	Help  string
+
+	Value  templ.Component
+	Change templ.Component // nil for none
+	Trend  templ.Component // nil for none
+}
+
+templ StatTile(p StatTileProps) {
+	<div class="stat">
+		<dt class="stat-label">
+			<span>{ p.Label }</span>
+			if p.Help != "" {
+				@InfoTip(InfoTipProps{Help: p.Help})
+			}
+		</dt>
+		<dd class="stat-value">
+			@p.Value
+		</dd>
+		if p.Change != nil {
+			<dd class="stat-change">
+				@p.Change
+			</dd>
+		}
+		if p.Trend != nil {
+			<dd class="stat-trend">
+				@p.Trend
+			</dd>
+		}
+	</div>
+}

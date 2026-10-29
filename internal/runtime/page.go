@@ -23,17 +23,23 @@ func (p *Program) pagePattern(template string) string {
 	return p.Prefix + template
 }
 
-// pictureOrigins are the origins the page's Markdown leaves trust to serve pictures, once
+// pictureOrigins are the origins the page's Markdown leaves and lists of items trust to serve pictures, once
 // each, in the order they are first named. They come from the declaration, so they are the
 // same for every request and every tab, selected or not.
 func pictureOrigins(body ir.Node) []string {
 	var out []string
-	for _, m := range ir.Markdowns(body) {
-		for _, o := range m.TrustedOrigins {
+	add := func(origins []string) {
+		for _, o := range origins {
 			if !slices.Contains(out, o) {
 				out = append(out, o)
 			}
 		}
+	}
+	for _, m := range ir.Markdowns(body) {
+		add(m.TrustedOrigins)
+	}
+	for _, i := range ir.Itemses(body) {
+		add(i.TrustedOrigins)
 	}
 	return out
 }
@@ -204,6 +210,10 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 		switch node := node.(type) {
 		case *ir.Tabs:
 			keys = append(keys, args.ViewKey(node.ID, "tab"))
+		case *ir.Items:
+			keys = append(keys, args.ViewKey(node.ID, "limit"))
+		case *ir.Calendar:
+			keys = append(keys, args.ViewKey(node.ID, "month"))
 		case *ir.Table:
 			id := node.ID
 			if node.Feed {
@@ -256,6 +266,12 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) }), nil
 	case *ir.Markdown:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
+	case *ir.Stat:
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.stat(ctx, req, page, n) }), nil
+	case *ir.Items:
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.items(ctx, req, page, n) }), nil
+	case *ir.Calendar:
+		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.calendar(ctx, req, page, n) }), nil
 	case *ir.Toolbar:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
 	case *ir.FileUpload:

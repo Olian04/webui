@@ -201,9 +201,8 @@ templ ActionBar() {
 }
 
 // GaugeProps draws a quantity as a bar beside its number. This is a cell
-// display mode, not a chart: the cell is still one field value. It is the
-// pressure-release valve for visual richness in a table, and it exists so that
-// a third kind of leaf does not have to.
+// display mode: the cell is still one field value, drawn where it is read. A
+// change and a small chart are drawn the same way (see Delta and Spark).
 type GaugeProps struct {
 	Value float64
 	Max   float64

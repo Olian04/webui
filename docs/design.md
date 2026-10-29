@@ -235,8 +235,8 @@ theme is on), and it is there only with script, since the choice it makes is kep
 
 An icon button beside the search. It reloads the page at the address it is on,
 state in the address and all. There is no time-range picker and no auto-refresh
-interval: this is a control plane, not a dashboard — it refreshes on demand, it
-does not poll. There is no row of page parameters: what a table shows is
+interval: a page refreshes on demand, or a panel that says it is not final asks for itself
+again, and nothing polls. There is no row of page parameters: what a table shows is
 filtered in its column headers (§10).
 
 ### Content
@@ -505,10 +505,37 @@ may carry a 6px leading dot in the same colour. A select that holds several valu
 is a badge for each, 4px apart, wrapping. Edited, a select is a 32px drop-down list in the
 style of an input, and with several values a list of up to six rows, with the chosen ones on a 22% primary tint.
 
-**Inline bars** are a cell display mode, not a chart: a 56×5 track on the hover
-surface with a link-coloured fill, sitting after a right-aligned number. This
-is the one place quantity is shown as a shape, and it is deliberately the
-smallest possible version of that idea.
+**Inline bars** are a cell display mode: a 56×5 track on the hover
+surface with a link-coloured fill, sitting after a right-aligned number. It shows
+where a value is in a range.
+
+**A change** is a signed number in a cell, a tile or a read-only field: an arrow, 10px, and the number with its sign and its unit (`+4.35%`, `−12 ms`, with the minus
+sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`LowerIsBetter`: a response
+time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 at two decimals reads `0.00` and has no arrow and no colour, so that
+the text and the colour say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
+
+**A series** is a small chart of a list of numbers, 96×28 (a table's column is 120px wide), with no axes and no scale: it is the shape of the figures beside the
+figure. A line is 1.5px in the link text colour, with a 5px dot on the last point or the one that is marked; bars stand on zero, in the secondary text colour, 70% of their
+slot wide, with the marked one in the link colour. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 ms to 184 ms,
+lowest 134 ms, highest 210 ms*), so a reader who cannot see it has them; a file of a table has them, separated by semicolons. It is neither sorted nor filtered by. In forced
+colours the line and the bars are the text colour and the mark is the highlight.
+
+**Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
+label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
+
+**Items** are a list, or cards. A list is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
+headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
+square on the left, decoration with no text of its own since the headline names the item, in a box that holds its place so that the page does not move as pictures arrive. The facts are in order, a dot (`·`) before each but the
+first, in text-tertiary, and the dot goes with the fact it leads when the line wraps; a fact with no value is left out, and not shown as a dash. Cards are the same item as a box with a 1px border: the picture
+above, 16:9 and the full width, then the headline, badge and facts at 10px by 12px. They are a grid of cards at least 200px wide that wraps, or a row of 220px cards that scrolls sideways and snaps, which is a region that
+can be focused and moved by the arrow keys. Both end in a foot that says how many are shown, and, when there are more, *Show more*: a real link to the same page with a larger limit in the address (`latest.limit=8`),
+which with script replaces the list in place. An empty one says *Nothing here yet*. A picture is drawn only from this site or from an origin the page trusts, as for Markdown, and is otherwise left out.
+
+**Calendar** is a month as a table of days, in a panel. Above the grid is the month and year at 14/600, and at the right *Today* (only when another month is shown) and the arrows for the months either side: small
+secondary buttons that are real links, so that the month is in the address (`releases.month=2026-10`) and with script the panel is replaced in place. The grid is seven columns of equal width, in weeks of Monday to Sunday or, with
+`SundayFirst`, Sunday to Saturday, with weekday names at 11px in text-secondary and, with `WeekNumbers`, a first column of ISO week numbers at 11px in text-secondary. A day is a 32px-high cell with its numeral at 13px centred; a day of the week at the edge that
+is of another month is in text-secondary, and not in text-tertiary, which is for decoration, since it is still read; the day that is now has a 1px ring in the link text colour and a bold numeral, and `aria-current="date"`, so that it is not marked by colour alone; a day with items has a 4px dot under its numeral, in the
+colour of the numeral. A day that leads somewhere is a link in the link text colour. Every day is told in full to a reader who goes by the grid ("Thursday 3 September 2026, 2 items"), and the numeral and the dot are for the eye. In forced colours the ring is the highlight.
 
 **Bulk selection** adds a 34px checkbox column and, when anything is selected,
 an action bar above the header: a 10% primary tint strip with the count, the

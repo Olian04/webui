@@ -599,6 +599,211 @@ html.js .search-submit {
   font-size: 14px;
 }
 
+/* A signed change: its arrow and its text, in the colour of whether the way it moved is the good one. The sign and the arrow are what say the
+   direction, so the colour is a second way of saying it. A change that reads zero has no colour. */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.delta-ok {
+  color: var(--green);
+}
+.delta-bad {
+  color: var(--red);
+}
+.delta .delta-arrow {
+  width: 10px;
+  height: 10px;
+  font-size: 10px;
+}
+
+/* A small chart of a list of numbers: a line, or a bar for each. It has no axes: it is the shape of the figures, beside the figure, and its
+   name has the values in words. */
+.spark {
+  display: inline-block;
+  width: 96px;
+  height: 28px;
+  vertical-align: middle;
+  overflow: visible;
+}
+.spark-line {
+  fill: none;
+  stroke: var(--blue-text);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.spark-dot {
+  fill: var(--blue-text);
+}
+.spark-bar {
+  fill: var(--text-2);
+}
+.spark-bar.spark-mark {
+  fill: var(--blue-text);
+}
+
+/* The tiles of a Stat: a list of terms and values, in a row that wraps. A tile draws the lines on its own top and left, which a later tile
+   paints over the edge of an earlier one, and the grid clips at its own edge, so a last row with fewer tiles has no stray line. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
+  margin: 0;
+  overflow: hidden;
+}
+.stat {
+  min-width: 0;
+  padding: 12px 14px;
+  background: var(--panel);
+  box-shadow:
+    -1px 0 0 var(--border),
+    0 -1px 0 var(--border);
+}
+.stat-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.stat-value {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.stat-value .gauge {
+  font-size: 24px;
+}
+.stat-change {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.stat-trend {
+  margin: 8px 0 0;
+}
+.stat-trend .spark {
+  width: 144px; /* a tile has room for a larger chart than a cell does, in the same proportions */
+  height: 42px;
+}
+
+/* A list of items: a list is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
+   facts, and a picture when it has one; the picture is a fixed box so that a page does not move as it loads. */
+.items-body {
+  padding: 0;
+}
+.list,
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+.list .item {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.list .item:first-child {
+  border-top: 0;
+}
+.item-img {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: var(--hover);
+}
+.item-main {
+  min-width: 0;
+  flex: 1;
+}
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.item-title {
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.item-link {
+  color: var(--blue-text);
+  text-decoration: none;
+}
+.item-link:hover {
+  text-decoration: underline;
+}
+.item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+/* A fact carries the dot that comes before it, so that when the line wraps the dot goes with the fact it leads and is not left at the end of the line above. */
+.item-fact {
+  display: inline-flex;
+  gap: 6px;
+  min-width: 0;
+}
+.item-sep {
+  color: var(--text-3);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+.item-card {
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel);
+}
+.item-card .item-img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+.item-card .item-main {
+  width: 100%;
+  padding: 10px 12px;
+}
+.cards-scroller {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+}
+.cards-row {
+  display: flex;
+  align-items: stretch;
+}
+.cards-row .item-card {
+  flex: 0 0 220px;
+  scroll-snap-align: start;
+}
+
 /* the app's menu: the button in the top bar and the list of its own links behind it */
 .menu {
   position: relative;
@@ -3101,6 +3306,16 @@ thead th .filter-pop a {
 /* Windows high contrast and the like: the browser takes every colour a page chose and gives it the user's. What a page drew with a background or a
    shadow is then gone, so what means something is drawn again with the system colours, or with a border or an outline, which stay. */
 @media (forced-colors: active) {
+  .spark-line {
+    stroke: CanvasText;
+  }
+  .spark-bar {
+    fill: CanvasText;
+  }
+  .spark-dot,
+  .spark-bar.spark-mark {
+    fill: Highlight;
+  }
   .checkbox:checked,
   .md input[type='checkbox']:checked,
   .msel-opt.on .msel-check {
@@ -3225,4 +3440,95 @@ button.file-thumb-chosen {
   background: none;
   padding: 0;
   cursor: pointer;
+}
+
+/* a calendar: a month as a table of days, the day that is now ringed and bold, a dot under a day with items */
+.cal-body {
+  padding: 12px 14px;
+}
+.cal-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.cal-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.cal-steps {
+  display: flex;
+  gap: 4px;
+}
+.cal-step {
+  min-width: 24px;
+  justify-content: center;
+}
+.cal {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: center;
+}
+.cal th {
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+}
+.cal .cal-wk {
+  width: 2.5em;
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 400;
+}
+.cal-cell {
+  padding: 1px;
+}
+.cal-day {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+}
+/* the days of another month are dimmed to the secondary text, and not to the tertiary, which is for decoration: they are still read */
+.cal-out .cal-day {
+  color: var(--text-2);
+}
+.cal-today .cal-day {
+  border-color: var(--blue-text);
+  font-weight: 700;
+}
+a.cal-day {
+  color: var(--blue-text);
+}
+a.cal-day:hover {
+  background: var(--hover);
+}
+/* the mark of a day with items: a dot under the numeral, in the text colour of the day so that it is as readable as the numeral is */
+.cal-marked .cal-day::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 50%;
+  background: currentColor;
+}
+@media (forced-colors: active) {
+  .cal-today .cal-day {
+    border-color: Highlight;
+  }
 }

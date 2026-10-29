@@ -802,6 +802,40 @@
 // never sent to the server) and which a double click or Enter on the edge resets; the
 // icon rail that a narrow window, or the collapse button, makes has a width of its own.
 //
+// # Figures
+//
+// A [Stat] is a leaf that shows a few figures of one model as tiles. A tile's Value is any accessor that is read, so a count, a [Select] drawn as a badge,
+// a [Slider] as a bar and a formatted size are each themselves; its Change is a [Delta] and its Trend a [Series], both optional.
+//
+// A Delta is a signed change, shown with its sign and an arrow, green when the way it moved is the good one and red when it is not: a rise is good news
+// by default, and LowerIsBetter says a fall is (a response time). A change that reads zero as it is shown has no direction and no colour. A Series is a list
+// of numbers drawn as a small chart where it is read, a line (SeriesLine) or bars (SeriesBars), with the values in words as its name, so that a reader who
+// cannot see it has them. Both are accessors, so they work in a [Table] column (a Delta sorts and filters as a number, a Series is neither sorted nor
+// filtered by, and a file of a table holds the points separated by semicolons), and in a read-only field of a [Form] or a [Toolbar].
+//
+// See [ExampleStat].
+//
+// # Items
+//
+// A [List] lists items of a model: each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. [Cards] are the same
+// items as boxes, in a grid that wraps or, with Layout: CardsScroll, a row that scrolls sideways. They are for what is new, where a [Table] would be a column of cells.
+//
+// Their source is Load(ctx, limit), a plain list, which is asked for one more than is shown so that the leaf knows there is more. It shows PageSize items, five when that is left zero, and a Show more
+// link that shows that many more: a real link to the same page with the leaf's name and ".limit" in the address, so it works without script and a copied link shows the same, and with
+// script it replaces the list in place. A headline is an accessor for text. Where it leads is Open, a [Link] to a page of the app (an item whose page refuses the visitor is text), or Link, an
+// address that opens in a tab of its own. Meta are the small facts, shown as they are in a cell and separated by a dot, and a fact with no value is left out. Badge is a [Select].
+//
+// Image is the address of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
+// policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleList].
+//
+// # Calendar
+//
+// A [Calendar] shows a month as a grid of days, each marked when something is on it, with a link when Open says where a day leads. Load is given a [Span], the days that the grid shows (the month, and the days of its
+// first and last weeks that are not of it), and Date says when an item is. A day is a day in UTC. The month is in the address as the leaf's name and ".month" ("releases.month=2026-10"), with real links to the months
+// either side and back to the current one, so it works without script and a copied link shows the same month. Open is a [Link] built from a [Day], and only a day with items has it. A week begins on Monday, or
+// on Sunday with SundayFirst, and WeekNumbers adds ISO 8601 week numbers, which are of Monday weeks. The day that is now is marked by more than colour, and each day is told in full to a reader who goes by the
+// grid. See [ExampleCalendar].
+//
 // # Refusals
 //
 // What a visitor may be told is a [Refusal]: [NotFound], [Unauthorized] or [Forbidden],

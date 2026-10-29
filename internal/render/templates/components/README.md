@@ -101,7 +101,10 @@ when the component set is not.
 | `layout.templ` | `Stack`, `Split`, `Tabs` |
 | **Navigation** | |
 | `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `NavSection`, `NavItem` |
-| `topbar.templ` | `TopBar`, `Search`, `ExternalLinks` |
+| `topbar.templ` | `TopBar`, `ThemeToggle`, `Search`, `ExternalLinks` |
+| `trend.templ` | `Delta`, `Spark`, `StatGrid`, `StatTile` |
+| `items.templ` | `ItemList`, `Item` |
+| `calendar.templ` | `Calendar` |
 | **Feedback** | |
 | `feedback.templ` | `Toast`, `ToastRegion`, `EmptyState`, `StatusBar`, `StatusBarLive`, `StatusBarLate` |
 | `state.templ` | `StatePage`, `CompileError` |

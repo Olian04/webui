@@ -1,0 +1,69 @@
+package components
+
+// ItemListProps is a list of items: a column (a list), or cards in a grid that wraps or in a row that scrolls sideways.
+type ItemListProps struct {
+	Cards  bool
+	Scroll bool
+	Label  string // names the row that scrolls to a reader who is told it is one
+}
+
+templ ItemList(p ItemListProps) {
+	if p.Cards && p.Scroll {
+		<div class="cards-scroller" tabindex="0" role="region" aria-label={ p.Label + ", scrolls sideways" }>
+			<ul class="cards cards-row">
+				{ children... }
+			</ul>
+		</div>
+	} else if p.Cards {
+		<ul class="cards">
+			{ children... }
+		</ul>
+	} else {
+		<ul class="list">
+			{ children... }
+		</ul>
+	}
+}
+
+// ItemProps is one item, as a row of a list or as a card. Image is an address that has been checked: the picture is decoration and has no text of its own, since the headline
+// names the item. The rest are slots, since an item places what it is given and knows nothing of what a headline or a fact is.
+type ItemProps struct {
+	Card  bool
+	Image string
+
+	Headline templ.Component
+	Badge    templ.Component   // nil for none
+	Meta     []templ.Component // the small facts, in order, each drawn only when it is there
+}
+
+templ Item(p ItemProps) {
+	<li class={ "item", templ.KV("item-card", p.Card) }>
+		if p.Image != "" {
+			<img class="item-img" src={ p.Image } alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer"/>
+		}
+		<div class="item-main">
+			<div class="item-head">
+				<span class="item-title">
+					@p.Headline
+				</span>
+				if p.Badge != nil {
+					@p.Badge
+				}
+			</div>
+			if len(p.Meta) > 0 {
+				<div class="item-meta">
+					for i, m := range p.Meta {
+						<span class="item-fact">
+							if i > 0 {
+								<span class="item-sep" aria-hidden="true">·</span>
+							}
+							<span>
+								@m
+							</span>
+						</span>
+					}
+				</div>
+			}
+		</div>
+	</li>
+}

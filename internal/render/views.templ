@@ -389,6 +389,10 @@ templ present(f ir.Field, text string, model any) {
 			} else {
 				{ text }
 			}
+		case ir.DisplayDelta:
+			@c.Delta(deltaProps(f, text, model))
+		case ir.DisplaySeries:
+			@c.Spark(sparkProps(f, model))
 		default:
 			if f.Multiline {
 				<span class="multiline">{ text }</span>
@@ -927,6 +931,134 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 			<article class="md" aria-label={ v.Node.Content.Label }>
 				@templ.Raw(v.Result.HTML)
 			</article>
+		</div>
+	}
+}
+
+// Stat renders a stat leaf as one panel: a tile for each figure, each with its value, and its change and trend when it has them. A value, a
+// change and a trend are shown as the field says, as they are in a cell of a table.
+templ (r *Renderer) Stat(v StatView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
+		Leaf:   LeafID(v.Node.At),
+	}) {
+		<div class="panel-body">
+			@c.StatGrid(c.StatGridProps{}) {
+				for _, t := range v.Node.Tiles {
+					@c.StatTile(r.statTile(t, v.Model))
+				}
+			}
+		</div>
+	}
+}
+
+// statCell is one field of a tile, shown as it is in a table cell.
+templ statCell(f ir.Field, model any) {
+	@value(f, f.Shown(ctx, model), model)
+}
+
+// statTile is a tile as the component takes it.
+func (r *Renderer) statTile(t ir.StatTile, model any) c.StatTileProps {
+	p := c.StatTileProps{Label: t.Label, Help: t.Help, Value: statCell(t.Value, model)}
+	if t.Change != nil {
+		p.Change = statCell(*t.Change, model)
+	}
+	if t.Trend != nil {
+		p.Trend = statCell(*t.Trend, model)
+	}
+	return p
+}
+
+// Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
+// one, then Show more when the source had more. Each part is shown as its field says to show it, as it is in a cell of a table.
+templ (r *Renderer) Items(v ItemsView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
+		Leaf:   LeafID(v.Node.At),
+		Footer: r.itemsFoot(v),
+	}) {
+		<div class="panel-body items-body">
+			if len(v.Rows) == 0 {
+				@c.EmptyState(c.EmptyStateProps{Icon: c.IconSearch, Title: "Nothing here yet", Desc: "There is nothing to show."})
+			} else {
+				@c.ItemList(c.ItemListProps{Cards: v.Node.Cards, Scroll: v.Node.Scroll, Label: v.label()}) {
+					for i, row := range v.Rows {
+						@c.Item(r.item(v, i, row))
+					}
+				}
+			}
+		</div>
+	}
+}
+
+// itemsFoot is how many items are shown and, when the source had more, the link that shows more: a real link to the same page with a larger limit, so that it works without script, which
+// replaces the list in place. A list with nothing more to show has no foot.
+templ (r *Renderer) itemsFoot(v ItemsView) {
+	if v.More {
+		<div class="pager-info">{ strconv.Itoa(len(v.Rows)) } shown</div>
+		@c.Button(c.ButtonProps{Href: r.moreHref(v), Variant: c.VariantSecondary, Size: c.SizeSmall, Attrs: inPlace}) {
+			Show more
+			<span class="sr-only">items of { v.label() }</span>
+		}
+	}
+}
+
+// itemHeadline is an item's headline: a link to where it leads in the app when it leads somewhere, or a link to another site, which opens a tab of its own and says so,
+// else as its field shows it.
+templ itemHeadline(v ItemsView, i int, row any) {
+	if href := v.href(i); href != "" {
+		<a class="item-link" href={ href }>{ v.Node.Headline.Shown(ctx, row) }</a>
+	} else if ext := v.external(row); ext != "" {
+		<a class="item-link ext" href={ ext } target="_blank" rel="noopener noreferrer">
+			{ v.Node.Headline.Shown(ctx, row) }
+			@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
+			<span class="sr-only">(opens in a new tab)</span>
+		</a>
+	} else {
+		@value(v.Node.Headline, v.Node.Headline.Shown(ctx, row), row)
+	}
+}
+
+// itemFact is one of an item's small facts as its field shows it.
+templ itemFact(f ir.Field, row any) {
+	@value(f, f.Shown(ctx, row), row)
+}
+
+// itemBadge is an item's badge: a select, drawn as it is in a cell.
+templ itemBadge(f ir.Field, row any) {
+	@value(f, f.Shown(ctx, row), row)
+}
+
+// item is one item as the component takes it. A fact with no value is left out, so that a line is not a row of dashes.
+func (r *Renderer) item(v ItemsView, i int, row any) c.ItemProps {
+	p := c.ItemProps{Card: v.Node.Cards, Image: picture(v.Node, row), Headline: itemHeadline(v, i, row)}
+	if v.Node.Badge != nil {
+		p.Badge = itemBadge(*v.Node.Badge, row)
+	}
+	for _, f := range v.Node.Meta {
+		if f.Get != nil && f.Get(row) == "" {
+			continue
+		}
+		p.Meta = append(p.Meta, itemFact(f, row))
+	}
+	return p
+}
+
+// Calendar renders a month as one panel: a grid of days, each marked when it has items and a link when it leads somewhere, with links to the months either side. It is a table,
+// so that a reader who goes by the grid is told each day's weekday and date and how many items there are.
+templ (r *Renderer) Calendar(v CalendarView) {
+	@c.Panel(c.PanelProps{
+		Title:  v.Node.Title,
+		Desc:   v.Node.Desc,
+		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
+		Leaf: LeafID(v.Node.At),
+	}) {
+		<div class="panel-body cal-body">
+			@c.Calendar(r.calendarProps(v))
 		</div>
 	}
 }

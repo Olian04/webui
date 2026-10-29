@@ -201,3 +201,15 @@ func TestADevicesCrumbIsItsAddressAndNotItsID(t *testing.T) {
 	assert.Contains(t, body, "<title>"+d.IP+" — ")
 	assert.False(t, strings.Contains(body, `aria-current="page">dev_27c38b</span>`))
 }
+
+// The Devices page has a small chart of each device's last hour, which is neither sorted nor filtered by, and which has its values in words.
+func TestTheDevicesPageHasAChartOfEachDevicesLastHour(t *testing.T) {
+	body := get(handler(t), "/admin/device").Body.String()
+	assert.Contains(t, body, `<span class="th-in">Last hour </span>`)
+	assert.True(t, strings.Count(body, `<svg class="spark"`) >= 9) // a page of the table
+	assert.Contains(t, body, `aria-label="Last hour: 12 values, from `)
+	assert.False(t, strings.Contains(body, "sort=last-hour"))
+	assert.False(t, strings.Contains(body, "filter.last-hour"))
+	// The same device draws the same chart every time.
+	assert.Equal(t, strings.Count(body, `<svg`), strings.Count(get(handler(t), "/admin/device").Body.String(), `<svg`))
+}
