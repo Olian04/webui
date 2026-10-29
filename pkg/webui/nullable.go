@@ -145,10 +145,10 @@ func (a OptionalSlider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// Bool projects a *bool field of M: yes, no, or not set. A checkbox cannot say "not set", and its unchecked state is not sent at all, so
-// it is a choice of Yes and No with an empty one, as a [Select] is, and read it is a Yes or a No in a badge. Like a
-// Select, its filter in a table is a choice among the values.
-type Bool[M any] struct {
+// OptionalBool projects a *bool field of M: yes, no, or not set, as [OptionalInt] is a whole number that may be absent. A checkbox cannot say "not set", and its unchecked
+// state is not sent at all, so it is a choice of Yes and No with an empty one, as a [Select] is, and read it is a Yes or a No in a badge. Like a
+// Select, its filter in a table is a choice among the values. A value that is always one or the other is a [Bool].
+type OptionalBool[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
 	// column in the address and in a [Query].
 	Label string
@@ -177,9 +177,9 @@ type Bool[M any] struct {
 	NoFilter bool
 }
 
-func (a Bool[M]) label() string { return a.Label }
+func (a OptionalBool[M]) label() string { return a.Label }
 
-func (a Bool[M]) meta() accessorMeta {
+func (a OptionalBool[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
@@ -313,8 +313,33 @@ const (
 	boolNo  = "false"
 )
 
-// lowerBool is a Bool as the IR holds it: a select of Yes and No, whose value is "true", "false" or none.
+// lowerBool is a Bool as the IR holds it: the same Yes and No that an OptionalBool has, read, filtered and written to a file as it is, and drawn as a checkbox where it is edited, whose
+// absence is no.
 func lowerBool[M any](a Bool[M], name string) ir.Field {
+	f := head(name, a.Label, ir.KindString)
+	f.Display, f.Bool, f.Checkbox = ir.DisplaySelect, true, true
+	f.Choices = []ir.Choice{{Value: boolYes, Label: "Yes"}, {Value: boolNo, Label: "No"}}
+	f.Options = []string{boolYes, boolNo}
+	f.Get = func(m any) string {
+		if a.Load(m.(M)) {
+			return boolYes
+		}
+		return boolNo
+	}
+	f.Set = setter(a.Store, func(raw string) (bool, error) {
+		switch raw {
+		case boolYes:
+			return true, nil
+		case "", boolNo:
+			return false, nil // an unchecked checkbox is not sent
+		}
+		return false, fmt.Errorf("not a choice: %q", raw)
+	})
+	return f
+}
+
+// lowerOptionalBool is an OptionalBool as the IR holds it: a select of Yes and No, whose value is "true", "false" or none.
+func lowerOptionalBool[M any](a OptionalBool[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindString)
 	f.Display, f.Rules, f.Nullable, f.Bool = ir.DisplaySelect, ir.Rules{Required: a.Required}, true, true
 	f.Choices = []ir.Choice{{Value: boolYes, Label: "Yes"}, {Value: boolNo, Label: "No"}}

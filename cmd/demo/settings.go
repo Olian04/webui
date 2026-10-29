@@ -70,8 +70,14 @@ var (
 		Load:  func(s Settings) *float64 { return s.Quota },
 		Store: func(s *Settings, v *float64) { s.Quota = v },
 	}
-	// A Bool is yes, no, or not set, which a checkbox cannot say: it is a choice with an empty one.
-	Paused = webui.Bool[Settings]{
+	// A Bool is yes or no, and is a checkbox: an unchecked one is not sent, so an absent field is no.
+	Compress = webui.Bool[Settings]{
+		Label: "Compress events", Help: "Compress what is sent to the sinks. Saves bandwidth and costs some CPU.",
+		Load:  func(s Settings) bool { return s.Compress },
+		Store: func(s *Settings, v bool) { s.Compress = v },
+	}
+	// An OptionalBool is yes, no, or not set, which a checkbox cannot say: it is a choice with an empty one.
+	Paused = webui.OptionalBool[Settings]{
 		Label: "Paused",
 		Load:  func(s Settings) *bool { return s.Paused },
 		Store: func(s *Settings, v *bool) { s.Paused = v },
@@ -136,7 +142,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 			Maintenance,
 			APIKey,
 			webui.Group[Settings]{Burst, Quota},
-			Paused,
+			webui.Group[Settings]{Paused, Compress},
 			webui.Group[Settings]{Contact, OnCall},
 			webui.Group[Settings]{Webhook, Label},
 			CertEnds,

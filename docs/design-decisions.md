@@ -258,14 +258,16 @@ design element.
   keeps the lines (`white-space: pre-line`) and shows three of them; the CSV quotes the rest; a filter, a sort and a search
   read the text as it is.
 
-- **A value that may be absent is an accessor of its own** (`OptionalInt`, `OptionalFloat`, `OptionalSlider`, `Bool`), not a
+- **A value that may be absent is an accessor of its own** (`OptionalInt`, `OptionalFloat`, `OptionalSlider`, `OptionalBool`), not a
   flag on `Int`: the Go type differs (`*int`), so `Load` and `Store` do, and a flag could not make `func(M) int` say
   "none". They are four types and not one generic, since the accessors are one type for each Go type already and a generic
   `Optional[T]` would need a constraint that names which of them to draw. Absent is not zero in any place that matters:
   the input is empty and says so, an emptied one is stored as nil (for a field that may be absent; for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
   sorts it first and leaves it out of a range as it does a missing moment (it has no number to sort by), and an export leaves a CSV cell
-  empty and writes JSON `null`. `Bool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
-  unchecked one is not sent at all, so "off" and "never asked" are one request. That reuses the drop-down, its check on the
+  empty and writes JSON `null`. `OptionalBool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
+  unchecked one is not sent at all, so "off" and "never asked" are one request. The plain `Bool` (`Load` returns a `bool`, like `Int` against `OptionalInt`) is the checkbox: with no third state, an
+  absent field is no, which is what an unchecked one sends. The first version of this accessor was named `Bool` and returned a `*bool`, which was `OptionalBool` under the plain name, and left the library with no accessor for a
+  value that is always yes or no; it was renamed, and `Bool` is the value. That reuses the drop-down, its check on the
   server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
   state costs. In a `Toolbar`'s `Form` they are values to read, computed from the model by their `Load`.
 
@@ -651,7 +653,7 @@ design element.
   the one accessor declaration serves a form, a table and a toolbar's form (a compile error for a `Store` there was weighed and dropped for that: it
   would have forced a second declaration of any accessor shared with a form). A page whose arguments the visitor sets is for a `Form` panel,
   or for links to the page with other arguments. The cost is that a page's argument that only a link sets, such as a window, cannot be
-  chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be a form's input (`Optional*`, `Bool`, `URL`) fit a toolbar's form too,
+  chosen from the toolbar of the page. Because a value is only read, the accessors that cannot be a form's input (`Optional*`, `URL`) fit a toolbar's form too,
   computed from the model by their `Load`; `Secret`, `Multiline` and `File` are refused (nothing to read, one line of text, and an input).
   A toolbar with a button has one form, which posts the buttons, and one with only links and values has none.
 

@@ -120,7 +120,7 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	h := handler(t)
 	t.Cleanup(func() {
 		service.mu.Lock()
-		service.settings.Burst, service.settings.Quota, service.settings.Paused = nil, nil, nil
+		service.settings.Burst, service.settings.Quota, service.settings.Paused, service.settings.Compress = nil, nil, nil, true
 		service.mu.Unlock()
 	})
 
@@ -128,17 +128,19 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	assert.Contains(t, body, `placeholder="No limit"`)
 	assert.Contains(t, body, `<option value="">—</option>`)
 
-	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5": {"true"}})
+	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5_0": {"true"}, "f5_1": {"true"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s := service.Settings()
 	assert.True(t, s.Burst != nil && *s.Burst == 0) // a limit of zero, which is one
 	assert.True(t, s.Quota != nil && *s.Quota == 25)
 	assert.True(t, s.Paused != nil && *s.Paused)
+	assert.True(t, s.Compress) // a checked box is sent as "true"
 
-	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {""}, "f4_1": {""}, "f5": {""}})
+	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {""}, "f4_1": {""}, "f5_0": {""}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s = service.Settings()
 	assert.True(t, s.Burst == nil && s.Quota == nil && s.Paused == nil)
+	assert.False(t, s.Compress) // an unchecked checkbox is not sent at all, and an absent one is no
 }
 
 // Input gives a String the input of its kind, and the server holds the value to it; DateOnly makes a moment a day.
