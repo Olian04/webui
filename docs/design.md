@@ -306,6 +306,12 @@ Panels never nest. A `Group` is layout only, with no frame and no caption.
   column below 1100px, where nothing is stretched. Only panels that are direct
   children of the Split are stretched; a layout inside it, such as Tabs, is one
   column cell, and what is under its strip (a panel, or a stack of them) fills what is left of the cell.
+- **Columns** — one row of columns of unequal width, 8px apart, each as wide as its weight says of the row: 1 and 3 is 25/75,
+  and 25, 50 and 25 is 25/50/25. A column is never narrower than 280px, so where a row cannot hold its columns at that width the last of them
+  move to a row of their own, and each row shares its width by weight in turn (25/50/25 is a row of 25/50 above one of 25, then three rows of one); a
+  column that would be narrower than the floor at its exact share is the floor, and its neighbours share what is left. On a screen with room for
+  no more than one column it is one column, in the order declared, with no breakpoint of its own. The columns of a row are as tall as the
+  tallest, and a panel in one takes the height, with its foot at the bottom, as in a Split. A column is a cell that holds one body, so a layout in it is one cell.
 - **Tabbed** — a 1px-ruled strip of 13.5px labels; the active one takes full-
   strength text, weight 500, and a 2px warning-coloured underline. Tabs are
   addressable: the selected tab is in the address bar, so a tab can be linked

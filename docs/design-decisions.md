@@ -1290,6 +1290,23 @@ design element.
 - **Dropped:** row actions and selection (an item is read); sorting and filtering (a list's order is its source's); a cursor; infinite scroll (script that fetches as the reader scrolls is a second way to page, and not a link); a
   carousel with arrows and dots (a row that scrolls, with the keyboard and the browser's own scroll, is what one is without script); and a picture of the item's own kind (a video player, an embed).
 
+## Columns
+
+- **Weights are numbers on a new layout, not a pattern on `Split`.** The first idea was a pattern such as `"25/75"` or `"25/*/25"`. It was not taken because every way to get one wrong is a `Compile` error
+  (the syntax, percentages that do not sum to 100, a count that does not match the children), where a weight cannot be wrong: `Column.Weight` is a `uint8`, zero is 1, and 25/75 is `{1, 3}`. It also needed `Split`
+  to hold a string, and `Split` is a slice type, so every `webui.Split{a, b}` would have broken. So `Split` is unchanged and `Columns` is a slice of `Column{Weight, Body}`: a body can only be a column's where it is
+  one, which a wrapper in `Split` could not say. `*` is not a wildcard; the author states the weights, and 25/*/25 with two in the middle is four equal ones.
+- **A layout that wraps by width, not by count.** A `Split` wraps in twos (four panels are two rows of two), which a weight has no meaning in, so `Columns` is its own thing: one row, which wraps when the columns do not fit. A column is never
+  narrower than 280px; a row that cannot hold its columns at that width moves the last of them to a row below, and each row shares its width by weight in turn. 25/50/25 on a narrow screen is a row of 25/50 above one of 25, then three rows of one.
+  It is the stylesheet's to decide, with a flex row that wraps, a column that grows by its weight from nothing and a floor on its width, so there is no script, no breakpoint of its own and no pattern per width.
+- **Where it differs from "wrap while a column is too narrow".** A column is too narrow when it is under the floor, and then it is the floor. A row whose columns all fit at the floor stays a row, and a column whose exact share is under the floor takes the floor and the others
+  share the rest, so 25/50/25 in 1016px is 280/440/280 and not 254/508/254. Wrapping as soon as any share is under the floor would take the second step of the rule (is the *new* row's share under it?) by measuring, which needs script or a
+  breakpoint per weighting; this takes it by the flex algorithm, at the cost that the proportions are held only where the floor allows.
+- **The floor is a constant** (`--column-min`, 280px), and not a field. A field would be one more thing to set wrong and to keep readable at every width; 280px holds a table that scrolls, a form, a stat or a list of items, and
+  an inline diff, which the editor switches to under 900px, which every column but the widest is. What it costs: an app that wants 25% on a 1100px window gets 280px, and one that wants a narrower column has none.
+- **No breakpoint at 1100px.** `Split` collapses there; `Columns` collapses where it has no room for two columns at the floor (about 570px of content: a window of about 650px, where the sidebar is a rail, and about 830px with the full sidebar), because that is what the rule says at every
+  width, and a second rule at 1100px would be a second thing to explain. What it costs: between those widths and 1100px a `Columns` may be a row where a `Split` is a column.
+
 ## Metrics
 
 - The app collects and does not serve. `App.Metrics` is a `prometheus.Registerer`, the

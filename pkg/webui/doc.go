@@ -140,7 +140,7 @@
 // A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
 // [Markdown] are leaves; they load their own data and refresh on their own, a
 // [Toolbar] is a leaf that is a row of controls and the values of its forms, and a [FileUpload] is a leaf that is a
-// panel for sending one large file. [Stack], [Split] and [Tabs] arrange
+// panel for sending one large file. [Stack], [Split], [Columns] and [Tabs] arrange
 // other bodies and nest:
 //
 //	Body: webui.Stack{
@@ -150,6 +150,10 @@
 //
 // The selected tab is kept in the address, so it survives a reload and can be linked
 // to, and only the selected panel is loaded.
+//
+// A [Split] is two equal columns, wrapping in twos. [Columns] is a row of unequal ones, each [Column] with a Weight that is its share relative to the others
+// (zero is 1): {1, 3} is 25/75 and {25, 50, 25} is 25/50/25. A column is never narrower than 280px, so where a row cannot hold its columns the last move to a row below, each row sharing its width
+// by weight in turn, down to one column on a narrow screen. The weights are numbers, not a pattern, so there is nothing to mistype and no sum that must come to 100.
 //
 // # Accessors
 //

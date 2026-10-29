@@ -184,6 +184,18 @@ templ Split(children []templ.Component) {
 	}
 }
 
+// Columns arranges children side by side in a row, each as wide as its weight says. A child is in a column of its own, which carries the weight and
+// is as tall as the tallest in its row; where a row cannot hold every column at its least width, the last ones move to a row below.
+templ Columns(children []templ.Component, weights []int) {
+	@c.Columns() {
+		for i, child := range children {
+			@c.Col(weights[i]) {
+				@child
+			}
+		}
+	}
+}
+
 // Table renders a loaded table leaf as one panel: header, rows, and a pager
 // footer when the table has an offset argument. A table with actions is one
 // form, so a button anywhere in it posts the selection with it.

@@ -17,6 +17,10 @@ func Walk(n Node, visit func(Node)) {
 		for _, c := range n.Children {
 			Walk(c, visit)
 		}
+	case *Columns:
+		for _, c := range n.Children {
+			Walk(c, visit)
+		}
 	case *Tabs:
 		for _, t := range n.Tabs {
 			Walk(t.Body, visit)

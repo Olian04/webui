@@ -16,6 +16,26 @@ type Stack []PageBody
 // a column on a narrow screen. Its children may be any [PageBody].
 type Split []PageBody
 
+// Column is one column of a [Columns]: a body, and its share of the width.
+type Column struct {
+	// Weight is the column's share of the row, relative to the others: Columns{{Weight: 25, Body: a}, {Weight: 50, Body: b}, {Weight: 25, Body: c}}
+	// is 25/50/25, and a Weight of 1 and one of 3 is 25/75. Zero is 1, so a Column with no Weight is as wide as any other.
+	Weight uint8
+
+	// Body is what the column shows. It may be any [PageBody], including another layout.
+	Body PageBody
+}
+
+// Columns lays out bodies side by side in a row, each as wide as its Weight says: 25/75, 75/25 and 25/50/25 are
+// {1, 3}, {3, 1} and {1, 2, 1}. Where [Split] is two equal columns that wrap into rows of two, Columns is one row that is
+// divided by weight.
+//
+// A column is never narrower than 280px. When a row cannot hold all of its columns at that width, the last of them
+// move to a row of their own, and each row shares its width by weight in the same way: 25/50/25 on a narrow screen is a
+// row of 25/50 above one of 25, and on a narrower one three rows of one. On a screen too narrow for two columns it is
+// one column, in the order declared.
+type Columns []Column
+
 // Tab is one panel in Tabs. It is selected in the address by its label, in lower
 // case with dashes for anything else: the "Raw events" tab is "?tabs.tab=raw-events".
 type Tab struct {
@@ -42,12 +62,26 @@ type Tabs struct {
 var (
 	_ PageBody = Stack(nil)
 	_ PageBody = Split(nil)
+	_ PageBody = Columns(nil)
 	_ PageBody = Tabs{}
 )
 
 func (s Stack) validateBody(v *bodyValidator) { validateChildren(v, "Stack", s) }
 
 func (s Split) validateBody(v *bodyValidator) { validateChildren(v, "Split", s) }
+
+func (c Columns) validateBody(v *bodyValidator) {
+	if len(c) == 0 {
+		v.add("Columns has no Column", "Declare at least one Column, with the Body it shows and, if it is not as wide as the others, a Weight.")
+	}
+	for i, col := range c {
+		if col.Body == nil {
+			v.add(fmt.Sprintf("Columns[%d].Body is nil", i), "Set Body to a Table, Form or layout.")
+			continue
+		}
+		col.Body.validateBody(v)
+	}
+}
 
 func validateChildren(v *bodyValidator, what string, children []PageBody) {
 	for i, c := range children {
@@ -90,6 +124,15 @@ func (s Stack) lowerBody(at ir.Addr) ir.Node {
 
 func (s Split) lowerBody(at ir.Addr) ir.Node {
 	return &ir.Split{At: at, Children: lowerChildren(at, s)}
+}
+
+func (c Columns) lowerBody(at ir.Addr) ir.Node {
+	out := &ir.Columns{At: at}
+	for i, col := range c {
+		out.Children = append(out.Children, col.Body.lowerBody(childAddr(at, i)))
+		out.Weights = append(out.Weights, max(int(col.Weight), 1))
+	}
+	return out
 }
 
 func (t Tabs) lowerBody(at ir.Addr) ir.Node {
@@ -138,6 +181,10 @@ func assignViewIDs(body ir.Node) {
 				walk(c, taken)
 			}
 		case *ir.Split:
+			for _, c := range n.Children {
+				walk(c, taken)
+			}
+		case *ir.Columns:
 			for _, c := range n.Children {
 				walk(c, taken)
 			}

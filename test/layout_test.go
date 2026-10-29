@@ -102,7 +102,7 @@ func TestAStretchedSplitKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Body.String(), `<div class="split">`)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".split {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  align-items: stretch;\n}")
-	assert.Contains(t, css, ":is(.split, .stack, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, ":is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
 }
 
 // A column of panels in a Split, and the panel under a tab strip in one, take the height the row has: the tables of a
@@ -115,7 +115,7 @@ func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
 	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
 	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
 	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split,\n[data-tabbody] > .columns {\n  flex: 1 1 auto;\n}")
 	assert.Contains(t, css, ".tabset[aria-busy='true'] > [data-tabbody] {\n  opacity: 0.55;")
 }
 
