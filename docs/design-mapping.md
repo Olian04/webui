@@ -303,7 +303,7 @@ and a layout in one is one cell, as in a `Split`.
 
 ### `When`
 
-One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a leaf's `Load` does, and `Show` is a `Bool` of that model: the same accessor that a form or a table shows it with, written
+One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a leaf's `Load` does, and `Show` is a `BoolLike` of that model (a `Bool`, or an `OptionalBool`, whose not set is not shown): the same accessor that a form or a table shows it with, written
 once, with what a use has no purpose for (`Label`, `Store`, `Help`, `NoSort`, `NoFilter`) ignored. "Show when false" is a `Bool` whose `Load` returns the negation. The `Body` loads its own data and is not handed the model, so a body
 that needs what the condition read asks for it too, and an app that cares caches it, as it does for any two panels. A `When` is a layout that loads, for the condition alone: it runs `Load`, then `Show`, then builds the child, so its `Load` is in front of
 the child's, and a leaf request under it runs the `Load` again. A failed `Load` is a panel that says "Could not load" with the cause in the log, and the child is not shown: a condition that cannot be decided does not hold. When it does not

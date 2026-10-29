@@ -151,7 +151,7 @@
 // The selected tab is kept in the address, so it survives a reload and can be linked
 // to, and only the selected panel is loaded.
 //
-// A [When] shows one body only while a condition holds: Load reads a model, Show is a [Bool] of it, and Body is what is shown. What it hides is out of reach of a refresh,
+// A [When] shows one body only while a condition holds: Load reads a model, Show is a [BoolLike] of it (a [Bool], or an [OptionalBool] whose not set is no), and Body is what is shown. What it hides is out of reach of a refresh,
 // a form post and an export, and it leaves no gap. It loads, for the condition alone, so keep its Load cheap; the body loads its own data.
 //
 // A [Split] is two equal columns, wrapping in twos. [Columns] is a row of unequal ones, each [Column] with a Weight that is its share relative to the others

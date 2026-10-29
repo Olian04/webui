@@ -324,10 +324,12 @@ func TestAWhenThatCannotBeDrawnIsACompileError(t *testing.T) {
 		body webui.PageBody
 		want string
 	}{
-		"no load":      {webui.When[condition]{Show: conditionOpen, Body: columnPanel("A")}, "a When has no Load"},
-		"no show load": {webui.When[condition]{Load: g.load, Body: columnPanel("A")}, "When.Show has no Load"},
-		"no body":      {webui.When[condition]{Load: g.load, Show: conditionOpen}, "When.Body is nil"},
-		"a bad body":   {webui.When[condition]{Load: g.load, Show: conditionOpen, Body: webui.Markdown[handbook]{Title: "No load"}}, "Markdown"},
+		"no load":                      {webui.When[condition]{Show: conditionOpen, Body: columnPanel("A")}, "a When has no Load"},
+		"no show load":                 {webui.When[condition]{Load: g.load, Body: columnPanel("A")}, "When.Show has no Load"},
+		"a Bool with no load":          {webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Label: "Open"}, Body: columnPanel("A")}, "When.Show has no Load"},
+		"an OptionalBool with no load": {webui.When[condition]{Load: g.load, Show: webui.OptionalBool[condition]{Label: "Open"}, Body: columnPanel("A")}, "When.Show has no Load"},
+		"no body":                      {webui.When[condition]{Load: g.load, Show: conditionOpen}, "When.Body is nil"},
+		"a bad body":                   {webui.When[condition]{Load: g.load, Show: conditionOpen, Body: webui.Markdown[handbook]{Title: "No load"}}, "Markdown"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -354,4 +356,47 @@ func TestTheConditionsLoadIsCountedAsAWhen(t *testing.T) {
 	h = webui.App{Metrics: bad, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: failing}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
 	assert.Equal(t, gathered(t, bad, "webui_load_errors_total")["kind=when,page=/w"], 1.0)
+}
+
+// A Show may be either kind of yes or no. The tri-state one is shown when it is yes, and a value that is not set is no.
+func TestAShowThatIsAnOptionalBoolIsShownOnlyWhenItIsYes(t *testing.T) {
+	t.Parallel()
+
+	var (
+		mu    sync.Mutex
+		value *bool
+	)
+	set := func(v *bool) {
+		mu.Lock()
+		value = v
+		mu.Unlock()
+	}
+	when := webui.When[condition]{
+		Load: func(context.Context) (condition, webui.Loaded) { return condition{}, webui.Ready() },
+		Show: webui.OptionalBool[condition]{Label: "Maybe", Required: true, Load: func(condition) *bool {
+			mu.Lock()
+			defer mu.Unlock()
+			return value
+		}},
+		Body: columnPanel("Inside"),
+	}
+	h := editorApp(webui.Stack{when})
+	shown := func() bool { return strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<") }
+
+	yes, no := true, false
+	set(&yes)
+	assert.True(t, shown())
+	set(&no)
+	assert.False(t, shown())
+	set(nil) // not set is no
+	assert.False(t, shown())
+	assert.Equal(t, askLeaf(h, "/admin/e", "p.0.0").Code, http.StatusNotFound) // and what is under it is out of reach, as for any condition that does not hold
+}
+
+// Both accessors are a BoolLike, which is what a place that takes a yes or no of either kind asks for.
+func TestBothKindsOfBoolAreABoolLike(t *testing.T) {
+	t.Parallel()
+
+	var _ webui.BoolLike[condition] = webui.Bool[condition]{}
+	var _ webui.BoolLike[condition] = webui.OptionalBool[condition]{}
 }

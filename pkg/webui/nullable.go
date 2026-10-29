@@ -313,6 +313,21 @@ const (
 	boolNo  = "false"
 )
 
+// BoolLike is an accessor of a yes or no that a place may take of either kind: a [Bool], or an [OptionalBool], whose not set reads as no. A place that wants only whether it is yes, a [When]'s
+// Show for one, takes this and not one of the two, so that the author does not have to choose between the plain accessor and the tri-state one, or to write a second accessor of the same value. Only
+// this package implements it.
+type BoolLike[M any] interface {
+	Accessor[M]
+	boolLike()
+	hasLoad() bool // Load is set, which is all a place that reads the value and not the label needs of it
+}
+
+func (Bool[M]) boolLike()         {}
+func (OptionalBool[M]) boolLike() {}
+
+func (a Bool[M]) hasLoad() bool         { return a.Load != nil }
+func (a OptionalBool[M]) hasLoad() bool { return a.Load != nil }
+
 // lowerBool is a Bool as the IR holds it: the same Yes and No that an OptionalBool has, read, filtered and written to a file as it is, and drawn as a checkbox where it is edited, whose
 // absence is no.
 func lowerBool[M any](a Bool[M], name string) ir.Field {
