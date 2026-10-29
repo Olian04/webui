@@ -306,6 +306,9 @@ Panels never nest. A `Group` is layout only, with no frame and no caption.
   column below 1100px, where nothing is stretched. Only panels that are direct
   children of the Split are stretched; a layout inside it, such as Tabs, is one
   column cell, and what is under its strip (a panel, or a stack of them) fills what is left of the cell.
+- **When** — one child that is drawn only while a condition holds, and nothing at all when it does not: no box, no gap. In a Stack the panels either side close up; in a
+  Split the later panels move up a cell; in Columns the empty column is not drawn, so the row wraps as if it were not declared; in Tabs it is a blank tab, which is why it
+  belongs outside them. What it hides cannot be reached: a refresh, a post or an export that names a leaf under it is answered as for a leaf that is not there.
 - **Columns** — one row of columns of unequal width, 8px apart, each as wide as its weight says of the row: 1 and 3 is 25/75,
   and 25, 50 and 25 is 25/50/25. A column is never narrower than 280px, so where a row cannot hold its columns at that width the last of them
   move to a row of their own, and each row shares its width by weight in turn (25/50/25 is a row of 25/50 above one of 25, then three rows of one); a

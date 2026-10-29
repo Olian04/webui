@@ -623,6 +623,8 @@ var (
 	_ Accessor[struct{}] = OptionalSlider[struct{}]{}
 	_ Accessor[struct{}] = Bool[struct{}]{}
 	_ Accessor[struct{}] = OptionalBool[struct{}]{}
+	_ BoolLike[struct{}] = Bool[struct{}]{}
+	_ BoolLike[struct{}] = OptionalBool[struct{}]{}
 	_ Accessor[struct{}] = Email[struct{}]{}
 	_ Accessor[struct{}] = Phone[struct{}]{}
 	_ Accessor[struct{}] = Website[struct{}]{}

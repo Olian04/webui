@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"context"
 	"fmt"
 	"maps"
 
@@ -36,6 +37,32 @@ type Column struct {
 // one column, in the order declared.
 type Columns []Column
 
+// When shows its Body only while Show says so of what Load reads, and leaves no gap when it does not. Load reads the model the condition is decided from, as a leaf's
+// Load does, and Show is a [BoolLike] of that model, a [Bool] or an [OptionalBool], the same accessor that a form or a table shows it with; "show when false" is a Bool whose Load returns the negation, and a value that is not set is not shown. The Body
+// loads its own data: the model is not passed to it, so a body that needs what Load read asks for it too, and an app that cares caches it, as it does for any two panels.
+//
+// A When is a layout that loads, and loads for the condition alone. It runs Load, then Show, then builds its Body, so its Load is in front of the Body's: keep it cheap. If Load fails the
+// panel says "Could not load", the cause is logged and the Body is not shown, since a condition that cannot be decided does not hold. A [Loaded.RefreshAfter] from it does nothing, since a
+// layout has nowhere to be refreshed from; the Body's own leaves refresh themselves.
+//
+// What a When hides cannot be reached. A refresh, a form post or an export that names a leaf under a When that does not hold is answered as it would be for a leaf that is not there, and
+// a failed Load is as good as a condition that does not hold. The condition is asked again for each such request. That is how a panel that is shown only to some stays out of reach of the others, but
+// a When is for what a page shows: the page's Guard is what lets a visitor open it, and an Action's Guard is what lets them act.
+//
+// Its position is that of one child, so a leaf's address is the same whether it is shown or not. A When in a [Columns] that does not hold leaves an empty column, which is not drawn,
+// so the row wraps as if it were not declared; in a [Tabs] it leaves a blank tab, so put it outside.
+type When[M any] struct {
+	// Load reads what the condition is decided from. It is called on every request that draws the page, and on every request for a leaf under it.
+	Load func(ctx context.Context) (M, Loaded)
+
+	// Show says whether the Body is shown, of the model Load read: a [Bool], or an [OptionalBool], which is not shown when it is not set. Its Label, Store, Help, NoSort and NoFilter do nothing here,
+	// as they do nothing where an accessor is only read.
+	Show BoolLike[M]
+
+	// Body is what is shown. It may be any [PageBody], including another When, which is "and".
+	Body PageBody
+}
+
 // Tab is one panel in Tabs. It is selected in the address by its label, in lower
 // case with dashes for anything else: the "Raw events" tab is "?tabs.tab=raw-events".
 type Tab struct {
@@ -63,6 +90,7 @@ var (
 	_ PageBody = Stack(nil)
 	_ PageBody = Split(nil)
 	_ PageBody = Columns(nil)
+	_ PageBody = When[struct{}]{}
 	_ PageBody = Tabs{}
 )
 
@@ -81,6 +109,20 @@ func (c Columns) validateBody(v *bodyValidator) {
 		}
 		col.Body.validateBody(v)
 	}
+}
+
+func (w When[M]) validateBody(v *bodyValidator) {
+	if w.Load == nil {
+		v.add("a When has no Load", "Set Load to func(ctx) (M, Loaded), reading what the condition is decided from.")
+	}
+	if w.Show == nil || !w.Show.hasLoad() {
+		v.add("When.Show has no Load", "Set Show to a Bool, or an OptionalBool, with a Load that says whether the Body is shown of the model.")
+	}
+	if w.Body == nil {
+		v.add("When.Body is nil", "Set Body to a Table, Form or layout.")
+		return
+	}
+	w.Body.validateBody(v)
 }
 
 func validateChildren(v *bodyValidator, what string, children []PageBody) {
@@ -133,6 +175,10 @@ func (c Columns) lowerBody(at ir.Addr) ir.Node {
 		out.Weights = append(out.Weights, max(int(col.Weight), 1))
 	}
 	return out
+}
+
+func (w When[M]) lowerBody(at ir.Addr) ir.Node {
+	return &ir.When{At: at, Load: eraseLoad(w.Load), Show: lowerAccessor[M](w.Show, "w"), Child: w.Body.lowerBody(childAddr(at, 0))}
 }
 
 func (t Tabs) lowerBody(at ir.Addr) ir.Node {
@@ -188,6 +234,8 @@ func assignViewIDs(body ir.Node) {
 			for _, c := range n.Children {
 				walk(c, taken)
 			}
+		case *ir.When:
+			walk(n.Child, taken)
 		case *ir.Tabs:
 			n.ID = claim("tabs", taken)
 			all := maps.Clone(taken)

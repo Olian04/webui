@@ -108,3 +108,25 @@ func TestTheCalendarOfAnotherMonthShowsItsOwnReleasesAndLinksBack(t *testing.T) 
 	assert.Contains(t, body, `href="/admin/activity/releases/2026-09-25"`)
 	assert.Contains(t, body, `href="/admin/activity" data-in-place>Today</a>`)
 }
+
+// The escalation notice is a When: it is on the page while critical alerts are open, and not once they have been acknowledged.
+func TestTheEscalationNoticeIsShownOnlyWhileCriticalAlertsAreOpen(t *testing.T) {
+	h := handler(t)
+	body := get(h, "/admin/activity").Body.String()
+	assert.Contains(t, body, `<h2 class="panel-title">Escalation</h2>`)
+	assert.Contains(t, body, "critical alerts are open")
+
+	var critical []string
+	for _, a := range service.OpenAlerts() {
+		if a.Severity == "critical" {
+			critical = append(critical, a.ID)
+		}
+	}
+	assert.True(t, len(critical) > 0)
+	service.Acknowledge(critical...)
+
+	rec := get(h, "/admin/activity")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.False(t, strings.Contains(rec.Body.String(), "Escalation</h2>"))
+	assert.Contains(t, rec.Body.String(), `<h2 class="panel-title">Release calendar</h2>`) // the rest of the page is as it was
+}

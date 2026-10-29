@@ -23,7 +23,8 @@
 package ir
 
 // Node is a leaf or a layout. Leaves load and refresh independently; layouts
-// only arrange, and never load, guard, or refresh.
+// only arrange, and never load, guard, or refresh. The one exception is a When, which
+// loads for the condition that shows its child, and is neither refreshed nor posted to.
 type Node interface {
 	// Addr is the node's position in the body tree, assigned while lowering.
 	// A section-refresh request names this, and it is stable for the life of

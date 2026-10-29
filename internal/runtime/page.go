@@ -47,7 +47,8 @@ func pictureOrigins(body ir.Node) []string {
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
 	leaves := leavesOf(page.Body)
-	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Body)))
+	gates := gatesOf(page.Body)
+	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Body), gates))
 	patterns := []string{p.pagePattern(page.PathTemplate)}
 	if page.PathTemplate == "/" && p.Prefix != "" {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
@@ -59,7 +60,7 @@ func (p *Program) addPage(page *ir.Page) {
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.handle(p.mux, http.MethodPost, pattern, page.PathTemplate, policy, p.postHandler(page, leaves))
+			p.handle(p.mux, http.MethodPost, pattern, page.PathTemplate, policy, p.postHandler(page, leaves, gates))
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}
@@ -80,7 +81,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // pageHandler is the request pipeline of one page. The order is the contract:
 // decode the arguments, run the page Guard, and only then load anything, so an
 // unauthorised page is never read.
-func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map[string]*ir.Tabs) func(http.ResponseWriter, *http.Request) {
+func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map[string]*ir.Tabs, gates map[string][]*ir.When) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
 	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -96,17 +97,22 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 		if table, format, bad := exportOf(r, leaves); bad {
 			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest(bareAddress(r)))
 			return
-		} else if table != nil {
-			p.export(w, r, page, req, table, format)
+		} else if table != nil && p.shown(ctx, page, gates[render.LeafID(table.At)]) {
+			p.export(w, r, page, req, table, format) // a table that is hidden by a When is asked for no export, as one that does not declare it is not
 			return
 		}
 		if id := r.Header.Get(LeafHeader); id != "" {
 			// A panel, or a Tabs: a request for one of them loads that and nothing else of the page.
-			if t, ok := tabs[id]; ok {
+			// What is under a When that does not hold is not there: a Tabs or a leaf named for it is answered as one that is not.
+			if t, ok := tabs[id]; ok && p.shown(ctx, page, gates[id]) {
 				p.leaf(w, r, page, req, t)
 				return
 			}
-			p.leaf(w, r, page, req, leaves[id])
+			var node ir.Node
+			if p.shown(ctx, page, gates[id]) {
+				node = leaves[id]
+			}
+			p.leaf(w, r, page, req, node)
 			return
 		}
 		path, query := p.address(page, req)
@@ -261,6 +267,15 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Columns:
 		kids, err := p.children(ctx, req, page, n.Children)
 		return render.Columns(kids, n.Weights), err
+	case *ir.When:
+		shown, ok := p.whenShown(ctx, page, n)
+		if !ok {
+			return render.PanelFailed(""), nil // the condition could not be decided, and a condition that cannot be decided does not hold
+		}
+		if !shown {
+			return templ.NopComponent, nil
+		}
+		return p.body(ctx, req, page, n.Child)
 	case *ir.Tabs:
 		return p.tabs(ctx, req, page, n)
 	case *ir.Table:
