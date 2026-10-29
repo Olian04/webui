@@ -556,6 +556,39 @@ func (a Slider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
+// Bool projects a bool field of M: yes or no. Edited it is a checkbox, which is unchecked for no, and a browser does not send an unchecked one, so an absent field is no;
+// read it is a Yes or a No in a badge, and its filter in a table is a choice of the two. A value that may also be not set is an [OptionalBool]. Where a condition is
+// read from a model, as a [When] does, this is the accessor for it.
+type Bool[M any] struct {
+	// Label is the column header and the checkbox's label. In a table it also names the
+	// column in the address and in a [Query].
+	Label string
+
+	// Load reads the value from the model.
+	Load func(M) bool
+
+	// Store writes the choice to the model. Without it the field is read-only.
+	Store func(*M, bool)
+
+	// Help is a line or two that tells the visitor what the field is for, in the popover beside the label, on hover and on keyboard focus, and is part of the
+	// icon's accessible name. It is shown where the field is, in a form or a toolbar, read-only too. In a table it is not shown. It is text, not markup.
+	Help string
+
+	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
+	// and a sort by it in the address is ignored. It does nothing in a form.
+	NoSort bool
+
+	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
+	// and a filter on it in the address is ignored. It does nothing in a form.
+	NoFilter bool
+}
+
+func (a Bool[M]) label() string { return a.Label }
+
+func (a Bool[M]) meta() accessorMeta {
+	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
+}
+
 // Tone is the semantic meaning of a badge.
 type Tone string
 
@@ -589,6 +622,7 @@ var (
 	_ Accessor[struct{}] = OptionalFloat[struct{}]{}
 	_ Accessor[struct{}] = OptionalSlider[struct{}]{}
 	_ Accessor[struct{}] = Bool[struct{}]{}
+	_ Accessor[struct{}] = OptionalBool[struct{}]{}
 	_ Accessor[struct{}] = Email[struct{}]{}
 	_ Accessor[struct{}] = Phone[struct{}]{}
 	_ Accessor[struct{}] = Website[struct{}]{}
@@ -730,11 +764,13 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) *float64")
 		validateSlider(v, at, a.Min, a.Max, a.StepSize)
 	case Bool[M]:
+		common(a.Label, a.Load == nil, "func(M) bool")
+	case OptionalBool[M]:
 		common(a.Label, a.Load == nil, "func(M) *bool")
 		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Delta, Series, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool or Group.")
+			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Delta, Series, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
 	}
 }
 
@@ -958,6 +994,8 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return lowerOptionalSlider(a, name)
 	case Bool[M]:
 		return lowerBool(a, name)
+	case OptionalBool[M]:
+		return lowerOptionalBool(a, name)
 	case Slider[M]:
 		lo, hi := a.Min, a.Max
 		f := head(name, a.Label, ir.KindFloat)

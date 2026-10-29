@@ -25,7 +25,7 @@ var (
 	limitRate   = webui.OptionalInt[limits]{Label: "Rate", Load: func(l limits) *int { return l.Rate }, Store: func(l *limits, v *int) { l.Rate = v }}
 	limitRatio  = webui.OptionalFloat[limits]{Label: "Ratio", Precision: 2, Load: func(l limits) *float64 { return l.Ratio }, Store: func(l *limits, v *float64) { l.Ratio = v }}
 	limitLevel  = webui.OptionalSlider[limits]{Label: "Level", Min: 0, Max: 10, StepSize: 1, Load: func(l limits) *float64 { return l.Level }, Store: func(l *limits, v *float64) { l.Level = v }}
-	limitPaused = webui.Bool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
+	limitPaused = webui.OptionalBool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
 )
 
 // limitsApp is a form of limits: what it saved is what its Run was given.
@@ -102,7 +102,7 @@ func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 
 	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: new(1), Max: new(10), Required: true},
 		Load: func(l limits) *int { return l.Rate }, Store: func(l *limits, v *int) { l.Rate = v }}
-	paused := webui.Bool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
+	paused := webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
 	h, saved := limitsApp(limits{}, rate, paused)
 
 	// Required is what makes a value that must be there.
@@ -120,7 +120,7 @@ func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 	assert.DeepEqual(t, saved(), limits{Rate: new(3), Paused: new(true)})
 }
 
-func TestABoolRefusesWhatIsNotYesOrNo(t *testing.T) {
+func TestAnOptionalBoolRefusesWhatIsNotYesOrNo(t *testing.T) {
 	t.Parallel()
 
 	h, saved := limitsApp(limits{Paused: new(true)}, limitPaused)
@@ -142,7 +142,7 @@ func TestAReadOnlyNullableFieldShowsADashForNothingAndTheValueOtherwise(t *testi
 	readOnly := []webui.Accessor[limits]{
 		webui.OptionalInt[limits]{Label: "Rate", Load: func(l limits) *int { return l.Rate }},
 		webui.OptionalSlider[limits]{Label: "Level", Min: 0, Max: 10, Load: func(l limits) *float64 { return l.Level }},
-		webui.Bool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }},
+		webui.OptionalBool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }},
 	}
 	none, _ := limitsApp(limits{}, readOnly...)
 	body := serve(none, http.MethodGet, "/admin/l").Body.String()
@@ -239,8 +239,8 @@ func TestNullableFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 		return all
 	}
 	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Required: true}, Load: func(l limits) *int { return l.Rate }}), "is Required but has no Store")
-	assert.Contains(t, problems(webui.Bool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }}), "is Required but has no Store")
+	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }}), "is Required but has no Store")
 	assert.Contains(t, problems(webui.OptionalSlider[limits]{Label: "Level", Load: func(l limits) *float64 { return l.Level }}), "has no range")
 	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate"}), "Load")
-	assert.Contains(t, problems(webui.Bool[limits]{Label: "Paused"}), "Load")
+	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused"}), "Load")
 }

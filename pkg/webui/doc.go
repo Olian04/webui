@@ -160,8 +160,8 @@
 // An accessor is a named, typed projection of a model: the one description of a value
 // that is an input in a [Form], a column in a [Table] and, read-only, a value in a
 // [Toolbar]. It is written once. [String], [Int], [Float], [Select], [URL], [Datetime],
-// [Timestamp] and [Slider] are the basic ones; [Email], [Phone], [Website],
-// [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [Bool] and [File]
+// [Timestamp], [Slider] and [Bool] are the basic ones; [Email], [Phone], [Website],
+// [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [OptionalBool] and [File]
 // are below, and a [Group] lays accessors side by side in a form. Without a Store an
 // accessor is read-only, and a [URL] never has one. An accessor's Rules (a
 // [StringRules] or a [NumberRules]: required, length, a pattern, bounds) are rendered
@@ -212,13 +212,13 @@
 // first lines. It is not for a toolbar, which shows one line for a value.
 //
 // A number or a choice that may be absent has an accessor of its own, since a Go int
-// cannot say it: [OptionalInt], [OptionalFloat] and [OptionalSlider] load a pointer,
-// and [Bool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
+// cannot say it: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool] load a pointer,
+// and an [OptionalBool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
 // input that is emptied is stored as nil (and a Required one refuses it), a table sorts
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
-// and a JSON export has null. A [Bool] is a choice of Yes and No with an empty one, as
+// and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing
-// when it is off.
+// when it is off. A [Bool] loads a bool, and is the checkbox: an absent field is no.
 //
 // An Int, a Float, an OptionalInt, an OptionalFloat, a Datetime and a Timestamp have a
 // Format, a function the application writes that says how the value reads where it is

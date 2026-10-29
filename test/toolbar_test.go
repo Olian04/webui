@@ -195,7 +195,7 @@ func TestAToolbarValueIsAsAReadOnlyFieldShowsItAndMayHaveHelp(t *testing.T) {
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[state]{
 		Title: "State", Load: func(context.Context) (state, webui.Loaded) { return state{}, webui.Ready() },
 		Fields: []webui.Accessor[state]{
-			webui.Bool[state]{Label: "Paused", Load: func(a state) *bool {
+			webui.OptionalBool[state]{Label: "Paused", Load: func(a state) *bool {
 				if a.Size == 0 {
 					return nil // not set
 				}

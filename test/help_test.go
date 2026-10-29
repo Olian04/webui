@@ -84,7 +84,7 @@ func TestAReadOnlyFieldShowsItsHelpAndEveryKindOfAccessorHasOne(t *testing.T) {
 		webui.OptionalInt[helped]{Label: "M", Help: help, Load: func(_ helped) *int { return nil }},
 		webui.OptionalFloat[helped]{Label: "N", Help: help, Load: func(_ helped) *float64 { return nil }},
 		webui.OptionalSlider[helped]{Label: "O", Help: help, Min: 0, Max: 5, Load: func(_ helped) *float64 { return nil }},
-		webui.Bool[helped]{Label: "P", Help: help, Load: func(_ helped) *bool { return nil }},
+		webui.OptionalBool[helped]{Label: "P", Help: help, Load: func(_ helped) *bool { return nil }},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", Body: webui.Form[helped]{
 		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
