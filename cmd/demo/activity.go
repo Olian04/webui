@@ -30,6 +30,34 @@ var Activity = webui.Page[webui.NoArgs]{
 			ActivityOnCall,
 		},
 		webui.Split{ActivityCalendar, ActivityDashboards},
+		ActivityEscalation,
+	},
+}
+
+// Escalation is what the notice below is decided from, and says: how many critical alerts are open.
+type Escalation struct{ Critical int }
+
+// CriticalOpen is a Bool of it: the accessor that says whether there is something to escalate. A When reads it as a form or a table would, and ignores
+// what it has no use for, so it needs no Label or Store here.
+var CriticalOpen = webui.Bool[Escalation]{Load: func(e Escalation) bool { return e.Critical > 0 }}
+
+// ActivityEscalation is a When: a notice that is shown only while critical alerts are open, and leaves no gap when there are none. Its Load reads what the
+// condition is decided from, its Show says whether it holds, and its Body loads its own data (here the count again: the model is not handed on). Dismiss or
+// acknowledge the critical alerts on the Alerts page and it is gone, with whatever was in it out of reach. A When is for what a page shows: what lets a
+// visitor act on an alert is the Guard of its action.
+var ActivityEscalation = webui.When[Escalation]{
+	Load: func(context.Context) (Escalation, webui.Loaded) {
+		return Escalation{Critical: service.CriticalOpen()}, webui.Ready()
+	},
+	Show: CriticalOpen,
+	Body: webui.Markdown[Escalation]{
+		Title: "Escalation",
+		Load: func(context.Context) (Escalation, webui.Loaded) {
+			return Escalation{Critical: service.CriticalOpen()}, webui.Ready()
+		},
+		Content: webui.String[Escalation]{Label: "Escalation", Load: func(e Escalation) string {
+			return fmt.Sprintf("**%d critical alerts are open.** Page the primary on call, then acknowledge them on the Alerts page. This notice is a `When`: it is here only while there are any.", e.Critical)
+		}},
 	},
 }
 

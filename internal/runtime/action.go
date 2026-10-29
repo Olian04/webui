@@ -79,7 +79,7 @@ func actionable(leaves map[string]ir.Node) bool {
 // it is the README's: parse → rules → Bind → Guard → Run. The page Guard runs
 // first, as it does on every request, so a POST cannot reach an action on a
 // page the viewer may not open.
-func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.HandlerFunc {
+func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates map[string][]*ir.When) http.HandlerFunc {
 	parser := argParser(page)
 	budget := fileBudget(leaves)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -118,10 +118,12 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node) http.Han
 		// The page's Guard has let the visitor in, so it is only now that what they sent is read: a visitor that the page
 		// refuses has nothing of theirs received.
 		rec := &received{}
-		if multipart && !p.receive(w, r, page, req, leaves, rec, valueLimit) {
+		// What is under a When that does not hold is not there, to the one who posts to it, as to the one who asks for it.
+		reachable := p.reachable(r.Context(), page, leaves, gates)
+		if multipart && !p.receive(w, r, page, req, reachable, rec, valueLimit) {
 			return
 		}
-		switch n := leaves[r.PostForm.Get("_leaf")].(type) {
+		switch n := reachable[r.PostForm.Get("_leaf")].(type) {
 		case *ir.Form:
 			p.submit(w, r, page, req, n, rec)
 		case *ir.Table:

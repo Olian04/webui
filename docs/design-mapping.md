@@ -37,6 +37,7 @@ into existence, and nothing is configured twice.
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | Two columns, 8px apart. The panels of a row are as tall as the tallest, and the rows are independent |
 | `Columns` / `Column.Weight` | One row of columns of unequal width, each as wide as its weight says; never narrower than 280px, so the last columns of a row that cannot hold them wrap to a row below |
+| `When` | One child, drawn only while a condition on a model that its `Load` reads holds (a `Bool` accessor says so), and nothing when it does not. What it hides is out of reach of a refresh, a post and an export |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
 | `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-leaf`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
@@ -299,6 +300,15 @@ a narrower screen has three rows of one. The width is the stylesheet's to decide
 needs no script and no breakpoint, and the rule is the same at every width. Where a column's exact share is under the floor and the row still holds its columns at it, the column is the floor
 and the others share the rest, so the proportions are held where they can be and the floor where they cannot. The columns of a row are as tall as the tallest; a panel in one takes the height,
 and a layout in one is one cell, as in a `Split`.
+
+### `When`
+
+One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a leaf's `Load` does, and `Show` is a `Bool` of that model: the same accessor that a form or a table shows it with, written
+once, with what a use has no purpose for (`Label`, `Store`, `Help`, `NoSort`, `NoFilter`) ignored. "Show when false" is a `Bool` whose `Load` returns the negation. The `Body` loads its own data and is not handed the model, so a body
+that needs what the condition read asks for it too, and an app that cares caches it, as it does for any two panels. A `When` is a layout that loads, for the condition alone: it runs `Load`, then `Show`, then builds the child, so its `Load` is in front of
+the child's, and a leaf request under it runs the `Load` again. A failed `Load` is a panel that says "Could not load" with the cause in the log, and the child is not shown: a condition that cannot be decided does not hold. When it does not
+hold the `When` draws nothing, and what is under it cannot be reached: a refresh, a form post or an export that names a leaf there is answered as it is for a leaf that is not (a hidden table's `export` is a parameter for a table that is not there, which is ignored), so what is drawn and what is allowed
+cannot disagree. Its child keeps the position it was declared at, so a leaf's id is the same whether it is shown or not. A `When` is not an authorization: the page's `Guard` lets a visitor open the page, and an action's `Guard` lets them act.
 
 ### `Tabs` and `Tab.Label`
 

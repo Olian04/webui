@@ -158,7 +158,7 @@ func (r *Recorder) Begin() func(page, method string, status int, started time.Ti
 }
 
 // Load records one run of an application's Load: a panel of a kind (form, editor, table,
-// diff, markdown) on a page, how long it took, and whether it failed.
+// diff, markdown, or when, the condition of a When) on a page, how long it took, and whether it failed.
 func (r *Recorder) Load(page, kind string, started time.Time, err error) {
 	if r == nil {
 		return

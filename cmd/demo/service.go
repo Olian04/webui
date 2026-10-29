@@ -504,6 +504,17 @@ func (s *Service) OpenAlerts() []Alert {
 	return slices.DeleteFunc(slices.Clone(s.alerts), func(a Alert) bool { return a.Acked })
 }
 
+// CriticalOpen is how many of the open alerts are critical.
+func (s *Service) CriticalOpen() int {
+	n := 0
+	for _, a := range s.OpenAlerts() {
+		if a.Severity == "critical" {
+			n++
+		}
+	}
+	return n
+}
+
 func (s *Service) Acknowledge(ids ...string) {
 	s.mu.Lock()
 	for i := range s.alerts {

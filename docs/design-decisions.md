@@ -1292,6 +1292,24 @@ design element.
 - **Dropped:** row actions and selection (an item is read); sorting and filtering (a list's order is its source's); a cursor; infinite scroll (script that fetches as the reader scrolls is a second way to page, and not a link); a
   carousel with arrows and dots (a row that scrolls, with the keyboard and the browser's own scroll, is what one is without script); and a picture of the item's own kind (a video player, an embed).
 
+## Conditional bodies: `When`
+
+- **One body, not a repeat.** The first idea was a `Repeat[M]` that would also do conditional rendering as a repeat of 0 or 1. It was not built, because N copies of a body cannot be named: a leaf is named by its **position** in the body tree
+  (`p.0.1`), and that name is the `X-Webui-Leaf` header, the `_leaf` field of a post, `data-leaf`, the ids derived for fields and dialogs, the leaf map built once at registration, the script's one element for an id, and, through `assignViewIDs` and
+  the argument allowlist, the view-state keys (`devices.sort`). A post finds its leaf by position and never by data, so N copies of one template would share all of it. A body that is shown or not has the one position it was declared at, and none of that moves.
+- **What N copies would need, so it is not started from scratch:** a `Key func(M) string` for each copy, as `Table.Key` names rows, and never position; leaf ids qualified by it (`p.0.1~eu-north`) in the header, the post field, `data-leaf` and every derived DOM id;
+  per-copy view-state keys, with an argument allowlist that is data-dependent; refresh and posts that run the list's `Load` again to find the item by its key; the script's one-element-per-id assumption; a cap on copies, as `NavEntries` has (50); a way
+  for the child to receive its item (the context, with a runtime assertion like `ArgsOf`'s, since `PageBody` erases the child's model); and nested repeats refused.
+- **`Load` and `Show`, in the library's own terms.** `Load` is a data source and an accessor reads the model it loads, so a condition is a `Load` for a model and a `Bool` that reads it. The accessor is written once and reused: a `Bool` that a form shows is the `Show` of a
+  `When`, and the fields it has no use for there are ignored, as `NoSort` is in a form. A bare `func(M) bool` was drafted and dropped for that reason. It needed `Bool` to be a `bool`, which it was not (it loaded a `*bool`); that was fixed first, and the tri-state one is `OptionalBool`.
+- **A layout that loads: the one exception.** The IR says layouts only arrange. A `When` loads, for the condition, because a condition is data and the body cannot be told it (it is another model, erased by `PageBody`). It is not a leaf: no `data-leaf`, no entry in the
+  leaf map, no refresh hint (a `Loaded.RefreshAfter` from its `Load` does nothing), and a request cannot name it. What it costs: its `Load` runs in front of its child's, and again for each refresh or post to a leaf under it, and an app whose body needs the same data loads it twice.
+- **Hidden means unreachable.** If it were only not drawn, a forged request could still refresh, post to or export a leaf that was meant to be shown to some visitors. So a leaf under a `When` that does not hold is answered as an unknown one is (a 404 for a refresh, the "not understood" flash
+  for a post, an ignored parameter for an export), the condition is asked again for that request, and a failed `Load` counts as not holding. It is a gate that keeps what is drawn and what is allowed in step, as an action's `Guard` does for its button. It is not an authorization of the page, and an
+  author who hides a Delete panel with a `When` must still give the action a `Guard`.
+- **Nothing is drawn when it does not hold:** no wrapper, so a `Stack` has no gap. A `Columns` cell is a wrapper of its own, so an empty one is hidden by `.col:empty`; a `Tabs` panel is a tab, so one with nothing in it is a blank tab, and the `When` belongs outside it.
+  A hidden editor, diff or Markdown still makes the page one that is built whole and not streamed, because that is decided from the declaration.
+
 ## Columns
 
 - **Weights are numbers on a new layout, not a pattern on `Split`.** The first idea was a pattern such as `"25/75"` or `"25/*/25"`. It was not taken because every way to get one wrong is a `Compile` error
