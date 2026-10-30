@@ -1,6 +1,6 @@
 {
   "name": "webui",
-  "description": "Teaches an agent to build admin panels and internal tools in Go with the webui library, reading the documentation for the version in use.",
+  "description": "Teaches an agent to build admin panels and internal tools in Go with the webui library, reading the documentation for the version in use, and to upgrade the library between versions, reading the migration guides.",
   "author": {
     "name": "Olian04"
   },
