@@ -176,7 +176,13 @@ cannot do something. It names almost none of the API. It tells the agent to read
 documentation for the version your `go.mod` pins (`go doc` reads it from the module
 cache), so it does not go stale when the library changes.
 
-It is in the open [Agent Skills](https://agentskills.io) format, so it works in Claude
+A second skill, `webui-upgrade`, moves a project from one version of webui to another, in
+either direction. It reads the migration guides that the stable releases ship in
+`docs/migrations/`, and falls back to the release notes and the documented API for a
+version that has none, then changes your code, builds it and starts the app so that
+`Compile` runs. Ask your agent to "upgrade webui to the latest version".
+
+Both are in the open [Agent Skills](https://agentskills.io) format, so it works in Claude
 Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
 
 **Claude Code**, as a plugin:
@@ -184,10 +190,11 @@ Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
 ```text
 /plugin marketplace add Olian04/webui
 /plugin install webui@olian04
+/plugin install webui-upgrade@olian04
 ```
 
 **Any agent**, with the [`skills`](https://github.com/vercel-labs/skills) CLI, which
-installs it for the agents it finds on your machine:
+installs both for the agents it finds on your machine:
 
 ```sh
 npx skills add Olian04/webui
@@ -200,10 +207,12 @@ folder your agent reads skills from (`.claude/skills` for Claude Code,
 ```sh
 mkdir -p .agents/skills
 cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui" .agents/skills/
-chmod -R u+w .agents/skills/webui
+cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui-upgrade" .agents/skills/
+chmod -R u+w .agents/skills/webui .agents/skills/webui-upgrade
 ```
 
-Or read it at [`skills/webui/SKILL.md`](skills/webui/SKILL.md).
+Or read them at [`skills/webui/SKILL.md`](skills/webui/SKILL.md) and
+[`skills/webui-upgrade/SKILL.md`](skills/webui-upgrade/SKILL.md).
 
 ---
 
@@ -235,7 +244,8 @@ This half is for people changing the library.
 | `tools/monaco`        | The build of the embedded Monaco editor, with `make monaco`. It needs node, and its output (`internal/render/assets/monaco`, `pkg/monaco/*/worker`) is committed.             |
 | `test`                | Integration tests, which import `pkg/webui` only.                                                                                                                            |
 | `skills/webui`        | The skill that teaches an agent to build with the library. It points at the documentation for the version in use and names almost no API; `test/skill_test.go` checks that. |
-| `.claude-plugin`, `.cursor-plugin` | Packaging for the skill: a Claude Code marketplace, which installs only `skills/webui` and not the source around it, and a Cursor plugin, which takes the repository root. |
+| `skills/webui-upgrade` | The skill that upgrades or downgrades the library in a project, between any two versions. It reads the migration guides in `docs/migrations/` when a release has one; `test/skill_test.go` checks that. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging for the skills: a Claude Code marketplace, which installs each of `skills/webui` and `skills/webui-upgrade` alone and not the source around it, and a Cursor plugin, which takes the repository root. |
 | `test`, `test/util/assert`| The tests that use only the public package, and the assertions that all of the tests use.                                                                                    |
 | `cmd/demo`            | The runnable demo. It is not part of the API.                                                                                                                                |
 

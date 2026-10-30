@@ -20,7 +20,10 @@ import (
 // keep that promise: whatever it does name must exist, and the way it says to read the
 // documentation must be one that works.
 
-const skillPath = "../skills/webui/SKILL.md"
+const (
+	skillPath        = "../skills/webui/SKILL.md"
+	upgradeSkillPath = "../skills/webui-upgrade/SKILL.md"
+)
 
 // exported is what the package declares: top-level names, and for each type the names
 // of its fields and methods.
@@ -97,7 +100,13 @@ func receiverName(e ast.Expr) string {
 func skill(t *testing.T) string {
 	t.Helper()
 
-	b, err := os.ReadFile(skillPath)
+	return skillAt(t, skillPath)
+}
+
+func skillAt(t *testing.T, path string) string {
+	t.Helper()
+
+	b, err := os.ReadFile(filepath.Clean(path))
 	assert.NoError(t, err)
 	return string(b)
 }
@@ -120,27 +129,53 @@ func TestTheSkillIsASkillThatPointsAtTheDocumentationForTheVersionInUse(t *testi
 func TestEveryNameTheSkillGivesTheLibraryExists(t *testing.T) {
 	t.Parallel()
 
-	text := skill(t)
 	api := declared(t)
+	for _, text := range []string{skill(t), skillAt(t, upgradeSkillPath)} {
+		// Identifiers written as webui.Name, if the skill ever uses any.
+		for _, m := range regexp.MustCompile(`\bwebui\.([A-Z][A-Za-z0-9]*)`).FindAllStringSubmatch(text, -1) {
+			if !api.top[m[1]] {
+				t.Errorf("a skill names webui.%s, which the package does not declare", m[1])
+			}
+		}
 
-	// Identifiers written as webui.Name, if the skill ever uses any.
-	for _, m := range regexp.MustCompile(`\bwebui\.([A-Z][A-Za-z0-9]*)`).FindAllStringSubmatch(text, -1) {
-		if !api.top[m[1]] {
-			t.Errorf("the skill names webui.%s, which the package does not declare", m[1])
+		// The names it hands to go doc: a type, or a field or method of one.
+		cmd := regexp.MustCompile(`go doc (?:-all )?github.com/Olian04/webui/pkg/webui(?: ([A-Z][A-Za-z0-9]*)(?:\.([A-Z][A-Za-z0-9]*))?)?`)
+		for _, m := range cmd.FindAllStringSubmatch(text, -1) {
+			typ, name := m[1], m[2]
+			if typ != "" && !api.top[typ] {
+				t.Errorf("a skill says to read go doc for %s, which the package does not declare", typ)
+			}
+			if name != "" && !api.members[typ][name] {
+				t.Errorf("a skill says to read go doc for %s.%s, which the package does not declare", typ, name)
+			}
 		}
 	}
+}
 
-	// The names it hands to go doc: a type, or a field or method of one.
-	cmd := regexp.MustCompile(`go doc (?:-all )?github.com/Olian04/webui/pkg/webui(?: ([A-Z][A-Za-z0-9]*)(?:\.([A-Z][A-Za-z0-9]*))?)?`)
-	for _, m := range cmd.FindAllStringSubmatch(text, -1) {
-		typ, name := m[1], m[2]
-		if typ != "" && !api.top[typ] {
-			t.Errorf("the skill says to read go doc for %s, which the package does not declare", typ)
-		}
-		if name != "" && !api.members[typ][name] {
-			t.Errorf("the skill says to read go doc for %s.%s, which the package does not declare", typ, name)
-		}
-	}
+// The upgrade skill says how to move between versions and what changed in none of them. It is found by its description, reads the migration guides
+// from the place the project keeps them, and does not list the API, which would be wrong for the versions it is not about.
+func TestTheUpgradeSkillReadsTheMigrationGuidesAndListsNoAPI(t *testing.T) {
+	t.Parallel()
+
+	text := skillAt(t, upgradeSkillPath)
+	assert.True(t, strings.HasPrefix(text, "---\nname: webui-upgrade\ndescription:"))
+	assert.Contains(t, text, "github.com/Olian04/webui")
+
+	// Where the guides are, and how to get them for any version: from the module cache, which holds the source of the version.
+	assert.Contains(t, text, "docs/migrations/<version>.md")
+	assert.Contains(t, text, "go mod download github.com/Olian04/webui@<version>")
+	assert.Contains(t, text, "go list -m -f '{{.Dir}}' github.com/Olian04/webui@<version>")
+	assert.Contains(t, text, "go list -m -versions github.com/Olian04/webui")
+
+	// The fallbacks for a release with no guide, and the two directions.
+	assert.Contains(t, text, "go doc -all ./pkg/webui")
+	assert.Contains(t, text, "https://github.com/Olian04/webui/releases")
+	assert.Contains(t, text, "A downgrade")
+
+	// The convention it relies on is the one the repository's own guidance states, so that the two cannot drift: a guide per stable release, in this folder.
+	guidance, err := os.ReadFile("../docs/AGENTS.md")
+	assert.NoError(t, err)
+	assert.Contains(t, string(guidance), "docs/migrations/vX.Y.Z.md")
 }
 
 // The skill is packaged for Claude Code and Cursor by manifests at the repository root,
@@ -168,26 +203,31 @@ func TestThePluginManifestsPackageTheSkill(t *testing.T) {
 	market := read("../.claude-plugin/marketplace.json")
 	assert.Equal(t, market["name"], "olian04")
 	plugins, _ := market["plugins"].([]any)
-	assert.Equal(t, len(plugins), 1)
-	entry, _ := plugins[0].(map[string]any)
-	assert.Equal(t, entry["name"], "webui")
-	assert.Equal(t, entry["license"], "MIT")
-	source, _ := entry["source"].(map[string]any)
-	assert.Equal(t, source["source"], "git-subdir")
-	assert.Equal(t, source["url"], "Olian04/webui")
-	assert.Equal(t, source["path"], "skills/webui")
-	// No version: the skill is the same for every version of the library, so an
-	// install follows the default branch.
-	_, pinned := entry["version"]
-	assert.False(t, pinned)
+	assert.Equal(t, len(plugins), 2)
+	for i, want := range []struct{ name, path string }{{"webui", "skills/webui"}, {"webui-upgrade", "skills/webui-upgrade"}} {
+		entry, _ := plugins[i].(map[string]any)
+		assert.Equal(t, entry["name"], any(want.name))
+		assert.Equal(t, entry["license"], "MIT")
+		source, _ := entry["source"].(map[string]any)
+		assert.Equal(t, source["source"], "git-subdir")
+		assert.Equal(t, source["url"], "Olian04/webui")
+		assert.Equal(t, source["path"], any(want.path))
+		// No version: a skill is the same for every version of the library, so an
+		// install follows the default branch.
+		_, pinned := entry["version"]
+		assert.False(t, pinned)
+	}
 
 	// The README tells people to install what the marketplace calls it.
 	readme, err := os.ReadFile("../README.md")
 	assert.NoError(t, err)
 	assert.Contains(t, string(readme), "/plugin marketplace add Olian04/webui")
 	assert.Contains(t, string(readme), "/plugin install webui@olian04")
+	assert.Contains(t, string(readme), "/plugin install webui-upgrade@olian04")
 	assert.Contains(t, string(readme), "npx skills add Olian04/webui")
 
-	_, err = os.Stat("../skills/webui/SKILL.md")
-	assert.NoError(t, err)
+	for _, path := range []string{"../skills/webui/SKILL.md", "../skills/webui-upgrade/SKILL.md"} {
+		_, err = os.Stat(path)
+		assert.NoError(t, err)
+	}
 }

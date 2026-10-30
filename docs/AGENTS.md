@@ -26,8 +26,9 @@
 | `internal/render`  | IR + loaded data → HTML. `templates/components` is the design language. The assets are built here (hashed, compressed) and served through `internal/assetserve` by the runtime's routes. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
-| `.claude-plugin`, `.cursor-plugin` | Packaging of the skill. The Claude Code marketplace installs only `skills/webui` (a `git-subdir` source, so users do not pull the Go source); the Cursor plugin takes the repo root. No `version` is set, so installs follow the default branch. |
+| `.claude-plugin`, `.cursor-plugin` | Packaging of the skills. The Claude Code marketplace installs `skills/webui` and `skills/webui-upgrade` as two plugins (each a `git-subdir` source, so users do not pull the Go source); the Cursor plugin takes the repo root. No `version` is set, so installs follow the default branch. |
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
+| `skills/webui-upgrade` | Skill for agents moving a project between two versions of the library. Reads `docs/migrations/<version>.md` from the module cache; guarded by `test/skill_test.go`. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
 `pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `stat` and `trend` (`Stat`, `Delta`, `Series`), `list` (`List`, `Cards`), `calendar` (`Calendar`), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
@@ -216,6 +217,8 @@ Rare `*Iface` · `var _ I = (*T)(nil)` at export boundary · defer unlock pairs 
 
 Canon links above beat bullet memory when tradeoff unclear.
 
-## The skill
+## The skills
 
 `skills/webui/SKILL.md` teaches agents to build *with* the library. It is method and judgement, not an API list, so that it does not go stale: it sends the reader to `go doc` for the version in `go.mod` and to pkg.go.dev. Keep it that way. Do not add field names, signatures or code to it. If a design principle it states stops being true (how authentication works, how pages are mounted, what the library refuses to do), change the skill in the same commit. `test/skill_test.go` fails if the skill names a `webui.` identifier or a `go doc` symbol that no longer exists.
+
+`skills/webui-upgrade/SKILL.md` moves a project from one version to another, in either direction. The same rule holds: it is method, and says nothing about what changed in any version, so it names no `webui.` identifier. It reads `docs/migrations/<version>.md` from the module cache, so it relies on one convention: a stable release that breaks the previous stable one ships its guide as `docs/migrations/vX.Y.Z.md`. Change the folder or the naming and you change the skill in the same commit. `test/skill_test.go` checks that the skill and this file agree on the path.

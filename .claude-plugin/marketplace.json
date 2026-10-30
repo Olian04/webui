@@ -23,6 +23,24 @@
       "repository": "https://github.com/Olian04/webui",
       "license": "MIT",
       "keywords": ["go", "golang", "admin", "dashboard", "ui", "webui"]
+    },
+    {
+      "name": "webui-upgrade",
+      "displayName": "webui upgrade",
+      "description": "Upgrades or downgrades the webui library in a Go project between any two versions, reading the migration guides that ship with the stable releases.",
+      "source": {
+        "source": "git-subdir",
+        "url": "Olian04/webui",
+        "path": "skills/webui-upgrade"
+      },
+      "author": {
+        "name": "Olian04",
+        "url": "https://github.com/Olian04"
+      },
+      "homepage": "https://github.com/Olian04/webui/releases",
+      "repository": "https://github.com/Olian04/webui",
+      "license": "MIT",
+      "keywords": ["go", "golang", "upgrade", "migration", "webui"]
     }
   ]
 }
