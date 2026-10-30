@@ -66,6 +66,19 @@ Prefer a type error to an `App.Compile` error. Shape the declaration so that a w
 
 Add a `Compile` check only when the type system cannot say it, it is not plausible to (it would need generics gymnastics or a type per combination), or it is not ergonomic (it would make the common declaration harder to write or read). That covers what depends on values or on other declarations (a path whose placeholder has no field, a link to a page that is not mounted, a colour that cannot be read), and "exactly one of" (`Table`'s `Rows`, `Load` and `Feed`: Go has no sum type, and a type for each source would make the common table harder to write). Every `Compile` check costs a test, an error message with a `Fix`, and a failure at startup instead of at the editor, so it is the second choice. When a review finds a `Compile` error that a different shape would have made impossible, change the shape.
 
+## Breaking changes and migration guides
+
+A release is a **prerelease** when its version is `vX.Y.Z-N` and **stable** when it is `vX.Y.Z` (see "Releasing" in the README). Between two stable releases, every breaking change needs a migration guide. Prereleases do not: the API is open to change in them, and the guide for a stable release covers everything since the previous stable one, so a change that was added and then broken again before the release is one change in it. The first stable release, v1.0.0, has no earlier stable release to migrate from and needs none for what changed during the prereleases.
+
+What counts as breaking is what makes an existing app stop compiling, stop passing `Compile`, or behave differently without a change by its author: a renamed, removed or retyped identifier or field, a signature that changed, a `Compile` check that now refuses what it accepted, a default or a rule that changed (the sidebar being drawn only when a page declares a `Nav` entry was one), and a changed address or id that an app, a link or a test could have named.
+
+So that the guide can be built when the release is cut, a breaking PR is recognisable when it merges:
+
+- its title has the `!` of a conventional commit (`feat!: …`), which becomes the squash commit's title and so a line of the release's changelog;
+- its description has a **Breaking** section that says what changed, what an app has to do, and a before and after snippet that compiles. That section is the source for the guide, so it is written for the person migrating, not for the reviewer.
+
+The guide of a stable release is `docs/migrations/vX.Y.Z.md`, written in the PR that prepares the release and linked from the release's notes. It lists each breaking change with the same before and after, in the order a person migrating meets them (compile errors first, then behaviour). A release with no breaking change since the last stable one has no file.
+
 ## HTML is the state
 
 The server answers a browser with HTML and nothing else (see the opening of `design-decisions.md` and htmx's [HATEOAS](https://htmx.org/essays/hateoas) and
