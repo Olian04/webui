@@ -529,11 +529,11 @@ func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
 	var outside, inA, inB, inOther webui.Query
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		viewTable("Events", &outside),
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "A", Body: viewTable("Events", &inA)},
 			{Label: "B", Body: viewTable("Events", &inB)},
-		}},
-		webui.Tabs{Panels: []webui.Tab{{Label: "Other", Body: viewTable("Other", &inOther)}, {Label: "More", Body: webui.Stack{}}}},
+		},
+		webui.Tabs{{Label: "Other", Body: viewTable("Other", &inOther)}, {Label: "More", Body: webui.Stack{}}},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 

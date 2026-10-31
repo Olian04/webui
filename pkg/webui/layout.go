@@ -13,8 +13,8 @@ import (
 // [PageBody], including other layouts.
 type Stack []PageBody
 
-// Split lays out bodies side by side, across the width of the page. It collapses to
-// a column on a narrow screen. Its children may be any [PageBody].
+// Split lays out bodies side by side, as equal columns: it is [Columns] with no Weight on any column, and
+// is the short way to write it. It wraps as Columns does, by the least width of a column. Its children may be any [PageBody].
 type Split []PageBody
 
 // Column is one column of a [Columns]: a body, and its share of the width.
@@ -28,8 +28,7 @@ type Column struct {
 }
 
 // Columns lays out bodies side by side in a row, each as wide as its Weight says: 25/75, 75/25 and 25/50/25 are
-// {1, 3}, {3, 1} and {1, 2, 1}. Where [Split] is two equal columns that wrap into rows of two, Columns is one row that is
-// divided by weight.
+// {1, 3}, {3, 1} and {1, 2, 1}. [Split] is Columns of equal weights.
 //
 // A column is never narrower than 280px. When a row cannot hold all of its columns at that width, the last of them
 // move to a row of their own, and each row shares its width by weight in the same way: 25/50/25 on a narrow screen is a
@@ -80,10 +79,7 @@ func (t Tab) key() string { return args.Slug(t.Label) }
 // page), so it survives a reload and can be linked to. The library owns that
 // parameter. Only the selected panel is loaded, and an empty or unknown value
 // selects the first.
-type Tabs struct {
-	// Panels are the tabs, in order.
-	Panels []Tab
-}
+type Tabs []Tab
 
 // ASSERT: layouts implement PageBody
 var (
@@ -91,7 +87,7 @@ var (
 	_ PageBody = Split(nil)
 	_ PageBody = Columns(nil)
 	_ PageBody = When[struct{}]{}
-	_ PageBody = Tabs{}
+	_ PageBody = Tabs(nil)
 )
 
 func (s Stack) validateBody(v *bodyValidator) { validateChildren(v, "Stack", s) }
@@ -136,24 +132,24 @@ func validateChildren(v *bodyValidator, what string, children []PageBody) {
 }
 
 func (t Tabs) validateBody(v *bodyValidator) {
-	if len(t.Panels) == 0 {
-		v.add("Tabs has no Panels", "Declare at least one Tab.")
+	if len(t) == 0 {
+		v.add("Tabs has no Tab", "Declare at least one Tab.")
 	}
 	seen := map[string]bool{}
-	for i, p := range t.Panels {
+	for i, p := range t {
 		switch {
 		case p.Label == "":
-			v.add(fmt.Sprintf("Tabs.Panels[%d] has no Label", i), "Set Label; it is the tab text.")
+			v.add(fmt.Sprintf("Tabs[%d] has no Label", i), "Set Label; it is the tab text.")
 		case p.key() == "":
-			v.add(fmt.Sprintf("Tabs.Panels[%d]: the label %q has no letters or digits", i, p.Label),
+			v.add(fmt.Sprintf("Tabs[%d]: the label %q has no letters or digits", i, p.Label),
 				"A tab is named in the address by its label; use one with a letter or digit in it.")
 		case seen[p.key()]:
-			v.add(fmt.Sprintf("Tabs.Panels[%d]: the label %q names the same tab as another in the address", i, p.Label),
+			v.add(fmt.Sprintf("Tabs[%d]: the label %q names the same tab as another in the address", i, p.Label),
 				"Reword one of them; a tab is named in the address by its label, in lower case.")
 		}
 		seen[p.key()] = true
 		if p.Body == nil {
-			v.add(fmt.Sprintf("Tabs.Panels[%d] has no Body", i), "Set Body to a Table, Form or layout.")
+			v.add(fmt.Sprintf("Tabs[%d] has no Body", i), "Set Body to a Table, Form or layout.")
 			continue
 		}
 		p.Body.validateBody(v)
@@ -165,7 +161,11 @@ func (s Stack) lowerBody(at ir.Addr) ir.Node {
 }
 
 func (s Split) lowerBody(at ir.Addr) ir.Node {
-	return &ir.Split{At: at, Children: lowerChildren(at, s)}
+	out := &ir.Columns{At: at, Children: lowerChildren(at, s)}
+	for range s {
+		out.Weights = append(out.Weights, 1)
+	}
+	return out
 }
 
 func (c Columns) lowerBody(at ir.Addr) ir.Node {
@@ -183,7 +183,7 @@ func (w When[M]) lowerBody(at ir.Addr) ir.Node {
 
 func (t Tabs) lowerBody(at ir.Addr) ir.Node {
 	out := &ir.Tabs{At: at}
-	for i, p := range t.Panels {
+	for i, p := range t {
 		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Body: p.Body.lowerBody(childAddr(at, i))})
 	}
 	return out
@@ -223,10 +223,6 @@ func assignViewIDs(body ir.Node) {
 	walk = func(n ir.Node, taken map[string]bool) {
 		switch n := n.(type) {
 		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c, taken)
-			}
-		case *ir.Split:
 			for _, c := range n.Children {
 				walk(c, taken)
 			}

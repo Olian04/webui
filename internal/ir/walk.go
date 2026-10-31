@@ -13,10 +13,6 @@ func Walk(n Node, visit func(Node)) {
 		for _, c := range n.Children {
 			Walk(c, visit)
 		}
-	case *Split:
-		for _, c := range n.Children {
-			Walk(c, visit)
-		}
 	case *Columns:
 		for _, c := range n.Children {
 			Walk(c, visit)

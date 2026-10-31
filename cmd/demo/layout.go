@@ -27,13 +27,13 @@ func editable(title string, fields ...string) webui.Form[Note] {
 }
 
 // The panels of a Split side by side are as tall as the tallest of them, and the rows of a Split are independent: five
-// panels in two columns make three rows, each as tall as its tallest panel and not as the rows around it. A panel's
+// panels in equal columns that wrap by width make rows, each as tall as its tallest panel and not as the rows around it. A panel's
 // foot (a pager, a Save button) stays at the bottom of its box.
 var LayoutSplit = webui.Page[webui.NoArgs]{
 	Path: "/layout/split",
 	Nav:  webui.Nav{Label: "Split rows", Icon: "table-columns", Section: "Layout"},
 	Body: webui.Stack{
-		intro("Five panels in one Split make three rows of two columns. In each row the panels are as tall as the tallest one, with their borders lined up, and a pager or a Save button at the bottom of its box. The last row has one panel, which is as tall as it is and is not stretched to the rows above. The Split after it is its own: its rows do not follow these. Narrow the window below 1100 px and the columns become one, each panel its natural height."),
+		intro("Five panels in one Split are five equal columns, none narrower than 280 px, so as many as fit are in a row and the rest wrap to rows below, each sharing its width. In each row the panels are as tall as the tallest one, with their borders lined up, and a pager or a Save button at the bottom of its box. A row with one panel leaves it as tall as it is, and the rows do not follow one another. The Split after it is its own. Narrow the window and the rows become shorter, down to one column, each panel its natural height."),
 		webui.Split{
 			editable("Row 1, left: a tall form", "Name", "Address", "Owner", "Region", "Notes"),
 			backend("Row 1, right: two rows", 0, 2),
@@ -137,7 +137,7 @@ var LayoutColumns = webui.Page[webui.NoArgs]{
 
 // Columns of unequal width. A Column has a Weight, which is its share of the row relative to the others: 1 and 3 is 25/75,
 // and 25, 50 and 25 is 25/50/25. A column is never narrower than 280 px, so when a row cannot hold all of its columns at that
-// width the last of them move to a row below, and each row shares its width by weight in turn. A Split, by comparison, is two equal columns.
+// width the last of them move to a row below, and each row shares its width by weight in turn. A Split is Columns of equal weights.
 var LayoutWeights = webui.Page[webui.NoArgs]{
 	Path: "/layout/weights",
 	Nav:  webui.Nav{Label: "Weighted columns", Icon: "table-columns", Section: "Layout"},
@@ -174,19 +174,19 @@ var LayoutTabs = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{
 		intro("Two sets of Tabs in a Split, and a third under them. Each remembers its own tab in the address (tabs.tab, tabs-2.tab, tabs-3.tab), so you can read alerts on the left while the right shows the sites, reload, and find both as they were. Only the selected tab of each loads. The third has a Split in its first tab and a plain table in its second."),
 		webui.Split{
-			webui.Tabs{Panels: []webui.Tab{
+			webui.Tabs{
 				{Label: "Alerts", Body: compactAlerts("Open alerts")},
 				{Label: "Devices", Body: compactDevices("Devices", 6)},
-			}},
-			webui.Tabs{Panels: []webui.Tab{
+			},
+			webui.Tabs{
 				{Label: "Sites", Body: SitesTable},
 				{Label: "Status", Body: SystemStatus},
-			}},
+			},
 		},
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "Side by side", Body: webui.Split{compactAlerts("Alerts, again"), editable("A short form", "Name", "Owner")}},
 			{Label: "Devices", Body: compactDevices("All devices", 8)},
-		}},
+		},
 	},
 }
 
@@ -195,22 +195,22 @@ var LayoutTabs = webui.Page[webui.NoArgs]{
 var LayoutDeep = webui.Page[webui.NoArgs]{
 	Path: "/layout/deep",
 	Nav:  webui.Nav{Label: "Nested five deep", Icon: "layer-group", Section: "Layout"},
-	Body: webui.Tabs{Panels: []webui.Tab{
+	Body: webui.Tabs{
 		{Label: "Fleet", Body: webui.Stack{
 			intro("Tabs, then a Stack, then a Split, then Tabs, then a Split: the panels at the bottom are five layouts down. The outer Tabs choose between this and 'Health'; the inner Tabs, in the right column, choose between two pairs of panels. Both choices are in the address."),
 			webui.Split{
 				compactDevices("Devices", 8),
-				webui.Tabs{Panels: []webui.Tab{
+				webui.Tabs{
 					{Label: "Alerts and sites", Body: webui.Split{compactAlerts("Alerts"), SitesTable}},
 					{Label: "Status and a form", Body: webui.Split{SystemStatus, editable("A note", "Subject", "Body")}},
-				}},
+				},
 			},
 		}},
 		{Label: "Health", Body: webui.Stack{
 			SystemStatus,
 			webui.Split{compactAlerts("Open alerts"), SitesTable},
 		}},
-	}},
+	},
 }
 
 // A page whose panels are of every kind: a form, an editor, a diff and a markdown text, with the text in the tab that is
@@ -222,10 +222,10 @@ var LayoutReview = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{
 		intro("The collector's status above, and under it Tabs of the things you read before a deploy. The first tab puts the editor beside what has changed since the last deploy (a Diff), the second is the runbook, a Markdown text. The page has an editor, a diff and Markdown, so its head needs their script: it is built whole, and arrives as one piece."),
 		SystemStatus,
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "Editor and changes", Body: webui.Split{ConfigEditor, ConfigDiff}},
 			{Label: "Runbook", Body: handbookPanel("Runbook", "runbook.md", "A Markdown, in a tab.")},
-		}},
+		},
 	},
 }
 
@@ -250,7 +250,7 @@ func tabsOf(prefix string, labels ...string) webui.Tabs {
 	for i, label := range labels {
 		tabs[i] = webui.Tab{Label: label, Body: backend(prefix+" / "+label, 0, i%3+1)}
 	}
-	return webui.Tabs{Panels: tabs}
+	return webui.Tabs(tabs)
 }
 
 // A Tabs has as many tabs as it is given. Three, which fit; six in each half of a Split, which do not, and the strips scroll
@@ -261,11 +261,11 @@ var LayoutManyTabs = webui.Page[webui.NoArgs]{
 	Nav:  webui.Nav{Label: "Many tabs", Icon: "folder-tree", Section: "Layout"},
 	Body: webui.Stack{
 		intro("Tabs with three tabs, which fit; two Tabs of six in a Split, each half the width of the page, which do not fit until the window is wide; and a Tabs of sixteen with long labels. When the tabs need more room than the strip has it scrolls sideways, with a thin bar, and the tabs keep their size. Choose a tab far to the right and follow it: the strip stays where it was scrolled and the tab you chose is brought into view. Open the address of a tab out of sight and the strip is scrolled to it."),
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "Devices", Body: compactDevices("Three tabs: devices", 5)},
 			{Label: "Alerts", Body: compactAlerts("Three tabs: alerts")},
 			{Label: "Sites", Body: SitesTable},
-		}},
+		},
 		webui.Split{
 			tabsOf("Left", "Overview", "Devices", "Alerts", "Sites", "Configuration", "Audit log"),
 			tabsOf("Right", "Metrics", "Retention", "Ingest", "Paging rules", "Handbook", "Runbook"),

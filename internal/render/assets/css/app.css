@@ -961,15 +961,6 @@ html.js .search-submit {
   flex-direction: column;
   gap: 8px;
 }
-/* The panels of a split side by side are as tall as the tallest of them. A grid sizes each row to its
-   tallest item and stretches the others in that row, and rows are independent, so when a split wraps onto
-   more rows the heights are equal within a row and not across rows. */
-.split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: stretch;
-}
 /* Columns are one row of columns of unequal width. A column grows by its weight from nothing, so the columns of a row share it in the
    proportion given, and is never narrower than --column-min: a row that cannot hold its columns at that width wraps its last ones onto
    a row below, and each row shares its width by weight in turn, down to one column on a screen with room for no more. The columns of a
@@ -992,7 +983,7 @@ html.js .search-submit {
   display: none;
 }
 .col > .panel,
-.col > :is(.stack, .split, .columns, .tabset) {
+.col > :is(.stack, .columns, .tabset) {
   flex: 1 1 auto;
 }
 /* A column of panels beside a taller one, or under tabs beside one, has height to give. It goes to its tables,
@@ -1010,39 +1001,34 @@ html.js .search-submit {
 /* A stretched panel's body takes the extra height, so its foot (a pager, the actions) is at the bottom of the
    box. A form is a body of its own inside the body, with its foot after its fields, so the form is a column
    that gives the fields the room. */
-:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body {
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
   display: flex;
   flex-direction: column;
 }
-:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
 }
-:is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body > form > .panel-body {
   flex: 1 1 auto;
 }
 /* A column's filter is the controls in its header and a form beside the table, which they name with form=: the form has nothing to show. */
 form[data-filter-form] {
   display: none;
 }
-@media (max-width: 1100px) {
-  .split {
-    grid-template-columns: 1fr;
-  }
-}
 
-/* tabs — links carrying an argument. The strip and the selected panel are one element, a cell of a Split like any
+/* tabs — links carrying an argument. The strip and the selected panel are one element, a cell of a Columns like any
    other panel; a layout inside the panel is a column of its own. */
 .tabset {
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
-/* The selected tab's panel, or the layout that is in it, has the height the tabs have: a Split puts a Tabs in a
+/* The selected tab's panel, or the layout that is in it, has the height the tabs have: a Columns puts a Tabs in a
    cell as tall as the row, and the panel under the strip fills what is left of it. */
 [data-tabbody] {
   flex: 1 1 auto;
@@ -1052,7 +1038,6 @@ form[data-filter-form] {
 }
 [data-tabbody] > .panel,
 [data-tabbody] > .stack,
-[data-tabbody] > .split,
 [data-tabbody] > .columns {
   flex: 1 1 auto;
 }

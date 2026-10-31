@@ -259,10 +259,10 @@ var Details = webui.Page[DeviceArgs]{
 	},
 	// The selected tab is ?tabs.tab=raw-events, named by its label; the first tab,
 	// Overview, needs no parameter.
-	Body: webui.Tabs{Panels: []webui.Tab{
+	Body: webui.Tabs{
 		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
 		{Label: "Raw events", Body: RawEvents},
-	}},
+	},
 }
 
 var DeviceForm = webui.Form[Device]{

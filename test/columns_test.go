@@ -71,11 +71,11 @@ func TestTheStylesheetWrapsColumnsThatWouldBeTooNarrow(t *testing.T) {
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".columns {\n  --column-min: 280px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  align-items: stretch;\n}")
 	assert.Contains(t, css, ".col {\n  flex: var(--w, 1) 1 0;\n  min-width: min(var(--column-min), 100%);\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, ".col > .panel,\n.col > :is(.stack, .split, .columns, .tabset) {\n  flex: 1 1 auto;\n}")
-	// A panel in a column keeps its foot at the bottom of its box, as one in a Split does.
-	assert.Contains(t, css, ":is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
-	// And no breakpoint collapses the columns: the 1100px rule is a Split's alone.
-	assert.Contains(t, css, "@media (max-width: 1100px) {\n  .split {\n    grid-template-columns: 1fr;\n  }\n}")
+	assert.Contains(t, css, ".col > .panel,\n.col > :is(.stack, .columns, .tabset) {\n  flex: 1 1 auto;\n}")
+	// A panel in a column keeps its foot at the bottom of its box.
+	assert.Contains(t, css, ":is(.stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+	// And no breakpoint collapses the columns, a Split's included: it is Columns, and has no rule of its own.
+	assert.False(t, strings.Contains(css, "@media (max-width: 1100px) {\n  .split"))
 }
 
 func TestColumnsGiveTheirLeavesPositionalIDsLikeASplitDoes(t *testing.T) {
@@ -96,13 +96,13 @@ func TestColumnsNestInAnyLayoutAndTakeAnyBody(t *testing.T) {
 	body := serve(editorApp(webui.Columns{
 		{Weight: 1, Body: webui.Stack{columnPanel("Top"), columnPanel("Bottom")}},
 		{Weight: 3, Body: webui.Columns{{Body: columnPanel("Inner left")}, {Weight: 2, Body: columnPanel("Inner right")}}},
-		{Weight: 1, Body: webui.Tabs{Panels: []webui.Tab{{Label: "One", Body: columnPanel("Tabbed")}}}},
+		{Weight: 1, Body: webui.Tabs{{Label: "One", Body: columnPanel("Tabbed")}}},
 		{Weight: 1, Body: webui.Split{columnPanel("S1"), columnPanel("S2")}},
 	}), http.MethodGet, "/admin/e").Body.String()
 	for _, want := range []string{"Top", "Bottom", "Inner left", "Inner right", "Tabbed", "S1", "S2"} {
 		assert.Contains(t, body, ">"+want+"<")
 	}
-	assert.Equal(t, strings.Count(body, `<div class="columns">`), 2)
+	assert.Equal(t, strings.Count(body, `<div class="columns">`), 3) // the outer, the inner, and the Split, which is one
 	assert.Contains(t, body, `class="tabset"`)
 }
 
@@ -114,8 +114,8 @@ func TestColumnsInASplitAndASplitInAColumn(t *testing.T) {
 		webui.Columns{{Body: columnPanel("A")}, {Weight: 3, Body: columnPanel("B")}},
 		webui.Columns{{Body: webui.Split{columnPanel("C"), columnPanel("D")}}},
 	}), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<div class="split"><div class="columns">`)
-	assert.Contains(t, body, `<div class="col" style="--w:1;"><div class="split">`)
+	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;"><div class="columns">`)
+	assert.Contains(t, body, `<div class="col" style="--w:1;"><div class="columns"><div class="col" style="--w:1;"><div class="panel`)
 }
 
 func TestTheColumnsOfALoadingPageStreamInOrder(t *testing.T) {
@@ -145,4 +145,14 @@ func TestAColumnsThatCannotBeDrawnIsACompileError(t *testing.T) {
 			assert.Contains(t, editorErrors(t, tc.body), tc.want)
 		})
 	}
+}
+
+// A Split is Columns of equal weights: one column of weight 1 for each body, in the order given, wrapped by the same rule.
+func TestASplitIsOneColumnOfEqualWeightForEachBody(t *testing.T) {
+	t.Parallel()
+
+	body := serve(editorApp(webui.Split{columnPanel("A"), columnPanel("B"), columnPanel("C")}), http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, strings.Count(body, `<div class="col" style="--w:1;">`), 3)
+	assert.Equal(t, strings.Count(body, `<div class="columns">`), 1)
+	assert.True(t, strings.Index(body, ">A<") < strings.Index(body, ">B<") && strings.Index(body, ">B<") < strings.Index(body, ">C<"))
 }

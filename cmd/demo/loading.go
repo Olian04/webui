@@ -132,11 +132,11 @@ var LoadingTabs = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{
 		intro("Follow a tab. The panels above and below the Tabs keep the moment they were read at, because only the Tabs is asked for, and only the tab that you chose is read: its panels say when, and the tab you left is read again only if you come back. Each tab takes 500 ms. Reload the page, which reads all of it, to see the difference. Without script a tab is a link to the page, and the whole page is read."),
 		stamped("Above the tabs (read with the page)", 0),
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "First", Body: webui.Split{stamped("First, left (500 ms)", 500*time.Millisecond), stamped("First, right (500 ms)", 500*time.Millisecond)}},
 			{Label: "Second", Body: stamped("Second (500 ms)", 500*time.Millisecond)},
 			{Label: "Third", Body: stamped("Third (500 ms)", 500*time.Millisecond)},
-		}},
+		},
 		stamped("Below the tabs (read with the page)", 0),
 	},
 }
@@ -152,10 +152,10 @@ var LoadingNested = webui.Page[webui.NoArgs]{
 			backend("Split, left (300 ms)", 300*time.Millisecond, 3),
 			backend("Split, right (20 ms)", 20*time.Millisecond, 3),
 		},
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "Slow tab (200 ms)", Body: backend("Selected tab (200 ms)", 200*time.Millisecond, 2)},
 			{Label: "Other tab (20 ms)", Body: backend("Other tab (20 ms)", 20*time.Millisecond, 2)},
-		}},
+		},
 		backend("After the layouts (100 ms)", 100*time.Millisecond, 2),
 	},
 }

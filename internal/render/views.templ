@@ -177,13 +177,6 @@ templ Stack(children []templ.Component) {
 	}
 }
 
-// Split arranges children side by side; those in a row are as tall as the tallest of them.
-templ Split(children []templ.Component) {
-	@c.Split() {
-		@templ.Join(children...)
-	}
-}
-
 // Columns arranges children side by side in a row, each as wide as its weight says. A child is in a column of its own, which carries the weight and
 // is as tall as the tallest in its row; where a row cannot hold every column at its least width, the last ones move to a row below.
 templ Columns(children []templ.Component, weights []int) {

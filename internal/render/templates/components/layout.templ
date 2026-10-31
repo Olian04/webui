@@ -14,14 +14,6 @@ templ Stack() {
 	</div>
 }
 
-// Split is two columns. The panels in a row are as tall as the tallest of them, and the rows are
-// independent of one another; below 1100px it is one column and nothing is stretched.
-templ Split() {
-	<div class="split">
-		{ children... }
-	</div>
-}
-
 // Columns is a row of columns of unequal width that wraps: a Column is as wide as its weight says of the row, and never narrower than
 // --column-min, so where a row cannot hold its columns the last ones move to a row of their own, and each row shares its width by weight.
 templ Columns() {

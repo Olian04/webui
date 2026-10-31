@@ -98,7 +98,7 @@ when the component set is not.
 | **Surfaces** | |
 | `panel.templ` | `Panel`, `InfoTip` |
 | **Layout** | |
-| `layout.templ` | `Stack`, `Split`, `Columns`, `Col`, `Tabs` (a `When` has no markup of its own) |
+| `layout.templ` | `Stack`, `Columns`, `Col`, `Tabs` (a `When` has no markup of its own) |
 | **Navigation** | |
 | `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `NavSection`, `NavItem` |
 | `topbar.templ` | `TopBar`, `ThemeToggle`, `Search`, `ExternalLinks` |
