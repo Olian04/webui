@@ -15,11 +15,12 @@ import (
 var (
 	formID = webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}
 	formIP = webui.String[Device]{
-		Label: "IP",
-		Load:  func(d Device) string { return d.Ip },
-		Store: func(d *Device, v string) { d.Ip = v },
+		Label:    "IP",
+		Load:     func(d Device) string { return d.Ip },
+		Store:    func(d *Device, v string) { d.Ip = v },
+		Required: true,
 		Rules: webui.StringRules{
-			Required: true, MinLen: 7, MaxLen: 15,
+			MinLen: 7, MaxLen: 15,
 			Pattern: &webui.PatternRule{Expr: `\d{1,3}(\.\d{1,3}){3}`, Message: "must be a valid IPv4 address"},
 		},
 	}

@@ -25,7 +25,8 @@ func fixture() App {
 	id := String[dev]{Label: "ID", Load: func(d dev) string { return d.Id }}
 	ip := String[dev]{
 		Label: "IP", Load: func(d dev) string { return d.Ip }, Store: func(d *dev, v string) { d.Ip = v },
-		Rules: StringRules{Required: true, MinLen: 7, Pattern: &PatternRule{Expr: `^\d+(\.\d+){3}$`, Message: "must be IPv4"}},
+		Required: true,
+		Rules:    StringRules{MinLen: 7, Pattern: &PatternRule{Expr: `^\d+(\.\d+){3}$`, Message: "must be IPv4"}},
 	}
 	count := Int[dev]{Label: "Count", Load: func(d dev) int { return d.Count }, Store: func(d *dev, v int) { d.Count = v }}
 	details := Page[detailArgs]{

@@ -30,7 +30,7 @@ func credentialApp(start credential) (http.Handler, func() credential) {
 		},
 		Fields: []webui.Accessor[credential]{
 			webui.String[credential]{
-				Label: "Name", Rules: webui.StringRules{Required: true, MaxLen: 20},
+				Label: "Name", Required: true, Rules: webui.StringRules{MaxLen: 20},
 				Load: func(c credential) string { return c.Name }, Store: func(c *credential, v string) { c.Name = v },
 			},
 			webui.String[credential]{
@@ -159,7 +159,7 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 	}
 	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load})), "is a Secret but has no Store")
-	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store, Rules: webui.StringRules{Required: true}})), "is a Secret and Required")
+	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store, Required: true})), "is a Secret and Required")
 	assert.Contains(t, problems(webui.Table[credential]{
 		Rows:    func(context.Context) ([]credential, webui.Loaded) { return nil, webui.Ready() },
 		Columns: []webui.Accessor[credential]{webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store}},

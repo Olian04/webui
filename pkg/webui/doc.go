@@ -167,8 +167,15 @@
 // [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [OptionalBool] and [File]
 // are below, and a [Group] lays accessors side by side in a form. Without a Store an
 // accessor is read-only, and a [URL] never has one. An accessor's Rules (a
-// [StringRules] or a [NumberRules]: required, length, a pattern, bounds) are rendered
+// [StringRules] or a [NumberRules]: length, a pattern, bounds) are rendered
 // as HTML constraint attributes and checked again on the server, and its Placeholder is shown in an input while it is empty. A [Float] shows Precision decimals.
+//
+// Required is written on the accessor, once, whatever it holds: an empty submission is refused, in the browser and on the server.
+// What an empty submission means without it is the accessor's default, which is also what its field in a form starts as: for an
+// accessor that cannot be nil, the value that Load gives (a [Int] or a [Float] shows what is stored, 0 for a model that has none, a [Bool] is
+// ticked or not), and for one that can, which is the Optional ones, nothing, "not set", which is nil. So an input of the first kind that is emptied
+// stores the zero value of its type, as a [String] stores "", and one of the second kind stores nil. A number that may be absent is not a flag on
+// [Int]: its Go type differs, and it is an [OptionalInt].
 //
 // Every accessor but a [Group] has a Help, a line or two on what the field is for,
 // which a form and a toolbar show in the popover beside the label that lists the rules,
@@ -209,7 +216,7 @@
 // for a form only: not a table's column, an editor's text or a toolbar's value.
 //
 // A [String] with Multiline set is a text area, for text of more than one line. Its
-// rules are Required, MinLen and MaxLen; a Pattern and the text rules are one line's
+// rules are MinLen and MaxLen, and it may be Required; a Pattern and the text rules are one line's
 // and are refused, and a line break is one "\n" character whatever the browser sent, so
 // MaxLen counts what the browser's maxlength counts. In a table the cell shows the
 // first lines. It is not for a toolbar, which shows one line for a value.
@@ -217,7 +224,7 @@
 // A number or a choice that may be absent has an accessor of its own, since a Go int
 // cannot say it: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool] load a pointer,
 // and an [OptionalBool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
-// input that is emptied is stored as nil (and a Required one refuses it), a table sorts
+// input that is emptied is stored as nil (and a Required one refuses it, on every accessor that can be emptied, as it does for a [String]), a table sorts
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
 // and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing

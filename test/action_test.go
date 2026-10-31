@@ -57,7 +57,8 @@ func newShop() *shop {
 	s := &shop{}
 	ip := webui.String[Device]{
 		Label: "IP", Load: func(d Device) string { return d.Ip }, Store: func(d *Device, v string) { d.Ip = v },
-		Rules: webui.StringRules{Required: true, MinLen: 7, Pattern: &webui.PatternRule{Expr: `\d+(\.\d+){3}`, Message: "must be a valid IPv4 address"}},
+		Required: true,
+		Rules:    webui.StringRules{MinLen: 7, Pattern: &webui.PatternRule{Expr: `\d+(\.\d+){3}`, Message: "must be a valid IPv4 address"}},
 	}
 	count := webui.Int[Device]{
 		Label: "Occurrences", Load: func(d Device) int { return d.Count }, Store: func(d *Device, v int) { d.Count = v },

@@ -13,8 +13,9 @@ var (
 		Store: func(s *Settings, v string) { s.Name = v },
 		// The text rules and the pattern are all one pattern to the browser, which says which of them a value fails, in
 		// the words that the server uses. A pattern is written in the syntax that Go and a browser both read.
+		Required: true,
 		Rules: webui.StringRules{
-			Required: true, MinLen: 3, MaxLen: 32,
+			MinLen: 3, MaxLen: 32,
 			NotStartsWith: "-", NotEndsWith: "-", NotContains: "--",
 			Pattern: &webui.PatternRule{Expr: `[a-z0-9\-]+`, Message: "must be lowercase letters, digits and dashes"},
 		},
@@ -36,7 +37,8 @@ var (
 		Load:  func(s Settings) int { return s.Port },
 		Store: func(s *Settings, v int) { s.Port = v },
 		// A zero lower bound is a real constraint, so bounds are pointers.
-		Rules: webui.NumberRules[int]{Required: true, Min: new(1), Max: new(65535)},
+		Required: true,
+		Rules:    webui.NumberRules[int]{Min: new(1), Max: new(65535)},
 	}
 	// A Float has a Precision (decimals shown) and rules like any number. The
 	// bounds are pointers, because a zero bound is a real constraint.
@@ -44,9 +46,10 @@ var (
 		// Help is what the field is for, in the popover beside its label, above the rules: the label and the rules cannot say that
 		// 0.25 keeps one event in four.
 		Label: "Sample rate", Precision: 2, Help: "The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.",
-		Load:  func(s Settings) float64 { return s.SampleRate },
-		Store: func(s *Settings, v float64) { s.SampleRate = v },
-		Rules: webui.NumberRules[float64]{Required: true, Min: new(0.01), Max: new(1.0)},
+		Load:     func(s Settings) float64 { return s.SampleRate },
+		Store:    func(s *Settings, v float64) { s.SampleRate = v },
+		Required: true,
+		Rules:    webui.NumberRules[float64]{Min: new(0.01), Max: new(1.0)},
 	}
 	// A Slider with a Store is a range input in a form, held to its range by the
 	// server too; without a Store it is a bar, as the System page shows.

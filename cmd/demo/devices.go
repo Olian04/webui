@@ -31,10 +31,11 @@ var (
 	}
 	IP = webui.String[Device]{
 		Label: "IP", Help: "The address the device reports from. Two devices cannot share one.",
-		Load:  func(d Device) string { return d.IP },
-		Store: func(d *Device, v string) { d.IP = v },
+		Load:     func(d Device) string { return d.IP },
+		Store:    func(d *Device, v string) { d.IP = v },
+		Required: true,
 		Rules: webui.StringRules{
-			Required: true, MinLen: 7, MaxLen: 15,
+			MinLen: 7, MaxLen: 15,
 			Pattern: &webui.PatternRule{Expr: `\d{1,3}(\.\d{1,3}){3}`, Message: "must be a valid IPv4 address"},
 		},
 		Placeholder: "10.0.0.1",
