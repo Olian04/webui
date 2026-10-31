@@ -176,10 +176,10 @@ func TestThePolicyHasTheOriginsOfEveryMarkdownOnThePageOnceEach(t *testing.T) {
 
 	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Stack{
 		markdownWithOrigins("a", "https://a.example", "https://shared.example"),
-		webui.Tabs{Panels: []webui.Tab{
+		webui.Tabs{
 			{Label: "One", Body: markdownWithOrigins("b", "https://shared.example", "https://B.example:443")},
 			{Label: "Two", Body: markdownWithOrigins("c", "https://c.example:8443")}, // a tab that is not selected still counts
-		}},
+		},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example https://c.example:8443", 1)

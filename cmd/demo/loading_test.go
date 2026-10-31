@@ -53,11 +53,11 @@ func TestTheLayoutPagesAreTheCombinationsTheySay(t *testing.T) {
 
 	// A rail: a Stack in a Split, beside a table.
 	rail := get(h, "/admin/layout/rail").Body.String()
-	assert.Contains(t, rail, `<div class="split"><div class="panel grows"`)
-	assert.Contains(t, rail, `</div><div class="stack">`)
+	assert.Contains(t, rail, `<div class="columns"><div class="col" style="--w:1;"><div class="panel grows"`)
+	assert.Contains(t, rail, `</div><div class="col" style="--w:1;"><div class="stack">`)
 
 	// Columns in columns: a Split that is the first child of a Split.
-	assert.Contains(t, get(h, "/admin/layout/columns").Body.String(), `<div class="split"><div class="split">`)
+	assert.Contains(t, get(h, "/admin/layout/columns").Body.String(), `<div class="columns"><div class="col" style="--w:1;"><div class="columns">`)
 
 	// Tabs each have a name of their own in the address, and only the selected tab of each is built.
 	tabs := get(h, "/admin/layout/tabs?tabs-2.tab=status").Body.String()

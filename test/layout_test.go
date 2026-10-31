@@ -46,10 +46,10 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 				},
 				table(1, "Events"),
 			},
-			webui.Tabs{Panels: []webui.Tab{
+			webui.Tabs{
 				{Label: "Overview", Body: table(2, "Overview")},
 				{Label: "Raw", Body: table(3, "Raw")},
-			}},
+			},
 		},
 	}
 	return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), &loads
@@ -89,25 +89,27 @@ func TestLayoutsGiveLeavesPositionalIDs(t *testing.T) {
 	for _, id := range []string{`data-leaf="p.0.0"`, `data-leaf="p.0.1"`, `data-leaf="p.1.0"`} {
 		assert.Contains(t, body, id)
 	}
-	assert.Contains(t, body, `class="split"`)
+	assert.Contains(t, body, `class="columns"`)
 	assert.Contains(t, body, `class="stack"`)
 }
 
-// The panels of a Split are as tall as the tallest in their row, and rows are independent: the stylesheet says
-// so with a grid that stretches its items, and a panel's body takes the room so its foot stays at the bottom.
-func TestAStretchedSplitKeepsItsPanelsFootAtTheBottom(t *testing.T) {
+// A Split is Columns of equal weights: it has no markup or rule of its own, so its panels are as tall as the tallest in their row,
+// and rows are independent, by the rule of Columns, and a panel's body takes the room so its foot stays at the bottom.
+func TestASplitIsColumnsAndKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Body.String(), `<div class="split">`)
+	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
+	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;">`)
+	assert.False(t, strings.Contains(body, `class="split"`))
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	assert.Contains(t, css, ".split {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 8px;\n  align-items: stretch;\n}")
-	assert.Contains(t, css, ":is(.split, .stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
+	assert.False(t, strings.Contains(css, ".split"))
+	assert.Contains(t, css, ":is(.stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
 }
 
 // A column of panels in a Split, and the panel under a tab strip in one, take the height the row has: the tables of a
 // column share it, a column without one gives it to its last panel, and the panel in a tab fills what is left of its cell.
-func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
+func TestAColumnAndATabInAColumnsFillTheRow(t *testing.T) {
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
@@ -115,7 +117,7 @@ func TestAColumnAndATabInASplitFillTheRow(t *testing.T) {
 	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
 	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
 	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .split,\n[data-tabbody] > .columns {\n  flex: 1 1 auto;\n}")
+	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .columns {\n  flex: 1 1 auto;\n}")
 	assert.Contains(t, css, ".tabset[aria-busy='true'] > [data-tabbody] {\n  opacity: 0.55;")
 }
 
@@ -185,19 +187,19 @@ func TestOnlyATablePanelGrowsToTheHeightThereIsAndAFormKeepsItsOwn(t *testing.T)
 }
 
 // Tabs is one child of the Split it is in: the strip and the selected panel are one element, so a Split, which puts
-// its children in a grid, does not give the strip a cell of its own.
+// its children in columns, does not give the strip a column of its own.
 func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Split{
-		webui.Tabs{Panels: []webui.Tab{{Label: "One", Body: quickTable("In tabs")}, {Label: "Two", Body: quickTable("Other")}}},
+		webui.Tabs{{Label: "One", Body: quickTable("In tabs")}, {Label: "Two", Body: quickTable("Other")}},
 		quickTable("Beside"),
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, body, `<div class="split"><div class="tabset" data-tabs="p.0"><nav class="tabs"`)
+	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;"><div class="tabset" data-tabs="p.0"><nav class="tabs"`)
 	assert.Equal(t, strings.Count(body, `<div class="tabset" `), 1)
 	// The strip and the panel it selects are inside the one element, which ends before the next child begins.
-	end := strings.Index(body, `</div></div><div class="panel grows"`)
+	end := strings.Index(body, `</div></div><div class="col" style="--w:1;"><div class="panel grows"`)
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
 	assert.True(t, strings.Index(body, "Beside-row") > end)
 }
@@ -327,7 +329,7 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 	for i := range panels {
 		panels[i] = webui.Tab{Label: "A tab with a label number " + strconv.Itoa(i), Body: quickTable("Panel " + strconv.Itoa(i))}
 	}
-	h := streamApp(webui.Tabs{Panels: panels})
+	h := streamApp(webui.Tabs(panels))
 	body := serve(h, http.MethodGet, "/admin/p?tabs.tab=a-tab-with-a-label-number-19").Body.String()
 	assert.Equal(t, strings.Count(body, `<a class="tab`), 20)
 	assert.Contains(t, body, `<a class="tab active" href="/admin/p?tabs.tab=a-tab-with-a-label-number-19" aria-current="page">`)
@@ -402,8 +404,8 @@ func TestEachStripOfTabsHasItsOwnName(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Split{
-		webui.Tabs{Panels: []webui.Tab{{Label: "One", Body: quickTable("A")}, {Label: "Two", Body: quickTable("B")}}},
-		webui.Tabs{Panels: []webui.Tab{{Label: "Red", Body: quickTable("C")}, {Label: "Green", Body: quickTable("D")}, {Label: "Blue", Body: quickTable("E")}, {Label: "Grey", Body: quickTable("F")}}},
+		webui.Tabs{{Label: "One", Body: quickTable("A")}, {Label: "Two", Body: quickTable("B")}},
+		webui.Tabs{{Label: "Red", Body: quickTable("C")}, {Label: "Green", Body: quickTable("D")}, {Label: "Blue", Body: quickTable("E")}, {Label: "Grey", Body: quickTable("F")}},
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: One, Two">`)

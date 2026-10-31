@@ -377,10 +377,10 @@ func TestTabsOfListsAreReadOnlyForTheSelectedTab(t *testing.T) {
 	t.Parallel()
 
 	first, second := &listLoader{}, &listLoader{}
-	h := editorApp(webui.Tabs{Panels: []webui.Tab{
+	h := editorApp(webui.Tabs{
 		{Label: "Hacker News", Body: webui.List[story]{Title: "Hacker News", Load: first.load, Headline: pTitle}},
 		{Label: "Lobsters", Body: webui.List[story]{Title: "Lobsters", Load: second.load, Headline: pTitle}},
-	}})
+	})
 	serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, len(first.asked()), 1)
 	assert.Equal(t, len(second.asked()), 0)

@@ -261,9 +261,6 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Stack:
 		kids, err := p.children(ctx, req, page, n.Children)
 		return render.Stack(kids), err
-	case *ir.Split:
-		kids, err := p.children(ctx, req, page, n.Children)
-		return render.Split(kids), err
 	case *ir.Columns:
 		kids, err := p.children(ctx, req, page, n.Children)
 		return render.Columns(kids, n.Weights), err

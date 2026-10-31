@@ -29,10 +29,6 @@ func gatesOf(root ir.Node) map[string][]*ir.When {
 			for _, c := range n.Children {
 				walk(c, above)
 			}
-		case *ir.Split:
-			for _, c := range n.Children {
-				walk(c, above)
-			}
 		case *ir.Columns:
 			for _, c := range n.Children {
 				walk(c, above)

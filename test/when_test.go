@@ -294,7 +294,7 @@ func TestAWhenInATabsLeavesABlankTab(t *testing.T) {
 	t.Parallel()
 
 	var g gate
-	h := editorApp(webui.Tabs{Panels: []webui.Tab{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}}})
+	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, ">Maybe<")
 	assert.False(t, strings.Contains(body, ">Inside<"))

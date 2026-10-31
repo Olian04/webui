@@ -145,7 +145,7 @@
 //
 //	Body: webui.Stack{
 //		webui.Split{DeviceForm, Events},
-//		webui.Tabs{Panels: []webui.Tab{{Label: "Raw events", Body: Events}}},
+//		webui.Tabs{{Label: "Raw events", Body: Events}},
 //	}
 //
 // The selected tab is kept in the address, so it survives a reload and can be linked
@@ -154,8 +154,8 @@
 // A [When] shows one body only while a condition holds: Load reads a model, Show is a [BoolLike] of it (a [Bool], or an [OptionalBool] whose not set is no), and Body is what is shown. What it hides is out of reach of a refresh,
 // a form post and an export, and it leaves no gap. It loads, for the condition alone, so keep its Load cheap; the body loads its own data.
 //
-// A [Split] is two equal columns, wrapping in twos. [Columns] is a row of unequal ones, each [Column] with a Weight that is its share relative to the others
-// (zero is 1): {1, 3} is 25/75 and {25, 50, 25} is 25/50/25. A column is never narrower than 280px, so where a row cannot hold its columns the last move to a row below, each row sharing its width
+// [Columns] is a row of columns of unequal width, each [Column] with a Weight that is its share relative to the others
+// (zero is 1): {1, 3} is 25/75 and {25, 50, 25} is 25/50/25. A [Split] is Columns of equal weights, written as a list of bodies. A column is never narrower than 280px, so where a row cannot hold its columns the last move to a row below, each row sharing its width
 // by weight in turn, down to one column on a narrow screen. The weights are numbers, not a pattern, so there is nothing to mistype and no sum that must come to 100.
 //
 // # Accessors

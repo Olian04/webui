@@ -9,7 +9,7 @@ import (
 )
 
 // The landing page is the page at "/", and it is the one that shows what the library looks like when it is all used at once: the
-// collector's status in a toolbar, and below it four panels in a Split (two tables that page, sort and filter, a table of another model,
+// collector's status in a toolbar, and below it four panels in two Splits, two to a row (two tables that page, sort and filter, a table of another model,
 // and a form), each declared as it would be on a page of its own. It has no Nav of its own: the brand in the sidebar and the first breadcrumb both lead here.
 // Without such a page the root goes to the first page it can find that needs no arguments, with no message.
 var Overview = webui.Page[webui.NoArgs]{
@@ -17,7 +17,8 @@ var Overview = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{
 		OverviewToolbar,
 		OverviewFigures,
-		webui.Split{OverviewDevices, OverviewAlerts, OverviewEvents, OverviewSettings},
+		webui.Split{OverviewDevices, OverviewAlerts},
+		webui.Split{OverviewEvents, OverviewSettings},
 	},
 }
 

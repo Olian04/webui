@@ -23,10 +23,10 @@ var Activity = webui.Page[webui.NoArgs]{
 	Body: webui.Stack{
 		webui.Split{
 			// The two views of what is new share one panel's place: only the tab that is selected is read.
-			webui.Tabs{Panels: []webui.Tab{
+			webui.Tabs{
 				{Label: "Alerts", Body: ActivityAlerts},
 				{Label: "Releases", Body: ActivityReleases},
-			}},
+			},
 			ActivityOnCall,
 		},
 		webui.Split{ActivityCalendar, ActivityDashboards},

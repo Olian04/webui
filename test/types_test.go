@@ -109,9 +109,7 @@ func TestSketchTypes(t *testing.T) {
 			webui.Form[Device]{},
 			webui.Table[Device]{},
 		},
-		webui.Tabs{
-			Panels: []webui.Tab{{Label: "Raw", Body: webui.Table[Device]{}}},
-		},
+		webui.Tabs{{Label: "Raw", Body: webui.Table[Device]{}}},
 	}
 
 	app := webui.App{

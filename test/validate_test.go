@@ -128,9 +128,9 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		{"a column label with nothing to name it by", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "—", Load: func(Device) string { return "" }}},
 		}}, `the label "—" has no letters or digits`},
-		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
+		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{
 			{Label: "Raw events", Body: webui.Stack{}}, {Label: "raw  events", Body: webui.Stack{}},
-		}}}, `names the same tab as another in the address`},
+		}}, `names the same tab as another in the address`},
 		{"negative page size", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{Load: okRows, PageSize: -1}}, "PageSize is negative"},
 		{"slider needs a range", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }}},
@@ -141,7 +141,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		{"select needs a load", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{webui.Select[Device]{Label: "Status"}},
 		}}, "has no Load"},
-		{"tabs need panels", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{}}, "Tabs has no Panels"},
+		{"tabs need panels", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{}}, "Tabs has no Tab"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -173,10 +173,10 @@ func TestPanelsOfOneTabsMayRepeatATable(t *testing.T) {
 	t.Parallel()
 
 	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}}
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{Panels: []webui.Tab{
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{
 		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }}, shared}},
 		{Label: "Raw", Body: shared},
-	}}}}}
+	}}}}
 	_, err := app.Compile("/admin")
 	assert.NoError(t, err)
 }

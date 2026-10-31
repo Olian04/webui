@@ -30,14 +30,14 @@ func fixture() App {
 	count := Int[dev]{Label: "Count", Load: func(d dev) int { return d.Count }, Store: func(d *dev, v int) { d.Count = v }}
 	details := Page[detailArgs]{
 		Path: "/device/{id}",
-		Body: Tabs{Panels: []Tab{
+		Body: Tabs{
 			{Label: "Overview", Body: Form[dev]{
 				Load:   func(context.Context) (dev, Loaded) { return dev{Id: "d1", Ip: "1.2.3.4"}, Ready() },
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
 				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
 			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Window[dev], Loaded) { return Window[dev]{}, Ready() }}}}},
-		}},
+		},
 	}
 	list := Page[listArgs]{
 		Path: "/device",
@@ -74,7 +74,7 @@ func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 
 	tabs := details.Body.(*ir.Tabs)
 	assert.Equal(t, tabs.ID, "tabs")
-	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Children[0].(*ir.Split).Children[0].Addr()), []int{1, 0, 0})
+	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Children[0].(*ir.Columns).Children[0].Addr()), []int{1, 0, 0})
 
 	table := out.ByPath["/device"].Body.(*ir.Table)
 	assert.Equal(t, table.ID, "devices")

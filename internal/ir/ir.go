@@ -79,7 +79,6 @@ type FieldError struct {
 // ASSERT: nodes implement Node
 var (
 	_ Node = (*Stack)(nil)
-	_ Node = (*Split)(nil)
 	_ Node = (*Tabs)(nil)
 	_ Node = (*Form)(nil)
 	_ Node = (*Table)(nil)
