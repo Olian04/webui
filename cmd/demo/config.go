@@ -17,7 +17,8 @@ var (
 		Load:  func(c Config) string { return c.Current },
 		Store: func(c *Config, v string) { c.Current = v },
 		// The text is bounded, as any field is: Rules apply to what is saved.
-		Rules: webui.StringRules{Required: true, MaxLen: 64 << 10},
+		Required: true,
+		Rules:    webui.StringRules{MaxLen: 64 << 10},
 	}
 	// A viewer's accessor has no Store, so an Editor or a Diff built on it only reads.
 	DeployedText = webui.String[Config]{

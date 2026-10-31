@@ -108,8 +108,8 @@ type Field struct {
 	// Checkbox says a Bool that cannot be absent is edited with a checkbox and not a select: an unchecked one is not sent, and an absent value is false.
 	Checkbox bool
 
-	// Unset writes the zero value of the field's type to the model it is given, a pointer, for a field that has a
-	// Set: what an input that was emptied means. Nil for a field that is read-only.
+	// Unset writes the default of the field's type to the model it is given, a pointer, for a field that has a
+	// Set: what an input that was emptied means, which is nil for a field that may have none and the zero value for any other. Nil for a field that is read-only.
 	Unset func(model any)
 
 	// File is set for a field that holds a file: what it accepts, and how it is stored. Its Get is the stored file's name and its

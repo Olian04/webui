@@ -116,10 +116,10 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string, file
 			continue
 		}
 		if raw == "" && f.Kind != ir.KindString {
-			if f.Nullable && f.Unset != nil {
-				f.Unset(&m) // an input that was emptied is no value, for a field that may have none
+			if f.Unset != nil {
+				f.Unset(&m) // an input that was emptied is the default of its type: nil for a field that may have none, the zero value for any other
 			}
-			continue // optional and empty: leave the loaded value alone
+			continue // empty: there is nothing to parse
 		}
 		if err := f.Set(&m, raw); err != nil {
 			errs = append(errs, ir.FieldError{Label: f.Label, Message: "Could not read this value."})

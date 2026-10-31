@@ -446,13 +446,13 @@ used as both a form input and a table column is the normal case; each position
 takes what it can use and silently drops the rest. That is what makes the field
 reusable rather than forcing two near-identical declarations.
 
-### `Rules` → validation, twice, from one declaration
+### `Required` and `Rules` → validation, twice, from one declaration
 
-Each rule has exactly one visual form:
+Each rule has exactly one visual form. `Required` is a field of the accessor and not of its `Rules`, since it is about whether a value is wanted and the rules are about what shape one has; the others are in `Rules`:
 
 | Rule | Input attribute | Shown as |
 |---|---|---|
-| Required | `required` | `*` beside the label, in critical |
+| `Required` (on the accessor) | `required` | `*` beside the label, in critical |
 | `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |

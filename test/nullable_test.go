@@ -100,7 +100,7 @@ func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {
 func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 	t.Parallel()
 
-	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: new(1), Max: new(10), Required: true},
+	rate := webui.OptionalInt[limits]{Label: "Rate", Required: true, Rules: webui.NumberRules[int]{Min: new(1), Max: new(10)},
 		Load: func(l limits) *int { return l.Rate }, Store: func(l *limits, v *int) { l.Rate = v }}
 	paused := webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
 	h, saved := limitsApp(limits{}, rate, paused)
@@ -238,7 +238,7 @@ func TestNullableFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 		return all
 	}
-	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Required: true}, Load: func(l limits) *int { return l.Rate }}), "is Required but has no Store")
+	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate", Required: true, Load: func(l limits) *int { return l.Rate }}), "is Required but has no Store")
 	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }}), "is Required but has no Store")
 	assert.Contains(t, problems(webui.OptionalSlider[limits]{Label: "Level", Load: func(l limits) *float64 { return l.Level }}), "has no range")
 	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate"}), "Load")

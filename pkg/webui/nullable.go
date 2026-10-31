@@ -24,8 +24,10 @@ type OptionalInt[M any] struct {
 	// is read-only.
 	Store func(*M, *int)
 
-	// Rules are checked in the browser and again on the server. Required refuses an empty input, which is what makes
-	// a value that must be there.
+	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
+	Required bool
+
+	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[int]
 
 	// Placeholder is shown in the input while it is empty.
@@ -67,6 +69,9 @@ type OptionalFloat[M any] struct {
 	// Store writes the submitted value to the model: nil when the input was left empty. Without it the field
 	// is read-only.
 	Store func(*M, *float64)
+
+	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
+	Required bool
 
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[float64]
@@ -114,6 +119,9 @@ type OptionalSlider[M any] struct {
 	// Store writes the submitted value to the model: nil when it was left empty. Without it the slider is a bar,
 	// and read-only.
 	Store func(*M, *float64)
+
+	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
+	Required bool
 
 	// Min is the value at the start of the range.
 	Min float64
@@ -195,7 +203,7 @@ func validateOptional(v *bodyValidator, at string, required bool, store bool) {
 func lowerOptionalInt[M any](a OptionalInt[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindInt)
 	f.Nullable = true
-	f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
 	f.Get = func(m any) string {
 		if p := a.Load(m.(M)); p != nil {
 			return strconv.Itoa(*p)
@@ -229,7 +237,7 @@ func lowerOptionalInt[M any](a OptionalInt[M], name string) ir.Field {
 func lowerOptionalFloat[M any](a OptionalFloat[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindFloat)
 	f.Nullable = true
-	f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
 	prec := -1
 	if a.Precision > 0 {
 		prec = a.Precision
@@ -269,7 +277,7 @@ func lowerOptionalSlider[M any](a OptionalSlider[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindFloat)
 	f.Nullable = true
 	f.Placeholder = "—" // what the number says while it is empty, and what the range is dimmed by
-	f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
+	f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Required: a.Required, Min: &lo, Max: &hi}
 	step := a.StepSize
 	if step == 0 && a.Store != nil {
 		step = defaultStep(lo, hi)
