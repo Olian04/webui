@@ -1225,30 +1225,43 @@ design element.
   mistake is a cross-site script. It is pure Go, and was already in the module graph
   through the linter, so it adds nothing transitive.
 
-## Figures: Stat, Delta and Series
+## Figures: Trend
 
-- **A figure with its change and its shape is a kind of value, and a leaf for a few of them.** The design had no statistic or chart leaf on purpose (`design-mapping.md`): a leaf
-  showed a model, or a list of models, and each leaf was a kind of text a model has. A figure is that too, once it is an accessor, so the pieces are accessors first: `Delta` is a
-  signed number drawn with an arrow and a colour for whether the direction is good, and `Series` is a list of numbers drawn as a line or as bars. They work wherever an accessor does:
-  a column (a row of markets, with its change and its chart), a read-only field of a form or a toolbar, and a tile. `Stat` is the leaf that lays a few of them out as tiles, which
-  is the one thing no existing leaf does: it has no rows and no fields to type into.
+- **A figure with its change and its shape is a kind of value, and not a leaf.** The design had no statistic or chart leaf on purpose (`design-mapping.md`): a leaf
+  showed a model, or a list of models, and each leaf was a kind of text a model has. A figure is that too, once it is an accessor, so the piece is an accessor first: `Trend` is a
+  list of numbers drawn as a line, with a signed percent drawn with an arrow and a colour for whether the direction is good. It works wherever an accessor does:
+  a column (a row of markets, with its change and its chart) and a read-only field of a form or a toolbar. A few figures of one model are a `Table` of one row, with a value column and a
+  `Trend` column for each. A `Stat` leaf that laid them out as tiles was built first and removed: it did nothing that a table of one row and a form do not (a tile's label, value and trend are a header and two
+  cells), and it was a leaf with its own node, loader, view and registries to keep in step with every other. What it cost to remove it: no tiles side by side, and a one-row table says "1–1 of 1" in its foot and has
+  sort and filter links that each column turns off with `NoSort` and `NoFilter`. What it did not cost: the direction of each figure, since a `Trend` has its own `LowerIsBetter`, so the one row has a latency that is good
+  falling and a count that is good rising. The same direction in one column of many rows (a table with a row for each metric) could not say it, and that is what a per-row direction would add, and was left out.
+- **One accessor, and not a `Delta` and a `Series`.** They were two accessors that a table had two columns for, when what a reader takes in is one thing: the
+  figure, how it moved and the shape that led to it. Two accessors meant two labels, two sets of help and a change that sorted in a column beside a chart that did not. A `Trend` is one column, one
+  label and one sort. What it costs: a column that has only a change, or only a chart, gets a `Trend` with the other part absent, and a column is as wide as both.
+- **`Load` returns the points and the change, and the change is the app's.** `func(M) ([]float64, *float64)`: either part may be absent for a model, an empty list for no chart and nil for no change. The library does not read a
+  change out of the points. A figure is set against whatever the app compares it to (yesterday, the same hour last week, a target), and that is not always a window of the line that is drawn: the figure of a latency is
+  the last day's line with the change since yesterday beside it. Computing it from the points (the last against the first of a window, as a dashboard does) was weighed, with `Window` and `Current` fields to say which, and
+  dropped, since each field was a way to say what the app can say in a number. What it costs: the change and the line can disagree, and an app that wants them to agree computes the change from its own points.
+- **A change is written in three digits, always.** Under 10 it has two decimals (`0.35%`), under 100 one (`35.4%`), from 100 none (`100%`), counting the digits as they are after rounding, so that 99.96 is `100%` and not `100.0%`.
+  A column of them has one width, and there is no `Precision` or `Unit` for an app to get wrong: the unit is always a percent. What it costs: no way to write a change of 0.004% (it reads `0%`), or of 1234% in three digits.
 - **The change says its direction in text, and its colour says whether it is good.** A colour alone says nothing to a reader who does not see it, and an arrow that is red does not say whether
   a rise is bad or the thing it is of is. The text has the sign (and the minus sign, since a hyphen reads as a dash), the arrow repeats it, and the colour is the field's `LowerIsBetter`: a
   response time that falls is green, a rate of errors that falls is green, and a throughput that falls is red. A reader who does not see the colour is told "(better)" or "(worse)". A change that reads zero
-  as it is shown (a rise of 0.001 with two decimals) has no sign, arrow or colour, so that the text and the colour are never two stories.
+  as it is shown (a rise of 0.001) has no sign, arrow or colour, so that the text and the colour are never two stories.
   Which way is good is a boolean, `LowerIsBetter`, and not a typed direction: there are exactly two, and a boolean cannot hold a value that is not one, where a string type accepts any string and leaves the mistake to `Compile`.
-- **A series is drawn by the server, as an SVG, with its values in words as its name.** HTML is the state: the chart is markup the server made, not data that a script turns into
-  markup, so it is there without script, in a table that is exported, and in a screen reader's list. Its name is *what it is, how many values, from where to where, the lowest and the
-  highest*, and a file of it has the points, separated by semicolons. It has no axes and no scale: it is the shape beside the figure, and a figure that needs a scale is not this.
-  It is neither sorted nor filtered by. A value that is not a number is left out, and a `Highlight` is an index of the points as they were loaded, so that dropping one does not move
-  the mark.
+- **A chart is drawn by the server, as an SVG, with its values in words as its name.** HTML is the state: the chart is markup the server made, not data that a script turns into
+  markup, so it is there without script and in a screen reader's list. Its name is *what it is, how many values, from where to where, the lowest and the
+  highest*, in the same three digits. It has no axes and no scale: it is the shape beside the figure, and a figure that needs a scale is not this. A value that is not a number is left out, and the line marks its last point.
+  There are no bars: a row of bars and a line say the same thing in a box this size, and a choice between them was a field for an app to get wrong.
+- **A trend sorts and filters by its change, and has no number without one.** A column holds the change as a number (`KindFloat`), so the table's sort and range filter are the ones every number has, and a file of it
+  holds that number, and `null` in JSON where there is none, and not the points. A row with no change has nothing to be ordered by: it sorts first, as an empty number does, and a range leaves it out. A trend that never has a
+  change is declared with `NoSort` and `NoFilter`. What it costs: a chart with no change sorts as if it were empty, and the points of a line are not in the file.
 - **Dropped:** a `Chart` leaf with axes, a legend, a time range and several lines (the dashboard the design says it is not, and a place where the app's own panel or a link to the tool that
-  does it is the answer); a tile that draws a value of its own (a value is an accessor, so a badge, a bar and a formatted size are each themselves, and a tile keeps up with any new one for
-  free); sparklines made by script from data in an attribute (a second source of markup); and `Stat` taking a list of models for one tile each (the markets pattern is a `Table` with a
-  `Delta` and a `Series` column, which sorts, filters and pages).
-- **What it costs:** a new public leaf and two accessors, and the files that go with a leaf (the declaration, the node, the loader, the view, four registries in the runtime); an SVG in the
-  page, which the content security policy allows as it is inline markup and not a fetch; two more display kinds for a table's width, export and search to know about; a series that cannot
-  be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design is now a statement about axes and legends.
+  does it is the answer); a `Stat` leaf of tiles, which drew a value of its own through an accessor and was removed for a table of one row; sparklines made by script from data in an attribute (a second source of markup); a `Stat` taking a list of models for one tile each (the markets pattern is a `Table` with a
+  `Trend` column, which sorts, filters and pages); bars, and a choice of a point to mark.
+- **What it costs:** an accessor, and a display kind in the cell; an SVG in the
+  page, which the content security policy allows as it is inline markup and not a fetch; a table's width, export and search to know about it; a chart that cannot
+  be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design stands, with a sparkline as a kind of value.
 
 ## Calendar
 

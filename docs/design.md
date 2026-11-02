@@ -511,19 +511,17 @@ style of an input, and with several values a list of up to six rows, with the ch
 surface with a link-coloured fill, sitting after a right-aligned number. It shows
 where a value is in a range.
 
-**A change** is a signed number in a cell, a tile or a read-only field: an arrow, 10px, and the number with its sign and its unit (`+4.35%`, `−12 ms`, with the minus
-sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`LowerIsBetter`: a response
-time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 at two decimals reads `0.00` and has no arrow and no colour, so that
-the text and the colour say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
+**A trend** is how a figure moved and the shape that led to it, in a cell or a read-only field: a small chart of a list of numbers, then the change on its right. Either may be absent for a
+model; with neither there is a dash.
 
-**A series** is a small chart of a list of numbers, 96×28 (a table's column is 120px wide), with no axes and no scale: it is the shape of the figures beside the
-figure. A line is 1.5px in the link text colour, with a 5px dot on the last point or the one that is marked; bars stand on zero, in the secondary text colour, 70% of their
-slot wide, with the marked one in the link colour. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 ms to 184 ms,
-lowest 134 ms, highest 210 ms*), so a reader who cannot see it has them; a file of a table has them, separated by semicolons. It is neither sorted nor filtered by. In forced
-colours the line and the bars are the text colour and the mark is the highlight.
+The change is a percent, with an arrow, 10px, and the number with its sign (`+4.35%`, `−12.0%`, with the minus sign and not a hyphen), in tabular figures. It is always three digits: two decimals
+under 10 (`0.35%`), one under 100 (`35.4%`), none from 100 (`100%`), counted as it is after rounding. It is green when the way it moved is the good one and red when it is not, which is the field's to say
+(`LowerIsBetter`: a response time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 reads `0%` and has no sign, no arrow and no colour, so that the text and the colour
+say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
 
-**Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
-label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
+The chart is 96×20 (a table's column is 120px wide for it, with the change on its right, on the same line), with no axes and no scale: it is the shape of the figures beside the figure. The line is 1.5px in the link text colour, with a
+5px dot on the last point; one point is a level line. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 to 184, lowest 134, highest 210*), so a reader
+who cannot see it has them. In forced colours the line is the text colour and the dot is the highlight. A column of trends sorts and filters by the change, and a file of a table has the change as a number and not the points.
 
 **Items** are a list, or cards. A list is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
 headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
