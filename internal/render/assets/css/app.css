@@ -665,6 +665,12 @@ html.js .search-submit {
   align-items: flex-start;
   min-width: 0;
 }
+/* A long list scrolls past the height a table panel is capped at. */
+.list {
+  max-height: max(16rem, calc(100vh - var(--content-chrome)));
+  max-height: max(16rem, calc(100dvh - var(--content-chrome)));
+  overflow-y: auto;
+}
 .list .item {
   padding: 10px 14px;
   border-top: 1px solid var(--border);
@@ -1806,11 +1812,14 @@ td .multiline {
 /* The queue is out of sight and still there for a reader while it has nothing to show, which is what lets what is put in it be announced. */
 .upload-queue[data-quiet] {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
 }
 .upload-item {
   display: flex;
@@ -3021,12 +3030,15 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
    box is a scrollbar on the page. The margin cancels the pixel. */
 .sr-only {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   padding: 0;
   margin: -1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }

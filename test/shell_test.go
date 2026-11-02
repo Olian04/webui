@@ -218,7 +218,7 @@ func TestTextThatIsOnlyForAReaderDoesNotMakeThePageScroll(t *testing.T) {
 
 	h := webui.App{}.MustCompile("/admin")
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	assert.Contains(t, css, ".sr-only {\n  position: absolute;\n  width: 1px;\n  height: 1px;\n  padding: 0;\n  margin: -1px;\n  overflow: hidden;\n  clip: rect(0 0 0 0);\n  white-space: nowrap;\n  border: 0;\n}")
+	assert.Contains(t, css, ".sr-only {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 1px;\n  height: 1px;\n  padding: 0;\n  margin: -1px;\n  overflow: hidden;\n  clip: rect(0 0 0 0);\n  clip-path: inset(50%);\n  white-space: nowrap;\n  border: 0;\n}")
 }
 
 // A visitor with script can drag the sidebar's edge to a width, which the browser keeps and the script that runs before first paint puts back,
