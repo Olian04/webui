@@ -140,7 +140,7 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s = service.Settings()
 	assert.True(t, s.Burst == nil && s.Quota == nil && s.Paused == nil)
-	assert.False(t, s.Compress) // an unchecked checkbox is not sent at all, and an absent one is no
+	assert.False(t, s.Compress) // an off switch is not sent at all, and an absent one is no
 }
 
 // Input gives a String the input of its kind, and the server holds the value to it; DateOnly makes a moment a day.

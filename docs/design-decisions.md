@@ -265,10 +265,10 @@ design element.
   the input is empty and says so, an emptied one is stored as nil (for a field that may be absent; for any other an empty number leaves the loaded value alone), `Required` is what makes one that must be there, a table
   sorts it first and leaves it out of a range as it does a missing moment (it has no number to sort by), and an export leaves a CSV cell
   empty and writes JSON `null`. `OptionalBool` is a select of Yes and No: a checkbox cannot be three-valued without script, and an
-  unchecked one is not sent at all, so "off" and "never asked" are one request. The plain `Bool` (`Load` returns a `bool`, like `Int` against `OptionalInt`) is the checkbox: with no third state, an
-  absent field is no, which is what an unchecked one sends. The first version of this accessor was named `Bool` and returned a `*bool`, which was `OptionalBool` under the plain name, and left the library with no accessor for a
+  unchecked one is not sent at all, so "off" and "never asked" are one request. The plain `Bool` (`Load` returns a `bool`, like `Int` against `OptionalInt`) is a toggle switch, which is a checkbox underneath: with no third state, an
+  absent field is no, which is what an off one sends. It is drawn as a switch because it is a setting that is on or off, and not an item that is picked; the checkbox is for picking (a row, a choice of several). The first version of this accessor was named `Bool` and returned a `*bool`, which was `OptionalBool` under the plain name, and left the library with no accessor for a
   value that is always yes or no; it was renamed, and `Bool` is the value. That reuses the drop-down, its check on the
-  server, the badge, the filter and the CSV labels; its cost is a click more than a checkbox, which is what the third
+  server, the badge, the filter and the CSV labels; its cost is a click more than a switch, which is what the third
   state costs. In a `Toolbar`'s `Form` they are values to read, computed from the model by their `Load`.
 
 - **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a

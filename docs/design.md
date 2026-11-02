@@ -436,8 +436,9 @@ from the left. A toolbar with nothing to draw is not drawn; one whose options co
 **Checkboxes** are 15px, 2px radius, filling solid primary with a white check
 when set.
 
-**Switches** are 30×16 pills, used only for session-level modes, never for
-saved data.
+**Switches** are 30×16 pills: the track in the quiet border, the knob in the panel colour, and the primary colour with the knob moved 14px when on. A `Bool` that is edited is
+one, where it was a checkbox. It is a checkbox to the browser (`role="switch"`, named by its label), so it needs no script, and an off one is not sent. It has the focus ring of a control, and in
+forced colours the track is the highlight when on.
 
 **Absent, disabled, or gated.** A control that the visitor may not use is one of
 two things, and the application's Guard says which with what it returns. An ordinary
