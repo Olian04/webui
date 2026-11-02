@@ -13,8 +13,15 @@
   --input-bg: #0e0f12;
   --border: rgba(204, 204, 220, 0.11);
   --border-2: rgba(204, 204, 220, 0.22);
-  --control-bd: var(--border-2); /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
-  --control-bd-strong: rgba(204, 204, 220, 0.5); /* 3:1 against what the control sits on */
+  --control-bd: var(
+    --border-2
+  ); /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
+  --control-bd-strong: rgba(
+    204,
+    204,
+    220,
+    0.5
+  ); /* 3:1 against what the control sits on */
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
   --text-3: rgba(204, 204, 220, 0.45);
@@ -183,12 +190,17 @@ select {
   --topbar-h: 48px;
   --content-pad-top: 12px;
   --content-pad-bottom: 46px;
-  --content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));
+  --content-chrome: calc(
+    var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom)
+  );
 }
 
 /* ------------------------------ sidebar ---------------------------------- */
 .sidebar {
-  width: var(--sidebar-w, 240px); /* a person's choice, set before first paint; the rail below does not take it */
+  width: var(
+    --sidebar-w,
+    240px
+  ); /* a person's choice, set before first paint; the rail below does not take it */
   flex: 0 0 var(--sidebar-w, 240px);
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -383,7 +395,9 @@ a.side-brand:hover {
   height: 14px;
   font-size: 12px;
   flex: 0 0 14px;
-  transform: rotate(90deg); /* the chevron points down; this points at the edge it moves */
+  transform: rotate(
+    90deg
+  ); /* the chevron points down; this points at the edge it moves */
 }
 
 /* switch */
@@ -537,7 +551,9 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   background: none;
   border: 0;
   outline: none;
-  color: var(--text); /* typed text is not quiet text, though the box around it is */
+  color: var(
+    --text
+  ); /* typed text is not quiet text, though the box around it is */
   font-size: 13px;
 }
 .search input::placeholder {
@@ -889,7 +905,6 @@ html.js .search-submit {
   color: var(--text-2);
 }
 
-
 /* ------------------------------ content ---------------------------------- */
 .scroll {
   flex: 1;
@@ -959,11 +974,16 @@ html.js .search-submit {
 :is(.stack, .col, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-:is(.stack, .col, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
+:is(.stack, .col, [data-tabbody])
+  > .panel
+  > .panel-body:has(> form:not([data-filter-form])) {
   display: flex;
   flex-direction: column;
 }
-:is(.stack, .col, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
+:is(.stack, .col, [data-tabbody])
+  > .panel
+  > .panel-body
+  > form:not([data-filter-form]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1119,7 +1139,7 @@ form[data-filter-form] {
   margin-top: 2px;
 }
 .tip-item::before {
-  content: "•";
+  content: '•';
   margin-right: 6px;
   color: var(--text-3);
 }
@@ -1806,11 +1826,14 @@ td .multiline {
 /* The queue is out of sight and still there for a reader while it has nothing to show, which is what lets what is put in it be announced. */
 .upload-queue[data-quiet] {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
 }
 .upload-item {
   display: flex;
@@ -1986,7 +2009,7 @@ select.input[multiple] {
 select.input[multiple] option {
   padding: 3px 6px;
   border-radius: 2px;
-}/* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
+} /* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
    they are marked here, with the tint a selected row of a table has. */
 select.input[multiple] option:checked {
   background: var(--blue);
@@ -2699,7 +2722,6 @@ html.js button.toast-close-js {
   font-weight: 500;
 }
 
-
 /* ------------------------------ status bar ------------------------------- */
 .statusbar,
 .statusbar-late {
@@ -3014,19 +3036,21 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
   }
 }
 
-
 /* ---------------------------- actions & script --------------------------- */
 /* Hidden from sight, still read. A 1px box is still in the scrollable overflow, and clip
    only hides the paint. The announcer sits after the shell, which is the window, so that
    box is a scrollbar on the page. The margin cancels the pixel. */
 .sr-only {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   padding: 0;
   margin: -1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
