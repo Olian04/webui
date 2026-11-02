@@ -169,8 +169,6 @@ func nodeTitle(n ir.Node) string {
 		return n.Title
 	case *ir.Markdown:
 		return n.Title
-	case *ir.Stat:
-		return n.Title
 	case *ir.Items:
 		return n.Title
 	case *ir.Calendar:

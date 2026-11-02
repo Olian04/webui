@@ -11,20 +11,38 @@ import (
 // The size of a small chart, in the units of its box. It is drawn at the size the stylesheet gives it: the box scales.
 const (
 	sparkW   = 96
-	sparkH   = 28
+	sparkH   = 20
 	sparkPad = 3 // room for the stroke and the mark at the edges
 )
 
-// deltaProps is a signed change as it is drawn: the direction it moved in, and whether that is the good one, which is a rise unless the
-// field says a lower value is the better one. A change that reads zero has no direction, and so no tone.
-func deltaProps(f ir.Field, text string, model any) c.DeltaProps {
-	sign := 0
-	if f.Delta != nil && f.Delta.Sign != nil {
-		sign = f.Delta.Sign(model)
+// trendProps is a trend as it is drawn: the change, when the model has one, and the line, when it has points. Either is nil when it is absent,
+// and a trend with neither says nothing, which the caller draws as a dash.
+func trendProps(f ir.Field, model any) c.TrendProps {
+	var p c.TrendProps
+	t := f.Trend
+	if t == nil {
+		return p
 	}
+	if t.Read == nil {
+		return p
+	}
+	r := t.Read(model)
+	if r.HasChange {
+		d := deltaProps(t, r.Change, r.Sign)
+		p.Delta = &d
+	}
+	if s := sparkProps(r); s.Line != "" {
+		p.Spark = &s
+	}
+	return p
+}
+
+// deltaProps is a signed change as it is drawn: the direction it moved in, and whether that is the good one, which is a rise unless the trend
+// says a lower value is the better one. A change that reads zero has no direction, and so no tone.
+func deltaProps(t *ir.Trend, text string, sign int) c.DeltaProps {
 	p := c.DeltaProps{Text: text, Sign: sign}
 	if sign != 0 {
-		good := (sign > 0) != (f.Delta != nil && f.Delta.Lower)
+		good := (sign > 0) != t.Lower
 		p.Tone = c.ToneCritical
 		if good {
 			p.Tone = c.ToneOK
@@ -33,95 +51,49 @@ func deltaProps(f ir.Field, text string, model any) c.DeltaProps {
 	return p
 }
 
-// sparkProps lays out a series in the box. A line runs through the points, evenly spaced, from the lowest to the highest of them; bars stand
-// on zero, so that their heights are the values and not only their differences. A point that is not a number is left out, and the index
-// that a Highlight gives is of the points as they were loaded.
-func sparkProps(f ir.Field, model any) c.SparkProps {
-	s := f.Series
+// sparkProps lays out a trend's points in the box: a line through them, evenly spaced, from the lowest to the highest, with a dot on the last. It has
+// no line for no points, and one point is a level line.
+func sparkProps(r ir.TrendReading) c.SparkProps {
 	p := c.SparkProps{W: sparkW, H: sparkH}
-	if s == nil || s.Values == nil {
-		return p
-	}
-	p.Bars = s.Bars
-	if s.Describe != nil {
-		p.Label = s.Describe(model)
-	}
-
-	var vs []float64
-	var from []int // the index each point had as it was loaded
-	for i, v := range s.Values(model) {
-		if !math.IsNaN(v) && !math.IsInf(v, 0) {
-			vs, from = append(vs, v), append(from, i)
-		}
-	}
+	vs := r.Points
 	if len(vs) == 0 {
 		return p
 	}
-	marked := -1 // the index in vs of the point that is marked
-	if s.Highlight != nil {
-		at := s.Highlight(model)
-		for i, orig := range from {
-			if orig == at {
-				marked = i
-			}
-		}
-	} else if !s.Bars {
-		marked = len(vs) - 1
-	}
+	p.Label = r.Describe
 
 	lo, hi := vs[0], vs[0]
 	for _, v := range vs {
 		lo, hi = math.Min(lo, v), math.Max(hi, v)
 	}
-	if s.Bars {
-		lo, hi = math.Min(lo, 0), math.Max(hi, 0)
-	}
 	inner := float64(sparkH - 2*sparkPad)
+	span := hi - lo
+	level := span == 0 || math.IsInf(span, 0) || math.IsNaN(span) // a range that does not fit in a number is drawn level
 	y := func(v float64) float64 {
-		if hi == lo {
+		if level {
 			return float64(sparkH) / 2
 		}
-		return float64(sparkPad) + (1-(v-lo)/(hi-lo))*inner
+		return float64(sparkPad) + (1-(v-lo)/span)*inner
 	}
-	n := f1
-
-	if s.Bars {
-		slot := float64(sparkW-2*sparkPad) / float64(len(vs))
-		width := math.Max(1, slot*0.7)
-		base := y(0)
-		for i, v := range vs {
-			top, bottom := y(v), base
-			if top > bottom {
-				top, bottom = bottom, top
-			}
-			height := math.Max(1, bottom-top) // a value of zero is still a mark, so that it is there
-			p.Rects = append(p.Rects, c.SparkRect{
-				X: n(float64(sparkPad) + slot*float64(i) + (slot-width)/2), Y: n(top), W: n(width), H: n(height), Mark: i == marked,
-			})
-		}
-		return p
-	}
-
 	x := func(i int) float64 {
-		if len(vs) == 1 {
-			return float64(sparkW) / 2
-		}
 		return float64(sparkPad) + float64(i)*float64(sparkW-2*sparkPad)/float64(len(vs)-1)
+	}
+
+	if len(vs) == 1 {
+		// one point is a level line, with the dot at the middle of it
+		p.Line = f1(float64(sparkPad)) + "," + f1(y(vs[0])) + " " + f1(float64(sparkW-sparkPad)) + "," + f1(y(vs[0]))
+		p.HasDot, p.DotX, p.DotY = true, f1(float64(sparkW)/2), f1(y(vs[0]))
+		return p
 	}
 	var line []byte
 	for i, v := range vs {
 		if i > 0 {
 			line = append(line, ' ')
 		}
-		line = append(line, n(x(i))+","+n(y(v))...)
+		line = append(line, f1(x(i))+","+f1(y(v))...)
 	}
+	last := len(vs) - 1
 	p.Line = string(line)
-	if len(vs) == 1 {
-		p.Line = n(float64(sparkPad)) + "," + n(y(vs[0])) + " " + n(float64(sparkW-sparkPad)) + "," + n(y(vs[0])) // one point is a level line
-	}
-	if marked >= 0 {
-		p.HasDot, p.DotX, p.DotY = true, n(x(marked)), n(y(vs[marked]))
-	}
+	p.HasDot, p.DotX, p.DotY = true, f1(x(last)), f1(y(vs[last]))
 	return p
 }
 
