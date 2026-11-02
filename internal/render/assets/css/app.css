@@ -681,6 +681,12 @@ html.js .search-submit {
   align-items: flex-start;
   min-width: 0;
 }
+/* A long list scrolls past the height a table panel is capped at. */
+.list {
+  max-height: max(16rem, calc(100vh - var(--content-chrome)));
+  max-height: max(16rem, calc(100dvh - var(--content-chrome)));
+  overflow-y: auto;
+}
 .list .item {
   padding: 10px 14px;
   border-top: 1px solid var(--border);
