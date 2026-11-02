@@ -18,7 +18,7 @@ server-rendered UI, with **no HTML, CSS or JavaScript to write**.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
-  <img alt="The demo's landing page: a sidebar of pages, a search box, a toolbar of the collector's status with a Sync now button, three figures of its throughput each with how it moved since yesterday and a small chart of the day, a table of devices with status badges and rate bars, a table of open alerts with severity badges and Dismiss buttons, a table of recent events, and a form of the collector's settings with a slider, a country-code phone input, a colour picker and a date." src="docs/images/overview-light.png">
+  <img alt="The demo's landing page: a sidebar of pages, a search box, a toolbar of the collector's status with its latency as a small chart and how it moved since yesterday, and a Sync now button, a table of devices with status badges and rate bars, a table of open alerts with severity badges and Dismiss buttons, a table of recent events, and a form of the collector's settings with a slider, a country-code phone input, a colour picker and a date." src="docs/images/overview-light.png">
 </picture>
 
 That is the demo's landing page, `go run ./cmd/demo`, in light or dark as the viewer's
