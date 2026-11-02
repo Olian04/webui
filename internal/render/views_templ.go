@@ -2228,8 +2228,8 @@ func (r *Renderer) input(fv fieldView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-			case fv.Field.Checkbox:
-				templ_7745c5c3_Err = c.Checkbox(c.CheckboxProps{ID: fv.ID, Name: fv.Name, Value: "true", Checked: fv.Value == "true"}).Render(ctx, templ_7745c5c3_Buffer)
+			case fv.Field.Switch:
+				templ_7745c5c3_Err = c.Switch(c.SwitchProps{ID: fv.ID, Name: fv.Name, Value: "true", Checked: fv.Value == "true"}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

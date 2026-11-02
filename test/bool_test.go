@@ -34,14 +34,15 @@ func flagsApp(start flags, fields ...webui.Accessor[flags]) (http.Handler, func(
 	return h, func() flags { return saved }
 }
 
-// A Bool is a checkbox where it is edited: checked for yes, and the field a browser sends for it is "true".
-func TestABoolIsACheckboxThatIsCheckedForYes(t *testing.T) {
+// A Bool is a toggle switch where it is edited: on for yes, and the field a browser sends for it is "true".
+func TestABoolIsASwitchThatIsOnForYes(t *testing.T) {
 	t.Parallel()
 
 	h, _ := flagsApp(flags{Compress: true}, flagCompress)
 	body := serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `class="checkbox"`)
-	assert.Contains(t, body, `type="checkbox"`)
+	assert.Contains(t, body, `<label class="switch">`)
+	assert.Contains(t, body, `type="checkbox"`) // a checkbox to the browser, so it needs no script
+	assert.Contains(t, body, `role="switch"`)
 	assert.Contains(t, body, `value="true"`)
 	assert.Contains(t, body, "checked")
 	assert.False(t, strings.Contains(body, "<select")) // not the Yes/No drop-down that an OptionalBool is
@@ -53,7 +54,7 @@ func TestABoolIsACheckboxThatIsCheckedForYes(t *testing.T) {
 	assert.False(t, strings.Contains(body[strings.Index(body, `type="checkbox"`):strings.Index(body, `type="checkbox"`)+120], "checked"))
 }
 
-// An unchecked checkbox is not sent at all, so a field that is absent is no, and one that says "true" is yes.
+// An off switch is not sent at all, so a field that is absent is no, and one that says "true" is yes.
 func TestAnAbsentBoolIsNoAndTrueIsYes(t *testing.T) {
 	t.Parallel()
 

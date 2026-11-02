@@ -556,11 +556,11 @@ func (a Slider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// Bool projects a bool field of M: yes or no. Edited it is a checkbox, which is unchecked for no, and a browser does not send an unchecked one, so an absent field is no;
+// Bool projects a bool field of M: yes or no. Edited it is a toggle switch, which is off for no, and a browser does not send an unchecked checkbox, which a switch is underneath, so an absent field is no;
 // read it is a Yes or a No in a badge, and its filter in a table is a choice of the two. A value that may also be not set is an [OptionalBool]. Where a condition is
 // read from a model, as a [When] does, this is the accessor for it.
 type Bool[M any] struct {
-	// Label is the column header and the checkbox's label. In a table it also names the
+	// Label is the column header and the switch's label. In a table it also names the
 	// column in the address and in a [Query].
 	Label string
 

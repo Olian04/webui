@@ -221,7 +221,7 @@
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
 // and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing
-// when it is off. A [Bool] loads a bool, and is the checkbox: an absent field is no.
+// when it is off. A [Bool] loads a bool, and is a toggle switch: an absent field is no.
 //
 // An Int, a Float, an OptionalInt, an OptionalFloat, a Datetime and a Timestamp have a
 // Format, a function the application writes that says how the value reads where it is

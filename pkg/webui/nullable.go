@@ -328,11 +328,11 @@ func (OptionalBool[M]) boolLike() {}
 func (a Bool[M]) hasLoad() bool         { return a.Load != nil }
 func (a OptionalBool[M]) hasLoad() bool { return a.Load != nil }
 
-// lowerBool is a Bool as the IR holds it: the same Yes and No that an OptionalBool has, read, filtered and written to a file as it is, and drawn as a checkbox where it is edited, whose
+// lowerBool is a Bool as the IR holds it: the same Yes and No that an OptionalBool has, read, filtered and written to a file as it is, and drawn as a toggle switch where it is edited, whose
 // absence is no.
 func lowerBool[M any](a Bool[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindString)
-	f.Display, f.Bool, f.Checkbox = ir.DisplaySelect, true, true
+	f.Display, f.Bool, f.Switch = ir.DisplaySelect, true, true
 	f.Choices = []ir.Choice{{Value: boolYes, Label: "Yes"}, {Value: boolNo, Label: "No"}}
 	f.Options = []string{boolYes, boolNo}
 	f.Get = func(m any) string {
@@ -346,7 +346,7 @@ func lowerBool[M any](a Bool[M], name string) ir.Field {
 		case boolYes:
 			return true, nil
 		case "", boolNo:
-			return false, nil // an unchecked checkbox is not sent
+			return false, nil // an off switch is not sent
 		}
 		return false, fmt.Errorf("not a choice: %q", raw)
 	})
