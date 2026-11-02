@@ -3001,13 +3001,19 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
 
 
 /* ---------------------------- actions & script --------------------------- */
+/* Hidden from sight, still read. A 1px box is still in the scrollable overflow, and clip
+   only hides the paint. The announcer sits after the shell, which is the window, so that
+   box is a scrollbar on the page. The margin cancels the pixel. */
 .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+  border: 0;
 }
 td.actions {
   text-align: right;
