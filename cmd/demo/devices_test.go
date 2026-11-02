@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -202,14 +205,46 @@ func TestADevicesCrumbIsItsAddressAndNotItsID(t *testing.T) {
 	assert.False(t, strings.Contains(body, `aria-current="page">dev_27c38b</span>`))
 }
 
-// The Devices page has a small chart of each device's last hour, which is neither sorted nor filtered by, and which has its values in words.
+// The Devices page has a small chart of each device's last hour, with how much it moved beside it, which the column is sorted and filtered by, and
+// which has its values in words.
 func TestTheDevicesPageHasAChartOfEachDevicesLastHour(t *testing.T) {
 	body := get(handler(t), "/admin/device").Body.String()
-	assert.Contains(t, body, `<span class="th-in">Last hour </span>`)
+	assert.Contains(t, body, `>Last hour </a>`)
 	assert.True(t, strings.Count(body, `<svg class="spark"`) >= 9) // a page of the table
 	assert.Contains(t, body, `aria-label="Last hour: 12 values, from `)
-	assert.False(t, strings.Contains(body, "sort=last-hour"))
-	assert.False(t, strings.Contains(body, "filter.last-hour"))
+	assert.Contains(t, body, "devices.sort=last-hour")
+	assert.Contains(t, body, "devices.min.last-hour")
 	// The same device draws the same chart every time.
 	assert.Equal(t, strings.Count(body, `<svg`), strings.Count(get(handler(t), "/admin/device").Body.String(), `<svg`))
+}
+
+// changes are the changes of the Last hour column on a page, in the order the rows are in, as numbers.
+func changes(t *testing.T, body string) []float64 {
+	t.Helper()
+	var out []float64
+	for _, m := range regexp.MustCompile(`<span class="delta[^"]*"><i[^>]*></i><span>([^<]*)</span>`).FindAllStringSubmatch(body, -1) {
+		v, err := strconv.ParseFloat(strings.NewReplacer("−", "-", "+", "", "%", "").Replace(m[1]), 64)
+		assert.NoError(t, err)
+		out = append(out, v)
+	}
+	return out
+}
+
+// The Last hour column sorts and filters by the change, which is the number the cell states, and not by its points.
+func TestTheLastHourColumnSortsAndFiltersByItsChange(t *testing.T) {
+	h := handler(t)
+	asc := changes(t, get(h, "/admin/device?devices.sort=last-hour").Body.String())
+	assert.True(t, len(asc) >= 5)
+	assert.True(t, slices.IsSorted(asc))
+	desc := changes(t, get(h, "/admin/device?devices.sort=last-hour&devices.desc=true").Body.String())
+	assert.True(t, len(desc) >= 5)
+	slices.Reverse(desc)
+	assert.True(t, slices.IsSorted(desc))
+	assert.True(t, desc[len(desc)-1] >= asc[len(asc)-1]) // the first page of the one holds the highest of all, and of the other the lowest
+
+	rising := changes(t, get(h, "/admin/device?devices.min.last-hour=0").Body.String())
+	assert.True(t, len(rising) >= 1)
+	for _, v := range rising {
+		assert.True(t, v >= 0)
+	}
 }

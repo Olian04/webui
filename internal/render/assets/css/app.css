@@ -621,12 +621,12 @@ html.js .search-submit {
   font-size: 10px;
 }
 
-/* A small chart of a list of numbers: a line, or a bar for each. It has no axes: it is the shape of the figures, beside the figure, and its
+/* A small chart of a list of numbers: a line. It has no axes: it is the shape of the figures, beside the figure, and its
    name has the values in words. */
 .spark {
   display: inline-block;
   width: 96px;
-  height: 28px;
+  height: 20px;
   vertical-align: middle;
   overflow: visible;
 }
@@ -640,57 +640,12 @@ html.js .search-submit {
 .spark-dot {
   fill: var(--blue-text);
 }
-.spark-bar {
-  fill: var(--text-2);
-}
-.spark-bar.spark-mark {
-  fill: var(--blue-text);
-}
 
-/* The tiles of a Stat: a list of terms and values, in a row that wraps. A tile draws the lines on its own top and left, which a later tile
-   paints over the edge of an earlier one, and the grid clips at its own edge, so a last row with fewer tiles has no stray line. */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
-  margin: 0;
-  overflow: hidden;
-}
-.stat {
-  min-width: 0;
-  padding: 12px 14px;
-  background: var(--panel);
-  box-shadow:
-    -1px 0 0 var(--border),
-    0 -1px 0 var(--border);
-}
-.stat-label {
-  display: flex;
+/* A trend: the change and, beside it, the shape that led to it. */
+.trend {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--text-2);
-  font-size: 12px;
-}
-.stat-value {
-  margin: 4px 0 0;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.25;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.stat-value .gauge {
-  font-size: 24px;
-}
-.stat-change {
-  margin: 4px 0 0;
-  font-size: 13px;
-}
-.stat-trend {
-  margin: 8px 0 0;
-}
-.stat-trend .spark {
-  width: 144px; /* a tile has room for a larger chart than a cell does, in the same proportions */
-  height: 42px;
+  gap: 8px;
 }
 
 /* A list of items: a list is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
@@ -1706,6 +1661,14 @@ html:not(.js) .actionbar .dim {
 }
 .toolbar-val {
   color: var(--text);
+}
+/* A trend in the toolbar is a value in a row of 32px: the chart is smaller than it is in a cell, in the same proportions, so that it does not make the row taller than it is. */
+.toolbar-val .trend {
+  vertical-align: middle;
+}
+.toolbar-val .spark {
+  width: 72px;
+  height: 15px;
 }
 .toolbar-val.bad {
   color: var(--red);
@@ -3326,11 +3289,7 @@ thead th .filter-pop a {
   .spark-line {
     stroke: CanvasText;
   }
-  .spark-bar {
-    fill: CanvasText;
-  }
-  .spark-dot,
-  .spark-bar.spark-mark {
+  .spark-dot {
     fill: Highlight;
   }
   .checkbox:checked,

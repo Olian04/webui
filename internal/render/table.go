@@ -576,17 +576,19 @@ func columnWidths(cols []columnView) []string {
 // The room a column needs, in pixels of a 13px table: a letter of text, the padding of a cell, the room for the sort link
 // and the filter beside a header, and what is in the cell that no row can say.
 const (
-	letterPx  = 7.2
-	cellPx    = 20 // the padding of a cell
-	headerPx  = 24 // the sort caret and the filter button, which a header with a key makes room for
-	badgePx   = 34 // the dot and the padding of a badge
-	badgeGap  = 6
-	textPx    = 120 // a text or a link: about sixteen letters
-	numberPx  = 90  // a number as it is formatted, such as "520.6 KiB"
-	momentPx  = 110
-	barPx     = 140 // the bar and the number beside it
-	sparkPx   = 120 // a small chart, and the room round it
-	unknownPx = 110 // a select whose values are whatever its rows hold
+	letterPx   = 7.2
+	cellPx     = 20 // the padding of a cell
+	headerPx   = 24 // the sort caret and the filter button, which a header with a key makes room for
+	badgePx    = 34 // the dot and the padding of a badge
+	badgeGap   = 6
+	textPx     = 120 // a text or a link: about sixteen letters
+	numberPx   = 90  // a number as it is formatted, such as "520.6 KiB"
+	momentPx   = 110
+	barPx      = 140 // the bar and the number beside it
+	sparkPx    = 120 // a small chart, and the room round it
+	deltaPx    = 64  // a change: its arrow and its sign and its digits, such as "↑ +35.4%"
+	trendGapPx = 8   // the gap between the change and the chart of a trend
+	unknownPx  = 110 // a select whose values are whatever its rows hold
 )
 
 // columnNeed is what one column needs: the more of what its header takes and what its cell takes.
@@ -617,8 +619,8 @@ func columnNeed(f ir.Field) float64 {
 		}
 	case f.Display == ir.DisplaySlider:
 		cell = barPx
-	case f.Display == ir.DisplaySeries:
-		cell = sparkPx
+	case f.Display == ir.DisplayTrend:
+		cell = sparkPx + trendGapPx + deltaPx
 	case f.Display == ir.DisplayTime:
 		cell = momentPx
 	case f.Kind == ir.KindInt || f.Kind == ir.KindFloat:

@@ -44,6 +44,27 @@ func (d Device) Recent() []float64 {
 	return out
 }
 
+// recentChange is RecentChange as a number to sort and filter by: NaN for none, which sorts first and which a bound leaves out, as a table that the
+// library holds the rows of does.
+func (d Device) recentChange() float64 {
+	if c := d.RecentChange(); c != nil {
+		return *c
+	}
+	return math.NaN()
+}
+
+// RecentChange is how much the rate moved over the last hour, as a percent: the current window against the first. It is nil for a device that
+// was idle in the first, which has nothing to be a percent of.
+func (d Device) RecentChange() *float64 {
+	recent := d.Recent()
+	first, last := recent[0], recent[len(recent)-1]
+	if first == 0 {
+		return nil
+	}
+	change := (last - first) / first * 100
+	return &change
+}
+
 type Alert struct {
 	ID, Severity, Device, Message string
 	Raised                        string // an ISO 8601 moment
@@ -121,8 +142,8 @@ type SystemInfo struct {
 	Queue    int
 }
 
-// Throughput is how much the collector is taking in and how well it is doing, over the last day: each figure, how it moved since yesterday,
-// and its hourly values, the last of which is the current hour.
+// Throughput is how much the collector is taking in and how well it is doing, over the last day: each figure, how much it moved since
+// yesterday as a percent, and its hourly values, the last of which is the current hour.
 type Throughput struct {
 	Rate        int // events per second
 	RateChange  float64
@@ -135,8 +156,6 @@ type Throughput struct {
 	Errors        int // per minute
 	ErrorsChange  float64
 	ErrorsHistory []float64
-
-	Hour int // the current hour of the day, as an index of the histories
 }
 
 // Release is a version of the collector that was published: what it is called, who made it, when, and how many have taken it. Age says when in words, and When says it
@@ -374,6 +393,7 @@ var deviceKeys = map[string]func(x, y Device) int{
 	"Occurrences": func(x, y Device) int { return cmp.Compare(x.Count, y.Count) },
 	"Stored":      func(x, y Device) int { return cmp.Compare(x.Stored, y.Stored) }, // by the bytes, though it reads "1.5 GiB"
 	"Rate / s":    func(x, y Device) int { return cmp.Compare(x.Rate(), y.Rate()) },
+	"Last hour":   func(x, y Device) int { return cmp.Compare(x.recentChange(), y.recentChange()) }, // by the change that the cell says
 }
 
 // deviceFilters are the filters the list offers, by the same Label as its sorts.
@@ -396,6 +416,7 @@ var deviceNumbers = map[string]func(d Device) float64{
 	"Occurrences": func(d Device) float64 { return float64(d.Count) },
 	"Stored":      func(d Device) float64 { return float64(d.Stored) },
 	"Rate / s":    func(d Device) float64 { return d.Rate() },
+	"Last hour":   func(d Device) float64 { return d.recentChange() },
 }
 
 // within keeps the rows whose number lies inside every bound in force, which is
@@ -410,7 +431,7 @@ func within[T any](rows []T, bounds map[string]Bounds, value map[string]func(T) 
 			if !ok {
 				continue
 			}
-			if x := get(row); (b.Min != nil && x < *b.Min) || (b.Max != nil && x > *b.Max) {
+			if x := get(row); math.IsNaN(x) || (b.Min != nil && x < *b.Min) || (b.Max != nil && x > *b.Max) {
 				return true
 			}
 		}
@@ -589,11 +610,10 @@ func (s *Service) Throughput() Throughput {
 	return Throughput{
 		Rate: 1240, RateChange: 3.2,
 		RateHistory: []float64{820, 790, 760, 740, 750, 800, 900, 1020, 1100, 1160, 1190, 1210, 1230, 1220, 1235, 1250, 1270, 1260, 1240, 1180, 1100, 1010, 940, 1240},
-		Latency:     184, LatencyChange: -12,
+		Latency:     184, LatencyChange: -6.1,
 		LatencyHistory: []float64{140, 138, 135, 134, 136, 142, 150, 160, 172, 181, 188, 190, 195, 198, 201, 199, 205, 210, 207, 196, 188, 180, 172, 184},
 		Errors:         7, ErrorsChange: 40,
 		ErrorsHistory: []float64{2, 1, 1, 2, 3, 2, 4, 3, 5, 4, 3, 5, 6, 4, 5, 7, 6, 8, 5, 6, 4, 5, 6, 7},
-		Hour:          23,
 	}
 }
 

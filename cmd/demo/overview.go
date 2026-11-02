@@ -16,43 +16,8 @@ var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	Body: webui.Stack{
 		OverviewToolbar,
-		OverviewFigures,
 		webui.Split{OverviewDevices, OverviewAlerts},
 		webui.Split{OverviewEvents, OverviewSettings},
-	},
-}
-
-// OverviewFigures is how the collector is doing, as a few figures each with its change since yesterday and its shape over the day: a Stat. A
-// tile's value is any accessor, shown as it is in a cell; its Change is a Delta, which says which way it moved and whether that is the good way
-// (a latency that falls is good news, so it is LowerIsBetter), and its Trend is a Series, a line or bars, with the current hour marked.
-var OverviewFigures = webui.Stat[Throughput]{
-	Title: "Throughput",
-	Desc:  "How much the collector takes in, and how well, over the last day. Each figure has its change since yesterday and its shape over the day.",
-	Load:  func(context.Context) (Throughput, webui.Loaded) { return service.Throughput(), webui.Ready() },
-	Tiles: []webui.StatTile[Throughput]{
-		{
-			Value:  webui.Int[Throughput]{Label: "Events / s", Load: func(t Throughput) int { return t.Rate }},
-			Change: webui.Delta[Throughput]{Label: "Since yesterday", Load: func(t Throughput) float64 { return t.RateChange }, Precision: 1, Unit: "%"},
-			Trend:  webui.Series[Throughput]{Label: "Events per second over the day", Load: func(t Throughput) []float64 { return t.RateHistory }, Unit: "/s"},
-		},
-		{
-			Label:  "Latency, 95th percentile",
-			Value:  webui.Float[Throughput]{Label: "Latency", Load: func(t Throughput) float64 { return t.Latency }, Format: func(v float64) string { return fmt.Sprintf("%.0f ms", v) }},
-			Change: webui.Delta[Throughput]{Label: "Since yesterday", Load: func(t Throughput) float64 { return t.LatencyChange }, LowerIsBetter: true, Unit: " ms"},
-			Trend: webui.Series[Throughput]{
-				Label: "Latency over the day", Load: func(t Throughput) []float64 { return t.LatencyHistory }, Unit: " ms",
-				Style: webui.SeriesBars, Highlight: func(t Throughput) int { return t.Hour },
-			},
-		},
-		{
-			Label: "Errors a minute",
-			Help:  "Events that were refused or could not be written.",
-			Value: webui.Int[Throughput]{Label: "Errors", Load: func(t Throughput) int { return t.Errors }},
-			Change: webui.Delta[Throughput]{
-				Label: "Since yesterday", Load: func(t Throughput) float64 { return t.ErrorsChange }, LowerIsBetter: true, Precision: 0, Unit: "%",
-			},
-			Trend: webui.Series[Throughput]{Label: "Errors over the day", Load: func(t Throughput) []float64 { return t.ErrorsHistory }},
-		},
 	},
 }
 
@@ -82,6 +47,13 @@ var (
 	overviewDisk = webui.Slider[Collector]{
 		Label: "Disk used (%)", Min: 0, Max: 100,
 		Load: func(c Collector) float64 { return c.DiskUsed },
+	}
+	// A Trend is an accessor that only reads, so a toolbar shows it like any value: the shape of the latency over the day and how much it moved since
+	// yesterday. A latency that falls is good news, so it is LowerIsBetter, and a fall is green.
+	overviewLatency = webui.Trend[Throughput]{
+		Label: "Latency", LowerIsBetter: true,
+		Help: "The 95th percentile over the last day, and its change since yesterday.",
+		Load: func(t Throughput) ([]float64, *float64) { return t.LatencyHistory, &t.LatencyChange },
 	}
 	overviewSyncState = webui.String[SyncJob]{
 		Label: "Sync",
@@ -117,6 +89,11 @@ var OverviewToolbar = webui.Toolbar{
 				return Collector{SystemInfo: service.System(), Devices: devices}, webui.Ready()
 			},
 			Fields: []webui.Accessor[Collector]{overviewHealth, overviewVersion, overviewUptime, overviewDevices, overviewQueue, overviewDisk},
+		},
+		webui.Form[Throughput]{
+			Title:  "Throughput",
+			Load:   func(context.Context) (Throughput, webui.Loaded) { return service.Throughput(), webui.Ready() },
+			Fields: []webui.Accessor[Throughput]{overviewLatency},
 		},
 	},
 	Right: []webui.ToolbarItem{

@@ -119,36 +119,32 @@ type Field struct {
 	Min float64 // DisplaySlider: the range, also in Rules for a writable one
 	Max float64
 
-	// Delta is set for a DisplayDelta field: what its sign and tone are, which a number's text does not say by itself.
-	Delta *Delta
-
-	// Series is set for a DisplaySeries field: the values it draws, and how.
-	Series *Series
+	// Trend is set for a DisplayTrend field: the points it draws and the change it states.
+	Trend *Trend
 }
 
-// Delta is how a signed change is drawn: the direction it moved in, and whether that is the good one.
-type Delta struct {
-	// Sign is the direction of the value as it is shown, which is rounded: -1, 0 or 1. A change that reads "0.0" has none.
-	Sign func(model any) int
+// Trend is a small chart of a list of numbers and, beside it, a change as a percent. Either may be absent for a model.
+type Trend struct {
+	// Read reads a model once, for the app's Load is called once for what a cell draws and not once for each part of it.
+	Read func(model any) TrendReading
 
 	// Lower says a lower value is the better one (a response time), so a fall is drawn as good and a rise as bad.
 	Lower bool
 }
 
-// Series is the values of a DisplaySeries field, and how they are drawn.
-type Series struct {
-	// Values are the points as they were loaded, in order, which may hold a value that is not a number: the drawing leaves it out and Highlight
-	// is an index of this list. An empty series draws nothing but its text alternative.
-	Values func(model any) []float64
+// TrendReading is what a trend says of one model.
+type TrendReading struct {
+	// Points are the points to draw, in order, with those that are not numbers left out. A line marks its last point. No points draws no chart.
+	Points []float64
 
-	// Bars draws one bar for each value, from zero, and not a line through them.
-	Bars bool
+	// Describe is the chart in words, for a reader who cannot see it: what it is, how many values, from where to where.
+	Describe string
 
-	// Highlight is the index of the point to mark, or a number outside the series for none. Nil marks the last point of a line, and no bar.
-	Highlight func(model any) int
-
-	// Describe is the series in words, for a reader who cannot see it: what it is, how many values, from where to where.
-	Describe func(model any) string
+	// Change is the change as it is written, "+4.40%", and Sign is which way it moved as written: -1, 0 or 1, so that the text, the arrow and the
+	// colour agree. HasChange is false when the model has none, and the text is then not shown.
+	Change    string
+	Sign      int
+	HasChange bool
 }
 
 // Writable is whether the field can be changed by a submission: it has a Set, or it is a file that has a Store.
@@ -242,8 +238,7 @@ const (
 	DisplaySlider         // a bar when read-only, a range input when writable
 	DisplayLink           // a link: Get is the text it shows, and Link its address
 	DisplayTime           // a moment: Get is "2006-01-02 15:04" in UTC, or a date alone, and Num is Unix seconds
-	DisplayDelta          // a signed change, a number that is shown with its sign and a tone for whether it is the good direction; Delta says
-	DisplaySeries         // a small chart of a list of numbers, drawn where it is read; Series says
+	DisplayTrend          // a small chart of a list of numbers and a change as a percent, drawn where they are read; Trend says. Num is the change, NaN for none
 )
 
 // Ranged is whether a table filters the column by a minimum and a maximum, as it
