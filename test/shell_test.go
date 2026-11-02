@@ -211,6 +211,16 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 	assert.Contains(t, css, "padding: 14px 12px 5px;\n  /* A caption wider than the sidebar is cut short; its whole is its title. */\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}")
 }
 
+// Text that is only for a reader is taken out of the scrollable overflow. The announcer sits after the shell, which is the
+// window, and a 1px box there is a scrollbar on the page. clip hides the paint and does not remove the box; the margin cancels the pixel.
+func TestTextThatIsOnlyForAReaderDoesNotMakeThePageScroll(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{}.MustCompile("/admin")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".sr-only {\n  position: absolute;\n  width: 1px;\n  height: 1px;\n  padding: 0;\n  margin: -1px;\n  overflow: hidden;\n  clip: rect(0 0 0 0);\n  white-space: nowrap;\n  border: 0;\n}")
+}
+
 // A visitor with script can drag the sidebar's edge to a width, which the browser keeps and the script that runs before first paint puts back,
 // so a page does not flash the wrong width. The handle is script's: the markup has none, and the rail has its own widths. There is no script
 // test harness, so this is what the shipped files carry; the behaviour is looked at in a browser.
