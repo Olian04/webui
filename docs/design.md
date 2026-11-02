@@ -374,7 +374,8 @@ from the same tokens.
   marker in `--text-3`, and a task list has the app's checkbox in place of the bullet.
 - **Code** is 12.5px monospace and a step quieter than prose: inline on `--hover` (1px 5px), a block on the input
   surface with a 1px rule, an 8px 10px inset and 2px corners. A block that names a language is coloured by the
-  editor, which the page then loads.
+  editor, which the page then loads. With script a block has a copy button at its top right (shown on hover or focus, always on touch);
+  it copies the block's text, turns to a check for a moment and says *Copied* to a screen reader.
 - **A table** is the app's table, framed: a 30px header on `--hover` at 12.5px, 34px rows at 13px, a rule between
   rows and none after the last, no lines between columns, and it scrolls by itself when it is wide.
 - **A picture** is drawn only from an origin the author trusts, no wider than the text and in line with it; any other

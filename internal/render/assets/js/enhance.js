@@ -850,6 +850,60 @@
     var btn = $('[data-pref-toggle="theme"]');
     if (btn) btn.setAttribute('aria-checked', isLight() ? 'true' : 'false');
   }
+  // The copy button of a code block puts the block's text on the clipboard, as it was written (the server put it in the button: what is on the page, once the
+  // editor has coloured it, has lost its tabs and its line ends), and says so: the icon becomes a check for a moment, and the status, which a reader who
+  // does not see it is told by, says "Copied". It uses the clipboard where the page may (a secure context), and the old way of selecting a text and copying
+  // it where it may not, as a page on a plain address in a network is.
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).catch(function () { return copyBySelection(text); });
+    return copyBySelection(text);
+  }
+  function copyBySelection(text) {
+    return new Promise(function (resolve, reject) {
+      var area = document.createElement('textarea');
+      area.value = text;
+      area.setAttribute('readonly', '');
+      area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(area);
+      area.select();
+      var ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch (err) {}
+      area.remove();
+      if (ok) resolve();
+      else reject(new Error('copy refused'));
+    });
+  }
+  var copyTimers = new WeakMap();
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-copy-code]');
+    if (!btn) return;
+    var icon = btn.querySelector('.fa-solid');
+    var note = btn.parentElement && btn.parentElement.querySelector('[role="status"]');
+    function say(done, text) {
+      if (done) btn.setAttribute('data-copied', '');
+      else btn.removeAttribute('data-copied');
+      if (icon) icon.className = done ? 'fa-solid fa-check' : 'fa-solid fa-copy';
+      if (note) note.textContent = text;
+    }
+    copyText(btn.getAttribute('data-copy-code')).then(
+      function () {
+        say(true, 'Copied');
+      },
+      function () {
+        say(false, 'Could not copy');
+      }
+    );
+    clearTimeout(copyTimers.get(btn));
+    copyTimers.set(
+      btn,
+      setTimeout(function () {
+        say(false, '');
+      }, 1800)
+    );
+  });
+
   document.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-pref-toggle="theme"]');
     if (!btn) return;
