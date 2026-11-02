@@ -2530,6 +2530,58 @@ html.js button.toast-close-js {
 .md pre:focus-visible {
   box-shadow: inset 0 0 0 2px var(--ring);
 }
+/* A code block with its copy button at the top right, which is there only with script. The button is over the block's own corner and is shown when the block is
+   pointed at or has focus in it, and always where there is no pointer to point with; the block keeps its width, and its text is not under the button for long
+   (a block is padded at the right by the button's width, so that a line is not hidden by it). */
+.md-code {
+  position: relative;
+  margin: 0 0 12px;
+}
+.md-code pre {
+  margin: 0;
+  padding-right: 36px;
+}
+.md-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.13s;
+}
+.md-code:hover .md-copy,
+.md-code:focus-within .md-copy,
+.md-copy:focus-visible,
+.md-copy[data-copied] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .md-copy {
+    opacity: 1;
+  }
+}
+.md-copy:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.md-copy:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.md-copy[data-copied] {
+  color: var(--green);
+}
+.md-copy .fa-solid {
+  font-size: 12px;
+}
 /* A table is the app's table: a header on the hover surface, 13px cells, a rule between
    rows and none after the last, no lines between columns. It is framed, since in a text
    it is not a panel's content but a part of it, and it scrolls by itself when it is wide. */

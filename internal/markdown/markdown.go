@@ -15,6 +15,7 @@ package markdown
 import (
 	"bytes"
 	"errors"
+	stdhtml "html"
 	"net/url"
 	"regexp"
 	"slices"
@@ -77,13 +78,49 @@ func Render(source string, opts Options) Result {
 	highlight, _ := pc.Get(highlightKey).(bool)
 	// A block that scrolls can be reached by keyboard. The only "<pre>" in the output is a
 	// code block's, since text is escaped.
-	html := strings.ReplaceAll(buf.String(), "<pre>", `<pre tabindex="0">`)
+	html := wrapBlocks(buf.String())
 	// The box of a task list item has no label of its own: the item's text follows it, and is not in a label. It is named for what it is, and is read as it is
 	// checked or not and disabled, before the text. Raw HTML is never rendered, so these are all goldmark's.
 	html = strings.ReplaceAll(html, `<input checked="" disabled="" type="checkbox">`, `<input checked="" disabled="" type="checkbox" aria-label="Task">`)
 	html = strings.ReplaceAll(html, `<input disabled="" type="checkbox">`, `<input disabled="" type="checkbox" aria-label="Task">`)
 	return Result{HTML: html, Highlight: highlight}
 }
+
+// wrapBlocks puts each code block in a box with a button that copies it, which only script can do, and so the button is there only with it. What it copies is the
+// block's text as it was written, in the button, and not what is on the page: the editor that colours a block replaces its text with markup in which a space is a
+// non-breaking one, a tab is spaces and a line ends in an element, and none of that is what was written. The status is what a reader who does not see the button
+// change is told, and the script fills it.
+func wrapBlocks(rendered string) string {
+	const open, shut = "<pre>", "</pre>"
+	var out strings.Builder
+	for {
+		start := strings.Index(rendered, open)
+		if start < 0 {
+			break
+		}
+		end := strings.Index(rendered[start:], shut)
+		if end < 0 {
+			break
+		}
+		end += start
+		code := stdhtml.UnescapeString(tags.ReplaceAllString(rendered[start+len(open):end], ""))
+		code = strings.TrimSuffix(code, "\n")
+		out.WriteString(rendered[:start])
+		out.WriteString(`<div class="md-code"><pre tabindex="0">`)
+		out.WriteString(rendered[start+len(open) : end])
+		out.WriteString(shut)
+		out.WriteString(`<span class="js-only"><button class="md-copy" type="button" data-copy-code="`)
+		out.WriteString(stdhtml.EscapeString(code))
+		out.WriteString(`" aria-label="Copy code" title="Copy code"><i class="fa-solid fa-copy" aria-hidden="true"></i></button>`)
+		out.WriteString(`<span class="sr-only" role="status" aria-live="polite"></span></span></div>`)
+		rendered = rendered[end+len(shut):]
+	}
+	out.WriteString(rendered)
+	return out.String()
+}
+
+// tags is an element's tag in what goldmark wrote for a code block, which has only <code> in it.
+var tags = regexp.MustCompile(`</?code[^>]*>`)
 
 // transformer applies the rules above to the tree, before it is rendered.
 type transformer struct{}

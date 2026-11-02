@@ -135,6 +135,8 @@ func TestHighlightIsSetOnlyForAFenceThatNamesALanguage(t *testing.T) {
 	}
 	has(t, r.HTML, `<code class="language-go">`)
 	has(t, r.HTML, `<pre tabindex="0">`)
+	has(t, r.HTML, `<div class="md-code"><pre tabindex="0">`)
+	has(t, r.HTML, `data-copy-code`)
 	for _, src := range []string{"```\nplain\n```\n", "    indented\n", "no code `at` all", "<pre>x</pre>"} {
 		if Render(src, Options{}).Highlight {
 			t.Errorf("%q is marked for highlighting", src)
@@ -345,4 +347,11 @@ func TestATaskListBoxIsNamed(t *testing.T) {
 	if strings.Count(out, "<input") != strings.Count(out, `aria-label="Task"`) {
 		t.Errorf("a box has no name:\n%s", out)
 	}
+}
+
+func TestACodeBlockCopiesAsItWasWritten(t *testing.T) {
+	t.Parallel()
+
+	r := Render("```go\n\tx := \"<a>\" & b\n\n  y\n```\n", Options{})
+	has(t, r.HTML, "data-copy-code=\"\tx := &#34;&lt;a&gt;&#34; &amp; b\n\n  y\"")
 }
