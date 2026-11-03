@@ -3060,12 +3060,13 @@ html.js .status-meta [data-built] {
 /* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
    up to 820px the rail, always; up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
    changes, and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
-   the sidebar is a drawer behind a button, and the actions on the right of the top bar are a menu behind one. Both are a
+   the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
    checkbox and its label, the way the rest of the shell works without script, so what is below is the whole of it; script
    only adds Escape to close them (see enhance.js). None of the boxes or buttons are drawn above 640px. */
 .nav-toggle,
 .nav-open,
 .nav-backdrop,
+.top-backdrop,
 .top-more-toggle,
 .top-more {
   display: none;
@@ -3146,36 +3147,64 @@ html.js .status-meta [data-built] {
     min-height: 44px;
   }
 
-  /* The actions of the top bar are a panel under it, opened by the button at the right: the search across it, and under the
-     search the buttons. Its results are the panel's own, and not a box over the page. */
-  .top-right {
-    display: none;
+  /* The actions of the top bar are a drawer of their own, from the right (the sidebar's is from the left), opened by the button at
+     the right of the bar: the buttons at its head, the search under them, and its results under that, which are the drawer's
+     own and not a box over the page. Closed it is not visible, which takes it out of the order of the keys. */
+  .top-more-toggle:checked ~ .top-backdrop {
+    display: block;
+  }
+  .topbar:has(.top-more-toggle:checked) {
+    z-index: 70; /* over the status bar, and the other drawer */
+  }
+  .top-backdrop {
     position: fixed;
-    top: var(--topbar-h);
-    left: 0;
+    inset: 0;
+    background: rgb(0 0 0 / 50%);
+  }
+  .top-right {
+    display: flex;
+    position: fixed;
+    top: 0;
     right: 0;
-    z-index: 50;
+    bottom: 0;
+    z-index: 1;
+    width: min(320px, 85vw);
     flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
     gap: 8px;
     margin-left: 0;
-    padding: 10px 12px;
-    background: var(--raise);
-    border-bottom: 1px solid var(--border-2);
-    box-shadow: var(--shadow);
+    padding: 8px 12px;
+    overflow-y: auto;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition:
+      transform 0.18s ease-out,
+      visibility 0s linear 0.18s;
   }
   .top-more-toggle:checked ~ .top-right {
-    display: flex;
+    transform: none;
+    visibility: visible;
+    transition: transform 0.18s ease-out;
+  }
+  /* The order they are read in is the order of the bar; the order they are drawn in puts the buttons first. */
+  .top-right > * {
+    order: 1;
   }
   .top-right .search {
+    order: 2;
     flex: 1 1 100%;
     max-width: none;
     height: 36px;
   }
   .top-right .palette {
+    order: 3;
     position: static;
     flex: 1 1 100%;
     width: auto;
-    max-height: 50vh;
+    max-height: none;
     box-shadow: none;
   }
   .menu-pop {

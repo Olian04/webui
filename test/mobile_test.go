@@ -27,7 +27,7 @@ func TestAPhoneHasTheSidebarAsADrawerOpenedByACheckbox(t *testing.T) {
 	assert.Contains(t, phone, "transform: translateX(-100%);\n    visibility: hidden;")
 	assert.Contains(t, phone, ".nav-toggle:checked ~ .app .sidebar {\n    transform: none;\n    visibility: visible;")
 	// None of it is drawn on a wider screen, and a stored choice of the rail does not reach a phone.
-	assert.Contains(t, css, ".nav-toggle,\n.nav-open,\n.nav-backdrop,\n.top-more-toggle,\n.top-more {\n  display: none;")
+	assert.Contains(t, css, ".nav-toggle,\n.nav-open,\n.nav-backdrop,\n.top-backdrop,\n.top-more-toggle,\n.top-more {\n  display: none;")
 	assert.Contains(t, css, "@media (min-width: 641px) {\n  html[data-sidebar='collapsed'] .sidebar {")
 	assert.Contains(t, css, "@media (min-width: 641px) and (max-width: 820px) {")
 }
@@ -45,7 +45,11 @@ func TestAPhoneHasTheTopBarsActionsAsAMenu(t *testing.T) {
 	assert.True(t, strings.Index(top, "nav-open") < strings.Index(top, `class="crumbs"`))
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	assert.Contains(t, css, ".top-more-toggle:checked ~ .top-right {\n    display: flex;")
+	assert.Contains(t, top, `<label class="top-backdrop" for="top-more" aria-hidden="true"></label>`)
+	// It comes in from the right, with the buttons first, then the search, then its results.
+	assert.Contains(t, css, "transform: translateX(100%);\n    visibility: hidden;")
+	assert.Contains(t, css, ".top-right .search {\n    order: 2;")
+	assert.Contains(t, css, ".top-right .palette {\n    order: 3;")
 }
 
 // An app with no sidebar has nothing for a button to open: no drawer, and no button for it.
