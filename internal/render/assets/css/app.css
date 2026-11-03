@@ -481,11 +481,26 @@ a.side-brand:hover {
   text-overflow: ellipsis;
 }
 /* Too narrow for the whole trail: the parent of the page and the page. From the end, the children are the page, the
-   separator before it, the parent, and the separator before that; the rest stay in the markup but are not drawn (nor
-   read out). The parent shrinks with an ellipsis before it crowds the actions. */
+   separator before it, the parent, and the separator before that; the rest stay in the markup, visually hidden and still read (and
+   drawn while a key is on one). The parent shrinks with an ellipsis before it crowds the actions. */
 @media (max-width: 640px) {
   .crumbs > :nth-last-child(n + 4) {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
+  .crumbs > a:nth-last-child(n + 4):focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
   }
   .crumbs a {
     min-width: 0;
@@ -3072,15 +3087,26 @@ html.js .status-meta [data-built] {
   display: none;
 }
 @media (max-width: 640px) {
-  /* The boxes are not drawn, and are still in the order of the page: a key reaches them, and they have a name. */
+  /* The boxes are not drawn, and are the buttons: each is laid over the button that it opens, the size of it, so that a touch on the
+     button is a touch on the box (a screen reader that is felt over the screen finds the box, which has the name), and a key
+     reaches it in the order of the page. The bar is 48px high, with 12px at each side; the button is 40px. */
   .nav-toggle,
   .top-more-toggle {
     display: block;
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
+    position: fixed;
+    top: 4px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
     opacity: 0;
+    cursor: pointer;
+    z-index: 31;
+  }
+  .nav-toggle {
+    left: 12px;
+  }
+  .top-more-toggle {
+    right: 12px;
   }
   .nav-toggle:focus-visible ~ .app .nav-open,
   .top-more-toggle:focus-visible + .top-more {

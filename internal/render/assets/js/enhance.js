@@ -931,15 +931,65 @@
     } catch (err) {}
   });
 
-  // On a phone the sidebar (a drawer) and the top bar's actions (a menu) are each opened by a checkbox, and work without this. What
-  // script adds is Escape to close whichever is open, and the focus put back on the box that opened it.
+  // On a phone the sidebar (a drawer) and the top bar's actions (a drawer from the right) are each opened by a checkbox, and work
+  // without this. What script adds is what a drawer over the page owes the visitor who cannot see the page: while one is open, the page
+  // behind it is inert (not read, not reached by a key), the focus is moved into it, and Escape closes it and puts the focus back on the box
+  // that opened it. Tapping the backdrop closes it too, and then the focus does not stay in a drawer that is gone.
+  var DRAWERS = [
+    { box: '#nav-toggle', drawer: '.sidebar', first: ['a[href]'], behind: ['#main', '.crumbs', '.top-right', '.top-more'] },
+    { box: '#top-more', drawer: '.top-right', first: ['.iconbtn, summary', 'input'], behind: ['#main', '.sidebar', '.crumbs', '.nav-open'] },
+  ];
+  function syncDrawers() {
+    var held = [];
+    DRAWERS.forEach(function (d) {
+      var box = $(d.box);
+      // A box that is not drawn (a window that has grown wider than a phone) opens nothing, whatever it holds.
+      if (!box || !box.checked || getComputedStyle(box).display === 'none') return;
+      d.behind.forEach(function (sel) {
+        $$(sel).forEach(function (el) {
+          held.push(el);
+        });
+      });
+    });
+    DRAWERS.forEach(function (d) {
+      d.behind.forEach(function (sel) {
+        $$(sel).forEach(function (el) {
+          if (held.indexOf(el) >= 0) el.setAttribute('inert', '');
+          else el.removeAttribute('inert');
+        });
+      });
+    });
+  }
+  document.addEventListener('change', function (e) {
+    var d = DRAWERS.filter(function (x) {
+      return e.target.matches && e.target.matches(x.box);
+    })[0];
+    if (!d) return;
+    syncDrawers();
+    var panel = $(d.drawer);
+    if (e.target.checked) {
+      // The first of what is drawn first: the top bar's drawer has its buttons above its search.
+      var first = null;
+      d.first.forEach(function (sel) {
+        if (!first && panel) first = $(sel, panel);
+      });
+      if (first) first.focus();
+    } else if (panel && panel.contains(document.activeElement)) {
+      e.target.focus();
+    }
+  });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
     var open = $('#nav-toggle:checked, #top-more:checked');
     if (!open) return;
     open.checked = false;
+    syncDrawers();
     open.focus();
   });
+  // A page that is shown again from the browser's memory has the box as it was left.
+  window.addEventListener('pageshow', syncDrawers);
+  window.addEventListener('resize', syncDrawers);
+  syncDrawers();
 
   // The sidebar's edge is a handle that script adds, to drag or to move with the arrow keys: a window splitter. Its width is a browser
   // preference, like the collapse, kept in localStorage and put back by prefs.js before first paint. A window too small for the width

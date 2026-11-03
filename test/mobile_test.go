@@ -63,3 +63,20 @@ func TestAnAppWithNoSidebarHasNoDrawerOrButtonForIt(t *testing.T) {
 	// The menu of the top bar is still there.
 	assert.Contains(t, body, `id="top-more"`)
 }
+
+// What a screen reader is given on a phone: each box is laid over the button it opens, at the size of it, with the name; what is not
+// drawn of the trail is still read; and script makes the page behind an open drawer inert and moves the focus into it.
+func TestAPhoneIsUsableWithAScreenReader(t *testing.T) {
+	t.Parallel()
+
+	h := navApp()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "  .nav-toggle,\n  .top-more-toggle {\n    display: block;\n    position: fixed;\n    top: 4px;\n    width: 40px;\n    height: 40px;")
+	assert.Contains(t, css, "visibility: hidden;") // a closed drawer is not read, nor reached by a key
+	assert.False(t, strings.Contains(css, ".crumbs > :nth-last-child(n + 4) {\n    display: none"))
+
+	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	for _, want := range []string{"el.setAttribute('inert', '')", "e.key !== 'Escape'", "'#nav-toggle:checked, #top-more:checked'", "addEventListener('pageshow', syncDrawers)"} {
+		assert.Contains(t, enhance, want)
+	}
+}
