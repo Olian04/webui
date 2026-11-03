@@ -85,13 +85,14 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	return render.Tabs(tabsName(n), strip, content, render.LeafID(n.At)), nil
 }
 
-// visible is whether n can show anything: a When shows when its condition holds and its child can show something, a
-// layout when any of its children can (one declared with none is as declared), and a leaf always. A When whose
-// condition cannot be decided counts as hidden, as it does where it is drawn.
+// visible is whether n can show anything: a conditional node (today a When) shows when its condition holds and its child
+// can show something, a layout when any of its children can (one declared with none is as declared), and a leaf always. A
+// condition that cannot be decided counts as hidden, as it does where it is drawn. Another kind of conditional node is
+// a case here, beside When.
 func (p *Program) visible(ctx context.Context, req *Request, page *ir.Page, n ir.Node) bool {
 	switch n := n.(type) {
 	case *ir.When:
-		shown, ok := req.whenShown(ctx, p, page, n)
+		shown, ok := req.conditionShown(ctx, p, page, n)
 		return ok && shown && p.visible(ctx, req, page, n.Child)
 	case *ir.Stack:
 		return p.anyVisible(ctx, req, page, n.Children)

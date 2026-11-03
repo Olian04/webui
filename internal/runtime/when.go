@@ -18,37 +18,46 @@ func (p *Program) whenShown(ctx context.Context, page *ir.Page, n *ir.When) (sho
 	return n.Show.Get(model) == "true", true
 }
 
-// whenCache is what each When of a page decided, for one request, so that a When is asked once however many times it is
-// looked at: to say whether a tab is shown, and again to draw it. It is shared by the copies of the request that its panels
-// are built with. A request without one (a refresh of a leaf, an export) asks each time.
-type whenCache struct {
+// conditionCache is what each conditional node of a page decided, for one request, so that a condition is asked once
+// however many times it is looked at: to say whether a tab is shown, and again to draw it. It is shared by the copies of the
+// request that its panels are built with. A request without one (a refresh of a leaf, an export) asks each time.
+type conditionCache struct {
 	mu sync.Mutex
-	m  map[*ir.When]*whenResult
+	m  map[ir.Node]*conditionResult
 }
 
-type whenResult struct {
+type conditionResult struct {
 	once      sync.Once
 	shown, ok bool
 }
 
-// whenShown is [Program.whenShown], asked once per request when the request has a cache.
-func (req *Request) whenShown(ctx context.Context, p *Program, page *ir.Page, n *ir.When) (shown, ok bool) {
-	if req == nil || req.whens == nil {
-		return p.whenShown(ctx, page, n)
+// conditionShown is whether the conditional node n shows its child, asked once per request when the request has a cache.
+// ok is false when the condition could not be decided. A new kind of conditional node is decided in decide, and nowhere else.
+func (req *Request) conditionShown(ctx context.Context, p *Program, page *ir.Page, n ir.Node) (shown, ok bool) {
+	if req == nil || req.conditions == nil {
+		return p.decide(ctx, page, n)
 	}
-	c := req.whens
+	c := req.conditions
 	c.mu.Lock()
 	if c.m == nil {
-		c.m = map[*ir.When]*whenResult{}
+		c.m = map[ir.Node]*conditionResult{}
 	}
 	r := c.m[n]
 	if r == nil {
-		r = &whenResult{}
+		r = &conditionResult{}
 		c.m[n] = r
 	}
 	c.mu.Unlock()
-	r.once.Do(func() { r.shown, r.ok = p.whenShown(ctx, page, n) })
+	r.once.Do(func() { r.shown, r.ok = p.decide(ctx, page, n) })
 	return r.shown, r.ok
+}
+
+// decide asks a conditional node whether it shows its child. A node that is not conditional always does.
+func (p *Program) decide(ctx context.Context, page *ir.Page, n ir.Node) (shown, ok bool) {
+	if w, isWhen := n.(*ir.When); isWhen {
+		return p.whenShown(ctx, page, w)
+	}
+	return true, true
 }
 
 // gatesOf maps the id of each leaf and each Tabs that is under a When to the Whens above it, the outermost first. A leaf that is under none is not in it. The ids
