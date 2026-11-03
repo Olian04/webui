@@ -669,7 +669,7 @@ piece.
 ## 14. Responsive
 
 One breakpoint that matters: **640px**, where the shell becomes a phone (the sidebar a drawer, the
-top bar's actions a drawer). Between that and a wide desktop the shell keeps its shape, and the search field is narrowed and loses its key. Two minor ones: **1100px**, where a
+top bar's actions a drawer). Above it the shell keeps its shape at every width, and the search field shrinks to the room the bar has. Two minor ones: **1100px**, where a
 split becomes a single column, and **760px**, where paired form fields stack.
 
 The design does not attempt a phone layout. A control plane on a phone is a

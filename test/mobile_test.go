@@ -96,7 +96,38 @@ func TestThePhoneDrawerKeepsTheOrderOfTheBarAndTheHoverOfTheButtons(t *testing.T
 
 	assert.Contains(t, css, "    min-height: 44px;\n  }\n  /* The footer holds the switch that narrows the sidebar to its rail; the drawer has no rail, so the footer has nothing to hold. */\n  .side-foot {\n    display: none;")
 
+	assert.Contains(t, css, "  .columns {\n    --column-min: 312px;")
+
 	top := topBar(t, serve(h, http.MethodGet, "/admin/device").Body.String())
 	refresh, theme := strings.Index(top, "data-refresh"), strings.Index(top, "theme-toggle")
 	assert.True(t, refresh >= 0 && refresh < theme)
+}
+
+// What is read has a narrow form on a phone, by the stylesheet alone: a trend is its change without the chart and the arrow, a bar is its
+// number, and a description is its label underlined, which opens it, in place of an icon. The chart is still named, and the description
+// is still a stop of the keys, for a reader.
+func TestAPhoneReadsItsValuesInTheirNarrowForm(t *testing.T) {
+	t.Parallel()
+
+	h := navApp()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	phone := css[strings.Index(css, "@media (max-width: 640px) {\n  /* The boxes"):]
+	assert.Contains(t, phone, "  .trend .spark {\n    position: absolute;")
+	assert.Contains(t, phone, "  .delta .delta-arrow,\n  .gauge-track {\n    display: none;")
+	assert.Contains(t, phone, "  .tip .info {\n    display: none;")
+	assert.Contains(t, phone, "  .toolbar-lbl:hover + .tip .tip-body,\n  label.lbl:hover + .tip .tip-body,\n  .panel-title:hover + .tip .tip-body {\n    display: block;")
+
+	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	assert.Contains(t, enhance, "closest('.toolbar-lbl, label.lbl, .panel-title')")
+}
+
+// Two fields of a row are side by side where each has room for 220px, which is the panel's room and not the window's, and one under the
+// other where it has not; and a field is not held open by what is in it, so a slider and its number stay in the panel.
+func TestAFieldRowFollowsTheRoomOfItsPanelAndNotTheWindow(t *testing.T) {
+	t.Parallel()
+
+	h := navApp()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".field-row {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));")
+	assert.Contains(t, css, ".field-row .field {\n  margin-bottom: 0;\n  min-width: 0;\n}")
 }

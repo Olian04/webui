@@ -23,8 +23,10 @@ import (
 //
 // The controls are in two groups, Left and Right, in the order they are given. With room, the left ones are at the left
 // edge and the right ones at the right, and the space between them is what the page has to spare. When there is no longer room for
-// both, there is no longer a left and a right: all the controls, the left ones first, flow from the left in rows, as a
-// grid does, and the space between them is the same. A toolbar with controls in one of them only is fine.
+// both in a row, the group with fewer values (a button is one, and a [Form] is the values it shows) is whole: it is in a row or in the next
+// one, and never split. The group with more flows in rows from its own edge, the left one from the left and the right one from the
+// right. With as many in each, the left one flows. A toolbar with controls in one of them only is fine. The "Toolbars" page of the demo
+// has each of these cases, to change the width of the window under.
 //
 // The items are:
 //

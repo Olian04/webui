@@ -796,6 +796,12 @@
 
   function onTipOpen(e) {
     var el = e.target.closest && e.target.closest('.tip, .gate');
+    if (!el) {
+      // On a phone a description is opened by its label, which is the element before it.
+      var lbl = e.target.closest && e.target.closest('.toolbar-lbl, label.lbl, .panel-title');
+      var next = lbl && lbl.nextElementSibling;
+      el = next && next.classList.contains('tip') ? next : null;
+    }
     if (!el) return;
     if (el.classList.contains('gate')) placeGate(el);
     else requestAnimationFrame(function () { placeTip(el); }); // after the style that shows it has been applied
@@ -1696,32 +1702,6 @@
     $$('select[data-select]:not([data-enhanced])', root).forEach(enhanceSelect);
   }
 
-  // A toolbar has its left controls at its left edge and its right ones at its right when there is room for all of them in a
-  // row, and when there is not it has them flow from the left in rows, as one group: the gap between the two groups is
-  // gone. Whether there is room is the width of the controls as they are, whatever the rows they are in, so it does not
-  // change with the layout that it chooses.
-  function fitToolbar(tb) {
-    var form = tb.querySelector(':scope > form') || tb; // the buttons' form, when there is one
-    if (!tb.querySelector('.toolbar-gap')) return;
-    var gap = parseFloat(getComputedStyle(tb).columnGap) || 0;
-    var need = 0;
-    var n = 0;
-    for (var i = 0; i < form.children.length; i++) {
-      var el = form.children[i];
-      if (el.classList.contains('toolbar-gap') || el.type === 'hidden') continue;
-      need += el.offsetWidth;
-      n++;
-    }
-    tb.classList.toggle('wrapped', need + gap * n > tb.clientWidth);
-  }
-  function enhanceToolbars(root) {
-    $$('[data-toolbar]:not([data-fitted])', root).forEach(function (tb) {
-      tb.setAttribute('data-fitted', '');
-      fitToolbar(tb);
-      if (window.ResizeObserver) new ResizeObserver(function () { fitToolbar(tb); }).observe(tb);
-    });
-  }
-
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.msel')) closeSelects(null);
   });
@@ -1729,9 +1709,7 @@
   // A panel that is fetched again brings its selects as plain ones.
   new MutationObserver(function () {
     enhanceSelects(document);
-    enhanceToolbars(document);
   }).observe(document.body, { childList: true, subtree: true });
-  enhanceToolbars(document);
 
   /* --------------------------------- start -------------------------------- */
 
