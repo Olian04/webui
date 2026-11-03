@@ -52,6 +52,9 @@ type Request struct {
 	// panels is every panel of the page that is being drawn, so that drawing it can wait for them all. It is nil for
 	// a request that draws one panel, or none.
 	panels *panelSet
+
+	// conditions is what each conditional node decided in this request. It is nil for a request that draws one leaf, or none.
+	conditions *conditionCache
 }
 
 // reqCtx is ctx with a request for the page's arguments in it, for the application's funcs the runtime
