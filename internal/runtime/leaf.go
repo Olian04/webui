@@ -42,6 +42,20 @@ func (p *Program) leaf(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 // tabs builds the strip and loads only the selected panel. An empty or unknown
 // value selects the first tab, so a stale link still lands somewhere.
 func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.Tabs) (templ.Component, error) {
+	first := n.Tabs[0].Key
+	var shown []ir.Tab // a tab with nothing visible in it (every panel under a When that does not hold) is left out
+	for _, t := range n.Tabs {
+		if p.visible(ctx, page, t.Body) {
+			shown = append(shown, t)
+		}
+	}
+	if len(shown) == 0 {
+		return templ.NopComponent, nil
+	}
+	shownTabs := *n
+	shownTabs.Tabs = shown
+	n = &shownTabs
+
 	selected := 0
 	for i, t := range n.Tabs {
 		if t.Key == req.Raw[args.ViewKey(n.ID, "tab")] {
@@ -56,8 +70,8 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 		if q == nil {
 			q = map[string]string{}
 		}
-		if i == 0 {
-			delete(q, args.ViewKey(n.ID, "tab")) // the default tab needs no parameter
+		if t.Key == first {
+			delete(q, args.ViewKey(n.ID, "tab")) // the first declared tab needs no parameter; it is the same tab whether or not it is shown
 		} else {
 			q[args.ViewKey(n.ID, "tab")] = t.Key
 		}
@@ -69,6 +83,41 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 		return nil, err
 	}
 	return render.Tabs(tabsName(n), strip, content, render.LeafID(n.At)), nil
+}
+
+// visible is whether n can show anything: a When shows when its condition holds and its child can show something, a
+// layout when any of its children can (one declared with none is as declared), and a leaf always. A When whose
+// condition cannot be decided counts as hidden, as it does where it is drawn.
+func (p *Program) visible(ctx context.Context, page *ir.Page, n ir.Node) bool {
+	switch n := n.(type) {
+	case *ir.When:
+		shown, ok := p.whenShown(ctx, page, n)
+		return ok && shown && p.visible(ctx, page, n.Child)
+	case *ir.Stack:
+		return p.anyVisible(ctx, page, n.Children)
+	case *ir.Columns:
+		return p.anyVisible(ctx, page, n.Children)
+	case *ir.Tabs:
+		for _, t := range n.Tabs {
+			if p.visible(ctx, page, t.Body) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
+}
+
+func (p *Program) anyVisible(ctx context.Context, page *ir.Page, nodes []ir.Node) bool {
+	if len(nodes) == 0 {
+		return true
+	}
+	for _, c := range nodes {
+		if p.visible(ctx, page, c) {
+			return true
+		}
+	}
+	return false
 }
 
 // tabsName is what a strip of tabs is called by a reader who lists the landmarks of the page: "Views" and the first of its tabs, so that two strips
