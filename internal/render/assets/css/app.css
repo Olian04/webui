@@ -2948,8 +2948,8 @@ html.js .status-meta [data-built] {
   }
 }
 
-/* The rail by choice: the sidebar's collapse button sets it. It repeats the narrow-screen rules below because a media
-   query cannot be combined with an attribute. A phone has no rail: the sidebar there is a drawer (see the phone tier), so a
+/* The rail, by choice: the sidebar's collapse button sets it. It is the only way to the rail; a narrow window does not make
+   one. A phone has no rail: the sidebar there is a drawer (see the phone tier), so a
    stored choice of the rail does not reach it. */
 @media (min-width: 641px) {
   html[data-sidebar='collapsed'] .sidebar {
@@ -3006,58 +3006,6 @@ html.js .status-meta [data-built] {
   }
 }
 
-/* The rail, between a phone and a desktop: a phone has the drawer. */
-@media (min-width: 641px) and (max-width: 820px) {
-  .side-collapse,
-  .side-resize {
-    display: none; /* a narrow screen is always a rail */
-  }
-  .sidebar {
-    width: 56px;
-    flex: 0 0 56px;
-  }
-  .side-brand b,
-  .nav-item span:not(.ni-letter),
-  .side-row > span {
-    display: none;
-  }
-  .nav-section {
-    height: 21px;
-    padding: 0;
-    overflow: hidden;
-    font-size: 0;
-  }
-  .nav-section::before {
-    content: '';
-    display: block;
-    width: 32px;
-    height: 3px;
-    margin: 9px auto 0;
-    border-radius: 2px;
-    background: var(--border-2);
-  }
-  .side-scroll > .nav-section:first-child {
-    display: none;
-  }
-  .side-brand {
-    justify-content: center;
-    padding: 0;
-  }
-  .nav-item {
-    justify-content: center;
-    padding: 0;
-  }
-  .nav-item .ni-letter {
-    visibility: visible;
-  }
-  .side-foot {
-    padding-inline: 0;
-  }
-  .side-row {
-    justify-content: center;
-  }
-}
-
 @media (max-width: 820px) {
   /* A narrow window keeps its search, smaller, and without the key it names (there is no keyboard to press it on, as often as not). */
   .search {
@@ -3073,8 +3021,8 @@ html.js .status-meta [data-built] {
 
 /* ------------------------------ phone ------------------------------------ */
 /* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
-   up to 820px the rail, always; up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
-   changes, and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
+   up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
+   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
    the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
    checkbox and its label, the way the rest of the shell works without script, so what is below is the whole of it; script
    only adds Escape to close them (see enhance.js). None of the boxes or buttons are drawn above 640px. */

@@ -807,7 +807,7 @@
 // its whole being its title. With script its edge can be dragged to a width of 180 to
 // 480px, no more than half the window, which the browser keeps (in its own storage,
 // never sent to the server) and which a double click or Enter on the edge resets; the
-// icon rail that a narrow window, or the collapse button, makes has a width of its own.
+// icon rail that the collapse button makes has a width of its own.
 //
 // # Figures
 //

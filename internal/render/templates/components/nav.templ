@@ -4,7 +4,7 @@ package components
 // The sidebar is the one piece of structure that does not disappear, as long as
 // the app declares a list to show: the page leaves it out when no page has an
 // entry (see Renderer.hasSidebar). It does not become a top bar and it does not
-// become a menu button; below 820px it collapses to an icon rail instead.
+// become a menu button on a desktop; on a phone it is a drawer.
 
 // Footer is a slot rather than part of { children... } because it sits outside
 // the scrolling nav: session switches are not navigation and must not scroll

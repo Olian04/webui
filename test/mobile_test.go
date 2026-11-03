@@ -29,7 +29,7 @@ func TestAPhoneHasTheSidebarAsADrawerOpenedByACheckbox(t *testing.T) {
 	// None of it is drawn on a wider screen, and a stored choice of the rail does not reach a phone.
 	assert.Contains(t, css, ".nav-toggle,\n.nav-open,\n.nav-backdrop,\n.top-backdrop,\n.top-more-toggle,\n.top-more {\n  display: none;")
 	assert.Contains(t, css, "@media (min-width: 641px) {\n  html[data-sidebar='collapsed'] .sidebar {")
-	assert.Contains(t, css, "@media (min-width: 641px) and (max-width: 820px) {")
+	assert.False(t, strings.Contains(css, "@media (min-width: 641px) and (max-width: 820px) {")) // a narrow desktop is a desktop
 }
 
 func TestAPhoneHasTheTopBarsActionsAsAMenu(t *testing.T) {

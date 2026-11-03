@@ -174,9 +174,9 @@ Four fixed regions. Only the content region scrolls.
 
 240px on the left unless a visitor has dragged it (180px to 480px, never more than half the
 window), panel surface, full height, always visible. It never
-becomes a top bar and never turns into a hamburger — below 820px it collapses
-to a 56px icon rail instead, and a button in its footer collapses it to the same
-rail at any width (the choice is a browser preference). The structure of the
+becomes a top bar and never turns into a hamburger on a desktop; a button in its footer collapses it
+to a 56px icon rail at any desktop width (the choice is a browser preference). On a phone
+(640px and under) it is a drawer behind a hamburger. The structure of the
 application is the one thing that should not disappear: when there is any.
 
 **An app has a sidebar when a page declares an entry for it.** It is drawn when any page has a `Nav` entry (a `Label`, or `NavEntries`), and not otherwise: where no page
@@ -668,8 +668,8 @@ piece.
 
 ## 14. Responsive
 
-One breakpoint that matters: **820px**, where the sidebar (when there is one) collapses to a 56px
-icon rail and the search field is dropped. Two minor ones: **1100px**, where a
+One breakpoint that matters: **640px**, where the shell becomes a phone (the sidebar a drawer, the
+top bar's actions a drawer). Between that and a wide desktop the shell keeps its shape, and the search field is narrowed and loses its key. Two minor ones: **1100px**, where a
 split becomes a single column, and **760px**, where paired form fields stack.
 
 The design does not attempt a phone layout. A control plane on a phone is a
