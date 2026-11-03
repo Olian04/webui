@@ -14,10 +14,18 @@ type TopBarProps struct {
 	Crumbs []Crumb
 	// Mark leads the bar when there is no sidebar to carry the app's mark. It is decoration: the first crumb is the brand's name.
 	Mark templ.Component
+	// Nav is whether the page has a sidebar, which a phone draws as a drawer: the button that opens it is the first thing in the bar.
+	Nav bool
 }
 
 templ TopBar(p TopBarProps) {
 	<header class="topbar">
+		if p.Nav {
+			// The checkbox that opens the drawer is beside the shell (see AppShell); this is its button, drawn only on a phone.
+			<label class="iconbtn nav-open" for="nav-toggle" aria-hidden="true">
+				@Icon(IconProps{Name: IconMenu})
+			</label>
+		}
 		if p.Mark != nil {
 			<span class="top-mark" aria-hidden="true">@p.Mark</span>
 		}
@@ -33,7 +41,13 @@ templ TopBar(p TopBarProps) {
 				}
 			}
 		</nav>
-		<div class="top-right">
+		// On a phone the actions on the right (search, Refresh, the theme, the app's links) are one menu behind this button; a
+		// checkbox opens it, so it needs no script. Above that width neither the box nor its button is drawn.
+		<input type="checkbox" id="top-more" class="top-more-toggle" aria-label="More actions" aria-controls="top-right"/>
+		<label class="iconbtn top-more" for="top-more" aria-hidden="true">
+			@Icon(IconProps{Name: IconMore})
+		</label>
+		<div class="top-right" id="top-right">
 			{ children... }
 		</div>
 	</header>

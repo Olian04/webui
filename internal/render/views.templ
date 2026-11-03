@@ -102,7 +102,7 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
 templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
-	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare)}) {
+	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare), Nav: !bare}) {
 		if r.search {
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
 		}

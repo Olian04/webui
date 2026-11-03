@@ -931,6 +931,16 @@
     } catch (err) {}
   });
 
+  // On a phone the sidebar (a drawer) and the top bar's actions (a menu) are each opened by a checkbox, and work without this. What
+  // script adds is Escape to close whichever is open, and the focus put back on the box that opened it.
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = $('#nav-toggle:checked, #top-more:checked');
+    if (!open) return;
+    open.checked = false;
+    open.focus();
+  });
+
   // The sidebar's edge is a handle that script adds, to drag or to move with the arrow keys: a window splitter. Its width is a browser
   // preference, like the collapse, kept in localStorage and put back by prefs.js before first paint. A window too small for the width
   // it was given holds it to what fits, without storing the smaller one.

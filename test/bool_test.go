@@ -3,6 +3,7 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -89,6 +90,8 @@ func TestAReadOnlyBoolIsAYesOrANo(t *testing.T) {
 	h, _ := flagsApp(flags{Compress: true}, readOnly)
 	body := serve(h, http.MethodGet, "/admin/f").Body.String()
 	assert.Contains(t, body, "Yes")
+	// The only boxes in the page are the shell's own (the drawer and the top bar's menu), and not a field's.
+	body = regexp.MustCompile(`<input type="checkbox" id="(nav-toggle|top-more)"[^>]*>`).ReplaceAllString(body, "")
 	assert.False(t, strings.Contains(body, `type="checkbox"`))
 
 	h, _ = flagsApp(flags{Compress: false}, readOnly)
