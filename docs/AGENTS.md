@@ -57,6 +57,8 @@ and `icons.txt` are generated from a Font Awesome Free download by
 `go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. `icons.txt`
 is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
 
+The shell has two widths, in `app.css`: a desktop (the sidebar as wide as its owner set it, or the rail by choice; a narrow window is a narrow desktop and changes nothing) and, up to 640px, a phone. The phone is the only width at which the shape of the shell changes (see "phone" in the stylesheet): the sidebar is a drawer behind a hamburger, the top bar's actions (search, Refresh, theme, links) are a menu behind a button, and the crumbs are cut to the parent and the page. The drawer and the menu are each a checkbox and its label, so they open without script; `enhance.js` only adds Escape. What is read has a narrow form at that width, in the stylesheet: a trend is its change alone, a bar is its number, and a description is its label underlined in place of an icon. A new element that does not fit a phone goes into one of those, and does not get a breakpoint of its own.
+
 ## Make invalid states unrepresentable
 
 Prefer a type error to an `App.Compile` error. Shape the declaration so that a wrong one does not compile, wherever that is possible:

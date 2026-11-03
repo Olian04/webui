@@ -102,7 +102,7 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
 templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
-	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare)}) {
+	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare), Nav: !bare}) {
 		if r.search {
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
 		}
@@ -632,8 +632,8 @@ templ Refused(ref *ir.Refusal) {
 // Toolbar is a row of controls: buttons, links, and the values of the page's arguments, read-only. It is not a panel. The buttons
 // post, in one form, by their position; a toolbar with no button has no form, since there is nothing in it to submit. A value
 // is its label and what the accessor reads from the page's arguments, as a read-only form field shows it. The controls for the
-// left and the right are one row, with a gap between the two groups that takes what is left over; script says when there is
-// not room for them all in a row, and then the gap is gone and they flow as one.
+// left and the right are one row, with a gap between the two groups that takes what is left over; the right ones are a group that wraps
+// as one, so it is at the right edge of the row that it is in.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
 		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
@@ -652,26 +652,70 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 	}
 }
 
-// toolbarItems are the controls of a toolbar, in order, with the gap before the right ones. An item that is not drawn
-// for this visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
+// toolbarItems are the controls of a toolbar, in order. The group with fewer controls is one item of the row, which is in it whole or in the next
+// row whole; the group with more flows in rows from its own edge, the left one from the left, the right one from the right, and is one
+// item of the row that takes what the other leaves, when it has the room for the widest of its controls. An item that is not drawn for this
+// visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
 templ (r *Renderer) toolbarItems(v ToolbarView) {
-	for i, it := range v.Node.Items {
-		if i == v.Node.RightFrom {
+	if rightFlows(v.Node) {
+		<span class="toolbar-start">
+			for i := 0; i < v.Node.RightFrom; i++ {
+				@r.toolbarItem(v, i, v.Node.Items[i])
+			}
+		</span>
+		<span class="toolbar-end toolbar-flows">
+			for i := v.Node.RightFrom; i < len(v.Node.Items); i++ {
+				@r.toolbarItem(v, i, v.Node.Items[i])
+			}
+		</span>
+	} else {
+		for i := 0; i < v.Node.RightFrom; i++ {
+			@r.toolbarItem(v, i, v.Node.Items[i])
+		}
+		if v.Node.RightFrom < len(v.Node.Items) {
 			<span class="toolbar-gap" aria-hidden="true"></span>
-		}
-		switch {
-			case !v.gate(i).Drawn():
-			case it.Action != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
-					{ it.Label }
+			<span class="toolbar-end">
+				for i := v.Node.RightFrom; i < len(v.Node.Items); i++ {
+					@r.toolbarItem(v, i, v.Node.Items[i])
 				}
-			case it.Link != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
-					{ it.Label }
-				}
-			case it.Form != nil:
-				@r.toolbarForm(it.Form, v.form(i))
+			</span>
 		}
+	}
+}
+
+// rightFlows is whether the right controls are the ones that flow: they are more than the left ones, counting a button as one and a form as the
+// values it shows, since those are what the row is made of.
+func rightFlows(n *ir.Toolbar) bool {
+	count := func(items []ir.ToolbarItem) int {
+		total := 0
+		for _, it := range items {
+			if it.Form == nil {
+				total++
+				continue
+			}
+			for range ir.Leaves(it.Form.Fields) {
+				total++
+			}
+		}
+		return total
+	}
+	return count(n.Items[n.RightFrom:]) > count(n.Items[:n.RightFrom])
+}
+
+// toolbarItem is one control of a toolbar, by its declared position.
+templ (r *Renderer) toolbarItem(v ToolbarView, i int, it ir.ToolbarItem) {
+	switch {
+		case !v.gate(i).Drawn():
+		case it.Action != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
+				{ it.Label }
+			}
+		case it.Link != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
+				{ it.Label }
+			}
+		case it.Form != nil:
+			@r.toolbarForm(it.Form, v.form(i))
 	}
 }
 

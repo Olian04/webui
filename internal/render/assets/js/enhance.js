@@ -796,6 +796,12 @@
 
   function onTipOpen(e) {
     var el = e.target.closest && e.target.closest('.tip, .gate');
+    if (!el) {
+      // On a phone a description is opened by its label, which is the element before it.
+      var lbl = e.target.closest && e.target.closest('.toolbar-lbl, label.lbl, .panel-title');
+      var next = lbl && lbl.nextElementSibling;
+      el = next && next.classList.contains('tip') ? next : null;
+    }
     if (!el) return;
     if (el.classList.contains('gate')) placeGate(el);
     else requestAnimationFrame(function () { placeTip(el); }); // after the style that shows it has been applied
@@ -930,6 +936,66 @@
       else localStorage.removeItem('webui.sidebar');
     } catch (err) {}
   });
+
+  // On a phone the sidebar (a drawer) and the top bar's actions (a drawer from the right) are each opened by a checkbox, and work
+  // without this. What script adds is what a drawer over the page owes the visitor who cannot see the page: while one is open, the page
+  // behind it is inert (not read, not reached by a key), the focus is moved into it, and Escape closes it and puts the focus back on the box
+  // that opened it. Tapping the backdrop closes it too, and then the focus does not stay in a drawer that is gone.
+  var DRAWERS = [
+    { box: '#nav-toggle', drawer: '.sidebar', first: ['a[href]'], behind: ['#main', '.crumbs', '.top-right', '.top-more'] },
+    { box: '#top-more', drawer: '.top-right', first: ['.iconbtn, summary', 'input'], behind: ['#main', '.sidebar', '.crumbs', '.nav-open'] },
+  ];
+  function syncDrawers() {
+    var held = [];
+    DRAWERS.forEach(function (d) {
+      var box = $(d.box);
+      // A box that is not drawn (a window that has grown wider than a phone) opens nothing, whatever it holds.
+      if (!box || !box.checked || getComputedStyle(box).display === 'none') return;
+      d.behind.forEach(function (sel) {
+        $$(sel).forEach(function (el) {
+          held.push(el);
+        });
+      });
+    });
+    DRAWERS.forEach(function (d) {
+      d.behind.forEach(function (sel) {
+        $$(sel).forEach(function (el) {
+          if (held.indexOf(el) >= 0) el.setAttribute('inert', '');
+          else el.removeAttribute('inert');
+        });
+      });
+    });
+  }
+  document.addEventListener('change', function (e) {
+    var d = DRAWERS.filter(function (x) {
+      return e.target.matches && e.target.matches(x.box);
+    })[0];
+    if (!d) return;
+    syncDrawers();
+    var panel = $(d.drawer);
+    if (e.target.checked) {
+      // The first of what is drawn first: the top bar's drawer has its buttons above its search.
+      var first = null;
+      d.first.forEach(function (sel) {
+        if (!first && panel) first = $(sel, panel);
+      });
+      if (first) first.focus();
+    } else if (panel && panel.contains(document.activeElement)) {
+      e.target.focus();
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = $('#nav-toggle:checked, #top-more:checked');
+    if (!open) return;
+    open.checked = false;
+    syncDrawers();
+    open.focus();
+  });
+  // A page that is shown again from the browser's memory has the box as it was left.
+  window.addEventListener('pageshow', syncDrawers);
+  window.addEventListener('resize', syncDrawers);
+  syncDrawers();
 
   // The sidebar's edge is a handle that script adds, to drag or to move with the arrow keys: a window splitter. Its width is a browser
   // preference, like the collapse, kept in localStorage and put back by prefs.js before first paint. A window too small for the width
@@ -1636,32 +1702,6 @@
     $$('select[data-select]:not([data-enhanced])', root).forEach(enhanceSelect);
   }
 
-  // A toolbar has its left controls at its left edge and its right ones at its right when there is room for all of them in a
-  // row, and when there is not it has them flow from the left in rows, as one group: the gap between the two groups is
-  // gone. Whether there is room is the width of the controls as they are, whatever the rows they are in, so it does not
-  // change with the layout that it chooses.
-  function fitToolbar(tb) {
-    var form = tb.querySelector(':scope > form') || tb; // the buttons' form, when there is one
-    if (!tb.querySelector('.toolbar-gap')) return;
-    var gap = parseFloat(getComputedStyle(tb).columnGap) || 0;
-    var need = 0;
-    var n = 0;
-    for (var i = 0; i < form.children.length; i++) {
-      var el = form.children[i];
-      if (el.classList.contains('toolbar-gap') || el.type === 'hidden') continue;
-      need += el.offsetWidth;
-      n++;
-    }
-    tb.classList.toggle('wrapped', need + gap * n > tb.clientWidth);
-  }
-  function enhanceToolbars(root) {
-    $$('[data-toolbar]:not([data-fitted])', root).forEach(function (tb) {
-      tb.setAttribute('data-fitted', '');
-      fitToolbar(tb);
-      if (window.ResizeObserver) new ResizeObserver(function () { fitToolbar(tb); }).observe(tb);
-    });
-  }
-
   document.addEventListener('click', function (e) {
     if (!e.target.closest('.msel')) closeSelects(null);
   });
@@ -1669,9 +1709,7 @@
   // A panel that is fetched again brings its selects as plain ones.
   new MutationObserver(function () {
     enhanceSelects(document);
-    enhanceToolbars(document);
   }).observe(document.body, { childList: true, subtree: true });
-  enhanceToolbars(document);
 
   /* --------------------------------- start -------------------------------- */
 

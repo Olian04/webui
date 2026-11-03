@@ -62,9 +62,15 @@ templ AppShell(p AppShellProps) {
 	if p.Streaming && p.StatusLive != nil {
 		@p.StatusLive
 	}
+	if p.Sidebar != nil {
+		// On a phone the sidebar is a drawer, which this box opens: a checkbox, so that it works without script. It is beside the shell, and
+		// before it, so that the stylesheet can reach the drawer from it. Above that width it is not drawn.
+		<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Navigation menu" aria-controls="sidebar"/>
+	}
 	<div class="app">
 		if p.Sidebar != nil {
 			@p.Sidebar
+			<label class="nav-backdrop" for="nav-toggle" aria-hidden="true"></label>
 		}
 		<div class="main">
 			if p.TopBar != nil {

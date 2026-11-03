@@ -1006,8 +1006,7 @@ design element.
   icon says what a press brings and not what is on, which a reader of the switch's state (`aria-checked`) has and a sighted one reads from the page. Not done: the icon of the theme that is on (a
   sun in the light theme reads as "the sun is out" as easily as "press for the sun"), and a visitor's choice of three (light, dark, the system's), which the stored value cannot hold today.
 
-- The sidebar collapses to an icon rail from a button in its footer, and always below
-  820px; the choice is a browser preference, so it stays out of the address. An entry
+- The sidebar collapses to an icon rail from a button in its footer, and only from it; the choice is a browser preference, so it stays out of the address. An entry
   with no icon shows its label's initial in the rail.
 
 - **The sidebar's width is the visitor's to change, with script.** Script adds a handle on the sidebar's edge, a window splitter

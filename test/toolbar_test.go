@@ -145,10 +145,11 @@ func TestAToolbarIsARowOfButtonsAndTheValuesOfItsForms(t *testing.T) {
 	// The one form is the buttons': it posts the leaf and the action's position, and nothing else.
 	assert.Equal(t, strings.Count(bar, "<form"), 1)
 	assert.Contains(t, bar, `method="post"`)
-	// The left controls and the right ones are one row with a gap between them, which takes what is left over.
-	assert.Equal(t, strings.Count(bar, `<span class="toolbar-gap" aria-hidden="true"></span>`), 1)
-	assert.True(t, strings.Index(bar, ">Sync now</button>") < strings.Index(bar, `class="toolbar-gap"`))
-	assert.True(t, strings.Index(bar, `class="toolbar-gap"`) < strings.Index(bar, `class="toolbar-lbl">Minutes`))
+	// The right controls are the many, so they are the group that flows, and the left one is whole, before it.
+	assert.Contains(t, bar, `<span class="toolbar-start">`)
+	assert.Contains(t, bar, `<span class="toolbar-end toolbar-flows">`)
+	assert.True(t, strings.Index(bar, ">Sync now</button>") < strings.Index(bar, `class="toolbar-end toolbar-flows"`))
+	assert.True(t, strings.Index(bar, `class="toolbar-end toolbar-flows"`) < strings.Index(bar, `class="toolbar-lbl">Minutes`))
 }
 
 // A toolbar with no button has nothing in it to submit, so it has no form.
@@ -446,4 +447,29 @@ func TestAFormInAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Key", Secret: true, Load: load, Store: store})), "is a Secret in a toolbar")
 	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Body", Multiline: true, Load: load, Store: store})), "is Multiline in a toolbar")
 	assert.Contains(t, problems(settings(webui.File[toolState]{Label: "Logo", MaxSize: 1 << 20, Load: func(toolState) *webui.FileInfo { return nil }, Store: func(*toolState, *webui.Upload) {}})), "is a File in a toolbar")
+}
+
+// The group with fewer values is whole and the group with more flows, whichever side it is at: a form counts as the values it shows, so a
+// button and a form of several values are not two against two.
+func TestTheGroupWithMoreValuesIsTheOneThatFlows(t *testing.T) {
+	t.Parallel()
+
+	one := webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}
+	many := webui.Form[toolArgs]{Title: "Many", Load: func(context.Context) (toolArgs, webui.Loaded) { return toolArgs{}, webui.Ready() }, Fields: []webui.Accessor[toolArgs]{
+		webui.String[toolArgs]{Label: "A", Load: func(toolArgs) string { return "a" }},
+		webui.String[toolArgs]{Label: "B", Load: func(toolArgs) string { return "b" }},
+	}}
+	bar := func(tb webui.Toolbar) string {
+		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: tb}}}.MustCompile("/admin")
+		return serve(h, http.MethodGet, "/admin/tools").Body.String()
+	}
+
+	right := bar(webui.Toolbar{Left: []webui.ToolbarItem{one}, Right: []webui.ToolbarItem{many}})
+	assert.Contains(t, right, `<span class="toolbar-start">`)
+	assert.Contains(t, right, `class="toolbar-end toolbar-flows"`)
+
+	left := bar(webui.Toolbar{Left: []webui.ToolbarItem{many}, Right: []webui.ToolbarItem{one}})
+	assert.False(t, strings.Contains(left, "toolbar-start"))
+	assert.Contains(t, left, `<span class="toolbar-gap" aria-hidden="true"></span>`)
+	assert.Contains(t, left, `<span class="toolbar-end">`)
 }

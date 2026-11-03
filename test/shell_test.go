@@ -245,8 +245,7 @@ func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t 
 	assert.Contains(t, css, "width: var(--sidebar-w, 240px);")
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-resize {\n  display: none;")
 	// The rail keeps its own width, which the variable does not touch: the rules for it say a literal.
-	assert.Contains(t, css, "html[data-sidebar='collapsed'] .sidebar {\n  width: 56px;")
-	assert.Contains(t, css, "  .sidebar {\n    width: 56px;")
+	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .sidebar {\n    width: 56px;")
 
 	// No handle is in the page, so one that has no script has none.
 	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/device/d1").Body.String(), "side-resize"))
