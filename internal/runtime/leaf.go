@@ -45,7 +45,7 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	first := n.Tabs[0].Key
 	var shown []ir.Tab // a tab with nothing visible in it (every panel under a When that does not hold) is left out
 	for _, t := range n.Tabs {
-		if p.visible(ctx, page, t.Body) {
+		if p.visible(ctx, req, page, t.Body) {
 			shown = append(shown, t)
 		}
 	}
@@ -88,18 +88,18 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 // visible is whether n can show anything: a When shows when its condition holds and its child can show something, a
 // layout when any of its children can (one declared with none is as declared), and a leaf always. A When whose
 // condition cannot be decided counts as hidden, as it does where it is drawn.
-func (p *Program) visible(ctx context.Context, page *ir.Page, n ir.Node) bool {
+func (p *Program) visible(ctx context.Context, req *Request, page *ir.Page, n ir.Node) bool {
 	switch n := n.(type) {
 	case *ir.When:
-		shown, ok := p.whenShown(ctx, page, n)
-		return ok && shown && p.visible(ctx, page, n.Child)
+		shown, ok := req.whenShown(ctx, p, page, n)
+		return ok && shown && p.visible(ctx, req, page, n.Child)
 	case *ir.Stack:
-		return p.anyVisible(ctx, page, n.Children)
+		return p.anyVisible(ctx, req, page, n.Children)
 	case *ir.Columns:
-		return p.anyVisible(ctx, page, n.Children)
+		return p.anyVisible(ctx, req, page, n.Children)
 	case *ir.Tabs:
 		for _, t := range n.Tabs {
-			if p.visible(ctx, page, t.Body) {
+			if p.visible(ctx, req, page, t.Body) {
 				return true
 			}
 		}
@@ -108,12 +108,12 @@ func (p *Program) visible(ctx context.Context, page *ir.Page, n ir.Node) bool {
 	return true
 }
 
-func (p *Program) anyVisible(ctx context.Context, page *ir.Page, nodes []ir.Node) bool {
+func (p *Program) anyVisible(ctx context.Context, req *Request, page *ir.Page, nodes []ir.Node) bool {
 	if len(nodes) == 0 {
 		return true
 	}
 	for _, c := range nodes {
-		if p.visible(ctx, page, c) {
+		if p.visible(ctx, req, page, c) {
 			return true
 		}
 	}

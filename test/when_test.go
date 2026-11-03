@@ -328,6 +328,18 @@ func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
 	assert.False(t, strings.Contains(body, ">Inside<"))
 }
 
+// The condition of a When in a tab is asked once per request, for whether the tab is shown and for drawing it.
+func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
+	t.Parallel()
+
+	var g gate
+	g.open.Store(true)
+	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, ">Inside<")
+	assert.Equal(t, int(g.loads.Load()), 1)
+}
+
 func TestTabsWithNoVisibleTabDrawNothing(t *testing.T) {
 	t.Parallel()
 

@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"sync"
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render"
@@ -15,6 +16,39 @@ func (p *Program) whenShown(ctx context.Context, page *ir.Page, n *ir.When) (sho
 		return false, false
 	}
 	return n.Show.Get(model) == "true", true
+}
+
+// whenCache is what each When of a page decided, for one request, so that a When is asked once however many times it is
+// looked at: to say whether a tab is shown, and again to draw it. It is shared by the copies of the request that its panels
+// are built with. A request without one (a refresh of a leaf, an export) asks each time.
+type whenCache struct {
+	mu sync.Mutex
+	m  map[*ir.When]*whenResult
+}
+
+type whenResult struct {
+	once      sync.Once
+	shown, ok bool
+}
+
+// whenShown is [Program.whenShown], asked once per request when the request has a cache.
+func (req *Request) whenShown(ctx context.Context, p *Program, page *ir.Page, n *ir.When) (shown, ok bool) {
+	if req == nil || req.whens == nil {
+		return p.whenShown(ctx, page, n)
+	}
+	c := req.whens
+	c.mu.Lock()
+	if c.m == nil {
+		c.m = map[*ir.When]*whenResult{}
+	}
+	r := c.m[n]
+	if r == nil {
+		r = &whenResult{}
+		c.m[n] = r
+	}
+	c.mu.Unlock()
+	r.once.Do(func() { r.shown, r.ok = p.whenShown(ctx, page, n) })
+	return r.shown, r.ok
 }
 
 // gatesOf maps the id of each leaf and each Tabs that is under a When to the Whens above it, the outermost first. A leaf that is under none is not in it. The ids
