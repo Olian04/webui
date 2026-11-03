@@ -137,3 +137,17 @@ func TestTheLandingPagesCrumbReplacesItsNavigationLabelInTheTrail(t *testing.T) 
 	body := serve(webui.App{Pages: webui.Pages{home}}.MustCompile("/admin"), http.MethodGet, "/admin/").Body.String()
 	assert.Contains(t, body, `<span class="cur" aria-current="page">All systems</span>`)
 }
+
+// On a narrow screen the trail is cut to the parent of the page and the page, by the stylesheet alone: every crumb is
+// still in the markup, and none of it carries a class for the cut.
+func TestANarrowScreenCutsTheCrumbsToTheParentAndThePage(t *testing.T) {
+	t.Parallel()
+
+	h := bucketApp()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "@media (max-width: 640px) {\n  .crumbs > :nth-last-child(n + 4) {\n    display: none;")
+
+	body := serve(h, http.MethodGet, "/admin/bucket/photos/2026/img.png").Body.String()
+	assert.Contains(t, body, `<a href="/admin/bucket">Buckets</a>`)
+	assert.Contains(t, body, `<span class="cur" aria-current="page">`)
+}
