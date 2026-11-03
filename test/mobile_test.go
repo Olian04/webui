@@ -91,6 +91,9 @@ func TestThePhoneDrawerKeepsTheOrderOfTheBarAndTheHoverOfTheButtons(t *testing.T
 	assert.Contains(t, css, "  .top-right > *,\n  .top-right > .js-only > * {\n    order: 1;")
 	assert.Contains(t, css, "  .nav-toggle:hover ~ .app .nav-open,\n  .top-more-toggle:hover + .top-more {\n    background: var(--hover);")
 
+	assert.Contains(t, css, "  .top-right > .menu > .menu-pop {\n    position: static;")
+	assert.Contains(t, css, "    .top-right > .menu::details-content {\n      content-visibility: visible;")
+
 	top := topBar(t, serve(h, http.MethodGet, "/admin/device").Body.String())
 	refresh, theme := strings.Index(top, "data-refresh"), strings.Index(top, "theme-toggle")
 	assert.True(t, refresh >= 0 && refresh < theme)

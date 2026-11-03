@@ -3248,6 +3248,31 @@ html.js .status-meta [data-built] {
     height: 40px;
   }
 
+  /* The app's links are not a popover in the drawer (it would overflow the drawer and be clipped): they are its last entries, like the
+     sidebar's, in the page's flow. Where a browser cannot show a closed <details> body, the button stays and opens them in place. */
+  .top-right > .menu {
+    order: 4;
+    flex: 1 1 100%;
+  }
+  .top-right > .menu > .menu-pop {
+    position: static;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+  @supports selector(::details-content) {
+    .top-right > .menu > summary {
+      display: none;
+    }
+    .top-right > .menu::details-content {
+      content-visibility: visible;
+      display: block;
+    }
+  }
+
   /* What is in the content is held to the window. */
   .scroll {
     padding-inline: 8px;
