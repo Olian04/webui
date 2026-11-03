@@ -326,6 +326,9 @@ func TestTheFooterOffersBothFilesAsPlainLinksThatKeepTheViewAndNotThePage(t *tes
 	h := stockApp(rowsTable(many))
 	body := serve(h, http.MethodGet, "/admin/s?items.sort=qty&items.desc=true&items.offset=25").Body.String()
 	assert.Contains(t, body, `<div class="pager-export">`)
+	// The two files are one Export button and a menu, and not a button each.
+	assert.Contains(t, body, `<details class="menu export-menu">`)
+	assert.Equal(t, strings.Count(body, `class="menu-item" href="/admin/s?items.`), 2)
 	assert.Contains(t, body, `href="/admin/s?items.desc=true&amp;items.export=csv&amp;items.sort=qty"`)
 	assert.Contains(t, body, `href="/admin/s?items.desc=true&amp;items.export=json&amp;items.sort=qty"`)
 	assert.Contains(t, body, `download=""`) // left to the browser, not fetched into the panel

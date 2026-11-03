@@ -1517,6 +1517,22 @@ html:not(.js) .actionbar .dim {
   gap: 6px;
   margin-right: auto;
 }
+/* The files are a menu that opens upward, since the footer is the bottom of its panel. */
+.export-menu summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.export-chevron {
+  font-size: 10px;
+}
+.export-menu .menu-pop {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  min-width: 120px;
+}
 .pager-export-label,
 .pager-export-note {
   font-size: 12.5px;
@@ -3175,10 +3191,6 @@ html.js .status-meta [data-built] {
   }
   .panel-foot {
     flex-wrap: wrap;
-  }
-  .pager-export {
-    flex: 1 1 100%;
-    margin-right: 0;
   }
   .toasts {
     left: 8px;

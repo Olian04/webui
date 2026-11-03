@@ -256,23 +256,23 @@ type ExportLink struct {
 	Href   string
 }
 
-// exportLinks are the download links of a table footer, beside the range. They carry the
-// download attribute, so a script that refreshes a panel when a link leads to the same page
-// leaves them to the browser.
+// exportLinks are the download links of a table footer, beside the range: one Export button, and the files behind it, so that the footer is one row
+// however many formats there are. It is a <details>, so it opens without script. The links carry the download attribute, so a script that
+// refreshes a panel when a link leads to the same page leaves them to the browser.
 templ exportLinks(links []ExportLink, note string) {
 	if len(links) > 0 {
 		<div class="pager-export">
-			<span class="pager-export-label">Export</span>
-			for _, l := range links {
-				@Button(ButtonProps{
-					Href:    l.Href,
-					Size:    SizeSmall,
-					Variant: VariantGhost,
-					Attrs: templ.Attributes{"download": "", "title": "Download the rows as " + l.Format, "aria-label": "Download the rows as " + l.Format},
-				}) {
-					{ l.Label }
-				}
-			}
+			<details class="menu export-menu">
+				<summary class="btn btn-ghost btn-sm" title="Download the rows">
+					Export
+					@Icon(IconProps{Name: IconChevron, Class: "export-chevron"})
+				</summary>
+				<div class="menu-pop">
+					for _, l := range links {
+						<a class="menu-item" href={ l.Href } download="" title={ "Download the rows as " + l.Format } aria-label={ "Download the rows as " + l.Format }>{ l.Label }</a>
+					}
+				</div>
+			</details>
 			if note != "" {
 				<span class="pager-export-note">{ note }</span>
 			}
