@@ -80,3 +80,18 @@ func TestAPhoneIsUsableWithAScreenReader(t *testing.T) {
 		assert.Contains(t, enhance, want)
 	}
 }
+
+// The buttons in the drawer are in the order of the bar (Refresh, the theme, the links), also the one that script draws, which a wrapper without a
+// box of its own holds; and a pointer over a box hovers its button.
+func TestThePhoneDrawerKeepsTheOrderOfTheBarAndTheHoverOfTheButtons(t *testing.T) {
+	t.Parallel()
+
+	h := navApp()
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "  .top-right > *,\n  .top-right > .js-only > * {\n    order: 1;")
+	assert.Contains(t, css, "  .nav-toggle:hover ~ .app .nav-open,\n  .top-more-toggle:hover + .top-more {\n    background: var(--hover);")
+
+	top := topBar(t, serve(h, http.MethodGet, "/admin/device").Body.String())
+	refresh, theme := strings.Index(top, "data-refresh"), strings.Index(top, "theme-toggle")
+	assert.True(t, refresh >= 0 && refresh < theme)
+}

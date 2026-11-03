@@ -3117,6 +3117,13 @@ html.js .status-meta [data-built] {
   .top-more {
     display: grid;
   }
+  /* The box is over its button, so a pointer (a mouse on a phone or a tablet is one) is over the box and not the button: the box says
+     for the button that it is hovered. */
+  .nav-toggle:hover ~ .app .nav-open,
+  .top-more-toggle:hover + .top-more {
+    background: var(--hover);
+    color: var(--text);
+  }
   .top-more-toggle:checked + .top-more {
     background: var(--hover);
     color: var(--text);
@@ -3216,8 +3223,9 @@ html.js .status-meta [data-built] {
     transition: transform 0.18s ease-out;
   }
   /* The order they are read in is the order of the bar; the order they are drawn in puts the buttons first. */
-  .top-right > * {
-    order: 1;
+  .top-right > *,
+  .top-right > .js-only > * {
+    order: 1; /* what a wrapper that is not a box of its own (display: contents) holds is in the row, and is as much one of them */
   }
   .top-right .search {
     order: 2;
