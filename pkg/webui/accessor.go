@@ -561,11 +561,11 @@ func (a Slider[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// Bool projects a bool field of M: yes or no. Edited it is a checkbox, which is unchecked for no, and a browser does not send an unchecked one, so an absent field is no;
+// Bool projects a bool field of M: yes or no. Edited it is a toggle switch, which is off for no, and a browser does not send an unchecked checkbox, which a switch is underneath, so an absent field is no;
 // read it is a Yes or a No in a badge, and its filter in a table is a choice of the two. A value that may also be not set is an [OptionalBool]. Where a condition is
 // read from a model, as a [When] does, this is the accessor for it.
 type Bool[M any] struct {
-	// Label is the column header and the checkbox's label. In a table it also names the
+	// Label is the column header and the switch's label. In a table it also names the
 	// column in the address and in a [Query].
 	Label string
 
@@ -728,12 +728,8 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) float64")
 		validatePrecision(v, at, a.Precision)
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-	case Delta[M]:
-		common(a.Label, a.Load == nil, "func(M) float64, returning the change")
-		validateDelta(v, at, a)
-	case Series[M]:
-		common(a.Label, a.Load == nil, "func(M) []float64")
-		validateSeries(v, at, a)
+	case Trend[M]:
+		common(a.Label, a.Load == nil, "func(M) ([]float64, *float64), returning the points and the change")
 	case Group[M]:
 		if !site.allowGroup {
 			v.add(at+" is a Group in "+site.where,
@@ -778,7 +774,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Delta, Series, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
+			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
 	}
 }
 
@@ -896,10 +892,8 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Set = setter(a.Store, parseFloat)
 		f.Unset = unsetter(a.Store)
 		return f
-	case Delta[M]:
-		return lowerDelta(a, name)
-	case Series[M]:
-		return lowerSeries(a, name)
+	case Trend[M]:
+		return lowerTrend(a, name)
 	case Group[M]:
 		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
 	case Select[M]:

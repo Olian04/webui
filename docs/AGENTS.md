@@ -11,6 +11,7 @@
 | `internal/phone`   | Countries and calling codes, how a national number is spaced, E.164 normalising and the check of a phone number. The renderer draws the country selector of a phone field from it, and the server composes the number from the selector and the input; `phone.js` only spaces digits. |
 | `internal/favicon` | Scale an image to fit a square, with its proportions or padded (stdlib only): the favicons from `Brand.Logo`, and the thumbnails of `webui.Thumbnail`. |
 | `internal/rank`    | How well a search result matches what was typed: the score that orders the results.   |
+| `internal/trend`   | The arithmetic behind `webui.Trend`: a number written in three digits, a change with its sign and which way it moved as written, the number a file holds, and a series in words. |
 | `internal/convert` | List conversions between the declaration, the IR and the response.                    |
 | `internal/theme`   | The colour arithmetic behind `webui.Theme`: parsing, `color-mix` in sRGB, WCAG contrast, the design's palettes in Go (a test keeps them equal to `app.css`), the tokens a mode's `Canvas` and the four colours derive, and the check at `Compile` that they can be read. |
 | `internal/calendar` | The date arithmetic behind `webui.Calendar`: a month, the weeks of its grid with the weeks that begin on Monday or Sunday, the span they cover, ISO week numbers, and the month as the address spells it. Days are days in UTC. |
@@ -31,7 +32,7 @@
 | `skills/webui-upgrade` | Skill for agents moving a project between two versions of the library. Reads `docs/migrations/<version>.md` from the module cache; guarded by `test/skill_test.go`. |
 | `cmd/demo`         | Runnable demo app. Not part of the public API.                                    |
 
-`pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `stat` and `trend` (`Stat`, `Delta`, `Series`), `list` (`List`, `Cards`), `calendar` (`Calendar`), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
+`pkg/webui` files: `app`, `page`, `table`, `toolbar`, `form`, `editor`, `diff`, `markdown`, `language`, `language_gen` (generated), `layout`, `accessor`, `formatted` (`Email`, `Phone`, `Website`, `ColorPicker`), `nullable` (`Optional*`, `Bool`), `datetime`, `file` and `thumbnail` (uploads), `trend` (`Trend`), `list` (`List`, `Cards`), `calendar` (`Calendar`), `action`, `outcome`, `refusal`, `search`, `link`, `open`, `pattern`, `compile`, `compile_error`, `validate`, `lower`, and `doc` (the package documentation). One package, not one package per type. A type's `validate` and `lower` methods live beside it; `validate.go` and `lower.go` hold the entry points and shared state.
 
 The demo's tests (`cmd/demo/*_test.go`) are one file for each part of the demo, named for it (`devices_test.go`, `alerts_test.go`, `settings_test.go`, `guards_test.go`, ...), and `helpers_test.go` has what they share (`handler`, `handlerAs`, `get`, `post`, `follow`, `flashOf`, `searchResults`). A test for a new or changed feature goes in the file of the page it is about, or in a file of its own for a new page, so that two changes to the demo do not edit one file. They share the demo's one in-memory service, so none runs in parallel.
 
@@ -56,11 +57,13 @@ and `icons.txt` are generated from a Font Awesome Free download by
 `go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. `icons.txt`
 is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
 
+The shell has two widths, in `app.css`: a desktop (the sidebar as wide as its owner set it, or the rail by choice; a narrow window is a narrow desktop and changes nothing) and, up to 640px, a phone. The phone is the only width at which the shape of the shell changes (see "phone" in the stylesheet): the sidebar is a drawer behind a hamburger, the top bar's actions (search, Refresh, theme, links) are a menu behind a button, and the crumbs are cut to the parent and the page. The drawer and the menu are each a checkbox and its label, so they open without script; `enhance.js` only adds Escape. What is read has a narrow form at that width, in the stylesheet: a trend is its change alone, a bar is its number, and a description is its label underlined in place of an icon. A new element that does not fit a phone goes into one of those, and does not get a breakpoint of its own.
+
 ## Make invalid states unrepresentable
 
 Prefer a type error to an `App.Compile` error. Shape the declaration so that a wrong one does not compile, wherever that is possible:
 
-- a **boolean** where there are exactly two choices, and not a string type, which accepts any string and leaves the mistake to `Compile` (`Delta.LowerIsBetter` replaced a `Better` string type that accepted `"sideways"`);
+- a **boolean** where there are exactly two choices, and not a string type, which accepts any string and leaves the mistake to `Compile` (`Trend.LowerIsBetter`, which was `Delta.LowerIsBetter`, replaced a `Better` string type that accepted `"sideways"`);
 - a **typed value** that ties two things together (`PageID[A]`, so that a link's arguments are checked against the page's by the compiler);
 - a **separate field or type** where two settings cannot coexist, and no field that is only meaningful when another is set (a `Canvas` that needed a `Mode` was a compile error; a `Canvas` inside `Theme.Light` and `Theme.Dark` cannot be set wrongly).
 

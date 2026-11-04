@@ -265,7 +265,8 @@ func jsonCell(f ir.Field, row any) []byte {
 			return []byte("false")
 		}
 		return []byte("null")
-	case f.Nullable && f.Get(row) == "":
+	case (f.Nullable || f.Display == ir.DisplayTrend) && f.Get(row) == "":
+		// a trend that has no change holds no number
 		return []byte("null")
 	case f.Display == ir.DisplaySelect:
 		// A list of the values it holds, which is what it is, and not their labels: a value is what

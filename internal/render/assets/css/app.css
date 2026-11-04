@@ -480,6 +480,34 @@ a.side-brand:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Too narrow for the whole trail: the parent of the page and the page. From the end, the children are the page, the
+   separator before it, the parent, and the separator before that; the rest stay in the markup, visually hidden and still read (and
+   drawn while a key is on one). The parent shrinks with an ellipsis before it crowds the actions. */
+@media (max-width: 640px) {
+  .crumbs > :nth-last-child(n + 4) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
+  .crumbs > a:nth-last-child(n + 4):focus {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+  .crumbs a {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
 .top-right {
   margin-left: auto;
   display: flex;
@@ -516,7 +544,8 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   align-items: center;
   gap: 8px;
   height: 30px;
-  width: 290px;
+  flex: 0 1 290px; /* the width it is given, and less when the bar has no room for it */
+  min-width: 90px;
   padding: 0 9px;
   background: var(--input-bg);
   border: 1px solid var(--border);
@@ -621,12 +650,12 @@ html.js .search-submit {
   font-size: 10px;
 }
 
-/* A small chart of a list of numbers: a line, or a bar for each. It has no axes: it is the shape of the figures, beside the figure, and its
+/* A small chart of a list of numbers: a line. It has no axes: it is the shape of the figures, beside the figure, and its
    name has the values in words. */
 .spark {
   display: inline-block;
   width: 96px;
-  height: 28px;
+  height: 20px;
   vertical-align: middle;
   overflow: visible;
 }
@@ -640,57 +669,12 @@ html.js .search-submit {
 .spark-dot {
   fill: var(--blue-text);
 }
-.spark-bar {
-  fill: var(--text-2);
-}
-.spark-bar.spark-mark {
-  fill: var(--blue-text);
-}
 
-/* The tiles of a Stat: a list of terms and values, in a row that wraps. A tile draws the lines on its own top and left, which a later tile
-   paints over the edge of an earlier one, and the grid clips at its own edge, so a last row with fewer tiles has no stray line. */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(176px, 1fr));
-  margin: 0;
-  overflow: hidden;
-}
-.stat {
-  min-width: 0;
-  padding: 12px 14px;
-  background: var(--panel);
-  box-shadow:
-    -1px 0 0 var(--border),
-    0 -1px 0 var(--border);
-}
-.stat-label {
-  display: flex;
+/* A trend: the change and, beside it, the shape that led to it. */
+.trend {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  color: var(--text-2);
-  font-size: 12px;
-}
-.stat-value {
-  margin: 4px 0 0;
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.25;
-  font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
-}
-.stat-value .gauge {
-  font-size: 24px;
-}
-.stat-change {
-  margin: 4px 0 0;
-  font-size: 13px;
-}
-.stat-trend {
-  margin: 8px 0 0;
-}
-.stat-trend .spark {
-  width: 144px; /* a tile has room for a larger chart than a cell does, in the same proportions */
-  height: 42px;
+  gap: 8px;
 }
 
 /* A list of items: a list is a column of them, and cards are a grid that wraps or a row that scrolls sideways. An item is a headline, a badge and a line of small
@@ -709,6 +693,12 @@ html.js .search-submit {
   gap: 12px;
   align-items: flex-start;
   min-width: 0;
+}
+/* A long list scrolls past the height a table panel is capped at. */
+.list {
+  max-height: max(16rem, calc(100vh - var(--content-chrome)));
+  max-height: max(16rem, calc(100dvh - var(--content-chrome)));
+  overflow-y: auto;
 }
 .list .item {
   padding: 10px 14px;
@@ -933,7 +923,6 @@ html.js .search-submit {
   font-size: 12.5px;
   color: var(--text-2);
 }
-
 
 /* ------------------------------ content ---------------------------------- */
 .scroll {
@@ -1544,6 +1533,22 @@ html:not(.js) .actionbar .dim {
   gap: 6px;
   margin-right: auto;
 }
+/* The files are a menu that opens upward, since the footer is the bottom of its panel. */
+.export-menu summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.export-chevron {
+  font-size: 10px;
+}
+.export-menu .menu-pop {
+  top: auto;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: auto;
+  min-width: 120px;
+}
 .pager-export-label,
 .pager-export-note {
   font-size: 12.5px;
@@ -1653,9 +1658,11 @@ html:not(.js) .actionbar .dim {
 .field:last-child {
   margin-bottom: 0;
 }
+/* Two fields side by side where each has room for 220px, and one under the other where it has not: the room is the panel's, which is not
+   the window's (a panel is beside another one, or the sidebar is wide). A field may be narrower than what is in it asks for. */
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -1666,6 +1673,7 @@ html:not(.js) .actionbar .dim {
    left the right-hand one with none. */
 .field-row .field {
   margin-bottom: 0;
+  min-width: 0;
 }
 .panel-foot.end {
   justify-content: flex-end;
@@ -1681,14 +1689,10 @@ html:not(.js) .actionbar .dim {
 .toolbar > form {
   display: contents;
 }
-/* The values of one form of the toolbar are a group of their own, in the row as if each were an item of it: the gaps are the toolbar's, and the group
-   wraps within itself when it is wider than the row. */
+/* The values of one form of the toolbar are not a group of their own: each is an item of the toolbar, so the row is filled across the forms and
+   wraps once, not once for each form. */
 .toolbar-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px 10px;
-  min-width: 0;
+  display: contents;
 }
 /* A value of a model that the toolbar loaded, read: its label and what it is. */
 .toolbar-value {
@@ -1707,23 +1711,48 @@ html:not(.js) .actionbar .dim {
 .toolbar-val {
   color: var(--text);
 }
+/* A trend in the toolbar is a value in a row of 32px: the chart is smaller than it is in a cell, in the same proportions, so that it does not make the row taller than it is. */
+.toolbar-val .trend {
+  vertical-align: middle;
+}
+.toolbar-val .spark {
+  width: 72px;
+  height: 15px;
+}
 .toolbar-val.bad {
   color: var(--red);
 }
 /* The left controls and the right ones are one row with a gap between them that takes what is left over, so the right ones
-   are at the right edge. When there is no room for them all in a row (script says so, with .wrapped), the gap is gone and
-   they flow from the left in rows, as one group. */
+   are at the right edge: of the row that they are in, when the controls are in several. The gap costs no room of its own: the
+   toolbar puts its 10px between every two items, and this one takes back the second of the two it is between. */
 .toolbar-gap {
   flex: 1 1 0;
   min-width: 0;
+  margin-inline-end: -10px;
 }
-.toolbar.wrapped .toolbar-gap {
-  display: none;
+/* The right controls are one item of the row: they are in it whole, or they are all in the next row, where they are at the right edge
+   too. They wrap among themselves only when they are wider than a row. */
+.toolbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  min-width: 0;
+  margin-inline-start: auto;
+  justify-content: flex-end;
 }
-@media (max-width: 760px) {
-  .field-row {
-    grid-template-columns: 1fr;
-  }
+/* When the right controls are the many, the left ones are the group that is whole (.toolbar-start), and the right ones fill what it leaves, from the right
+   edge, in rows that are at the right edge. The room that they need to be beside it is the widest of them, and if there is not that much they are the next row. */
+.toolbar-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 10px;
+  min-width: 0;
+}
+.toolbar-end.toolbar-flows {
+  flex: 1 1 0;
+  min-width: min-content;
 }
 .lbl-row {
   display: flex;
@@ -1843,11 +1872,14 @@ td .multiline {
 /* The queue is out of sight and still there for a reader while it has nothing to show, which is what lets what is put in it be announced. */
 .upload-queue[data-quiet] {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: 0;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
 }
 .upload-item {
   display: flex;
@@ -2567,6 +2599,58 @@ html.js button.toast-close-js {
 .md pre:focus-visible {
   box-shadow: inset 0 0 0 2px var(--ring);
 }
+/* A code block with its copy button at the top right, which is there only with script. The button is over the block's own corner and is shown when the block is
+   pointed at or has focus in it, and always where there is no pointer to point with; the block keeps its width, and its text is not under the button for long
+   (a block is padded at the right by the button's width, so that a line is not hidden by it). */
+.md-code {
+  position: relative;
+  margin: 0 0 12px;
+}
+.md-code pre {
+  margin: 0;
+  padding-right: 36px;
+}
+.md-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  background: var(--panel);
+  color: var(--text-2);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.13s;
+}
+.md-code:hover .md-copy,
+.md-code:focus-within .md-copy,
+.md-copy:focus-visible,
+.md-copy[data-copied] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .md-copy {
+    opacity: 1;
+  }
+}
+.md-copy:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.md-copy:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.md-copy[data-copied] {
+  color: var(--green);
+}
+.md-copy .fa-solid {
+  font-size: 12px;
+}
 /* A table is the app's table: a header on the hover surface, 13px cells, a rule between
    rows and none after the last, no lines between columns. It is framed, since in a text
    it is not a panel's content but a part of it, and it scrolls by itself when it is wide. */
@@ -2683,7 +2767,6 @@ html.js button.toast-close-js {
   color: var(--text);
   font-weight: 500;
 }
-
 
 /* ------------------------------ status bar ------------------------------- */
 .statusbar,
@@ -2805,7 +2888,7 @@ html.js button.toast-close-js {
 html.js .status-meta [data-built] {
   display: none;
 }
-@media (max-width: 720px) {
+@media (max-width: 640px) {
   .sb-opt,
   .sb-timing {
     display: none;
@@ -2882,83 +2965,31 @@ html.js .status-meta [data-built] {
   }
 }
 
-/* The rail by choice, on any width: the sidebar's collapse button sets it. It
-   repeats the narrow-screen rules below because a media query cannot be
-   combined with an attribute. */
-html[data-sidebar='collapsed'] .sidebar {
-  width: 56px;
-  flex: 0 0 56px;
-}
-html[data-sidebar='collapsed'] .side-brand b,
-html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
-html[data-sidebar='collapsed'] .side-row > span {
-  display: none;
-}
-/* A section's caption is a short dash in the rail, so the groups can be told apart: 21px of height for each
-   group, with the caption in a tooltip, and none above the first group, which has nothing before it. It is
-   short and thick where the line under the brand is the width of the rail and thin, so the two are not
-   taken for each other: one is an edge, the other says that the icons around it are a group. It is as quiet as
-   a border, so that it is not taken for another icon. */
-html[data-sidebar='collapsed'] .nav-section {
-  height: 21px;
-  padding: 0;
-  overflow: hidden;
-  font-size: 0;
-}
-html[data-sidebar='collapsed'] .nav-section::before {
-  content: '';
-  display: block;
-  width: 32px;
-  height: 3px;
-  margin: 9px auto 0;
-  border-radius: 2px;
-  background: var(--border-2);
-}
-html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
-  display: none;
-}
-html[data-sidebar='collapsed'] .side-brand {
-  justify-content: center;
-  padding: 0;
-}
-html[data-sidebar='collapsed'] .nav-item {
-  justify-content: center;
-  padding: 0;
-}
-html[data-sidebar='collapsed'] .nav-item .ni-letter {
-  visibility: visible;
-}
-html[data-sidebar='collapsed'] .side-foot {
-  padding-inline: 0;
-}
-html[data-sidebar='collapsed'] .side-row {
-  justify-content: center;
-}
-html[data-sidebar='collapsed'] .side-collapse-icon {
-  transform: rotate(-90deg);
-}
-
-@media (max-width: 820px) {
-  .side-collapse,
-  .side-resize {
-    display: none; /* a narrow screen is always a rail */
-  }
-  .sidebar {
+/* The rail, by choice: the sidebar's collapse button sets it. It is the only way to the rail; a narrow window does not make
+   one. A phone has no rail: the sidebar there is a drawer (see the phone tier), so a
+   stored choice of the rail does not reach it. */
+@media (min-width: 641px) {
+  html[data-sidebar='collapsed'] .sidebar {
     width: 56px;
     flex: 0 0 56px;
   }
-  .side-brand b,
-  .nav-item span:not(.ni-letter),
-  .side-row > span {
+  html[data-sidebar='collapsed'] .side-brand b,
+  html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
+  html[data-sidebar='collapsed'] .side-row > span {
     display: none;
   }
-  .nav-section {
+  /* A section's caption is a short dash in the rail, so the groups can be told apart: 21px of height for each
+     group, with the caption in a tooltip, and none above the first group, which has nothing before it. It is
+     short and thick where the line under the brand is the width of the rail and thin, so the two are not
+     taken for each other: one is an edge, the other says that the icons around it are a group. It is as quiet as
+     a border, so that it is not taken for another icon. */
+  html[data-sidebar='collapsed'] .nav-section {
     height: 21px;
     padding: 0;
     overflow: hidden;
     font-size: 0;
   }
-  .nav-section::before {
+  html[data-sidebar='collapsed'] .nav-section::before {
     content: '';
     display: block;
     width: 32px;
@@ -2967,47 +2998,320 @@ html[data-sidebar='collapsed'] .side-collapse-icon {
     border-radius: 2px;
     background: var(--border-2);
   }
-  .side-scroll > .nav-section:first-child {
+  html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
     display: none;
   }
-  .side-brand {
+  html[data-sidebar='collapsed'] .side-brand {
     justify-content: center;
     padding: 0;
   }
-  .nav-item {
+  html[data-sidebar='collapsed'] .nav-item {
     justify-content: center;
     padding: 0;
   }
-  .nav-item .ni-letter {
+  html[data-sidebar='collapsed'] .nav-item .ni-letter {
     visibility: visible;
   }
-  .side-foot {
+  html[data-sidebar='collapsed'] .side-foot {
     padding-inline: 0;
   }
-  .side-row {
+  html[data-sidebar='collapsed'] .side-row {
     justify-content: center;
   }
-  /* A narrow window keeps its search, smaller, and without the key it names (there is no keyboard to press it on, as often as not). */
-  .search {
-    width: auto;
-    flex: 1 1 90px;
-    max-width: 200px;
-    min-width: 0;
-  }
-  .search .kbd {
-    display: none;
+  html[data-sidebar='collapsed'] .side-collapse-icon {
+    transform: rotate(-90deg);
   }
 }
 
+/* ------------------------------ phone ------------------------------------ */
+/* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
+   up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
+   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
+   the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
+   checkbox and its label, the way the rest of the shell works without script, so what is below is the whole of it; script
+   only adds Escape to close them (see enhance.js). None of the boxes or buttons are drawn above 640px. */
+.nav-toggle,
+.nav-open,
+.nav-backdrop,
+.top-backdrop,
+.top-more-toggle,
+.top-more {
+  display: none;
+}
+@media (max-width: 640px) {
+  /* The boxes are not drawn, and are the buttons: each is laid over the button that it opens, the size of it, so that a touch on the
+     button is a touch on the box (a screen reader that is felt over the screen finds the box, which has the name), and a key
+     reaches it in the order of the page. The bar is 48px high, with 12px at each side; the button is 40px. */
+  .nav-toggle,
+  .top-more-toggle {
+    display: block;
+    position: fixed;
+    top: 4px;
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 31;
+  }
+  .nav-toggle {
+    left: 12px;
+  }
+  .top-more-toggle {
+    right: 12px;
+  }
+  .nav-toggle:focus-visible ~ .app .nav-open,
+  .top-more-toggle:focus-visible + .top-more {
+    outline: 2px solid var(--blue);
+    outline-offset: -2px;
+  }
+  .nav-open,
+  .top-more {
+    display: grid;
+  }
+  /* The box is over its button, so a pointer (a mouse on a phone or a tablet is one) is over the box and not the button: the box says
+     for the button that it is hovered. */
+  .nav-toggle:hover ~ .app .nav-open,
+  .top-more-toggle:hover + .top-more {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .top-more-toggle:checked + .top-more {
+    background: var(--hover);
+    color: var(--text);
+  }
+  .iconbtn {
+    width: 40px;
+    height: 40px;
+  }
+  .crumbs {
+    flex: 1;
+  }
+
+  /* The sidebar is a drawer over the page, closed until the box is ticked. Closed it is not visible, which is also what takes
+     it out of the order of the keys; the delay on that keeps it from vanishing before it has slid away. */
+  .side-collapse,
+  .side-resize {
+    display: none;
+  }
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: auto;
+    width: min(280px, 85vw);
+    flex: none;
+    z-index: 60;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.18s ease-out,
+      visibility 0s linear 0.18s;
+  }
+  .nav-toggle:checked ~ .app .sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.18s ease-out;
+  }
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgb(0 0 0 / 50%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s;
+  }
+  .nav-toggle:checked ~ .app .nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .nav-item {
+    min-height: 44px;
+  }
+  /* The footer holds the switch that narrows the sidebar to its rail; the drawer has no rail, so the footer has nothing to hold. */
+  .side-foot {
+    display: none;
+  }
+
+  /* The actions of the top bar are a drawer of their own, from the right (the sidebar's is from the left), opened by the button at
+     the right of the bar: the buttons at its head, the search under them, and its results under that, which are the drawer's
+     own and not a box over the page. Closed it is not visible, which takes it out of the order of the keys. */
+  .top-more-toggle:checked ~ .top-backdrop {
+    display: block;
+  }
+  .topbar:has(.top-more-toggle:checked) {
+    z-index: 70; /* over the status bar, and the other drawer */
+  }
+  .top-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 50%);
+  }
+  .top-right {
+    display: flex;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    width: min(320px, 85vw);
+    flex-wrap: wrap;
+    align-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    margin-left: 0;
+    padding: 8px 12px;
+    overflow-y: auto;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition:
+      transform 0.18s ease-out,
+      visibility 0s linear 0.18s;
+  }
+  .top-more-toggle:checked ~ .top-right {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.18s ease-out;
+  }
+  /* The order they are read in is the order of the bar; the order they are drawn in puts the buttons first. */
+  .top-right > *,
+  .top-right > .js-only > * {
+    order: 1; /* what a wrapper that is not a box of its own (display: contents) holds is in the row, and is as much one of them */
+  }
+  .top-right .search {
+    order: 2;
+    flex: 1 1 100%;
+    max-width: none;
+    height: 36px;
+  }
+  .top-right .palette {
+    order: 3;
+    position: static;
+    flex: 1 1 100%;
+    width: auto;
+    max-height: none;
+    box-shadow: none;
+  }
+  .menu-pop {
+    max-width: calc(100vw - 24px);
+  }
+  .menu-item {
+    height: 40px;
+  }
+
+  /* The app's links are not a popover in the drawer (it would overflow the drawer and be clipped): they are its last entries, like the
+     sidebar's, in the page's flow. Where a browser cannot show a closed <details> body, the button stays and opens them in place. */
+  .top-right > .menu {
+    order: 4;
+    flex: 1 1 100%;
+  }
+  .top-right > .menu > .menu-pop {
+    position: static;
+    min-width: 0;
+    max-width: none;
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+  @supports selector(::details-content) {
+    .top-right > .menu > summary {
+      display: none;
+    }
+    .top-right > .menu::details-content {
+      content-visibility: visible;
+      display: block;
+    }
+  }
+
+  /* What is in the content is held to the window. */
+  .scroll {
+    padding-inline: 8px;
+  }
+  /* A phone is one column. At 640px the content is 624px wide, and two columns at the floor of 280px and the gap are 568px, which fit; the
+     floor is just over half of 624px less the gap, so that two never do, and the columns of a row wrap to a row each. */
+  .columns {
+    --column-min: 312px;
+  }
+  .panel-foot {
+    flex-wrap: wrap;
+  }
+  .toasts {
+    left: 8px;
+    right: 8px;
+  }
+  .toast {
+    min-width: 0;
+  }
+  .filter-pop {
+    min-width: min(220px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+  }
+  .msel-opt {
+    min-height: 40px;
+  }
+
+  /* The narrow form of what is read, where there is no room for more than the figure: a trend is its change, and not the chart or the arrow
+     (the sign and the unit say the direction, and the chart is still named for a reader who does not see it); a bar is its number. */
+  .trend .spark {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .delta .delta-arrow,
+  .gauge-track {
+    display: none;
+  }
+  /* A description is not an icon of its own: its label is underlined, and is what opens it, on hover as the icon was, and on focus, which
+     the description (still in the order of the keys, and the name of what it describes) has, with the label drawn as focused. */
+  .tip .info {
+    display: none;
+  }
+  .toolbar-lbl:has(+ .tip),
+  label.lbl:has(+ .tip),
+  .panel-title:has(+ .tip) {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+  }
+  .toolbar-lbl:has(+ .tip:focus),
+  label.lbl:has(+ .tip:focus),
+  .panel-title:has(+ .tip:focus) {
+    outline: 2px solid var(--blue);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  .toolbar-lbl:hover + .tip .tip-body,
+  label.lbl:hover + .tip .tip-body,
+  .panel-title:hover + .tip .tip-body {
+    display: block;
+  }
+}
 
 /* ---------------------------- actions & script --------------------------- */
+/* Hidden from sight, still read. A 1px box is still in the scrollable overflow, and clip
+   only hides the paint. The announcer sits after the shell, which is the window, so that
+   box is a scrollbar on the page. The margin cancels the pixel. */
 .sr-only {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
   clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
+  border: 0;
 }
 td.actions {
   text-align: right;
@@ -3320,11 +3624,7 @@ thead th .filter-pop a {
   .spark-line {
     stroke: CanvasText;
   }
-  .spark-bar {
-    fill: CanvasText;
-  }
-  .spark-dot,
-  .spark-bar.spark-mark {
+  .spark-dot {
     fill: Highlight;
   }
   .checkbox:checked,

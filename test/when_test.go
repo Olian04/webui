@@ -289,14 +289,64 @@ func TestAColumnWhoseWhenDoesNotHoldIsEmptyAndNotDrawn(t *testing.T) {
 	assert.Contains(t, css, ".col:empty {\n  display: none;\n}")
 }
 
-// In a Tabs a When that does not hold is a tab with nothing in it, which is why it belongs outside.
-func TestAWhenInATabsLeavesABlankTab(t *testing.T) {
+// A tab with nothing visible in it is hidden; the others stay, and the first of them is the default.
+func TestATabWithNoVisiblePanelIsHidden(t *testing.T) {
+	t.Parallel()
+
+	var g gate
+	h := editorApp(webui.Tabs{
+		{Label: "Maybe", Body: g.when(columnPanel("Inside"))},
+		{Label: "Always", Body: columnPanel("Outside")},
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.False(t, strings.Contains(body, ">Maybe<"))
+	assert.False(t, strings.Contains(body, ">Inside<"))
+	assert.Contains(t, body, ">Always<")
+	assert.Contains(t, body, ">Outside<")
+
+	g.open.Store(true)
+	body = serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, ">Maybe<")
+	assert.Contains(t, body, ">Inside<")
+}
+
+// Only the first declared tab goes without a parameter, so a link to another tab keeps meaning it when the first appears.
+func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
+	t.Parallel()
+
+	var g gate
+	h := editorApp(webui.Tabs{
+		{Label: "Maybe", Body: g.when(columnPanel("Inside"))},
+		{Label: "Always", Body: columnPanel("Outside")},
+	})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `class="tab active" href="/admin/e?tabs.tab=always"`)
+
+	g.open.Store(true)
+	body = serve(h, http.MethodGet, "/admin/e?tabs.tab=always").Body.String()
+	assert.Contains(t, body, ">Outside<")
+	assert.False(t, strings.Contains(body, ">Inside<"))
+}
+
+// The condition of a When in a tab is asked once per request, for whether the tab is shown and for drawing it.
+func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
+	t.Parallel()
+
+	var g gate
+	g.open.Store(true)
+	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, ">Inside<")
+	assert.Equal(t, int(g.loads.Load()), 1)
+}
+
+func TestTabsWithNoVisibleTabDrawNothing(t *testing.T) {
 	t.Parallel()
 
 	var g gate
 	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, ">Maybe<")
+	assert.False(t, strings.Contains(body, ">Maybe<"))
 	assert.False(t, strings.Contains(body, ">Inside<"))
 }
 

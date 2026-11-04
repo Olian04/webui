@@ -178,10 +178,8 @@ func TestANarrowWindowKeepsItsSearch(t *testing.T) {
 
 	h, _ := phoneForm("SE")
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	narrow := css[strings.Index(css, "@media (max-width: 820px) {"):]
-	narrow = narrow[:strings.Index(narrow, "\n}\n")]
-	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(narrow))
-	assert.Contains(t, narrow, ".search .kbd")
+	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(css))
+	assert.Contains(t, css, "flex: 0 1 290px;")
 }
 
 // --- structure and semantics ---------------------------------------------------------------------------------------------------------------------

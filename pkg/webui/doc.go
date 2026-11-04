@@ -228,7 +228,7 @@
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
 // and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing
-// when it is off. A [Bool] loads a bool, and is the checkbox: an absent field is no.
+// when it is off. A [Bool] loads a bool, and is a toggle switch: an absent field is no.
 //
 // An Int, a Float, an OptionalInt, an OptionalFloat, a Datetime and a Timestamp have a
 // Format, a function the application writes that says how the value reads where it is
@@ -814,20 +814,22 @@
 // its whole being its title. With script its edge can be dragged to a width of 180 to
 // 480px, no more than half the window, which the browser keeps (in its own storage,
 // never sent to the server) and which a double click or Enter on the edge resets; the
-// icon rail that a narrow window, or the collapse button, makes has a width of its own.
+// icon rail that the collapse button makes has a width of its own.
 //
 // # Figures
 //
-// A [Stat] is a leaf that shows a few figures of one model as tiles. A tile's Value is any accessor that is read, so a count, a [Select] drawn as a badge,
-// a [Slider] as a bar and a formatted size are each themselves; its Change is a [Delta] and its Trend a [Series], both optional.
+// There is no leaf for a few figures of one model: it is a [Table] of one row, with a value column and a [Trend] column beside it for each figure. Each Trend has
+// the direction of its own, so a latency that falls and a count that rises can both be good news in the one row.
 //
-// A Delta is a signed change, shown with its sign and an arrow, green when the way it moved is the good one and red when it is not: a rise is good news
-// by default, and LowerIsBetter says a fall is (a response time). A change that reads zero as it is shown has no direction and no colour. A Series is a list
-// of numbers drawn as a small chart where it is read, a line (SeriesLine) or bars (SeriesBars), with the values in words as its name, so that a reader who
-// cannot see it has them. Both are accessors, so they work in a [Table] column (a Delta sorts and filters as a number, a Series is neither sorted nor
-// filtered by, and a file of a table holds the points separated by semicolons), and in a read-only field of a [Form] or a [Toolbar].
+// A Trend is the shape of a figure over time and how much it moved. Its Load returns the points of a small chart and a change, as a percent. The chart is a
+// line with no axes, which marks its last point, and it has the values in words as its name, so that a reader who cannot see it has them. The change is
+// the app's to say (it may be set against yesterday while the line is of the last hour) and is shown with its sign and an arrow, green when the way it moved
+// is the good one and red when it is not: a rise is good news by default, and LowerIsBetter says a fall is (a response time). It is always written in three
+// digits (0.35%, 35.4%, 100%), and one that reads zero as it is shown has no direction and no colour. No points draw no chart and no change shows none. A
+// Trend is an accessor, so it works in a [Table] column (which sorts and filters by the change, and leaves out a row that has none from a range; a file of
+// a table holds the change as a number and not the points), and in a read-only field of a [Form] or a [Toolbar].
 //
-// See [ExampleStat].
+// See [ExampleTrend].
 //
 // # Items
 //

@@ -102,7 +102,7 @@ when the component set is not.
 | **Navigation** | |
 | `nav.templ` | `Sidebar`, `SidebarFooter`, `SidebarCollapse`, `NavSection`, `NavItem` |
 | `topbar.templ` | `TopBar`, `ThemeToggle`, `Search`, `ExternalLinks` |
-| `trend.templ` | `Delta`, `Spark`, `StatGrid`, `StatTile` |
+| `trend.templ` | `Delta`, `Spark`, `Trend` |
 | `items.templ` | `ItemList`, `Item` |
 | `calendar.templ` | `Calendar` |
 | **Feedback** | |

@@ -174,9 +174,9 @@ Four fixed regions. Only the content region scrolls.
 
 240px on the left unless a visitor has dragged it (180px to 480px, never more than half the
 window), panel surface, full height, always visible. It never
-becomes a top bar and never turns into a hamburger — below 820px it collapses
-to a 56px icon rail instead, and a button in its footer collapses it to the same
-rail at any width (the choice is a browser preference). The structure of the
+becomes a top bar and never turns into a hamburger on a desktop; a button in its footer collapses it
+to a 56px icon rail at any desktop width (the choice is a browser preference). On a phone
+(640px and under) it is a drawer behind a hamburger. The structure of the
 application is the one thing that should not disappear: when there is any.
 
 **An app has a sidebar when a page declares an entry for it.** It is drawn when any page has a `Nav` entry (a `Label`, or `NavEntries`), and not otherwise: where no page
@@ -374,7 +374,8 @@ from the same tokens.
   marker in `--text-3`, and a task list has the app's checkbox in place of the bullet.
 - **Code** is 12.5px monospace and a step quieter than prose: inline on `--hover` (1px 5px), a block on the input
   surface with a 1px rule, an 8px 10px inset and 2px corners. A block that names a language is coloured by the
-  editor, which the page then loads.
+  editor, which the page then loads. With script a block has a copy button at its top right (shown on hover or focus, always on touch);
+  it copies the block's text, turns to a check for a moment and says *Copied* to a screen reader.
 - **A table** is the app's table, framed: a 30px header on `--hover` at 12.5px, 34px rows at 13px, a rule between
   rows and none after the last, no lines between columns, and it scrolls by itself when it is wide.
 - **A picture** is drawn only from an origin the author trusts, no wider than the text and in line with it; any other
@@ -436,8 +437,9 @@ from the left. A toolbar with nothing to draw is not drawn; one whose options co
 **Checkboxes** are 15px, 2px radius, filling solid primary with a white check
 when set.
 
-**Switches** are 30×16 pills, used only for session-level modes, never for
-saved data.
+**Switches** are 30×16 pills: the track in the quiet border, the knob in the panel colour, and the primary colour with the knob moved 14px when on. A `Bool` that is edited is
+one, where it was a checkbox. It is a checkbox to the browser (`role="switch"`, named by its label), so it needs no script, and an off one is not sent. It has the focus ring of a control, and in
+forced colours the track is the highlight when on.
 
 **Absent, disabled, or gated.** A control that the visitor may not use is one of
 two things, and the application's Guard says which with what it returns. An ordinary
@@ -511,19 +513,17 @@ style of an input, and with several values a list of up to six rows, with the ch
 surface with a link-coloured fill, sitting after a right-aligned number. It shows
 where a value is in a range.
 
-**A change** is a signed number in a cell, a tile or a read-only field: an arrow, 10px, and the number with its sign and its unit (`+4.35%`, `−12 ms`, with the minus
-sign and not a hyphen), in tabular figures. It is green when the way it moved is the good one and red when it is not, which is the field's to say (`LowerIsBetter`: a response
-time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 at two decimals reads `0.00` and has no arrow and no colour, so that
-the text and the colour say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
+**A trend** is how a figure moved and the shape that led to it, in a cell or a read-only field: a small chart of a list of numbers, then the change on its right. Either may be absent for a
+model; with neither there is a dash.
 
-**A series** is a small chart of a list of numbers, 96×28 (a table's column is 120px wide), with no axes and no scale: it is the shape of the figures beside the
-figure. A line is 1.5px in the link text colour, with a 5px dot on the last point or the one that is marked; bars stand on zero, in the secondary text colour, 70% of their
-slot wide, with the marked one in the link colour. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 ms to 184 ms,
-lowest 134 ms, highest 210 ms*), so a reader who cannot see it has them; a file of a table has them, separated by semicolons. It is neither sorted nor filtered by. In forced
-colours the line and the bars are the text colour and the mark is the highlight.
+The change is a percent, with an arrow, 10px, and the number with its sign (`+4.35%`, `−12.0%`, with the minus sign and not a hyphen), in tabular figures. It is always three digits: two decimals
+under 10 (`0.35%`), one under 100 (`35.4%`), none from 100 (`100%`), counted as it is after rounding. It is green when the way it moved is the good one and red when it is not, which is the field's to say
+(`LowerIsBetter`: a response time that falls is good news), and text-secondary when it reads zero as it is shown: a rise of 0.001 reads `0%` and has no sign, no arrow and no colour, so that the text and the colour
+say one thing. The sign and the arrow are what say the direction, and a reader who does not see the colour is told "(better)" or "(worse)".
 
-**Tiles** are the figures of a `Stat`: a list of terms and values, in a row that wraps, in tiles at least 176px wide, separated by the border colour and by nothing else. A tile is a 12px
-label in text-secondary (with the popover of its help beside it), the value at 24/500 in tabular figures, then the change at 13px and the trend, 8px under it, each when it has them.
+The chart is 96×20 (a table's column is 120px wide for it, with the change on its right, on the same line), with no axes and no scale: it is the shape of the figures beside the figure. The line is 1.5px in the link text colour, with a
+5px dot on the last point; one point is a level line. It is an SVG that the server draws, with its values in words as its name (*Latency over the day: 24 values, from 140 to 184, lowest 134, highest 210*), so a reader
+who cannot see it has them. In forced colours the line is the text colour and the dot is the highlight. A column of trends sorts and filters by the change, and a file of a table has the change as a number and not the points.
 
 **Items** are a list, or cards. A list is a column of items, 14px headlines at weight 500 over a line of 12px small facts in text-secondary, in rows with a border between them, 10px by 14px of padding; the
 headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
@@ -668,8 +668,8 @@ piece.
 
 ## 14. Responsive
 
-One breakpoint that matters: **820px**, where the sidebar (when there is one) collapses to a 56px
-icon rail and the search field is dropped. Two minor ones: **1100px**, where a
+One breakpoint that matters: **640px**, where the shell becomes a phone (the sidebar a drawer, the
+top bar's actions a drawer). Above it the shell keeps its shape at every width, and the search field shrinks to the room the bar has. Two minor ones: **1100px**, where a
 split becomes a single column, and **760px**, where paired form fields stack.
 
 The design does not attempt a phone layout. A control plane on a phone is a

@@ -69,6 +69,43 @@ func TestAFencedBlockThatNamesALanguageAsksForTheEditorAndNeverForAService(t *te
 	assert.False(t, strings.Contains(serve(markdownApp("    indented\n"), http.MethodGet, "/admin/e").Body.String(), "monaco"))
 }
 
+func TestEachCodeBlockHasACopyButtonThatOnlyScriptShows(t *testing.T) {
+	t.Parallel()
+
+	body := serve(markdownApp("```\none\n```\n\ntext with `inline`\n\n```json\n{\"a\": 1}\n```\n"), http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, strings.Count(body, `<div class="md-code"><pre tabindex="0">`), 2) // one wrapper for each block, none for inline code
+	assert.Equal(t, strings.Count(body, `data-copy-code=`), 2)
+	assert.Contains(t, body, `<span class="js-only"><button class="md-copy" type="button" data-copy-code="one" aria-label="Copy code"`)
+	assert.Contains(t, body, `role="status" aria-live="polite"`)
+
+	// The text cannot bring a button of its own: raw markup is not drawn.
+	forged := serve(markdownApp("<button data-copy-code>x</button>\n"), http.MethodGet, "/admin/e").Body.String()
+	assert.False(t, strings.Contains(forged, `<button data-copy-code>`))
+
+	// Text without a block has none.
+	assert.False(t, strings.Contains(serve(markdownApp("just text"), http.MethodGet, "/admin/e").Body.String(), "data-copy-code"))
+}
+
+func TestTheCopyButtonCarriesTheBlockAsItWasWritten(t *testing.T) {
+	t.Parallel()
+
+	// Tabs, runs of spaces, blank lines, and characters that markup would change.
+	body := serve(markdownApp("```go\nfunc a() {\n\tif x < 1 && y > 2 {\n\n\t\treturn \"a\"  // two  spaces\n\t}\n}\n```\n"), http.MethodGet, "/admin/e").Body.String()
+	want := "func a() {\n\tif x &lt; 1 &amp;&amp; y &gt; 2 {\n\n\t\treturn &#34;a&#34;  // two  spaces\n\t}\n}"
+	assert.Contains(t, body, `data-copy-code="`+want+`"`)
+}
+
+func TestTheCopyButtonIsHandledByTheScriptAndStyledByTheSheet(t *testing.T) {
+	t.Parallel()
+
+	h := markdownApp("```\nx\n```\n")
+	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	assert.Contains(t, js, "[data-copy-code]")
+	assert.Contains(t, js, "clipboard")
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, ".md-copy")
+}
+
 func TestAMarkdownRefreshesAsALeafOfItsOwn(t *testing.T) {
 	t.Parallel()
 

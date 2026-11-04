@@ -136,7 +136,7 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 	if err != nil {
 		return nil, raw, http.StatusBadRequest, nil
 	}
-	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey]), Languages: r.Header.Get("Accept-Language")}
+	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey]), Languages: r.Header.Get("Accept-Language"), conditions: &conditionCache{}}
 	*r = *r.WithContext(With(r.Context(), req))
 	if page.Guard != nil {
 		if err := page.Guard(r.Context(), decoded); err != nil {
@@ -265,7 +265,7 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		kids, err := p.children(ctx, req, page, n.Children)
 		return render.Columns(kids, n.Weights), err
 	case *ir.When:
-		shown, ok := p.whenShown(ctx, page, n)
+		shown, ok := req.conditionShown(ctx, p, page, n)
 		if !ok {
 			return render.PanelFailed(""), nil // the condition could not be decided, and a condition that cannot be decided does not hold
 		}
@@ -281,8 +281,6 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) }), nil
 	case *ir.Markdown:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
-	case *ir.Stat:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.stat(ctx, req, page, n) }), nil
 	case *ir.Items:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.items(ctx, req, page, n) }), nil
 	case *ir.Calendar:

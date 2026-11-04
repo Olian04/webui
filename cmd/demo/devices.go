@@ -121,12 +121,12 @@ var (
 		Label: "Rate / s", Max: 15, StepSize: 0.01,
 		Load: func(d Device) float64 { return d.Rate() },
 	}
-	// A Series is a small chart where it is read: the shape of the last hour, beside the figure. It has no axes, and its name has the points in
-	// words. A column of it is neither sorted nor filtered by.
-	Recent = webui.Series[Device]{
-		Label: "Last hour", Unit: "/s", Precision: 1,
-		Load: func(d Device) []float64 { return d.Recent() },
-		Help: "The rate in each of the last twelve five-minute windows.",
+	// A Trend is a small chart where it is read, the shape of the last hour, with how much it moved beside it. The chart has no axes, and its name
+	// has the points in words. The column sorts and filters by the change, and a device that has none (it was idle at the start) sorts first.
+	Recent = webui.Trend[Device]{
+		Label: "Last hour",
+		Load:  func(d Device) ([]float64, *float64) { return d.Recent(), d.RecentChange() },
+		Help:  "The rate in each of the last twelve five-minute windows, and how much it moved from the first to the last, in percent.",
 	}
 )
 

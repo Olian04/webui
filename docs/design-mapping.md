@@ -48,12 +48,10 @@ into existence, and nothing is configured twice.
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
 | `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
-| `Stat` | One panel containing a row of tiles, one for each figure of a model: its label, its value as an accessor shows it, and its change and its trend when it has them |
 | `List` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
 | `Cards` | A `List` whose items are cards, in a grid that wraps or a row that scrolls sideways |
 | `Calendar` | One panel containing a month as a grid of days, each marked when it has items and a link when there is a page that says what is on it, with links to the months either side |
-| `Delta` | A signed change, in a cell, a tile or a read-only field: an arrow, the number with its sign and unit, in green or red by whether the way it moved is the good one |
-| `Series` | A small chart of a list of numbers, a line or bars, as an SVG with its values in words as its name; not sorted or filtered by |
+| `Trend` | A figure's shape and how much it moved, in a cell or a read-only field: a change with an arrow and its sign, in three digits, in green or red by whether the way it moved is the good one, and a small line chart of a list of numbers as an SVG with its values in words as its name; sorted and filtered by the change |
 | `Editor.Language`, `Diff.Language` | The highlighting of the text, and for an editor that can be edited the language service that may be loaded for it |
 | `Editor.Context` | What an editable editor's language service is given besides the text, as files the page names by address and the browser fetches |
 | `Markdown.TrustedOrigins` | The origins a picture in the text is drawn from, and the only ones the page's content security policy lets the browser fetch from; any other picture is a link |
@@ -87,7 +85,7 @@ into existence, and nothing is configured twice.
 | `Slider` | An inline bar in a table, and in a form that is only read; with a `Store`, see the next row |
 | `Slider` with a `Store` | A number input that is the control (it is submitted, has the bounds and the `step`, and works without script) with a range beside it, for script, to drag. `StepSize` is the distance between the values, from `Min`, or a power of ten that gives a hundred steps or more over the range; the value is shown with its decimals. The server holds a value to the step too, in the words the browser uses (`step="any"` submitted whatever the pointer was over, such as 81.6719540426991) |
 | `OptionalInt`, `OptionalFloat`, `OptionalSlider` | The number, slider and bar of the same names, for a value that may be absent (`Load` returns a pointer). Absent is an empty input with the field's placeholder, and a dash where it is only read, in a table and in a read-only form; an empty slider is dimmed, since its thumb must rest somewhere. Emptying the input stores `nil`, and `Required` refuses it. In a table it sorts first and is in no range; the CSV cell is empty and the JSON is `null` |
-| `Bool` | Yes or no (`Load` returns a `bool`): a checkbox where it is edited, which needs no script, and an unchecked one is not sent, so an absent field is no; a neutral Yes or No badge where it is read; its table filter is a choice of the two, a CSV holds the words and the JSON is `true` or `false` |
+| `Bool` | Yes or no (`Load` returns a `bool`): a toggle switch where it is edited (a checkbox underneath, so it needs no script), and an off one is not sent, so an absent field is no; a neutral Yes or No badge where it is read; its table filter is a choice of the two, a CSV holds the words and the JSON is `true` or `false` |
 | `OptionalBool` | Yes, no, or not set (`Load` returns a `*bool`): a drop-down of Yes and No with an empty option (a `<select>`, so it needs no script; a checkbox cannot be neither, and an unchecked one sends nothing), and a neutral Yes or No badge where it is read, with a dash for neither. Its table filter is a choice among them, and the JSON is `true`, `false` or `null` |
 | `Table.Rows`, `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
 | `Table.Feed` | A source that pages by cursor, in its own order, which a cursor continues and the library cannot filter: its columns have no filter and sort only the page on screen, and its footer is "Showing rows 10032–10054" with *First page*, *Previous* and *Next* |
@@ -213,7 +211,7 @@ name that is not in the free solid set (or is written `fa-house`) is a compile
 error, so a typo cannot draw nothing. Every icon the library draws for itself
 (info, alert, filter, sort carets, refresh) is a Font Awesome icon too. The sidebar can be collapsed to a 56px rail of icons, by the
 button in its footer (the choice is a browser preference, so it stays out of
-the address) and always below 820px. An entry with no icon holds the place of one
+the address); a narrow window does not make one. An entry with no icon holds the place of one
 in the full sidebar, so labels line up, and shows its label's first letter,
 capitalised, in the rail.
 
@@ -379,13 +377,6 @@ unless its origin is one of `TrustedOrigins`, which the page's content security 
 page and no other. It needs no script; a fenced block that names a language is coloured by the editor, which the page
 then loads, and is plain text in a monospace block without script.
 
-### `Stat` → a panel of tiles
-
-One panel. Header as above; the body is a list of terms and values laid out as tiles (`<dl>`, a tile for each figure), in a row that wraps. A tile has its label (without
-one, the label of its value), the value as its accessor shows it (a count, a badge, a bar, a formatted size: a tile has no way of showing a value that a cell cannot), and, when
-it has a `Load`, its change (a `Delta`) and its trend (a `Series`). It only reads, and it refreshes as any panel does. It is the answer to *"37 devices, up 3 since yesterday"*
-before the table of them, and a page that needs more of a figure than a tile says has a `Table` for it.
-
 ### `List` and `Cards` → a panel of items
 
 One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
@@ -404,11 +395,13 @@ not one, or not within 1900 to 2200, is the current month and not an error. `Ope
 a list of the items of a day, and the page that does is the app's. A week begins on Monday, or on Sunday with `SundayFirst`; `WeekNumbers` adds the ISO week numbers, which are of weeks that begin on Monday, so it cannot be combined with `SundayFirst`. `Today` is the clock unless
 given, for a test or an app whose data is of another day. It only reads, and it refreshes as any panel does.
 
-### `Delta` and `Series` → what a figure moved and what shape it has
+### `Trend` → what shape a figure has and how much it moved
 
-Two accessors that are only read, so they work where an accessor does: a column, a tile, a read-only field of a form or a toolbar. A `Delta` is a `Float` that is shown with its sign and an arrow, in
-a colour that says whether the direction is good (`LowerIsBetter: true` for a response time). It sorts, filters and exports on the number. A `Series` is a list of numbers drawn as a line or as bars, with
-`Highlight` for the point to mark and a text alternative made from its `Label` and its values. A column of `Series` has no sort link and no filter, and its cell in a file holds the points.
+An accessor that is only read, so it works where an accessor does: a column, a read-only field of a form or a toolbar. Its `Load` returns the points of a line and a change as a percent, and either may be
+absent for a model. The change is shown with its sign and an arrow, always in three digits (`0.35%`, `35.4%`, `100%`), in a colour that says whether the direction is good (`LowerIsBetter: true` for a response time),
+with a `(better)` or `(worse)` for a reader who does not see it; a change that reads zero has no sign, arrow or colour. The line is a sparkline with no axes that marks its last point, as an SVG with a text alternative made
+from its `Label` and its values. The column sorts and filters on the change, and its cell in a file holds that number and not the points; a row with no change has no number, so it sorts first and a range leaves it out, and a
+trend that never has one is declared with `NoSort` and `NoFilter`. A model with neither points nor change shows a dash.
 
 ### `Table.Export` → two download links
 
@@ -425,7 +418,7 @@ as their own kinds. The links carry `download`, so the page's script leaves them
 
 ## Accessors — one type, two renderings
 
-An accessor (`String`, `Email`, `Phone`, `Website`, `ColorPicker`, `File`, `Int`, `Float`, `Delta`, `Series`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`, `Bool`, `OptionalInt`, `OptionalFloat`, `OptionalSlider`, `OptionalBool`) appears in a `Form` and in a `Table`
+An accessor (`String`, `Email`, `Phone`, `Website`, `ColorPicker`, `File`, `Int`, `Float`, `Trend`, `Select`, `URL`, `Datetime`, `Timestamp`, `Slider`, `Bool`, `OptionalInt`, `OptionalFloat`, `OptionalSlider`, `OptionalBool`) appears in a `Form` and in a `Table`
 and renders differently in each, from the same declaration:
 
 | | In a `Form` | In a `Table` |
@@ -607,11 +600,11 @@ Absences that are choices, not gaps:
   chrome.
 - **No row actions and no selection in a list of items.** A `List` is read: an item leads somewhere, and a page that needs to change an item has a `Table` for it, which has row and bulk actions and
   a `Key`. An item that is an `Action` would be a POST that cannot be opened in a new tab, which is not what a headline is.
-- **No axes, no legend and no multi-series chart.** A `Series` is a sparkline or a row of bars, the shape of a figure beside the figure, and it is
-  drawn as part of a value (a cell, a tile) and not as a leaf of its own. A `Stat` is a row of tiles, not a chart. Both were added after this section said there
+- **No axes, no legend and no multi-series chart.** A `Trend`'s chart is a sparkline, the shape of a figure beside the figure, and it is
+  drawn as part of a value (a cell) and not as a leaf of its own. It was added after this section said there
   should be no chart or statistic leaf, which was the rule while every leaf was a kind of text a model has: a figure with its change and its shape is that too, if it
-  is an accessor, and so `Delta` and `Series` work in a table and a form as well as a tile. What a page needs beyond that, a chart with a scale, a time range or two lines, is
-  not here, and is the app's own panel or a link to the tool that does it; see `design-decisions.md` for what the tiles cost.
+  is an accessor, and so `Trend` works in a table and a form. What a page needs beyond that, a chart with a scale, a time range or two lines, is
+  not here, and is the app's own panel or a link to the tool that does it; see `design-decisions.md` for what the figures cost.
 - **No per-panel menu.** A panel's header carries a title, a description and a
   status. Reloading is the page's Refresh, so a panel is replaced only by
   following its own sort, pager or row links, which are the only per-panel

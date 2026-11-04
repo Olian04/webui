@@ -102,7 +102,7 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
 templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
-	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare)}) {
+	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare), Nav: !bare}) {
 		if r.search {
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
 		}
@@ -359,6 +359,15 @@ templ value(f ir.Field, text string, model any) {
 	}
 }
 
+// trend is a field's shape and change, or a dash when the model has neither.
+templ trend(f ir.Field, model any) {
+	if p := trendProps(f, model); p.Delta == nil && p.Spark == nil {
+		@dash()
+	} else {
+		@c.Trend(p)
+	}
+}
+
 // dash is what a value that is not there says, to the eye and to a screen reader.
 templ dash() {
 	<span class="dim" aria-hidden="true">—</span>
@@ -394,10 +403,8 @@ templ present(f ir.Field, text string, model any) {
 			} else {
 				{ text }
 			}
-		case ir.DisplayDelta:
-			@c.Delta(deltaProps(f, text, model))
-		case ir.DisplaySeries:
-			@c.Spark(sparkProps(f, model))
+		case ir.DisplayTrend:
+			@trend(f, model)
 		default:
 			if f.Multiline {
 				<span class="multiline">{ text }</span>
@@ -536,8 +543,8 @@ templ (r *Renderer) input(fv fieldView) {
 				})
 			case fv.Phone != nil:
 				@c.PhoneInput(*fv.Phone)
-			case fv.Field.Checkbox:
-				@c.Checkbox(c.CheckboxProps{ID: fv.ID, Name: fv.Name, Value: "true", Checked: fv.Value == "true"})
+			case fv.Field.Switch:
+				@c.Switch(c.SwitchProps{ID: fv.ID, Name: fv.Name, Value: "true", Checked: fv.Value == "true"})
 			case fv.Field.Display == ir.DisplaySelect:
 				@c.Select(c.SelectProps{
 					ID: fv.ID, Name: fv.Name, Choices: fv.choices(), Multi: fv.Field.Multi,
@@ -625,8 +632,8 @@ templ Refused(ref *ir.Refusal) {
 // Toolbar is a row of controls: buttons, links, and the values of the page's arguments, read-only. It is not a panel. The buttons
 // post, in one form, by their position; a toolbar with no button has no form, since there is nothing in it to submit. A value
 // is its label and what the accessor reads from the page's arguments, as a read-only form field shows it. The controls for the
-// left and the right are one row, with a gap between the two groups that takes what is left over; script says when there is
-// not room for them all in a row, and then the gap is gone and they flow as one.
+// left and the right are one row, with a gap between the two groups that takes what is left over; the right ones are a group that wraps
+// as one, so it is at the right edge of the row that it is in.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
 		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
@@ -645,26 +652,70 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 	}
 }
 
-// toolbarItems are the controls of a toolbar, in order, with the gap before the right ones. An item that is not drawn
-// for this visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
+// toolbarItems are the controls of a toolbar, in order. The group with fewer controls is one item of the row, which is in it whole or in the next
+// row whole; the group with more flows in rows from its own edge, the left one from the left, the right one from the right, and is one
+// item of the row that takes what the other leaves, when it has the room for the widest of its controls. An item that is not drawn for this
+// visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
 templ (r *Renderer) toolbarItems(v ToolbarView) {
-	for i, it := range v.Node.Items {
-		if i == v.Node.RightFrom {
+	if rightFlows(v.Node) {
+		<span class="toolbar-start">
+			for i := 0; i < v.Node.RightFrom; i++ {
+				@r.toolbarItem(v, i, v.Node.Items[i])
+			}
+		</span>
+		<span class="toolbar-end toolbar-flows">
+			for i := v.Node.RightFrom; i < len(v.Node.Items); i++ {
+				@r.toolbarItem(v, i, v.Node.Items[i])
+			}
+		</span>
+	} else {
+		for i := 0; i < v.Node.RightFrom; i++ {
+			@r.toolbarItem(v, i, v.Node.Items[i])
+		}
+		if v.Node.RightFrom < len(v.Node.Items) {
 			<span class="toolbar-gap" aria-hidden="true"></span>
-		}
-		switch {
-			case !v.gate(i).Drawn():
-			case it.Action != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
-					{ it.Label }
+			<span class="toolbar-end">
+				for i := v.Node.RightFrom; i < len(v.Node.Items); i++ {
+					@r.toolbarItem(v, i, v.Node.Items[i])
 				}
-			case it.Link != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
-					{ it.Label }
-				}
-			case it.Form != nil:
-				@r.toolbarForm(it.Form, v.form(i))
+			</span>
 		}
+	}
+}
+
+// rightFlows is whether the right controls are the ones that flow: they are more than the left ones, counting a button as one and a form as the
+// values it shows, since those are what the row is made of.
+func rightFlows(n *ir.Toolbar) bool {
+	count := func(items []ir.ToolbarItem) int {
+		total := 0
+		for _, it := range items {
+			if it.Form == nil {
+				total++
+				continue
+			}
+			for range ir.Leaves(it.Form.Fields) {
+				total++
+			}
+		}
+		return total
+	}
+	return count(n.Items[n.RightFrom:]) > count(n.Items[:n.RightFrom])
+}
+
+// toolbarItem is one control of a toolbar, by its declared position.
+templ (r *Renderer) toolbarItem(v ToolbarView, i int, it ir.ToolbarItem) {
+	switch {
+		case !v.gate(i).Drawn():
+		case it.Action != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
+				{ it.Label }
+			}
+		case it.Link != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
+				{ it.Label }
+			}
+		case it.Form != nil:
+			@r.toolbarForm(it.Form, v.form(i))
 	}
 }
 
@@ -940,42 +991,6 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 			</article>
 		</div>
 	}
-}
-
-// Stat renders a stat leaf as one panel: a tile for each figure, each with its value, and its change and trend when it has them. A value, a
-// change and a trend are shown as the field says, as they are in a cell of a table.
-templ (r *Renderer) Stat(v StatView) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		Leaf:   LeafID(v.Node.At),
-	}) {
-		<div class="panel-body">
-			@c.StatGrid(c.StatGridProps{}) {
-				for _, t := range v.Node.Tiles {
-					@c.StatTile(r.statTile(t, v.Model))
-				}
-			}
-		</div>
-	}
-}
-
-// statCell is one field of a tile, shown as it is in a table cell.
-templ statCell(f ir.Field, model any) {
-	@value(f, f.Shown(ctx, model), model)
-}
-
-// statTile is a tile as the component takes it.
-func (r *Renderer) statTile(t ir.StatTile, model any) c.StatTileProps {
-	p := c.StatTileProps{Label: t.Label, Help: t.Help, Value: statCell(t.Value, model)}
-	if t.Change != nil {
-		p.Change = statCell(*t.Change, model)
-	}
-	if t.Trend != nil {
-		p.Trend = statCell(*t.Trend, model)
-	}
-	return p
 }
 
 // Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
