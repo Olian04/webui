@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -30,7 +31,9 @@ func parseColour(t *testing.T, s string) rgba {
 	}
 	var v [4]float64
 	v[3] = 1
-	for i, part := range strings.FieldsFunc(m[1], func(r rune) bool { return r == ',' || r == ' ' || r == '/' }) {
+	for i, part := range strings.FieldsFunc(m[1], func(r rune) bool {
+		return r == ',' || r == '/' || unicode.IsSpace(r)
+	}) {
 		x, err := strconv.ParseFloat(part, 64)
 		assert.NoError(t, err)
 		v[i] = x
@@ -75,7 +78,7 @@ func tokens(t *testing.T, css, selector string) map[string]string {
 	body = body[strings.Index(body, "{")+1 : strings.Index(body, "}")]
 	out := map[string]string{}
 	for _, m := range regexp.MustCompile(`--([\w-]+):\s*([^;]+);`).FindAllStringSubmatch(body, -1) {
-		out[m[1]] = m[2]
+		out[m[1]] = strings.Join(strings.Fields(m[2]), "")
 	}
 	return out
 }

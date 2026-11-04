@@ -112,6 +112,79 @@ func TestBaseIsTheStylesheetsPalette(t *testing.T) {
 	}
 }
 
+func cssColourTokens(block string) map[string]Color {
+	tok := map[string]Color{}
+	for _, m := range regexp.MustCompile(`--([a-z0-9-]+):\s*([^;]+);`).FindAllStringSubmatch(block, -1) {
+		if c, ok := cssColour(m[2]); ok {
+			tok[m[1]] = c
+		}
+	}
+	return tok
+}
+
+func cssBlockAfter(css, selector string) (string, bool) {
+	start := strings.Index(css, selector)
+	if start < 0 {
+		return "", false
+	}
+	open := strings.Index(css[start:], "{")
+	if open < 0 {
+		return "", false
+	}
+	body := css[start+open+1:]
+	end := strings.Index(body, "\n}")
+	if end < 0 {
+		return "", false
+	}
+	return body[:end], true
+}
+
+// The light palette is written twice: once for an explicit choice, and once for a viewer
+// who has not chosen and whose system is light. CSS cannot share the two selectors.
+func TestLightSystemFallbackMatchesThemeLight(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile("../render/assets/css/app.css")
+	if err != nil {
+		t.Fatal(err)
+	}
+	css := string(raw)
+	chosen, ok := cssBlockAfter(css, "[data-theme='light'] {")
+	if !ok {
+		t.Fatal("no [data-theme='light'] block")
+	}
+	media := strings.Index(css, "@media (prefers-color-scheme: light)")
+	if media < 0 {
+		t.Fatal("no prefers-color-scheme: light block")
+	}
+	sys, ok := cssBlockAfter(css[media:], ":root:not([data-theme]) {")
+	if !ok {
+		t.Fatal("no :root:not([data-theme]) inside the light media query")
+	}
+	a, b := cssColourTokens(chosen), cssColourTokens(sys)
+	if len(a) == 0 || len(b) == 0 {
+		t.Fatalf("empty light palette: chosen %d, system %d", len(a), len(b))
+	}
+	if len(a) != len(b) {
+		t.Errorf("light token count: chosen %d, system %d", len(a), len(b))
+	}
+	for name, want := range a {
+		got, ok := b[name]
+		if !ok {
+			t.Errorf("system light missing --%s", name)
+			continue
+		}
+		if got.Hex() != want.Hex() {
+			t.Errorf("--%s: chosen %s, system %s", name, want.Hex(), got.Hex())
+		}
+	}
+	for name := range b {
+		if _, ok := a[name]; !ok {
+			t.Errorf("system light has extra --%s", name)
+		}
+	}
+}
+
 // cssColour reads the forms the stylesheet writes a colour in: hex, rgb() and rgba().
 func cssColour(v string) (Color, bool) {
 	v = strings.TrimSpace(v)

@@ -69,7 +69,7 @@ func TestTheStylesheetWrapsColumnsThatWouldBeTooNarrow(t *testing.T) {
 
 	h := editorApp(webui.Columns{{Body: columnPanel("A")}})
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	assert.Contains(t, css, ".columns {\n  --column-min: 280px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  align-items: stretch;\n}")
+	assert.Contains(t, css, ".columns {\n  --column-min: 280px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--gutter);\n  align-items: stretch;\n}")
 	assert.Contains(t, css, ".col {\n  flex: var(--w, 1) 1 0;\n  min-width: min(var(--column-min), 100%);\n  display: flex;\n  flex-direction: column;\n}")
 	assert.Contains(t, css, ".col > .panel,\n.col > :is(.stack, .columns, .tabset) {\n  flex: 1 1 auto;\n}")
 	// A panel in a column keeps its foot at the bottom of its box.

@@ -68,7 +68,7 @@ func TestAnAbsentValueIsAnEmptyInputAndAPresentOneIsFilledIn(t *testing.T) {
 	assert.Contains(t, body, `name="f1" type="number" value=""`)
 	assert.Contains(t, body, `name="f2" type="number" value=""`)
 	// A choice among Yes and No, with the empty one first and neither of them chosen.
-	assert.Contains(t, body, `<option value="">—</option> <option value="true" data-badge="badge-mute">Yes</option><option value="false" data-badge="badge-mute">No</option>`)
+	assert.Contains(t, body, `<option value="">—</option> <option value="true" data-badge="tone-mute">Yes</option><option value="false" data-badge="tone-mute">No</option>`)
 	assert.False(t, strings.Contains(body, "selected"))
 
 	some, _ := limitsApp(limits{Rate: new(0), Ratio: new(1.5), Level: new(7.0), Paused: new(false)})
@@ -76,7 +76,7 @@ func TestAnAbsentValueIsAnEmptyInputAndAPresentOneIsFilledIn(t *testing.T) {
 	assert.Contains(t, body, `name="f0" type="number" value="0"`) // zero is a value
 	assert.Contains(t, body, `name="f1" type="number" value="1.50"`)
 	assert.Contains(t, body, `name="f2" type="number" value="7"`)
-	assert.Contains(t, body, `<option value="false" data-badge="badge-mute" selected>No</option>`)
+	assert.Contains(t, body, `<option value="false" data-badge="tone-mute" selected>No</option>`)
 }
 
 func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {

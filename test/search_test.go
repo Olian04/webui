@@ -23,7 +23,7 @@ type searchResponse struct {
 }
 
 var (
-	searchLabel = regexp.MustCompile(`<div class="pal-label"[^>]*>(.*?)</div>`)
+	searchLabel = regexp.MustCompile(`<div class="pal-label[^"]*"[^>]*>(.*?)</div>`)
 	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>(?:\s*<span class="mono">(.*?)</span>)?\s*</a>`)
 )
 
@@ -246,7 +246,7 @@ func TestInfoIconCarriesItsDescriptionInAPopover(t *testing.T) {
 
 	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
 	assert.Contains(t, body, `<span class="tip" tabindex="0" role="note" aria-label="One device.">`)
-	assert.Contains(t, body, `<span class="tip-body" aria-hidden="true">One device.</span>`)
+	assert.Contains(t, body, `<span class="tip-body raise" aria-hidden="true">One device.</span>`)
 }
 
 func TestPanelsHaveNoRefreshButtonOfTheirOwn(t *testing.T) {

@@ -130,7 +130,7 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	h := searchApp(rowsSearch(), nil)
 	list := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	// A listbox holds options, or groups of them: the label names its group and is not read again.
-	assert.Contains(t, list, `<div role="group" aria-label="Devices"><div class="pal-label" aria-hidden="true">Devices</div>`)
+	assert.Contains(t, list, `<div role="group" aria-label="Devices"><div class="pal-label caption" aria-hidden="true">Devices</div>`)
 	assert.Contains(t, list, `<a class="pal-item" role="option" href="/admin/device/dev-eth%200">`)
 	assert.False(t, strings.Contains(list, "<html"))
 

@@ -88,7 +88,7 @@ func Toast(p ToastProps) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var3 = []any{"toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical)}
+		var templ_7745c5c3_Var3 = []any{"toast", "raise", templ.KV("tone-warn", p.Tone == ToneWarning), templ.KV("tone-bad", p.Tone == ToneCritical)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -591,7 +591,7 @@ func statusMeta(p StatusBarProps) templ.Component {
 			templ_7745c5c3_Var22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"status-meta\"><noscript><span class=\"sb-badge sb-warn\" title=\"JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.\">JS off</span></noscript><span class=\"sb-badge sb-warn\" data-stale hidden></span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"status-meta\"><noscript><span class=\"sb-badge tone-warn\" title=\"JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.\">JS off</span></noscript><span class=\"sb-badge tone-warn\" data-stale hidden></span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

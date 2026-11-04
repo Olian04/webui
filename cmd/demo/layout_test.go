@@ -21,3 +21,21 @@ func TestTheWeightedColumnsPageHasEachWeightingInItsOwnRow(t *testing.T) {
 	assert.Equal(t, strings.Count(body, `<div class="col" style="--w:25;">`), 2)
 	assert.Contains(t, body, `class="nav-item active" href="/admin/layout/weights"`)
 }
+
+// The long-list page puts a short list beside a long one, so the height cap and the scroll are on the screen.
+func TestTheLongListPagePutsAShortListBesideALongOne(t *testing.T) {
+	rec := get(handler(t), "/admin/layout/list")
+	assert.Equal(t, rec.Code, http.StatusOK)
+	body := rec.Body.String()
+
+	assert.Contains(t, body, `class="nav-item active" href="/admin/layout/list"`)
+	assert.Contains(t, body, `<h2 class="panel-title">A few items</h2>`)
+	assert.Contains(t, body, `<h2 class="panel-title">Many items</h2>`)
+
+	few := body[strings.Index(body, `<h2 class="panel-title">A few items</h2>`):strings.Index(body, `<h2 class="panel-title">Many items</h2>`)]
+	many := body[strings.Index(body, `<h2 class="panel-title">Many items</h2>`):]
+	assert.Equal(t, strings.Count(few, `<li class="item">`), shortListCount)
+	assert.Equal(t, strings.Count(many, `<li class="item">`), longListCount)
+	assert.False(t, strings.Contains(few, "Show more"))
+	assert.False(t, strings.Contains(many, "Show more"))
+}

@@ -96,7 +96,7 @@ func TestTheLandingPageToolbarShowsALatencyTrend(t *testing.T) {
 	assert.Contains(t, bar, `<span class="toolbar-lbl">Latency</span>`)
 	assert.Contains(t, bar, `<span>−6.10%</span>`) // latency is down, which is good
 	assert.Contains(t, bar, `fa-arrow-down`)
-	assert.Contains(t, bar, `<span class="delta delta-ok">`)
+	assert.Contains(t, bar, `<span class="delta tone-ok">`)
 	assert.Equal(t, strings.Count(bar, `<polyline class="spark-line"`), 1)
 	assert.Equal(t, strings.Count(bar, `<circle class="spark-dot"`), 1)
 	assert.Contains(t, bar, `aria-label="Latency: 24 values, from 140 to 184, lowest 134, highest 210"`)

@@ -82,8 +82,8 @@ func TestTableRendersRowsLinksAndCells(t *testing.T) {
 	assert.Contains(t, body, `<a class="rowlink" href="/admin/device/dev00">dev00</a>`)
 	assert.Equal(t, strings.Count(body, `class="rowlink"`), 10) // one anchor per row
 	assert.Contains(t, body, `<td class="num">3</td>`)          // numbers align to the end
-	assert.Contains(t, body, `class="badge badge-ok"`)
-	assert.Contains(t, body, `class="badge badge-warn"`)
+	assert.Contains(t, body, `class="badge tone-ok"`)
+	assert.Contains(t, body, `class="badge tone-warn"`)
 	assert.Contains(t, body, `<span>1.33</span>`) // Precision
 	assert.Contains(t, body, `class="gauge-fill"`)
 	assert.Contains(t, body, `<h2 class="panel-title">Devices</h2>`)
@@ -163,7 +163,7 @@ func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Body.String(), "Could not load")
-	assert.Contains(t, rec.Body.String(), `panel-status bad"`)
+	assert.Contains(t, rec.Body.String(), `panel-status tone-bad"`)
 	assert.False(t, strings.Contains(rec.Body.String(), "hunter2")) // the cause is logged, never shown
 }
 
@@ -295,7 +295,7 @@ func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
 	assert.Contains(t, body, `aria-label="Filter Status"`)
 
 	// The Select's options are the filter's: a multi-select of exactly those, in the order they were declared.
-	status := body[strings.Index(body, `<div class="filter-title">Status</div>`):]
+	status := body[strings.Index(body, `<div class="filter-title caption">Status</div>`):]
 	status = status[:strings.Index(status, `</form>`)]
 	assert.Equal(t, strings.Count(status, `type="checkbox"`), 2)
 	assert.True(t, strings.Index(status, `value="healthy"`) < strings.Index(status, `value="degraded"`))
@@ -315,7 +315,7 @@ func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
 	// The form is a plain GET back to the page, so it works without script. It stands beside the table, not in it (the table may be a form of
 	// its own, and a form cannot be in a form), and the controls of the popover say that it is theirs.
 	assert.Contains(t, body, `<form id="p-filter-c0" method="get" action="/admin/device" data-filter-form>`)
-	assert.Contains(t, body, `<div class="filter-pop">`)
+	assert.Contains(t, body, `<div class="filter-pop raise pop">`)
 	assert.Contains(t, body, `form="p-filter-c2" type="number" step="any" name="devices.min.occurrences"`)
 	assert.Contains(t, body, `<button class="btn btn-primary btn-sm" type="submit" form="p-filter-c2">Apply</button>`)
 }
@@ -402,7 +402,7 @@ func TestFilterIconAppearsOnHoverAndStaysWhenActive(t *testing.T) {
 	h, _ := tableApp(nil)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
 	assert.Contains(t, css, ".filter-btn {\n  list-style: none;")
-	assert.Contains(t, css, "  opacity: 0;\n  transition: opacity 0.12s;\n}\n.filter-btn::-webkit-details-marker")
+	assert.Contains(t, css, "  opacity: 0;\n  transition: opacity var(--motion);\n}\n.filter-btn::-webkit-details-marker")
 	assert.Contains(t, css, "th:hover .filter-btn,\nth:focus-within .filter-btn,\n.filter[open] .filter-btn,\n.filter.on .filter-btn {\n  opacity: 1;")
 }
 

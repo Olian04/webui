@@ -47,7 +47,7 @@ func TestAnAppWhosePagesDeclareNoEntryHasNoSidebar(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
 
-	for _, absent := range []string{`class="sidebar"`, "<aside", `class="side-brand"`, `class="side-scroll"`, `class="nav-item`, "data-sidebar-toggle"} {
+	for _, absent := range []string{`class="sidebar`, "<aside", `class="side-brand"`, `class="side-scroll"`, `class="nav-item`, "data-sidebar-toggle"} {
 		assert.False(t, strings.Contains(body, absent))
 	}
 	assert.Contains(t, body, `<main id="main"`)
@@ -69,7 +69,7 @@ func TestAnAppWithNoPageHasNoSidebar(t *testing.T) {
 	t.Parallel()
 
 	body := serve(webui.App{}.MustCompile("/admin"), http.MethodGet, "/admin/").Body.String()
-	assert.False(t, strings.Contains(body, `class="sidebar"`))
+	assert.False(t, strings.Contains(body, `class="sidebar`))
 	assert.Equal(t, strings.Count(body, `data-pref-toggle="theme"`), 1)
 }
 
@@ -78,8 +78,8 @@ func TestTheStatesOfAnAppWithNoEntryHaveNoSidebar(t *testing.T) {
 	t.Parallel()
 
 	h := noNav()
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/nowhere").Body.String(), `class="sidebar"`))
-	assert.False(t, strings.Contains(serve(h, http.MethodPost, "/admin/devices").Body.String(), `class="sidebar"`))
+	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/nowhere").Body.String(), `class="sidebar`))
+	assert.False(t, strings.Contains(serve(h, http.MethodPost, "/admin/devices").Body.String(), `class="sidebar`))
 }
 
 // One page is enough, if it has an entry: the app says it wants a sidebar by giving a page one, and the first example of the README is that.
@@ -88,7 +88,7 @@ func TestAnAppWithOnePageAndAnEntryHasASidebar(t *testing.T) {
 	t.Parallel()
 
 	body := serve(onePage(nil), http.MethodGet, "/admin/devices").Body.String()
-	assert.Contains(t, body, `<aside class="sidebar" id="sidebar">`)
+	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
 	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)
 	assert.Equal(t, strings.Count(body, `data-pref-toggle="theme"`), 1)
 	assert.Contains(t, topBar(t, body), `data-pref-toggle="theme"`)
@@ -110,7 +110,7 @@ func TestAPageThatListsEntriesGivesTheAppASidebar(t *testing.T) {
 			}
 			h := webui.App{Pages: webui.Pages{site}}.MustCompile("/admin")
 			body := serve(h, http.MethodGet, "/admin/site/Stockholm").Body.String()
-			assert.Contains(t, body, `<aside class="sidebar" id="sidebar">`)
+			assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
 			assert.Equal(t, strings.Count(body, `class="nav-item`), len(names))
 		})
 	}
@@ -125,7 +125,7 @@ func TestTheSidebarDoesNotDependOnWhatTheVisitorMayOpen(t *testing.T) {
 	rec := serve(onePage(refused), http.MethodGet, "/admin/devices")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	body := rec.Body.String()
-	assert.Contains(t, body, `<aside class="sidebar" id="sidebar">`)
+	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
 	assert.False(t, strings.Contains(body, `class="nav-item`))
 	assert.Contains(t, topBar(t, body), `data-pref-toggle="theme"`)
 }

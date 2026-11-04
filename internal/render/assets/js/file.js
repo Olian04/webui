@@ -31,7 +31,7 @@
   var dialog = null;
   function openPreview(src, name) {
     if (!dialog) {
-      dialog = element('dialog', 'preview-dialog');
+      dialog = element('dialog', 'preview-dialog raise');
       dialog.setAttribute('closedby', 'any');
       dialog.addEventListener('click', function (e) {
         if (e.target === dialog) dialog.close();
@@ -40,7 +40,7 @@
         var img = dialog.querySelector('img');
         if (img) img.removeAttribute('src');
       });
-      var close = element('button', 'btn btn-ghost btn-sm preview-close', 'Close');
+      var close = element('button', 'btn btn-ghost btn-sm', 'Close');
       close.type = 'button';
       close.addEventListener('click', function () {
         dialog.close();

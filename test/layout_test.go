@@ -211,7 +211,7 @@ func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADo
 
 	h, _ := layoutApp(nil)
 	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
-	dash := "content: '';\n  display: block;\n  width: 32px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: 2px;\n  background: var(--border-2);"
+	dash := "content: '';\n  display: block;\n  width: 32px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: var(--radius);\n  background: var(--border-2);"
 	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .nav-section::before {\n    "+strings.ReplaceAll(dash, "\n  ", "\n    "))
 	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n    display: none;\n  }")
 	assert.False(t, strings.Contains(css, "linear-gradient(var(--border-2), var(--border-2))"))
@@ -303,8 +303,8 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	assert.Contains(t, body, "Raw-row")
 	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
 	assert.False(t, strings.Contains(body, "Overview-row"))
-	assert.False(t, strings.Contains(body, `class="sidebar"`)) // not the page
-	for i, want := range []int32{0, 0, 0, 1} {                 // the form, the events, and the other tab were not read
+	assert.False(t, strings.Contains(body, `class="sidebar`)) // not the page
+	for i, want := range []int32{0, 0, 0, 1} {                // the form, the events, and the other tab were not read
 		assert.Equal(t, loads[i].Load(), want)
 	}
 

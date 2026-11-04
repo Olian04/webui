@@ -56,7 +56,7 @@ func TestTheExternalLinksAreGroupedBySectionAndNotByPosition(t *testing.T) {
 	// that is named again after another.
 	body := serve(linksApp(docs, about, out, bug, status), http.MethodGet, "/admin/device").Body.String()
 
-	assert.Equal(t, strings.Count(body, `class="menu-section"`), 2) // one caption for each section
+	assert.Equal(t, strings.Count(body, `class="menu-section caption"`), 2) // one caption for each section
 	at := func(s string) int { return strings.Index(body, s) }
 	// No Section: first, in the order given, and with no caption above them.
 	assert.True(t, at("<span>About</span>") < at("<span>Status</span>"))

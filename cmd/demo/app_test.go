@@ -19,7 +19,7 @@ func TestEveryPageServes(t *testing.T) {
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
-		"/admin/compare", "/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/loading/tabs", "/admin/layout/split", "/admin/layout/rail", "/admin/layout/columns", "/admin/layout/weights", "/admin/layout/tabs", "/admin/layout/many-tabs", "/admin/layout/deep", "/admin/layout/review", "/admin/layout/runbook", "/admin/layout/toolbars",
+		"/admin/compare", "/admin/loading/order", "/admin/loading/nested", "/admin/loading/failures", "/admin/loading/whole", "/admin/loading/guarded", "/admin/loading/fast", "/admin/loading/tabs", "/admin/layout/split", "/admin/layout/rail", "/admin/layout/columns", "/admin/layout/weights", "/admin/layout/tabs", "/admin/layout/many-tabs", "/admin/layout/deep", "/admin/layout/review", "/admin/layout/runbook", "/admin/layout/toolbars", "/admin/layout/list",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
@@ -37,7 +37,7 @@ func TestNavigationHasSectionsAndTheSitePageLightsItsOwnEntry(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/site/Stockholm").Body.String()
 	for _, caption := range []string{"Platform", "Sites", "Configuration", "Operations"} {
-		assert.Contains(t, body, `<div class="nav-section" title="`+caption+`">`+caption+`</div>`)
+		assert.Contains(t, body, `<div class="nav-section caption" title="`+caption+`">`+caption+`</div>`)
 	}
 	// SiteDetail lists an entry for each site, loaded when the page is drawn, and lights the one
 	// that is on screen; the list of sites, which is another page, is not lit.

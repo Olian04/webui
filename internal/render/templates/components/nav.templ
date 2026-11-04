@@ -17,7 +17,7 @@ type SidebarProps struct {
 }
 
 templ Sidebar(p SidebarProps) {
-	<aside class="sidebar" id="sidebar">
+	<aside class="sidebar drawer drawer-left" id="sidebar">
 		if p.Home != "" {
 			<a class="side-brand" href={ p.Home } title={ p.Brand }>
 				@brandMark(p)
@@ -69,7 +69,7 @@ templ SidebarCollapse() {
 }
 
 templ NavSection(label string) {
-	<div class="nav-section" title={ label }>{ label }</div>
+	<div class="nav-section caption" title={ label }>{ label }</div>
 }
 
 // NavItemProps is one entry.

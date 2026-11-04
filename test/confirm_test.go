@@ -75,7 +75,7 @@ func TestAnActionThatConfirmsOpensADialogThatHoldsTheButtonThatSubmits(t *testin
 	// The row's button, the bulk action's and the toolbar's each open a dialog of their own, by an invoker command.
 	for _, id := range []string{"confirm-p.1-r0a0", "confirm-p.1-r1a0", "confirm-p.1-b0", "confirm-p.0-t0"} {
 		assert.Contains(t, body, `commandfor="`+id+`" command="show-modal"`)
-		assert.Contains(t, body, `<dialog id="`+id+`" class="confirm" role="alertdialog" closedby="any" aria-labelledby="`+id+`-text">`)
+		assert.Contains(t, body, `<dialog id="`+id+`" class="confirm raise" role="alertdialog" closedby="any" aria-labelledby="`+id+`-text">`)
 		assert.Contains(t, body, `<p class="confirm-text" id="`+id+`-text">Are you sure?</p>`)
 	}
 	// What the dialog submits is what the button would have: the same name and value, which the server reads as it did.

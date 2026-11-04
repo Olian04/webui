@@ -13,8 +13,14 @@
   --input-bg: #0e0f12;
   --border: rgba(204, 204, 220, 0.11);
   --border-2: rgba(204, 204, 220, 0.22);
-  --control-bd: var(--border-2); /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
-  --control-bd-strong: rgba(204, 204, 220, 0.5); /* 3:1 against what the control sits on */
+  /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
+  --control-bd: var(--border-2);
+  --control-bd-strong: rgba(
+    204,
+    204,
+    220,
+    0.5
+  ); /* 3:1 vs the control's surface */
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
   --text-3: rgba(204, 204, 220, 0.45);
@@ -101,10 +107,6 @@
     --red-solid-hover: #a60b49;
     --shadow: 0 4px 12px rgb(24 26 27/0.18);
   }
-  :root:not([data-theme]) .slider::before {
-    background: #fff;
-    box-shadow: 0 1px 2px rgb(0 0 0/0.25);
-  }
 }
 
 /* Rings and tints are made from the accent and the critical colour, so they follow
@@ -116,6 +118,14 @@
   --ring: color-mix(in srgb, var(--blue) 25%, transparent);
   --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
   --tint: color-mix(in srgb, var(--blue) 10%, transparent);
+  --radius: 2px;
+  --radius-pill: 99px; /* switch, spinner, scrollbar thumb — design: pills only */
+  --control-h: 32px;
+  --control-h-sm: 28px;
+  --row-h: 34px;
+  --gutter: 8px;
+  --motion: 0.12s; /* mid of design §13 110–130ms */
+  --backdrop: rgb(0 0 0 / 50%);
 }
 
 * {
@@ -164,10 +174,39 @@ select {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-2);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* Shared chrome. Components add these next to their own class; placement stays local. */
+.raise,
+.gate:hover::after,
+.gate:focus-visible::after {
+  background: var(--raise);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.caption,
+.md :where(h4, h5, h6) {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.pop {
+  position: absolute;
+  z-index: 60;
+  padding: 4px 0;
+}
+.glyph {
+  width: 13px;
+  height: 13px;
+  font-size: 11px;
+  flex: 0 0 13px;
 }
 
 /* ------------------------------ shell ------------------------------------ */
@@ -183,12 +222,15 @@ select {
   --topbar-h: 48px;
   --content-pad-top: 12px;
   --content-pad-bottom: 46px;
-  --content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));
+  --content-chrome: calc(
+    var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom)
+  );
 }
 
 /* ------------------------------ sidebar ---------------------------------- */
 .sidebar {
-  width: var(--sidebar-w, 240px); /* a person's choice, set before first paint; the rail below does not take it */
+  /* a person's choice, set before first paint; the rail below does not take it */
+  width: var(--sidebar-w, 240px);
   flex: 0 0 var(--sidebar-w, 240px);
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -248,7 +290,7 @@ html[data-sidebar='collapsed'] .side-resize {
   width: 22px;
   height: 22px;
   flex: 0 0 22px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: conic-gradient(from 210deg, #ff9830, #f2495c 55%, #ff9830);
   display: grid;
   place-items: center;
@@ -256,7 +298,7 @@ html[data-sidebar='collapsed'] .side-resize {
 .logo span {
   width: 9px;
   height: 9px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--panel);
   box-shadow: 0 0 0 2px var(--panel);
 }
@@ -265,7 +307,7 @@ html[data-sidebar='collapsed'] .side-resize {
   height: 22px;
   flex: 0 0 22px;
   object-fit: contain;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 a.side-brand {
   color: inherit;
@@ -290,11 +332,6 @@ a.side-brand:hover {
   padding: 6px 0 10px;
 }
 .nav-section {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
   padding: 14px 12px 5px;
   /* A caption wider than the sidebar is cut short; its whole is its title. */
   overflow: hidden;
@@ -305,7 +342,7 @@ a.side-brand:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 12px;
   font-size: 13.5px;
   color: var(--text-2);
@@ -383,7 +420,9 @@ a.side-brand:hover {
   height: 14px;
   font-size: 12px;
   flex: 0 0 14px;
-  transform: rotate(90deg); /* the chevron points down; this points at the edge it moves */
+  transform: rotate(
+    90deg
+  ); /* the chevron points down; this points at the edge it moves */
 }
 
 /* switch */
@@ -403,9 +442,9 @@ a.side-brand:hover {
   position: absolute;
   inset: 0;
   background: var(--control-bd);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background-color 0.13s;
+  transition: background-color var(--motion);
 }
 .slider::before {
   content: '';
@@ -414,13 +453,19 @@ a.side-brand:hover {
   width: 12px;
   left: 2px;
   top: 2px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: var(--panel);
-  transition: transform 0.13s;
+  transition: transform var(--motion);
 }
 [data-theme='light'] .slider::before {
   background: #fff;
   box-shadow: 0 1px 2px rgb(0 0 0/0.25);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) .slider::before {
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0/0.25);
+  }
 }
 .switch input:focus-visible + .slider {
   outline: 2px solid var(--blue);
@@ -543,13 +588,13 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px;
+  height: 30px; /* top-bar control, not --control-h */
   flex: 0 1 290px; /* the width it is given, and less when the bar has no room for it */
   min-width: 90px;
   padding: 0 9px;
   background: var(--input-bg);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-3);
   font-size: 13px;
   cursor: text;
@@ -566,7 +611,8 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   background: none;
   border: 0;
   outline: none;
-  color: var(--text); /* typed text is not quiet text, though the box around it is */
+  /* typed text is not quiet text, though the box around it is */
+  color: var(--text);
   font-size: 13px;
 }
 .search input::placeholder {
@@ -603,19 +649,19 @@ html.js .search-submit {
     monospace;
   color: var(--text-2);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0 4px;
   line-height: 15px;
 }
 .iconbtn {
   width: 30px;
-  height: 30px;
+  height: 30px; /* top-bar control, not --control-h */
   display: grid;
   place-items: center;
   border: 0;
   background: none;
   color: var(--text-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .iconbtn:hover {
@@ -638,10 +684,10 @@ html.js .search-submit {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.delta-ok {
+.delta.tone-ok {
   color: var(--green);
 }
-.delta-bad {
+.delta.tone-bad {
   color: var(--red);
 }
 .delta .delta-arrow {
@@ -712,7 +758,7 @@ html.js .search-submit {
   width: 40px;
   height: 40px;
   object-fit: cover;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--hover);
 }
 .item-main {
@@ -767,7 +813,7 @@ html.js .search-submit {
   gap: 0;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 .item-card .item-img {
@@ -784,10 +830,16 @@ html.js .search-submit {
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
+  scroll-padding-inline: 12px;
+  /* Overflow clips at the padding edge. A transparent border, not padding on the
+     flex row, is the gutter: a row's padding-right is dropped from the scroll
+     width, and a card would otherwise be cut flush with the panel. */
+  border-inline: 12px solid transparent;
 }
 .cards-row {
   display: flex;
   align-items: stretch;
+  padding: 12px 0; /* .cards already pads 12px on all sides; the inline pad is the scroller's border */
 }
 .cards-row .item-card {
   flex: 0 0 220px;
@@ -810,22 +862,15 @@ html.js .search-submit {
   color: var(--text);
 }
 .menu-pop {
-  position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 60;
   min-width: 200px;
-  padding: 4px 0;
-  background: var(--raise);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
 }
 .menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 12px;
   font-size: 13.5px;
   color: var(--text-2);
@@ -837,11 +882,6 @@ html.js .search-submit {
 }
 .menu-section {
   padding: 8px 12px 3px;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
 }
 .menu-icon {
   width: 16px;
@@ -855,10 +895,6 @@ html.js .search-submit {
   top: 44px;
   right: 12px;
   width: 360px;
-  background: var(--raise);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
   padding: 4px;
   display: none;
   z-index: 40;
@@ -878,23 +914,18 @@ html.js .search-submit {
   pointer-events: none;
 }
 .pal-label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
   padding: 7px 9px 4px;
 }
 .pal-item {
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 30px;
+  height: 30px; /* top-bar control, not --control-h */
   padding: 0 9px;
   font-size: 13px;
   color: var(--text-2);
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .pal-item:hover,
 .pal-item.active {
@@ -912,7 +943,7 @@ html.js .search-submit {
 }
 /* The page of results, which the box's list is without script: the same items, in a panel. */
 .results .pal-item {
-  height: 34px;
+  height: var(--row-h);
   text-decoration: none;
 }
 .results .pal-label {
@@ -948,7 +979,7 @@ html.js .search-submit {
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--gutter);
 }
 /* Columns are one row of columns of unequal width. A column grows by its weight from nothing, so the columns of a row share it in the
    proportion given, and is never narrower than --column-min: a row that cannot hold its columns at that width wraps its last ones onto
@@ -958,7 +989,7 @@ html.js .search-submit {
   --column-min: 280px;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--gutter);
   align-items: stretch;
 }
 .col {
@@ -993,11 +1024,16 @@ html.js .search-submit {
 :is(.stack, .col, [data-tabbody]) > .panel > .panel-body {
   flex: 1 1 auto;
 }
-:is(.stack, .col, [data-tabbody]) > .panel > .panel-body:has(> form:not([data-filter-form])) {
+:is(.stack, .col, [data-tabbody])
+  > .panel
+  > .panel-body:has(> form:not([data-filter-form])) {
   display: flex;
   flex-direction: column;
 }
-:is(.stack, .col, [data-tabbody]) > .panel > .panel-body > form:not([data-filter-form]) {
+:is(.stack, .col, [data-tabbody])
+  > .panel
+  > .panel-body
+  > form:not([data-filter-form]) {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1073,7 +1109,7 @@ form[data-filter-form] {
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -1082,9 +1118,9 @@ form[data-filter-form] {
   display: flex;
   align-items: center;
   gap: 7px;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 10px;
-  flex: 0 0 32px;
+  flex: 0 0 var(--control-h);
 }
 .panel-title {
   font-size: 14px;
@@ -1096,11 +1132,7 @@ form[data-filter-form] {
   text-overflow: ellipsis;
 }
 .info {
-  width: 13px;
-  height: 13px;
-  font-size: 11px;
   color: var(--text-2);
-  flex: 0 0 13px;
 }
 /* A description: an information icon with a popover. It opens on hover and on
    keyboard focus, so it does not need a pointer. */
@@ -1109,7 +1141,7 @@ form[data-filter-form] {
   display: inline-flex;
   align-items: center;
   cursor: help;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .tip:hover .info,
 .tip:focus .info {
@@ -1124,11 +1156,7 @@ form[data-filter-form] {
   width: max-content;
   max-width: 280px;
   padding: 6px 9px;
-  background: var(--raise);
   color: var(--text-2);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
   font-size: 12.5px;
   font-weight: 400;
   line-height: 1.45;
@@ -1153,7 +1181,7 @@ form[data-filter-form] {
   margin-top: 2px;
 }
 .tip-item::before {
-  content: "•";
+  content: '•';
   margin-right: 6px;
   color: var(--text-3);
 }
@@ -1161,13 +1189,7 @@ form[data-filter-form] {
 .tip:focus .tip-body {
   display: block;
 }
-.panel-status {
-  width: 13px;
-  height: 13px;
-  font-size: 11px;
-  flex: 0 0 13px;
-}
-.panel-status.bad {
+.panel-status.tone-bad {
   color: var(--red);
 }
 /* A panel that is not final says so beside its title: with script it is asked for again, and without it, it says when to reload. */
@@ -1218,9 +1240,9 @@ html:not(.js) .refresh-js {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 12px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
@@ -1228,8 +1250,8 @@ html:not(.js) .refresh-js {
   border: 1px solid transparent;
   background: none;
   transition:
-    background-color 0.11s,
-    border-color 0.11s;
+    background-color var(--motion),
+    border-color var(--motion);
 }
 .btn .fa-solid {
   width: 14px;
@@ -1269,7 +1291,7 @@ html:not(.js) .refresh-js {
   border-color: var(--red-solid-hover);
 }
 .btn-sm {
-  height: 28px;
+  height: var(--control-h-sm);
   padding: 0 9px;
   font-size: 12.5px;
 }
@@ -1289,7 +1311,7 @@ html:not(.js) .refresh-js {
 .gate:focus-visible {
   outline: 2px solid var(--blue);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 /* A reason is centred over its control, and anchored to the near side when script finds the control at an edge of the window. */
 .gate[data-edge='left']:hover::after,
@@ -1315,19 +1337,15 @@ html:not(.js) .refresh-js {
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: var(--raise);
   color: var(--text);
-  border: 1px solid var(--border-2);
   font-size: 12px;
   font-weight: 400;
   padding: 5px 8px;
-  border-radius: 2px;
   width: max-content;
   max-width: min(280px, calc(100vw - 16px));
   white-space: normal;
   z-index: 50;
   pointer-events: none;
-  box-shadow: var(--shadow);
 }
 
 /* ------------------------------ table ------------------------------------ */
@@ -1421,7 +1439,7 @@ tbody tr:hover {
 }
 tbody td {
   padding: 0 10px;
-  height: 34px;
+  height: var(--row-h);
   vertical-align: middle;
 }
 tbody td.num {
@@ -1449,7 +1467,7 @@ th.pick {
   width: 15px;
   height: 15px;
   border: 1px solid var(--control-bd);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--input-bg);
   cursor: pointer;
   display: grid;
@@ -1461,7 +1479,8 @@ th.pick {
   border-color: var(--blue);
 }
 .checkbox:checked::after,
-.md input[type='checkbox']:checked::after {
+.md input[type='checkbox']:checked::after,
+.msel-opt.on .msel-check::after {
   content: '';
   width: 9px;
   height: 9px;
@@ -1472,14 +1491,10 @@ th.pick {
 dialog.confirm {
   max-width: min(420px, calc(100vw - 32px));
   padding: 16px 18px;
-  background: var(--raise);
   color: var(--text);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
 }
 dialog.confirm::backdrop {
-  background: rgb(0 0 0 / 0.5);
+  background: var(--backdrop);
 }
 .confirm-text {
   margin: 0 0 16px;
@@ -1549,7 +1564,6 @@ html:not(.js) .actionbar .dim {
   right: auto;
   min-width: 120px;
 }
-.pager-export-label,
 .pager-export-note {
   font-size: 12.5px;
   color: var(--text-2);
@@ -1599,7 +1613,7 @@ html:not(.js) .actionbar .dim {
 .gauge-track {
   width: 56px;
   height: 5px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--hover);
   overflow: hidden;
   flex: 0 0 56px;
@@ -1607,7 +1621,7 @@ html:not(.js) .actionbar .dim {
 .gauge-fill {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--blue-text);
 }
 
@@ -1618,28 +1632,32 @@ html:not(.js) .actionbar .dim {
   gap: 5px;
   height: 19px;
   padding: 0 7px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-size: 11.5px;
   font-weight: 500;
   border: 1px solid transparent;
   text-transform: lowercase;
 }
-.badge-ok {
+.badge.tone-ok,
+.upload-item[data-tone='ok'] {
   background: var(--green-bg);
   color: var(--green);
   border-color: var(--green-bd);
 }
-.badge-warn {
+.badge.tone-warn,
+.sb-badge.tone-warn,
+.upload-item[data-tone='warn'] {
   background: var(--orange-bg);
   color: var(--orange);
   border-color: var(--orange-bd);
 }
-.badge-bad {
+.badge.tone-bad,
+.upload-item[data-tone='bad'] {
   background: var(--red-bg);
   color: var(--red);
   border-color: var(--red-bd);
 }
-.badge-mute {
+.badge.tone-mute {
   background: var(--hover);
   color: var(--text-2);
   border-color: var(--border);
@@ -1647,7 +1665,7 @@ html:not(.js) .actionbar .dim {
 .dot {
   width: 6px;
   height: 6px;
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   background: currentColor;
 }
 
@@ -1699,7 +1717,7 @@ html:not(.js) .actionbar .dim {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: var(--control-h);
   font-size: 13px;
 }
 .toolbar-lbl {
@@ -1719,7 +1737,7 @@ html:not(.js) .actionbar .dim {
   width: 72px;
   height: 15px;
 }
-.toolbar-val.bad {
+.toolbar-val.tone-bad {
   color: var(--red);
 }
 /* The left controls and the right ones are one row with a gap between them that takes what is left over, so the right ones
@@ -1774,22 +1792,22 @@ label.lbl {
 .input,
 select.input {
   width: 100%;
-  height: 32px;
+  height: var(--control-h);
   padding: 0 9px;
   font-size: 13.5px;
   background: var(--input-bg);
   color: var(--text);
   border: 1px solid var(--control-bd);
-  border-radius: 2px;
+  border-radius: var(--radius);
   outline: 2px solid transparent;
   transition:
-    border-color 0.11s,
-    box-shadow 0.11s;
+    border-color var(--motion),
+    box-shadow var(--motion);
 }
 /* A text area is as tall as its rows, and its text begins at the top. */
 textarea.input {
   height: auto;
-  min-height: 32px;
+  min-height: var(--control-h);
   padding: 6px 9px;
   line-height: 1.45;
   font-family: inherit;
@@ -1830,14 +1848,14 @@ td .multiline {
   gap: 6px;
   padding: 8px;
   border: 1px dashed var(--border-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   transition:
-    border-color 0.11s,
-    background-color 0.11s;
+    border-color var(--motion),
+    background-color var(--motion);
 }
 .file-drop.dragging {
   border-color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 8%, transparent);
+  background: var(--tint);
 }
 .file-row {
   display: flex;
@@ -1888,7 +1906,7 @@ td .multiline {
   gap: 4px 10px;
   padding: 4px 8px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font-size: 13px;
 }
 .upload-name {
@@ -1900,18 +1918,6 @@ td .multiline {
   max-width: 240px;
   height: 6px;
   accent-color: var(--blue);
-}
-.upload-item[data-tone='ok'] {
-  border-color: var(--green-bd);
-  background: var(--green-bg);
-}
-.upload-item[data-tone='warn'] {
-  border-color: var(--orange-bd);
-  background: var(--orange-bg);
-}
-.upload-item[data-tone='bad'] {
-  border-color: var(--red-bd);
-  background: var(--red-bg);
 }
 .result-text {
   flex: 1 1 auto;
@@ -1925,14 +1931,14 @@ td .multiline {
   max-width: 100%;
   max-height: 96px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .file-thumb {
   width: 32px;
   height: 32px;
   object-fit: cover;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .file-thumb-link,
 .file-thumb-chosen {
@@ -1941,7 +1947,7 @@ td .multiline {
   background: none;
   border: 0;
   cursor: zoom-in;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .file-thumb-link:focus-visible,
 .file-thumb-chosen:focus-visible {
@@ -1957,11 +1963,7 @@ dialog.preview-dialog {
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
   padding: 12px;
-  background: var(--raise);
   color: var(--text);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
 }
 dialog.preview-dialog:not([open]) {
   display: none;
@@ -2001,7 +2003,7 @@ dialog.preview-dialog::backdrop {
 }
 input[type='file'].input {
   height: auto;
-  min-height: 32px;
+  min-height: var(--control-h);
   padding: 3px 4px;
   color: var(--text-2);
 }
@@ -2015,7 +2017,7 @@ input[type='file'].input::file-selector-button {
   color: var(--text);
   background: none;
   border: 1px solid var(--border-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 input[type='file'].input::file-selector-button:hover {
@@ -2054,8 +2056,8 @@ select.input[multiple] {
 }
 select.input[multiple] option {
   padding: 3px 6px;
-  border-radius: 2px;
-}/* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
+  border-radius: var(--radius);
+} /* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
    they are marked here, with the tint a selected row of a table has. */
 select.input[multiple] option:checked {
   background: var(--blue);
@@ -2074,7 +2076,7 @@ select.input[multiple] option:checked {
   flex-wrap: wrap;
   gap: 4px;
   height: auto;
-  min-height: 32px;
+  min-height: var(--control-h);
   padding: 4px 28px 4px 8px;
   cursor: pointer;
   user-select: none;
@@ -2106,24 +2108,19 @@ select.input[multiple] option:checked {
   border-bottom: 1.5px solid var(--text-2);
   transform: translateY(-70%) rotate(45deg);
   pointer-events: none;
-  transition: transform 0.11s;
+  transition: transform var(--motion);
 }
 .msel.open .msel-chevron {
   transform: translateY(-30%) rotate(-135deg);
 }
 .msel-pop {
-  position: absolute;
-  z-index: 30;
   left: 0;
   right: 0;
   top: calc(100% + 4px);
+  z-index: 30;
   max-height: 260px;
   overflow: auto;
   padding: 4px;
-  background: var(--raise);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
 }
 .msel-pop.up {
   top: auto;
@@ -2135,7 +2132,7 @@ select.input[multiple] option:checked {
   gap: 8px;
   min-height: 30px;
   padding: 0 8px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .msel-opt.active {
@@ -2159,7 +2156,7 @@ select.input[multiple] option:checked {
   width: 15px;
   height: 15px;
   border: 1px solid var(--control-bd);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--input-bg);
 }
 .msel:not(.msel-multi) .msel-check {
@@ -2168,13 +2165,6 @@ select.input[multiple] option:checked {
 .msel-opt.on .msel-check {
   background: var(--blue);
   border-color: var(--blue);
-}
-.msel-opt.on .msel-check::after {
-  content: '';
-  width: 9px;
-  height: 9px;
-  background: #fff;
-  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
 }
 .msel:not(.msel-multi) .msel-opt.on .msel-check::after {
   width: 5px;
@@ -2224,19 +2214,15 @@ select.input[multiple] option:checked {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  background: var(--raise);
-  border: 1px solid var(--border-2);
   border-left: 3px solid var(--green);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
   padding: 10px 13px;
   min-width: 290px;
   animation: pop 0.16s ease-out;
 }
-.toast.warn {
+.toast.tone-warn {
   border-left-color: var(--orange);
 }
-.toast.err {
+.toast.tone-bad {
   border-left-color: var(--red);
 }
 @keyframes pop {
@@ -2268,7 +2254,7 @@ select.input[multiple] option:checked {
   width: 22px;
   height: 22px;
   margin: -3px -7px -3px 0;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-2);
   cursor: pointer;
 }
@@ -2496,13 +2482,7 @@ html.js button.toast-close-js {
 .md h3 {
   font-size: 14px;
 }
-/* The small headings are captions, as the sidebar's sections are. */
-.md :where(h4, h5, h6) {
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
+/* The small headings are captions, as the sidebar's sections are (.caption). */
 /* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
    600, the one place outside a full-page error that the app uses it. */
 .md strong {
@@ -2522,7 +2502,7 @@ html.js button.toast-close-js {
   max-width: 100%;
   height: auto;
   vertical-align: middle;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 .md a {
   color: var(--blue-text);
@@ -2584,14 +2564,14 @@ html.js button.toast-close-js {
 }
 .md :not(pre) > code {
   padding: 1px 5px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--hover);
   color: var(--text);
 }
 .md pre {
   padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--input-bg);
   overflow: auto;
   tab-size: 2;
@@ -2619,12 +2599,12 @@ html.js button.toast-close-js {
   display: grid;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   background: var(--panel);
   color: var(--text-2);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.13s;
+  transition: opacity var(--motion);
 }
 .md-code:hover .md-copy,
 .md-code:focus-within .md-copy,
@@ -2660,7 +2640,7 @@ html.js button.toast-close-js {
   max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
-  border-radius: 2px;
+  border-radius: var(--radius);
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -2679,7 +2659,7 @@ html.js button.toast-close-js {
   border-bottom: 1px solid var(--border);
 }
 .md td {
-  height: 34px;
+  height: var(--row-h);
   border-bottom: 1px solid var(--border);
 }
 .md tbody tr:last-child td {
@@ -2748,7 +2728,7 @@ html.js button.toast-close-js {
   padding: 11px 13px;
   background: var(--red-bg);
   border-left: 3px solid var(--red);
-  border-radius: 2px;
+  border-radius: var(--radius);
   font:
     12.5px/1.55 ui-monospace,
     SFMono-Regular,
@@ -2815,7 +2795,7 @@ html.js button.toast-close-js {
 }
 .method {
   border: 1px solid var(--border-2);
-  border-radius: 2px;
+  border-radius: var(--radius);
   padding: 0 5px;
   font-size: 10px;
   letter-spacing: 0.04em;
@@ -2868,17 +2848,12 @@ html.js button.toast-close-js {
   align-items: center;
   height: 16px;
   padding: 0 6px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   border: 1px solid transparent;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-}
-.sb-warn {
-  background: var(--orange-bg);
-  color: var(--orange);
-  border-color: var(--orange-bd);
 }
 .status-meta [hidden] {
   display: none;
@@ -2909,7 +2884,7 @@ html.js .status-meta [data-built] {
   height: 10px;
   border: 1.5px solid var(--border-2);
   border-top-color: var(--blue-text);
-  border-radius: 99px;
+  border-radius: var(--radius-pill);
   animation: sp 0.7s linear infinite;
 }
 @keyframes sp {
@@ -2995,7 +2970,7 @@ html.js .status-meta [data-built] {
     width: 32px;
     height: 3px;
     margin: 9px auto 0;
-    border-radius: 2px;
+    border-radius: var(--radius);
     background: var(--border-2);
   }
   html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {
@@ -3090,39 +3065,52 @@ html.js .status-meta [data-built] {
 
   /* The sidebar is a drawer over the page, closed until the box is ticked. Closed it is not visible, which is also what takes
      it out of the order of the keys; the delay on that keeps it from vanishing before it has slid away. */
-  .side-collapse,
-  .side-resize {
-    display: none;
-  }
-  .sidebar {
+  .drawer {
     position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    height: auto;
+    /* One width, so the slide (the whole of the drawer) is the same distance from either side. */
     width: min(280px, 85vw);
-    flex: none;
-    z-index: 60;
-    transform: translateX(-100%);
     visibility: hidden;
     transition:
       transform 0.18s ease-out,
       visibility 0s linear 0.18s;
   }
-  .nav-toggle:checked ~ .app .sidebar {
+  .drawer-left {
+    left: 0;
+    transform: translateX(-100%);
+  }
+  .drawer-right {
+    right: 0;
+    transform: translateX(100%);
+  }
+  .nav-toggle:checked ~ .app .sidebar,
+  .top-more-toggle:checked ~ .top-right {
     transform: none;
     visibility: visible;
     transition: transform 0.18s ease-out;
   }
-  .nav-backdrop {
-    display: block;
+  .nav-backdrop,
+  .top-backdrop {
     position: fixed;
     inset: 0;
+    background: var(--backdrop);
+    transition: opacity 0.18s;
+  }
+  .side-collapse,
+  .side-resize {
+    display: none;
+  }
+  .sidebar {
+    top: 0;
+    bottom: 0;
+    height: auto;
+    flex: none;
+    z-index: 60;
+  }
+  .nav-backdrop {
+    display: block;
     z-index: 55;
-    background: rgb(0 0 0 / 50%);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.18s;
   }
   .nav-toggle:checked ~ .app .nav-backdrop {
     opacity: 1;
@@ -3145,19 +3133,11 @@ html.js .status-meta [data-built] {
   .topbar:has(.top-more-toggle:checked) {
     z-index: 70; /* over the status bar, and the other drawer */
   }
-  .top-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgb(0 0 0 / 50%);
-  }
   .top-right {
     display: flex;
-    position: fixed;
     top: 0;
-    right: 0;
     bottom: 0;
     z-index: 1;
-    width: min(320px, 85vw);
     flex-wrap: wrap;
     align-content: flex-start;
     align-items: center;
@@ -3167,16 +3147,6 @@ html.js .status-meta [data-built] {
     overflow-y: auto;
     background: var(--panel);
     border-left: 1px solid var(--border);
-    transform: translateX(100%);
-    visibility: hidden;
-    transition:
-      transform 0.18s ease-out,
-      visibility 0s linear 0.18s;
-  }
-  .top-more-toggle:checked ~ .top-right {
-    transform: none;
-    visibility: visible;
-    transition: transform 0.18s ease-out;
   }
   /* The order they are read in is the order of the bar; the order they are drawn in puts the buttons first. */
   .top-right > *,
@@ -3286,7 +3256,7 @@ html.js .status-meta [data-built] {
   .panel-title:has(+ .tip:focus) {
     outline: 2px solid var(--blue);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: var(--radius);
   }
   .toolbar-lbl:hover + .tip .tip-body,
   label.lbl:hover + .tip .tip-body,
@@ -3356,7 +3326,7 @@ td.actions .gate:focus-visible::after,
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 32px;
+  height: var(--control-h);
 }
 /* A phone number with script: the country calling code is a segment joined to the input that holds the number. */
 .phone {
@@ -3451,11 +3421,11 @@ a.ext:hover {
   place-items: center;
   width: 20px;
   height: 20px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text-2);
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.12s;
+  transition: opacity var(--motion);
 }
 .filter-btn::-webkit-details-marker {
   display: none;
@@ -3480,10 +3450,8 @@ th:focus-within .filter-btn,
   color: var(--text);
 }
 .filter-pop {
-  position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  z-index: 60;
   width: max-content;
   min-width: 220px;
   max-width: 300px;
@@ -3491,10 +3459,6 @@ th:focus-within .filter-btn,
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  background: var(--raise);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
-  box-shadow: var(--shadow);
   color: var(--text);
   font-size: 13px;
   font-weight: 400;
@@ -3514,13 +3478,6 @@ th.num .filter-pop {
   left: auto;
   right: 0;
 }
-.filter-title {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-2);
-}
 .filter-options {
   display: flex;
   flex-direction: column;
@@ -3533,7 +3490,7 @@ th.num .filter-pop {
   align-items: center;
   gap: 8px;
   padding: 4px 4px;
-  border-radius: 2px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 .filter-opt:hover {
@@ -3722,10 +3679,7 @@ thead th .filter-pop a {
   top: -48px;
   z-index: 100;
   padding: 8px 12px;
-  background: var(--raise);
   color: var(--text);
-  border: 1px solid var(--border-2);
-  border-radius: 2px;
 }
 .skip:focus {
   top: 8px;
@@ -3790,6 +3744,7 @@ button.file-thumb-chosen {
   color: var(--text-2);
   font-size: 11px;
   font-weight: 500;
+  text-align: center;
 }
 .cal .cal-wk {
   width: 2.5em;
@@ -3805,9 +3760,9 @@ button.file-thumb-chosen {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: var(--control-h);
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--radius);
   color: var(--text);
   font-size: 13px;
   text-decoration: none;

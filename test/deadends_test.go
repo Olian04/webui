@@ -24,8 +24,8 @@ func TestAMethodThatAnAddressDoesNotTakeIsAnswered405InThePageWithALink(t *testi
 	body := rec.Body.String()
 	assert.Contains(t, body, "That is not how this address is used")
 	assert.Contains(t, body, "It answers "+rec.Header().Get("Allow"))
-	assert.Contains(t, body, `href="/admin/device"`) // opened as a visit, which it answers
-	assert.Contains(t, body, `class="sidebar"`)      // in the shell, so that the way back is on screen
+	assert.Contains(t, body, `href="/admin/device"`)               // opened as a visit, which it answers
+	assert.Contains(t, body, `class="sidebar drawer drawer-left"`) // in the shell, so that the way back is on screen
 }
 
 func TestACrossOriginPostIsRefusedInThePageAndAsAFragmentForScript(t *testing.T) {
@@ -200,13 +200,13 @@ func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing
 	body := refused.Body.String()
 	assert.Contains(t, body, "must be a valid IPv4 address")
 	assert.Contains(t, body, `value="nope"`)
-	assert.False(t, strings.Contains(body, "<!doctype") || strings.Contains(body, `class="sidebar"`))
+	assert.False(t, strings.Contains(body, "<!doctype") || strings.Contains(body, `class="sidebar`))
 	assert.Contains(t, body, `data-leaf="p"`)
 
 	// The same post without the header is as it always was: a page, with the 422.
 	page := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"))
 	assert.Equal(t, page.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, page.Body.String(), `class="sidebar"`)
+	assert.Contains(t, page.Body.String(), `class="sidebar drawer drawer-left"`)
 
 	// A Guard that refuses the visitor is a 403, which is not the answer to what was sent being refused.
 	guarded := newUploadShop(func(f *webui.FileUpload[struct{}]) {

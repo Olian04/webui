@@ -35,7 +35,7 @@ func TestTheStatusBarSaysHowThePageCameToBe(t *testing.T) {
 	body := rec.Body.String()
 
 	// With script off, the bar says so, in markup that only a browser with script off shows.
-	assert.Contains(t, body, `<noscript><span class="sb-badge sb-warn"`)
+	assert.Contains(t, body, `<noscript><span class="sb-badge tone-warn"`)
 	assert.Contains(t, body, ">JS off</span>")
 	// The server's time, and when the HTML was built, in a form the script can read.
 	assert.True(t, regexp.MustCompile(`data-build[^>]*>\d+(\.\d)? ms<`).MatchString(body))

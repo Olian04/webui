@@ -101,14 +101,14 @@ func TestTheBoxesListboxHoldsOnlyOptionsAndGroups(t *testing.T) {
 	h := searchApp(rowsSearch(), nil)
 	list := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	assert.Contains(t, list, `<div role="group" aria-label="Devices">`)
-	assert.Contains(t, list, `<div class="pal-label" aria-hidden="true">Devices</div>`)
+	assert.Contains(t, list, `<div class="pal-label caption" aria-hidden="true">Devices</div>`)
 	none := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=zzzzzz").Body.String()
 	assert.Contains(t, none, `<div class="pal-empty" role="presentation">Nothing matches.</div>`)
 
 	// The page of results, which is not a listbox, is as it was.
 	page := serve(h, http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	assert.False(t, strings.Contains(page, `role="option"`))
-	assert.Contains(t, page, `<div class="pal-label">Devices</div>`)
+	assert.Contains(t, page, `<div class="pal-label caption">Devices</div>`)
 }
 
 // --- display preferences -------------------------------------------------------------------------------------------------------------------------
@@ -129,7 +129,7 @@ func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
 	}
 
 	// What is typed in the search box is text too, and the box around it is quiet, so the input says its own colour.
-	assert.Contains(t, regexp.MustCompile(`\.search input\s*\{[^}]*\}`).FindString(css), "color: var(--text);")
+	assert.True(t, regexp.MustCompile(`\.search input\s*\{[^}]*color:\s*var\(\s*--text\s*\);`).MatchString(css))
 }
 
 // Windows high contrast and the like take every colour that a page chose, so what is drawn with a background or a shadow, a checked box, a focus ring,
@@ -194,7 +194,7 @@ func TestAPageHasOneH1TheSkipLinkAndTheLandmarksForReaders(t *testing.T) {
 	assert.Equal(t, strings.Count(body, "<h1"), 1)
 	assert.Contains(t, body, `<main id="main" tabindex="-1" class="scroll"><h1 class="sr-only">Devices</h1>`)
 	assert.Contains(t, body, `<h2 class="panel-title">Devices</h2>`) // the panels are one level down
-	assert.True(t, strings.Index(body, `<body><a class="skip" href="#main">Skip to content</a>`) > 0)
+	assert.True(t, strings.Index(body, `<body><a class="skip raise" href="#main">Skip to content</a>`) > 0)
 	// The status bar is the page's footer, named, so that its text is in a landmark.
 	assert.Contains(t, body, `<footer class="statusbar" aria-label="Page status">`)
 
@@ -268,7 +268,7 @@ func TestControlsHaveTheRolesAReaderExpects(t *testing.T) {
 	t.Parallel()
 
 	h := guardedParcels(nil, []webui.Action[parcel]{{Label: "Drop", Confirm: "Drop it?", Run: noop("Drop")}}, nil, nil)
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), `class="confirm" role="alertdialog"`)
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), `class="confirm raise" role="alertdialog"`)
 
 	links := serve(linksApp(item("Docs", "https://example.com/help"), item("Home", "/logout")), http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, links, `<span>Docs</span> <span class="sr-only">(opens in a new tab)</span>`)
@@ -308,12 +308,12 @@ func TestAToastIsItsOwnLiveRegionAndHasAButton(t *testing.T) {
 	body := toast("oFine")
 	assert.Contains(t, body, `<div class="toasts" data-toasts>`)
 	assert.False(t, strings.Contains(body, `data-toasts role=`))
-	assert.Contains(t, body, `<div class="toast" role="status">`)
-	assert.Contains(t, toast("wCareful"), `<div class="toast warn" role="status">`)
+	assert.Contains(t, body, `<div class="toast raise" role="status">`)
+	assert.Contains(t, toast("wCareful"), `<div class="toast raise tone-warn" role="status">`)
 	assert.Contains(t, body, `<button class="toast-close toast-close-js" type="button" title="Dismiss" aria-label="Dismiss" data-toast-dismiss>`)
 	assert.Contains(t, body, `<label class="toast-close toast-close-nojs" title="Dismiss">`)
 
-	assert.Contains(t, toast("eBad"), `<div class="toast err" role="alert">`)
+	assert.Contains(t, toast("eBad"), `<div class="toast raise tone-bad" role="alert">`)
 
 	// The page has a place to say what script changes, empty until it does.
 	assert.Contains(t, body, `<div class="sr-only" role="status" aria-live="polite" data-announce></div>`)
@@ -355,7 +355,7 @@ func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
 		// A panel that is asked for again can be stopped, and says when it is done.
 		"[data-refresh-pause]", "if (el.hasAttribute('data-paused')) return;", "describeLeaf(next, 'is up to date')",
 		// Toasts: put in again to be announced, an error stays, a message that went well stays long enough to read.
-		"var TOAST_MS = 8000;", "if (el.classList.contains('err') || el.classList.contains('warn')) return;", "[data-toast-dismiss]", "var again = toast.cloneNode(true);",
+		"var TOAST_MS = 8000;", "if (el.classList.contains('tone-bad') || el.classList.contains('tone-warn')) return;", "[data-toast-dismiss]", "var again = toast.cloneNode(true);",
 		// A choice that is required says so, and says what is missing; the page opens with the focus on the field that was refused.
 		"field.setAttribute('aria-required', 'true');", "err.setAttribute('role', 'alert');", "if (sel.hasAttribute('autofocus')) field.focus();",
 		// The search says how many results it has, and one Escape closes one thing.
@@ -368,7 +368,7 @@ func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
 	assert.False(t, strings.Contains(js, "'Expand sidebar'"))
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `aria-expanded="true" aria-controls="sidebar" title="Collapse sidebar"`)
-	assert.Contains(t, body, `<aside class="sidebar" id="sidebar">`)
+	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
 	assert.Contains(t, serve(searchApp(rowsSearch(), nil), http.MethodGet, "/admin/device").Body.String(), `<div class="sr-only" role="status" aria-live="polite" data-palette-status></div>`)
 }
 

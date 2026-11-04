@@ -115,7 +115,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
 			@c.ExternalLinks(items)
 		}
 		if r.search {
-			<div class="palette" id="palette" role="listbox" aria-label="Search results" data-palette></div>
+			<div class="palette raise" id="palette" role="listbox" aria-label="Search results" data-palette></div>
 			<div class="sr-only" role="status" aria-live="polite" data-palette-status></div>
 			// What the box says while a question is out, in the page's own words: script puts it there and has no words of its own for it.
 			<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>
@@ -727,7 +727,7 @@ templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
 		if loaded.Failed {
 			<span class="toolbar-value">
 				<span class="toolbar-lbl">{ f.Title }</span>
-				<span class="toolbar-val bad">
+				<span class="toolbar-val tone-bad">
 					if loaded.Refusal != nil {
 						{ loaded.Refusal.Message }
 					} else {
@@ -829,8 +829,8 @@ templ (r *Renderer) filterMenu(v TableView, fv filterView) {
 		<summary class="filter-btn" title={ fv.summary() } aria-label={ fv.summary() }>
 			@c.Icon(c.IconProps{Name: c.IconFilter})
 		</summary>
-		<div class="filter-pop">
-			<div class="filter-title">{ fv.Label }</div>
+		<div class="filter-pop raise pop">
+			<div class="filter-title caption">{ fv.Label }</div>
 			if fv.Numeric && fv.Moment {
 				<div class="filter-range moment">
 					<label>
@@ -1128,11 +1128,11 @@ templ SearchList(groups []SearchGroup, option bool) {
 		if option {
 			// A listbox holds options, or groups of them: the label names its group, and is not read a second time.
 			<div role="group" aria-label={ g.Label }>
-				<div class="pal-label" aria-hidden="true">{ g.Label }</div>
+				<div class="pal-label caption" aria-hidden="true">{ g.Label }</div>
 				@searchHits(g.Hits, option)
 			</div>
 		} else {
-			<div class="pal-label">{ g.Label }</div>
+			<div class="pal-label caption">{ g.Label }</div>
 			@searchHits(g.Hits, option)
 		}
 	}

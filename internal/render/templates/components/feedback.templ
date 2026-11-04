@@ -30,7 +30,7 @@ type ToastProps struct {
 // or to be aware of something, stays until it is dismissed.
 templ Toast(p ToastProps) {
 	<div
-		class={ "toast", templ.KV("warn", p.Tone == ToneWarning), templ.KV("err", p.Tone == ToneCritical) }
+		class={ "toast", "raise", templ.KV("tone-warn", p.Tone == ToneWarning), templ.KV("tone-bad", p.Tone == ToneCritical) }
 		if p.Tone == ToneCritical {
 			role="alert"
 		} else {
@@ -145,9 +145,9 @@ templ StatusUpdate(p StatusBarProps) {
 templ statusMeta(p StatusBarProps) {
 	<span class="status-meta">
 		<noscript>
-			<span class="sb-badge sb-warn" title="JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.">JS off</span>
+			<span class="sb-badge tone-warn" title="JavaScript is off. Everything works as whole pages: search is a form with a button, there is no code editor, and a panel reloads the page.">JS off</span>
 		</noscript>
-		<span class="sb-badge sb-warn" data-stale hidden></span>
+		<span class="sb-badge tone-warn" data-stale hidden></span>
 		if !p.Built.IsZero() {
 			<span class="sb-timing" data-timing>
 				<span class="sb-opt" data-build title="How long the server took to build this page from the request's arrival">{ p.took() }</span>

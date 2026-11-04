@@ -137,8 +137,8 @@ func TestAToolbarIsARowOfButtonsAndTheValuesOfItsForms(t *testing.T) {
 	// A form is a group that its Title names, of its fields' labels and values as they are read: a number, and a select as its badges.
 	assert.Contains(t, bar, `<span class="toolbar-form" role="group" aria-label="Settings">`)
 	assert.Contains(t, bar, `<span class="toolbar-value"><span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span></span>`)
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Site</span> <span class="toolbar-val"><span class="badges"><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>North</span></span></span>`)
-	assert.Contains(t, bar, `>edge</span><span class="badge badge-mute"><span class="dot" aria-hidden="true"></span>gpu</span>`)
+	assert.Contains(t, bar, `<span class="toolbar-lbl">Site</span> <span class="toolbar-val"><span class="badges"><span class="badge tone-mute"><span class="dot" aria-hidden="true"></span>North</span></span></span>`)
+	assert.Contains(t, bar, `>edge</span><span class="badge tone-mute"><span class="dot" aria-hidden="true"></span>gpu</span>`)
 	for _, input := range []string{"<input type=\"number\"", "<select", "<textarea", "toolbar-apply", "data-toolbar-form", "_toolbar", `method="get"`, `<label`} {
 		assert.False(t, strings.Contains(bar, input))
 	}
@@ -255,9 +255,9 @@ func TestAFormThatCannotBeLoadedDoesNotTakeTheToolbarDown(t *testing.T) {
 		broken, refused, settings(minutesInput),
 	)
 	bar := toolbarOf(serve(s.h, http.MethodGet, "/admin/tools?minutes=15").Body.String())
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Broken</span> <span class="toolbar-val bad">Could not load</span>`)
+	assert.Contains(t, bar, `<span class="toolbar-lbl">Broken</span> <span class="toolbar-val tone-bad">Could not load</span>`)
 	assert.False(t, strings.Contains(bar, "the backend is down")) // the cause is logged, never shown
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Refused</span> <span class="toolbar-val bad">Not for you.</span>`)
+	assert.Contains(t, bar, `<span class="toolbar-lbl">Refused</span> <span class="toolbar-val tone-bad">Not for you.</span>`)
 	assert.Contains(t, bar, ">Go</button>")
 	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
 }

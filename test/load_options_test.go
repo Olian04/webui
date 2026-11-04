@@ -78,8 +78,8 @@ func TestASelectThatReadsItsOptionsOffersAndChecksWhatThereIsNow(t *testing.T) {
 	h := issueForm(s, &saved)
 
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="red" data-badge="badge-bad" selected>Red team</option>`)
-	assert.Contains(t, body, `<option value="blue" data-badge="badge-mute">blue</option>`)
+	assert.Contains(t, body, `<option value="red" data-badge="tone-bad" selected>Red team</option>`)
+	assert.Contains(t, body, `<option value="blue" data-badge="tone-mute">blue</option>`)
 	assert.False(t, strings.Contains(body, `value="green"`))
 
 	code, _ := submitTeam(h, "green")
@@ -89,7 +89,7 @@ func TestASelectThatReadsItsOptionsOffersAndChecksWhatThereIsNow(t *testing.T) {
 	// Someone adds a team: the next request offers it and accepts it, with no restart.
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"}, webui.Option{Value: "green", Label: "Green"})
 	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="green" data-badge="badge-mute">Green</option>`)
+	assert.Contains(t, body, `<option value="green" data-badge="tone-mute">Green</option>`)
 	code, _ = submitTeam(h, "green")
 	assert.Equal(t, code, http.StatusSeeOther)
 	assert.DeepEqual(t, saved.Team, []string{"green"})
@@ -115,7 +115,7 @@ func TestASelectThatIsReadSaysWhatTheOptionsReadNow(t *testing.T) {
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: form}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<span class="badge badge-bad"><span class="dot" aria-hidden="true"></span>Red team</span>`)
+	assert.Contains(t, body, `<span class="badge tone-bad"><span class="dot" aria-hidden="true"></span>Red team</span>`)
 	assert.Contains(t, body, `>gone</span>`) // a value that is not an option says what it is
 }
 
@@ -144,13 +144,13 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title">Team</div>`):]
+	filter := body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
 	filter = filter[:strings.Index(filter, `</form>`)]
 	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 2)
 
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"}, webui.Option{Value: "green"})
 	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter = body[strings.Index(body, `<div class="filter-title">Team</div>`):]
+	filter = body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
 	filter = filter[:strings.Index(filter, `</form>`)]
 	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 3)
 	assert.Contains(t, filter, `value="green"`)
@@ -183,7 +183,7 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title">Team</div>`):]
+	filter := body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
 	filter = filter[:strings.Index(filter, `</form>`)]
 	for _, v := range []string{"red", "mauve"} {
 		assert.Contains(t, filter, `value="`+v+`"`)
