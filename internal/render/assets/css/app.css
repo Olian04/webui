@@ -3748,6 +3748,7 @@ button.file-thumb-chosen {
   color: var(--text-2);
   font-size: 11px;
   font-weight: 500;
+  text-align: center;
 }
 .cal .cal-wk {
   width: 2.5em;
