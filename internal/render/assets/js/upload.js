@@ -155,7 +155,7 @@
       picker.type = 'file';
       picker.hidden = true;
       picker.setAttribute('webkitdirectory', '');
-      var folder = element('button', 'btn btn-ghost btn-sm file-folder', 'Choose folder');
+      var folder = element('button', 'btn btn-ghost btn-sm', 'Choose folder');
       folder.type = 'button';
       folder.addEventListener('click', function () {
         picker.click();

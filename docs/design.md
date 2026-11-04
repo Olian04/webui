@@ -57,12 +57,12 @@ for. The library ships no themes beyond these two: every look an app adds is one
 
 Four levels, dark values first, light values second.
 
-| Level | Meaning | Dark | Light |
-|---|---|---|---|
-| **Canvas** | The page behind everything. Panels sit on it with gutters. | `#111217` | `#f4f5f5` |
-| **Panel** | A bounded region of content. Also the sidebar and top bar. | `#181b1f` | `#ffffff` |
+| Level      | Meaning                                                     | Dark      | Light              |
+| ---------- | ----------------------------------------------------------- | --------- | ------------------ |
+| **Canvas** | The page behind everything. Panels sit on it with gutters.  | `#111217` | `#f4f5f5`          |
+| **Panel**  | A bounded region of content. Also the sidebar and top bar.  | `#181b1f` | `#ffffff`          |
 | **Raised** | Something floating above the page: menus, toasts, tooltips. | `#22252b` | `#ffffff` + shadow |
-| **Input** | A field waiting for text. Recessed, not raised. | `#0e0f12` | `#ffffff` |
+| **Input**  | A field waiting for text. Recessed, not raised.             | `#0e0f12` | `#ffffff`          |
 
 In dark, an input is *darker* than its panel — a hole, not a button. In light
 it is the same white as the panel, and its border does the work instead.
@@ -80,29 +80,29 @@ Elevation is never expressed with shadow except on Raised, where the shadow is
 All neutrals derive from one hue per theme at varying alpha, so they compose
 over any surface.
 
-| Token | Dark | Light | Use |
-|---|---|---|---|
-| Text | `rgb(204,204,220)` | `#24292e` | Values, headings, active items |
-| Text secondary | 65% of Text | `#5c6269` | Labels, descriptions, inactive nav |
-| Text tertiary | 45% of Text | `#85888e` | Decoration only: placeholders, separators, the shortcut hint, icons. 3:1, never text a reader needs |
-| Border | 11% of Text | `rgba(36,41,46,.12)` | Panel edges, table rules |
-| Border strong | 22% of Text | `rgba(36,41,46,.24)` | Input edges, secondary buttons |
-| Hover | 7% of Text | `rgba(36,41,46,.06)` | Row and item hover, table headers |
-| Active | 11% of Text | `rgba(36,41,46,.10)` | Selected nav item |
+| Token          | Dark               | Light                | Use                                                                                                 |
+| -------------- | ------------------ | -------------------- | --------------------------------------------------------------------------------------------------- |
+| Text           | `rgb(204,204,220)` | `#24292e`            | Values, headings, active items                                                                      |
+| Text secondary | 65% of Text        | `#5c6269`            | Labels, descriptions, inactive nav                                                                  |
+| Text tertiary  | 45% of Text        | `#85888e`            | Decoration only: placeholders, separators, the shortcut hint, icons. 3:1, never text a reader needs |
+| Border         | 11% of Text        | `rgba(36,41,46,.12)` | Panel edges, table rules                                                                            |
+| Border strong  | 22% of Text        | `rgba(36,41,46,.24)` | Input edges, secondary buttons                                                                      |
+| Hover          | 7% of Text         | `rgba(36,41,46,.06)` | Row and item hover, table headers                                                                   |
+| Active         | 11% of Text        | `rgba(36,41,46,.10)` | Selected nav item                                                                                   |
 
 ### Semantics
 
 Five meanings, no more. Each has a text colour, a 14% background (12% in light), and a 30%
 border (28% in light), so a badge can be built from one token family.
 
-| Meaning | Dark | Light | Where it appears |
-|---|---|---|---|
-| **Primary / interactive** | `#3d71d9` | `#3d71d9` | Primary buttons, selection, focus ring |
-| **Link / sorted** | `#6e9fff` | `#1f62e0` | Sorted column, inline emphasis, gauges |
-| **Healthy** | `#6ccf8e` | `#177244` | Loaded, acknowledged, ok |
-| **Warning** | `#ff9830` | `#a74a0b` | Degraded, open, active tab underline |
-| **Critical** | `#f2686c` | `#c20d54` | Rejections and failures, as text, borders and dots |
-| **Critical, solid** | `#d03a3f` | `#c20d54` | The fill of a destructive button, which carries a white label |
+| Meaning                   | Dark      | Light     | Where it appears                                              |
+| ------------------------- | --------- | --------- | ------------------------------------------------------------- |
+| **Primary / interactive** | `#3d71d9` | `#3d71d9` | Primary buttons, selection, focus ring                        |
+| **Link / sorted**         | `#6e9fff` | `#1f62e0` | Sorted column, inline emphasis, gauges                        |
+| **Healthy**               | `#6ccf8e` | `#177244` | Loaded, acknowledged, ok                                      |
+| **Warning**               | `#ff9830` | `#a74a0b` | Degraded, open, active tab underline                          |
+| **Critical**              | `#f2686c` | `#c20d54` | Rejections and failures, as text, borders and dots            |
+| **Critical, solid**       | `#d03a3f` | `#c20d54` | The fill of a destructive button, which carries a white label |
 
 The active tab underline is warning-orange rather than primary-blue. This is
 deliberate: blue means *you can act on this*, orange means *you are here*.
@@ -113,16 +113,16 @@ deliberate: blue means *you can act on this*, orange means *you are here*.
 
 Inter, falling back to the system UI stack. One family; no display face.
 
-| Role | Size | Weight | Colour |
-|---|---|---|---|
-| Panel title | 14 | 500 | Text |
-| Body / breadcrumb | 14 | 400 | Text |
-| Control label, button | 13.5 | 500 | Text |
-| Table cell | 13 | 400 | Text |
-| Table header, secondary | 12.5 | 500 | Text secondary |
-| Field label | 12 | 400 | Text secondary |
-| Description | 12.5 | 400 | Text secondary |
-| Section caption | 11 | 500, uppercase, `.05em` | Text secondary |
+| Role                    | Size | Weight                  | Colour         |
+| ----------------------- | ---- | ----------------------- | -------------- |
+| Panel title             | 14   | 500                     | Text           |
+| Body / breadcrumb       | 14   | 400                     | Text           |
+| Control label, button   | 13.5 | 500                     | Text           |
+| Table cell              | 13   | 400                     | Text           |
+| Table header, secondary | 12.5 | 500                     | Text secondary |
+| Field label             | 12   | 400                     | Text secondary |
+| Description             | 12.5 | 400                     | Text secondary |
+| Section caption         | 11   | 500, uppercase, `.05em` | Text secondary |
 
 Addresses, payloads and code (the editor, a diff, a Markdown code block) use a monospace face at 12–12.5 in Text secondary. A table cell is not monospace, since no accessor can ask for it. Numeric columns
 use tabular figures and right alignment.
@@ -137,20 +137,20 @@ reader must be able to see what the author stressed.
 
 Everything is a multiple of 2, and the working gutter is 8.
 
-| Element | Size |
-|---|---|
-| Panel gutter | 8 |
-| Page padding | 12 on the top and sides, 46 below (it clears the status bar) |
-| Corner radius | 2, except the pills (the switch, the spinner) |
-| Sidebar | 240 (56 when collapsed) |
-| Top bar | 48 |
-| Status bar | 26 |
-| Panel header | 32 |
-| Nav item | 32 |
-| Control (button, input, select) | 32 |
-| Small control | 28 |
-| Table header row | 30 |
-| Table body row | 34 |
+| Element                         | Size                                                         |
+| ------------------------------- | ------------------------------------------------------------ |
+| Panel gutter                    | 8                                                            |
+| Page padding                    | 12 on the top and sides, 46 below (it clears the status bar) |
+| Corner radius                   | 2, except the pills (the switch, the spinner)                |
+| Sidebar                         | 240 (56 when collapsed)                                      |
+| Top bar                         | 48                                                           |
+| Status bar                      | 26                                                           |
+| Panel header                    | 32                                                           |
+| Nav item                        | 32                                                           |
+| Control (button, input, select) | 32                                                           |
+| Small control                   | 28                                                           |
+| Table header row                | 30                                                           |
+| Table body row                  | 34                                                           |
 
 ---
 
@@ -272,7 +272,7 @@ not built for the request that brought it, which a small uppercase badge in the 
 **stale page**, with the reason as its title (the browser showed it from its own cache, a cache or a proxy
 answered, a page restored as it was left, or a clock that differs from the server's); and how long ago it was built
 was dropped, since a page that is old but was built for the request has nothing to be told. The other badge is **JS
-off**, drawn only where script is off. The timings are hidden below 720px; the badges are not. A panel fetched again
+off**, drawn only where script is off. The timings are hidden below 640px; the badges are not. A panel fetched again
 updates all of it.
 
 ---
@@ -387,12 +387,12 @@ from the same tokens.
 
 Four button roles and no others.
 
-| Role | Appearance |
-|---|---|
-| **Primary** | Solid primary blue, white text. One per region, at most. |
-| **Secondary** | Transparent with a strong border. |
-| **Ghost** | Transparent, text-secondary, background on hover. Cancels and dismissals. |
-| **Destructive** | Solid critical red. |
+| Role            | Appearance                                                                |
+| --------------- | ------------------------------------------------------------------------- |
+| **Primary**     | Solid primary blue, white text. One per region, at most.                  |
+| **Secondary**   | Transparent with a strong border.                                         |
+| **Ghost**       | Transparent, text-secondary, background on hover. Cancels and dismissals. |
+| **Destructive** | Solid critical red.                                                       |
 
 32px tall, 12px horizontal padding, 13.5/500, 2px radius, optional 14px leading
 icon.
@@ -529,7 +529,7 @@ who cannot see it has them. In forced colours the line is the text colour and th
 headline is a link in the link text colour when the item leads somewhere (an arrow-out-of-box mark and a tab of its own when it is on another site), with a badge beside it when it has one. A picture is a 40px
 square on the left, decoration with no text of its own since the headline names the item, in a box that holds its place so that the page does not move as pictures arrive. The facts are in order, a dot (`·`) before each but the
 first, in text-tertiary, and the dot goes with the fact it leads when the line wraps; a fact with no value is left out, and not shown as a dash. Cards are the same item as a box with a 1px border: the picture
-above, 16:9 and the full width, then the headline, badge and facts at 10px by 12px. They are a grid of cards at least 200px wide that wraps, or a row of 220px cards that scrolls sideways and snaps, which is a region that
+above, 16:9 and the full width, then the headline, badge and facts at 10px by 12px. They are a grid of cards at least 200px wide that wraps, or a row of 220px cards that scrolls sideways and snaps, 12px from the panel on both sides even while it scrolls, which is a region that
 can be focused and moved by the arrow keys. Both end in a foot that says how many are shown, and, when there are more, *Show more*: a real link to the same page with a larger limit in the address (`latest.limit=8`),
 which with script replaces the list in place. An empty one says *Nothing here yet*. A picture is drawn only from this site or from an origin the page trusts, as for Markdown, and is otherwise left out.
 
@@ -610,12 +610,14 @@ body that says *Could not load*, or the refusal's text and link, and the page st
 
 Motion exists to say *something is happening* and nothing else.
 
-- Hover and border transitions: 110–130ms.
+- Hover and border transitions: 110–130ms (`--motion` is 120ms).
 - Toast entry: 160ms rise.
 - Skeleton pulse: 1.1s, 100% → 40%.
 - Spinner: 700ms linear.
+- Phone drawers (640px only): 180ms slide. The one allowed slide; nothing else slides.
+- Search palette `.pending`: a static dim, no transition.
 
-Nothing slides, nothing bounces, nothing animates on first paint.
+Nothing else slides, nothing bounces, nothing animates on first paint.
 
 ### Navigation
 
@@ -669,8 +671,7 @@ piece.
 ## 14. Responsive
 
 One breakpoint that matters: **640px**, where the shell becomes a phone (the sidebar a drawer, the
-top bar's actions a drawer). Above it the shell keeps its shape at every width, and the search field shrinks to the room the bar has. Two minor ones: **1100px**, where a
-split becomes a single column, and **760px**, where paired form fields stack.
+top bar's actions a drawer). Above it the shell keeps its shape at every width, and the search field shrinks to the room the bar has. `Split` and `Columns` wrap at the 280px floor, not at a viewport query. Paired form fields stack via `.field-row` `auto-fit minmax(220px)`, which follows the panel's width.
 
 The design does not attempt a phone layout. A control plane on a phone is a
 different product.

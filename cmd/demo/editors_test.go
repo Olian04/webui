@@ -30,7 +30,7 @@ func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) 
 	assert.False(t, strings.Contains(body, "<textarea"))
 	refused := post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(v, refused).Body.String(), `class="toast err"`)
+	assert.Contains(t, follow(v, refused).Body.String(), `class="toast raise tone-bad"`)
 }
 
 func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAViewer(t *testing.T) {
@@ -58,7 +58,7 @@ func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAVie
 	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
 	refused := post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(viewer, refused).Body.String(), `class="toast err"`)
+	assert.Contains(t, follow(viewer, refused).Body.String(), `class="toast raise tone-bad"`)
 }
 
 func TestTheEditorsAreGivenTheFolderOfContextTheProgramEmbeds(t *testing.T) {

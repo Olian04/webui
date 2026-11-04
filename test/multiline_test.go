@@ -56,7 +56,7 @@ func TestAMultilineStringIsATextAreaWithItsRules(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/n").Body.String()
 
 	// The text begins after a newline, which the parser drops, so that a text that begins with one keeps it.
-	assert.Contains(t, body, `<textarea id="p-f1" class="input textarea" name="f1" rows="5" placeholder="Say more" minlength="2" maxlength="12"`)
+	assert.Contains(t, body, `<textarea id="p-f1" class="input" name="f1" rows="5" placeholder="Say more" minlength="2" maxlength="12"`)
 	assert.Contains(t, body, ">\none\ntwo</textarea>")
 	assert.False(t, strings.Contains(body, `name="f1" type=`)) // not an input
 	assert.False(t, strings.Contains(body, "pattern="))

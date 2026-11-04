@@ -38,15 +38,15 @@ const (
 func (t Tone) badge() string {
 	switch t {
 	case TonePrimary, ToneOK:
-		return "badge-ok"
+		return "tone-ok"
 	case ToneWarning:
-		return "badge-warn"
+		return "tone-warn"
 	case ToneCritical:
-		return "badge-bad"
+		return "tone-bad"
 	case ToneNeutral:
-		return "badge-mute"
+		return "tone-mute"
 	}
-	return "badge-mute"
+	return "tone-mute"
 }
 
 // Size is the control height. Medium is 32px, Small is 28px.

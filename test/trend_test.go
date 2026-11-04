@@ -50,14 +50,14 @@ func TestAChangeIsItsSignAnArrowAndAColourForWhetherThatWayIsGood(t *testing.T) 
 	}
 
 	up := tile(reading{Change: 4.35})
-	assert.Contains(t, up, `<span class="delta delta-ok">`)
+	assert.Contains(t, up, `<span class="delta tone-ok">`)
 	assert.Contains(t, up, `fa-arrow-up`)
 	assert.Contains(t, up, `<span>+4.35%</span>`)
 	assert.Contains(t, up, `<span class="sr-only"> (better)</span>`) // what the colour means, for a reader who does not see it
 	assert.False(t, strings.Contains(up, "<svg"))                    // no points, no chart
 
 	down := tile(reading{Change: -4.8})
-	assert.Contains(t, down, `<span class="delta delta-bad">`)
+	assert.Contains(t, down, `<span class="delta tone-bad">`)
 	assert.Contains(t, down, `fa-arrow-down`)
 	assert.Contains(t, down, `<span>−4.80%</span>`) // the minus sign, which is as wide as the plus
 	assert.Contains(t, down, `<span class="sr-only"> (worse)</span>`)
@@ -81,12 +81,12 @@ func TestALowerIsBetterChangeIsGoodWhenItFalls(t *testing.T) {
 		return serve(readingApp(r, rDevices, rLatency), http.MethodGet, "/admin/e").Body.String()
 	}
 	fell := tile(reading{Latency: -12})
-	assert.Contains(t, fell, `<span class="delta delta-ok">`)
+	assert.Contains(t, fell, `<span class="delta tone-ok">`)
 	assert.Contains(t, fell, `fa-arrow-down`)
 	assert.Contains(t, fell, `<span>−12.0%</span>`)
 
 	rose := tile(reading{Latency: 30})
-	assert.Contains(t, rose, `<span class="delta delta-bad">`)
+	assert.Contains(t, rose, `<span class="delta tone-bad">`)
 	assert.Contains(t, rose, `fa-arrow-up`)
 }
 
@@ -97,8 +97,8 @@ func TestEachTrendOfARowHasItsOwnDirection(t *testing.T) {
 	both := webui.Trend[reading]{Label: "Both", Load: func(r reading) ([]float64, *float64) { return nil, &r.Change }}
 	slower := webui.Trend[reading]{Label: "Slower", LowerIsBetter: true, Load: func(r reading) ([]float64, *float64) { return nil, &r.Change }}
 	body := serve(readingApp(reading{Change: 5}, both, slower), http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `<span class="delta delta-ok">`), 1)
-	assert.Equal(t, strings.Count(body, `<span class="delta delta-bad">`), 1)
+	assert.Equal(t, strings.Count(body, `<span class="delta tone-ok">`), 1)
+	assert.Equal(t, strings.Count(body, `<span class="delta tone-bad">`), 1)
 }
 
 // What the text says and what the colour says are one thing: a change that reads zero as it is shown has no sign, no arrow and no colour,
@@ -110,7 +110,7 @@ func TestAChangeThatReadsZeroHasNoDirection(t *testing.T) {
 		body := serve(readingApp(reading{Change: v}, rDevices, rChange), http.MethodGet, "/admin/e").Body.String()
 		assert.Contains(t, body, `<span class="delta"><span>0%</span>`)
 		assert.False(t, strings.Contains(body, "fa-arrow"))
-		assert.False(t, strings.Contains(body, "delta-ok") || strings.Contains(body, "delta-bad"))
+		assert.False(t, strings.Contains(body, "tone-ok") || strings.Contains(body, "tone-bad"))
 	}
 }
 

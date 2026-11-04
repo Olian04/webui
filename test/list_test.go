@@ -277,7 +277,7 @@ func TestABadgeIsDrawnBesideTheHeadlineAsItIsInACell(t *testing.T) {
 	src := &listLoader{}
 	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 3, Headline: pTitle, Badge: pKind})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `class="badge badge-bad"`), 1) // the live one, which says Live in words and not only in red
+	assert.Equal(t, strings.Count(body, `class="badge tone-bad"`), 1) // the live one, which says Live in words and not only in red
 	assert.Contains(t, body, "Live")
 	assert.Equal(t, strings.Count(body, `class="item-head"`), 3)
 }

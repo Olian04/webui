@@ -99,7 +99,7 @@ templ Panel(p PanelProps) {
 				@InfoTip(InfoTipProps{Text: p.Desc})
 			}
 			if p.Failed {
-				@Icon(IconProps{Name: IconAlert, Class: "panel-status bad", Title: "Failed"})
+				@Icon(IconProps{Name: IconAlert, Class: "glyph panel-status tone-bad", Title: "Failed"})
 			}
 			if p.Leaf != "" {
 				@RefreshNote(ctx)
@@ -169,9 +169,9 @@ func (p InfoTipProps) name() string {
 
 templ InfoTip(p InfoTipProps) {
 	<span class="tip" tabindex="0" role="note" aria-label={ p.name() }>
-		@Icon(IconProps{Name: IconInfo, Class: "info"})
+		@Icon(IconProps{Name: IconInfo, Class: "glyph info"})
 		<span
-			class="tip-body"
+			class="tip-body raise"
 			aria-hidden="true"
 			if p.ID != "" {
 				id={ p.ID }

@@ -171,7 +171,7 @@ func TestPagesAndTheSearchAreCompressedToo(t *testing.T) {
 
 	found := gzipped(t, searchBox(h), "/admin/_webui/search?q=dev")
 	assert.Equal(t, found.Header().Get("Content-Encoding"), "gzip")
-	assert.Contains(t, unzip(t, found.Body.Bytes()), `class="pal-label"`)
+	assert.Contains(t, unzip(t, found.Body.Bytes()), `class="pal-label caption"`)
 
 	// A client that does not accept it gets the bytes as before.
 	assert.Equal(t, page.Header().Get("Content-Encoding"), "")

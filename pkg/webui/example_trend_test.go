@@ -46,7 +46,7 @@ func ExampleTrend() {
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/admin/status", nil))
 	body := rec.Body.String()
-	for _, want := range []string{"184 ms", "−12.0%", "delta-ok", "Latency over the day: 4 values, from 140 to 184, lowest 140, highest 190"} {
+	for _, want := range []string{"184 ms", "−12.0%", "tone-ok", "Latency over the day: 4 values, from 140 to 184, lowest 140, highest 190"} {
 		fmt.Println(strings.Contains(body, want))
 	}
 
