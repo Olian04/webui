@@ -205,7 +205,7 @@ func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.
 	}
 	// The window less the shell: the variables it is made of are the ones the top bar and
 	// the content region use, so they cannot drift apart.
-	assert.Contains(t, css, "--content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));")
+	assert.True(t, regexp.MustCompile(`--content-chrome:\s*calc\(\s*var\(--topbar-h\)\s*\+\s*var\(--content-pad-top\)\s*\+\s*var\(--content-pad-bottom\)\s*\)`).MatchString(css))
 	assert.Contains(t, css, "height: var(--topbar-h);")
 	assert.Contains(t, css, "padding: var(--content-pad-top) 12px var(--content-pad-bottom);")
 	assert.False(t, strings.Contains(css, ":has(.panel.grows)")) // no layout around the panel is touched

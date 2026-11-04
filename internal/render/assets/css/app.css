@@ -13,15 +13,9 @@
   --input-bg: #0e0f12;
   --border: rgba(204, 204, 220, 0.11);
   --border-2: rgba(204, 204, 220, 0.22);
-  --control-bd: var(
-    --border-2
-  ); /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
-  --control-bd-strong: rgba(
-    204,
-    204,
-    220,
-    0.5
-  ); /* 3:1 against what the control sits on */
+  /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
+  --control-bd: var(--border-2);
+  --control-bd-strong: rgba(204, 204, 220, 0.5); /* 3:1 vs the control's surface */
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
   --text-3: rgba(204, 204, 220, 0.45);
@@ -223,17 +217,13 @@ select {
   --topbar-h: 48px;
   --content-pad-top: 12px;
   --content-pad-bottom: 46px;
-  --content-chrome: calc(
-    var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom)
-  );
+  --content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));
 }
 
 /* ------------------------------ sidebar ---------------------------------- */
 .sidebar {
-  width: var(
-    --sidebar-w,
-    240px
-  ); /* a person's choice, set before first paint; the rail below does not take it */
+  /* a person's choice, set before first paint; the rail below does not take it */
+  width: var(--sidebar-w, 240px);
   flex: 0 0 var(--sidebar-w, 240px);
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -614,9 +604,8 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   background: none;
   border: 0;
   outline: none;
-  color: var(
-    --text
-  ); /* typed text is not quiet text, though the box around it is */
+  /* typed text is not quiet text, though the box around it is */
+  color: var(--text);
   font-size: 13px;
 }
 .search input::placeholder {

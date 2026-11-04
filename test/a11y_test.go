@@ -129,7 +129,7 @@ func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
 	}
 
 	// What is typed in the search box is text too, and the box around it is quiet, so the input says its own colour.
-	assert.Contains(t, regexp.MustCompile(`\.search input\s*\{[^}]*\}`).FindString(css), "color: var(--text);")
+	assert.True(t, regexp.MustCompile(`\.search input\s*\{[^}]*color:\s*var\(\s*--text\s*\);`).MatchString(css))
 }
 
 // Windows high contrast and the like take every colour that a page chose, so what is drawn with a background or a shadow, a checked box, a focus ring,
