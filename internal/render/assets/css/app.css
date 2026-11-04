@@ -3067,6 +3067,8 @@ html.js .status-meta [data-built] {
      it out of the order of the keys; the delay on that keeps it from vanishing before it has slid away. */
   .drawer {
     position: fixed;
+    /* One width, so the slide (the whole of the drawer) is the same distance from either side. */
+    width: min(280px, 85vw);
     visibility: hidden;
     transition:
       transform 0.18s ease-out,
@@ -3101,7 +3103,6 @@ html.js .status-meta [data-built] {
     top: 0;
     bottom: 0;
     height: auto;
-    width: min(280px, 85vw);
     flex: none;
     z-index: 60;
   }
@@ -3137,7 +3138,6 @@ html.js .status-meta [data-built] {
     top: 0;
     bottom: 0;
     z-index: 1;
-    width: min(320px, 85vw);
     flex-wrap: wrap;
     align-content: flex-start;
     align-items: center;
