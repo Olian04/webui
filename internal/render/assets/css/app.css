@@ -15,7 +15,12 @@
   --border-2: rgba(204, 204, 220, 0.22);
   /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
   --control-bd: var(--border-2);
-  --control-bd-strong: rgba(204, 204, 220, 0.5); /* 3:1 vs the control's surface */
+  --control-bd-strong: rgba(
+    204,
+    204,
+    220,
+    0.5
+  ); /* 3:1 vs the control's surface */
   --text: rgb(204, 204, 220);
   --text-2: rgba(204, 204, 220, 0.65);
   --text-3: rgba(204, 204, 220, 0.45);
@@ -217,7 +222,9 @@ select {
   --topbar-h: 48px;
   --content-pad-top: 12px;
   --content-pad-bottom: 46px;
-  --content-chrome: calc(var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom));
+  --content-chrome: calc(
+    var(--topbar-h) + var(--content-pad-top) + var(--content-pad-bottom)
+  );
 }
 
 /* ------------------------------ sidebar ---------------------------------- */
