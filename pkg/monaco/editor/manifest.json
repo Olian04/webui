@@ -2,5 +2,14 @@
   "version": "0.57.0",
   "entry": "code-E73WSTPZ.js",
   "style": "code-4TCPDEEC.css",
-  "editorWorker": "workers/editor.worker-ZOJLED6A.js"
+  "editorWorker": "workers/editor.worker-ZOJLED6A.js",
+  "preload": [
+    "chunks/chunk-RJCFENJ6.js",
+    "chunks/chunk-6QSCM5BH.js",
+    "chunks/chunk-VC46IEJQ.js",
+    "chunks/chunk-ABBXAB65.js"
+  ],
+  "fonts": [
+    "assets/codicon-LTRFOK3N.ttf"
+  ]
 }

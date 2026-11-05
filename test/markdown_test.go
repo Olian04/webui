@@ -3,10 +3,14 @@ package webui_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -179,7 +183,28 @@ func policyOf(h http.Handler, target string) string {
 	return serve(h, http.MethodGet, target).Header().Get("Content-Security-Policy")
 }
 
-const basePolicy = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+// basePolicy is the policy of a page of the shell. It names the one inline script of a page, the one that sets the stored theme before the first paint, by its hash, which is
+// the hash of the file that the script is built from.
+var basePolicy = "default-src 'self'; script-src 'self' " + prefsHash() + "; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+
+// prefsHash is how a policy names the inline script: 'sha256-' and the base 64 of the hash of its text.
+func prefsHash() string {
+	return "'sha256-" + base64.StdEncoding.EncodeToString(sha256Of(prefsScript())) + "'"
+}
+
+func sha256Of(b []byte) []byte {
+	sum := sha256.Sum256(b)
+	return sum[:]
+}
+
+// prefsScript is the script as a page has it inline: the minified file.
+func prefsScript() []byte {
+	raw, err := os.ReadFile(filepath.Join("..", "internal", "render", "assets", "min", "js", "prefs.js")) //nolint:gosec // G304: a fixed file of this repository
+	if err != nil {
+		panic(err)
+	}
+	return raw
+}
 
 func TestAPictureFromATrustedOriginIsDrawnAndTheBrowserIsAllowedToFetchIt(t *testing.T) {
 	t.Parallel()

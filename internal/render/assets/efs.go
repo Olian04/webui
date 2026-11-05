@@ -38,6 +38,11 @@ type Monaco struct {
 	Entry        string `json:"entry"`
 	Style        string `json:"style"`
 	EditorWorker string `json:"editorWorker"`
+
+	// Preload is the files that the entry imports, and that they import, and Fonts the fonts that the stylesheet names: what a page asks for as it begins, so that the
+	// browser does not find each only after reading the one that names it.
+	Preload []string `json:"preload"`
+	Fonts   []string `json:"fonts"`
 }
 
 // The editor is the files of pkg/monaco, which a program imports to have it. The package

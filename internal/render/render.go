@@ -154,6 +154,9 @@ type Renderer struct {
 	served map[string]string
 	search bool // some table is searchable, so the page script has something to ask
 
+	// prefs is the script that every page carries inline, and prefsHash its hash for the page's policy.
+	prefs, prefsHash string
+
 	// phones is, for each page by its path template, whether it has a phone number that can be edited, so the page links the script that
 	// splits it, which the pages that have none do not.
 	phones map[string]bool

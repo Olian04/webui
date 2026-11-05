@@ -83,11 +83,11 @@ func TestSearchResultsAreEscaped(t *testing.T) {
 		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "a"}, Title: `<img src=x onerror=alert(1)>`, Desc: `<b>bold</b>`}}, nil
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
-	for _, asked := range []http.Handler{searchBox(h), h} { // the box's list, and the page of results
+	for i, asked := range []http.Handler{searchBox(h), h} { // the box's list, which is a fragment, and the page of results, which has the one script that sets the theme
 		body := serve(asked, http.MethodGet, "/admin/_webui/search?q=%3Cscript%3E").Body.String()
 		assert.False(t, strings.Contains(body, "<img src=x"))
 		assert.False(t, strings.Contains(body, "<b>bold"))
-		assert.False(t, strings.Contains(body, "<script>"))
+		assert.Equal(t, strings.Count(body, "<script>"), i) // and none that the data brought
 		assert.Contains(t, body, "&lt;img src=x onerror=alert(1)&gt;")
 	}
 }

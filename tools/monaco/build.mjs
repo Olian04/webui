@@ -76,9 +76,27 @@ const entry = outputs.find((o) => /^code-[A-Z0-9]+\.js$/.test(o));
 const style = outputs.find((o) => /^code-[A-Z0-9]+\.css$/.test(o));
 if (!entry || !style) throw new Error(`no entry or stylesheet in ${outputs.join(', ')}`);
 
+// What a page can ask for as it begins, so that the browser does not find it only as it reads the entry: the files that the entry imports, and those that they import
+// (a chunk is found by reading the one before it, six deep in the worst case, one round trip for each), and the icon font that the stylesheet names, which
+// waits for the stylesheet too. Only what is imported statically: a language's mode is a dynamic import and is loaded when a language is on the page.
+const rel = (o) => path.relative(coreOut, path.resolve(here, o));
+const entryKey = Object.keys(core.metafile.outputs).find((o) => rel(o) === entry);
+const preload = [];
+(function walk(key) {
+  for (const imp of core.metafile.outputs[key].imports) {
+    if (imp.kind !== 'import-statement' || !core.metafile.outputs[imp.path]) continue;
+    const file = rel(imp.path);
+    if (!preload.includes(file)) {
+      preload.push(file);
+      walk(imp.path);
+    }
+  }
+})(entryKey);
+const fonts = outputs.filter((o) => /\.ttf$/.test(o));
+
 fs.writeFileSync(
   path.join(coreOut, 'manifest.json'),
-  JSON.stringify({ version, entry, style, editorWorker: path.relative(coreOut, path.resolve(here, editorWorker)) }, null, 2) + '\n',
+  JSON.stringify({ version, entry, style, editorWorker: path.relative(coreOut, path.resolve(here, editorWorker)), preload, fonts }, null, 2) + '\n',
 );
 fs.copyFileSync(path.join(monacoDir, 'LICENSE'), path.join(coreOut, 'LICENSE-monaco.txt'));
 fs.copyFileSync(path.join(monacoDir, 'ThirdPartyNotices.txt'), path.join(coreOut, 'THIRD-PARTY-NOTICES-monaco.txt'));

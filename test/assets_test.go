@@ -96,7 +96,7 @@ func TestAnAssetsAddressCarriesAShortHashOfItsContents(t *testing.T) {
 
 	// The same contents are the same address, and a different file has a different one.
 	assert.Equal(t, assetURL(t, webui.App{}.MustCompile("/admin"), "app.css"), css)
-	assert.True(t, assetURL(t, h, "enhance.js") != assetURL(t, h, "prefs.js"))
+	assert.True(t, assetURL(t, h, "enhance.js") != assetURL(t, h, "app.css"))
 
 	// An address with no hash, or the wrong hash, is not an asset.
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/app.css").Code, http.StatusNotFound)
@@ -239,7 +239,7 @@ func TestTheServedStylesheetsAndScriptsAreTheMinifiedSources(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{}.MustCompile("/admin")
-	for _, name := range []string{"app.css", "enhance.js", "prefs.js"} { // the ones every page links: the others are linked by the pages that need them
+	for _, name := range []string{"app.css", "enhance.js"} { // the ones every page links: the others are linked by the pages that need them
 		dir := "css"
 		if strings.HasSuffix(name, ".js") {
 			dir = "js"
