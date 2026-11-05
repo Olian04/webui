@@ -34,7 +34,7 @@ generate: assets ## Generate the application: the templates, and the minified as
 # engine: whitespace and local names only, and the names a classic script shares through the global scope are kept.
 assets: ## Minify the stylesheets and scripts the renderer serves (sources in css/ and js/, output in min/, committed)
 	rm -rf $(ASSETS)/min
-	$(TOOL) esbuild $(ASSETS)/css/*.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	$(TOOL) esbuild $(ASSETS)/css/app.css $(ASSETS)/css/icons.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
 	$(TOOL) esbuild $(ASSETS)/js/*.js --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/js
 
 monaco: ## Rebuild the embedded Monaco editor assets (needs node); the output is committed

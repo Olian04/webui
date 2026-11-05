@@ -142,13 +142,16 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css"))
 	assert.Equal(t, css.Code, http.StatusOK)
-	assert.Contains(t, css.Body.String(), `.fa-house:before{content:"\f015"}`)
-	font0 := assetURL(t, h, "fa-solid-900.woff2")
-	assert.Contains(t, css.Body.String(), `url(`+font0[strings.LastIndex(font0, "/")+1:]+`)`) // beside the stylesheet, so a relative url finds it
+	sheet := css.Body.String()
+	assert.Contains(t, sheet, `.fa-display:before{content:"\e163"}`) // the icon the app names
+	assert.Contains(t, sheet, `.fa-gear:before{content:"\f013"}`)    // and the ones the library draws itself
+	assert.False(t, strings.Contains(sheet, ".fa-house:before"))     // and no other: an app does not carry the two thousand
+	assert.Equal(t, strings.Count(sheet, "@font-face"), 1)           // one font, of just those icons
 
-	font := serve(h, http.MethodGet, assetURL(t, h, "fa-solid-900.woff2"))
+	font := serve(h, http.MethodGet, assetURL(t, h, "fa-solid.woff"))
 	assert.Equal(t, font.Code, http.StatusOK)
-	assert.Equal(t, font.Header().Get("Content-Type"), "font/woff2")
+	assert.Equal(t, font.Header().Get("Content-Type"), "font/woff")
+	assert.True(t, font.Body.Len() < 10_000) // and not the hundred and twenty kilobytes of all of them
 }
 
 func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {

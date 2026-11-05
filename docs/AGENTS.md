@@ -24,6 +24,7 @@
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
 | `pkg/monaco`       | The code editor (`Editor`, `Diff`): `go:embed`s `editor/` and registers it in `internal/render/assets` from `init`; a program imports it for the effect, so one with no editor does not link it. Its subpackages are optional language-service packs: each `go:embed`s one worker, registers it the same way, and imports `pkg/monaco`. |
 | `tools/go.mod`     | The linters (golangci-lint, govulncheck) as a module of their own, never published: the library's `go.mod` is what a user needs, not a linter's two hundred modules. `make` runs them with `go tool -modfile=tools/go.mod`. templ is not here: it is in the root `go.mod`, as its runtime is a requirement of the library and its generator is a `tool` of the same version (`go tool templ generate ./...`). |
+| `internal/sfnt` | Vendored and cut down: reads a CFF font, writes a subset of it as WOFF. Cuts the icon font to the icons an app uses (`assets.IconFont`). See `VENDORED.md`. |
 | `internal/render/assets` | The stylesheets and scripts the renderer serves, written in `css/` and `js/` and served from `min/`, minified by `make assets` (esbuild, a tool in `tools/go.mod`). `min/` is committed and CI fails when it is not the output of the sources, as for the templates: edit `css/` and `js/`, never `min/`. |
 | `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `pkg/monaco/editor`, `pkg/monaco/*/worker`, `pkg/lang/lang.go`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`RowsLoader`). |
@@ -55,11 +56,16 @@ design token (the app's `webui.Theme` is the only thing that may override them: 
 the code disagree, `design-mapping.md` names the gap on purpose — read its last
 two sections before adding a field to close one.
 
-Icons are Font Awesome Free (solid), drawn with a vendored font. The font is
-`internal/render/assets/fonts/` (SIL OFL, license beside it); `css/fontawesome.css`
-and `icons.txt` are generated from a Font Awesome Free download by
-`go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. `icons.txt`
-is what `Compile` checks `Nav.Icon` against. Do not edit the generated files.
+Icons are Font Awesome Free (solid), drawn with a vendored font that is not served whole. The font of all 2,000 icons is 120 KB and a page draws a few, so when an app starts, `addIcons`
+(`internal/render/assets.go`) cuts a font of the icons that the app can draw and no others (`assets.IconFont`, with `internal/sfnt`), and makes its icon stylesheet: a rule for each of them. The icons
+are the ones the library draws itself (`icons_core.txt`) and the ones the app names, which it can do in two places only, a page's `Nav.Icon` and an `ExternalLink.Icon`, both checked by `Compile`.
+The font of the demo is 5 KB and its stylesheet 0.7 KB, from 120 KB and 15 KB. No icon is left out for an app that names it: `TestAnAppCanNameAnyIconAndTheFontItIsServedHasEachGlyph` names all
+of them and checks each. When the library starts to draw an icon of its own it goes in `icons_core.txt`; `TestEveryIconThatTheLibraryDrawsIsInTheCoreList` says so when it is not.
+`fonts/fa-solid-900.woff` is the whole font (SIL OFL, license in `fonts/`), as WOFF 1.0 so that the standard library reads it; `icons.txt` is each name `Compile` accepts and its code point, generated from a
+Font Awesome Free download by `go run fontawesome_gen.go <download-dir>` in `internal/render/assets`. Do not edit the generated file.
+
+`internal/sfnt` is another library's code, copied and cut down (github.com/tdewolff/font, MIT; see `internal/sfnt/VENDORED.md` for what it is, what differs, and the two bugs fixed in it). It is vendored and not a
+dependency because the module has no release. It is held to our tests (`sfnt_test.go`) and is excluded from the linters; it is not to be grown into a font library, and a change in it is written in `VENDORED.md`.
 
 The shell has two widths, in `app.css`: a desktop (the sidebar as wide as its owner set it, or the rail by choice; a narrow window is a narrow desktop and changes nothing) and, up to 640px, a phone. The phone is the only width at which the shape of the shell changes (see "phone" in the stylesheet): the sidebar is a drawer behind a hamburger, the top bar's actions (search, Refresh, theme, links) are a menu behind a button, and the crumbs are cut to the parent and the page. The drawer and the menu are each a checkbox and its label, so they open without script; `enhance.js` only adds Escape. What is read has a narrow form at that width, in the stylesheet: a trend is its change alone, a bar is its number, and a description is its label underlined in place of an icon. A new element that does not fit a phone goes into one of those, and does not get a breakpoint of its own.
 

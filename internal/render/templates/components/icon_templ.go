@@ -8,10 +8,11 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// IconName is a Font Awesome Free solid icon, by its name without the "fa-"
-// prefix: "house" is the class fa-house. The renderer draws it with the icon
-// font, so any name Font Awesome Free ships works; the ones below are what the
-// design itself uses.
+// IconName is a Font Awesome Free solid icon, by its name without the class prefix:
+// "house" is the house icon. The renderer draws it with the icon font, which has a
+// file for each group of icons: the ones below are what the design itself uses, and
+// they are in icons_core.txt, which every page links. A name that is not there
+// is drawn only when an app names it, in a page's Nav or an external link.
 type IconName string
 
 const (
@@ -102,7 +103,7 @@ func Icon(p IconProps) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 48, Col: 24}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 49, Col: 24}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -115,7 +116,7 @@ func Icon(p IconProps) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 49, Col: 19}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 50, Col: 19}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {

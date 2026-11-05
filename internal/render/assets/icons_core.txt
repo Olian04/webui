@@ -1,0 +1,25 @@
+# The icons that every page may draw, whatever the app declared: the ones the design itself uses, and the ones a script puts in (the copy
+# button of a code block turns into a check). Every app's icon font has them, and has the icons that the app names, and no others. One name a
+# line; a name is Font Awesome's, without the "fa-".
+#
+# TestEveryIconThatTheLibraryDrawsIsInTheCoreList holds this list to the source: an icon the library names that is not here is a test failure,
+# and so is an icon here that the library does not draw.
+circle-info
+circle-exclamation
+lock
+magnifying-glass
+rotate-right
+filter
+chevron-down
+gear
+xmark
+arrow-up-right-from-square
+arrow-up
+arrow-down
+sun
+moon
+chevron-up
+bars
+ellipsis
+copy
+check

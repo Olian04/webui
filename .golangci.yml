@@ -84,6 +84,12 @@ linters:
         - name: unused-parameter
         - name: var-declaration
   exclusions:
+    # Third-party code, copied and cut down (see internal/sfnt/VENDORED.md): it is held to its tests, which are ours, and not to this repository's style.
+    paths:
+      - internal/sfnt/binary\.go
+      - internal/sfnt/sfnt.*\.go
+      - internal/sfnt/util\.go
+      - internal/sfnt/woff\.go
     rules:
       # A test helper that is always given the same value is a helper that is easy to read, not a
       # parameter that should be a constant.

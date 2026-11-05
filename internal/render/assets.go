@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
+	"maps"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -51,18 +54,9 @@ func (r *Renderer) buildAssets() error {
 	}
 	read := func(path string) ([]byte, error) { return assets.FS.ReadFile(path) }
 
-	// The font first: the stylesheet that uses it names it by its hashed name.
-	font, err := read("fonts/fa-solid-900.woff2")
-	if err != nil {
+	if err := r.addIcons(add, read); err != nil {
 		return err
 	}
-	add("fa-solid-900.woff2", font, "font/woff2")
-	icons, err := read("min/css/fontawesome.css")
-	if err != nil {
-		return err
-	}
-	icons = bytes.ReplaceAll(icons, []byte("url(fa-solid-900.woff2)"), []byte("url("+r.served["fa-solid-900.woff2"]+")"))
-	add("fontawesome.css", icons, "text/css; charset=utf-8")
 
 	for logical, file := range map[string]string{"app.css": "min/css/app.css", "prefs.js": "min/js/prefs.js", "enhance.js": "min/js/enhance.js"} {
 		body, err := read(file)
@@ -117,3 +111,45 @@ func (r *Renderer) Asset(name string) (*assetserve.Blob, bool) {
 
 // faviconName is the asset a favicon of one size is served as.
 func faviconName(size int) string { return "favicon-" + strconv.Itoa(size) + ".png" }
+
+// addIcons makes the icon stylesheet of this app, and serves its font. An app can name an icon in two places only, a page's Nav and an external link, and both are
+// checked against the list of icons when it compiles, so the icons it can draw are known now: those, and the ones the library draws itself. The font is cut to
+// them, and the stylesheet has a rule for each of them and no other: the stylesheet of every icon was 83 KB of which a page used a few lines, and the font 120 KB of
+// which it drew a few glyphs.
+func (r *Renderer) addIcons(add func(logical string, body []byte, mime string), read func(string) ([]byte, error)) error {
+	names := map[string]bool{}
+	for _, name := range assets.CoreIcons() {
+		names[name] = true
+	}
+	for _, p := range r.app.Pages {
+		if p.Nav.Icon != "" {
+			names[p.Nav.Icon] = true
+		}
+	}
+	for _, l := range r.app.ExternalLinks {
+		if l.Icon != "" {
+			names[l.Icon] = true
+		}
+	}
+	sorted := slices.Sorted(maps.Keys(names))
+
+	font, err := assets.IconFont(sorted)
+	if err != nil {
+		return err // Compile checks every name, so this is icons.txt being out of step with the font
+	}
+	add("fa-solid.woff", font, "font/woff")
+
+	base, err := read("min/css/icons.css")
+	if err != nil {
+		return err
+	}
+	var css bytes.Buffer
+	css.Write(base)
+	fmt.Fprintf(&css, "@font-face{font-family:'Font Awesome Solid';font-style:normal;font-weight:900;font-display:block;src:url(%s) format('woff')}", r.served["fa-solid.woff"])
+	for _, name := range sorted {
+		code, _ := assets.IconCode(name)
+		fmt.Fprintf(&css, ".fa-%s:before{content:\"\\%x\"}", name, code)
+	}
+	add("fontawesome.css", css.Bytes(), "text/css; charset=utf-8")
+	return nil
+}
