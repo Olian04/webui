@@ -10,18 +10,22 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/andybalholm/brotli"
 )
 
 // Blob is one file, and what it needs to be served well.
 type Blob struct {
 	Mime  string
 	Cache string // the Cache-Control of the response
-	ETag  string // quoted; the compressed copy has its own, made from it
+	ETag  string // quoted; a compressed copy has its own, made from it
 	Body  []byte
 
-	// Gzip is the compressed Body, or nil for a file that is not offered compressed. It is called
-	// only when a client accepts gzip, so a file nobody asks for compressed is never compressed.
-	Gzip func() []byte
+	// Gzip and Brotli are the compressed Body, or nil for a file that is not offered in that coding. Each is called only when a client takes that coding, so a file that
+	// nobody asks for compressed is never compressed. Brotli is preferred where a client takes both, being the smaller; it is a file that was compressed when it was built
+	// (the build writes them beside the files that are embedded) or, for one that the app makes when it starts, the first time it is asked for.
+	Gzip   func() []byte
+	Brotli func() []byte
 }
 
 // ServeHTTP answers a request with the file: compressed when the file offers it and the client takes it,
@@ -31,12 +35,19 @@ func (b *Blob) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", b.Mime)
 	h.Set("Cache-Control", b.Cache)
-	zipped := false
+	var offered []string
+	if b.Brotli != nil {
+		offered = append(offered, "br")
+	}
 	if b.Gzip != nil {
+		offered = append(offered, "gzip")
+	}
+	coding := ""
+	if len(offered) > 0 {
 		h.Add("Vary", "Accept-Encoding")
-		if zipped = AcceptsGzip(req); zipped {
-			h.Set("Content-Encoding", "gzip")
-			etag = strings.TrimSuffix(etag, `"`) + `-gzip"`
+		if coding = Negotiate(req, offered...); coding != "" {
+			h.Set("Content-Encoding", coding)
+			etag = strings.TrimSuffix(etag, `"`) + "-" + coding + `"`
 		}
 	}
 	h.Set("ETag", etag)
@@ -45,7 +56,10 @@ func (b *Blob) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return // a client that has the file is not sent it, and not made to compress it either
 	}
 	body := b.Body
-	if zipped {
+	switch coding {
+	case "br":
+		body = b.Brotli()
+	case "gzip":
 		body = b.Gzip()
 	}
 	_, _ = w.Write(body) //nolint:gosec // G705: a file the application embedded, never request data.
@@ -60,6 +74,15 @@ func Gzip(body []byte) []byte {
 	return buf.Bytes()
 }
 
+// Brotli is body compressed at the best level, which is slow (a megabyte takes seconds): for a file that is served many times, and compressed once.
+func Brotli(body []byte) []byte {
+	var buf bytes.Buffer
+	zw := brotli.NewWriterLevel(&buf, brotli.BestCompression)
+	_, _ = zw.Write(body)
+	_ = zw.Close()
+	return buf.Bytes()
+}
+
 // Compressible reports whether a response of this content type is worth compressing:
 // text of any kind, JSON and SVG. Images and fonts are compressed already.
 func Compressible(contentType string) bool {
@@ -68,12 +91,16 @@ func Compressible(contentType string) bool {
 	return strings.HasPrefix(ct, "text/") || ct == "application/json" || ct == "image/svg+xml"
 }
 
-// AcceptsGzip reports whether the client accepts a gzip-encoded response: it lists
-// gzip, and not with a quality of zero.
-func AcceptsGzip(r *http.Request) bool {
+// Negotiate is the coding of those offered, in order of preference, that the client's Accept-Encoding takes the most: the one it gives the highest quality, the first
+// offered of those that are equal, and none (an empty string) when it takes none of them. A coding it lists with a quality of zero is refused, and "*" is every coding
+// it does not name.
+func Negotiate(r *http.Request, offered ...string) string {
+	quality := map[string]float64{}
+	star, hasStar := 0.0, false
 	for part := range strings.SplitSeq(r.Header.Get("Accept-Encoding"), ",") {
 		coding, params, _ := strings.Cut(part, ";")
-		if !strings.EqualFold(strings.TrimSpace(coding), "gzip") {
+		coding = strings.ToLower(strings.TrimSpace(coding))
+		if coding == "" {
 			continue
 		}
 		q := 1.0
@@ -82,7 +109,24 @@ func AcceptsGzip(r *http.Request) bool {
 				q = parsed
 			}
 		}
-		return q > 0
+		if coding == "*" {
+			star, hasStar = q, true
+			continue
+		}
+		quality[coding] = q
 	}
-	return false
+	best, bestQ := "", 0.0
+	for _, coding := range offered {
+		q, named := quality[coding]
+		if !named {
+			if !hasStar {
+				continue
+			}
+			q = star
+		}
+		if q > bestQ {
+			best, bestQ = coding, q
+		}
+	}
+	return best
 }

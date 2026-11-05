@@ -40,7 +40,7 @@ var failureHead = sync.OnceValue(func() templ.Component {
 // ("app.css"), which is what a page links to.
 func (r *Renderer) buildAssets() error {
 	r.files, r.served = map[string]*assetserve.Blob{}, map[string]string{}
-	add := func(logical string, body []byte, mime string) {
+	add := func(logical string, body []byte, mime string, brotli ...[]byte) {
 		sum := sha256.Sum256(body)
 		hash := hex.EncodeToString(sum[:4])
 		ext := path.Ext(logical)
@@ -49,11 +49,25 @@ func (r *Renderer) buildAssets() error {
 		if assetserve.Compressible(mime) {
 			if gz := assetserve.Gzip(body); len(gz) < len(body) {
 				b.Gzip = func() []byte { return gz } // only a file that shrinks is offered compressed
+				if len(brotli) > 0 && brotli[0] != nil {
+					pre := brotli[0] // made when the file was built, at the best level
+					b.Brotli = func() []byte { return pre }
+				} else {
+					b.Brotli = sync.OnceValue(func() []byte { return assetserve.Brotli(body) }) // a file the app made: the first time it is asked for
+				}
 			}
 		}
 		r.files[name], r.served[logical] = b, name
 	}
 	read := func(path string) ([]byte, error) { return assets.FS.ReadFile(path) }
+	// precompressed is the Brotli copy that the build wrote beside a file (see tools/precompress), or nil when there is none.
+	precompressed := func(path string) []byte {
+		b, err := assets.FS.ReadFile(path + ".br")
+		if err != nil {
+			return nil
+		}
+		return b
+	}
 
 	if err := r.addIcons(add, read); err != nil {
 		return err
@@ -68,7 +82,7 @@ func (r *Renderer) buildAssets() error {
 		if strings.HasSuffix(logical, ".js") {
 			mime = "text/javascript; charset=utf-8"
 		}
-		add(logical, body, mime)
+		add(logical, body, mime, precompressed(file))
 	}
 	if err := r.readPrefs(read); err != nil {
 		return err
@@ -77,17 +91,17 @@ func (r *Renderer) buildAssets() error {
 	if err != nil {
 		return err
 	}
-	add("file.js", fileJS, "text/javascript; charset=utf-8")
+	add("file.js", fileJS, "text/javascript; charset=utf-8", precompressed("min/js/file.js"))
 	uploadJS, err := read("min/js/upload.js")
 	if err != nil {
 		return err
 	}
-	add("upload.js", uploadJS, "text/javascript; charset=utf-8")
+	add("upload.js", uploadJS, "text/javascript; charset=utf-8", precompressed("min/js/upload.js"))
 	phoneJS, err := read("min/js/phone.js")
 	if err != nil {
 		return err
 	}
-	add("phone.js", phoneJS, "text/javascript; charset=utf-8")
+	add("phone.js", phoneJS, "text/javascript; charset=utf-8", precompressed("min/js/phone.js"))
 	if r.hasTheme() {
 		add("theme.css", themeCSS(r.app.Theme), "text/css; charset=utf-8")
 	}
@@ -120,7 +134,7 @@ func faviconName(size int) string { return "favicon-" + strconv.Itoa(size) + ".p
 // checked against the list of icons when it compiles, so the icons it can draw are known now: those, and the ones the library draws itself. The font is cut to
 // them, and the stylesheet has a rule for each of them and no other: the stylesheet of every icon was 83 KB of which a page used a few lines, and the font 120 KB of
 // which it drew a few glyphs.
-func (r *Renderer) addIcons(add func(logical string, body []byte, mime string), read func(string) ([]byte, error)) error {
+func (r *Renderer) addIcons(add func(logical string, body []byte, mime string, brotli ...[]byte), read func(string) ([]byte, error)) error {
 	names := map[string]bool{}
 	for _, name := range assets.CoreIcons() {
 		names[name] = true
