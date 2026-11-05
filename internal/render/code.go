@@ -248,7 +248,7 @@ func (r *Renderer) MonacoFile(name string) (*assetserve.Blob, bool) {
 		return nil, false
 	}
 	b := &assetserve.Blob{Mime: monacoType(name), Cache: "public, max-age=31536000, immutable", ETag: `"` + path.Base(name) + `"`, Body: body}
-	if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") {
+	if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") || strings.HasSuffix(name, ".ttf") { // a TrueType font is not compressed inside: this one is 153 KB and 75 KB gzipped
 		b.Gzip = sync.OnceValue(func() []byte { return assetserve.Gzip(body) })
 	}
 	shared, _ := monacoBlobs.LoadOrStore(name, b) // two first requests may race: one blob wins

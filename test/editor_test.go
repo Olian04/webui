@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -247,6 +248,27 @@ func TestTheEditorAssetsAreImmutableGzippedAndNothingElseIsServed(t *testing.T) 
 	for _, p := range []string{"../app.css", "workers/../manifest.json", "%2e%2e/manifest.json", "..%2fmanifest.json"} {
 		assert.True(t, serve(h, http.MethodGet, "/admin/_webui/monaco/"+p).Code != http.StatusOK) // never a file outside
 	}
+}
+
+// The editor's icon font is a TrueType file, which is not compressed inside, and half of it is gone when it is.
+func TestTheEditorsIconFontIsGzippedForAClientThatAcceptsIt(t *testing.T) {
+	t.Parallel()
+
+	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView}) // the font is linked by the stylesheet, which the editor page links
+	fonts, err := filepath.Glob(filepath.Join("..", "pkg", "monaco", "editor", "assets", "codicon-*.ttf"))
+	assert.NoError(t, err)
+	assert.Equal(t, len(fonts), 1)
+	font := []string{"", "/admin/_webui/monaco/assets/" + filepath.Base(fonts[0])}
+
+	plain := serve(h, http.MethodGet, font[1])
+	assert.Equal(t, plain.Code, http.StatusOK)
+	assert.Equal(t, plain.Header().Get("Content-Type"), "font/ttf")
+	assert.Equal(t, plain.Header().Get("Content-Encoding"), "")
+
+	zipped := gzipped(t, h, font[1])
+	assert.Equal(t, zipped.Header().Get("Content-Encoding"), "gzip")
+	assert.True(t, zipped.Body.Len() < plain.Body.Len()*6/10)
+	assert.Equal(t, unzip(t, zipped.Body.Bytes()), plain.Body.String())
 }
 
 // An editor that Monaco mounts over is used from the keyboard, so what the reader needs of the textarea that the server drew (which is
