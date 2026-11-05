@@ -48,7 +48,8 @@ templ (r *Renderer) early() {
 templ (r *Renderer) head(needs CodeNeeds) {
 	<script src={ r.AssetHref("prefs.js") }></script>
 	@r.favicons()
-	if needs.Used {
+	// A program that did not import the editor has none to link, and a Markdown that asked to be coloured is plain.
+	if needs.Used && r.monaco.Entry != "" {
 		@r.codeHead(needs)
 	}
 }

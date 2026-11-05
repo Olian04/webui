@@ -2,6 +2,8 @@ package webui
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -27,4 +29,29 @@ func TestAnEditorOrADiffWithoutTheCodeEditorIsACompileError(t *testing.T) {
 		assert.Contains(t, err.Error(), name+" is drawn with the code editor, which this program does not carry")
 		assert.True(t, strings.Contains(err.Error(), `import _ "github.com/Olian04/webui/pkg/monaco"`))
 	}
+}
+
+// A Markdown whose code block names a language is coloured by the editor when the program carries it, and is plain when it does not: the page links no editor that is not
+// there, and the block is the monospace one that a visitor without script has, with its copy button. It is not refused, as an Editor is.
+func TestAMarkdownWithACodeBlockIsPlainWhenTheProgramHasNoEditor(t *testing.T) {
+	t.Parallel()
+
+	type doc struct{ Text string }
+	h, err := App{Pages: Pages{Page[NoArgs]{Path: "/m", Body: Markdown[doc]{
+		Title: "Notes",
+		Load: func(context.Context) (doc, Loaded) {
+			return doc{Text: "Run it:\n\n```go\nfmt.Println(1)\n```\n"}, Ready()
+		},
+		Content: String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }},
+	}}}}.Compile("/admin")
+	assert.NoError(t, err)
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/m", nil))
+	body := rec.Body.String()
+	assert.Equal(t, rec.Code, http.StatusOK)
+	assert.Contains(t, body, `<code class="language-go">`)
+	assert.Contains(t, body, `data-copy-code=`)
+	assert.False(t, strings.Contains(body, "/monaco/"))
+	assert.False(t, strings.Contains(body, "webui-code"))
 }
