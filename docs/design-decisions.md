@@ -1103,9 +1103,21 @@ design element.
 
 ## Code editors
 
-- `Editor` and `Diff` are Monaco, the editor of VS Code, always embedded. About 5 MB
-  of assets is little next to what a Go binary weighs, and a page that has no editor
-  never links them, so the cost is the binary's and not the page's. Syntax
+- `Editor` and `Diff` are Monaco, the editor of VS Code, which a program imports to have:
+  `import _ "github.com/Olian04/webui/pkg/monaco"`. The editor was always embedded, on the
+  reasoning that about 5 MB of assets is little next to what a Go binary weighs; but it is
+  carried by every program that imports the library, whether or not it has an editor or a diff
+  (measured: a program of one empty page is 20.6 MB with it and 15.4 MB without, a quarter), and
+  a program that does not need it should not pay for it. It is opt-in the way the language services
+  already were: the base files are embedded by `pkg/monaco`, which registers them from `init`, and
+  the services import it, so a program that imports `pkg/monaco/json` has the editor and one import
+  is enough. An app that has an `Editor` or a `Diff` and no editor is a `Compile` error
+  with the import as the fix, and not a plain text box, which is what the page falls back to
+  without script: that is for a visitor with no script, and a program that forgot the import
+  would not know why its editor never highlights. What it costs: one import line for the
+  programs that have an editor or a diff, and a refusal at compile time for those that forgot.
+  The build writes the base to `pkg/monaco/editor` (it was `internal/render/assets/monaco`).
+  A page that has no editor never links the files, so the cost of having them is the binary's and not the page's. Syntax
   highlighting is built for every language Monaco has, and a `Language` constant is
   generated for each by `tools/monaco`, so an unknown language is a compile error
   instead of an editor that silently shows plain text.

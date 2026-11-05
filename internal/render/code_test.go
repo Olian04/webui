@@ -5,6 +5,7 @@ import (
 
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
+	_ "github.com/Olian04/webui/pkg/monaco" // the editor, which a program imports to have
 	"github.com/Olian04/webui/test/util/assert"
 )
 

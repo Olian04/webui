@@ -38,6 +38,7 @@ type Diff[M any] struct {
 var _ PageBody = Diff[struct{}]{}
 
 func (d Diff[M]) validateBody(v *bodyValidator) {
+	needEditor(v, "a Diff")
 	needLoad(v, "a Diff", d.Load != nil)
 	validateAccessors(v, []Accessor[M]{d.Original, d.Modified}, accessorSite{where: "Diff", uniqueLbl: true})
 	if d.Original.Store != nil || d.Modified.Store != nil {

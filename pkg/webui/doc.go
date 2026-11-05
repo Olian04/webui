@@ -648,14 +648,21 @@
 //		Submit:   webui.Action[Config]{Run: saveConfig},
 //	}
 //
-// The editor is part of the program and is linked by the pages that have one. Without
-// script an editor is a text box with a Save button, a viewer is the text in a block,
-// and a Diff is a unified diff, so nothing needs script to work.
+// The editor is the files of pkg/monaco, which a program that has an Editor or a [Diff]
+// imports to carry them (a program that has neither does not, and does not link a few
+// megabytes it never serves):
+//
+//	import _ "github.com/Olian04/webui/pkg/monaco"
+//
+// An app that has one and was not given them is refused when it is compiled, with this import
+// as the fix. Without script an editor is a text box with a Save button, a viewer is the text
+// in a block, and a Diff is a unified diff, so nothing needs script to work.
 //
 // A language has a Lang constant, one for each language the editor highlights. A few
 // also have a language service, which gives diagnostics, completion and the like:
 // JSON, CSS (with SCSS and Less), HTML (with Handlebars and Razor), and TypeScript
-// (with JavaScript). A service is a worker of its own, so it is an optional import:
+// (with JavaScript). A service is a worker of its own, so it is an optional import, which brings
+// the editor with it, so that it is the one import a program needs:
 //
 //	import _ "github.com/Olian04/webui/pkg/monaco/json"
 //

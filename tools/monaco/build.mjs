@@ -4,7 +4,7 @@
 //
 // What it makes:
 //
-//   internal/render/assets/monaco/   the editor: one ES module (our glue and Monaco
+//   pkg/monaco/editor/               the editor: one ES module (our glue and Monaco
 //                                    together), its lazily loaded chunks (one for each
 //                                    language's highlighting), the stylesheet, the icon
 //                                    font and the plain editor worker.
@@ -23,7 +23,7 @@ const root = path.resolve(here, '../..');
 const monacoDir = path.join(here, 'node_modules/monaco-editor');
 const version = JSON.parse(fs.readFileSync(path.join(monacoDir, 'package.json'), 'utf8')).version;
 
-const coreOut = path.join(root, 'internal/render/assets/monaco');
+const coreOut = path.join(root, 'pkg/monaco/editor');
 const services = { json: 'json', css: 'css', html: 'html', typescript: 'ts' };
 
 const common = {

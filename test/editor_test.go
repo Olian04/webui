@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/Olian04/webui/pkg/monaco" // the editor that an Editor and a Diff are drawn with, which a program imports to have
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
