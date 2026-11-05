@@ -235,13 +235,13 @@ func TestAListThatIsNotFinalIsAskedForAgain(t *testing.T) {
 
 // ----------------------------------------------------------- headline and links
 
-func TestAHeadlineWithALinkLeadsToAnotherSiteAndOneWithAnOpenLeadsInTheApp(t *testing.T) {
+func TestAnHrefLeadsToAnotherSiteAndALinkLeadsInTheApp(t *testing.T) {
 	t.Parallel()
 
 	src := &listLoader{}
 	_, detail := listPages(webui.Stack{}, nil)
 
-	external, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Link: pLink}, nil)
+	external, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Open: webui.Href[story]{URL: pLink}}, nil)
 	body := serve(external, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<a class="item-link ext" href="https://wealthfolio.app/" target="_blank" rel="noopener noreferrer">Show HN: Wealthfolio`)
 	assert.Contains(t, body, "(opens in a new tab)") // the mark that says so, for a reader
@@ -394,8 +394,6 @@ func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	load := (&listLoader{}).load
-	_, detail := listPages(webui.Stack{}, nil)
-	act := webui.Action[story]{Label: "Go", Run: func(context.Context, story) (webui.Outcome, error) { return webui.Outcome{}, nil }}
 	for name, tc := range map[string]struct {
 		body webui.PageBody
 		want string
@@ -406,9 +404,8 @@ func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 		"a headline no load":    {webui.List[story]{Load: load, Headline: webui.String[story]{Label: "T"}}, "List.Headline has no Load"},
 		"a meta no label":       {webui.List[story]{Load: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, "List.Meta[0] has no Label"},
 		"a negative page":       {webui.List[story]{Load: load, Headline: pTitle, PageSize: -1}, "List.PageSize is negative"},
-		"an action open":        {webui.List[story]{Load: load, Headline: pTitle, Open: act}, "List.Open is an Action"},
+		"an href with no url":   {webui.List[story]{Load: load, Headline: pTitle, Open: webui.Href[story]{}}, "List.Open is an Href with no URL"},
 		"a url headline":        {webui.List[story]{Load: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, "List.Headline is a URL"},
-		"open and a link":       {webui.List[story]{Load: load, Headline: pTitle, Open: openStory(detail), Link: pLink}, "List has an Open and a Link"},
 		"a badge no load":       {webui.List[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, "List.Badge has no Load"},
 		"a badge with a store":  {webui.List[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, "List.Badge has a Store"},
 		"a bad origin":          {webui.List[story]{Load: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, `List.TrustedOrigins[0], "http://x.example", is not an origin`},
@@ -433,4 +430,22 @@ func TestAnOpenIsCheckedLikeAnyLink(t *testing.T) {
 	lost := webui.Link[story, webui.NoArgs]{Page: elsewhere, Args: func(context.Context, story) webui.NoArgs { return webui.NoArgs{} }}
 	got := editorErrors(t, webui.List[story]{Load: (&listLoader{}).load, Headline: pTitle, Open: lost})
 	assert.Contains(t, got, `a link targets "/elsewhere", which is not mounted in this app`)
+}
+
+// An Href is a destination that is an address: where the model says, as a link that opens another site in a tab of its own, and only where the address
+// may be one. A script in the model is not a link, so the headline is text.
+func TestAnHrefIsCheckedAtEveryItemAndALinkThatIsNotOneIsText(t *testing.T) {
+	t.Parallel()
+
+	src := &listLoader{}
+	h, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 5, Headline: pTitle, Open: webui.Href[story]{URL: func(s story) string {
+		if s.ID == "b" {
+			return "javascript:alert(1)"
+		}
+		return pLink(s)
+	}}}, nil)
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `href="https://wealthfolio.app/" target="_blank" rel="noopener noreferrer">Show HN: Wealthfolio`)
+	assert.False(t, strings.Contains(body, "javascript:"))
+	assert.Contains(t, body, "Nginx has moved to GitHub") // still shown, as text
 }

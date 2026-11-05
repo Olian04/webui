@@ -17,7 +17,7 @@ import (
 //
 // It shows the first of what Load gives it, and, when there are more, a Show more link that shows PageSize more: a real link, so it works without
 // script, which with script replaces the list in place. How many are shown is in the address as the leaf's name and ".limit", as a table keeps its page. Nothing is kept
-// on the server. It only reads: a headline leads to where the item is, with [List.Open] or a [URL] headline, and a list has no row actions.
+// on the server. It only reads: a headline leads to where the item is, with [List.Open], and a list has no row actions.
 //
 // It is not [Table.Feed], which is a source for a table that pages by a cursor: a List is a way to show items, and its source is a plain list.
 type List[M any] struct {
@@ -37,18 +37,14 @@ type List[M any] struct {
 	// PageSize is how many items are shown at first, and how many more each Show more adds. Five when it is left zero.
 	PageSize int
 
-	// Headline is the item's title: an accessor for text, such as a [String]. It is required. It is text, and the address it leads to is Open's or Link's: a [URL],
+	// Headline is the item's title: an accessor for text, such as a [String]. It is required. It is text, and the address it leads to is Open's: a [URL],
 	// whose text is the same on every row, is not a headline.
 	Headline Accessor[M]
 
-	// Open is where an item leads in the app, as a [Link] built from the item. The headline is a real anchor to it. An item whose page refuses the
-	// visitor is plain text. It cannot be an [Action]: an item is read, and a link can be opened in a new tab. An item leads in the app or elsewhere, and so has Open or Link and not both.
-	Open RowClick[M]
-
-	// Link is where an item is on another site, or a path on this one: the headline is a link to it, which opens in a tab of its own, with the mark that says so
-	// and rel="noopener noreferrer". An address that is not a path on this site or an http, https or mailto address, such as a script, is not a link, and the headline is text, so
-	// data in the model cannot make one. Left nil, no item has one.
-	Link func(M) string
+	// Open is where an item leads: a [Link] to a page of the app, built from the item, or an [Href] to an address, such as another site. The headline is a real
+	// anchor to it. An item whose page refuses the visitor is plain text. It cannot be an [Action]: an item is read, and a link can be opened in a new tab.
+	// Left nil, no item leads anywhere.
+	Open Destination[M]
 
 	// Meta are the small facts under the headline, in order, separated by a dot: an item that has no value for one (an empty text) is shown without it.
 	Meta []Accessor[M]
@@ -80,15 +76,14 @@ const (
 // Cards is a [List] whose items are cards: a picture over a headline, a badge and the line of small facts, in a grid that wraps or a row that scrolls. It has the same
 // source, the same Show more, and the same fields, and is for items that are looked at as much as read, such as videos or products.
 type Cards[M any] struct {
-	// Title, Desc, Load, PageSize, Headline, Open, Link, Meta, Image, Badge and TrustedOrigins are those of a [List].
+	// Title, Desc, Load, PageSize, Headline, Open, Meta, Image, Badge and TrustedOrigins are those of a [List].
 	Title    string
 	Desc     string
 	Load     func(ctx context.Context, limit int) ([]M, Loaded)
 	PageSize int
 
 	Headline Accessor[M]
-	Open     RowClick[M]
-	Link     func(M) string
+	Open     Destination[M]
 	Meta     []Accessor[M]
 
 	Image          func(M) string
@@ -116,8 +111,7 @@ type itemsSpec[M any] struct {
 	pageSize int
 
 	headline Accessor[M]
-	open     RowClick[M]
-	link     func(M) string
+	open     Destination[M]
 	meta     []Accessor[M]
 	image    func(M) string
 	badge    Select[M]
@@ -128,14 +122,14 @@ type itemsSpec[M any] struct {
 func (f List[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
 		what: "List", title: f.Title, desc: f.Desc, load: f.Load, pageSize: f.PageSize,
-		headline: f.Headline, open: f.Open, link: f.Link, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
+		headline: f.Headline, open: f.Open, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
 	}
 }
 
 func (c Cards[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
 		what: "Cards", cards: true, scroll: c.Layout == CardsScroll, layout: c.Layout, title: c.Title, desc: c.Desc, load: c.Load, pageSize: c.PageSize,
-		headline: c.Headline, open: c.Open, link: c.Link, meta: c.Meta, image: c.Image, badge: c.Badge, origins: c.TrustedOrigins,
+		headline: c.Headline, open: c.Open, meta: c.Meta, image: c.Image, badge: c.Badge, origins: c.TrustedOrigins,
 	}
 }
 
@@ -155,7 +149,7 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 	case Group[M]:
 		v.add(s.what+".Headline is a Group", "A group composes form fields; an item has one headline.")
 	case URL[M]:
-		v.add(s.what+".Headline is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Link, or in Open for a page of this app.")
+		v.add(s.what+".Headline is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Open: a Link for a page of this app, or an Href for an address.")
 	default:
 		validateAccessor[M](v, s.headline, s.what+".Headline", accessorSite{where: s.what + ".Headline"}, map[string]bool{})
 	}
@@ -172,14 +166,7 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 		v.add(s.what+".Badge has no Load", "Set Load to func(M) []string, or remove the Badge: one with no Load has none.")
 	}
 	if s.open != nil {
-		if _, isAction := s.open.(Action[M]); isAction {
-			v.add(s.what+".Open is an Action", "An item is read, and a link can be opened in a new tab: use a Link, or Link for another site.")
-		} else {
-			s.open.validateRow(v)
-		}
-	}
-	if s.open != nil && s.link != nil {
-		v.add(s.what+" has an Open and a Link", "An item leads in the app or elsewhere, and a link cannot hold a link: keep Open for a page of this app, or Link for an address.")
+		s.open.validateDestination(v, s.what+".Open")
 	}
 	for i, o := range s.origins {
 		if _, err := markdown.Origin(o); err != nil {
@@ -217,15 +204,7 @@ func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
 		return convert.Any(rows), nil
 	}
 	if s.open != nil {
-		n.Open, _ = s.open.lowerRow()
-	}
-	if s.link != nil {
-		n.External = func(m any) string {
-			if u := s.link(m.(M)); validURL(u) {
-				return u
-			}
-			return ""
-		}
+		n.Open, n.External = s.open.lowerDestination()
 	}
 	if s.image != nil {
 		f := head("i", "Image", ir.KindString)

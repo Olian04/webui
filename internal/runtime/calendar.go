@@ -46,6 +46,9 @@ func (p *Program) calendar(ctx context.Context, req *Request, page *ir.Page, n *
 // dayHrefs is where each day that has items leads, by the day's date, for the days that lead anywhere: a day whose link cannot be built is logged and is a plain day, and so is
 // one whose page refuses the visitor, since a link they cannot follow is not offered.
 func (p *Program) dayHrefs(ctx context.Context, req *Request, page *ir.Page, n *ir.Calendar, items map[string]int) map[string]string {
+	if n.External != nil {
+		return externalDayHrefs(n, items)
+	}
 	if n.Open == nil {
 		return nil
 	}
@@ -61,6 +64,22 @@ func (p *Program) dayHrefs(ctx context.Context, req *Request, page *ir.Page, n *
 			continue
 		}
 		if p.mayFollow(ctx, page, n.Open, href) {
+			hrefs[key] = href
+		}
+	}
+	return hrefs
+}
+
+// externalDayHrefs is where each day that has items leads when it leads to another site, by the day's date: the address that has been checked, for the days that have one.
+// No page of the app is asked, so there is no Guard to ask.
+func externalDayHrefs(n *ir.Calendar, items map[string]int) map[string]string {
+	hrefs := map[string]string{}
+	for key, count := range items {
+		date, err := time.Parse("2006-01-02", key)
+		if err != nil {
+			continue
+		}
+		if href := n.External(ir.CalendarDay{Date: date, Items: count}); href != "" {
 			hrefs[key] = href
 		}
 	}

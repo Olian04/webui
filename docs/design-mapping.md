@@ -382,7 +382,7 @@ then loads, and is plain text in a monospace block without script.
 One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
 them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the leaf knows there is more without
 counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the leaf's title as the address spells any label, as a table's is), so it works without script and a copied link shows
-the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open` (a `Link` to a page of the app, left out for an item whose page refuses the visitor) or `Link` (an address, which
+the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open`: a `Link` to a page of the app (left out for an item whose page refuses the visitor) or an `Href` (an address, which
 opens in a tab of its own, as any link to another site does). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
 (`TrustedOrigins`, as for `Markdown`), decoration, and an address from anywhere else is not drawn. It only reads, and it refreshes as any panel does. It is not `Table.Feed`, which is a cursor source for a table.
 
@@ -391,7 +391,7 @@ opens in a tab of its own, as any link to another site does). The facts are acce
 One panel. Header as above; the body is a table of whole weeks that holds a month, each day marked when something is on it. The source is `Load(ctx, Span)`, asked for the days that the grid shows (the month, and the days of the first and last weeks
 that are not of it, so that a day at the edge shows what is on it), and `Date` says when an item is, whose day in UTC it is on. The month is in the address as `<name>.month=2026-10`, where the name is the leaf's title as the address spells any
 label, as a table's is; the links to the months either side, and back to the current one, are real links to the same page with the rest of the address as it was, so it works without script and a copied link shows the same month, and with script it replaces the panel in place. A month that is
-not one, or not within 1900 to 2200, is the current month and not an error. `Open` is a `Link` built from a `Day` (its date and how many items are on it), shown only on a day with items and only if the visitor may follow it; the calendar does not own
+not one, or not within 1900 to 2200, is the current month and not an error. `Open` is a `Link` built from a `Day` (its date and how many items are on it), or an `Href` (an address, which opens in a tab of its own), shown only on a day with items and, for a `Link`, only if the visitor may follow it; the calendar does not own
 a list of the items of a day, and the page that does is the app's. A week begins on Monday, or on Sunday with `SundayFirst`; `WeekNumbers` adds the ISO week numbers, which are of weeks that begin on Monday, so it cannot be combined with `SundayFirst`. `Today` is the clock unless
 given, for a test or an app whose data is of another day. It only reads, and it refreshes as any panel does.
 

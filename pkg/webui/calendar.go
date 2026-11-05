@@ -48,9 +48,9 @@ type Calendar[M any] struct {
 	// Date is when an item is. Its day is its day in UTC. It is required.
 	Date func(M) time.Time
 
-	// Open is where a day with items leads, as a [Link] built from the [Day]: a page of the app that shows what is on it, with the date as its argument. The day is a real
-	// anchor. A day whose page refuses the visitor is a plain day, and so is a day with nothing on it. It cannot be an [Action]. Left nil, no day is a link.
-	Open RowClick[Day]
+	// Open is where a day with items leads: a [Link] to a page of the app, built from the [Day], that shows what is on it, with the date as its argument, or an [Href] to an
+	// address. The day is a real anchor. A day whose page refuses the visitor is a plain day, and so is a day with nothing on it. It cannot be an [Action]. Left nil, no day is a link.
+	Open Destination[Day]
 
 	// SundayFirst begins each week on Sunday. It is Monday when left false.
 	SundayFirst bool
@@ -75,11 +75,7 @@ func (c Calendar[M]) validateBody(v *bodyValidator) {
 		v.add("a Calendar has no Date", "Set Date to func(M) time.Time, returning when an item is: its day, in UTC, is where it is marked.")
 	}
 	if c.Open != nil {
-		if _, isAction := c.Open.(Action[Day]); isAction {
-			v.add("Calendar.Open is an Action", "A day is read, and a link can be opened in a new tab: use a Link, which is built from the Day.")
-		} else {
-			c.Open.validateRow(v)
-		}
+		c.Open.validateDestination(v, "Calendar.Open")
 	}
 	if c.SundayFirst && c.WeekNumbers {
 		v.add("a Calendar has SundayFirst and WeekNumbers", "ISO 8601 week numbers are of weeks that begin on Monday: drop one of the two.")
@@ -99,13 +95,18 @@ func (c Calendar[M]) lowerBody(at ir.Addr) ir.Node {
 		},
 	}
 	if c.Open != nil {
-		link, _ := c.Open.lowerRow()
-		inner := link.Args
-		link.Args = func(ctx context.Context, row any) any {
-			d := row.(ir.CalendarDay)
-			return inner(ctx, Day{Date: d.Date, Items: d.Items})
+		link, external := c.Open.lowerDestination()
+		if link != nil {
+			inner := link.Args
+			link.Args = func(ctx context.Context, row any) any {
+				d := row.(ir.CalendarDay)
+				return inner(ctx, Day{Date: d.Date, Items: d.Items})
+			}
+			n.Open = link
 		}
-		n.Open = link
+		if external != nil {
+			n.External = func(d ir.CalendarDay) string { return external(Day{Date: d.Date, Items: d.Items}) }
+		}
 	}
 	return n
 }

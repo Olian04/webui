@@ -6,6 +6,7 @@ type CalendarDayProps struct {
 	Num     string
 	Label   string
 	Href    string // "" for a day that leads nowhere
+	Other   bool   // the day leads to another site, which opens in a tab of its own
 	Today   bool
 	Outside bool // a day of the week at the edge that is not of the month
 	Marked  bool // there are items on it
@@ -82,7 +83,12 @@ templ Calendar(p CalendarProps) {
 									aria-current="date"
 								}
 							>
-								if d.Href != "" {
+								if d.Href != "" && d.Other {
+									<a class="cal-day" href={ d.Href } target="_blank" rel="noopener noreferrer">
+										<span aria-hidden="true">{ d.Num }</span>
+										<span class="sr-only">{ d.Label }, opens in a new tab</span>
+									</a>
+								} else if d.Href != "" {
 									<a class="cal-day" href={ d.Href } { p.LinkAttrs... }>
 										<span aria-hidden="true">{ d.Num }</span>
 										<span class="sr-only">{ d.Label }</span>
