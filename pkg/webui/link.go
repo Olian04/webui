@@ -132,16 +132,16 @@ func (h Href[M]) lowerControl() *ir.Control {
 
 func (Link[M, A]) toolbarItem(M) {}
 
-func (l Link[M, A]) validateButton(v *bodyValidator, at string) {
+func (l Link[M, A]) validateToolbarItem(v *bodyValidator, at string, _ map[string]bool) {
 	if l.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
 	l.validateLink(v)
 }
 
-// toolbarButton is a toolbar's link: its Args are built with no subject, so what the runtime hands over is ignored, and the zero M, which is NoArgs,
+// lowerToolbarItem is a toolbar's link: its Args are built with no subject, so what the runtime hands over is ignored, and the zero M, which is NoArgs,
 // is what they are given.
-func (l Link[M, A]) toolbarButton() ir.ToolbarItem {
+func (l Link[M, A]) lowerToolbarItem(ir.Addr, string) ir.ToolbarItem {
 	link := l.lowerLink()
 	link.Args = func(ctx context.Context, _ any) any { var none M; return l.Args(ctx, none) }
 	return ir.ToolbarItem{Label: l.Label, Role: ir.Role(l.Role), Link: link}
