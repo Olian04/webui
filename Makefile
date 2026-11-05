@@ -36,9 +36,11 @@ assets: ## Minify the stylesheets and scripts the renderer serves (sources in cs
 	rm -rf $(ASSETS)/min
 	$(TOOL) esbuild $(ASSETS)/css/app.css $(ASSETS)/css/icons.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
 	$(TOOL) esbuild $(ASSETS)/js/*.js --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/js
+	cd tools && go run ./precompress ../$(ASSETS)/min
 
 monaco: ## Rebuild the embedded Monaco editor assets (needs node); the output is committed
 	cd tools/monaco && npm ci && node build.mjs
+	cd tools && go run ./precompress ../pkg/monaco/editor ../pkg/monaco/css/worker ../pkg/monaco/html/worker ../pkg/monaco/json/worker ../pkg/monaco/typescript/worker
 
 build: generate ## Build the application
 	go build -o webui ./cmd/demo

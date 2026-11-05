@@ -4,13 +4,13 @@ go 1.27
 
 require (
 	github.com/a-h/templ v0.3.1070
+	github.com/andybalholm/brotli v1.2.6
 	github.com/prometheus/client_golang v1.25.0
 	github.com/yuin/goldmark v1.8.6
 )
 
 require (
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
-	github.com/andybalholm/brotli v1.2.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

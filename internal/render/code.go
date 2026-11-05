@@ -243,6 +243,9 @@ func (r *Renderer) MonacoFile(name string) (*assetserve.Blob, bool) {
 	if b, ok := monacoBlobs.Load(name); ok {
 		return b.(*assetserve.Blob), true
 	}
+	if strings.HasSuffix(name, ".br") {
+		return nil, false // the Brotli copy of a file is that file, to a client that takes Brotli: it has no address of its own
+	}
 	body, ok := assets.MonacoFile(name)
 	if !ok {
 		return nil, false
@@ -250,6 +253,10 @@ func (r *Renderer) MonacoFile(name string) (*assetserve.Blob, bool) {
 	b := &assetserve.Blob{Mime: monacoType(name), Cache: "public, max-age=31536000, immutable", ETag: `"` + path.Base(name) + `"`, Body: body}
 	if strings.HasSuffix(name, ".js") || strings.HasSuffix(name, ".css") || strings.HasSuffix(name, ".ttf") { // a TrueType font is not compressed inside: this one is 153 KB and 75 KB gzipped
 		b.Gzip = sync.OnceValue(func() []byte { return assetserve.Gzip(body) })
+	}
+	// The build wrote a Brotli copy of each text file and of the font, at the best level, which is too slow to do here: these are megabytes.
+	if br, ok := assets.MonacoFile(name + ".br"); ok {
+		b.Brotli = func() []byte { return br }
 	}
 	shared, _ := monacoBlobs.LoadOrStore(name, b) // two first requests may race: one blob wins
 	return shared.(*assetserve.Blob), true
