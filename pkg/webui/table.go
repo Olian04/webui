@@ -116,7 +116,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	} else {
 		t.Loader.validateLoader(v, "Table.Loader")
 	}
-	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"})
+	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns", rowClick: t.RowClick != nil})
 
 	// Every column is sortable and filterable, and is named for that in the
 	// address by its label, so the labels must tell the columns apart.
@@ -160,12 +160,6 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 	}
 	if t.RowClick != nil {
 		t.RowClick.validateControl(v, "Table.RowClick", slotClick)
-		if len(t.Columns) > 0 {
-			if _, isLink := t.Columns[0].(URL[M]); isLink {
-				v.add("a Table's first column is a URL, but its RowClick is there",
-					"The row's own link or button covers the first column, and a link cannot hold a link: put the URL in another column.")
-			}
-		}
 	}
 }
 

@@ -91,7 +91,7 @@ func (m Markdown[M]) lowerBody(at ir.Addr) ir.Node {
 	return &ir.Markdown{
 		At: at, Title: m.Title, Desc: m.Desc,
 		Load:    eraseLoad(m.Load),
-		Content: lowerAccessor[M](m.Content, "m"),
+		Content: fieldOf[M](m.Content, "m"),
 
 		TrustedOrigins: m.origins(),
 	}
