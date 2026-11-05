@@ -273,6 +273,14 @@ make lint       # generate, vet, verify modules, govulncheck, golangci-lint
 make run        # build and run the demo
 ```
 
+The dev tools (templ, golangci-lint, govulncheck) are in `tools/go.mod`, a module of
+its own that is never published, so that this module's `go.mod` lists what a program
+that uses the library needs and not the two hundred modules of a linter. `make` runs
+them with `go tool -modfile=tools/go.mod`; to run one by hand, do the same
+(`go tool -modfile=tools/go.mod templ generate ./...`). To change a tool's version,
+change it there, and keep the `github.com/a-h/templ` version of the two `go.mod` files
+the same (the generated files say which version made them, so CI fails if they differ).
+
 The generated `*_templ.go` files are committed, so the module builds for anyone who
 imports it. Run `make generate` after editing a `.templ` file; CI fails if they are
 out of date. The icon font and its class list are generated from a Font Awesome Free
