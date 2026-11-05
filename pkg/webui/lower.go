@@ -48,6 +48,7 @@ func (a App) lower() (*ir.App, error) {
 	}
 	out := &ir.App{
 		Brand:         brand,
+		Description:   a.Description,
 		Theme:         lowerTheme(a.Theme),
 		ExternalLinks: lowerExternalLinks(a.ExternalLinks),
 		Logger:        a.Logger,

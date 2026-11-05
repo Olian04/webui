@@ -47,6 +47,9 @@ templ (r *Renderer) early() {
 // theme never flashes. It is a classic script, because modules are deferred.
 templ (r *Renderer) head(needs CodeNeeds) {
 	<script src={ r.AssetHref("prefs.js") }></script>
+	if r.app.Description != "" {
+		<meta name="description" content={ r.app.Description }/>
+	}
 	@r.favicons()
 	// A program that did not import the editor has none to link, and a Markdown that asked to be coloured is plain.
 	if needs.Used && r.monaco.Entry != "" {

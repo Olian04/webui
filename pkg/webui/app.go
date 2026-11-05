@@ -13,6 +13,11 @@ type App struct {
 	// Brand is the name and logo shown in the chrome.
 	Brand Brand
 
+	// Description is what the app is, in a sentence or two of plain text, for the pages' `<meta name="description">`: what a search engine and a link preview show
+	// under the title. It is the same on every page, since the app's pages are views of one thing; a page that needs its own is the application's to serve. Left empty, the
+	// pages have none, since a made-up one says nothing. Roughly 50 to 160 characters is what a search engine shows whole.
+	Description string
+
 	// Theme restyles the app's colours.
 	Theme Theme
 
