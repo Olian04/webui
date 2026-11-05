@@ -77,8 +77,8 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 4)           // the popover, its accessible name, the title, and what the browser says
 	assert.False(t, strings.Contains(body, `<span class="tip-item">Required</span>`)) // the asterisk says it
 
-	// A number is a number input with its bounds; zero is a real bound.
-	assert.Contains(t, body, `name="f1" type="number" value="7" min="0" max="100" step="1"`)
+	// A number is a number input with its bounds, and required, since it always has a value; zero is a real bound.
+	assert.Contains(t, body, `name="f1" type="number" value="7" required min="0" max="100" step="1"`)
 	assert.Contains(t, body, `<span class="tip-item">0–100</span>`) // its bounds, in the popover
 
 	// A group is layout: its fields side by side, with no frame of its own.
@@ -112,7 +112,7 @@ func TestAFieldTellsTheBrowserWhatToSayWhenItRefusesAValue(t *testing.T) {
 	assert.False(t, strings.Contains(body, "data-validity")) // there is no JSON of them
 
 	// The ID has no Store: it is not a control, and has nothing to say.
-	assert.Equal(t, strings.Count(body, "data-msg-value-missing="), 1)
+	assert.Equal(t, strings.Count(body, "data-msg-value-missing="), 2) // the required text, and the number, which is required by its type
 	assert.Equal(t, strings.Count(body, "data-msg-range-overflow="), 1)
 
 	// A form that cannot be submitted has no controls to refuse anything.

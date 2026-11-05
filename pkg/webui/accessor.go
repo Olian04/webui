@@ -148,10 +148,6 @@ type Int[M any] struct {
 	// read-only.
 	Store func(*M, int)
 
-	// Required refuses an empty submission: an input that is emptied is an error that says so. Without it, an input that is emptied stores the zero
-	// value, which is what the form showed, so a number that may be absent is the [OptionalInt] and not a flag here.
-	Required bool
-
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[int]
 
@@ -215,10 +211,6 @@ type Float[M any] struct {
 	// Store writes the submitted value to the model. Without it the field is
 	// read-only.
 	Store func(*M, float64)
-
-	// Required refuses an empty submission: an input that is emptied is an error that says so. Without it, an input that is emptied stores the zero
-	// value, which is what the form showed, so a number that may be absent is the [OptionalFloat] and not a flag here.
-	Required bool
 
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[float64]
@@ -757,21 +749,17 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 	case OptionalInt[M]:
 		common(a.Label, a.Load == nil, "func(M) *int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-		validateOptional(v, at, a.Required, a.Store != nil)
 	case OptionalFloat[M]:
 		common(a.Label, a.Load == nil, "func(M) *float64")
 		validatePrecision(v, at, a.Precision)
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-		validateOptional(v, at, a.Required, a.Store != nil)
 	case OptionalSlider[M]:
 		common(a.Label, a.Load == nil, "func(M) *float64")
 		validateSlider(v, at, a.Min, a.Max, a.StepSize)
-		validateOptional(v, at, a.Required, a.Store != nil)
 	case Bool[M]:
 		common(a.Label, a.Load == nil, "func(M) bool")
 	case OptionalBool[M]:
 		common(a.Label, a.Load == nil, "func(M) *bool")
-		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
 			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
@@ -877,7 +865,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Int[M]:
 		f := head(name, a.Label, ir.KindInt)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
 		f.Get = func(m any) string { return strconv.Itoa(a.Load(m.(M))) }
 		f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
@@ -886,7 +874,7 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Float[M]:
 		f := head(name, a.Label, ir.KindFloat)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
 		f.Get, f.Num = floatReads(a.Load, a.Precision)
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
 		f.Set = setter(a.Store, parseFloat)

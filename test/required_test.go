@@ -51,25 +51,17 @@ func wantsApp(start wants, field webui.Accessor[wants]) (http.Handler, func() wa
 	}
 }
 
-// Required is written on the accessor, once, whatever the accessor holds: an empty submission is refused, and what was stored is left alone.
+// Required is written on the accessor, where its type has an empty value of its own, and refuses an empty submission: what was stored is left alone.
 func TestRequiredOnAnAccessorRefusesAnEmptySubmission(t *testing.T) {
 	t.Parallel()
 
-	start := wants{Text: "x", Num: 5, Ratio: 0.5, Rate: new(3), Level: new(2.0), Paused: new(true), Pick: []string{"a"}}
-	for _, field := range map[string]webui.Accessor[wants]{
-		"String":      webui.String[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
-		"Email":       webui.Email[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
-		"Phone":       webui.Phone[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
-		"Website":     webui.Website[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
-		"Int":         webui.Int[wants]{Label: "F", Required: true, Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }},
-		"Float":       webui.Float[wants]{Label: "F", Required: true, Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }},
-		"OptionalInt": webui.OptionalInt[wants]{Label: "F", Required: true, Load: func(w wants) *int { return w.Rate }, Store: func(w *wants, v *int) { w.Rate = v }},
-		"OptionalFloat": webui.OptionalFloat[wants]{Label: "F", Required: true, Load: func(w wants) *float64 { return w.Level },
-			Store: func(w *wants, v *float64) { w.Level = v }},
-		"OptionalSlider": webui.OptionalSlider[wants]{Label: "F", Min: 0, Max: 10, StepSize: 1, Required: true, Load: func(w wants) *float64 { return w.Level },
-			Store: func(w *wants, v *float64) { w.Level = v }},
-		"OptionalBool": webui.OptionalBool[wants]{Label: "F", Required: true, Load: func(w wants) *bool { return w.Paused }, Store: func(w *wants, v *bool) { w.Paused = v }},
-		"Select": webui.Select[wants]{Label: "F", Required: true, Options: []webui.Option{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}},
+	start := wants{Text: "x", Pick: []string{"a"}}
+	for _, field := range []webui.Accessor[wants]{
+		webui.String[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
+		webui.Email[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
+		webui.Phone[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
+		webui.Website[wants]{Label: "F", Required: true, Load: func(w wants) string { return w.Text }, Store: func(w *wants, v string) { w.Text = v }},
+		webui.Select[wants]{Label: "F", Required: true, Options: []webui.Option{{Value: "a", Label: "A"}, {Value: "b", Label: "B"}},
 			Load: func(w wants) []string { return w.Pick }, Store: func(w *wants, v []string) { w.Pick = v }},
 	} {
 		h, saved := wantsApp(start, field)
@@ -77,6 +69,40 @@ func TestRequiredOnAnAccessorRefusesAnEmptySubmission(t *testing.T) {
 		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 		assert.Contains(t, rec.Body.String(), "F")
 		assert.DeepEqual(t, saved(), start)
+	}
+}
+
+// A number always has a value, so an empty input is refused without a flag to say so: an Int and a Float are required where they are edited. An
+// optional one may be absent, and is stored as nil when it is left empty, whatever its rules. A number that is read-only has no input to refuse.
+func TestANumberIsRequiredByItsTypeAndAnOptionalOneIsNot(t *testing.T) {
+	t.Parallel()
+
+	start := wants{Num: 5, Ratio: 0.5, Rate: new(3), Level: new(2.0)}
+	for _, field := range []webui.Accessor[wants]{
+		webui.Int[wants]{Label: "F", Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }},
+		webui.Float[wants]{Label: "F", Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }},
+	} {
+		h, saved := wantsApp(start, field)
+		body := serve(h, http.MethodGet, "/admin/w").Body.String()
+		assert.Contains(t, body, `required`)
+		assert.Contains(t, body, `class="req"`)
+		rec := post(h, "/admin/w", formValues("f0", ""))
+		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+		assert.Contains(t, rec.Body.String(), "This field is required.")
+		assert.DeepEqual(t, saved(), start)
+	}
+	for _, c := range []struct {
+		field  webui.Accessor[wants]
+		absent func(wants) bool
+	}{
+		{webui.OptionalInt[wants]{Label: "F", Load: func(w wants) *int { return w.Rate }, Store: func(w *wants, v *int) { w.Rate = v }}, func(w wants) bool { return w.Rate == nil }},
+		{webui.OptionalFloat[wants]{Label: "F", Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}, func(w wants) bool { return w.Level == nil }},
+		{webui.OptionalSlider[wants]{Label: "F", Min: 0, Max: 10, StepSize: 1, Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}, func(w wants) bool { return w.Level == nil }},
+	} {
+		h, saved := wantsApp(start, c.field)
+		assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/w").Body.String(), `class="req"`))
+		assert.Equal(t, post(h, "/admin/w", formValues("f0", "")).Code, http.StatusSeeOther)
+		assert.True(t, c.absent(saved()))
 	}
 }
 
@@ -98,24 +124,6 @@ func TestAnAccessorFillsItsFieldWithItsDefault(t *testing.T) {
 	assert.Contains(t, body(webui.OptionalFloat[wants]{Label: "F", Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}), `type="number" value=""`)
 }
 
-// Without Required, an input of a type that cannot be nil that is emptied stores the zero value, which is what the form showed it as; Required refuses it.
-// A number that may be absent is the Optional one.
-func TestAnEmptiedNumberThatIsNotRequiredStoresZero(t *testing.T) {
-	t.Parallel()
-
-	num := webui.Int[wants]{Label: "F", Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }}
-	h, saved := wantsApp(wants{Num: 5}, num)
-	rec := post(h, "/admin/w", formValues("f0", ""))
-	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, saved().Num, 0)
-
-	num.Required = true
-	h, saved = wantsApp(wants{Num: 5}, num)
-	rec = post(h, "/admin/w", formValues("f0", ""))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Equal(t, saved().Num, 5)
-}
-
 // The rules of a text are about its shape, and an empty one is not checked against them: whether empty is refused is Required.
 func TestTheRulesOfATextDoNotRefuseAnEmptyValueAndRequiredDoes(t *testing.T) {
 	t.Parallel()
@@ -130,19 +138,4 @@ func TestTheRulesOfATextDoNotRefuseAnEmptyValueAndRequiredDoes(t *testing.T) {
 	rec := post(h, "/admin/w", formValues("f0", ""))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.True(t, strings.Contains(rec.Body.String(), "This field is required."))
-}
-
-// A read-only accessor has no submission to refuse, so Required on one is a mistake that Compile names.
-func TestRequiredOnAnOptionalSliderThatIsReadOnlyIsRefused(t *testing.T) {
-	t.Parallel()
-
-	slider := webui.OptionalSlider[wants]{Label: "F", Min: 0, Max: 10, Required: true, Load: func(w wants) *float64 { return w.Level }}
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: webui.Form[wants]{
-		Load:   func(context.Context) (wants, webui.Loaded) { return wants{}, webui.Ready() },
-		Fields: []webui.Accessor[wants]{slider},
-		Submit: webui.Action[wants]{Run: func(context.Context, wants) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
-	}}}}
-	_, err := app.Compile("/admin")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "is Required but has no Store")
 }

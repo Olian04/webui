@@ -170,12 +170,13 @@
 // [StringRules] or a [NumberRules]: length, a pattern, bounds) are rendered
 // as HTML constraint attributes and checked again on the server, and its Placeholder is shown in an input while it is empty. A [Float] shows Precision decimals.
 //
-// Required is written on the accessor, once, whatever it holds: an empty submission is refused, in the browser and on the server.
-// What an empty submission means without it is the accessor's default, which is also what its field in a form starts as: for an
-// accessor that cannot be nil, the value that Load gives (a [Int] or a [Float] shows what is stored, 0 for a model that has none, a [Bool] is
-// ticked or not), and for one that can, which is the Optional ones, nothing, "not set", which is nil. So an input of the first kind that is emptied
-// stores the zero value of its type, as a [String] stores "", and one of the second kind stores nil. A number that may be absent is not a flag on
-// [Int]: its Go type differs, and it is an [OptionalInt].
+// Whether a value is required is the accessor's, and is written once. A value that is always there is required where it is edited, with no flag to
+// say so: an [Int], a [Float] and a [Slider] have a number, so an input that is emptied is refused, in the browser and on the server, and a [Bool] is a
+// switch that is on or off. A value that may be absent is an Optional accessor: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool]
+// load a pointer, and an input that is emptied is stored as nil. Where the type has an empty value of its own, which is a legitimate one (the "" of a
+// [String], no choice in a [Select], no file in a [File]), a Required field refuses it: it is on [String], [Email], [Phone], [Website], [Select] and
+// [File], and on no other. So an accessor is required or optional, as its type says, and a form starts its field with the accessor's default: the value
+// that Load gives for one that always has a value (0 for a model that has none), and nothing, "not set", for one that may be absent.
 //
 // Every accessor but a [Group] has a Help, a line or two on what the field is for,
 // which a form and a toolbar show in the popover beside the label that lists the rules,
@@ -224,7 +225,7 @@
 // A number or a choice that may be absent has an accessor of its own, since a Go int
 // cannot say it: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool] load a pointer,
 // and an [OptionalBool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
-// input that is emptied is stored as nil (and a Required one refuses it, on every accessor that can be emptied, as it does for a [String]), a table sorts
+// input that is emptied is stored as nil, a table sorts
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
 // and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing

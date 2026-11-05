@@ -423,7 +423,7 @@ func TestAShowThatIsAnOptionalBoolIsShownOnlyWhenItIsYes(t *testing.T) {
 	}
 	when := webui.When[condition]{
 		Load: func(context.Context) (condition, webui.Loaded) { return condition{}, webui.Ready() },
-		Show: webui.OptionalBool[condition]{Label: "Maybe", Required: true, Load: func(condition) *bool {
+		Show: webui.OptionalBool[condition]{Label: "Maybe", Load: func(condition) *bool {
 			mu.Lock()
 			defer mu.Unlock()
 			return value

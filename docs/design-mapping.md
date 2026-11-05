@@ -84,7 +84,7 @@ into existence, and nothing is configured twice.
 | `Datetime`, `Timestamp` | A moment, shown in UTC as "2026-10-09 11:27" in a `<time>` element. A table sorts it as a moment, and its filter is a start and an end, in UTC, as date and time inputs. With a `Store` a form shows the native date and time picker (`datetime-local`, to the second, in UTC) and says "Date and time in UTC" in the field's rules popover |
 | `Slider` | An inline bar in a table, and in a form that is only read; with a `Store`, see the next row |
 | `Slider` with a `Store` | A number input that is the control (it is submitted, has the bounds and the `step`, and works without script) with a range beside it, for script, to drag. `StepSize` is the distance between the values, from `Min`, or a power of ten that gives a hundred steps or more over the range; the value is shown with its decimals. The server holds a value to the step too, in the words the browser uses (`step="any"` submitted whatever the pointer was over, such as 81.6719540426991) |
-| `OptionalInt`, `OptionalFloat`, `OptionalSlider` | The number, slider and bar of the same names, for a value that may be absent (`Load` returns a pointer). Absent is an empty input with the field's placeholder, and a dash where it is only read, in a table and in a read-only form; an empty slider is dimmed, since its thumb must rest somewhere. Emptying the input stores `nil`, and `Required` refuses it. In a table it sorts first and is in no range; the CSV cell is empty and the JSON is `null` |
+| `OptionalInt`, `OptionalFloat`, `OptionalSlider` | The number, slider and bar of the same names, for a value that may be absent (`Load` returns a pointer). Absent is an empty input with the field's placeholder, and a dash where it is only read, in a table and in a read-only form; an empty slider is dimmed, since its thumb must rest somewhere. Emptying the input stores `nil`: there is no `Required`, since an accessor that may be absent is not required. In a table it sorts first and is in no range; the CSV cell is empty and the JSON is `null` |
 | `Bool` | Yes or no (`Load` returns a `bool`): a toggle switch where it is edited (a checkbox underneath, so it needs no script), and an off one is not sent, so an absent field is no; a neutral Yes or No badge where it is read; its table filter is a choice of the two, a CSV holds the words and the JSON is `true` or `false` |
 | `OptionalBool` | Yes, no, or not set (`Load` returns a `*bool`): a drop-down of Yes and No with an empty option (a `<select>`, so it needs no script; a checkbox cannot be neither, and an unchecked one sends nothing), and a neutral Yes or No badge where it is read, with a dash for neither. Its table filter is a choice among them, and the JSON is `true`, `false` or `null` |
 | `Table.Rows`, `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
@@ -441,11 +441,11 @@ reusable rather than forcing two near-identical declarations.
 
 ### `Required` and `Rules` → validation, twice, from one declaration
 
-Each rule has exactly one visual form. `Required` is a field of the accessor and not of its `Rules`, since it is about whether a value is wanted and the rules are about what shape one has; the others are in `Rules`:
+Each rule has exactly one visual form. A value that is always there (`Int`, `Float`) is required where it is edited, by its type, and one that may be absent (`Optional*`) is not; `Required` is a field only where the type has an empty value of its own (`String`, `Email`, `Phone`, `Website`, `Select`, `File`), and it is the accessor's and not its `Rules`', since it is about whether a value is wanted and the rules are about what shape one has; the others are in `Rules`:
 
 | Rule | Input attribute | Shown as |
 |---|---|---|
-| `Required` (on the accessor) | `required` | `*` beside the label, in critical |
+| Required (by the type, or `Required`) | `required` | `*` beside the label, in critical |
 | `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |

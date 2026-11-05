@@ -24,9 +24,6 @@ type OptionalInt[M any] struct {
 	// is read-only.
 	Store func(*M, *int)
 
-	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
-	Required bool
-
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[int]
 
@@ -69,9 +66,6 @@ type OptionalFloat[M any] struct {
 	// Store writes the submitted value to the model: nil when the input was left empty. Without it the field
 	// is read-only.
 	Store func(*M, *float64)
-
-	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
-	Required bool
 
 	// Rules are checked in the browser and again on the server.
 	Rules NumberRules[float64]
@@ -120,9 +114,6 @@ type OptionalSlider[M any] struct {
 	// and read-only.
 	Store func(*M, *float64)
 
-	// Required refuses a submission with nothing in it: nil is not stored. Without it an input that is emptied stores nil.
-	Required bool
-
 	// Min is the value at the start of the range.
 	Min float64
 
@@ -167,9 +158,6 @@ type OptionalBool[M any] struct {
 	// Store writes the choice to the model: nil when none was made. Without it the field is read-only.
 	Store func(*M, *bool)
 
-	// Required refuses a submission with none chosen.
-	Required bool
-
 	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
 	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
 	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
@@ -191,19 +179,11 @@ func (a OptionalBool[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// validateOptional checks what an optional number needs besides what every accessor does: Required needs a Store, since an
-// input that cannot be filled in cannot be required.
-func validateOptional(v *bodyValidator, at string, required bool, store bool) {
-	if required && !store {
-		v.add(at+" is Required but has no Store", "Required is about a submission, and a read-only field has none: remove it, or add a Store.")
-	}
-}
-
 // lowerOptionalInt is an OptionalInt as the IR holds it.
 func lowerOptionalInt[M any](a OptionalInt[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindInt)
 	f.Nullable = true
-	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, false), a.Placeholder
 	f.Get = func(m any) string {
 		if p := a.Load(m.(M)); p != nil {
 			return strconv.Itoa(*p)
@@ -237,7 +217,7 @@ func lowerOptionalInt[M any](a OptionalInt[M], name string) ir.Field {
 func lowerOptionalFloat[M any](a OptionalFloat[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindFloat)
 	f.Nullable = true
-	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Required), a.Placeholder
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, false), a.Placeholder
 	prec := -1
 	if a.Precision > 0 {
 		prec = a.Precision
@@ -277,7 +257,7 @@ func lowerOptionalSlider[M any](a OptionalSlider[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindFloat)
 	f.Nullable = true
 	f.Placeholder = "—" // what the number says while it is empty, and what the range is dimmed by
-	f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Required: a.Required, Min: &lo, Max: &hi}
+	f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
 	step := a.StepSize
 	if step == 0 && a.Store != nil {
 		step = defaultStep(lo, hi)
@@ -364,7 +344,7 @@ func lowerBool[M any](a Bool[M], name string) ir.Field {
 // lowerOptionalBool is an OptionalBool as the IR holds it: a select of Yes and No, whose value is "true", "false" or none.
 func lowerOptionalBool[M any](a OptionalBool[M], name string) ir.Field {
 	f := head(name, a.Label, ir.KindString)
-	f.Display, f.Rules, f.Nullable, f.Bool = ir.DisplaySelect, ir.Rules{Required: a.Required}, true, true
+	f.Display, f.Rules, f.Nullable, f.Bool = ir.DisplaySelect, ir.Rules{}, true, true
 	f.Choices = []ir.Choice{{Value: boolYes, Label: "Yes"}, {Value: boolNo, Label: "No"}}
 	f.Options = []string{boolYes, boolNo}
 	f.Get = func(m any) string {
