@@ -57,21 +57,17 @@ func (t Toolbar) items() []ToolbarItem {
 }
 
 // ToolbarItem is a control of a [Toolbar]: an [Action] or a [Link] of [NoArgs], or a [Form]. Only this package implements it, and an
-// Action or a Link that has a subject of its own is not one, which is a compile error: a toolbar has no model to give it.
+// Action or a Link that has a subject of its own is not one, which is a compile error: a toolbar has no model to give it. What each is to a toolbar, a button, a
+// link or a model to load and show, each says itself: nothing that takes a ToolbarItem looks at which one it was given.
 type ToolbarItem interface {
+	// toolbarItem is what makes a control that has a subject of its own not an item: its parameter is that subject, and a toolbar's is [NoArgs].
 	toolbarItem(NoArgs)
-}
 
-// toolbarButton is what an [Action] and a [Link] are to a toolbar.
-type toolbarButton interface {
-	validateButton(v *bodyValidator, at string)
-	toolbarButton() ir.ToolbarItem
-}
+	// validateToolbarItem checks the control where it is, which at names. seen is the labels of the fields of the forms before it, which must differ.
+	validateToolbarItem(v *bodyValidator, at string, seen map[string]bool)
 
-// toolbarForm is what a [Form] is to a toolbar: a model to load and show.
-type toolbarForm interface {
-	validateToolbarForm(v *bodyValidator, at string, seen map[string]bool)
-	lowerToolbarForm(at ir.Addr, prefix string) ir.ToolbarItem
+	// lowerToolbarItem is the control as the IR holds it. at is the toolbar's address, and prefix what a form names its fields by.
+	lowerToolbarItem(at ir.Addr, prefix string) ir.ToolbarItem
 }
 
 // ASSERT: Toolbar implements PageBody
@@ -87,33 +83,25 @@ func (t Toolbar) validateBody(v *bodyValidator) {
 		if i >= len(t.Left) {
 			at = fmt.Sprintf("Toolbar.Right[%d]", i-len(t.Left))
 		}
-		switch it := item.(type) {
-		case toolbarButton:
-			it.validateButton(v, at)
-		case toolbarForm:
-			it.validateToolbarForm(v, at, seen)
-		case nil:
+		if item == nil {
 			v.add(at+" is nil", "Remove it or declare a control.")
+			continue
 		}
+		item.validateToolbarItem(v, at, seen)
 	}
 }
 
 func (t Toolbar) lowerBody(at ir.Addr) ir.Node {
 	out := &ir.Toolbar{At: at, RightFrom: len(t.Left)}
 	for i, item := range t.items() {
-		switch it := item.(type) {
-		case toolbarButton:
-			out.Items = append(out.Items, it.toolbarButton())
-		case toolbarForm:
-			out.Items = append(out.Items, it.lowerToolbarForm(at, "t"+strconv.Itoa(i)+"_"))
-		}
+		out.Items = append(out.Items, item.lowerToolbarItem(at, "t"+strconv.Itoa(i)+"_"))
 	}
 	return out
 }
 
 func (f Form[M]) toolbarItem(NoArgs) {}
 
-func (f Form[M]) validateToolbarForm(v *bodyValidator, at string, seen map[string]bool) {
+func (f Form[M]) validateToolbarItem(v *bodyValidator, at string, seen map[string]bool) {
 	if f.Title == "" {
 		v.add(at+" is a Form with no Title", "Set Title: in a toolbar it names the group of values, and is what is said when they cannot be loaded.")
 	}
@@ -129,6 +117,6 @@ func (f Form[M]) validateToolbarForm(v *bodyValidator, at string, seen map[strin
 	}
 }
 
-func (f Form[M]) lowerToolbarForm(at ir.Addr, prefix string) ir.ToolbarItem {
+func (f Form[M]) lowerToolbarItem(at ir.Addr, prefix string) ir.ToolbarItem {
 	return ir.ToolbarItem{Form: &ir.Form{At: at, Title: f.Title, Fields: lowerAccessors(f.Fields, prefix), Load: eraseLoad(f.Load)}}
 }
