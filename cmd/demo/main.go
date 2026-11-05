@@ -52,6 +52,8 @@ var app = webui.App{
 	// The logo is any image.Image. The theme is left at its default here; the
 	// -accent flag overrides the accent colour (see themeFor).
 	Brand: webui.Brand{Name: "Collector", Logo: logo()},
+	// What the app is, for the pages' meta description: what a search engine shows under the title.
+	Description: "Collector: devices, alerts, rules and settings of a telemetry collector, in a small admin panel built with webui.",
 	// Where the app says what went wrong that it could not tell the visitor. Left out, it logs nothing.
 	Logger: slog.Default(),
 	// The app's links to places outside it, behind their own button in the top bar. An

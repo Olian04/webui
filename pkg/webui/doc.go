@@ -816,7 +816,7 @@
 // # Looks
 //
 // [Brand] gives the name and logo. The logo is also scaled into the browser's favicon,
-// unless NoFavicon is set. [App.ExternalLinks] are the app's links to places outside
+// unless NoFavicon is set. [App.Description] is the pages' meta description, what a search engine shows under the title. [App.ExternalLinks] are the app's links to places outside
 // it, such as signing out or the documentation, behind a button beside Refresh in the
 // top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
 // address opens in a tab of its own, and a path on this site in the same one. Its

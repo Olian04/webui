@@ -7,10 +7,11 @@ import (
 // App is one compiled program. It carries no mount prefix: where the app is
 // mounted is a transport concern, passed to the runtime separately.
 type App struct {
-	Brand  Brand
-	Theme  Theme
-	Pages  []*Page
-	ByPath map[string]*Page // destination resolution, not a route table
+	Brand       Brand
+	Description string // for <meta name="description">, or empty for none
+	Theme       Theme
+	Pages       []*Page
+	ByPath      map[string]*Page // destination resolution, not a route table
 
 	// ExternalLinks are the app's own links to places outside it, behind a button in the
 	// top bar.
