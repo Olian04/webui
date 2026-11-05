@@ -67,8 +67,7 @@ func TestOneColumnIsStillAColumnThatFillsTheRow(t *testing.T) {
 func TestTheStylesheetWrapsColumnsThatWouldBeTooNarrow(t *testing.T) {
 	t.Parallel()
 
-	h := editorApp(webui.Columns{{Body: columnPanel("A")}})
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".columns {\n  --column-min: 280px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--gutter);\n  align-items: stretch;\n}")
 	assert.Contains(t, css, ".col {\n  flex: var(--w, 1) 1 0;\n  min-width: min(var(--column-min), 100%);\n  display: flex;\n  flex-direction: column;\n}")
 	assert.Contains(t, css, ".col > .panel,\n.col > :is(.stack, .columns, .tabset) {\n  flex: 1 1 auto;\n}")

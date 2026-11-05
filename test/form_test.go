@@ -344,7 +344,7 @@ func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
 
 	h := formApp(okForm())
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/dev1").Body.String(), `<div class="panel-body pad">`)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 10px 14px;")
 }
 
@@ -353,8 +353,7 @@ func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
 func TestASlidersNumberFillsTheFieldWhenThereIsNoScript(t *testing.T) {
 	t.Parallel()
 
-	h := formApp(sliderForm())
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "html:not(.js) .range-number {\n  flex: 1;\n  width: auto;\n  text-align: left;\n}")
 	assert.Contains(t, css, ".range-number {\n  flex: none;\n  width: 92px;")
 }

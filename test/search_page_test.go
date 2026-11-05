@@ -134,7 +134,7 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	assert.Contains(t, list, `<a class="pal-item" role="option" href="/admin/device/dev-eth%200">`)
 	assert.False(t, strings.Contains(list, "<html"))
 
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{"'?q='", "[LEAF_HEADER]: 'search'", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'", "template[data-palette-pending]", "template[data-palette-down]"} {
 		assert.Contains(t, js, want)
 	}

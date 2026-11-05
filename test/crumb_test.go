@@ -144,7 +144,7 @@ func TestANarrowScreenCutsTheCrumbsToTheParentAndThePage(t *testing.T) {
 	t.Parallel()
 
 	h := bucketApp()
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "@media (max-width: 640px) {\n  .crumbs > :nth-last-child(n + 4) {\n    position: absolute;")
 	// Not drawn is not gone: a reader still has the whole trail, and a key on a crumb draws it.
 	assert.Contains(t, css, ".crumbs > a:nth-last-child(n + 4):focus {\n    position: static;")

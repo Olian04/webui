@@ -47,7 +47,7 @@ func TestASelectionDoesNotEnableAGuardedBulkButton(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, body, `<span class="gate" data-guard="Needs a second approver" tabindex="0">`)
 
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	sel := js[strings.Index(js, "function syncSelection"):]
 	sel = sel[:strings.Index(sel, "b.disabled = n === 0")]
 	assert.Contains(t, sel, "if (b.closest('.gate')) return;")
@@ -69,8 +69,7 @@ func TestAReadOnlyFieldsLabelNamesItsValueAndDoesNotPointAtNothing(t *testing.T)
 func TestThePhoneSelectorKeepsTheFocus(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	js := serve(h, http.MethodGet, assetURL(t, h, "phone.js")).Body.String()
+	js := assetSource(t, "phone.js")
 	assert.Contains(t, js, "select.addEventListener('change', show);")
 	assert.False(t, strings.Contains(js, "input.focus()"))
 }
@@ -87,7 +86,7 @@ func TestTheSearchBoxIsAComboboxOnlyWhenScriptMakesItOne(t *testing.T) {
 	for _, attr := range []string{"role=", "aria-expanded", "aria-controls", "aria-autocomplete"} {
 		assert.False(t, strings.Contains(input, attr))
 	}
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{"input.setAttribute('role', 'combobox');", "input.setAttribute('aria-controls', box.id);", "input.setAttribute('aria-autocomplete', 'list');"} {
 		assert.Contains(t, js, want)
 	}
@@ -117,8 +116,7 @@ func TestTheBoxesListboxHoldsOnlyOptionsAndGroups(t *testing.T) {
 func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	for _, selector := range []string{
 		".search input::placeholder", ".input::placeholder", ".kbd", ".refresh-note", ".pager-export-note", ".file-hint", ".msel-hint", ".udiff-n",
 		".status-loading", ".sb-opt", ".filter-btn", ".filter-note",
@@ -137,8 +135,7 @@ func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
 func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 
 	forced := css[strings.Index(css, "@media (forced-colors: active) {"):]
 	forced = forced[:strings.Index(forced, "\n}\n")]
@@ -176,8 +173,7 @@ func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
 func TestANarrowWindowKeepsItsSearch(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(css))
 	assert.Contains(t, css, "flex: 0 1 290px;")
 }
@@ -283,8 +279,7 @@ func TestControlsHaveTheRolesAReaderExpects(t *testing.T) {
 func TestAFragmentOnlyChangeDoesNotReloadThePage(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.Contains(t, js, "if (location.pathname + location.search !== shownAt) location.reload();")
 	assert.False(t, strings.Contains(js, "history.pushState(null, '', href);\n"+"      shownAt")) // the address is noted where it is pushed, once
 	assert.Equal(t, strings.Count(js, "moveTo(href);"), 2)
@@ -346,7 +341,7 @@ func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		// A panel that is replaced says what it holds now, and takes the focus that was in it to its title.
 		"function announce(text)", "describeLeaf(next, 'updated')", "if (hadFocus) refocus(next);", "title.tabIndex = -1;",
@@ -388,13 +383,12 @@ func TestAPanelThatIsAskedForAgainCanBePausedAndASelectionCountIsAStatus(t *test
 func TestTheUploadKeepsItsLiveRegionAndTheFocus(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(nil)
-	up := serve(s.h, http.MethodGet, assetURL(t, s.h, "upload.js")).Body.String()
+	up := assetSource(t, "upload.js")
 	for _, want := range []string{"quiet(true);", "if (on && focused) cancel.focus();", "(submit || input).focus();"} {
 		assert.Contains(t, up, want)
 	}
 	assert.False(t, strings.Contains(up, "list.hidden"))
-	file := serve(s.h, http.MethodGet, assetURL(t, s.h, "file.js")).Body.String()
+	file := assetSource(t, "file.js")
 	assert.Contains(t, file, "element('button', 'file-thumb-chosen')")
 	assert.Contains(t, file, "input.setAttribute('aria-invalid', 'true');")
 }
@@ -404,8 +398,7 @@ func TestTheUploadKeepsItsLiveRegionAndTheFocus(t *testing.T) {
 func TestASortableHeaderLinkIsAtLeast24pxToHit(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	rule := regexp.MustCompile(`thead th a\s*\{[^}]*\}`).FindString(css)
 	assert.Contains(t, rule, "min-width: 24px;")
 	assert.Contains(t, rule, "min-height: 24px;")

@@ -1,4 +1,4 @@
-.PHONY: format lint test help generate monaco build run
+.PHONY: format lint test help generate assets monaco build run
 
 # Trees this library owns. A missing path fails the whole target.
 SOURCE_CODE ?= ./cmd/... ./internal/... ./pkg/... ./test/...
@@ -24,8 +24,18 @@ lint: generate ## Run go vet, module verify, vuln scan, golangci
 test: generate ## Run tests
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)
 
-generate: ## Generate the application
+ASSETS := internal/render/assets
+
+generate: assets ## Generate the application: the templates, and the minified assets
 	go tool templ generate ./...
+
+# The stylesheets and scripts that the renderer serves are written in css/ and js/, as a person reads them, and served from min/, minified. The output is committed, as the
+# editor's is, so that building the library needs no tool, and CI fails when it is not the output of the sources. The scripts are not bundled and not rewritten for an older
+# engine: whitespace and local names only, and the names a classic script shares through the global scope are kept.
+assets: ## Minify the stylesheets and scripts the renderer serves (sources in css/ and js/, output in min/, committed)
+	rm -rf $(ASSETS)/min
+	$(TOOL) esbuild $(ASSETS)/css/*.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	$(TOOL) esbuild $(ASSETS)/js/*.js --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/js
 
 monaco: ## Rebuild the embedded Monaco editor assets (needs node); the output is committed
 	cd tools/monaco && npm ci && node build.mjs

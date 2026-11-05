@@ -102,7 +102,7 @@ func TestASplitIsColumnsAndKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
 	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;">`)
 	assert.False(t, strings.Contains(body, `class="split"`))
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.False(t, strings.Contains(css, ".split"))
 	assert.Contains(t, css, ":is(.stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
 }
@@ -112,8 +112,7 @@ func TestASplitIsColumnsAndKeepsItsPanelsFootAtTheBottom(t *testing.T) {
 func TestAColumnAndATabInAColumnsFillTheRow(t *testing.T) {
 	t.Parallel()
 
-	h, _ := layoutApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
 	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
 	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
@@ -209,8 +208,7 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADot(t *testing.T) {
 	t.Parallel()
 
-	h, _ := layoutApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	dash := "content: '';\n  display: block;\n  width: 32px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: var(--radius);\n  background: var(--border-2);"
 	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .nav-section::before {\n    "+strings.ReplaceAll(dash, "\n  ", "\n    "))
 	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n    display: none;\n  }")
@@ -225,8 +223,7 @@ func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADo
 func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
 	t.Parallel()
 
-	h, _ := layoutApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
 	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
 	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
@@ -334,7 +331,7 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 	assert.Contains(t, body, "Panel 19-row")
 	assert.False(t, strings.Contains(body, "Panel 0-row"))
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "box-shadow: inset 0 -1px 0 var(--border);")
 	assert.Contains(t, css, "overflow-x: auto;\n  overflow-y: hidden;")
 	assert.Contains(t, css, ".tab {\n  flex: none;")
@@ -346,8 +343,7 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 func TestThePageDoesNotOptInToACrossDocumentViewTransition(t *testing.T) {
 	t.Parallel()
 
-	h := streamApp(webui.Stack{quickTable("First")})
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.False(t, strings.Contains(css, "@view-transition"))
 	assert.False(t, strings.Contains(css, "view-transition-name"))
 	assert.False(t, strings.Contains(css, "::view-transition"))
@@ -360,14 +356,14 @@ func TestWhenThePageWasBuiltIsShownOnlyWhereScriptIsOffAndTheBadgeSaysWhenItIsSt
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "html.js .status-meta [data-built] {\n  display: none;\n}")
 
 	page := serve(h, http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, page, `<time class="sb-opt" data-built datetime="`) // the server says it, for the page without script
 	assert.Contains(t, page, `data-stale hidden`)                          // and the badge is there for script to show
 
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.Contains(t, js, "'stale page'")
 	assert.False(t, strings.Contains(js, "cached?"))
 	assert.False(t, strings.Contains(js, "showBuilt")) // nothing writes the time or its age into the bar
@@ -386,12 +382,12 @@ func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAre(t *testing.T) {
 	assert.Contains(t, page, `<span class="sb-opt" data-loaded hidden></span>`) // for script to fill in
 	assert.False(t, strings.Contains(page, "sb-split"))                         // no bar: the numbers say it
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".sb-timing [data-build]::before {\n  content: 'render ';")
 	assert.Contains(t, css, ".sb-timing [data-loaded]::before {\n  content: var(--sep) ' delivery ';")
 	assert.False(t, strings.Contains(css, "sb-split"))
 
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.Contains(t, js, "Math.max(ms - render, 0)") // the delivery is what is left of the whole
 	assert.False(t, strings.Contains(js, "data-split"))
 }

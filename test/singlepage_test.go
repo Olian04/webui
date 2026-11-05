@@ -160,8 +160,7 @@ func TestTheMarkOfAnAppWithASidebarIsNotInTheTopBar(t *testing.T) {
 func TestTheThemeToggleIsDrivenByScriptAndTheStylesheet(t *testing.T) {
 	t.Parallel()
 
-	h := noNav()
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		`'[data-pref-toggle="theme"]'`,
 		"localStorage.setItem('webui.theme', theme);",
@@ -170,7 +169,7 @@ func TestTheThemeToggleIsDrivenByScriptAndTheStylesheet(t *testing.T) {
 		assert.Contains(t, js, want)
 	}
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	for _, want := range []string{
 		".theme-toggle .ti-moon {\n  display: none;\n}",
 		"html[data-theme='light'] .theme-toggle .ti-sun {\n  display: none;\n}",

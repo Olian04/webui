@@ -21,7 +21,7 @@ func TestAPhoneHasTheSidebarAsADrawerOpenedByACheckbox(t *testing.T) {
 	assert.Contains(t, body, `<label class="nav-backdrop" for="nav-toggle" aria-hidden="true"></label>`)
 	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	phone := css[strings.Index(css, "@media (max-width: 640px) {\n  /* The boxes"):]
 	// Closed it is out of the order of the keys, and ticked it slides in.
 	assert.Contains(t, phone, ".drawer-left {\n    left: 0;\n    transform: translateX(-100%);")
@@ -44,7 +44,7 @@ func TestAPhoneHasTheTopBarsActionsAsAMenu(t *testing.T) {
 	// The button that opens the drawer leads the bar.
 	assert.True(t, strings.Index(top, "nav-open") < strings.Index(top, `class="crumbs"`))
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, top, `<label class="top-backdrop" for="top-more" aria-hidden="true"></label>`)
 	// It comes in from the right, with the buttons first, then the search, then its results.
 	assert.Contains(t, css, ".drawer-right {\n    right: 0;\n    transform: translateX(100%);")
@@ -69,13 +69,12 @@ func TestAnAppWithNoSidebarHasNoDrawerOrButtonForIt(t *testing.T) {
 func TestAPhoneIsUsableWithAScreenReader(t *testing.T) {
 	t.Parallel()
 
-	h := navApp()
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "  .nav-toggle,\n  .top-more-toggle {\n    display: block;\n    position: fixed;\n    top: 4px;\n    width: 40px;\n    height: 40px;")
 	assert.Contains(t, css, "visibility: hidden;") // a closed drawer is not read, nor reached by a key
 	assert.False(t, strings.Contains(css, ".crumbs > :nth-last-child(n + 4) {\n    display: none"))
 
-	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	enhance := assetSource(t, "enhance.js")
 	for _, want := range []string{"el.setAttribute('inert', '')", "e.key !== 'Escape'", "'#nav-toggle:checked, #top-more:checked'", "addEventListener('pageshow', syncDrawers)"} {
 		assert.Contains(t, enhance, want)
 	}
@@ -87,7 +86,7 @@ func TestThePhoneDrawerKeepsTheOrderOfTheBarAndTheHoverOfTheButtons(t *testing.T
 	t.Parallel()
 
 	h := navApp()
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "  .top-right > *,\n  .top-right > .js-only > * {\n    order: 1;")
 	assert.Contains(t, css, "  .nav-toggle:hover ~ .app .nav-open,\n  .top-more-toggle:hover + .top-more {\n    background: var(--hover);")
 
@@ -109,15 +108,14 @@ func TestThePhoneDrawerKeepsTheOrderOfTheBarAndTheHoverOfTheButtons(t *testing.T
 func TestAPhoneReadsItsValuesInTheirNarrowForm(t *testing.T) {
 	t.Parallel()
 
-	h := navApp()
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	phone := css[strings.Index(css, "@media (max-width: 640px) {\n  /* The boxes"):]
 	assert.Contains(t, phone, "  .trend .spark {\n    position: absolute;")
 	assert.Contains(t, phone, "  .delta .delta-arrow,\n  .gauge-track {\n    display: none;")
 	assert.Contains(t, phone, "  .tip .info {\n    display: none;")
 	assert.Contains(t, phone, "  .toolbar-lbl:hover + .tip .tip-body,\n  label.lbl:hover + .tip .tip-body,\n  .panel-title:hover + .tip .tip-body {\n    display: block;")
 
-	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	enhance := assetSource(t, "enhance.js")
 	assert.Contains(t, enhance, "closest('.toolbar-lbl, label.lbl, .panel-title')")
 }
 
@@ -126,8 +124,7 @@ func TestAPhoneReadsItsValuesInTheirNarrowForm(t *testing.T) {
 func TestAFieldRowFollowsTheRoomOfItsPanelAndNotTheWindow(t *testing.T) {
 	t.Parallel()
 
-	h := navApp()
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".field-row {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));")
 	assert.Contains(t, css, ".field-row .field {\n  margin-bottom: 0;\n  min-width: 0;\n}")
 }

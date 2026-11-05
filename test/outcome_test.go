@@ -207,7 +207,7 @@ func TestAToastCanBeDismissedWithoutScript(t *testing.T) {
 
 	// The stylesheet hides the toast whose radio is chosen: the markup and the rule
 	// are one mechanism, so a change to either has to keep both.
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".toast:has(.toast-close input:checked) {\n  display: none;")
 
 	// A browser that cannot do :has() would show a button that does nothing, so the

@@ -107,8 +107,7 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 func TestTheSidebarKeepsItsScrollPositionFromOnePageToTheNext(t *testing.T) {
 	t.Parallel()
 
-	h, _ := layoutApp(nil)
-	js := serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Body.String()
+	js := assetSource(t, "prefs.js")
 	assert.Contains(t, js, "'webui.sidebar.scroll'")
 	assert.Contains(t, js, "addEventListener('pagehide'")
 	assert.Contains(t, js, "sessionStorage.setItem(KEY, String(side.scrollTop))")
@@ -140,7 +139,7 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css"))
 	assert.Contains(t, css.Body.String(), "--blue: #c2410c;")
 
-	base := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	base := assetSource(t, "app.css")
 	assert.Contains(t, base, "@media (prefers-color-scheme: light)")
 	assert.Contains(t, base, ":root:not([data-theme])")
 
@@ -160,8 +159,7 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{}.MustCompile("/admin")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		"function clipBounds(el)",
 		"function placeTip(tip)",
@@ -176,7 +174,7 @@ func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
 	} {
 		assert.Contains(t, js, want)
 	}
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".gate[data-edge='left']:hover::after,\n.gate[data-edge='left']:focus-visible::after {\n  left: 0;\n  transform: none;\n}")
 	assert.Contains(t, css, ".gate[data-edge='right']:hover::after,\n.gate[data-edge='right']:focus-visible::after {\n  left: auto;\n  right: 0;\n  transform: none;\n}")
 	assert.Contains(t, css, "width: max-content;\n  max-width: min(280px, calc(100vw - 16px));\n  white-space: normal;")
@@ -187,8 +185,7 @@ func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
 func TestTheSearchResultsScrollWhenThereAreMoreThanTheWindowHasRoomFor(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{}.MustCompile("/admin")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "max-height: calc(100vh - var(--topbar-h) - 26px - 24px);\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.palette.open {")
 }
 
@@ -204,7 +201,7 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 	assert.Contains(t, body, `title="An entry that is far too long for the sidebar to hold"`)
 	assert.Contains(t, body, `title="A caption that is far too long for the sidebar to hold"`)
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	cut := "min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}"
 	assert.Contains(t, css, ".nav-item > span:not(.ni) {\n  "+cut)
 	assert.Contains(t, css, "white-space: nowrap;\n}\n.side-scroll") // the brand's name is cut too
@@ -216,8 +213,7 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 func TestTextThatIsOnlyForAReaderDoesNotMakeThePageScroll(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{}.MustCompile("/admin")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".sr-only {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 1px;\n  height: 1px;\n  padding: 0;\n  margin: -1px;\n  overflow: hidden;\n  clip: rect(0 0 0 0);\n  clip-path: inset(50%);\n  white-space: nowrap;\n  border: 0;\n}")
 }
 
@@ -228,11 +224,11 @@ func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t 
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
-	prefs := serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Body.String()
+	prefs := assetSource(t, "prefs.js")
 	assert.Contains(t, prefs, "localStorage.getItem('webui.sidebar.width')")
 	assert.Contains(t, prefs, "el.style.setProperty('--sidebar-w', Math.min(width, Math.max(180, Math.min(480, innerWidth / 2))) + 'px')")
 
-	enhance := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	enhance := assetSource(t, "enhance.js")
 	assert.Contains(t, enhance, "handle.setAttribute('role', 'separator')")
 	assert.Contains(t, enhance, "localStorage.setItem('webui.sidebar.width', String(want))")
 	assert.Contains(t, enhance, "localStorage.removeItem('webui.sidebar.width')")
@@ -241,7 +237,7 @@ func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t 
 		assert.Contains(t, enhance, end)
 	}
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "width: var(--sidebar-w, 240px);")
 	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-resize {\n  display: none;")
 	// The rail keeps its own width, which the variable does not touch: the rules for it say a literal.

@@ -239,8 +239,7 @@ func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
 func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "tbody tr.clickable {\n  cursor: pointer;\n  position: relative;")
 	assert.Contains(t, css, ".rowlink::after {\n  content: '';\n  position: absolute;\n  inset: 0;")
 }
@@ -251,8 +250,7 @@ func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
 func TestScrollbarCornerIsClearWhereBothBarsMeet(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "::-webkit-scrollbar-track {\n  background: transparent;\n}\n/* Both bars meet in a square the browser paints white. The track is already\n   clear, so the corner is too and the surface under the bars shows through. */\n::-webkit-scrollbar-corner {\n  background: transparent;\n}")
 }
 
@@ -289,7 +287,7 @@ func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 func TestSelectionBarIsHiddenUntilARowIsSelected(t *testing.T) {
 	t.Parallel()
 
-	css := serve(newShop().h, http.MethodGet, assetURL(t, newShop().h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "@supports selector(:has(*)) {\n  form:not(:has(input[name='_sel']:checked)) .actionbar {\n    display: none;")
 	assert.Contains(t, css, "html:not(.js) .actionbar [data-selcount]") // no live count without script
 }
@@ -410,8 +408,7 @@ func TestSortAndPagerLinksKeepFiltersAsRepeatedParameters(t *testing.T) {
 func TestFilterIconAppearsOnHoverAndStaysWhenActive(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".filter-btn {\n  list-style: none;")
 	assert.Contains(t, css, "  opacity: 0;\n  transition: opacity var(--motion);\n}\n.filter-btn::-webkit-details-marker")
 	assert.Contains(t, css, "th:hover .filter-btn,\nth:focus-within .filter-btn,\n.filter[open] .filter-btn,\n.filter.on .filter-btn {\n  opacity: 1;")

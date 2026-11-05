@@ -840,8 +840,7 @@ func TestThePageLinksTheUploadScriptOnlyForAFileUploadAndAfterTheFileScript(t *t
 func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 	t.Parallel()
 
-	s := newUploadShop(nil)
-	js := serve(s.h, http.MethodGet, assetURL(t, s.h, "upload.js")).Body.String()
+	js := assetSource(t, "upload.js")
 	for _, want := range []string{
 		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(LEAF_HEADER, leaf)", "'X-Webui-Leaf'", "new FormData()", "data.append('file', item.file,",
 		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.result", "hasAttribute('data-multiple')", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
@@ -859,6 +858,6 @@ func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 	assert.False(t, strings.Contains(js, "fetch("))
 	assert.False(t, strings.Contains(js, "createObjectURL"))
 
-	enhance := serve(s.h, http.MethodGet, assetURL(t, s.h, "enhance.js")).Body.String()
+	enhance := assetSource(t, "enhance.js")
 	assert.Contains(t, enhance, "'webui:changed'") // the panels around an upload are asked for again, as HTML, after it
 }

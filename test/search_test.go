@@ -267,8 +267,7 @@ func TestPanelsHaveNoRefreshButtonOfTheirOwn(t *testing.T) {
 func TestSearchBoxHasAVisibleFocusRing(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".search:focus-within {\n  border-color: var(--blue);\n  box-shadow: 0 0 0 2px")
 }
 

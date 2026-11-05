@@ -363,10 +363,9 @@ func TestAHiddenActionPostedByHandIsRefused(t *testing.T) {
 func TestTheReasonOfADisabledControlIsKeptInView(t *testing.T) {
 	t.Parallel()
 
-	h := guardedParcels(nil, nil, nil, nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".gate[data-below]:hover::after")
 	assert.Contains(t, css, "td.actions:focus-within")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.Contains(t, js, "setAttribute('data-below', '')")
 }

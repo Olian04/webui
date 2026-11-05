@@ -1,4 +1,4 @@
-// Package assets embeds the stylesheet, scripts and icon font the renderer
+// Package assets embeds the minified stylesheets, scripts and icon font the renderer
 // serves.
 package assets
 
@@ -13,10 +13,10 @@ import (
 	"sync"
 )
 
-// FS holds css/, js/, fonts/ and the default favicon. Nothing else is served, and not the
+// FS holds min/ (the minified stylesheets and scripts, built from css/ and js/ by make assets), fonts/ and the default favicon. Nothing else is served, and not the
 // editor, which is in pkg/monaco, so that a program that has no editor does not carry it.
 //
-//go:embed css js fonts favicon.svg
+//go:embed min fonts favicon.svg
 var FS embed.FS
 
 // iconNames is every Font Awesome Free solid icon name, one per line, so a name

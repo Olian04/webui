@@ -89,8 +89,7 @@ func tokens(t *testing.T, css, selector string) map[string]string {
 func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	white := rgba{255, 255, 255, 1}
 
 	for name, tok := range map[string]map[string]string{
@@ -156,7 +155,7 @@ func TestThePageTellsTheBrowserItsBackgroundBeforeTheStylesheet(t *testing.T) {
 	sheet := strings.Index(page, `rel="stylesheet"`)
 	assert.True(t, early > 0 && early < sheet) // the browser reads it first
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	dark := tokens(t, css, ":root,\n[data-theme='dark']")["canvas"]
 	light := tokens(t, css, "[data-theme='light']")["canvas"]
 	assert.Contains(t, page, "html{background:"+dark+";color-scheme:dark}")
