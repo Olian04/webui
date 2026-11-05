@@ -75,7 +75,7 @@ type FileInfo struct {
 	// Thumbnail is where the app serves a small picture of the file, if it is an image: a path on this site, which is shown beside
 	// the name, at 32 pixels, and, when the file has a URL too, opens it at its full size in a dialog when it is clicked. The library never shows the
 	// file itself as a thumbnail, which would send the visitor the whole of an image to see a few pixels of it, so without a Thumbnail
-	// there is no picture. [Thumbnail] makes one from an [Upload].
+	// there is no picture. thumbnail.Make, in [github.com/Olian04/webui/pkg/thumbnail], makes one from an [Upload].
 	Thumbnail string
 }
 

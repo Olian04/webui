@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -30,7 +31,7 @@ var (
 		Load:  func(context.Context) (Rule, webui.Loaded) { return Rule{Source: service.Rule()}, webui.Ready() },
 
 		Content:  RuleSource,
-		Language: webui.LangTypeScript,
+		Language: lang.TypeScript,
 		Context:  editorContext,
 		Submit: webui.Action[Rule]{
 			Guard: canEdit[Rule],

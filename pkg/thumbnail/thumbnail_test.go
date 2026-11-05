@@ -1,4 +1,4 @@
-package webui
+package thumbnail_test
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"math/rand/v2"
 	"testing"
 
+	"github.com/Olian04/webui/pkg/thumbnail"
+	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
 
@@ -22,8 +24,8 @@ func solidImage(w, h int) *image.NRGBA {
 	return img
 }
 
-func uploadOf(kind FileKind, data []byte) *Upload {
-	return &Upload{Kind: kind, Size: int64(len(data)), Data: data}
+func uploadOf(kind webui.FileKind, data []byte) *webui.Upload {
+	return &webui.Upload{Kind: kind, Size: int64(len(data)), Data: data}
 }
 
 func sizeOf(t *testing.T, data []byte) image.Point {
@@ -43,14 +45,14 @@ func TestAThumbnailKeepsTheProportionsAndTheLongestSideIsTheSize(t *testing.T) {
 
 	for _, c := range []struct {
 		name string
-		up   *Upload
+		up   *webui.Upload
 		want image.Point
 	}{
-		{"a wide png", uploadOf(FilePNG, p.Bytes()), image.Point{X: 64, Y: 32}},
-		{"a tall jpeg", uploadOf(FileJPEG, j.Bytes()), image.Point{X: 32, Y: 64}},
-		{"a gif", uploadOf(FileGIF, g.Bytes()), image.Point{X: 64, Y: 21}},
+		{"a wide png", uploadOf(webui.FilePNG, p.Bytes()), image.Point{X: 64, Y: 32}},
+		{"a tall jpeg", uploadOf(webui.FileJPEG, j.Bytes()), image.Point{X: 32, Y: 64}},
+		{"a gif", uploadOf(webui.FileGIF, g.Bytes()), image.Point{X: 64, Y: 21}},
 	} {
-		got, err := Thumbnail(c.up, 64)
+		got, err := thumbnail.Make(c.up, 64)
 		assert.NoError(t, err)
 		assert.Equal(t, sizeOf(t, got), c.want)
 	}
@@ -62,7 +64,7 @@ func TestAThumbnailNeverEnlargesAndIsMuchSmallerThanTheImage(t *testing.T) {
 
 	var small, big bytes.Buffer
 	assert.NoError(t, png.Encode(&small, solidImage(20, 10)))
-	got, err := Thumbnail(uploadOf(FilePNG, small.Bytes()), 64)
+	got, err := thumbnail.Make(uploadOf(webui.FilePNG, small.Bytes()), 64)
 	assert.NoError(t, err)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 20, Y: 10})
 
@@ -74,7 +76,7 @@ func TestAThumbnailNeverEnlargesAndIsMuchSmallerThanTheImage(t *testing.T) {
 		noise.Pix[i] = byte(rng.Uint32() & 0xff) // the low eight bits, which is what noise needs
 	}
 	assert.NoError(t, png.Encode(&big, noise))
-	got, err = Thumbnail(uploadOf(FilePNG, big.Bytes()), 64)
+	got, err = thumbnail.Make(uploadOf(webui.FilePNG, big.Bytes()), 64)
 	assert.NoError(t, err)
 	assert.True(t, len(got) < big.Len()/100)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 64, Y: 43})
@@ -85,20 +87,20 @@ func TestAThumbnailIsNotMadeOfWhatItDoesNotRead(t *testing.T) {
 
 	var p bytes.Buffer
 	assert.NoError(t, png.Encode(&p, solidImage(10, 10)))
-	for _, up := range map[string]*Upload{
+	for _, up := range map[string]*webui.Upload{
 		"a nil upload":      nil,
-		"no data":           {Kind: FilePNG},
-		"a webp":            uploadOf(FileWebP, p.Bytes()),
-		"a pdf":             uploadOf(FilePDF, p.Bytes()),
-		"any file":          uploadOf(FileAny, p.Bytes()),
-		"damaged":           uploadOf(FilePNG, p.Bytes()[:30]),
-		"a jpeg that isn't": uploadOf(FileJPEG, p.Bytes()),
+		"no data":           {Kind: webui.FilePNG},
+		"a webp":            uploadOf(webui.FileWebP, p.Bytes()),
+		"a pdf":             uploadOf(webui.FilePDF, p.Bytes()),
+		"any file":          uploadOf(webui.FileAny, p.Bytes()),
+		"damaged":           uploadOf(webui.FilePNG, p.Bytes()[:30]),
+		"a jpeg that isn't": uploadOf(webui.FileJPEG, p.Bytes()),
 	} {
-		_, err := Thumbnail(up, 64)
-		assert.True(t, errors.Is(err, ErrThumbnail))
+		_, err := thumbnail.Make(up, 64)
+		assert.True(t, errors.Is(err, thumbnail.ErrUnavailable))
 	}
-	_, err := Thumbnail(uploadOf(FilePNG, p.Bytes()), 0)
-	assert.True(t, errors.Is(err, ErrThumbnail))
+	_, err := thumbnail.Make(uploadOf(webui.FilePNG, p.Bytes()), 0)
+	assert.True(t, errors.Is(err, thumbnail.ErrUnavailable))
 }
 
 // A small file can be a very large picture, which is read whole into memory to be scaled: it is refused by its size before it is read.
@@ -108,12 +110,12 @@ func TestAThumbnailIsNotMadeOfAPictureOfMoreThan25MillionPixels(t *testing.T) {
 	var buf bytes.Buffer
 	assert.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 5100, 5100)))) // 26 million pixels, and a file of a few kilobytes
 	assert.True(t, buf.Len() < 200_000)
-	_, err := Thumbnail(uploadOf(FilePNG, buf.Bytes()), 64)
-	assert.True(t, errors.Is(err, ErrThumbnail))
+	_, err := thumbnail.Make(uploadOf(webui.FilePNG, buf.Bytes()), 64)
+	assert.True(t, errors.Is(err, thumbnail.ErrUnavailable))
 
 	buf.Reset()
 	assert.NoError(t, png.Encode(&buf, image.NewGray(image.Rect(0, 0, 4000, 4000)))) // 4k, and more, is fine
-	got, err := Thumbnail(uploadOf(FilePNG, buf.Bytes()), 64)
+	got, err := thumbnail.Make(uploadOf(webui.FilePNG, buf.Bytes()), 64)
 	assert.NoError(t, err)
 	assert.Equal(t, sizeOf(t, got), image.Point{X: 64, Y: 64})
 }

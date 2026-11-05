@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Olian04/webui/pkg/lang"
 	_ "github.com/Olian04/webui/pkg/monaco" // the editor that an Editor and a Diff are drawn with, which a program imports to have
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -51,7 +52,7 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 
 	var saved string
 	h := editorApp(webui.Editor[snippet]{
-		Title: "Config", Load: loadSnippet, Content: snippetText, Language: webui.LangJSON,
+		Title: "Config", Load: loadSnippet, Content: snippetText, Language: lang.JSON,
 		Submit: webui.Action[snippet]{Run: func(_ context.Context, s snippet) (webui.Outcome, error) {
 			saved = s.Text
 			return webui.Success("Saved"), nil
@@ -81,7 +82,7 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 func TestAnEditorWithNoStoreIsAViewerAndHasNoSaveButton(t *testing.T) {
 	t.Parallel()
 
-	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: webui.LangJSON})
+	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: lang.JSON})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<pre class="code-view"`)
 	assert.False(t, strings.Contains(body, "<textarea"))
@@ -110,7 +111,7 @@ func TestAnEditorPageIsOnlyGivenTheEditorsWorkerUnlessALanguageServiceIsImported
 	t.Parallel()
 
 	h := editorApp(webui.Editor[snippet]{
-		Title: "Config", Load: loadSnippet, Content: snippetText, Language: webui.LangJSON,
+		Title: "Config", Load: loadSnippet, Content: snippetText, Language: lang.JSON,
 		Submit: webui.Action[snippet]{Run: func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
@@ -177,7 +178,7 @@ func TestAnEditorIsCheckedWhenTheAppCompiles(t *testing.T) {
 func TestADiffShowsWhatChangedAsAUnifiedDiffWithoutScript(t *testing.T) {
 	t.Parallel()
 
-	h := editorApp(webui.Diff[snippet]{Title: "Changes", Load: loadSnippet, Original: snippetOld, Modified: snippetView, Language: webui.LangJSON})
+	h := editorApp(webui.Diff[snippet]{Title: "Changes", Load: loadSnippet, Original: snippetOld, Modified: snippetView, Language: lang.JSON})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, "data-code-diff")
 	assert.Contains(t, body, `class="udiff"`)
@@ -254,7 +255,7 @@ func TestARequiredEditorSaysWhatItNeedsInTheWordsOfTheServer(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Editor[snippet]{
-		Title: "Config", Load: loadSnippet, Content: snippetText, Language: webui.LangJSON,
+		Title: "Config", Load: loadSnippet, Content: snippetText, Language: lang.JSON,
 		Submit: webui.Action[snippet]{Run: func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()

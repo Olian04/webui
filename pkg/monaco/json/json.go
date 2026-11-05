@@ -4,7 +4,7 @@
 //
 //	import _ "github.com/Olian04/webui/pkg/monaco/json"
 //
-// An [webui.Editor] that can be edited, and whose language is LangJSON, then
+// An [webui.Editor] that can be edited, and whose language is lang.JSON, then
 // offers JSON (diagnostics against the syntax, completion, formatting, folding), from a worker that the page loads only when it has such an
 // editor. Without the import the editor still highlights, and the worker is not
 // linked into the program.

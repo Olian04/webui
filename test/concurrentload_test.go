@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -124,7 +125,7 @@ func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 			}},
 			Columns: []webui.Accessor[Device]{formID},
 		},
-		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: webui.LangJSON},
+		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: lang.JSON},
 	}}
 	body := serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, body, `<script type="module" src="/admin/_webui/monaco/code-`)

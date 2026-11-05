@@ -11,6 +11,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -62,7 +63,7 @@ func configOf(t *testing.T, body string) pageConfig {
 func TestAnEditableEditorIsHandedItsContextAsAddressesThatCarryAKey(t *testing.T) {
 	t.Parallel()
 
-	h := contextEditor(folder(), webui.LangTypeScript, nil, nil)
+	h := contextEditor(folder(), lang.TypeScript, nil, nil)
 	body := get(h, "/admin/e").Body.String()
 	c := configOf(t, body)
 
@@ -93,7 +94,7 @@ func TestAnEditableEditorIsHandedItsContextAsAddressesThatCarryAKey(t *testing.T
 func TestAContextFileIsNotServedWithoutItsKey(t *testing.T) {
 	t.Parallel()
 
-	h := contextEditor(folder(), webui.LangTypeScript, nil, nil)
+	h := contextEditor(folder(), lang.TypeScript, nil, nil)
 	url := configOf(t, get(h, "/admin/e").Body.String()).Context.Libs["typescript"][0].URL
 	bare, _, _ := strings.Cut(url, "?")
 
@@ -113,7 +114,7 @@ func TestOneFilesKeyOpensNoOtherFile(t *testing.T) {
 
 	fsys := folder()
 	fsys["typescript/other.d.ts"] = &fstest.MapFile{Data: []byte(`declare const other: number;`)}
-	h := contextEditor(fsys, webui.LangTypeScript, nil, nil)
+	h := contextEditor(fsys, lang.TypeScript, nil, nil)
 	libs := configOf(t, get(h, "/admin/e").Body.String()).Context.Libs["typescript"]
 	assert.Equal(t, len(libs), 2)
 	nameOf := func(u string) string { return strings.TrimPrefix(strings.SplitN(u, "?", 2)[0], "/admin/_webui/code/") }
@@ -126,7 +127,7 @@ func TestAVisitorWhoMayNotEditIsHandedNoContextAndNoKey(t *testing.T) {
 	t.Parallel()
 
 	refuse := func(context.Context, doc) error { return errors.New("no") }
-	h := contextEditor(folder(), webui.LangTypeScript, refuse, nil)
+	h := contextEditor(folder(), lang.TypeScript, refuse, nil)
 
 	body := get(h, "/admin/e").Body.String()
 	assert.False(t, strings.Contains(body, "/_webui/code/")) // not even an address
@@ -138,7 +139,7 @@ func TestAVisitorWhoMayNotEditIsHandedNoContextAndNoKey(t *testing.T) {
 func TestAJSONEditorIsHandedItsSchemaAndNamesItInItsMarkup(t *testing.T) {
 	t.Parallel()
 
-	h := contextEditor(folder(), webui.LangJSON, nil, nil)
+	h := contextEditor(folder(), lang.JSON, nil, nil)
 	body := get(h, "/admin/e").Body.String()
 	c := configOf(t, body)
 	assert.True(t, c.Context.Libs == nil)
@@ -156,7 +157,7 @@ func TestTwoEditorsGivenOneFolderHandOverEachFileOnce(t *testing.T) {
 	t.Parallel()
 
 	editor := webui.Editor[doc]{
-		Title: "Doc", Language: webui.LangTypeScript, Context: folder(),
+		Title: "Doc", Language: lang.TypeScript, Context: folder(),
 		Content: webui.String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }, Store: func(d *doc, v string) { d.Text = v }},
 		Submit:  webui.Action[doc]{Run: func(context.Context, doc) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 		Load:    func(context.Context) (doc, webui.Loaded) { return doc{}, webui.Ready() },
@@ -175,13 +176,13 @@ func TestTheKeysAgreeOnlyWhenTheAppsShareASecret(t *testing.T) {
 		return configOf(t, get(h, "/admin/e").Body.String()).Context.Libs["typescript"][0].URL
 	}
 	secret := []byte("0123456789abcdef0123")
-	a := contextEditor(folder(), webui.LangTypeScript, nil, secret)
-	b := contextEditor(folder(), webui.LangTypeScript, nil, secret)
+	a := contextEditor(folder(), lang.TypeScript, nil, secret)
+	b := contextEditor(folder(), lang.TypeScript, nil, secret)
 	assert.Equal(t, urlOf(a), urlOf(b))
 	assert.Equal(t, get(b, urlOf(a)).Code, http.StatusOK) // a page from one instance, a fetch from another
 
-	c := contextEditor(folder(), webui.LangTypeScript, nil, nil)
-	d := contextEditor(folder(), webui.LangTypeScript, nil, nil)
+	c := contextEditor(folder(), lang.TypeScript, nil, nil)
+	d := contextEditor(folder(), lang.TypeScript, nil, nil)
 	assert.True(t, urlOf(c) != urlOf(d))
 	assert.Equal(t, get(d, urlOf(c)).Code, http.StatusNotFound)
 }

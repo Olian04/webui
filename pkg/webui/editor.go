@@ -44,7 +44,7 @@ type Editor[M any] struct {
 	// MaxLen to bound it.
 	Content String[M]
 
-	// Language is the language of the text, such as [LangJSON]. It is plain text by
+	// Language is the language of the text, such as lang.JSON (in [github.com/Olian04/webui/pkg/lang]). It is plain text by
 	// default.
 	Language Language
 

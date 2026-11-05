@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Olian04/webui/pkg/thumbnail"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -51,7 +52,7 @@ func keep(dst **Blob, up *webui.Upload, limit int64) {
 	// An image gets a small picture of itself when it is kept, twice the 32 pixels that a page shows it at, so that the page is not sent
 	// the whole of it to show a thumbnail; the full image is fetched only when the visitor opens it. Thumbnail reads PNG, JPEG and GIF: for
 	// a WebP there is none, and the page shows the name alone, which is what an app that does not scale a kind of image gets.
-	if thumb, err := webui.Thumbnail(up, 64); err == nil {
+	if thumb, err := thumbnail.Make(up, 64); err == nil {
 		blob.Thumb = thumb
 	}
 	*dst = blob

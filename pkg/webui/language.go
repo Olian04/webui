@@ -2,9 +2,9 @@ package webui
 
 // Language is the language of the text in an [Editor] or a [Diff]: it decides how the
 // text is highlighted, and, for an [Editor] that can be edited, which language service
-// it may offer. The values are constants, one for each language the editor
-// highlights, named Lang followed by the language: [LangGo], [LangJSON], [LangYAML],
-// [LangMarkdown] and so on. The zero value is plain text.
+// it may offer. The values are Monaco's own language ids, and there is a constant for each language the editor
+// highlights in the package [github.com/Olian04/webui/pkg/lang]: lang.Go, lang.JSON, lang.YAML,
+// lang.Markdown and so on. The zero value is plain text. A Language that the editor does not highlight is refused when the app is compiled.
 type Language string
 
 // service is the language service that covers a language, or "". There are four, each
@@ -13,13 +13,13 @@ type Language string
 // Razor), and TypeScript (with JavaScript). Every other language is highlighted only.
 func (l Language) service() string {
 	switch l {
-	case LangJSON:
+	case "json":
 		return "json"
-	case LangCSS, LangSCSS, LangLess:
+	case "css", "scss", "less":
 		return "css"
-	case LangHTML, LangHandlebars, LangRazor:
+	case "html", "handlebars", "razor":
 		return "html"
-	case LangTypeScript, LangJavaScript:
+	case "typescript", "javascript":
 		return "ts"
 	}
 	return ""
@@ -28,7 +28,7 @@ func (l Language) service() string {
 // id is Monaco's name for the language.
 func (l Language) id() string {
 	if l == "" {
-		return string(LangPlainText)
+		return "plaintext"
 	}
 	return string(l)
 }
