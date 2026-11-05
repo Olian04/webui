@@ -15,7 +15,7 @@ import (
 // A Form with no Submit is the library's detail view: a panel of labelled values,
 // each quiet label over its value, with no inputs and no buttons. Use it to show one
 // thing, such as an object's properties; its fields can be any accessor, including a
-// [Select], a [Datetime] and a [Timestamp], and a [Link] or an [Action] elsewhere on the
+// [Select] and a [Time], and a [Link] or an [Action] elsewhere on the
 // page leads on from it.
 type Form[M any] struct {
 	// Title is the panel's heading.

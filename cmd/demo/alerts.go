@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -36,12 +37,12 @@ var (
 		Text:  "Open the runbook",
 		Load:  func(a Alert) string { return "https://example.com/runbooks/" + a.Severity },
 	}
-	// A Datetime is a moment held as an ISO 8601 string. It is shown in UTC, and the
+	// A Time is a moment, a time.Time. It is shown in UTC, and the
 	// table sorts and filters it as a moment, with a start and an end. Its Format reads it as
 	// how long ago, and the column still sorts and filters by the moment.
-	Raised = webui.Datetime[Alert]{
+	Raised = webui.Time[Alert]{
 		Label:  "Raised",
-		Load:   func(a Alert) string { return a.Raised },
+		Load:   func(a Alert) time.Time { return a.Raised },
 		Format: ago,
 	}
 )

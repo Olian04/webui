@@ -14,8 +14,8 @@ import (
 
 type contact struct {
 	Email, Site, Phone, Color string
-	Ends                      int
-	Day                       string
+	Ends                      time.Time
+	Day                       *time.Time
 }
 
 var (
@@ -150,8 +150,8 @@ func dayApp(start contact) (http.Handler, func() contact) {
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/d", Body: webui.Form[contact]{
 		Load: func(context.Context) (contact, webui.Loaded) { return saved, webui.Ready() },
 		Fields: []webui.Accessor[contact]{
-			webui.Timestamp[contact]{Label: "Ends", DateOnly: true, Load: func(c contact) int { return c.Ends }, Store: func(c *contact, v int) { c.Ends = v }},
-			webui.Datetime[contact]{Label: "Day", DateOnly: true, Load: func(c contact) string { return c.Day }, Store: func(c *contact, v string) { c.Day = v }},
+			webui.Time[contact]{Label: "Ends", DateOnly: true, Load: func(c contact) time.Time { return c.Ends }, Store: func(c *contact, v time.Time) { c.Ends = v }},
+			webui.OptionalTime[contact]{Label: "Day", DateOnly: true, Load: func(c contact) *time.Time { return c.Day }, Store: func(c *contact, v *time.Time) { c.Day = v }},
 		},
 		Submit: webui.Action[contact]{Run: func(_ context.Context, c contact) (webui.Outcome, error) {
 			saved = c
@@ -164,8 +164,9 @@ func dayApp(start contact) (http.Handler, func() contact) {
 func TestADateOnlyFieldIsADateInputWithADayInIt(t *testing.T) {
 	t.Parallel()
 
-	ends := int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())
-	h, _ := dayApp(contact{Ends: ends, Day: "2026-10-09T11:27:00Z"})
+	ends := time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)
+	day := time.Date(2026, 10, 9, 11, 27, 0, 0, time.UTC) // a time of day is shown as the day it is on
+	h, _ := dayApp(contact{Ends: ends, Day: &day})
 	body := serve(h, http.MethodGet, "/admin/d").Body.String()
 	assert.Contains(t, body, `name="f0" type="date" value="2027-01-15"`)
 	assert.Contains(t, body, `name="f1" type="date" value="2026-10-09"`)
@@ -174,20 +175,20 @@ func TestADateOnlyFieldIsADateInputWithADayInIt(t *testing.T) {
 	assert.False(t, strings.Contains(body, "Date and time in UTC"))
 }
 
-func TestADateOnlyFieldStoresMidnightUTCOrTheDateAlone(t *testing.T) {
+func TestADateOnlyFieldStoresMidnightUTC(t *testing.T) {
 	t.Parallel()
 
 	h, saved := dayApp(contact{})
 	assert.Equal(t, post(h, "/admin/d", formValues("f0", "2027-01-15", "f1", "2026-10-09")).Code, http.StatusSeeOther)
-	assert.Equal(t, saved().Ends, int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix()))
-	assert.Equal(t, saved().Day, "2026-10-09")
+	assert.True(t, saved().Ends.Equal(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)))
+	assert.True(t, saved().Day.Equal(time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)))
 
 	// A time of day sent by hand is dropped to the day, which is what the field holds.
 	assert.Equal(t, post(h, "/admin/d", formValues("f0", "2027-01-15T13:45", "f1", "2026-10-09T13:45")).Code, http.StatusSeeOther)
-	assert.Equal(t, saved().Ends, int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix()))
-	assert.Equal(t, saved().Day, "2026-10-09")
+	assert.True(t, saved().Ends.Equal(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)))
+	assert.True(t, saved().Day.Equal(time.Date(2026, 10, 9, 0, 0, 0, 0, time.UTC)))
 
-	// Cleared is stored as nothing, as a moment is.
+	// Cleared is stored as not set: the zero time for a Time, and nil for an OptionalTime.
 	assert.Equal(t, post(h, "/admin/d", formValues("f0", "", "f1", "")).Code, http.StatusSeeOther)
 	assert.DeepEqual(t, saved(), contact{})
 	assert.Equal(t, post(h, "/admin/d", formValues("f0", "not a date")).Code, http.StatusUnprocessableEntity) // refused: unreadable
@@ -196,12 +197,12 @@ func TestADateOnlyFieldStoresMidnightUTCOrTheDateAlone(t *testing.T) {
 func TestADateOnlyColumnShowsTheDayAndItsFilterIsDates(t *testing.T) {
 	t.Parallel()
 
-	ends := int(time.Date(2027, 1, 15, 13, 45, 0, 0, time.UTC).Unix())
+	ends := time.Date(2027, 1, 15, 13, 45, 0, 0, time.UTC)
 	table := func(dateOnly bool) string {
 		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[contact]{
 			Rows: func(context.Context) ([]contact, webui.Loaded) { return []contact{{Ends: ends}}, webui.Ready() },
 			Columns: []webui.Accessor[contact]{
-				webui.Timestamp[contact]{Label: "Ends", DateOnly: dateOnly, Load: func(c contact) int { return c.Ends }},
+				webui.Time[contact]{Label: "Ends", DateOnly: dateOnly, Load: func(c contact) time.Time { return c.Ends }},
 			},
 		}}}}.MustCompile("/admin")
 		return serve(h, http.MethodGet, "/admin/s?table.min.ends=2027-01-01&table.max.ends=2027-02-01").Body.String()

@@ -162,9 +162,9 @@
 //
 // An accessor is a named, typed projection of a model: the one description of a value
 // that is an input in a [Form], a column in a [Table] and, read-only, a value in a
-// [Toolbar]. It is written once. [String], [Int], [Float], [Select], [URL], [Datetime],
-// [Timestamp], [Slider] and [Bool] are the basic ones; [Email], [Phone], [Website],
-// [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [OptionalBool] and [File]
+// [Toolbar]. It is written once. [String], [Int], [Float], [Select], [URL], [Time],
+// [Slider] and [Bool] are the basic ones; [Email], [Phone], [Website],
+// [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [OptionalTime], [OptionalBool] and [File]
 // are below, and a [Group] lays accessors side by side in a form. Without a Store an
 // accessor is read-only, and a [URL] never has one. An accessor's Rules (a
 // [StringRules] or a [NumberRules]: length, a pattern, bounds) are rendered
@@ -189,8 +189,12 @@
 // a list to choose several from. Its Options are written out, or read when a request is
 // answered with LoadOptions, for what the app keeps in a database.
 //
-// A Datetime or a Timestamp with a Store is a date and time picker, in UTC; with
-// DateOnly it is a date picker, and a day is midnight UTC.
+// A [Time] or an [OptionalTime] is a time.Time, and with a Store is a date and time picker,
+// in UTC; with DateOnly it is a date picker, and a day is midnight UTC. The zero time is
+// "not set": a Time shows it as nothing and stores it when the picker is cleared (and
+// Required refuses that), and an OptionalTime, whose Go type is a pointer, stores nil. A
+// model that holds a moment as an ISO 8601 string or as Unix seconds reads and writes it
+// in Load and Store, with time.Parse and time.Unix.
 //
 // A kind of text that has an input of its own is an accessor of its own: [Email],
 // [Phone], [Website] and [ColorPicker]. The browser draws the input of that kind (the
@@ -234,7 +238,7 @@
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing
 // when it is off. A [Bool] loads a bool, and is a toggle switch: an absent field is no.
 //
-// An Int, a Float, an OptionalInt, an OptionalFloat, a Datetime and a Timestamp have a
+// An Int, a Float, an OptionalInt, an OptionalFloat, a Time and an OptionalTime have a
 // Format, a function the application writes that says how the value reads where it is
 // only read, such as a size as "1.5 GiB":
 //
