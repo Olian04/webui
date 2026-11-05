@@ -115,7 +115,7 @@ func TestAListIsAColumnOfItemsEachWithAHeadlineAndALineOfFacts(t *testing.T) {
 	third = third[:strings.Index(third, "</li>")]
 	assert.Equal(t, strings.Count(third, `class="item-sep"`), 1)
 	assert.False(t, strings.Contains(third, "dash"))
-	assert.False(t, strings.Contains(body, "<script>"))
+	assert.Equal(t, strings.Count(body, "<script>"), 1) // the one that sets the theme, and none that the data brought
 }
 
 func TestASourceIsAskedForOneMoreThanIsShownAndShowMoreIsARealLinkThatAsksForMore(t *testing.T) {

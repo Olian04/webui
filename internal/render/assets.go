@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"maps"
@@ -58,7 +59,7 @@ func (r *Renderer) buildAssets() error {
 		return err
 	}
 
-	for logical, file := range map[string]string{"app.css": "min/css/app.css", "prefs.js": "min/js/prefs.js", "enhance.js": "min/js/enhance.js"} {
+	for logical, file := range map[string]string{"app.css": "min/css/app.css", "enhance.js": "min/js/enhance.js"} {
 		body, err := read(file)
 		if err != nil {
 			return err
@@ -68,6 +69,9 @@ func (r *Renderer) buildAssets() error {
 			mime = "text/javascript; charset=utf-8"
 		}
 		add(logical, body, mime)
+	}
+	if err := r.readPrefs(read); err != nil {
+		return err
 	}
 	fileJS, err := read("min/js/file.js")
 	if err != nil {
@@ -153,3 +157,21 @@ func (r *Renderer) addIcons(add func(logical string, body []byte, mime string), 
 	add("fontawesome.css", css.Bytes(), "text/css; charset=utf-8")
 	return nil
 }
+
+// readPrefs reads the script that sets the stored theme and sidebar before first paint. It is in the head of every page and not a file the page links: it has to run before
+// anything is drawn, so a file is a request that the first paint waits for, and it is 0.7 KB. The page's policy allows it by its hash (ScriptHash), and no other inline script.
+func (r *Renderer) readPrefs(read func(string) ([]byte, error)) error {
+	body, err := read("min/js/prefs.js")
+	if err != nil {
+		return err
+	}
+	if strings.Contains(strings.ToLower(string(body)), "</script") {
+		return fmt.Errorf("prefs.js has a closing script tag in it, which ends an inline script")
+	}
+	sum := sha256.Sum256(body)
+	r.prefs, r.prefsHash = string(body), "'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'"
+	return nil
+}
+
+// ScriptHash is the hash of the one inline script of a page, as a content security policy names it, such as 'sha256-...'.
+func (r *Renderer) ScriptHash() string { return r.prefsHash }

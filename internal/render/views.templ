@@ -37,16 +37,19 @@ templ (r *Renderer) Document(d Doc) {
 // the first paint of a navigation is the dark or light canvas and not its default
 // white, which flashed in dark mode. The colour scheme follows the system, as the
 // stylesheet does, and a stored choice (the theme switch) is the attribute that
-// prefs.js sets before first paint.
+// prefs.js sets before first paint. That script is here, in front of the stylesheets, so
+// that it runs as it is read and does not wait for them; it is inline, since a file is a
+// request that the first paint waits for. It is a classic script, because modules are deferred.
 templ (r *Renderer) early() {
 	<meta name="color-scheme" content="dark light"/>
 	@templ.Raw("<style>" + r.earlyStyle() + "</style>")
+	@templ.Raw("<script>" + r.prefs + "</script>")
 }
 
-// head carries the one script that must run before first paint, so the stored
-// theme never flashes. It is a classic script, because modules are deferred.
+// head is what the page's head has after its stylesheets and scripts: the font, the description, the icons of the tab and, on a page with an editor, the editor.
 templ (r *Renderer) head(needs CodeNeeds) {
-	<script src={ r.AssetHref("prefs.js") }></script>
+	// The font is asked for as the page begins, and not when the icon stylesheet has been read and found to name it.
+	<link rel="preload" href={ r.AssetHref("fa-solid.woff") } as="font" type="font/woff" crossorigin/>
 	if r.app.Description != "" {
 		<meta name="description" content={ r.app.Description }/>
 	}
@@ -63,6 +66,12 @@ templ (r *Renderer) head(needs CodeNeeds) {
 templ (r *Renderer) codeHead(needs CodeNeeds) {
 	{{ code := r.code(needs) }}
 	<link rel="stylesheet" href={ code.Style }/>
+	for _, href := range code.Fonts {
+		<link rel="preload" href={ href } as="font" type="font/ttf" crossorigin/>
+	}
+	for _, href := range code.Preload {
+		<link rel="modulepreload" href={ href } fetchpriority="low"/>
+	}
 	@templ.JSONScript("webui-code", code.Config)
 	<script type="module" src={ code.Entry }></script>
 }

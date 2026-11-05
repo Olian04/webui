@@ -13,15 +13,21 @@ import (
 
 // csp allows what the shell uses and nothing else. Inline styles stay because
 // the components size bars and skeletons with style attributes; scripts are
-// ours alone, so an injected one would not run.
+// ours alone, so an injected one would not run. It is the policy of what is not a page.
 const csp = "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; " +
 	"object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
 
+// withScript is csp for a page, which has one inline script: the one that sets the stored theme before the first paint, allowed by its hash and no other inline script. It
+// says what default-src would have said of scripts (the app's own files) as well, since a script-src replaces it.
+func withScript(hash string) string {
+	return strings.Replace(csp, "default-src 'self'; ", "default-src 'self'; script-src 'self' "+hash+"; ", 1)
+}
+
 // policy is the content security policy of a page that draws pictures from origins: the
-// same as everyone else's, with them added to img-src. Every other page's is csp,
+// same as everyone else's, with them added to img-src. Every other page's is base,
 // byte for byte. An origin that could break out of the directive is left out, though
 // the declaration was checked when the app was compiled.
-func policy(imgOrigins []string) string {
+func policy(base string, imgOrigins []string) string {
 	var allowed []string
 	for _, o := range imgOrigins {
 		if strings.HasPrefix(o, "https://") && !strings.ContainsAny(o, " ;,'\"\\\n\r\t") {
@@ -29,9 +35,9 @@ func policy(imgOrigins []string) string {
 		}
 	}
 	if len(allowed) == 0 {
-		return csp
+		return base
 	}
-	return strings.Replace(csp, "img-src 'self' data:", "img-src 'self' data: "+strings.Join(allowed, " "), 1)
+	return strings.Replace(base, "img-src 'self' data:", "img-src 'self' data: "+strings.Join(allowed, " "), 1)
 }
 
 // securedFor sets the headers every response carries, with the content security policy it is given.

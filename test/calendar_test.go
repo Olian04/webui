@@ -107,8 +107,8 @@ func TestACalendarIsAMonthOfWholeWeeksAsATableOfDays(t *testing.T) {
 
 	// September 2026 begins on a Tuesday and ends on a Wednesday: the grid is 31 August to 4 October, five weeks.
 	assert.Equal(t, strings.Count(body, `<td class="cal-cell`), 35)
-	assert.Equal(t, strings.Count(body, "cal-out"), 5) // 31 August, and 1 to 4 October
-	assert.False(t, strings.Contains(body, "<script>"))
+	assert.Equal(t, strings.Count(body, "cal-out"), 5)  // 31 August, and 1 to 4 October
+	assert.Equal(t, strings.Count(body, "<script>"), 1) // the one that sets the theme, and none that the data brought
 }
 
 func TestTheSourceIsAskedForTheDaysTheGridShowsAndNotForTheMonth(t *testing.T) {

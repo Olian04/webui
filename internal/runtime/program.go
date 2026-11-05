@@ -44,6 +44,9 @@ type Program struct {
 	render *render.Renderer
 	log    *slog.Logger
 
+	// pageCSP is the content security policy of what is a page of the shell: csp, and the hash of the one inline script that sets the theme.
+	pageCSP string
+
 	// m counts and times what the app does. It is nil when the app was given no registry,
 	// and a nil Recorder records nothing.
 	m ir.Observer // told what the program does: never nil, and a program that was given none is told to something that does nothing
@@ -89,7 +92,7 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		log = ir.Discard() // an app that was not given a logger says nothing
 	}
 	p := &Program{
-		Prefix: prefix, App: app, render: r, log: log,
+		Prefix: prefix, App: app, render: r, log: log, pageCSP: withScript(r.ScriptHash()),
 		mux: http.NewServeMux(), fw: http.NewServeMux(), gate: http.NewServeMux(), allow: map[string]string{}, cross: http.NewCrossOriginProtection(),
 	}
 	for _, page := range app.Pages {
@@ -102,7 +105,10 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	}
 
 	own := func(method, path string, h http.Handler) {
-		p.handle(p.fw, method, prefix+render.AssetDir+path, framework, csp, h)
+		p.handle(p.fw, method, prefix+render.AssetDir+path, framework, csp, h) // a file or a fragment: no script of its own
+	}
+	ownPage := func(method, path string, h http.Handler) { // a page of the shell, which has the script that sets the theme
+		p.handle(p.fw, method, prefix+render.AssetDir+path, framework, p.pageCSP, h)
 	}
 	own(http.MethodGet, "/{file}", serveFile(func(req *http.Request) (*assetserve.Blob, bool) { return p.render.Asset(req.PathValue("file")) }))
 	own(http.MethodGet, "/search", http.HandlerFunc(p.search))
@@ -112,22 +118,22 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 	}))
 	// Anything else under the directory is not a page, whatever a page's pattern could
 	// say of it: it is a 404 in the shell.
-	own("", "/", http.HandlerFunc(p.missing))
-	own("", "", http.HandlerFunc(p.missing))
+	ownPage("", "/", http.HandlerFunc(p.missing))
+	ownPage("", "", http.HandlerFunc(p.missing))
 
 	if err := p.addPages(); err != nil {
 		return nil, err
 	}
 	if app.ByPath["/"] == nil {
-		p.handle(p.mux, http.MethodGet, prefix+"/{$}", "/", csp, http.HandlerFunc(p.root))
+		p.handle(p.mux, http.MethodGet, prefix+"/{$}", "/", p.pageCSP, http.HandlerFunc(p.root))
 		if prefix != "" {
-			p.handle(p.mux, http.MethodGet, prefix, "/", csp, http.HandlerFunc(p.root)) // mounted at "/admin" exactly
+			p.handle(p.mux, http.MethodGet, prefix, "/", p.pageCSP, http.HandlerFunc(p.root)) // mounted at "/admin" exactly
 		}
 	}
 
 	// The catch-all is last in intent, not in registration: ServeMux picks the
 	// most specific pattern, so it only sees what nothing else claimed.
-	p.handle(p.mux, "", prefix+"/", unmatched, csp, http.HandlerFunc(p.notFound))
+	p.handle(p.mux, "", prefix+"/", unmatched, p.pageCSP, http.HandlerFunc(p.notFound))
 	return p, nil
 }
 

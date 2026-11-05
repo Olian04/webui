@@ -98,7 +98,7 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	assert.Equal(t, rec2.Code, http.StatusNotModified)
 
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/_webui/missing.css").Code, http.StatusNotFound)
-	assert.Equal(t, serve(h, http.MethodGet, assetURL(t, h, "prefs.js")).Code, http.StatusOK)
+	assert.Equal(t, serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Code, http.StatusOK)
 }
 
 // The sidebar is drawn again by each page, so the script that runs before first paint keeps where its list was

@@ -100,6 +100,10 @@ type codeAssets struct {
 	Entry  string
 	Style  string
 	Config codeConfig
+
+	// Preload is the modules that the entry imports, and Fonts the fonts that the stylesheet names, to be asked for as the head is read.
+	Preload []string
+	Fonts   []string
 }
 
 func (r *Renderer) code(needs CodeNeeds) codeAssets {
@@ -112,7 +116,14 @@ func (r *Renderer) code(needs CodeNeeds) codeAssets {
 			workers[service] = base + file
 		}
 	}
-	return codeAssets{Entry: base + files.Entry, Style: base + files.Style, Config: codeConfig{Workers: workers, Context: r.contextConfig(needs, workers)}}
+	out := codeAssets{Entry: base + files.Entry, Style: base + files.Style, Config: codeConfig{Workers: workers, Context: r.contextConfig(needs, workers)}}
+	for _, f := range files.Preload {
+		out.Preload = append(out.Preload, base+f)
+	}
+	for _, f := range files.Fonts {
+		out.Fonts = append(out.Fonts, base+f)
+	}
+	return out
 }
 
 // contextConfig is what the page tells its script about the contexts of its editors. A

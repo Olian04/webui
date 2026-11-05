@@ -54,7 +54,7 @@ func (p *Program) addPage(page *ir.Page) {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
 	}
 	posts := actionable(leaves)
-	policy := policy(pictureOrigins(page.Body))
+	policy := policy(p.pageCSP, pictureOrigins(page.Body))
 	for _, pattern := range patterns {
 		p.handle(p.mux, http.MethodGet, pattern, page.PathTemplate, policy, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
