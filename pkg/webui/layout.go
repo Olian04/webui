@@ -178,7 +178,7 @@ func (c Columns) lowerBody(at ir.Addr) ir.Node {
 }
 
 func (w When[M]) lowerBody(at ir.Addr) ir.Node {
-	return &ir.When{At: at, Load: eraseLoad(w.Load), Show: lowerAccessor[M](w.Show, "w"), Child: w.Body.lowerBody(childAddr(at, 0))}
+	return &ir.When{At: at, Load: eraseLoad(w.Load), Show: fieldOf[M](w.Show, "w"), Child: w.Body.lowerBody(childAddr(at, 0))}
 }
 
 func (t Tabs) lowerBody(at ir.Addr) ir.Node {

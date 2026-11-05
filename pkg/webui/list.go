@@ -150,22 +150,17 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 	} else {
 		s.loader.validateLoader(v, s.what+".Loader")
 	}
-	switch s.headline.(type) {
-	case nil:
+	if s.headline == nil {
 		v.add(s.what+".Headline is nil", "An item has a title: set Headline to an accessor for its text, such as a String.")
-	case Group[M]:
-		v.add(s.what+".Headline is a Group", "A group composes form fields; an item has one headline.")
-	case URL[M]:
-		v.add(s.what+".Headline is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Open: a Link for a page of this app, or an Href for an address.")
-	default:
-		validateAccessor[M](v, s.headline, s.what+".Headline", accessorSite{where: s.what + ".Headline"}, map[string]bool{})
+	} else {
+		checkAccessor[M](v, s.headline, s.what+".Headline", accessorSite{where: s.what + ".Headline", headline: true}, map[string]bool{})
 	}
 	validateAccessors(v, s.meta, accessorSite{where: s.what + ".Meta"})
 	if s.pageSize < 0 {
 		v.add(s.what+".PageSize is negative", "Use a number of items, or leave it zero for the default of five.")
 	}
 	if s.badge.Load != nil {
-		validateAccessor[M](v, s.badge, s.what+".Badge", accessorSite{where: s.what + ".Badge"}, map[string]bool{})
+		checkAccessor[M](v, s.badge, s.what+".Badge", accessorSite{where: s.what + ".Badge"}, map[string]bool{})
 		if s.badge.Store != nil {
 			v.add(s.what+".Badge has a Store", "An item only reads: remove Store.")
 		}
@@ -200,7 +195,7 @@ const defaultItems = 5
 func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
 	n := &ir.Items{
 		At: at, Cards: s.cards, Scroll: s.scroll, Title: s.title, Desc: s.desc, PageSize: defaultItems,
-		Headline: lowerAccessor[M](s.headline, "h"),
+		Headline: fieldOf[M](s.headline, "h"),
 		Meta:     lowerAccessors(s.meta, "m"),
 	}
 	if s.pageSize > 0 {
@@ -219,7 +214,7 @@ func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
 		n.Image = &f
 	}
 	if s.badge.Load != nil {
-		f := lowerAccessor[M](s.badge, "b")
+		f := fieldOf[M](s.badge, "b")
 		n.Badge = &f
 	}
 	for _, o := range s.origins {

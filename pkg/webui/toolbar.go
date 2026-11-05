@@ -122,7 +122,7 @@ func (f Form[M]) validateToolbarForm(v *bodyValidator, at string, seen map[strin
 		v.add(at+" is a Form with a Submit", "A toolbar has no inputs: remove Submit, or put the Form on the page as a panel.")
 	}
 	for i, field := range f.Fields {
-		validateAccessor[M](v, field, fmt.Sprintf("%s.Fields[%d]", at, i), accessorSite{where: "Toolbar", allowGroup: true, uniqueLbl: true}, seen)
+		checkAccessor[M](v, field, fmt.Sprintf("%s.Fields[%d]", at, i), accessorSite{where: "Toolbar", allowGroup: true, uniqueLbl: true}, seen)
 	}
 	if len(f.Fields) == 0 {
 		v.add(at+" is a Form with no Fields", "Set Fields to the values to show.")

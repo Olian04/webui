@@ -372,3 +372,33 @@ func lowerOptionalBool[M any](a OptionalBool[M], name string) ir.Field {
 	f.Unset = unsetter(a.Store)
 	return f
 }
+
+// ------------------------------------------------- the accessors of this file, each as it is checked and lowered
+
+func (a OptionalInt[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *int")
+	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+}
+
+func (a OptionalInt[M]) lowerAccessor(name string) ir.Field { return lowerOptionalInt(a, name) }
+
+func (a OptionalFloat[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *float64")
+	validatePrecision(v, at, a.Precision)
+	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+}
+
+func (a OptionalFloat[M]) lowerAccessor(name string) ir.Field { return lowerOptionalFloat(a, name) }
+
+func (a OptionalSlider[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *float64")
+	validateSlider(v, at, a.Min, a.Max, a.StepSize)
+}
+
+func (a OptionalSlider[M]) lowerAccessor(name string) ir.Field { return lowerOptionalSlider(a, name) }
+
+func (a OptionalBool[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *bool")
+}
+
+func (a OptionalBool[M]) lowerAccessor(name string) ir.Field { return lowerOptionalBool(a, name) }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
-	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/internal/rules"
 )
 
@@ -22,6 +21,13 @@ type Accessor[M any] interface {
 	// meta is what an accessor says besides its value: what the column is left out of (its header's sort link, and its
 	// filter) and its help. A Group has none.
 	meta() accessorMeta
+
+	// validateAccessor checks the accessor where it is, which site says, and names it at in what it reports. seen is the labels of the accessors of its list that have
+	// been checked, for the labels that must differ.
+	validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool)
+
+	// lowerAccessor is the accessor as the IR holds it, named name. validateAccessor has run, so nothing that it refused reaches it.
+	lowerAccessor(name string) ir.Field
 }
 
 // accessorMeta is what every accessor has that is not about its value.
@@ -524,122 +530,48 @@ type accessorSite struct {
 	where      string // "Form.Fields" or "Table.Columns"
 	allowGroup bool
 	uniqueLbl  bool // a FieldError resolves by label, so a form needs them unique
+
+	// headline is where an accessor is the headline of a list or of cards, which is one line of text that is the same kind of thing for every item.
+	headline bool
+
+	// rowClick says that a click on a row of the table is a control of its own, which covers the first column, so a link of that column would be a link in a link.
+	rowClick bool
+
+	// first is the first accessor of the list, and nested one that is inside a Group: they are what a place needs of an accessor that the accessor's own type does not say.
+	first, nested bool
 }
 
 func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accessorSite) {
 	seen := map[string]bool{}
 	for i, acc := range accs {
-		validateAccessor[M](v, acc, fmt.Sprintf("%s[%d]", site.where, i), site, seen)
+		at := site
+		at.first = i == 0
+		checkAccessor[M](v, acc, fmt.Sprintf("%s[%d]", site.where, i), at, seen)
 	}
 }
 
-func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
-	// common is what every leaf needs: a label, unique where that matters, and a Load. sig is what
-	// Load must be, for the message.
-	common := func(l string, noLoad bool, sig string) {
-		switch {
-		case l == "":
-			v.add(at+" has no Label", "Give the accessor a Label; it is the column header and the input label.")
-		case site.uniqueLbl && seen[l]:
-			v.add(fmt.Sprintf("%s: label %q is used twice", site.where, l),
-				"Rename one; a FieldError resolves its accessor by Label, so duplicates are ambiguous.")
-		default:
-			seen[l] = true
-		}
-		if noLoad {
-			v.add(at+" has no Load", "Set Load to "+sig+".")
-		}
-	}
-	switch a := acc.(type) {
-	case nil:
+// checkAccessor is validateAccessor of an accessor that may be nil, which is the one thing that the accessor itself cannot say.
+func checkAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
+	if acc == nil {
 		v.add(at+" is nil", "Remove it or declare an accessor.")
-	case String[M]:
-		common(a.Label, a.Load == nil, "func(M) string")
-		validateTextRules(v, at, a.Rules)
-		if a.Multiline {
-			switch {
-			case a.Rules.Pattern != nil:
-				v.add(at+" is Multiline and has a Pattern", "A text area has no pattern attribute, and a pattern matches one line: remove it, or check the text in Run.")
-			case a.Rules.StartsWith != "" || a.Rules.EndsWith != "" || a.Rules.Contains != "" || a.Rules.NotStartsWith != "" || a.Rules.NotEndsWith != "" || a.Rules.NotContains != "":
-				v.add(at+" is Multiline and has a text rule", "The text rules are checked by the browser as a pattern, which a text area has not: remove them, or check the text in Run.")
-			case site.where == "Toolbar":
-				v.add(at+" is Multiline in a toolbar", "A toolbar shows one line for each value: put the text in a Form.")
-			}
-		}
-	case Secret[M]:
-		common(a.Label, a.Load == nil, "func(M) bool, saying whether a value is stored")
-		validateSecret(v, at, a, site.where)
-	case Email[M]:
-		common(a.Label, a.Load == nil, "func(M) string")
-		validateTextRules(v, at, a.Rules)
-	case Phone[M]:
-		common(a.Label, a.Load == nil, "func(M) string")
-		validateTextRules(v, at, a.Rules)
-		if a.DefaultCountry != "" && !phone.Known(a.DefaultCountry) {
-			v.add(fmt.Sprintf("%s has the unknown DefaultCountry %q", at, a.DefaultCountry), "Use the ISO 3166 alpha-2 code of a country, such as \"SE\" or \"US\", or leave it empty.")
-		}
-	case Website[M]:
-		common(a.Label, a.Load == nil, "func(M) string")
-		validateTextRules(v, at, a.Rules)
-	case ColorPicker[M]:
-		common(a.Label, a.Load == nil, "func(M) string, returning \"#rrggbb\"")
-	case File[M]:
-		common(a.Label, a.Load == nil, "func(M) *FileInfo")
-		validateFile(v, at, a)
-		if site.where == "Toolbar" {
-			v.add(at+" is a File in a toolbar", "A toolbar shows values and takes no input, and a file is a form's input: put it in a Form panel.")
-		}
-	case Int[M]:
-		common(a.Label, a.Load == nil, "func(M) int")
-		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-	case Float[M]:
-		common(a.Label, a.Load == nil, "func(M) float64")
-		validatePrecision(v, at, a.Precision)
-		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-	case Trend[M]:
-		common(a.Label, a.Load == nil, "func(M) ([]float64, *float64), returning the points and the change")
-	case Group[M]:
-		if !site.allowGroup {
-			v.add(at+" is a Group in "+site.where,
-				"Groups compose form fields; a nested group has no meaning in a table cell. List the accessors directly.")
-		}
-		for i, child := range a {
-			if _, nested := child.(Group[M]); nested {
-				v.add(fmt.Sprintf("%s[%d] nests a Group in a Group", at, i), "Flatten it; groups are one level deep.")
-				continue
-			}
-			validateAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), site, seen)
-		}
-	case Select[M]:
-		common(a.Label, a.Load == nil, "func(M) []string")
-		validateSelect(v, at, a)
-	case URL[M]:
-		common(a.Label, a.Load == nil, "func(M) string, returning the address")
-	case Time[M]:
-		common(a.Label, a.Load == nil, "func(M) time.Time")
-		validateTime(v, at, a)
-	case OptionalTime[M]:
-		common(a.Label, a.Load == nil, "func(M) *time.Time")
-	case Slider[M]:
-		common(a.Label, a.Load == nil, "func(M) float64")
-		validateSlider(v, at, a.Min, a.Max, a.StepSize)
-	case OptionalInt[M]:
-		common(a.Label, a.Load == nil, "func(M) *int")
-		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-	case OptionalFloat[M]:
-		common(a.Label, a.Load == nil, "func(M) *float64")
-		validatePrecision(v, at, a.Precision)
-		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-	case OptionalSlider[M]:
-		common(a.Label, a.Load == nil, "func(M) *float64")
-		validateSlider(v, at, a.Min, a.Max, a.StepSize)
-	case Bool[M]:
-		common(a.Label, a.Load == nil, "func(M) bool")
-	case OptionalBool[M]:
-		common(a.Label, a.Load == nil, "func(M) *bool")
+		return
+	}
+	acc.validateAccessor(v, at, site, seen)
+}
+
+// validateLeaf is what every accessor that is not a group needs: a label, unique where that matters, and a Load. sig is what Load must be, for the message.
+func validateLeaf(v *bodyValidator, at string, site accessorSite, seen map[string]bool, label string, noLoad bool, sig string) {
+	switch {
+	case label == "":
+		v.add(at+" has no Label", "Give the accessor a Label; it is the column header and the input label.")
+	case site.uniqueLbl && seen[label]:
+		v.add(fmt.Sprintf("%s: label %q is used twice", site.where, label),
+			"Rename one; a FieldError resolves its accessor by Label, so duplicates are ambiguous.")
 	default:
-		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Secret, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Time, Slider, OptionalInt, OptionalFloat, OptionalSlider, OptionalTime, Bool, OptionalBool or Group.")
+		seen[label] = true
+	}
+	if noLoad {
+		v.add(at+" has no Load", "Set Load to "+sig+".")
 	}
 }
 
@@ -694,142 +626,200 @@ func validateBounds[T int | float64](v *bodyValidator, at string, lo, hi *T) {
 	}
 }
 
+// ------------------------------------------------- the accessors of this file, each as it is checked and lowered
+
+func (a String[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
+	validateTextRules(v, at, a.Rules)
+	if a.Multiline {
+		switch {
+		case a.Rules.Pattern != nil:
+			v.add(at+" is Multiline and has a Pattern", "A text area has no pattern attribute, and a pattern matches one line: remove it, or check the text in Run.")
+		case a.Rules.StartsWith != "" || a.Rules.EndsWith != "" || a.Rules.Contains != "" || a.Rules.NotStartsWith != "" || a.Rules.NotEndsWith != "" || a.Rules.NotContains != "":
+			v.add(at+" is Multiline and has a text rule", "The text rules are checked by the browser as a pattern, which a text area has not: remove them, or check the text in Run.")
+		case site.where == "Toolbar":
+			v.add(at+" is Multiline in a toolbar", "A toolbar shows one line for each value: put the text in a Form.")
+		}
+	}
+}
+
+func (a String[M]) lowerAccessor(name string) ir.Field {
+	f := head(name, a.Label, ir.KindString)
+	f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules, a.Required), a.Placeholder, a.Multiline
+	f.Get = func(m any) string { return a.Load(m.(M)) }
+	f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
+	f.Unset = unsetter(a.Store)
+	return f
+}
+
+func (a Int[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) int")
+	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+}
+
+func (a Int[M]) lowerAccessor(name string) ir.Field {
+	f := head(name, a.Label, ir.KindInt)
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
+	f.Get = func(m any) string { return strconv.Itoa(a.Load(m.(M))) }
+	f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
+	f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
+	f.Set = setter(a.Store, func(raw string) (int, error) { return strconv.Atoi(strings.TrimSpace(raw)) })
+	f.Unset = unsetter(a.Store)
+	return f
+}
+
+func (a Float[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
+	validatePrecision(v, at, a.Precision)
+	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
+}
+
+func (a Float[M]) lowerAccessor(name string) ir.Field {
+	f := head(name, a.Label, ir.KindFloat)
+	f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
+	f.Get, f.Num = floatReads(a.Load, a.Precision)
+	f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
+	f.Set = setter(a.Store, parseFloat)
+	f.Unset = unsetter(a.Store)
+	return f
+}
+
+// validateAccessor checks a group, which is for the places that compose form fields: a group in a group is refused, as is one that is a list's headline, and the accessors
+// in it are checked as they would be beside it.
+func (g Group[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	switch {
+	case site.nested:
+		v.add(at+" nests a Group in a Group", "Flatten it; groups are one level deep.")
+		return
+	case site.headline:
+		v.add(at+" is a Group", "A group composes form fields; an item has one headline.")
+		return
+	case !site.allowGroup:
+		v.add(at+" is a Group in "+site.where,
+			"Groups compose form fields; a nested group has no meaning in a table cell. List the accessors directly.")
+	}
+	inner := site
+	inner.nested = true
+	for i, child := range g {
+		checkAccessor[M](v, child, fmt.Sprintf("%s[%d]", at, i), inner, seen)
+	}
+}
+
+func (g Group[M]) lowerAccessor(name string) ir.Field {
+	return ir.Field{Name: name, Group: lowerAccessors[M](g, name+"_")}
+}
+
+func (a Select[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) []string")
+	validateSelect(v, at, a)
+}
+
+func (a Select[M]) lowerAccessor(name string) ir.Field {
+	f := head(name, a.Label, ir.KindString)
+	f.Display, f.Multi, f.Rules = ir.DisplaySelect, a.Multi, ir.Rules{Required: a.Required}
+	for _, o := range a.Options {
+		f.Choices = append(f.Choices, ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)})
+		f.Options = append(f.Options, o.Value)
+	}
+	if a.LoadOptions != nil {
+		f.Options = []string{} // a fixed set, which is read for each request
+		f.ChoicesFor = func(ctx context.Context) ([]ir.Choice, error) {
+			options, err := a.LoadOptions(ctx)
+			choices := make([]ir.Choice, len(options))
+			for i, o := range options {
+				choices[i] = ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)}
+			}
+			return choices, err
+		}
+	}
+	f.Get = func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) }
+	f.Set = setter(a.Store, func(raw string) ([]string, error) { return ir.SplitValues(raw), nil })
+	f.Unset = unsetter(a.Store)
+	return f
+}
+
+// validateAccessor checks a URL, which says the same on every row, so it is a column and not a headline, and which is a link of its own, so it is not the first column of a table whose
+// rows are links or buttons.
+func (a URL[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	if site.headline {
+		v.add(at+" is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Open: a Link for a page of this app, or an Href for an address.")
+		return
+	}
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string, returning the address")
+	if site.rowClick && site.first {
+		v.add("a Table's first column is a URL, but its RowClick is there",
+			"The row's own link or button covers the first column, and a link cannot hold a link: put the URL in another column.")
+	}
+}
+
+func (a URL[M]) lowerAccessor(name string) ir.Field {
+	f := head(name, a.Label, ir.KindString)
+	f.Display = ir.DisplayLink
+	f.Get = func(m any) string {
+		if a.Text != "" && a.Load(m.(M)) != "" {
+			return a.Text
+		}
+		return a.Load(m.(M))
+	}
+	f.Link = func(m any) string {
+		if u := a.Load(m.(M)); validURL(u) {
+			return u
+		}
+		return ""
+	}
+	return f
+}
+
+func (a Slider[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
+	validateSlider(v, at, a.Min, a.Max, a.StepSize)
+}
+
+func (a Slider[M]) lowerAccessor(name string) ir.Field {
+	lo, hi := a.Min, a.Max
+	f := head(name, a.Label, ir.KindFloat)
+	f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
+	step := a.StepSize
+	if step == 0 && a.Store != nil {
+		// A range input moves in steps, and without one of its own submits whatever the pointer was
+		// over, 81.6719540426991, which is not a value anyone chose.
+		step = defaultStep(lo, hi)
+	}
+	f.Get, f.Num = sliderReads(a.Load, lo, step)
+	if a.Store != nil {
+		f.Rules.Step = step
+	}
+	f.Set = setter(a.Store, parseFloat)
+	f.Unset = unsetter(a.Store)
+	return f
+}
+
+func (a Bool[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool")
+}
+
+func (a Bool[M]) lowerAccessor(name string) ir.Field { return lowerBool(a, name) }
+
 // ------------------------------------------------------------------- lower
 
 func lowerAccessors[M any](accs []Accessor[M], prefix string) []ir.Field {
 	out := make([]ir.Field, len(accs))
 	for i, acc := range accs {
-		out[i] = lowerAccessor[M](acc, prefix+strconv.Itoa(i))
+		out[i] = fieldOf[M](acc, prefix+strconv.Itoa(i))
 	}
 	return out
 }
 
-// lowerAccessor is the one place Store becomes Set. validate has run, so a nil
-// Load or an unknown accessor cannot reach here.
-func lowerAccessor[M any](acc Accessor[M], name string) ir.Field {
-	f := lowerOne[M](acc, name)
-	if acc != nil {
-		m := acc.meta()
-		f.NoSort, f.NoFilter, f.Help = m.NoSort, m.NoFilter, m.Help
+// fieldOf is an accessor as the IR holds it: what it says of itself (lowerAccessor, which is the one place Store becomes Set), and what it says besides its value.
+// validateAccessor has run, so a nil accessor cannot reach here.
+func fieldOf[M any](acc Accessor[M], name string) ir.Field {
+	if acc == nil {
+		return ir.Field{Name: name}
 	}
+	f := acc.lowerAccessor(name)
+	m := acc.meta()
+	f.NoSort, f.NoFilter, f.Help = m.NoSort, m.NoFilter, m.Help
 	return f
-}
-
-func lowerOne[M any](acc Accessor[M], name string) ir.Field {
-	switch a := acc.(type) {
-	case String[M]:
-		f := head(name, a.Label, ir.KindString)
-		f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules, a.Required), a.Placeholder, a.Multiline
-		f.Get = func(m any) string { return a.Load(m.(M)) }
-		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
-		f.Unset = unsetter(a.Store)
-		return f
-	case Int[M]:
-		f := head(name, a.Label, ir.KindInt)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
-		f.Get = func(m any) string { return strconv.Itoa(a.Load(m.(M))) }
-		f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
-		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
-		f.Set = setter(a.Store, func(raw string) (int, error) { return strconv.Atoi(strings.TrimSpace(raw)) })
-		f.Unset = unsetter(a.Store)
-		return f
-	case Float[M]:
-		f := head(name, a.Label, ir.KindFloat)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
-		f.Get, f.Num = floatReads(a.Load, a.Precision)
-		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
-		f.Set = setter(a.Store, parseFloat)
-		f.Unset = unsetter(a.Store)
-		return f
-	case Secret[M]:
-		return lowerSecret(a, name)
-	case Trend[M]:
-		return lowerTrend(a, name)
-	case Group[M]:
-		return ir.Field{Name: name, Group: lowerAccessors[M](a, name+"_")}
-	case Select[M]:
-		f := head(name, a.Label, ir.KindString)
-		f.Display, f.Multi, f.Rules = ir.DisplaySelect, a.Multi, ir.Rules{Required: a.Required}
-		for _, o := range a.Options {
-			f.Choices = append(f.Choices, ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)})
-			f.Options = append(f.Options, o.Value)
-		}
-		if a.LoadOptions != nil {
-			f.Options = []string{} // a fixed set, which is read for each request
-			f.ChoicesFor = func(ctx context.Context) ([]ir.Choice, error) {
-				options, err := a.LoadOptions(ctx)
-				choices := make([]ir.Choice, len(options))
-				for i, o := range options {
-					choices[i] = ir.Choice{Value: o.Value, Label: o.Label, Tone: ir.Tone(o.Tone)}
-				}
-				return choices, err
-			}
-		}
-		f.Get = func(m any) string { return strings.Join(a.Load(m.(M)), ir.ListSep) }
-		f.Set = setter(a.Store, func(raw string) ([]string, error) { return ir.SplitValues(raw), nil })
-		f.Unset = unsetter(a.Store)
-		return f
-	case URL[M]:
-		f := head(name, a.Label, ir.KindString)
-		f.Display = ir.DisplayLink
-		f.Get = func(m any) string {
-			if a.Text != "" && a.Load(m.(M)) != "" {
-				return a.Text
-			}
-			return a.Load(m.(M))
-		}
-		f.Link = func(m any) string {
-			if u := a.Load(m.(M)); validURL(u) {
-				return u
-			}
-			return ""
-		}
-		return f
-	case File[M]:
-		return lowerFile(name, a)
-	case Time[M]:
-		return lowerTime(a, name)
-	case OptionalTime[M]:
-		return lowerOptionalTime(a, name)
-	case Email[M]:
-		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
-	case Phone[M]:
-		f := lowerFormatted(name, a.Label, ir.FormatTel, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
-		f.Country = a.DefaultCountry
-		return f
-	case Website[M]:
-		return lowerFormatted(name, a.Label, ir.FormatURL, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
-	case ColorPicker[M]:
-		return lowerFormatted(name, a.Label, ir.FormatColor, false, StringRules{}, "", a.Load, a.Store)
-	case OptionalInt[M]:
-		return lowerOptionalInt(a, name)
-	case OptionalFloat[M]:
-		return lowerOptionalFloat(a, name)
-	case OptionalSlider[M]:
-		return lowerOptionalSlider(a, name)
-	case Bool[M]:
-		return lowerBool(a, name)
-	case OptionalBool[M]:
-		return lowerOptionalBool(a, name)
-	case Slider[M]:
-		lo, hi := a.Min, a.Max
-		f := head(name, a.Label, ir.KindFloat)
-		f.Display, f.Min, f.Max, f.Rules = ir.DisplaySlider, lo, hi, ir.Rules{Min: &lo, Max: &hi}
-		step := a.StepSize
-		if step == 0 && a.Store != nil {
-			// A range input moves in steps, and without one of its own submits whatever the pointer was
-			// over, 81.6719540426991, which is not a value anyone chose.
-			step = defaultStep(lo, hi)
-		}
-		f.Get, f.Num = sliderReads(a.Load, lo, step)
-		if a.Store != nil {
-			f.Rules.Step = step
-		}
-		f.Set = setter(a.Store, parseFloat)
-		f.Unset = unsetter(a.Store)
-		return f
-	}
-	return ir.Field{Name: name}
 }
 
 // head is what every field starts with: its name, its label, the key the address names it by,

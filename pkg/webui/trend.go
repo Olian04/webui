@@ -100,3 +100,9 @@ func lowerTrend[M any](a Trend[M], name string) ir.Field {
 	}
 	return f
 }
+
+func (a Trend[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) ([]float64, *float64), returning the points and the change")
+}
+
+func (a Trend[M]) lowerAccessor(name string) ir.Field { return lowerTrend(a, name) }

@@ -179,3 +179,16 @@ func lowerOptionalTime[M any](a OptionalTime[M], name string) ir.Field {
 	f.Unset = unsetter(a.Store)
 	return f
 }
+
+func (a Time[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) time.Time")
+	validateTime(v, at, a)
+}
+
+func (a Time[M]) lowerAccessor(name string) ir.Field { return lowerTime(a, name) }
+
+func (a OptionalTime[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *time.Time")
+}
+
+func (a OptionalTime[M]) lowerAccessor(name string) ir.Field { return lowerOptionalTime(a, name) }

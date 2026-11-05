@@ -252,3 +252,13 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 	f.File = spec
 	return f
 }
+
+func (a File[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *FileInfo")
+	validateFile(v, at, a)
+	if site.where == "Toolbar" {
+		v.add(at+" is a File in a toolbar", "A toolbar shows values and takes no input, and a file is a form's input: put it in a Form panel.")
+	}
+}
+
+func (a File[M]) lowerAccessor(name string) ir.Field { return lowerFile(name, a) }

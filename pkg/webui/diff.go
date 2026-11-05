@@ -51,7 +51,7 @@ func (d Diff[M]) lowerBody(at ir.Addr) ir.Node {
 	return &ir.Diff{
 		At: at, Title: d.Title, Desc: d.Desc, Language: d.Language.id(),
 		Load:     eraseLoad(d.Load),
-		Original: lowerAccessor[M](d.Original, "o"),
-		Modified: lowerAccessor[M](d.Modified, "m"),
+		Original: fieldOf[M](d.Original, "o"),
+		Modified: fieldOf[M](d.Modified, "m"),
 	}
 }
