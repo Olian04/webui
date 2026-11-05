@@ -23,7 +23,7 @@ import (
 // change as a number, with no points. A model with no change has no number, so it sorts first and a filter by a range leaves it out; a Trend that never
 // has one is declared with NoSort and NoFilter.
 type Trend[M any] struct {
-	// Label is the column header, and, in a table, it also names the column in the address and in a [Query]. It begins
+	// Label is the column header, and, in a table, it also names the column in the address and in a [PagedQuery]. It begins
 	// the chart's text alternative.
 	Label string
 

@@ -106,7 +106,7 @@ func TestABoolIsAColumnWithAFilterAndExportsAsTrueAndFalse(t *testing.T) {
 	rows := []flags{{Name: "a", Compress: true}, {Name: "b", Compress: false}, {Name: "c", Compress: true}}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[flags]{
 		Title:   "Flags",
-		Rows:    func(context.Context) ([]flags, webui.Loaded) { return rows, webui.Ready() },
+		Loader:  webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { return rows, webui.Ready() }},
 		Columns: []webui.Accessor[flags]{flagName, flagCompress},
 		Export:  true,
 	}}}}.MustCompile("/admin")

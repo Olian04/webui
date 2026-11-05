@@ -15,7 +15,7 @@ import (
 // address. Otherwise it is a [String], with the rules and the Placeholder of one, but not a Secret or a text area, which are inputs of their own.
 type Email[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the address from the model. An empty one is no value.
@@ -63,7 +63,7 @@ func (a Email[M]) meta() accessorMeta {
 // typed (see DefaultCountry); the server makes the one number of them. Otherwise it is a [String].
 type Phone[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the number from the model. An empty one is no value.
@@ -115,7 +115,7 @@ func (a Phone[M]) meta() accessorMeta {
 // is likely to be linked, and the rules popover says so. Otherwise it is a [String].
 type Website[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the address from the model. An empty one is no value.
@@ -159,7 +159,7 @@ func (a Website[M]) meta() accessorMeta {
 // or the text of a string. The server checks that what is submitted is "#" and six hex digits.
 type ColorPicker[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the color from the model, as "#rrggbb".

@@ -538,7 +538,7 @@ func TestAFileInATableIsItsNameAndALink(t *testing.T) {
 		{Title: "b"},
 	}
 	table := webui.Table[attachment]{
-		Rows: func(context.Context) ([]attachment, webui.Loaded) { return rows, webui.Ready() },
+		Loader: webui.RowsLoader[attachment]{Load: func(context.Context) ([]attachment, webui.Loaded) { return rows, webui.Ready() }},
 		Columns: []webui.Accessor[attachment]{
 			webui.String[attachment]{Label: "Title", Load: func(a attachment) string { return a.Title }},
 			webui.File[attachment]{Label: "File", Load: func(a attachment) *webui.FileInfo { return a.Held }},

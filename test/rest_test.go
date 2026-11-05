@@ -107,7 +107,7 @@ func TestALinkToARestPlaceholderBuildsTheAddressFromTheList(t *testing.T) {
 	object.Body = webui.Stack{}
 	from := webui.Page[webui.NoArgs]{Path: "/from", Body: webui.Table[Device]{
 		Title:   "Objects",
-		Rows:    func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() },
+		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},
 		RowClick: webui.Link[Device, objectArgs]{
 			Page: object,
@@ -123,7 +123,7 @@ func TestALinkToARestPlaceholderBuildsTheAddressFromTheList(t *testing.T) {
 	// An element with a slash would be read back as two, so no link is made.
 	bad := webui.Page[webui.NoArgs]{Path: "/bad", Body: webui.Table[Device]{
 		Title:   "Objects",
-		Rows:    func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() },
+		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},
 		RowClick: webui.Link[Device, objectArgs]{
 			Page: object,
@@ -148,10 +148,10 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 	var seen pickArgs
 	picked := webui.Page[pickArgs]{Path: "/pick/{name}", Body: webui.Table[Device]{
 		Title: "Picked",
-		Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
+		Loader: webui.RowsLoader[Device]{Load: func(ctx context.Context) ([]Device, webui.Loaded) {
 			seen = webui.ArgsOf[pickArgs](ctx)
 			return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, webui.Ready()
-		},
+		}},
 		PageSize: 2,
 		Columns:  []webui.Accessor[Device]{formID},
 	}}
@@ -183,7 +183,7 @@ func TestALinkToAPageThatTakesAListRepeatsTheParameter(t *testing.T) {
 	picked.Body = webui.Stack{}
 	from := webui.Page[webui.NoArgs]{Path: "/from", Body: webui.Table[Device]{
 		Title:   "Devices",
-		Rows:    func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() },
+		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},
 		RowClick: webui.Link[Device, pickArgs]{
 			Page: picked,

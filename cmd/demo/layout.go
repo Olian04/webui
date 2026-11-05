@@ -56,10 +56,10 @@ func compactDevices(title string, size int) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title:    title,
 		PageSize: size,
-		Rows: func(context.Context) ([]Device, webui.Loaded) {
+		Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 			devices, _ := service.Devices(nil, nil, Order{})
 			return devices, webui.Ready()
-		},
+		}},
 		RowClick: webui.Link[Device, DeviceArgs]{
 			Page: Details,
 			Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
@@ -73,7 +73,7 @@ func compactAlerts(title string) webui.Table[Alert] {
 	return webui.Table[Alert]{
 		Title:    title,
 		PageSize: 5,
-		Rows:     func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
+		Loader:   webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() }},
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
 			Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },
@@ -307,9 +307,9 @@ func listOf(title, desc string, n int) webui.List[listLine] {
 		Title:    title,
 		Desc:     desc,
 		PageSize: n,
-		Load: func(_ context.Context, limit int) ([]listLine, webui.Loaded) {
-			return lines[:min(limit, len(lines))], webui.Ready()
-		},
+		Loader: webui.RowsLoader[listLine]{Load: func(context.Context) ([]listLine, webui.Loaded) {
+			return lines, webui.Ready()
+		}},
 		Headline: webui.String[listLine]{Label: "Title", Load: func(l listLine) string { return l.Title }},
 		Meta: []webui.Accessor[listLine]{
 			webui.String[listLine]{Label: "Age", Load: func(l listLine) string { return l.Age }},

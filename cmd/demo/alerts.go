@@ -61,7 +61,7 @@ var Alerts = webui.Page[webui.NoArgs]{
 		// there is no query code on this page.
 		// With Rows, an export is every row the sort and filters keep, with nothing to write.
 		Export: true,
-		Rows:   func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
+		Loader: webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() }},
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
@@ -142,14 +142,14 @@ var AcknowledgeAlert = webui.Action[Alert]{
 // arguments, query ones too.
 var AlertDeviceTable = webui.Table[Device]{
 	Title: "Device",
-	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
+	Loader: webui.RowsLoader[Device]{Load: func(ctx context.Context) ([]Device, webui.Loaded) {
 		alert, _ := service.Alert(webui.ArgsOf[AlertArgs](ctx).ID)
 		device, ok := service.Device(alert.Device)
 		if !ok {
 			return nil, webui.Ready()
 		}
 		return []Device{device}, webui.Ready()
-	},
+	}},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID, Minutes: 15} },

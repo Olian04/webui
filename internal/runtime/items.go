@@ -33,7 +33,7 @@ func (p *Program) items(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	view := render.ItemsView{Node: n, Page: page}
 	view.Path, view.Query = req.encode(page)
 	limit := limitOf(n, req.Raw)
-	rows, ok, refusal := loaded(p, ctx, page, kind, kind, n.At, func() ([]any, error) { return n.Load(ctx, limit+1) })
+	rows, ok, refusal := loaded(p, ctx, page, kind, kind, n.At, func() ([]any, error) { return firstItems(ctx, n, limit+1) })
 	if !ok {
 		view.Failed, view.Refusal = true, refusal
 		return p.render.Items(view)
@@ -52,4 +52,10 @@ func (p *Program) items(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.ClickRefused = p.clickRefused(ctx, page, n.Click, "an item", rows)
 	}
 	return p.render.Items(view)
+}
+
+// firstItems is the first n items of a list, from its loader, in the order it gives them.
+func firstItems(ctx context.Context, list *ir.Items, n int) ([]any, error) {
+	window, err := list.Load(ctx, ir.Query{Limit: n})
+	return window.Rows, err
 }

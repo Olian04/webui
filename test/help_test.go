@@ -102,7 +102,7 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 	assert.Contains(t, body, `aria-label="Help: In a group."`)
 
 	table := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[helped]{
-		Rows:    func(context.Context) ([]helped, webui.Loaded) { return []helped{{Name: "n"}}, webui.Ready() },
+		Loader:  webui.RowsLoader[helped]{Load: func(context.Context) ([]helped, webui.Loaded) { return []helped{{Name: "n"}}, webui.Ready() }},
 		Columns: []webui.Accessor[helped]{helpedName("Not in a table.", webui.StringRules{})},
 	}}}}.MustCompile("/admin")
 	assert.False(t, strings.Contains(serve(table, http.MethodGet, "/admin/t").Body.String(), "Not in a table."))

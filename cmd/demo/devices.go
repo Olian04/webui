@@ -186,12 +186,12 @@ var DevicesTable = webui.Table[Device]{
 	// handed the window, the sort and the filters and does that work. Every
 	// other table in the demo says only what its rows are, with Rows, and
 	// leaves the rest to the library.
-	Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+	Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		// A column is named by its Label. The numeric columns, Occurrences and
 		// Rate / s, arrive as bounds.
 		devices, total := service.Devices(q.Filters, boundsOf(q.Ranges), Order{Offset: q.Offset, Limit: q.Limit, Sort: q.Sort, Desc: q.Desc})
-		return webui.Window[Device]{Items: devices, Total: total}, webui.Ready()
-	},
+		return webui.PagedWindow[Device]{Items: devices, Total: total}, webui.Ready()
+	}},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
@@ -308,7 +308,7 @@ var SaveDevice = webui.Action[Device]{
 var RecentEvents = webui.Table[Event]{
 	Title:   "Recent events",
 	Desc:    "The last 15 minutes, whatever the Raw events tab shows.",
-	Rows:    func(context.Context) ([]Event, webui.Loaded) { return service.Events(15), webui.Ready() },
+	Loader:  webui.RowsLoader[Event]{Load: func(context.Context) ([]Event, webui.Loaded) { return service.Events(15), webui.Ready() }},
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 
@@ -316,9 +316,9 @@ var RecentEvents = webui.Table[Event]{
 var RawEvents = webui.Table[Event]{
 	Title: "Raw events",
 	Desc:  "Narrowed by ?minutes= (as the alerts' links do): all of them without.",
-	Rows: func(ctx context.Context) ([]Event, webui.Loaded) {
+	Loader: webui.RowsLoader[Event]{Load: func(ctx context.Context) ([]Event, webui.Loaded) {
 		return service.Events(webui.ArgsOf[DeviceArgs](ctx).Minutes), webui.Ready()
-	},
+	}},
 	Columns: []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 
@@ -331,7 +331,7 @@ var (
 )
 
 // boundsOf is a table's numeric filters as the service takes them.
-func boundsOf(ranges map[string]webui.Range) map[string]Bounds {
+func boundsOf(ranges map[string]webui.PagedRange) map[string]Bounds {
 	bounds := make(map[string]Bounds, len(ranges))
 	for key, r := range ranges {
 		bounds[key] = Bounds(r)

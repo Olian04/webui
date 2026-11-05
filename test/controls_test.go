@@ -16,7 +16,7 @@ type parcelArgs struct {
 
 // controlPages is a table of the two parcels with the controls given, and the page that a Link leads to, whose Guard refuses the parcel that it is told to.
 func controlPages(refuse string, table webui.Table[parcel]) http.Handler {
-	table.Rows = func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }
+	table.Loader = webui.RowsLoader[parcel]{Load: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }}
 	table.Columns = []webui.Accessor[parcel]{parcelName}
 	detail := webui.Page[parcelArgs]{
 		Path: "/parcel/{name}",
@@ -135,7 +135,7 @@ func TestWhatAControlNeedsDependsOnWhereItIsAndATableNeedsAKeyOnlyForWhatPosts(t
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			tc.table.Rows, tc.table.Columns = load, cols
+			tc.table.Loader, tc.table.Columns = webui.RowsLoader[parcel]{Load: load}, cols
 			app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: tc.table}, detail}}
 			_, err := app.Compile("/admin")
 			if tc.want == "" {

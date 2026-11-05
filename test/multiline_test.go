@@ -87,7 +87,7 @@ func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
 	}
 	h := webui.App{Pages: webui.Pages{
 		webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[note]{
-			Title: "Notes", Rows: notes, Export: true,
+			Title: "Notes", Loader: webui.RowsLoader[note]{Load: notes}, Export: true,
 			Columns: []webui.Accessor[note]{webui.String[note]{Label: "Title", Load: func(n note) string { return n.Title }}, body},
 		}},
 		webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[note]{

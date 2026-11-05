@@ -42,7 +42,7 @@ func ExamplePageID() {
 		Path: listPath,
 		Nav:  webui.Nav{Label: "Items"},
 		Body: webui.Table[item]{
-			Rows: func(context.Context) ([]item, webui.Loaded) { return []item{{ID: "a", Name: "Alpha"}}, webui.Ready() },
+			Loader: webui.RowsLoader[item]{Load: func(context.Context) ([]item, webui.Loaded) { return []item{{ID: "a", Name: "Alpha"}}, webui.Ready() }},
 			RowClick: webui.Link[item, itemArgs]{
 				Page: detail,
 				Args: func(_ context.Context, i item) itemArgs { return itemArgs{ID: i.ID} },

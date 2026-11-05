@@ -42,9 +42,9 @@ func (g *gate) when(body webui.PageBody) webui.When[condition] {
 func whenTable(title string) webui.Table[flags] {
 	return webui.Table[flags]{
 		Title: title,
-		Rows: func(context.Context) ([]flags, webui.Loaded) {
+		Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) {
 			return []flags{{Name: "a", Compress: true}}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[flags]{flagName, flagCompress},
 		Export:  true,
 	}
@@ -254,9 +254,9 @@ func TestTheBodyLoadsAfterTheConditionAndSiblingsStillLoadTogether(t *testing.T)
 			return condition{Open: true}, webui.Ready()
 		},
 		Show: conditionOpen,
-		Body: webui.Table[flags]{Title: "Inside", Columns: []webui.Accessor[flags]{flagName}, Rows: func(context.Context) ([]flags, webui.Loaded) { note("body"); return nil, webui.Ready() }},
+		Body: webui.Table[flags]{Title: "Inside", Columns: []webui.Accessor[flags]{flagName}, Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { note("body"); return nil, webui.Ready() }}},
 	}
-	sibling := webui.Table[flags]{Title: "Sibling", Columns: []webui.Accessor[flags]{flagName}, Rows: func(context.Context) ([]flags, webui.Loaded) { note("sibling"); return nil, webui.Ready() }}
+	sibling := webui.Table[flags]{Title: "Sibling", Columns: []webui.Accessor[flags]{flagName}, Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { note("sibling"); return nil, webui.Ready() }}}
 	serve(editorApp(webui.Stack{when, sibling}), http.MethodGet, "/admin/e")
 
 	mu.Lock()

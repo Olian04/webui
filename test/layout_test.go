@@ -27,10 +27,10 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	table := func(i int, title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				loads[i].Add(1)
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
@@ -267,7 +267,7 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
 	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
 		Title:   "Blobs",
-		Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
+		Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, state, tags, blobSize},
 	}}}}.MustCompile("/admin")

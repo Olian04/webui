@@ -108,7 +108,7 @@ var fileRowClick = webui.Link[FileEntry, FileArgs]{
 func fileTable(title string, folder func(context.Context) []string) webui.Table[FileEntry] {
 	return webui.Table[FileEntry]{
 		Title:    title,
-		Rows:     func(ctx context.Context) ([]FileEntry, webui.Loaded) { return entriesIn(folder(ctx)), webui.Ready() },
+		Loader:   webui.RowsLoader[FileEntry]{Load: func(ctx context.Context) ([]FileEntry, webui.Loaded) { return entriesIn(folder(ctx)), webui.Ready() }},
 		Columns:  []webui.Accessor[FileEntry]{FileName, FileKind, FileSize},
 		RowClick: fileRowClick,
 	}

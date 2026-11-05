@@ -36,10 +36,10 @@ func TestAPagesPanelsLoadAtTheSameTime(t *testing.T) {
 	table := func(title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				meet(ctx, &arrived, 4, &met)
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
@@ -81,10 +81,10 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		webui.Table[Device]{
 			Title: "Fine",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				others.Add(1)
-				return webui.Window[Device]{}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		},
 		webui.Form[Device]{
@@ -94,10 +94,10 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 		},
 		webui.Table[Device]{
 			Title: "Also fine",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				others.Add(1)
-				return webui.Window[Device]{}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		},
 	}}
@@ -119,9 +119,9 @@ func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		webui.Table[Device]{
 			Title: "Table",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		},
 		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: webui.LangJSON},

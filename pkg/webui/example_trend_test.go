@@ -24,9 +24,9 @@ func ExampleTrend() {
 		Path: "/status",
 		Body: webui.Table[Latency]{
 			Title: "Latency",
-			Rows: func(context.Context) ([]Latency, webui.Loaded) {
+			Loader: webui.RowsLoader[Latency]{Load: func(context.Context) ([]Latency, webui.Loaded) {
 				return []Latency{{P95: 184, Change: -12, Samples: []float64{140, 150, 190, 184}}}, webui.Ready()
-			},
+			}},
 			Columns: []webui.Accessor[Latency]{
 				webui.Float[Latency]{
 					Label:  "95th percentile",

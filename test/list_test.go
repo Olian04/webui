@@ -61,6 +61,14 @@ func (f *listLoader) load(_ context.Context, limit int) ([]story, webui.Loaded) 
 	return stories[:min(limit, len(stories))], webui.Ready()
 }
 
+// loader is the source as a loader that is asked for the first items: it notes the size of the window, which is what the list asked for.
+func (f *listLoader) loader() webui.Loader[story] {
+	return webui.PagedLoader[story]{Load: func(ctx context.Context, q webui.PagedQuery) (webui.PagedWindow[story], webui.Loaded) {
+		items, loaded := f.load(ctx, q.Limit)
+		return webui.PagedWindow[story]{Items: items}, loaded
+	}}
+}
+
 func (f *listLoader) asked() []int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -83,7 +91,7 @@ func TestAListIsAColumnOfItemsEachWithAHeadlineAndALineOfFacts(t *testing.T) {
 
 	src := &listLoader{}
 	h := editorApp(webui.List[story]{
-		Title: "Latest", Load: src.load, PageSize: 3,
+		Title: "Latest", Loader: src.loader(), PageSize: 3,
 		Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pPoints, pSource},
 	})
 	rec := serve(h, http.MethodGet, "/admin/e")
@@ -114,7 +122,7 @@ func TestASourceIsAskedForOneMoreThanIsShownAndShowMoreIsARealLinkThatAsksForMor
 	t.Parallel()
 
 	src := &listLoader{}
-	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle})
+	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 2, Headline: pTitle})
 
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.DeepEqual(t, src.asked(), []int{3})
@@ -142,7 +150,7 @@ func TestTheLimitInTheAddressIsHeldToWhatAListMayShow(t *testing.T) {
 	t.Parallel()
 
 	src := &listLoader{}
-	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle})
+	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 2, Headline: pTitle})
 	for _, raw := range []string{"999999", "-5", "0", "x", ""} {
 		serve(h, http.MethodGet, "/admin/e?latest.limit="+raw)
 	}
@@ -154,9 +162,9 @@ func TestAListIsNamedInTheAddressByItsTitleAndTwoWithNoTitleAreTold(t *testing.T
 
 	src := &listLoader{}
 	h := editorApp(webui.Stack{
-		webui.List[story]{Load: src.load, PageSize: 1, Headline: pTitle},
-		webui.List[story]{Load: src.load, PageSize: 1, Headline: pTitle},
-		webui.Cards[story]{Load: src.load, PageSize: 1, Headline: pTitle},
+		webui.List[story]{Loader: src.loader(), PageSize: 1, Headline: pTitle},
+		webui.List[story]{Loader: src.loader(), PageSize: 1, Headline: pTitle},
+		webui.Cards[story]{Loader: src.loader(), PageSize: 1, Headline: pTitle},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `href="/admin/e?list.limit=2"`)
@@ -176,8 +184,8 @@ func TestAListRefreshesAsALeafOfItsOwn(t *testing.T) {
 
 	src := &listLoader{}
 	h := editorApp(webui.Stack{
-		webui.List[story]{Title: "First", Load: src.load, PageSize: 1, Headline: pTitle},
-		webui.List[story]{Title: "Second", Load: src.load, PageSize: 2, Headline: pTitle},
+		webui.List[story]{Title: "First", Loader: src.loader(), PageSize: 1, Headline: pTitle},
+		webui.List[story]{Title: "Second", Loader: src.loader(), PageSize: 2, Headline: pTitle},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e?second.limit=3", nil)
 	req.Header.Set("X-Webui-Leaf", "p.1")
@@ -196,9 +204,9 @@ func TestAFailingListLoadFailsThePanelAndNotThePage(t *testing.T) {
 
 	h := editorApp(webui.List[story]{
 		Title: "Latest", Headline: pTitle,
-		Load: func(context.Context, int) ([]story, webui.Loaded) {
+		Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) {
 			return nil, webui.Failed(errors.New("store secret-bucket is gone"))
-		},
+		}},
 	})
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -212,7 +220,7 @@ func TestAListWithNoItemsSaysSoAndHasNoFoot(t *testing.T) {
 
 	h := editorApp(webui.List[story]{
 		Title: "Latest", Headline: pTitle,
-		Load: func(context.Context, int) ([]story, webui.Loaded) { return nil, webui.Ready() },
+		Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) { return nil, webui.Ready() }},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, "Nothing here yet")
@@ -226,9 +234,9 @@ func TestAListThatIsNotFinalIsAskedForAgain(t *testing.T) {
 
 	h := editorApp(webui.List[story]{
 		Title: "Latest", Headline: pTitle,
-		Load: func(context.Context, int) ([]story, webui.Loaded) {
+		Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) {
 			return stories[:1], webui.Ready().RefreshAfter(5 * 1e9)
-		},
+		}},
 	})
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-refresh-after="5"`)
 }
@@ -241,12 +249,12 @@ func TestAnHrefLeadsToAnotherSiteAndALinkLeadsInTheApp(t *testing.T) {
 	src := &listLoader{}
 	_, detail := listPages(webui.Stack{}, nil)
 
-	external, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Open: webui.Href[story]{URL: pLink}}, nil)
+	external, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 1, Headline: pTitle, Open: webui.Href[story]{URL: pLink}}, nil)
 	body := serve(external, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<a class="item-link ext" href="https://wealthfolio.app/" target="_blank" rel="noopener noreferrer">Show HN: Wealthfolio`)
 	assert.Contains(t, body, "(opens in a new tab)") // the mark that says so, for a reader
 
-	inApp, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 1, Headline: pTitle, Open: openStory(detail)}, nil)
+	inApp, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 1, Headline: pTitle, Open: openStory(detail)}, nil)
 	body = serve(inApp, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<a class="item-link" href="/admin/story/a">Show HN: Wealthfolio</a>`)
 	assert.False(t, strings.Contains(body, `target="_blank"`))
@@ -264,7 +272,7 @@ func TestAnItemWhosePageRefusesTheVisitorIsNotALink(t *testing.T) {
 		}
 		return nil
 	}
-	h, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 2, Headline: pTitle, Open: openStory(detail)}, refuses)
+	h, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 2, Headline: pTitle, Open: openStory(detail)}, refuses)
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `href="/admin/story/a`)
 	assert.False(t, strings.Contains(body, `href="/admin/story/b`))
@@ -275,7 +283,7 @@ func TestABadgeIsDrawnBesideTheHeadlineAsItIsInACell(t *testing.T) {
 	t.Parallel()
 
 	src := &listLoader{}
-	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 3, Headline: pTitle, Badge: pKind})
+	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 3, Headline: pTitle, Badge: pKind})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Equal(t, strings.Count(body, `class="badge tone-bad"`), 1) // the live one, which says Live in words and not only in red
 	assert.Contains(t, body, "Live")
@@ -310,9 +318,9 @@ func TestAPictureIsDrawnFromThisSiteOrATrustedOriginAndFromNowhereElse(t *testin
 			image := tc.image
 			h := editorApp(webui.List[story]{
 				Title: "Latest", Headline: pTitle, TrustedOrigins: []string{"https://cdn.example.com"},
-				Load: func(context.Context, int) ([]story, webui.Loaded) {
+				Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) {
 					return []story{{ID: "a", Title: "X"}}, webui.Ready()
-				},
+				}},
 				Image: func(story) string { return image },
 			})
 			body := serve(h, http.MethodGet, "/admin/e").Body.String()
@@ -332,10 +340,10 @@ func TestThePolicyOfAPageThatTrustsAnOriginForPicturesHasItAndNoOtherPageDoes(t 
 
 	src := &listLoader{}
 	with := webui.Page[webui.NoArgs]{Path: "/with", Body: webui.Stack{
-		webui.List[story]{Title: "A", Load: src.load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://a.example", "https://shared.example"}},
-		webui.Cards[story]{Title: "B", Load: src.load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://shared.example", "https://B.example:443"}},
+		webui.List[story]{Title: "A", Loader: src.loader(), Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://a.example", "https://shared.example"}},
+		webui.Cards[story]{Title: "B", Loader: src.loader(), Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://shared.example", "https://B.example:443"}},
 	}}
-	without := webui.Page[webui.NoArgs]{Path: "/without", Body: webui.List[story]{Title: "C", Load: src.load, Headline: pTitle}}
+	without := webui.Page[webui.NoArgs]{Path: "/without", Body: webui.List[story]{Title: "C", Loader: src.loader(), Headline: pTitle}}
 	h := webui.App{Pages: webui.Pages{with, without}}.MustCompile("/admin")
 
 	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example", 1)
@@ -350,7 +358,7 @@ func TestCardsAreAGridThatWrapsAndEachHasItsPictureOverItsHeadline(t *testing.T)
 
 	src := &listLoader{}
 	h := editorApp(webui.Cards[story]{
-		Title: "Videos", Load: src.load, PageSize: 2, Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pSource},
+		Title: "Videos", Loader: src.loader(), PageSize: 2, Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pSource},
 		Image: func(p story) string { return "/img/" + p.ID + ".png" },
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
@@ -365,7 +373,7 @@ func TestCardsInARowScrollSidewaysAndTheRowCanBeReachedByTheKeyboard(t *testing.
 	t.Parallel()
 
 	src := &listLoader{}
-	h := editorApp(webui.Cards[story]{Title: "Videos", Load: src.load, PageSize: 3, Headline: pTitle, Layout: webui.CardsScroll})
+	h := editorApp(webui.Cards[story]{Title: "Videos", Loader: src.loader(), PageSize: 3, Headline: pTitle, Layout: webui.CardsScroll})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<div class="cards-scroller" tabindex="0" role="region" aria-label="Videos, scrolls sideways">`)
 	assert.Contains(t, body, `<ul class="cards cards-row">`)
@@ -378,8 +386,8 @@ func TestTabsOfListsAreReadOnlyForTheSelectedTab(t *testing.T) {
 
 	first, second := &listLoader{}, &listLoader{}
 	h := editorApp(webui.Tabs{
-		{Label: "Hacker News", Body: webui.List[story]{Title: "Hacker News", Load: first.load, Headline: pTitle}},
-		{Label: "Lobsters", Body: webui.List[story]{Title: "Lobsters", Load: second.load, Headline: pTitle}},
+		{Label: "Hacker News", Body: webui.List[story]{Title: "Hacker News", Loader: first.loader(), Headline: pTitle}},
+		{Label: "Lobsters", Body: webui.List[story]{Title: "Lobsters", Loader: second.loader(), Headline: pTitle}},
 	})
 	serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, len(first.asked()), 1)
@@ -393,26 +401,26 @@ func TestTabsOfListsAreReadOnlyForTheSelectedTab(t *testing.T) {
 func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
-	load := (&listLoader{}).load
+	load := (&listLoader{}).loader()
 	for name, tc := range map[string]struct {
 		body webui.PageBody
 		want string
 	}{
 		"no load":               {webui.List[story]{Headline: pTitle}, "a List has no Load"},
-		"no headline":           {webui.List[story]{Load: load}, "List.Headline is nil"},
-		"a group headline":      {webui.List[story]{Load: load, Headline: webui.Group[story]{pTitle}}, "List.Headline is a Group"},
-		"a headline no load":    {webui.List[story]{Load: load, Headline: webui.String[story]{Label: "T"}}, "List.Headline has no Load"},
-		"a meta no label":       {webui.List[story]{Load: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, "List.Meta[0] has no Label"},
-		"a negative page":       {webui.List[story]{Load: load, Headline: pTitle, PageSize: -1}, "List.PageSize is negative"},
-		"an href with no url":   {webui.List[story]{Load: load, Headline: pTitle, Open: webui.Href[story]{}}, "List.Open is an Href with no URL"},
-		"a url headline":        {webui.List[story]{Load: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, "List.Headline is a URL"},
-		"a badge no load":       {webui.List[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, "List.Badge has no Load"},
-		"a badge with a store":  {webui.List[story]{Load: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, "List.Badge has a Store"},
-		"a bad origin":          {webui.List[story]{Load: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, `List.TrustedOrigins[0], "http://x.example", is not an origin`},
-		"origins and no image":  {webui.List[story]{Load: load, Headline: pTitle, TrustedOrigins: []string{"https://x.example"}}, "List has TrustedOrigins and no Image"},
+		"no headline":           {webui.List[story]{Loader: load}, "List.Headline is nil"},
+		"a group headline":      {webui.List[story]{Loader: load, Headline: webui.Group[story]{pTitle}}, "List.Headline is a Group"},
+		"a headline no load":    {webui.List[story]{Loader: load, Headline: webui.String[story]{Label: "T"}}, "List.Headline has no Load"},
+		"a meta no label":       {webui.List[story]{Loader: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, "List.Meta[0] has no Label"},
+		"a negative page":       {webui.List[story]{Loader: load, Headline: pTitle, PageSize: -1}, "List.PageSize is negative"},
+		"an href with no url":   {webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Href[story]{}}, "List.Open is an Href with no URL"},
+		"a url headline":        {webui.List[story]{Loader: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, "List.Headline is a URL"},
+		"a badge no load":       {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, "List.Badge has no Load"},
+		"a badge with a store":  {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, "List.Badge has a Store"},
+		"a bad origin":          {webui.List[story]{Loader: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, `List.TrustedOrigins[0], "http://x.example", is not an origin`},
+		"origins and no image":  {webui.List[story]{Loader: load, Headline: pTitle, TrustedOrigins: []string{"https://x.example"}}, "List has TrustedOrigins and no Image"},
 		"cards, no load":        {webui.Cards[story]{Headline: pTitle}, "a Cards has no Load"},
-		"an unknown layout":     {webui.Cards[story]{Load: load, Headline: pTitle, Layout: "carousel"}, `Cards.Layout is the unknown "carousel"`},
-		"cards, a bad headline": {webui.Cards[story]{Load: load}, "Cards.Headline is nil"},
+		"an unknown layout":     {webui.Cards[story]{Loader: load, Headline: pTitle, Layout: "carousel"}, `Cards.Layout is the unknown "carousel"`},
+		"cards, a bad headline": {webui.Cards[story]{Loader: load}, "Cards.Headline is nil"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -428,7 +436,7 @@ func TestAnOpenIsCheckedLikeAnyLink(t *testing.T) {
 
 	elsewhere := webui.Page[webui.NoArgs]{Path: "/elsewhere", Body: webui.Stack{}}
 	lost := webui.Link[story, webui.NoArgs]{Page: elsewhere, Args: func(context.Context, story) webui.NoArgs { return webui.NoArgs{} }}
-	got := editorErrors(t, webui.List[story]{Load: (&listLoader{}).load, Headline: pTitle, Open: lost})
+	got := editorErrors(t, webui.List[story]{Loader: (&listLoader{}).loader(), Headline: pTitle, Open: lost})
 	assert.Contains(t, got, `a link targets "/elsewhere", which is not mounted in this app`)
 }
 
@@ -438,7 +446,7 @@ func TestAnHrefIsCheckedAtEveryItemAndALinkThatIsNotOneIsText(t *testing.T) {
 	t.Parallel()
 
 	src := &listLoader{}
-	h, _ := listPages(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 5, Headline: pTitle, Open: webui.Href[story]{URL: func(s story) string {
+	h, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 5, Headline: pTitle, Open: webui.Href[story]{URL: func(s story) string {
 		if s.ID == "b" {
 			return "javascript:alert(1)"
 		}
@@ -469,7 +477,7 @@ func TestAnActionOnAnItemRunsWithTheItemThatTheKeyNames(t *testing.T) {
 		},
 	}
 	src := &listLoader{}
-	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 5, Headline: pTitle, Open: open, Key: func(s story) string { return s.ID }})
+	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 5, Headline: pTitle, Open: open, Key: func(s story) string { return s.ID }})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 
 	assert.Contains(t, body, `<input type="hidden" name="_leaf" value="p">`)
@@ -490,10 +498,50 @@ func TestAnActionOnAnItemRunsWithTheItemThatTheKeyNames(t *testing.T) {
 func TestAnActionOnAnItemIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	load := (&listLoader{}).load
+	load := (&listLoader{}).loader()
 	run := func(context.Context, story) (webui.Outcome, error) { return webui.Success("done"), nil }
-	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "List.Open is an Action but there is no Key")
-	assert.Contains(t, editorErrors(t, webui.Cards[story]{Load: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "Cards.Open is an Action but there is no Key")
-	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{Run: run, Confirm: "Sure?"}}), "List.Open has a Confirm")
-	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{}}), "List.Open has no Run")
+	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "List.Open is an Action but there is no Key")
+	assert.Contains(t, editorErrors(t, webui.Cards[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "Cards.Open is an Action but there is no Key")
+	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{Run: run, Confirm: "Sure?"}}), "List.Open has a Confirm")
+	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{}}), "List.Open has no Run")
+}
+
+// A list takes any kind of Loader, as a table does, and asks it for the first items: one more than it shows, to know there are more, from the start, with no sort and no filter.
+func TestAListTakesAnyKindOfLoaderAndAsksForTheFirstItems(t *testing.T) {
+	t.Parallel()
+
+	shown := func(body string) int { return strings.Count(body, `<li class="item">`) }
+	more := `Show more`
+
+	// Every item at hand: the library shows the first of them.
+	rows := editorApp(webui.List[story]{Title: "Latest", PageSize: 2, Headline: pTitle, Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) { return stories, webui.Ready() }}})
+	body := serve(rows, http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, shown(body), 2)
+	assert.Contains(t, body, more)
+
+	// A source that pages: handed the window of the first items, and nothing else of a table's query.
+	var asked webui.PagedQuery
+	paged := editorApp(webui.List[story]{Title: "Latest", PageSize: 2, Headline: pTitle, Loader: webui.PagedLoader[story]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[story], webui.Loaded) {
+		asked = q
+		return webui.PagedWindow[story]{Items: stories[:min(q.Limit, len(stories))]}, webui.Ready()
+	}}})
+	body = serve(paged, http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, shown(body), 2)
+	assert.Contains(t, body, more)
+	assert.Equal(t, asked.Offset, 0)
+	assert.Equal(t, asked.Limit, 3)
+	assert.Equal(t, asked.Sort, "")
+	assert.Equal(t, len(asked.Filters), 0)
+
+	// A source that pages by a cursor: the first page, of that size.
+	var after string
+	var limit int
+	feed := editorApp(webui.List[story]{Title: "Latest", PageSize: 2, Headline: pTitle, Loader: webui.FeedLoader[story]{Load: func(_ context.Context, a string, n int) ([]story, string, webui.Loaded) {
+		after, limit = a, n
+		return stories[:min(n, len(stories))], "next", webui.Ready()
+	}}})
+	body = serve(feed, http.MethodGet, "/admin/e").Body.String()
+	assert.Equal(t, shown(body), 2)
+	assert.Equal(t, after, "")
+	assert.Equal(t, limit, 3)
 }

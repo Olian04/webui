@@ -28,9 +28,9 @@ func ExampleList() {
 		Path: "/news",
 		Body: webui.List[Story]{
 			Title: "Latest", PageSize: 2,
-			Load: func(_ context.Context, limit int) ([]Story, webui.Loaded) {
-				return stories[:min(limit, len(stories))], webui.Ready()
-			},
+			Loader: webui.RowsLoader[Story]{Load: func(context.Context) ([]Story, webui.Loaded) {
+				return stories, webui.Ready()
+			}},
 			Headline: webui.String[Story]{Label: "Title", Load: func(s Story) string { return s.Title }},
 			Open:     webui.Href[Story]{URL: func(s Story) string { return s.URL }},
 			Meta: []webui.Accessor[Story]{

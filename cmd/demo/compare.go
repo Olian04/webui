@@ -34,7 +34,7 @@ var CompareDevices = webui.Table[Device]{
 	Title:    "Devices",
 	Desc:     "The devices that the address names.",
 	PageSize: 5,
-	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
+	Loader: webui.RowsLoader[Device]{Load: func(ctx context.Context) ([]Device, webui.Loaded) {
 		args := webui.ArgsOf[CompareArgs](ctx)
 		var out []Device
 		for _, id := range args.Device {
@@ -51,7 +51,7 @@ var CompareDevices = webui.Table[Device]{
 			}
 		}
 		return out, webui.Ready()
-	},
+	}},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },

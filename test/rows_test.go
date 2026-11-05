@@ -31,7 +31,7 @@ func rowsApp(load func(context.Context) ([]Device, webui.Loaded)) http.Handler {
 		Body: webui.Table[Device]{
 			Title:    "Devices",
 			PageSize: 10,
-			Rows:     load,
+			Loader:   webui.RowsLoader[Device]{Load: load},
 			Columns: []webui.Accessor[Device]{
 				webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }},
 				webui.Select[Device]{
@@ -132,30 +132,28 @@ func TestRowsThatFailFailThePanelNotThePage(t *testing.T) {
 	assert.False(t, strings.Contains(rec.Body.String(), "hunter2"))
 }
 
-func TestATableNeedsExactlyOneOfRowsAndLoad(t *testing.T) {
+// A table has one source, a Loader, so "none" is the one thing to say: two cannot be written, and what a loader needs is checked where it is.
+func TestATableNeedsALoaderAndEachKindOfItNeedsItsLoad(t *testing.T) {
 	t.Parallel()
 
 	page := func(table webui.Table[Device]) webui.App {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}}}
 	}
 	rows := func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() }
-	load := func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-		return webui.Window[Device]{}, webui.Ready()
+	load := func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+		return webui.PagedWindow[Device]{}, webui.Ready()
 	}
 
 	var neither string
 	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {
 		neither += e.Error()
 	}
-	assert.Contains(t, neither, "a Table has none of Rows, Load and Feed")
+	assert.Contains(t, neither, "a Table has no Loader")
 
-	var both string
-	for _, e := range compileErrors(t, page(webui.Table[Device]{Rows: rows, Load: load})) {
-		both += e.Error()
-	}
-	assert.Contains(t, both, "a Table has more than one of Rows, Load and Feed")
-
-	for _, one := range []webui.Table[Device]{{Rows: rows}, {Load: load}} {
+	for _, one := range []webui.Table[Device]{
+		{Loader: webui.RowsLoader[Device]{Load: rows}},
+		{Loader: webui.PagedLoader[Device]{Load: load}},
+	} {
 		_, err := page(one).Compile("")
 		assert.NoError(t, err)
 	}
@@ -168,9 +166,9 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{
 		Path: "/device",
 		Body: webui.Table[Device]{
-			Rows: func(context.Context) ([]Device, webui.Loaded) {
+			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 				return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, webui.Ready()
-			},
+			}},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 			Actions: []webui.Control[Device]{webui.Action[Device]{
@@ -198,11 +196,11 @@ func storageTable(rows bool) http.Handler {
 		Columns: []webui.Accessor[Device]{formID, class},
 	}
 	if rows {
-		tbl.Rows = func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }
+		tbl.Loader = webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }}
 	} else {
-		tbl.Load = func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-			return webui.Window[Device]{Items: items, Total: len(items)}, webui.Ready()
-		}
+		tbl.Loader = webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+			return webui.PagedWindow[Device]{Items: items, Total: len(items)}, webui.Ready()
+		}}
 	}
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/o", Body: tbl}}}.MustCompile("")
 }

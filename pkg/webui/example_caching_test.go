@@ -87,7 +87,7 @@ func Example_caching() {
 		Path: "/devices",
 		Body: webui.Stack{
 			// Rows is called on every page load, sort, filter and page change: all served from one listing.
-			webui.Table[device]{Title: "Devices", Rows: list, Columns: []webui.Accessor[device]{id, ip}},
+			webui.Table[device]{Title: "Devices", Loader: webui.RowsLoader[device]{Load: list}, Columns: []webui.Accessor[device]{id, ip}},
 			webui.Form[device]{
 				Title: "Edit",
 				Load: func(context.Context) (device, webui.Loaded) {

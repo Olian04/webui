@@ -73,15 +73,13 @@ type brokenArgs struct{ When map[string]int }
 
 var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", Body: webui.Stack{}}
 
-// A Table is given one source of its rows, and this one is given two: Compile says so, with what each is for.
+// A Table is given one source of its rows, a Loader, and a Table that is given two cannot be written. This one is given a loader that has nothing to load with: Compile says so, with what to
+// set.
 var BrokenTable = webui.Page[webui.NoArgs]{
 	Path: "/broken/source",
 	Body: webui.Table[Device]{
-		Title: "Events",
-		Rows:  func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() },
-		Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-			return webui.Window[Device]{}, webui.Ready()
-		},
+		Title:   "Events",
+		Loader:  webui.RowsLoader[Device]{},
 		Columns: []webui.Accessor[Device]{DeviceID},
 	},
 }

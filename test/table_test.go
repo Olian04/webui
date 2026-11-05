@@ -21,10 +21,10 @@ type detailsArgs struct{ Id string }
 
 // tableApp serves 25 devices, ten to a page, and records the Query the loader
 // was handed.
-func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded)) (http.Handler, *webui.Query) {
+func tableApp(load func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded)) (http.Handler, *webui.PagedQuery) {
 	var (
 		mu   sync.Mutex
-		last webui.Query
+		last webui.PagedQuery
 	)
 	details := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}}
 	list := webui.Page[tableArgs]{
@@ -32,7 +32,7 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], web
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(ctx context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				mu.Lock()
 				last = q
 				mu.Unlock()
@@ -44,8 +44,8 @@ func tableApp(load func(context.Context, webui.Query) (webui.Window[Device], web
 					all = append(all, Device{Id: fmt.Sprintf("dev%02d", i), Ip: "10.0.0.1", Count: i, Duration: 1})
 				}
 				end := min(q.Offset+q.Limit, len(all))
-				return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
+			}},
 			PageSize: 10,
 			RowClick: webui.Link[Device, detailsArgs]{
 				Page: details,
@@ -98,7 +98,7 @@ func TestTablePagerLinksAndRange(t *testing.T) {
 	first := serve(h, http.MethodGet, "/admin/device?q=x").Body.String()
 	assert.Contains(t, first, "1–10 of 25")
 	assert.Contains(t, first, `href="/admin/device?devices.offset=10&amp;q=x"`) // keeps the filter
-	assert.DeepEqual(t, *last, webui.Query{Offset: 0, Limit: 10})
+	assert.DeepEqual(t, *last, webui.PagedQuery{Offset: 0, Limit: 10})
 
 	mid := serve(h, http.MethodGet, "/admin/device?devices.offset=10").Body.String()
 	assert.Contains(t, mid, "11–20 of 25")
@@ -120,7 +120,7 @@ func TestTableSortLinksCycleAndKeepWindowOut(t *testing.T) {
 	assert.Contains(t, unsorted, `href="/admin/device?devices.sort=id"`) // sorting resets to the first page
 
 	asc := serve(h, http.MethodGet, "/admin/device?devices.sort=id").Body.String()
-	assert.DeepEqual(t, *last, webui.Query{Limit: 10, Sort: "ID"}) // Load knows the column by its Label
+	assert.DeepEqual(t, *last, webui.PagedQuery{Limit: 10, Sort: "ID"}) // Load knows the column by its Label
 	assert.Contains(t, asc, `aria-sort="ascending"`)
 	assert.Contains(t, asc, `href="/admin/device?devices.desc=true&amp;devices.sort=id"`)
 
@@ -135,18 +135,18 @@ func TestTableDropsUndeclaredSortKeys(t *testing.T) {
 
 	h, last := tableApp(nil)
 	serve(h, http.MethodGet, "/admin/device?devices.sort=password%3B+drop&devices.desc=true")
-	assert.DeepEqual(t, *last, webui.Query{Limit: 10})
+	assert.DeepEqual(t, *last, webui.PagedQuery{Limit: 10})
 }
 
 func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+	h, _ := tableApp(func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		items := make([]Device, 10)
 		for i := range items {
 			items[i] = Device{Id: fmt.Sprintf("d%d", q.Offset+i)}
 		}
-		return webui.Window[Device]{Items: items}, webui.Ready() // Total left zero: unknown
+		return webui.PagedWindow[Device]{Items: items}, webui.Ready() // Total left zero: unknown
 	})
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, "1–10")
@@ -157,8 +157,8 @@ func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
 func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-		return webui.Window[Device]{}, webui.Failed(errors.New("db password is hunter2"))
+	h, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+		return webui.PagedWindow[Device]{}, webui.Failed(errors.New("db password is hunter2"))
 	})
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -170,8 +170,8 @@ func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 func TestTableEmpty(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-		return webui.Window[Device]{}, webui.Ready()
+	h, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+		return webui.PagedWindow[Device]{}, webui.Ready()
 	})
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, "Nothing to show")
@@ -180,15 +180,15 @@ func TestTableEmpty(t *testing.T) {
 }
 
 // twoTables is a page with two paging tables, named by their titles T0 and T1.
-func twoTables() (http.Handler, *[2]webui.Query) {
-	var seen [2]webui.Query
+func twoTables() (http.Handler, *[2]webui.PagedQuery) {
+	var seen [2]webui.PagedQuery
 	table := func(i int) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: fmt.Sprintf("T%d", i), PageSize: 5,
-			Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				seen[i] = q
-				return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 50}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{Items: []Device{{Id: "row"}}, Total: 50}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		}
 	}
@@ -202,8 +202,8 @@ func TestTwoTablesKeepIndependentStateUnderTheirTitles(t *testing.T) {
 	h, seen := twoTables()
 	body := serve(h, http.MethodGet, "/p?t0.offset=10&t1.offset=15&t1.sort=id&t1.desc=true&q=x").Body.String()
 
-	assert.DeepEqual(t, seen[0], webui.Query{Offset: 10, Limit: 5})
-	assert.DeepEqual(t, seen[1], webui.Query{Offset: 15, Limit: 5, Sort: "ID", Desc: true})
+	assert.DeepEqual(t, seen[0], webui.PagedQuery{Offset: 10, Limit: 5})
+	assert.DeepEqual(t, seen[1], webui.PagedQuery{Offset: 15, Limit: 5, Sort: "ID", Desc: true})
 
 	// Each table's links change only its own state and carry the other's along.
 	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=15&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id" data-in-place>Next`)
@@ -219,8 +219,8 @@ func TestViewStateForALeafThePageDoesNotHaveIsIgnored(t *testing.T) {
 
 	h, seen := twoTables()
 	body := serve(h, http.MethodGet, "/p?ghost.offset=5&left.offset=abc&table.offset=-4").Body.String()
-	assert.DeepEqual(t, seen[0], webui.Query{Limit: 5})              // unreadable: the first page
-	assert.DeepEqual(t, seen[1], webui.Query{Limit: 5})              // negative: the first page
+	assert.DeepEqual(t, seen[0], webui.PagedQuery{Limit: 5})         // unreadable: the first page
+	assert.DeepEqual(t, seen[1], webui.PagedQuery{Limit: 5})         // negative: the first page
 	assert.False(t, strings.Contains(body, `ghost`+"."+`offset=5"`)) // never carried into a link or form
 }
 
@@ -270,7 +270,7 @@ func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 	assert.Contains(t, body, `href="/admin/device?devices.sort=rate"`)        // and a slider
 
 	serve(h, http.MethodGet, "/admin/device?devices.sort=status&devices.desc=true")
-	assert.DeepEqual(t, *last, webui.Query{Limit: 10, Sort: "Status", Desc: true})
+	assert.DeepEqual(t, *last, webui.PagedQuery{Limit: 10, Sort: "Status", Desc: true})
 
 	serve(h, http.MethodGet, "/admin/device?devices.sort=id")
 	assert.Equal(t, last.Sort, "ID")
@@ -425,14 +425,14 @@ func TestNumericColumnsFilterByRangeNotText(t *testing.T) {
 
 	// Either bound, both, or neither; the key is the Label, as these have no Key.
 	serve(h, http.MethodGet, "/admin/device?devices.min.occurrences=5")
-	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Min: f(5)}})
+	assert.DeepEqual(t, last.Ranges, map[string]webui.PagedRange{"Occurrences": {Min: f(5)}})
 	assert.True(t, last.Filters == nil)
 
 	serve(h, http.MethodGet, "/admin/device?devices.max.occurrences=10.5&devices.min.rate=-2")
-	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Max: f(10.5)}, "Rate": {Min: f(-2)}})
+	assert.DeepEqual(t, last.Ranges, map[string]webui.PagedRange{"Occurrences": {Max: f(10.5)}, "Rate": {Min: f(-2)}})
 
 	serve(h, http.MethodGet, "/admin/device?devices.min.occurrences=5&devices.max.occurrences=5")
-	assert.DeepEqual(t, last.Ranges, map[string]webui.Range{"Occurrences": {Min: f(5), Max: f(5)}}) // equal bounds: exactly 5
+	assert.DeepEqual(t, last.Ranges, map[string]webui.PagedRange{"Occurrences": {Min: f(5), Max: f(5)}}) // equal bounds: exactly 5
 
 	// A bound that is not a finite number never arrives; neither does text for a number column.
 	for _, bad := range []string{"abc", "NaN", "Inf", "-Inf", "1e999", ""} {
@@ -474,15 +474,15 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 
 	var asked int
 	page := webui.Page[webui.NoArgs]{Path: "/device", Body: webui.Table[Device]{
-		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+		Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			asked = q.Limit
 			var all []Device
 			for i := range 60 {
 				all = append(all, Device{Id: fmt.Sprintf("dev%02d", i)})
 			}
 			end := min(q.Offset+q.Limit, len(all))
-			return webui.Window[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
-		},
+			return webui.PagedWindow[Device]{Items: all[q.Offset:end], Total: len(all)}, webui.Ready()
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
@@ -495,13 +495,13 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 }
 
 // viewTable is a table that records the Query it was asked.
-func viewTable(title string, seen *webui.Query) webui.Table[Device] {
+func viewTable(title string, seen *webui.PagedQuery) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
-		Load: func(_ context.Context, q webui.Query) (webui.Window[Device], webui.Loaded) {
+		Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			*seen = q
-			return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
-		},
+			return webui.PagedWindow[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
+		}},
 		Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 	}
 }
@@ -509,19 +509,19 @@ func viewTable(title string, seen *webui.Query) webui.Table[Device] {
 func TestATablesStateIsNamedByItsTitleAndAnUntitledOneIsTable(t *testing.T) {
 	t.Parallel()
 
-	var a, b webui.Query
+	var a, b webui.PagedQuery
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{viewTable("Open alerts", &a), viewTable("", &b)}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 	serve(h, http.MethodGet, "/p?open-alerts.sort=id&table.sort=id&table.desc=true")
 
-	assert.DeepEqual(t, a, webui.Query{Limit: 25, Sort: "ID"})
-	assert.DeepEqual(t, b, webui.Query{Limit: 25, Sort: "ID", Desc: true})
+	assert.DeepEqual(t, a, webui.PagedQuery{Limit: 25, Sort: "ID"})
+	assert.DeepEqual(t, b, webui.PagedQuery{Limit: 25, Sort: "ID", Desc: true})
 }
 
 func TestTablesWithTheSameTitleOnScreenTogetherAreToldApartByANumber(t *testing.T) {
 	t.Parallel()
 
-	var first, second webui.Query
+	var first, second webui.PagedQuery
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Split{viewTable("Devices", &first), viewTable("Devices", &second)}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 	serve(h, http.MethodGet, "/p?devices.sort=id&devices-2.offset=3")
@@ -537,7 +537,7 @@ func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
 
 	// The same table in both panels of a Tabs keeps its state in both, since they are
 	// never shown together. A second Tabs is told apart by a number.
-	var outside, inA, inB, inOther webui.Query
+	var outside, inA, inB, inOther webui.PagedQuery
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
 		viewTable("Events", &outside),
 		webui.Tabs{

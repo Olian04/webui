@@ -115,10 +115,10 @@ var OverviewDevices = webui.Table[Device]{
 	Title:    "Devices",
 	Desc:     "The same table as the Devices page's, with fewer columns. Every header sorts and filters, and a row opens its device.",
 	PageSize: 9,
-	Rows: func(context.Context) ([]Device, webui.Loaded) {
+	Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 		devices, _ := service.Devices(nil, nil, Order{})
 		return devices, webui.Ready()
-	},
+	}},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
@@ -131,7 +131,7 @@ var OverviewAlerts = webui.Table[Alert]{
 	Title:    "Open alerts",
 	Desc:     "A row opens the alert. Dismiss is for editors, and says why it is disabled for a critical alert.",
 	PageSize: 9,
-	Rows:     func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() },
+	Loader:   webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() }},
 	Key:      func(a Alert) string { return a.ID },
 	RowClick: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,
@@ -146,7 +146,7 @@ var OverviewEvents = webui.Table[Event]{
 	Title:    "Recent events",
 	Desc:     "What the devices did in the last hour. A table of its own kind of row, in the same Split as the others.",
 	PageSize: 8,
-	Rows:     func(context.Context) ([]Event, webui.Loaded) { return service.Events(0), webui.Ready() },
+	Loader:   webui.RowsLoader[Event]{Load: func(context.Context) ([]Event, webui.Loaded) { return service.Events(0), webui.Ready() }},
 	Columns:  []webui.Accessor[Event]{EventTime, EventKind, EventDetail},
 }
 

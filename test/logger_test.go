@@ -23,15 +23,15 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 		Body: webui.Stack{
 			webui.Table[blob]{
 				Title:   "Formatted",
-				Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
+				Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
 				Key:     func(b blob) string { return b.Name },
 				Columns: []webui.Accessor[blob]{blobName, broken},
 			},
 			webui.Table[blob]{
 				Title: "Unavailable",
-				Rows: func(context.Context) ([]blob, webui.Loaded) {
+				Loader: webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) {
 					return nil, webui.Failed(errors.New("the backend is down"))
-				},
+				}},
 				Columns: []webui.Accessor[blob]{blobName},
 			},
 		},

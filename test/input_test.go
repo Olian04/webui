@@ -134,9 +134,9 @@ func TestAnInputKindIsATableCellAsText(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[contact]{
-		Rows: func(context.Context) ([]contact, webui.Loaded) {
+		Loader: webui.RowsLoader[contact]{Load: func(context.Context) ([]contact, webui.Loaded) {
 			return []contact{{Email: "a@example.com"}}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[contact]{contactEmail},
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/s").Body.String()
@@ -200,7 +200,7 @@ func TestADateOnlyColumnShowsTheDayAndItsFilterIsDates(t *testing.T) {
 	ends := time.Date(2027, 1, 15, 13, 45, 0, 0, time.UTC)
 	table := func(dateOnly bool) string {
 		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[contact]{
-			Rows: func(context.Context) ([]contact, webui.Loaded) { return []contact{{Ends: ends}}, webui.Ready() },
+			Loader: webui.RowsLoader[contact]{Load: func(context.Context) ([]contact, webui.Loaded) { return []contact{{Ends: ends}}, webui.Ready() }},
 			Columns: []webui.Accessor[contact]{
 				webui.Time[contact]{Label: "Ends", DateOnly: dateOnly, Load: func(c contact) time.Time { return c.Ends }},
 			},

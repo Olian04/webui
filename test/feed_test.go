@@ -27,7 +27,7 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 4,
-		Feed: func(_ context.Context, after string, limit int) ([]Device, string, webui.Loaded) {
+		Loader: webui.FeedLoader[Device]{Load: func(_ context.Context, after string, limit int) ([]Device, string, webui.Loaded) {
 			*seen = append(*seen, asked{after, limit})
 			start, _ := strconv.Atoi(after)
 			var rows []Device
@@ -38,7 +38,7 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 				return rows, "", webui.Ready()
 			}
 			return rows, strconv.Itoa(start + limit), webui.Ready()
-		},
+		}},
 		Key:     func(d Device) string { return d.Id },
 		Columns: []webui.Accessor[Device]{formID},
 		Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Open", Run: func(_ context.Context, d Device) (webui.Outcome, error) {
@@ -125,13 +125,13 @@ func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testi
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
+		Loader: webui.FeedLoader[Device]{Load: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			n := 0
 			if after != "" {
 				n, _ = strconv.Atoi(after[:3])
 			}
 			return []Device{{Id: "x"}}, fmt.Sprintf("%03d", n+1) + long, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
@@ -215,10 +215,10 @@ func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) 
 	var got []string
 	tbl := webui.Table[Device]{
 		Title: "Objects",
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
+		Loader: webui.FeedLoader[Device]{Load: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			got = append(got, after)
 			return []Device{{Id: "x"}}, "a b&c=d/é", webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
@@ -251,9 +251,9 @@ func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
 	t.Parallel()
 
 	tbl := webui.Table[Device]{
-		Feed: func(context.Context, string, int) ([]Device, string, webui.Loaded) {
+		Loader: webui.FeedLoader[Device]{Load: func(context.Context, string, int) ([]Device, string, webui.Loaded) {
 			return nil, "", webui.Failed(errors.New("bucket secret-name is gone"))
-		},
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
@@ -274,8 +274,12 @@ func TestATableTakesExactlyOneSource(t *testing.T) {
 		}
 		return all
 	}
-	assert.Contains(t, problems(webui.Table[Device]{}), "none of Rows, Load and Feed")
-	assert.Contains(t, problems(webui.Table[Device]{Feed: feed, Load: okRows}), "more than one of Rows, Load and Feed")
+	// A table has one source, and a Loader is the one place to say it: two cannot be written, and none, or a loader with nothing to load with, is said.
+	assert.Contains(t, problems(webui.Table[Device]{}), "a Table has no Loader")
+	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.FeedLoader[Device]{}}), "Table.Loader is a FeedLoader with no Load")
+	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.PagedLoader[Device]{}}), "Table.Loader is a PagedLoader with no Load")
+	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.RowsLoader[Device]{}}), "Table.Loader is a RowsLoader with no Load")
+	_ = feed
 }
 
 func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
@@ -287,10 +291,10 @@ func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
 	tbl := webui.Table[Device]{
 		Title:    "Objects",
 		PageSize: 1,
-		Feed: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
+		Loader: webui.FeedLoader[Device]{Load: func(_ context.Context, after string, _ int) ([]Device, string, webui.Loaded) {
 			n, _ := strconv.Atoi(after)
 			return []Device{{Id: "x"}}, strconv.Itoa(n + 1), webui.Ready() // there is always another
-		},
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")

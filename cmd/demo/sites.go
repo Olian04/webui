@@ -50,9 +50,9 @@ var Sites = webui.Page[webui.NoArgs]{
 // SitesTable is also on the landing page: a leaf is a value, so any page can
 // hold the one a page already has.
 var SitesTable = webui.Table[SiteSummary]{
-	Title: "Sites",
-	Desc:  "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
-	Rows:  func(context.Context) ([]SiteSummary, webui.Loaded) { return service.Sites(), webui.Ready() },
+	Title:  "Sites",
+	Desc:   "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
+	Loader: webui.RowsLoader[SiteSummary]{Load: func(context.Context) ([]SiteSummary, webui.Loaded) { return service.Sites(), webui.Ready() }},
 	RowClick: webui.Link[SiteSummary, SiteArgs]{
 		Page: SiteDetail,
 		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
@@ -101,11 +101,11 @@ var SiteDetail = webui.Page[SiteArgs]{
 var SiteDevices = webui.Table[Device]{
 	Title:    "Devices",
 	PageSize: 5,
-	Rows: func(ctx context.Context) ([]Device, webui.Loaded) {
+	Loader: webui.RowsLoader[Device]{Load: func(ctx context.Context) ([]Device, webui.Loaded) {
 		// The page says which site; the user's filters narrow within it.
 		devices, _ := service.Devices(map[string][]string{Site.Label: {webui.ArgsOf[SiteArgs](ctx).Name}}, nil, Order{})
 		return devices, webui.Ready()
-	},
+	}},
 	RowClick: webui.Link[Device, DeviceArgs]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
@@ -115,9 +115,9 @@ var SiteDevices = webui.Table[Device]{
 
 var SiteAlerts = webui.Table[Alert]{
 	Title: "Open alerts",
-	Rows: func(ctx context.Context) ([]Alert, webui.Loaded) {
+	Loader: webui.RowsLoader[Alert]{Load: func(ctx context.Context) ([]Alert, webui.Loaded) {
 		return service.AlertsAt(webui.ArgsOf[SiteArgs](ctx).Name), webui.Ready()
-	},
+	}},
 	RowClick: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,
 		Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },

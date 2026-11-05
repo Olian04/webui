@@ -164,7 +164,7 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(form(webui.Secret[credential]{Label: "Key", Load: load})), "has no Store")
 	assert.Contains(t, problems(form(webui.Secret[credential]{Label: "Key", Store: store})), "has no Load")
 	assert.Contains(t, problems(webui.Table[credential]{
-		Rows:    func(context.Context) ([]credential, webui.Loaded) { return nil, webui.Ready() },
+		Loader:  webui.RowsLoader[credential]{Load: func(context.Context) ([]credential, webui.Loaded) { return nil, webui.Ready() }},
 		Columns: []webui.Accessor[credential]{webui.Secret[credential]{Label: "Key", Load: load, Store: store}},
 	}), "is a Secret in a table")
 }

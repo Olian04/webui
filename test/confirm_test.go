@@ -27,7 +27,7 @@ func confirmApp(confirm string, guard func(context.Context, parcel) error) (http
 		return func(context.Context, parcel) (webui.Outcome, error) { ran[name]++; return webui.Success(name), nil }
 	}
 	table := webui.Table[parcel]{
-		Rows: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }, Key: func(p parcel) string { return p.Name },
+		Loader: webui.RowsLoader[parcel]{Load: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }}, Key: func(p parcel) string { return p.Name },
 		Columns: []webui.Accessor[parcel]{parcelName},
 		Actions: []webui.Control[parcel]{webui.Action[parcel]{Label: "Drop", Confirm: confirm, Guard: guard, Run: done("row")}},
 		BulkActions: []webui.Action[[]parcel]{{
@@ -153,7 +153,7 @@ func TestAConfirmOnARowClickIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	table := webui.Table[parcel]{
-		Rows:     func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() },
+		Loader:   webui.RowsLoader[parcel]{Load: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }},
 		Key:      func(p parcel) string { return p.Name },
 		Columns:  []webui.Accessor[parcel]{parcelName},
 		RowClick: webui.Action[parcel]{Confirm: "Sure?", Run: func(context.Context, parcel) (webui.Outcome, error) { return webui.Success("x"), nil }},

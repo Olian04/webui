@@ -15,7 +15,7 @@ import (
 // Load and Store: time.Parse and time.Unix, and Format and Unix.
 type Time[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
+	// the column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the moment from the model. The zero time is not set.
@@ -64,7 +64,7 @@ func (a Time[M]) meta() accessorMeta {
 // not a moment, so it is not Required: an accessor that may be absent is not wanted.
 type OptionalTime[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
+	// the column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the moment from the model: nil when there is none.
