@@ -449,7 +449,7 @@ Each rule has exactly one visual form. A value that is always there (`Int`, `Flo
 | `MinLen` / `MaxLen` | `minlength` / `maxlength` | "3–32 characters", in the popover |
 | `Min` / `Max` (`NumberRules`) | `min` / `max` | "1–65535", in the popover |
 | `Pattern` | `pattern` | The pattern's message, in the popover and beneath a refused value |
-| `String.Secret` | `type="password"`, `autocomplete="new-password"` | "Leave empty to keep the current value", in the popover; the stored value is never in the page, and a row of bullets (the input's placeholder, always eight) says that there is one |
+| `Secret` | `type="password"`, `autocomplete="new-password"` | "Leave empty to keep the current value", in the popover; the stored value is never in the page, and a row of bullets (the input's placeholder, always eight) says that there is one |
 | `Select` with `Multi` | `multiple` | "Hold Ctrl or ⌘ to choose more than one", in the popover |
 | `Slider` with a `StepSize` | `step` | "In steps of n", in the popover |
 | `File` | `accept`, `required` | What it takes ("A PNG or JPEG file") and "Up to 5 MiB", in the popover; "Choose the file again" in a form that was refused, which a browser cannot refill |

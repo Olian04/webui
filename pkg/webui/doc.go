@@ -205,16 +205,19 @@
 // is typed, and [Phone.DefaultCountry] is where the selector starts. A colour is
 // "#rrggbb", and a picker cannot be empty, so a field with no value shows black. They
 // have the rules of a [String], except the colour, which has none; a [String] is the
-// accessor for any other text, and for a password or a text area. [URL] is the one that
+// accessor for any other text, and for a text area. [URL] is the one that
 // links, and has no Store.
 //
-// A [String] with Secret set is a password input for a value that is never read back,
-// such as an API key. The stored value is not in the page, in a table, in a file or in
-// a search, and not in the form that answers a refused submission; the input shows a
-// row of bullets, the same whatever the value is, when there is one. A submission that
-// leaves it empty leaves it as it is, so only a key that is typed is stored. A Secret
-// needs a Store, cannot be Required (an empty submission leaves it as it is), and is
-// for a form only: not a table's column, an editor's text or a toolbar's value.
+// A [Secret] is a password input for a value that is never read back, such as an API
+// key. Its Load returns a bool, whether there is a value, so the library is never given
+// the value: it is not in the page, in a file or in a search, and not in the form that
+// answers a refused submission, and the input shows a row of bullets, the same whatever
+// the value is, when there is one. Its Store is handed what was typed. A submission that
+// leaves it empty leaves the stored value as it is, so only a key that is typed is
+// stored, and a Secret has no Required, which an empty submission could not meet.
+// Removing a key is a choice of its own, which an app offers as an [Action]. A Secret
+// needs a Store, and is for a form only: not a table's column or a toolbar's value, and
+// an [Editor], a [Diff] and a [Markdown] take a [String], so not one.
 //
 // A [String] with Multiline set is a text area, for text of more than one line. Its
 // rules are MinLen and MaxLen, and it may be Required; a Pattern and the text rules are one line's

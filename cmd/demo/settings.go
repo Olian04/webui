@@ -22,13 +22,12 @@ var (
 		// Shown in the input while it is empty.
 		Placeholder: "eu-north-1",
 	}
-	// A Secret is a password input for a value that is never read back: the stored key is not in the page, and
-	// submitting it empty leaves it as it is, so only a key that is typed is stored.
-	APIKey = webui.String[Settings]{
+	// A Secret is a password input for a value that is never read back: Load says only whether there is a key, the stored key is not in the
+	// page, and submitting it empty leaves it as it is, so only a key that is typed is stored.
+	APIKey = webui.Secret[Settings]{
 		Label:       "API key",
-		Load:        func(s Settings) string { return s.APIKey },
+		Load:        func(s Settings) bool { return s.APIKey != "" },
 		Store:       func(s *Settings, v string) { s.APIKey = v },
-		Secret:      true,
 		Rules:       webui.StringRules{MinLen: 8, MaxLen: 128},
 		Placeholder: "Leave empty to keep it",
 	}

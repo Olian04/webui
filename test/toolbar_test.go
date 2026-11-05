@@ -444,7 +444,7 @@ func TestAFormInAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 	text := func(f webui.String[toolState]) webui.Form[toolState] { return settings(f) }
 	load := func(a toolState) string { return strconv.Itoa(a.Minutes) }
 	store := func(*toolState, string) {}
-	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Key", Secret: true, Load: load, Store: store})), "is a Secret in a toolbar")
+	assert.Contains(t, problems(settings(webui.Secret[toolState]{Label: "Key", Load: func(a toolState) bool { return a.Minutes != 0 }, Store: store})), "is a Secret in a toolbar")
 	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Body", Multiline: true, Load: load, Store: store})), "is Multiline in a toolbar")
 	assert.Contains(t, problems(settings(webui.File[toolState]{Label: "Logo", MaxSize: 1 << 20, Load: func(toolState) *webui.FileInfo { return nil }, Store: func(*toolState, *webui.Upload) {}})), "is a File in a toolbar")
 }

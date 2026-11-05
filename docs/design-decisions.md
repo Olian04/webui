@@ -230,15 +230,8 @@ design element.
   and which would be a combobox for one value and a tag input for several; a select of several values that grows with what was
   entered is the case that would need it.
 
-- **A `String` can be a `Secret`** (a value that is typed and never read back, such as an API key). It is a flag on the
-  accessor, not a type, so its rules and placeholder come with it. The stored value is kept out of the page at one place:
-  its `Get` returns `""`, which is what the input, a table cell, search, sort, filters and the CSV and JSON files all read, so
-  there is no second place to forget. The form that answers a refused submission would still echo what was typed, which
-  it does for every field so that the value does not look reset, so a secret is left out of the echo too.
-  An empty submission leaves the stored value (its setter ignores `""`), since the page cannot show the value and the
-  visitor cannot be asked to type it again to change something else; so a `Secret` cannot be `Required`, which would say
-  both things, and clearing one is not possible, which is the cost: the app offers its own button for it if it wants one. A
-  secret needs a `Store`, and is a compile error in a table, an editor and a toolbar (a toolbar shows values, and there is nothing to show).
+- **A `Secret` is an accessor of its own** (a value that is typed and never read back, such as an API key). It was a flag on `String`, and the flag needed a compile error for each of `String`'s fields that it could not be combined with (`Required`, `Multiline`, no `Store`), which is the case where a type should say so: so it is a type, and `Secret[M]` has `Label`, `Load func(M) bool`, `Store func(*M, string)`, `Rules`, `Placeholder` and `Help`, and no `Required` or `Multiline` to refuse. `Load` returns whether there is a value, as `File.Load` returns what is kept while its `Store` takes what was sent, so the library is never given the stored value and cannot put it in the page. Everything that reads a field reads its `Get`, which returns `""`, so there is no second place to forget: not the input, a table cell, search, sort, filters or the CSV and JSON files. The form that answers a refused submission would still echo what was typed, which it does for every field so that the value does not look reset, so a secret is left out of the echo too.
+  An empty submission leaves the stored value (its setter ignores `""`), since the page cannot show the value and the visitor cannot be asked to type it again to change something else; so a `Secret` has no `Required`, which would say both things. Clearing one is not something a form does: the app offers its own `Action` for it if it wants one, as a choice of its own (a `Removable` checkbox, as `File` has, was not taken for that reason). A secret needs a `Store`, and is a compile error in a table and a toolbar (a toolbar shows values, and there is nothing to show); an `Editor`, a `Diff` and a `Markdown` take a `String`, so a `Secret` is not accepted there by the type. The placement checks stay `Compile` errors until there is a second interface for the accessors that take input.
   The input is `type="password"` with `autocomplete="new-password"`, so a browser does not offer what it saved for the site.
 - **A secret that has a value says that it has one, and nothing of it.** That there *is* a value is shown, since an empty box
   reads as "nothing is stored": the input's placeholder is a row of bullets, always eight, so that neither the
@@ -273,7 +266,7 @@ design element.
 
 - **A kind of text that has an input of its own is an accessor of its own** (`Email`, `Phone`, `Website`, `ColorPicker`), not a
   type on `String`. The first version was a typed `String.Input`, and it needed a compile error for every field of `String` that
-  it could not be combined with: `Secret` and `Multiline` (inputs of their own), and for a color `MinLen`, `MaxLen`, `Pattern`
+  it could not be combined with: `Multiline` (an input of its own), and for a color `MinLen`, `MaxLen`, `Pattern`
   and the text rules. Rules that a type has to forbid by an error are rules it should not have: the accessors have only
   the fields that make sense for them, so those combinations cannot be written, and a `ColorPicker` has no `Rules` and no
   `Placeholder` at all. What they share with `String` (the rules, the placeholder, sorting and filtering as text) is one
