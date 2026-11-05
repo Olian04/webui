@@ -146,7 +146,7 @@
     var loading = $('.status-loading');
     if (!loading) return;
     var badge = document.createElement('span');
-    badge.className = 'sb-badge sb-warn';
+    badge.className = 'sb-badge tone-warn';
     badge.title = 'The page ended before all of it arrived. Refresh to try again.';
     badge.textContent = 'incomplete';
     loading.className = 'status-meta';
@@ -190,7 +190,7 @@
   }
 
   function watchToast(el) {
-    if (el.classList.contains('err') || el.classList.contains('warn')) return;
+    if (el.classList.contains('tone-bad') || el.classList.contains('tone-warn')) return;
     var left = TOAST_MS;
     var since = 0;
     var timer = 0;
@@ -1436,7 +1436,7 @@
     field.appendChild(hint);
     field.appendChild(chevron);
 
-    var list = make('div', 'msel-pop');
+    var list = make('div', 'msel-pop raise pop');
     list.id = id + '-list';
     list.setAttribute('role', 'listbox');
     list.hidden = true;
@@ -1465,7 +1465,7 @@
     });
 
     function badge(option) {
-      var b = make('span', 'badge ' + (option.getAttribute('data-badge') || 'badge-mute'));
+      var b = make('span', 'badge ' + (option.getAttribute('data-badge') || 'tone-mute'));
       var dot = make('span', 'dot');
       dot.setAttribute('aria-hidden', 'true');
       b.appendChild(dot);

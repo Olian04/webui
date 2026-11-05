@@ -235,7 +235,7 @@ func TestFormShowsBadgesAndSlidersByWhetherTheyCanBeChanged(t *testing.T) {
 	body := serve(formApp(sliderForm()), http.MethodGet, "/admin/device/dev1").Body.String()
 
 	// A badge is shown, never typed into: its word, its tone, and no input.
-	assert.Contains(t, body, `<span class="badge badge-ok"><span class="dot" aria-hidden="true"></span>healthy</span>`)
+	assert.Contains(t, body, `<span class="badge tone-ok"><span class="dot" aria-hidden="true"></span>healthy</span>`)
 	assert.False(t, strings.Contains(body, `name="f0"`))
 
 	// A slider with a Store is a number input over its range, submitting its value, with a range beside it to drag.

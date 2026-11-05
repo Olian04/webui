@@ -22,7 +22,7 @@ func TestTheActivityPageIsListsAndCards(t *testing.T) {
 	// The alerts are the first tab, four of them, each a link to the alert's own page, with the severity as a badge in words.
 	assert.Equal(t, strings.Count(body[strings.Index(body, `<h2 class="panel-title">Open alerts`):strings.Index(body, `<h2 class="panel-title">People`)], `<li class="item">`), 4)
 	assert.Contains(t, body, `<a class="item-link" href="/admin/alert/`)
-	assert.Contains(t, body, `class="badge badge-bad"`)
+	assert.Contains(t, body, `class="badge tone-bad"`)
 	assert.Contains(t, body, `href="/admin/activity?open-alerts.limit=8"`) // and there are more
 
 	// The pictures are on this site, so no origin is trusted and the page's policy is the library's own.

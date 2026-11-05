@@ -163,7 +163,7 @@ func TestADevicesNotesAreATextAreaThatKeepsItsLines(t *testing.T) {
 		}
 		service.mu.Unlock()
 	})
-	assert.Contains(t, get(h, "/admin/device/dev_27c38b").Body.String(), `<textarea id="p-0-0-f3" class="input textarea" name="f3"`)
+	assert.Contains(t, get(h, "/admin/device/dev_27c38b").Body.String(), `<textarea id="p-0-0-f3" class="input" name="f3"`)
 
 	device, _ := service.Device("dev_27c38b")
 	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f3": {"Looked after by Ines.\r\nCall before a restart."}})

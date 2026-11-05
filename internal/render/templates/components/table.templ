@@ -267,7 +267,7 @@ templ exportLinks(links []ExportLink, note string) {
 					Export
 					@Icon(IconProps{Name: IconChevron, Class: "export-chevron"})
 				</summary>
-				<div class="menu-pop">
+				<div class="menu-pop raise pop">
 					for _, l := range links {
 						<a class="menu-item" href={ l.Href } download="" title={ "Download the rows as " + l.Format } aria-label={ "Download the rows as " + l.Format }>{ l.Label }</a>
 					}

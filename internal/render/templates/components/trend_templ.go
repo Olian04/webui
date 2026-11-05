@@ -21,9 +21,9 @@ type DeltaProps struct {
 func (p DeltaProps) class() string {
 	switch p.Tone {
 	case ToneOK:
-		return "delta delta-ok"
+		return "delta tone-ok"
 	case ToneCritical:
-		return "delta delta-bad"
+		return "delta tone-bad"
 	case TonePrimary, ToneWarning, ToneNeutral:
 	}
 	return "delta"

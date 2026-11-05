@@ -144,7 +144,7 @@ func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T)
 				return
 			}
 			assert.Contains(t, body, `<button class="file-thumb-link" type="button" commandfor="p-f1-preview" command="show-modal" aria-haspopup="dialog" aria-label="Preview a.png" title="Preview a.png"><img class="file-thumb" src="`+c.img+`" alt=""></button>`)
-			assert.Contains(t, body, `<dialog id="p-f1-preview" class="preview-dialog" closedby="any" aria-label="Preview of a.png">`)
+			assert.Contains(t, body, `<dialog id="p-f1-preview" class="preview-dialog raise" closedby="any" aria-label="Preview of a.png">`)
 			// The full image is lazy: in a dialog that is closed it has no box, so it is fetched when the dialog is opened and not before.
 			assert.Contains(t, body, `<img class="preview-full" src="`+c.link+`" alt="a.png" loading="lazy" decoding="async">`)
 			assert.Contains(t, body, `commandfor="p-f1-preview" command="close"`)

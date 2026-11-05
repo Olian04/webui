@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
@@ -273,5 +274,68 @@ var LayoutManyTabs = webui.Page[webui.NoArgs]{
 		tabsOf("Sixteen",
 			"Overview", "Devices and their addresses", "Open alerts", "Sites", "Configuration", "Retention policy", "Ingest settings",
 			"Paging rule", "Audit log", "Files", "Handbook", "Incidents", "Sinks", "Glossary", "Metrics", "System status"),
+	},
+}
+
+// listLine is one row of the lists that show the height cap: a headline, a small fact and a badge, made here so the
+// page does not depend on how many alerts the collector happens to have.
+type listLine struct {
+	Title, Kind, Age string
+}
+
+const (
+	shortListCount = 3
+	longListCount  = 48
+)
+
+func listLines(n int) []listLine {
+	kinds := []string{"info", "warning", "critical"}
+	out := make([]listLine, n)
+	for i := range out {
+		out[i] = listLine{
+			Title: fmt.Sprintf("Event %d: ingest probe on collector-%02d", i+1, i%12+1),
+			Kind:  kinds[i%len(kinds)],
+			Age:   fmt.Sprintf("%d min ago", i+1),
+		}
+	}
+	return out
+}
+
+func listOf(title, desc string, n int) webui.List[listLine] {
+	lines := listLines(n)
+	return webui.List[listLine]{
+		Title:    title,
+		Desc:     desc,
+		PageSize: n,
+		Load: func(_ context.Context, limit int) ([]listLine, webui.Loaded) {
+			return lines[:min(limit, len(lines))], webui.Ready()
+		},
+		Headline: webui.String[listLine]{Label: "Title", Load: func(l listLine) string { return l.Title }},
+		Meta: []webui.Accessor[listLine]{
+			webui.String[listLine]{Label: "Age", Load: func(l listLine) string { return l.Age }},
+		},
+		Badge: webui.Select[listLine]{
+			Label: "Kind",
+			Load:  func(l listLine) []string { return []string{l.Kind} },
+			Options: []webui.Option{
+				{Value: "info"},
+				{Value: "warning", Tone: webui.ToneWarning},
+				{Value: "critical", Tone: webui.ToneCritical},
+			},
+		},
+	}
+}
+
+// A short list is as tall as its items. A long one is held to the window less the shell, the same cap a table
+// panel uses, and scrolls past that so it does not push the page. Forty-eight items are enough on a tall screen.
+var LayoutList = webui.Page[webui.NoArgs]{
+	Path: "/layout/list",
+	Nav:  webui.Nav{Label: "A long list", Icon: "list", Section: "Layout"},
+	Body: webui.Stack{
+		intro("A List of a few items is as tall as they are. A long one is no taller than the window less the shell (the top bar and the content region's padding), and no shorter than 16rem unless its items are fewer: past that the list scrolls, as a table panel does, so it does not push the page. The two lists share a row, so the short panel is as tall as the long one and its items stay at the top; only the long list has a bar."),
+		webui.Split{
+			listOf("A few items", "Three items, as tall as they are. The panel matches the one beside it; the list does not grow.", shortListCount),
+			listOf("Many items", "Forty-eight items, enough to pass the window less the shell. The list scrolls; the page does not grow with it.", longListCount),
+		},
 	},
 }

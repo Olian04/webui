@@ -94,7 +94,7 @@ func TestFailureShowsTheFormAgainWithWhatWasTypedAndAnErrorToast(t *testing.T) {
 	assert.Contains(t, body, `value="10.0.0.3"`)
 	assert.Contains(t, body, `value="5"`)
 	assert.Contains(t, body, "Could not reach the device")
-	assert.Contains(t, body, `class="toast err"`)
+	assert.Contains(t, body, `class="toast raise tone-bad"`)
 	assert.False(t, strings.Contains(body, `class="err"`)) // it is not about a field: no field message
 }
 
@@ -192,9 +192,9 @@ func TestAWarningToastIsDrawnAsAWarning(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w.Body.String()
 	}
-	assert.Contains(t, get("wCareful"), `class="toast warn"`)
-	assert.Contains(t, get("oFine"), `class="toast"`)
-	assert.Contains(t, get("eBad"), `class="toast err"`)
+	assert.Contains(t, get("wCareful"), `class="toast raise tone-warn"`)
+	assert.Contains(t, get("oFine"), `class="toast raise"`)
+	assert.Contains(t, get("eBad"), `class="toast raise tone-bad"`)
 }
 
 func TestAToastCanBeDismissedWithoutScript(t *testing.T) {

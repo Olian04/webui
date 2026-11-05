@@ -66,15 +66,15 @@ func TestASelectThatIsEditedIsAListToChooseFrom(t *testing.T) {
 	// empty option asks for a choice.
 	assert.Contains(t, body, `<select data-select id="p-f1" class="input" name="f1" required data-msg-value-missing="This field is required.">`)
 	assert.Contains(t, body, `<option value="">Choose…</option>`)
-	assert.Contains(t, body, `<option value="done" data-badge="badge-ok" selected>Done</option>`)
-	assert.Contains(t, body, `<option value="open" data-badge="badge-warn">Open</option>`) // an option says its label
+	assert.Contains(t, body, `<option value="done" data-badge="tone-ok" selected>Done</option>`)
+	assert.Contains(t, body, `<option value="open" data-badge="tone-warn">Open</option>`) // an option says its label
 	assert.False(t, strings.Contains(body, `<option value="open" selected>`))
 
 	// Any number: a list, with each that is held selected, and a hint on how to choose several.
 	assert.Contains(t, body, `name="f2" multiple size="3"`)
-	assert.Contains(t, body, `<option value="bug" data-badge="badge-mute" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui" data-badge="badge-mute">UI</option>`)
-	assert.Contains(t, body, `<option value="docs" data-badge="badge-mute" selected>docs</option>`)
+	assert.Contains(t, body, `<option value="bug" data-badge="tone-mute" selected>bug</option>`)
+	assert.Contains(t, body, `<option value="ui" data-badge="tone-mute">UI</option>`)
+	assert.Contains(t, body, `<option value="docs" data-badge="tone-mute" selected>docs</option>`)
 	assert.Contains(t, body, "Hold Ctrl or ⌘ to choose more than one")
 	assert.False(t, strings.Contains(body, `<option value="">`+"—")) // a list of several has no empty option
 }
@@ -154,8 +154,8 @@ func TestARejectedSubmissionKeepsWhatWasChosen(t *testing.T) {
 	var saved task
 	// Status is missing, so it is refused; what was chosen in the labels is shown again.
 	_, body := submitTask(taskApp(task{Name: "a", Labels: []string{"docs"}}, &saved), url.Values{"f1": {""}, "f2": {"bug", "ui"}})
-	assert.Contains(t, body, `<option value="bug" data-badge="badge-mute" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui" data-badge="badge-mute" selected>UI</option>`)
+	assert.Contains(t, body, `<option value="bug" data-badge="tone-mute" selected>bug</option>`)
+	assert.Contains(t, body, `<option value="ui" data-badge="tone-mute" selected>UI</option>`)
 	assert.False(t, strings.Contains(body, `<option value="docs" selected>`))
 	assert.Contains(t, body, `aria-invalid="true"`)
 }
@@ -170,9 +170,9 @@ func TestASelectIsMarkedForTheScriptThatTurnsItIntoADropDown(t *testing.T) {
 	// so it needs the select marked, each option's tone, and the label's id to name the popup.
 	// Without the script the same markup is the native control.
 	assert.Equal(t, 2, strings.Count(body, "<select data-select "))
-	assert.Contains(t, body, `<option value="open" data-badge="badge-warn">Open</option>`)
-	assert.Contains(t, body, `<option value="done" data-badge="badge-ok" selected>Done</option>`)
-	assert.Contains(t, body, `<option value="later" data-badge="badge-mute">later</option>`) // no tone: muted
+	assert.Contains(t, body, `<option value="open" data-badge="tone-warn">Open</option>`)
+	assert.Contains(t, body, `<option value="done" data-badge="tone-ok" selected>Done</option>`)
+	assert.Contains(t, body, `<option value="later" data-badge="tone-mute">later</option>`) // no tone: muted
 	assert.Contains(t, body, `<label class="lbl" id="p-f1-label" for="p-f1">`)
 }
 
@@ -192,9 +192,9 @@ func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T)
 	}}
 	body := serve(webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
 
-	assert.Contains(t, body, `<span class="badge badge-warn"><span class="dot" aria-hidden="true"></span>Open</span>`) // its label, its tone
+	assert.Contains(t, body, `<span class="badge tone-warn"><span class="dot" aria-hidden="true"></span>Open</span>`) // its label, its tone
 	assert.Contains(t, body, `<span class="badges">`)
-	assert.Equal(t, strings.Count(body, `class="badge badge-mute"`), 3) // bug and UI, and the value that is no option
+	assert.Equal(t, strings.Count(body, `class="badge tone-mute"`), 3) // bug and UI, and the value that is no option
 	assert.Contains(t, body, `>UI</span>`)
 	assert.Contains(t, body, `>unlisted</span>`) // a value the select does not know is drawn as it is, neutral
 }
@@ -210,7 +210,7 @@ func TestASelectInAFormThatCannotBeEditedIsReadAndAnEmptyOneIsADash(t *testing.T
 	}}
 	body := serve(webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
 	assert.False(t, strings.Contains(body, "<select"))
-	assert.Contains(t, body, `badge-ok"><span class="dot" aria-hidden="true"></span>Done</span>`)
+	assert.Contains(t, body, `tone-ok"><span class="dot" aria-hidden="true"></span>Done</span>`)
 	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // no labels
 }
 
@@ -219,7 +219,7 @@ func TestASingleSelectHandedSeveralValuesShowsTheFirstWhenItIsEdited(t *testing.
 
 	var saved task
 	body := serve(taskApp(task{Name: "a", Status: []string{"later", "done"}}, &saved), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="later" data-badge="badge-mute" selected>later</option>`)
+	assert.Contains(t, body, `<option value="later" data-badge="tone-mute" selected>later</option>`)
 	assert.False(t, strings.Contains(body, `<option value="done" selected>`))
 }
 
@@ -251,7 +251,7 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 
 	// The filter offers each value the rows hold once, whatever rows hold several.
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title">Labels</div>`):]
+	filter := body[strings.Index(body, `<div class="filter-title caption">Labels</div>`):]
 	filter = filter[:strings.Index(filter, `</form>`)]
 	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 3)
 	for _, v := range []string{"bug", "docs", "ui"} {

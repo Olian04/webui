@@ -369,7 +369,7 @@ func TestRowActionFindsTheRowByKeyAndHonoursItsGuard(t *testing.T) {
 	// The guard that disabled the button also rejects the request.
 	rec := post(s.h, "/admin/device", formValues("_act", "row:0:locked"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(s.h, rec).Body.String(), "toast err")
+	assert.Contains(t, follow(s.h, rec).Body.String(), "tone-bad")
 	assert.DeepEqual(t, s.deleted, []string{"a:1"})
 
 	// A row that vanished, an action that does not exist, a malformed value.

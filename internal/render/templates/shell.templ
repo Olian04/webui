@@ -58,7 +58,7 @@ type AppShellProps struct {
 }
 
 templ AppShell(p AppShellProps) {
-	<a class="skip" href="#main">Skip to content</a>
+	<a class="skip raise" href="#main">Skip to content</a>
 	if p.Streaming && p.StatusLive != nil {
 		@p.StatusLive
 	}

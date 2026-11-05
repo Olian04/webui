@@ -48,7 +48,7 @@ templ TopBar(p TopBarProps) {
 			@Icon(IconProps{Name: IconMore})
 		</label>
 		<label class="top-backdrop" for="top-more" aria-hidden="true"></label>
-		<div class="top-right" id="top-right">
+		<div class="top-right drawer drawer-right" id="top-right">
 			{ children... }
 		</div>
 	</header>
@@ -107,10 +107,10 @@ templ ExternalLinks(items []LinkEntry) {
 		<summary class="iconbtn" title="External links" aria-label="External links">
 			@Icon(IconProps{Name: IconExternal})
 		</summary>
-		<div class="menu-pop">
+		<div class="menu-pop raise pop">
 			for _, it := range items {
 				if it.Section != "" {
-					<div class="menu-section">{ it.Section }</div>
+					<div class="menu-section caption">{ it.Section }</div>
 				}
 				<a
 					class="menu-item"
