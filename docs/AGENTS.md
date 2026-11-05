@@ -20,8 +20,8 @@
 | `pkg/prom` | The Prometheus `Observer` for `App.Observer`: it collects and serves none; collectors that already exist are reused. Its own package, so that a program that does not count with Prometheus does not link the client. |
 | `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links unless from a trusted origin; the only place that decides what text may do on a page. |
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
-| `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |
-| `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `internal/render/assets/monaco`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
+| `pkg/monaco`       | The code editor (`Editor`, `Diff`): `go:embed`s `editor/` and registers it in `internal/render/assets` from `init`; a program imports it for the effect, so one with no editor does not link it. Its subpackages are optional language-service packs: each `go:embed`s one worker, registers it the same way, and imports `pkg/monaco`. |
+| `tools/monaco`     | Node build of the embedded Monaco (`make monaco`, esbuild from the ESM package). Output is committed: `pkg/monaco/editor`, `pkg/monaco/*/worker`, `pkg/webui/language_gen.go`. Do not edit the output. |
 | `internal/tablequery` | Filter, sort and page rows held in memory, from the columns' accessors (`RowsLoader`). |
 | `internal/runtime` | Compiled app in `ctx`, prefix, routes, request pipeline (lazy panels, in-order streaming), POST actions (an accepted one ends in a 303, a refused form is answered with the page and a 422), flash, export, `Open` resolve. |
 | `internal/render`  | IR + loaded data → HTML. `templates/components` is the design language. The assets are built here (hashed, compressed) and served through `internal/assetserve` by the runtime's routes. |
@@ -99,7 +99,7 @@ item, and the script puts it in the page as it is. A panel that a job is shown i
 
 `internal/` packages may import each other. `pkg/` owns public types and `Compile` glue.
 
-Consumers outside this module cannot import `internal/`. No side effects on import, except `pkg/monaco/*`, which are imported for the effect (each registers its worker).
+Consumers outside this module cannot import `internal/`. No side effects on import, except `pkg/monaco` and `pkg/monaco/*`, which are imported for the effect (the editor, and each language service's worker, register themselves).
 
 Keep algorithms in `internal/`. `pkg/` owns the declaration AST.
 

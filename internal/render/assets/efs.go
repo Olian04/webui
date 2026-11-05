@@ -5,6 +5,7 @@ package assets
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"io/fs"
 	"path"
 	"slices"
@@ -12,10 +13,10 @@ import (
 	"sync"
 )
 
-// FS holds css/, js/, fonts/, the default favicon and the Monaco editor. Nothing else
-// is served.
+// FS holds css/, js/, fonts/ and the default favicon. Nothing else is served, and not the
+// editor, which is in pkg/monaco, so that a program that has no editor does not carry it.
 //
-//go:embed css js fonts favicon.svg monaco
+//go:embed css js fonts favicon.svg
 var FS embed.FS
 
 // iconNames is every Font Awesome Free solid icon name, one per line, so a name
@@ -39,10 +40,37 @@ type Monaco struct {
 	EditorWorker string `json:"editorWorker"`
 }
 
-// MonacoFiles reads the manifest of the editor the build produced.
+// The editor is the files of pkg/monaco, which a program imports to have it. The package
+// registers them here from init, as a language service registers its worker.
+var (
+	editorMu sync.RWMutex
+	editor   fs.FS
+)
+
+// RegisterEditor installs the editor: manifest.json and the files it names are at the root of files.
+func RegisterEditor(files fs.FS) {
+	editorMu.Lock()
+	defer editorMu.Unlock()
+	editor = files
+}
+
+// EditorInstalled is whether the program imported the editor.
+func EditorInstalled() bool {
+	editorMu.RLock()
+	defer editorMu.RUnlock()
+	return editor != nil
+}
+
+// MonacoFiles reads the manifest of the editor the build produced, or fails when the program did not import the editor.
 func MonacoFiles() (Monaco, error) {
 	var m Monaco
-	b, err := FS.ReadFile("monaco/manifest.json")
+	editorMu.RLock()
+	files := editor
+	editorMu.RUnlock()
+	if files == nil {
+		return m, errors.New("the editor is not installed: import _ \"github.com/Olian04/webui/pkg/monaco\"")
+	}
+	b, err := fs.ReadFile(files, "manifest.json")
 	if err != nil {
 		return m, err
 	}
@@ -85,8 +113,13 @@ func MonacoFile(name string) ([]byte, bool) {
 	if strings.Contains(name, "..") || strings.HasPrefix(name, "/") || name == "manifest.json" {
 		return nil, false
 	}
-	if b, err := FS.ReadFile(path.Join("monaco", name)); err == nil {
-		return b, true
+	editorMu.RLock()
+	files := editor
+	editorMu.RUnlock()
+	if files != nil {
+		if b, err := fs.ReadFile(files, name); err == nil {
+			return b, true
+		}
 	}
 	servicesMu.RLock()
 	defer servicesMu.RUnlock()

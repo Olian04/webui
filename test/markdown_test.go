@@ -1,8 +1,10 @@
 package webui_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -264,4 +266,21 @@ func TestATrustedOriginMustBeAnOriginAndNothingThatCouldChangeThePolicy(t *testi
 		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: markdownWithOrigins("x", ok)}}}.Compile("/admin")
 		assert.NoError(t, err)
 	}
+}
+
+// A program that carries the editor colours the block, and has nothing to say about it: the warning is for a program that has none.
+func TestAMarkdownCodeBlockIsNotWarnedAboutWhenTheProgramHasTheEditor(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	h := webui.App{Logger: slog.New(slog.NewTextHandler(&out, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Markdown[handbook]{
+		Title: "Handbook",
+		Load: func(context.Context) (handbook, webui.Loaded) {
+			return handbook{Text: "```go\nx\n```\n"}, webui.Ready()
+		},
+		Content: handbookText,
+	}}}}.MustCompile("/admin")
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	assert.Contains(t, body, `id="webui-code"`) // the editor is linked, to colour it
+	assert.False(t, strings.Contains(out.String(), "WARN"))
 }

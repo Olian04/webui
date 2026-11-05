@@ -7,6 +7,7 @@ import (
 
 	"github.com/Olian04/webui/internal/editorctx"
 	"github.com/Olian04/webui/internal/ir"
+	"github.com/Olian04/webui/internal/render/assets"
 )
 
 // Editor is a leaf that shows one text of a model in a code editor: with syntax
@@ -15,7 +16,9 @@ import (
 // one it is a viewer of the text, with the same highlighting and no way to change it.
 //
 // The editor is Monaco, which is the editor of VS Code, and a page that has one loads
-// it. Everything still works without script: an editor is then a plain text box with a
+// it. A program carries it by importing pkg/monaco for its effect (the language services below
+// import it themselves), and an app that has an Editor or a [Diff] without it is refused when it is
+// compiled. Everything still works without script: an editor is then a plain text box with a
 // Save button, and a viewer is the text in a monospace block.
 //
 // A language service (diagnostics, completion and the like) is available for a few
@@ -89,6 +92,7 @@ var _ PageBody = Editor[struct{}]{}
 func (e Editor[M]) editable() bool { return e.Content.Store != nil }
 
 func (e Editor[M]) validateBody(v *bodyValidator) {
+	needEditor(v, "an Editor")
 	needLoad(v, "an Editor", e.Load != nil)
 	validateAccessors(v, []Accessor[M]{e.Content}, accessorSite{where: "Editor.Content", uniqueLbl: true})
 	validateLanguage(v, "Editor", e.Language)
@@ -165,4 +169,13 @@ func lowerContext(fsys fs.FS, language Language) *editorctx.Context {
 	}
 	ctx, _ := editorctx.Read(fsys, editorctx.Dir(language.id())) // checked by validate
 	return ctx
+}
+
+// needEditor checks that the program carries the code editor, which an Editor and a Diff are drawn with: it is the files of pkg/monaco, which a program imports to have them, so
+// that one with no editor or diff does not link a few megabytes that it never serves.
+func needEditor(v *bodyValidator, what string) {
+	if !assets.EditorInstalled() {
+		v.add(what+" is drawn with the code editor, which this program does not carry",
+			`Import it for its effect, in the program: import _ "github.com/Olian04/webui/pkg/monaco". The language services (pkg/monaco/json, css, html and typescript) import it themselves.`)
+	}
 }

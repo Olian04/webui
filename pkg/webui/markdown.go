@@ -26,8 +26,12 @@ import (
 // from one of them is drawn in the text.
 //
 // It needs no script. A fenced code block that names a language is coloured by the
-// editor, which the page then loads, as it does for an [Editor]; a block that does
-// not, and every block without script, is plain text in a monospace block.
+// editor, which the page then loads, as it does for an [Editor], when the program carries it
+// (pkg/monaco, imported for its effect); a block that does not, every block without script, and
+// every block in a program that has not imported the editor, is plain text in a monospace block, with
+// its button that copies it. A Markdown is not refused for lacking the editor, as an Editor is: it
+// is read, and its text is whole without the colour. An app that has a [App.Logger] is told of it, once
+// for each page, as a warning that says how to put it right.
 type Markdown[M any] struct {
 	// Title is the panel's heading.
 	Title string

@@ -16,6 +16,7 @@ import (
 	"embed"
 
 	"github.com/Olian04/webui/internal/render/assets"
+	_ "github.com/Olian04/webui/pkg/monaco" // the editor that the service is for
 )
 
 //go:embed worker
