@@ -285,7 +285,7 @@ func TestAColumnWhoseWhenDoesNotHoldIsEmptyAndNotDrawn(t *testing.T) {
 	assert.Contains(t, body, `<div class="col" style="--w:1;"></div>`) // empty, which the stylesheet does not draw
 	assert.Contains(t, body, ">Next<")
 
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".col:empty {\n  display: none;\n}")
 }
 

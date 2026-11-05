@@ -100,11 +100,10 @@ func TestTheCopyButtonCarriesTheBlockAsItWasWritten(t *testing.T) {
 func TestTheCopyButtonIsHandledByTheScriptAndStyledByTheSheet(t *testing.T) {
 	t.Parallel()
 
-	h := markdownApp("```\nx\n```\n")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.Contains(t, js, "[data-copy-code]")
 	assert.Contains(t, js, "clipboard")
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".md-copy")
 }
 

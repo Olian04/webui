@@ -72,8 +72,7 @@ func TestTheSearchBoxIsAskedForByTheHeaderAndNotByAParameter(t *testing.T) {
 func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{}.MustCompile("/admin")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		"a[href][data-in-place]", "function syncPanels(href, moved)", "function settle(href, moved)", "syncPanels(href, moved)", "el.setAttribute('aria-busy', 'true')",
 		"a[data-in-place]", "form[method=\"post\"]", "setAttribute('action', fresh[i].getAttribute('action') || '')", "fetchLeaf(id, href, undefined, 'data-tabs')",
@@ -84,7 +83,7 @@ func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing
 	for _, gone := range []string{"function retarget(", "retarget(", "function skeleton(", "skel-row", "data-tabkey", "searchParams.set(key", "fragment=1", "Nothing matches", "Searching…"} {
 		assert.False(t, strings.Contains(js, gone))
 	}
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, "[data-leaf][aria-busy='true'] tbody {")
 	assert.False(t, strings.Contains(css, ".skel-row"))
 }

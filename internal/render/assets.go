@@ -22,7 +22,7 @@ const AssetDir = "/_webui"
 // failureHead inlines the stylesheet, because the failure page is served at
 // every address and cannot assume any asset route exists.
 var failureHead = sync.OnceValue(func() templ.Component {
-	css, err := assets.FS.ReadFile("css/app.css")
+	css, err := assets.FS.ReadFile("min/css/app.css")
 	if err != nil {
 		return templ.NopComponent
 	}
@@ -57,14 +57,14 @@ func (r *Renderer) buildAssets() error {
 		return err
 	}
 	add("fa-solid-900.woff2", font, "font/woff2")
-	icons, err := read("css/fontawesome.css")
+	icons, err := read("min/css/fontawesome.css")
 	if err != nil {
 		return err
 	}
 	icons = bytes.ReplaceAll(icons, []byte("url(fa-solid-900.woff2)"), []byte("url("+r.served["fa-solid-900.woff2"]+")"))
 	add("fontawesome.css", icons, "text/css; charset=utf-8")
 
-	for logical, file := range map[string]string{"app.css": "css/app.css", "prefs.js": "js/prefs.js", "enhance.js": "js/enhance.js"} {
+	for logical, file := range map[string]string{"app.css": "min/css/app.css", "prefs.js": "min/js/prefs.js", "enhance.js": "min/js/enhance.js"} {
 		body, err := read(file)
 		if err != nil {
 			return err
@@ -75,17 +75,17 @@ func (r *Renderer) buildAssets() error {
 		}
 		add(logical, body, mime)
 	}
-	fileJS, err := read("js/file.js")
+	fileJS, err := read("min/js/file.js")
 	if err != nil {
 		return err
 	}
 	add("file.js", fileJS, "text/javascript; charset=utf-8")
-	uploadJS, err := read("js/upload.js")
+	uploadJS, err := read("min/js/upload.js")
 	if err != nil {
 		return err
 	}
 	add("upload.js", uploadJS, "text/javascript; charset=utf-8")
-	phoneJS, err := read("js/phone.js")
+	phoneJS, err := read("min/js/phone.js")
 	if err != nil {
 		return err
 	}

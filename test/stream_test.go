@@ -442,8 +442,7 @@ func TestAPageSentWholeHasNoMarkThatItIsArriving(t *testing.T) {
 func TestTheStylesheetDrawsTheArrivingMarksWithoutScript(t *testing.T) {
 	t.Parallel()
 
-	h := streamApp(webui.Stack{quickTable("First")})
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	assert.Contains(t, css, ".arriving:not(:has(~ .arrived)) {\n    display: flex;\n    order: 2;")
 	assert.Contains(t, css, ".scroll-arriving {\n  display: flex;\n  flex-direction: column;\n}")
 	assert.Contains(t, css, ".statusbar-live:has(~ .statusbar-late) .status-loading {\n    display: none;\n  }")

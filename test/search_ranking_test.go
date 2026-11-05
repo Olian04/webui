@@ -110,8 +110,7 @@ func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 func TestTheSearchScriptHasNoResultsOfItsOwn(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{}.MustCompile("/admin")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	assert.False(t, strings.Contains(js, "group: 'Pages'"))
 	assert.False(t, strings.Contains(js, "function pages()"))
 	assert.False(t, strings.Contains(js, "Searching…")) // the page's own words for it are in a template, which the server wrote

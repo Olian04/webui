@@ -288,8 +288,7 @@ func TestTheEditorScriptLeavesTheEditorWithEscapeAndSaysHowAndSpeaksForTheContro
 func TestTheSearchShortcutIsLeftToAnEditorAndToTheBrowsersOwnKeys(t *testing.T) {
 	t.Parallel()
 
-	h, _ := phoneForm("SE")
-	js := serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	shortcut := regexp.MustCompile(`function isShortcut\(e\) \{[^}]*\}[^}]*\}[^}]*\}`).FindString(js)
 	assert.True(t, shortcut != "")
 	assert.Contains(t, shortcut, "e.shiftKey || e.altKey")

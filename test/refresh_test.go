@@ -137,7 +137,7 @@ func TestEveryLeafWithALoadCanSayItIsNotFinal(t *testing.T) {
 func TestTheScriptThatAsksAgainDoesWhatItSaysItDoes(t *testing.T) {
 	t.Parallel()
 
-	js := serve(refreshApp(webui.Ready()), http.MethodGet, assetURL(t, refreshApp(webui.Ready()), "enhance.js")).Body.String()
+	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		"[data-leaf][data-refresh-after]", "function armRefresh", "async function pollLeaf", "document.hidden", "'visibilitychange'",
 		"el.contains(document.activeElement)", "fetchLeaf(id, location.pathname + location.search", "el.replaceWith(next)",

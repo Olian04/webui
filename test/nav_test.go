@@ -142,7 +142,7 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css"))
 	assert.Equal(t, css.Code, http.StatusOK)
-	assert.Contains(t, css.Body.String(), `.fa-house::before{content:"\f015"}`)
+	assert.Contains(t, css.Body.String(), `.fa-house:before{content:"\f015"}`)
 	font0 := assetURL(t, h, "fa-solid-900.woff2")
 	assert.Contains(t, css.Body.String(), `url(`+font0[strings.LastIndex(font0, "/")+1:]+`)`) // beside the stylesheet, so a relative url finds it
 

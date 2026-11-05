@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -15,6 +17,20 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
+
+// assetSource is the stylesheet or script as it is written, such as "app.css", for a test of what it says: what is served is the same text minified, which
+// TestTheServedStylesheetsAndScriptsAreTheMinifiedSources holds to be so, and which a test of a rule or of a function cannot be read from.
+func assetSource(t *testing.T, name string) string {
+	t.Helper()
+
+	dir := "css"
+	if strings.HasSuffix(name, ".js") {
+		dir = "js"
+	}
+	raw, err := os.ReadFile(filepath.Join("..", "internal", "render", "assets", dir, name)) //nolint:gosec // G304: the name is one of the test's own literals, in the repository's asset folder
+	assert.NoError(t, err)
+	return string(raw)
+}
 
 // assetURL is the address a page of the app links an asset at, such as "app.css":
 // the name has a short hash of the file's contents in it. It is found the way a
@@ -193,8 +209,7 @@ func TestAnErrorPageIsCompressedAndARedirectIsNot(t *testing.T) {
 func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.T) {
 	t.Parallel()
 
-	h := cancelApp(false)
-	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	css := assetSource(t, "app.css")
 	// The markup says which panel grows; the stylesheet gives it the height there is,
 	// keeps its head and foot in place, and scrolls only its body.
 	for _, rule := range []string{
@@ -218,4 +233,21 @@ func builtless(page string) string {
 	page = regexp.MustCompile(`The HTML was built [^"]*"`).ReplaceAllString(page, `"`)
 	page = regexp.MustCompile(`>built [0-9:]+Z<`).ReplaceAllString(page, `>built<`)
 	return regexp.MustCompile(`(data-build[^>]*>)[0-9.]+ ms<`).ReplaceAllString(page, `${1}0 ms<`)
+}
+
+func TestTheServedStylesheetsAndScriptsAreTheMinifiedSources(t *testing.T) {
+	t.Parallel()
+
+	h := webui.App{}.MustCompile("/admin")
+	for _, name := range []string{"app.css", "enhance.js", "prefs.js"} { // the ones every page links: the others are linked by the pages that need them
+		dir := "css"
+		if strings.HasSuffix(name, ".js") {
+			dir = "js"
+		}
+		built, err := os.ReadFile(filepath.Join("..", "internal", "render", "assets", "min", dir, name)) //nolint:gosec // G304: as above
+		assert.NoError(t, err)
+		served := serve(h, http.MethodGet, assetURL(t, h, name)).Body.String()
+		assert.Equal(t, served, string(built))
+		assert.True(t, len(served) < len(assetSource(t, name)))
+	}
 }

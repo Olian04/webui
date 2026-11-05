@@ -159,7 +159,7 @@ func TestTheFileScriptDoesWhatItSaysItDoes(t *testing.T) {
 	t.Parallel()
 
 	s := newFileShop(plainFile())
-	js := serve(s.h, http.MethodGet, assetURL(t, s.h, "file.js")).Body.String()
+	js := assetSource(t, "file.js")
 	for _, want := range []string{
 		"readAsDataURL", "new DataTransfer()", "input.files = one.files", "setCustomValidity(said)", "reportValidity()",
 		"/^image\\/(png|jpeg|gif|webp)$/", "PREVIEW_MAX", "'Files'", "input[type=\"file\"][data-file]",
