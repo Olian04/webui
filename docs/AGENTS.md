@@ -17,7 +17,7 @@
 | `internal/calendar` | The date arithmetic behind `webui.Calendar`: a month, the weeks of its grid with the weeks that begin on Monday or Sunday, the span they cover, ISO week numbers, and the month as the address spells it. Days are days in UTC. |
 | `internal/assetserve` | Serves files that never change: a content hash in the name, a year's cache, compression, 304. |
 | `internal/editorctx` | Reads an editor's `Context` folder (declaration files, compiler options, schemas) for its language service. |
-| `internal/metrics` | The Prometheus metrics behind `App.Metrics`: it collects and serves none; collectors that already exist are reused. |
+| `pkg/prom` | The Prometheus `Observer` for `App.Observer`: it collects and serves none; collectors that already exist are reused. Its own package, so that a program that does not count with Prometheus does not link the client. |
 | `internal/markdown` | Markdown to safe HTML (goldmark, GFM). Link allowlist, no raw HTML, images become links unless from a trusted origin; the only place that decides what text may do on a page. |
 | `internal/textdiff` | Unified diff (Myers, bounded) for `Diff`'s no-script view. |
 | `pkg/monaco/*`     | Optional language-service packs for the editor: each `go:embed`s one worker and registers it in `internal/render/assets` from `init`. |

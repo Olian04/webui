@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"reflect"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/Olian04/webui/internal/ir"
 )
 
@@ -26,30 +24,17 @@ type App struct {
 	// service, the documentation. With none, there is no button.
 	ExternalLinks []ExternalLink
 
-	// Metrics is the registry the app puts its own metrics in, or nil to count nothing.
-	// They are Prometheus metrics, all named webui_..., about what the app does: the
-	// requests each page answers and how long they take, how long the application's Load
-	// functions take and how often they fail, what actions come to, searches, exports, and
-	// the sidebar entries of pages that list several. The labels are low in number by
-	// design: the path template of a page ("/device/{id}") and never an address that was
-	// asked for, a method, a status, and a few fixed names. It has no Go runtime or process
-	// metrics: the application has its own for those.
+	// Observer is told what the app does, so that the program can count it: the requests each page answers and how long they take, how long the application's Load
+	// functions take and how often they fail, what actions come to, searches, exports, and the sidebar entries of pages that list several. It is an [Observer], which the
+	// [github.com/Olian04/webui/pkg/prom] package makes of a Prometheus registry, and the program can write one of its own for any other kind. Left nil, the app counts nothing.
 	//
-	// The app serves none of it. The application registers a registry of its own, as it
-	// does for its other metrics, and serves that where it serves them, so what is
-	// exposed, where, and to whom stay its decisions:
+	// The app serves none of it. The program serves what it collects where it serves the rest of its own, so what is exposed, where, and to whom stay its decisions:
 	//
 	//	reg := prometheus.NewRegistry()
-	//	handler := webui.App{Metrics: reg, Pages: pages}.MustCompile("/admin")
+	//	observer, err := prom.New(reg)
+	//	handler := webui.App{Observer: observer, Pages: pages}.MustCompile("/admin")
 	//	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	//
-	// Compiling again, or compiling another app with the same registry, is not an error: the
-	// metrics that the registry already has are counted into, so an app that replaces the one that was
-	// serving keeps its counts. Two different apps then add their counts together where a page has
-	// the same path template: give each its own wrapper from [prometheus.WrapRegistererWith], with a
-	// label of its own, to tell them apart. A metric of another kind with the name of a webui one
-	// is an error.
-	Metrics prometheus.Registerer
+	Observer Observer
 
 	// Logger is where the app says what went wrong that it could not tell the visitor: a Load that
 	// failed, a panic in the application's code, a table export that was cut. It is a

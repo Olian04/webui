@@ -900,8 +900,11 @@
 //
 // # Metrics
 //
-// An app can count what it does, as Prometheus metrics, by being given the registry to put
-// them in: [App.Metrics]. They are about the app and nothing else, with no Go runtime or
+// An app can count what it does by being given an [Observer]: [App.Observer]. The
+// [github.com/Olian04/webui/pkg/prom] package makes one of a Prometheus registry,
+// and a program that counts some other way writes one of its own. It is its own package so
+// that a program that does not count with Prometheus does not link the Prometheus client.
+// The metrics are about the app and nothing else, with no Go runtime or
 // process metrics, which the program has of its own: webui_http_requests_total and
 // webui_http_request_duration_seconds for the requests each page answers,
 // webui_http_requests_in_flight, webui_load_duration_seconds and webui_load_errors_total
@@ -911,11 +914,16 @@
 // and webui_build_info. A page is labelled by its path template, "/device/{id}", never by
 // the address that was asked, so the number of series does not grow with the data.
 //
+//	reg := prometheus.NewRegistry()
+//	observer, err := prom.New(reg)
+//	handler := webui.App{Observer: observer, Pages: pages}.MustCompile("/admin")
+//	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+//
 // The app serves none of it. The program registers its own registry and serves it with
 // promhttp where it serves the rest of its metrics, so where they are, and who may read
-// them, are the program's decisions. Compiling the app again, as a program does that
-// replaces it as it changes, counts into the same metrics; so does another app given
-// the same registry, whose counts then add to the first's, unless its registry is
+// them, are the program's decisions. Making an observer again from the same registry, as a
+// program does that replaces its app as it changes, counts into the same metrics; so does another app given
+// an observer of the same registry, whose counts then add to the first's, unless its registry is
 // wrapped with a label of its own.
 //
 // # Security

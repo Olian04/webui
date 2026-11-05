@@ -10,6 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/Olian04/webui/pkg/prom"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -24,10 +25,23 @@ var (
 	}
 )
 
+// observe is what counts into reg, as a program would make it.
+func observe(reg prometheus.Registerer) webui.Observer {
+	observer, err := prom.New(reg)
+	if err != nil {
+		panic(err)
+	}
+	return observer
+}
+
 // metricsApp is a page of one thing, a list of things and a search, whose loaders and actions
 // fail when told to.
 func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
-	return webui.App{Metrics: reg, Pages: webui.Pages{
+	var observer webui.Observer // none, for an app that is given no registry: it counts nothing
+	if reg != nil {
+		observer = observe(reg)
+	}
+	return webui.App{Observer: observer, Pages: webui.Pages{
 		webui.Page[thingArgs]{
 			Path: "/thing/{id}",
 			Search: func(context.Context, string, int) ([]webui.Hit[thingArgs], error) {
@@ -207,7 +221,7 @@ func TestAnAppCompiledAgainOrAnotherGivenTheSameRegistryCountsIntoTheSameMetrics
 	second := metricsApp(reg, nil, nil) // the same app again
 	serve(second, http.MethodGet, "/admin/thing/a")
 	serve(first, http.MethodGet, "/admin/thing/a") // and the first goes on counting too
-	other, err := webui.App{Metrics: reg, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
+	other, err := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
 	assert.NoError(t, err)
 	serve(other, http.MethodGet, "/admin/")
 
@@ -224,7 +238,7 @@ func TestWrappingTheRegistryForEachAppKeepsTheirCountsApart(t *testing.T) {
 	one := prometheus.NewRegistry()
 	for _, name := range []string{"a", "b"} {
 		wrapped := prometheus.WrapRegistererWith(prometheus.Labels{"app": name}, one)
-		h, err := webui.App{Metrics: wrapped, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/" + name)
+		h, err := webui.App{Observer: observe(wrapped), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/" + name)
 		assert.NoError(t, err)
 		serve(h, http.MethodGet, "/"+name+"/")
 	}
@@ -239,7 +253,7 @@ func TestAMetricOfTheNameOfAWebuiOneThatIsNotTheSameIsRefused(t *testing.T) {
 
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(prometheus.NewCounter(prometheus.CounterOpts{Namespace: "webui", Name: "exports_total", Help: "the program's own"}))
-	_, err := webui.App{Metrics: reg, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
+	_, err := prom.New(reg)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "App.Metrics")
+	assert.Contains(t, err.Error(), "webui_exports_total")
 }

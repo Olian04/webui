@@ -40,6 +40,7 @@ import (
 	// And TypeScript's, which is large (about 7 MB of worker), so it is the one to leave out when
 	// the program should be small: the editor then highlights TypeScript and checks nothing.
 	_ "github.com/Olian04/webui/pkg/monaco/typescript"
+	"github.com/Olian04/webui/pkg/prom"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -121,7 +122,11 @@ func main() {
 
 	a := app
 	a.Theme = themeFor(*accent)
-	a.Metrics = registry // what the app counts, to be served below with the program's own
+	observer, err := prom.New(registry) // what the app counts, to be served below with the program's own
+	if err != nil {
+		log.Fatal(err)
+	}
+	a.Observer = observer
 	if *broken {
 		a.Pages = append(slices.Clone(a.Pages), brokenPages...)
 	}
@@ -147,7 +152,7 @@ func routes(app http.Handler) http.Handler {
 	mux.Handle("GET /uploads/{name}", authenticated(http.HandlerFunc(serveUpload))) // what a File holds, served by the app: see uploads.go
 	mux.Handle("GET /uploads/{name}/thumb", authenticated(http.HandlerFunc(serveThumb)))
 	mux.HandleFunc("GET /art/{name}", serveArt)          // the pictures of the Activity page: made from the name, on this site
-	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Metrics) in it
+	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Observer) in it
 	mux.HandleFunc("GET /login", loginPage)              // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
