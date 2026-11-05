@@ -8,17 +8,31 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// RowClick is what a click on a row does: a [Link] or an [Action].
-//
-// A Link is for the simple case, a row that leads to a page. It is one real anchor,
-// so middle-click, open-in-new-tab and the keyboard work. An Action is for the rest: its Run is handed the row and may look at it
-// to decide where to go, with Outcome.Then, or change something. It is a POST, so
-// the row cannot be opened in a new tab, and it needs the table's Key. The
-// interface exists to take either.
-type RowClick[M any] interface {
-	validateRow(v *bodyValidator)
-	lowerRow() (*ir.Link, *ir.Action)
+// Control is a button, a link or an address that belongs to a row of a table: what a click on the row does ([Table.RowClick]), or one of the controls in its trailing
+// cell ([Table.Actions]). It is an [Action], which posts: its Run is handed the row, and may look at it to decide where to go, with [Outcome.Then], or change something,
+// and it needs the table's Key; a [Link], which leads to a page of the app; or an [Href], which leads to an address. They are interchangeable where one is taken: the
+// difference is how each is drawn and what it does, a link being a real anchor, so a middle-click, a new tab and the keyboard work, where an action is a POST that
+// cannot be opened in a tab. The interface exists to take any of them, and each type says how it is checked and how it is lowered, so nothing that takes a
+// Control looks at which one it was given.
+type Control[M any] interface {
+	// validateControl checks the control where it is, which says what it needs: a button needs a Label, a click on a row has none.
+	validateControl(v *bodyValidator, at string, slot controlSlot)
+
+	// lowerControl is the control as the IR holds it.
+	lowerControl() *ir.Control
+
+	// posts is whether the control is a POST, which needs the rows of its table to have an identity.
+	posts() bool
 }
+
+// controlSlot is where a control is, which decides what it needs and what it refuses.
+type controlSlot uint8
+
+const (
+	slotRowClick  controlSlot = iota // the click on a whole row: no button, so no Label, and no Confirm to ask from
+	slotRowAction                    // a button in the row's trailing cell: a Label, and a Confirm if it asks first
+	slotItem                         // an item, a headline or a day, which is read: only what leads somewhere
+)
 
 // Link names a destination page and how to build its arguments from M. Page is
 // the page itself or its PageID; naming a PageID is how a page links back to one
@@ -43,31 +57,37 @@ type Link[M, A any] struct {
 	Role  Role
 }
 
-// Destination is where an item, a row or a day leads, and it is not something that is done: a [Link] to a page of the app, or an [Href] to an address.
-// It is a real anchor, so a middle-click, a new tab and the keyboard work, which is why it cannot be an [Action], which is a POST. The interface
-// exists to take either.
+// Destination is where an item, a day or a row leads, and it is not something that is done: a [Link] to a page of the app, or an [Href] to an address. It is a
+// [Control] that cannot be an [Action], which is a POST, and is what [List], [Cards] and [Calendar] take, since what they show is read. Every Destination is a Control,
+// so a slot that takes a Control takes it.
 type Destination[M any] interface {
-	validateDestination(v *bodyValidator, what string)
-	lowerDestination() (*ir.Link, func(model any) string)
+	Control[M]
+	destination()
 }
 
-// Href is a destination that is an address: a page on another site, or a path on this one that is not a page of the app, built from M. It opens in a tab of its
+// Href is an address as a control: a page on another site, or a path on this one that is not a page of the app, built from M. It opens in a tab of its
 // own, with the mark that says so and rel="noopener noreferrer". An address that is not a path on this site or an http, https or mailto address, such as a
 // script, is not a link, and what would have led there is plain text, so data in the model cannot make one. An item whose URL says "" has no link.
 type Href[M any] struct {
 	// URL is the address, built from the item, the row or the day.
 	URL func(M) string
+
+	// Label and Role are the button's text and style, in [Table.Actions], where an address is a button. Where it is the whole row or an item's headline there is no
+	// button, and they are ignored.
+	Label string
+	Role  Role
 }
 
-// ASSERT: Link and Action implement RowClick, and Link and Href implement Destination
+// ASSERT: Link, Href and Action implement Control, and Link and Href implement Destination
 var (
-	_ RowClick[struct{}]    = Link[struct{}, struct{}]{}
-	_ RowClick[struct{}]    = Action[struct{}]{}
+	_ Control[struct{}]     = Link[struct{}, struct{}]{}
+	_ Control[struct{}]     = Href[struct{}]{}
+	_ Control[struct{}]     = Action[struct{}]{}
 	_ Destination[struct{}] = Link[struct{}, struct{}]{}
 	_ Destination[struct{}] = Href[struct{}]{}
 )
 
-func (l Link[M, A]) validateRow(v *bodyValidator) {
+func (l Link[M, A]) validateLink(v *bodyValidator) {
 	if l.Args == nil {
 		v.add("a Link has no Args", "Set Args to build the destination's argument struct from the row.")
 	}
@@ -89,26 +109,39 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 	}
 }
 
-func (l Link[M, A]) validateDestination(v *bodyValidator, _ string) { l.validateRow(v) }
+func (Link[M, A]) destination() {}
+func (Href[M]) destination()    {}
 
-func (l Link[M, A]) lowerDestination() (*ir.Link, func(model any) string) {
-	link, _ := l.lowerRow()
-	return link, nil
+func (Link[M, A]) posts() bool { return false }
+func (Href[M]) posts() bool    { return false }
+
+func (l Link[M, A]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+	if slot == slotRowAction && l.Label == "" {
+		v.add(at+" has no Label", "Set Label; it is the button text.")
+	}
+	l.validateLink(v)
 }
 
-func (h Href[M]) validateDestination(v *bodyValidator, what string) {
+func (l Link[M, A]) lowerControl() *ir.Control {
+	return &ir.Control{Label: l.Label, Role: ir.Role(l.Role), Link: l.lowerLink()}
+}
+
+func (h Href[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+	if slot == slotRowAction && h.Label == "" {
+		v.add(at+" has no Label", "Set Label; it is the button text.")
+	}
 	if h.URL == nil {
-		v.add(what+" is an Href with no URL", "Set URL to func(M) string, returning the address.")
+		v.add(at+" is an Href with no URL", "Set URL to func(M) string, returning the address.")
 	}
 }
 
-func (h Href[M]) lowerDestination() (*ir.Link, func(model any) string) {
-	return nil, func(m any) string {
+func (h Href[M]) lowerControl() *ir.Control {
+	return &ir.Control{Label: h.Label, Role: ir.Role(h.Role), External: func(m any) string {
 		if u := h.URL(m.(M)); validURL(u) {
 			return u
 		}
 		return ""
-	}
+	}}
 }
 
 func (Link[M, A]) toolbarItem(M) {}
@@ -117,20 +150,20 @@ func (l Link[M, A]) validateButton(v *bodyValidator, at string) {
 	if l.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
-	l.validateRow(v)
+	l.validateLink(v)
 }
 
 // toolbarButton is a toolbar's link: its Args are built with no subject, so what the runtime hands over is ignored, and the zero M, which is NoArgs,
 // is what they are given.
 func (l Link[M, A]) toolbarButton() ir.ToolbarItem {
-	link, _ := l.lowerRow()
+	link := l.lowerLink()
 	link.Args = func(ctx context.Context, _ any) any { var none M; return l.Args(ctx, none) }
 	return ir.ToolbarItem{Label: l.Label, Role: ir.Role(l.Role), Link: link}
 }
 
-func (l Link[M, A]) lowerRow() (*ir.Link, *ir.Action) {
+func (l Link[M, A]) lowerLink() *ir.Link {
 	return &ir.Link{
 		Dest: l.Page.pagePath(),
 		Args: func(ctx context.Context, row any) any { return l.Args(ctx, row.(M)) },
-	}, nil
+	}
 }

@@ -70,7 +70,7 @@ var Alerts = webui.Page[webui.NoArgs]{
 		// Actions and bulk actions name rows by Key, never by position.
 		Key:         func(a Alert) string { return a.ID },
 		Columns:     []webui.Accessor[Alert]{AlertID, Severity, AlertDevice, Message, Raised},
-		Actions:     []webui.Action[Alert]{Dismiss},
+		Actions:     []webui.Control[Alert]{Dismiss},
 		BulkActions: []webui.Action[[]Alert]{Acknowledge, Delete},
 	},
 }

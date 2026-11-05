@@ -61,7 +61,7 @@ func actionable(leaves map[string]ir.Node) bool {
 				return true
 			}
 		case *ir.Table:
-			if len(n.Actions)+len(n.Bulk) > 0 || n.RowAction != nil {
+			if len(n.Bulk) > 0 || n.Click.Posts() || slices.ContainsFunc(n.Actions, (*ir.Control).Posts) {
 				return true
 			}
 		case *ir.Toolbar:
@@ -434,10 +434,10 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 	kind, index, key, ok := parseAct(r.PostForm.Get("_act"))
 	var action *ir.Action
 	switch {
-	case ok && kind == "row" && index < len(n.Actions):
-		action = n.Actions[index]
-	case ok && kind == "click" && n.RowAction != nil:
-		action, kind = n.RowAction, "row" // a click on a row is the action on that row
+	case ok && kind == "row" && index < len(n.Actions) && n.Actions[index].Posts():
+		action = n.Actions[index].Action
+	case ok && kind == "click" && n.Click.Posts():
+		action, kind = n.Click.Action, "row" // a click on a row is the action on that row
 	case ok && kind == "bulk" && index < len(n.Bulk):
 		action = n.Bulk[index]
 	default:

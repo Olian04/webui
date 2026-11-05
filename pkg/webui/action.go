@@ -117,14 +117,25 @@ func lowerBulk[M any](a Action[[]M]) *ir.Action {
 	return lowerActionWith[[]M, M](a, func(s any) []M { return convert.Slice(s.([]any), func(r any) M { return r.(M) }) })
 }
 
-// validateRow checks an Action used as a table's RowClick: it has a Run, and no
-// Label is needed, since the row is what is clicked.
-func (a Action[M]) validateRow(v *bodyValidator) {
-	validateAction(v, "Table.RowClick", a, false)
-	if a.Confirm != "" {
-		v.add("Table.RowClick has a Confirm, but a click on a row has no button to ask from",
-			"Remove Confirm, or make the action one of Table.Actions, which has a button for each row.")
+func (Action[M]) posts() bool { return true }
+
+// validateControl checks an Action where it is: it has a Run everywhere, a Label where it is a button, and, where it is the click on a row, no Confirm, since
+// there is no button to ask from. An action is a POST, so it is not what an item, a headline or a day leads with.
+func (a Action[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+	switch slot {
+	case slotRowClick:
+		validateAction(v, at, a, false)
+		if a.Confirm != "" {
+			v.add(at+" has a Confirm, but a click on a row has no button to ask from",
+				"Remove Confirm, or make the action one of Table.Actions, which has a button for each row.")
+		}
+	case slotRowAction:
+		validateAction(v, at, a, true)
+	case slotItem:
+		v.add(at+" is an Action", "An action is a POST, and an item, a headline or a day is read: lead somewhere with a Link or an Href.")
 	}
 }
 
-func (a Action[M]) lowerRow() (*ir.Link, *ir.Action) { return nil, lowerAction(a) }
+func (a Action[M]) lowerControl() *ir.Control {
+	return &ir.Control{Label: a.Label, Role: ir.Role(a.Role), Action: lowerAction(a)}
+}

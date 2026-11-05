@@ -27,7 +27,7 @@ import (
 //
 //	Page[A] in a.Pages         A unknown      -> method on pageLike
 //	Form[M] / Table[M] in Body M unrelated to A -> method on PageBody
-//	Link[M, A] in RowClick[M]  A unknown      -> method on RowClick[M]
+//	Link[M, A] in Control[M]   A unknown      -> method on Control[M]
 //	Accessor[M] inside Form[M] M known        -> type switch
 //	Reject[M] inside Outcome   M known        -> type switch
 //

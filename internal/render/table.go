@@ -59,7 +59,7 @@ type TableView struct {
 	// Options is, for each open-set column by Key, the values its rows hold.
 	Options map[string][]string
 
-	// ClickRefused is, for a table whose RowClick is an Action, whether each row
+	// ClickRefused is, for a table whose click on a row is an Action, whether each row
 	// may not be clicked by this viewer.
 	ClickRefused []bool
 
@@ -68,6 +68,9 @@ type TableView struct {
 	// empty for a table with no actions.
 	Keys  []string
 	Gates [][]Gate
+
+	// ActionHrefs is where each row's controls lead, by row then control, "" for an action, which posts, and for a link that leads nowhere for this viewer.
+	ActionHrefs [][]string
 
 	// BulkGates is what each bulk action is for this viewer, as the declared actions number them.
 	BulkGates []Gate
@@ -297,12 +300,12 @@ func (v TableView) label() string {
 // this viewer, or a click on a row is an action. A table with none has no form, no checkbox column and
 // no bar: absence is the configuration, and for a viewer whose Guards refuse every action, so it is for them.
 func (v TableView) interactive() bool {
-	return v.selectable() || v.hasRowActions() || v.Node.RowAction != nil
+	return v.selectable() || v.hasRowActions() || v.Node.Click.Posts()
 }
 
-// clicks is whether row i runs the table's RowAction when clicked.
+// clicks is whether row i runs the table's action when clicked.
 func (v TableView) clicks(i int) bool {
-	return v.Node.RowAction != nil && i < len(v.Keys) && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
+	return v.Node.Click.Posts() && i < len(v.Keys) && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
 }
 
 // selectable is whether a bulk action is drawn, and so a column to select the rows with and a bar to act on them from.
@@ -398,6 +401,20 @@ func (v TableView) gate(row, action int) Gate {
 	return Gate{}
 }
 
+// actionHref is where row's control leads, "" for one that posts.
+func (v TableView) actionHref(row, action int) string {
+	if row < len(v.ActionHrefs) && action < len(v.ActionHrefs[row]) {
+		return v.ActionHrefs[row][action]
+	}
+	return ""
+}
+
+// clickIsExternal is whether a click on a row leads to another site, which opens in a tab of its own.
+func (v TableView) clickIsExternal() bool { return v.Node.Click != nil && v.Node.Click.External != nil }
+
+// externalAttrs is what makes a link open another site in a tab of its own, without handing it this page.
+var externalAttrs = templ.Attributes{"target": "_blank", "rel": "noopener noreferrer"}
+
 // bulkGate is what a bulk action is for this viewer.
 func (v TableView) bulkGate(action int) Gate {
 	if action < len(v.BulkGates) {
@@ -481,6 +498,23 @@ func rowName(ctx context.Context, cols []columnView, row any, key string) string
 		}
 	}
 	return key
+}
+
+// rowNameOf is rowName for row i of a table that may have no keys, as one whose controls only lead somewhere has none.
+func rowNameOf(ctx context.Context, cols []columnView, row any, keys []string, i int) string {
+	key := ""
+	if i < len(keys) {
+		key = keys[i]
+	}
+	return rowName(ctx, cols, row, key)
+}
+
+// linkAttrs is what a control that leads somewhere needs of its anchor: nothing, for a page of the app, and a tab of its own for another site.
+func linkAttrs(c *ir.Control) templ.Attributes {
+	if c.External != nil {
+		return externalAttrs
+	}
+	return nil
 }
 
 // name is what an option of the filter says: for a select, its label, and otherwise the value.

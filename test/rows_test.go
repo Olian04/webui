@@ -173,7 +173,7 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
-			Actions: []webui.Action[Device]{{
+			Actions: []webui.Control[Device]{webui.Action[Device]{
 				Label: "Go",
 				Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 					acted = append(acted, d.Id)

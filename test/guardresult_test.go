@@ -25,10 +25,13 @@ func noop(string) func(context.Context, parcel) (webui.Outcome, error) {
 }
 
 // guardedParcels is a table of the two parcels with the actions given, on a page of its own.
-func guardedParcels(logger *slog.Logger, actions []webui.Action[parcel], bulk []webui.Action[[]parcel], click webui.RowClick[parcel]) http.Handler {
+func guardedParcels(logger *slog.Logger, actions []webui.Action[parcel], bulk []webui.Action[[]parcel], click webui.Control[parcel]) http.Handler {
 	table := webui.Table[parcel]{
 		Rows: func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }, Key: func(p parcel) string { return p.Name },
-		Columns: []webui.Accessor[parcel]{parcelName}, Actions: actions, BulkActions: bulk, RowClick: click,
+		Columns: []webui.Accessor[parcel]{parcelName}, BulkActions: bulk, RowClick: click,
+	}
+	for _, a := range actions {
+		table.Actions = append(table.Actions, a)
 	}
 	return webui.App{Logger: logger, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
 }

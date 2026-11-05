@@ -88,13 +88,12 @@ type Table struct {
 	Export   bool
 	InMemory bool
 
-	Columns  []Field
-	RowClick *Link // nil means rows do not lead anywhere
-	// RowAction runs when a row is clicked, in place of RowClick's link: a POST to
-	// the page naming the row by Key. At most one of the two is set.
-	RowAction *Action
-	Actions   []*Action // per row: a button in a trailing cell
-	Bulk      []*Action // over the selection: the checkbox column and action bar
+	Columns []Field
+	// Click is what a click on a row does: lead to a page or an address, or run an Action, which is a POST to the page naming the row by Key.
+	// nil means rows do not lead anywhere.
+	Click   *Control
+	Actions []*Control // per row: a button in a trailing cell, or a link drawn as one
+	Bulk    []*Action  // over the selection: the checkbox column and action bar
 }
 
 // Addr reports the node's position in the body tree.
