@@ -38,12 +38,12 @@ func assetSource(t *testing.T, name string) string {
 func assetURL(t *testing.T, h http.Handler, logical string) string {
 	t.Helper()
 
-	if logical == "fa-solid-900.woff2" {
+	if logical == "fa-solid.woff" {
 		// The font is named by the icon stylesheet, not by the page: it is found there,
 		// beside it, as the browser would.
 		sheet := assetURL(t, h, "fontawesome.css")
 		css := serve(h, http.MethodGet, sheet).Body.String()
-		m := regexp.MustCompile(`url\((fa-solid-900\.[0-9a-f]{8}\.woff2)\)`).FindStringSubmatch(css)
+		m := regexp.MustCompile(`url\((fa-solid\.[0-9a-f]{8}\.woff)\)`).FindStringSubmatch(css)
 		if m == nil {
 			t.Fatal("the icon stylesheet names no font")
 		}
@@ -107,7 +107,7 @@ func TestAnAssetIsCachedForGoodBecauseItsAddressChangesWithIt(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{}.MustCompile("/admin")
-	for _, logical := range []string{"app.css", "enhance.js", "fa-solid-900.woff2", "favicon.svg"} {
+	for _, logical := range []string{"app.css", "enhance.js", "fa-solid.woff", "favicon.svg"} {
 		rec := serve(h, http.MethodGet, assetURL(t, h, logical))
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.Equal(t, rec.Header().Get("Cache-Control"), "public, max-age=31536000, immutable")
@@ -118,10 +118,10 @@ func TestTheIconStylesheetNamesTheFontByItsHashedAddress(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{}.MustCompile("/admin")
-	font := assetURL(t, h, "fa-solid-900.woff2")
+	font := assetURL(t, h, "fa-solid.woff")
 	css := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css")).Body.String()
 	assert.Contains(t, css, "url("+font[strings.LastIndex(font, "/")+1:]+")") // beside it, by name
-	assert.False(t, strings.Contains(css, "url(fa-solid-900.woff2)"))
+	assert.False(t, strings.Contains(css, "url(fa-core.woff2)"))              // by its hashed name, not the one it is made as
 }
 
 func TestTextAssetsAreCompressedForAClientThatAcceptsIt(t *testing.T) {
@@ -163,7 +163,7 @@ func TestImagesAndFontsAreNotCompressedAgain(t *testing.T) {
 	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})
 	h := webui.App{Brand: webui.Brand{Logo: img}}.MustCompile("/admin")
-	for _, logical := range []string{"fa-solid-900.woff2", "logo", "favicon-32.png"} {
+	for _, logical := range []string{"fa-solid.woff", "logo", "favicon-32.png"} {
 		rec := gzipped(t, h, assetURL(t, h, logical))
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.Equal(t, rec.Header().Get("Content-Encoding"), "")

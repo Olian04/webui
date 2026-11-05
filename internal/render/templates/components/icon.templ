@@ -1,9 +1,10 @@
 package components
 
-// IconName is a Font Awesome Free solid icon, by its name without the "fa-"
-// prefix: "house" is the class fa-house. The renderer draws it with the icon
-// font, so any name Font Awesome Free ships works; the ones below are what the
-// design itself uses.
+// IconName is a Font Awesome Free solid icon, by its name without the class prefix:
+// "house" is the house icon. The renderer draws it with the icon font, which has a
+// file for each group of icons: the ones below are what the design itself uses, and
+// they are in icons_core.txt, which every page links. A name that is not there
+// is drawn only when an app names it, in a page's Nav or an external link.
 type IconName string
 
 const (

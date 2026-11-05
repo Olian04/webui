@@ -1,0 +1,14 @@
+/* Font Awesome Free, solid style. This is the part that is the same for every app: an icon is <i class="fa-solid fa-house">. The font files and the class of each icon
+   are made when the app starts, for the icons that it names (see addIcons in internal/render/assets.go), since an app does not draw most of the two thousand. The font is
+   SIL OFL 1.1, see fonts/LICENSE-fontawesome.txt. */
+.fa-solid {
+  font-family: 'Font Awesome Solid';
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+}
