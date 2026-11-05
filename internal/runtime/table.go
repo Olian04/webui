@@ -194,7 +194,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.Next = window.Next
 	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
-	view.Keys, view.Gates = p.rowKeysAndGates(ctx, page, n, rows)
+	view.Keys, view.Gates, view.ActionHrefs = p.rowControls(ctx, req, page, n, rows)
 	view.ClickRefused = p.clickRefused(ctx, page, n, rows)
 	view.BulkGates = p.bulkGates(ctx, page, n, rows)
 	return p.render.Table(view)
@@ -206,7 +206,23 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 // whose destination page refuses the visitor, since a link they cannot follow is
 // not offered, and that is asked of the page's Guard once for each row.
 func (p *Program) rowHrefs(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) []string {
-	return p.linkHrefs(ctx, req, page, n.RowClick, rows)
+	return p.controlHrefs(ctx, req, page, n.Click, rows)
+}
+
+// controlHrefs is where a control leads for each row: through its Link, with the rules of linkHrefs, or at the address its External builds, which has been checked, and
+// "" for a row that has none. An Action leads nowhere, and so has none.
+func (p *Program) controlHrefs(ctx context.Context, req *Request, page *ir.Page, c *ir.Control, rows []any) []string {
+	switch {
+	case c != nil && c.Link != nil:
+		return p.linkHrefs(ctx, req, page, c.Link, rows)
+	case c != nil && c.External != nil:
+		hrefs := make([]string, len(rows))
+		for i, row := range rows {
+			hrefs[i] = c.External(row)
+		}
+		return hrefs
+	}
+	return make([]string, len(rows))
 }
 
 // linkHrefs is each item's destination through link, for a table's rows and a list's items alike: the same rules, so that an item leads where a row does.
@@ -228,41 +244,56 @@ func (p *Program) linkHrefs(ctx context.Context, req *Request, page *ir.Page, li
 	return hrefs
 }
 
-// clickRefused is, for a table whose RowClick is an Action, whether this viewer may not click each row: the Action's
+// clickRefused is, for a table whose click on a row is an Action, whether this viewer may not click each row: the Action's
 // Guard, run on the row, as it will be on the POST. A row it refuses is shown but does nothing, whichever
 // error says so: it has no button to hide or to disable.
 func (p *Program) clickRefused(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []bool {
-	if n.RowAction == nil || n.RowAction.Guard == nil {
+	if !n.Click.Posts() || n.Click.Action.Guard == nil {
 		return nil
 	}
 	refused := make([]bool, len(rows))
 	for i, row := range rows {
-		refused[i] = !p.gateOf(page, "the RowClick of a table", func() error { return n.RowAction.Guard(ctx, row) }).Open()
+		refused[i] = !p.gateOf(page, "the RowClick of a table", func() error { return n.Click.Action.Guard(ctx, row) }).Open()
 	}
 	return refused
 }
 
-// rowKeysAndGates names each row and says what each of its actions is for this
-// viewer. The same Guard that decides the button authorises the POST, so there is no
-// second authorisation rule to keep in sync. The gates are by the position that an
-// action was declared at, whether it is drawn or not, since that is what its button
-// posts.
-func (p *Program) rowKeysAndGates(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) ([]string, [][]render.Gate) {
-	if n.Key == nil {
-		return nil, nil
-	}
-	keys := make([]string, len(rows))
-	gates := make([][]render.Gate, len(rows))
-	for i, row := range rows {
-		keys[i] = n.Key(row)
-		gates[i] = make([]render.Gate, len(n.Actions))
-		for a, act := range n.Actions {
-			if act.Guard != nil {
-				gates[i][a] = p.gateOf(page, "the action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, row) })
-			}
+// rowControls names each row, and says what each of its controls is for this viewer, and where each one that leads somewhere leads. The same Guard that
+// decides an action's button authorises the POST, so there is no second authorisation rule to keep in sync. A link is drawn when the visitor may open its page,
+// as for a click on a row; an address has no Guard. The gates are by the position that a control was declared at, whether it is drawn or not, since that is
+// what its button posts. A row has a key when the table has a Key, which a table that posts must.
+func (p *Program) rowControls(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) ([]string, [][]render.Gate, [][]string) {
+	var keys []string
+	if n.Key != nil {
+		keys = make([]string, len(rows))
+		for i, row := range rows {
+			keys[i] = n.Key(row)
 		}
 	}
-	return keys, gates
+	if len(n.Actions) == 0 {
+		return keys, nil, nil
+	}
+	gates := make([][]render.Gate, len(rows))
+	hrefs := make([][]string, len(rows))
+	for i := range rows {
+		gates[i] = make([]render.Gate, len(n.Actions))
+		hrefs[i] = make([]string, len(n.Actions))
+	}
+	for a, control := range n.Actions {
+		if act := control.Action; act != nil {
+			for i, row := range rows {
+				if act.Guard != nil {
+					gates[i][a] = p.gateOf(page, "the action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, row) })
+				}
+			}
+			continue
+		}
+		for i, href := range p.controlHrefs(ctx, req, page, control, rows) {
+			hrefs[i][a] = href
+			gates[i][a] = render.Gate{Hidden: href == ""} // a link that cannot be followed, or an address that is none, is not drawn
+		}
+	}
+	return keys, gates, hrefs
 }
 
 // bulkGates says what each bulk action is for this viewer. Its Guard takes a selection, which does not exist

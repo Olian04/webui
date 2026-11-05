@@ -117,7 +117,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 		}}, "Group in Table.Columns"},
 		{"actions need key", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol()},
-			Actions: []webui.Action[Device]{{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
+			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
 		}}, "declares actions but no Key"},
 		{"two columns with labels that differ only in case", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
 			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},

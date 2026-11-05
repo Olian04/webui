@@ -138,7 +138,7 @@ var OverviewAlerts = webui.Table[Alert]{
 		Args: func(_ context.Context, a Alert) AlertArgs { return AlertArgs{ID: a.ID} },
 	},
 	Columns: []webui.Accessor[Alert]{Severity, AlertDevice, Message, Raised},
-	Actions: []webui.Action[Alert]{Dismiss},
+	Actions: []webui.Control[Alert]{Dismiss},
 }
 
 // OverviewEvents is what the devices did in the last hour: a table of another model beside the others, which a Split does not mind.

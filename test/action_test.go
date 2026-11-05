@@ -108,7 +108,7 @@ func newShop() *shop {
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},
-			Actions: []webui.Action[Device]{{
+			Actions: []webui.Control[Device]{webui.Action[Device]{
 				Label: "Delete", Role: webui.RoleDestructive,
 				Guard: func(_ context.Context, d Device) error {
 					if d.Id == "locked" {

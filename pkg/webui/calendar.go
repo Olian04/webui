@@ -75,7 +75,7 @@ func (c Calendar[M]) validateBody(v *bodyValidator) {
 		v.add("a Calendar has no Date", "Set Date to func(M) time.Time, returning when an item is: its day, in UTC, is where it is marked.")
 	}
 	if c.Open != nil {
-		c.Open.validateDestination(v, "Calendar.Open")
+		c.Open.validateControl(v, "Calendar.Open", slotItem)
 	}
 	if c.SundayFirst && c.WeekNumbers {
 		v.add("a Calendar has SundayFirst and WeekNumbers", "ISO 8601 week numbers are of weeks that begin on Monday: drop one of the two.")
@@ -95,7 +95,8 @@ func (c Calendar[M]) lowerBody(at ir.Addr) ir.Node {
 		},
 	}
 	if c.Open != nil {
-		link, external := c.Open.lowerDestination()
+		control := c.Open.lowerControl()
+		link, external := control.Link, control.External
 		if link != nil {
 			inner := link.Args
 			link.Args = func(ctx context.Context, row any) any {

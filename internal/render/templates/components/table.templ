@@ -125,8 +125,8 @@ templ Row(p RowProps) {
 // RowLink is the single anchor that covers a clickable row. The stylesheet
 // stretches it over every cell, so the row is one tab stop rather than six and
 // needs no script to be clickable.
-templ RowLink(href string) {
-	<a class="rowlink" href={ href }>
+templ RowLink(href string, external bool) {
+	<a class="rowlink" href={ href } if external { target="_blank" rel="noopener noreferrer" }>
 		{ children... }
 	</a>
 }

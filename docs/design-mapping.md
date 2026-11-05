@@ -89,10 +89,10 @@ into existence, and nothing is configured twice.
 | `OptionalBool` | Yes, no, or not set (`Load` returns a `*bool`): a drop-down of Yes and No with an empty option (a `<select>`, so it needs no script; a checkbox cannot be neither, and an unchecked one sends nothing), and a neutral Yes or No badge where it is read, with a dash for neither. Its table filter is a choice among them, and the JSON is `true`, `false` or `null` |
 | `Table.Rows`, `Table.Load` | Where the rows come from. `Rows` lists them all and the library filters, sorts and pages them by the columns; `Load` is handed the window, sort and filters by a source that pages itself |
 | `Table.Feed` | A source that pages by cursor, in its own order, which a cursor continues and the library cannot filter: its columns have no filter and sort only the page on screen, and its footer is "Showing rows 10032–10054" with *First page*, *Previous* and *Next* |
-| `Table.RowClick` | Rows become clickable, as a link or as an action, and take the pointer + hover treatment |
-| `Table.Key` | What names a row to a request: required with `Actions` or `BulkActions`, since a button posts the key of its row and never its position |
+| `Table.RowClick` | Rows become clickable, as a link, an address or an action, and take the pointer + hover treatment |
+| `Table.Key` | What names a row to a request: required with an `Action` among the `Actions` or the `RowClick`, or with `BulkActions`, since a button posts the key of its row and never its position; a table whose controls only lead somewhere needs none |
 | `Table.BulkActions` | The checkbox column, and the selection action bar once a row is selected. Each is drawn if its `Guard` accepts a selection of any one row of the window, and with none drawn there is no column and no bar |
-| `Table.Actions` | A button per row in a trailing cell, left out for a row whose `Guard` returns an error and disabled, with its message, for one that returns `Disabled`; the cell is empty for a row with none, and the column is there when some row of the window has a button |
+| `Table.Actions` | A control per row in a trailing cell: a button for an `Action`, and for a `Link` or an `Href` a button that is an anchor (an `Href` opens in a tab of its own). Left out for a row whose `Guard` returns an error and disabled, with its message, for one that returns `Disabled`; the cell is empty for a row with none, and the column is there when some row of the window has a button |
 | `Table.PageSize`, and `Table.Title` in the address | The pager, 25 rows a page unless said; the title, as the address spells a label, names the table's sort and offset in the address |
 | `Form.Submit` | The primary button in the panel footer |
 | `Action` | A button; its `Role` decides primary / secondary / destructive |
@@ -501,7 +501,7 @@ Selection itself is deliberately **not** an argument: it never enters the
 address bar, because it is request state, not page state. A shared link does
 not carry someone else's selection.
 
-### `Table.RowClick` / `Link` / `Action`
+### `Table.RowClick` / `Link` / `Href` / `Action`
 
 Rows become clickable: pointer cursor, hover surface, and the whole row is the
 target. A `Link` is the simple case. Because it names a page and builds its
@@ -515,7 +515,10 @@ click changes something. The row is one button, stretched over the cell as the
 anchor is, inside the table's form, so it too works without script. It is a POST,
 so it cannot be opened in a new tab; it needs the table's `Key`; and a row its
 `Guard` refuses is shown but does nothing. A `Link` to a page that refuses the visitor is a plain row, which asks that
-page's `Guard` once for each row.
+page's `Guard` once for each row. An `Href` is the same anchor with an address and no page, which opens in a tab of its own with
+`rel="noopener noreferrer"`. `Table.Actions` takes the same three, as `Control`s: an `Action` is a button that posts, and a `Link` or an `Href`
+is a button that is an anchor, drawn in the same trailing cell (an "Edit" that opens the row's page), with a `Label`, left out for a row whose page
+refuses the visitor.
 
 ### `Guard` → gating, in two places from one declaration
 

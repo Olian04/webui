@@ -205,7 +205,7 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 			},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},
-			Actions: []webui.Action[Device]{{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
+			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
 		}
 		parent := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
 		child := webui.Page[webui.NoArgs]{Path: "/device/log", Body: table}

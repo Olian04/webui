@@ -175,27 +175,32 @@ type Table[M any] struct {
 	// string.
 	Export bool
 
-	// Key identifies a row, such as by its ID. It is required when the table has
-	// Actions or BulkActions, because a request names rows by identity, never by
-	// position.
+	// Key identifies a row, such as by its ID. It is required when the table has an
+	// [Action] among its Actions or its RowClick, or BulkActions, because a request names
+	// rows by identity, never by position. A table whose controls only lead somewhere, which
+	// post nothing, needs none.
 	Key func(M) string
 
-	// RowClick makes each row clickable: a [Link] to another page, or an [Action]
-	// for what a link cannot do.
+	// RowClick makes each row clickable: a [Link] to another page, an [Href] to an address, or an [Action]
+	// for what neither can do.
 	//
-	// A Link is a real anchor, so middle-click, open-in-new-tab and the keyboard
-	// work. It suits a row that always leads to the same kind of page. An Action is
-	// handed the row and may decide where to go from it, with [Outcome.Then], such as
-	// to a folder page or an object page, or change something. It is a POST, so it
-	// cannot be opened in a new tab, and it needs Key. A row its Guard refuses does
-	// nothing, and a row whose Link leads to a page that refuses the visitor is a plain
-	// row, which asks that page's Guard once for each row.
-	RowClick RowClick[M]
+	// A Link or an Href is a real anchor, so middle-click, open-in-new-tab and the keyboard
+	// work (an Href opens in a tab of its own, as any link to another site does). It suits a row
+	// that always leads to the same kind of place. An Action is handed the row and may decide
+	// where to go from it, with [Outcome.Then], such as to a folder page or an object page, or
+	// change something. It is a POST, so it cannot be opened in a new tab, and it needs Key. A
+	// row its Guard refuses does nothing, and a row whose Link leads to a page that refuses the
+	// visitor is a plain row, which asks that page's Guard once for each row. The Label, Role and
+	// Confirm of a click on a row are not drawn, there being no button, and a Confirm is refused.
+	RowClick Control[M]
 
-	// Actions render as a button per row. A row for whom the action's Guard returns an
-	// error has no button for it, and [Disabled] draws it disabled, with its message. The
-	// column of buttons is there when a row of the page on screen has one drawn.
-	Actions []Action[M]
+	// Actions render as a control per row, in a column of its own: an [Action] is a button that
+	// posts, and a [Link] or an [Href] is a button that leads somewhere, such as an "Edit" that
+	// opens the row's page. Each needs a Label. A row for whom an action's Guard returns an
+	// error has no button for it, and [Disabled] draws it disabled, with its message; a row
+	// whose Link leads to a page that refuses the visitor has none for it. The column of controls is
+	// there when a row of the page on screen has one drawn.
+	Actions []Control[M]
 
 	// BulkActions render in a selection bar above the table, which then has a
 	// checkbox column. Their subject is the selected rows. When the table is drawn the
@@ -253,18 +258,24 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		v.add("Table.PageSize is negative", "Use a number of rows, or leave it zero for the default of 25.")
 	}
 
-	_, clickRuns := t.RowClick.(Action[M])
-	if (len(t.Actions)+len(t.BulkActions) > 0 || clickRuns) && t.Key == nil {
-		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
-	}
+	posts := len(t.BulkActions) > 0 || (t.RowClick != nil && t.RowClick.posts())
 	for i, a := range t.Actions {
-		validateAction(v, fmt.Sprintf("Table.Actions[%d]", i), a, true)
+		at := fmt.Sprintf("Table.Actions[%d]", i)
+		if a == nil {
+			v.add(at+" is nil", "Remove it or declare a control.")
+			continue
+		}
+		posts = posts || a.posts()
+		a.validateControl(v, at, slotRowAction)
+	}
+	if posts && t.Key == nil {
+		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
 	}
 	for i, a := range t.BulkActions {
 		validateAction(v, fmt.Sprintf("Table.BulkActions[%d]", i), a, true)
 	}
 	if t.RowClick != nil {
-		t.RowClick.validateRow(v)
+		t.RowClick.validateControl(v, "Table.RowClick", slotRowClick)
 		if len(t.Columns) > 0 {
 			if _, isLink := t.Columns[0].(URL[M]); isLink {
 				v.add("a Table's first column is a URL, but its RowClick is there",
@@ -308,10 +319,12 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
 	}
 	if t.RowClick != nil {
-		out.RowClick, out.RowAction = t.RowClick.lowerRow()
+		out.Click = t.RowClick.lowerControl()
 	}
 	for _, a := range t.Actions {
-		out.Actions = append(out.Actions, lowerAction(a))
+		if a != nil {
+			out.Actions = append(out.Actions, a.lowerControl())
+		}
 	}
 	for _, a := range t.BulkActions {
 		out.Bulk = append(out.Bulk, lowerBulk(a))

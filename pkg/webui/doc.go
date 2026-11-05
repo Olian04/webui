@@ -462,10 +462,14 @@
 //	}
 //
 // A link names its destination page, so the compiler checks that the arguments fit it
-// and [App.Compile] checks that the page is mounted. When the destination depends on
+// and [App.Compile] checks that the page is mounted. A row may lead to an address too,
+// with an [Href], which opens in a tab of its own. When the destination depends on
 // the row, such as a folder or an object, RowClick is an [Action] instead: its Run is
-// handed the row and chooses where to go with [Outcome.Then]. Actions and BulkActions
-// add a button per row, and checkboxes with an action bar, over a table with a Key.
+// handed the row and chooses where to go with [Outcome.Then]. RowClick and Actions take a
+// [Control], which is any of the three, so they are interchangeable: Actions adds a button
+// per row, an [Action] that posts, or a [Link] or an [Href] drawn as a button that leads
+// somewhere, such as an "Edit". BulkActions adds checkboxes with an action bar. A table needs
+// a Key for what posts (an Action, or BulkActions), and for nothing else.
 //
 // # Caching
 //
@@ -549,8 +553,8 @@
 // that said [Disabled], and is otherwise left out. A table with no bulk action drawn
 // has no column of checkboxes and no bar, and one with no row action drawn has no
 // column of buttons; that column is there when a row of the page on screen has one, and
-// so may come and go between the pages of a table. A Link, in a toolbar or as a table's
-// RowClick, is left out when the page it leads to would refuse the visitor, which asks
+// so may come and go between the pages of a table. A Link, in a toolbar, as a table's
+// RowClick or as one of its Actions, is left out when the page it leads to would refuse the visitor, which asks
 // that page's Guard when the link is drawn, for each row of a table. A Guard that
 // panics leaves its control out, and the panic is logged. A form's Save that its Guard
 // refuses, whichever error says so, is not drawn: the form is shown read-only, with a

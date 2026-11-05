@@ -41,7 +41,7 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 		},
 		Key:     func(d Device) string { return d.Id },
 		Columns: []webui.Accessor[Device]{formID},
-		Actions: []webui.Action[Device]{{Label: "Open", Run: func(_ context.Context, d Device) (webui.Outcome, error) {
+		Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Open", Run: func(_ context.Context, d Device) (webui.Outcome, error) {
 			*act = append(*act, d.Id)
 			return webui.Success("done"), nil
 		}}},

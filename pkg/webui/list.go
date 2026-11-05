@@ -166,7 +166,7 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 		v.add(s.what+".Badge has no Load", "Set Load to func(M) []string, or remove the Badge: one with no Load has none.")
 	}
 	if s.open != nil {
-		s.open.validateDestination(v, s.what+".Open")
+		s.open.validateControl(v, s.what+".Open", slotItem)
 	}
 	for i, o := range s.origins {
 		if _, err := markdown.Origin(o); err != nil {
@@ -204,7 +204,8 @@ func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
 		return convert.Any(rows), nil
 	}
 	if s.open != nil {
-		n.Open, n.External = s.open.lowerDestination()
+		control := s.open.lowerControl()
+		n.Open, n.External = control.Link, control.External
 	}
 	if s.image != nil {
 		f := head("i", "Image", ir.KindString)

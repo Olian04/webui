@@ -309,19 +309,24 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, act
 			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select " + rowName(ctx, cols, row, v.Keys[i])})
 		}
 		for j, col := range cols {
-			@r.cell(col, row, v.Hrefs[i], v.clicks(i), v.rowClickValue(i), j == 0)
+			@r.cell(col, row, v.Hrefs[i], v.clickIsExternal(), v.clicks(i), v.rowClickValue(i), j == 0)
 		}
 		if actions {
 			<td class="actions">
 				for a, act := range v.Node.Actions {
-					if v.gate(i, a).Drawn() {
+					if v.gate(i, a).Drawn() && act.Action != nil {
 						@c.Button(c.ButtonProps{
 							Variant: variant(act.Role), Size: c.SizeSmall,
 							Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a).Reason,
-							Confirm: act.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
+							Confirm: act.Action.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
 						}) {
 							{ act.Label }
 							<span class="sr-only">{ rowName(ctx, cols, row, v.Keys[i]) }</span>
+						}
+					} else if v.gate(i, a).Drawn() {
+						@c.Button(c.ButtonProps{Variant: variant(act.Role), Size: c.SizeSmall, Href: v.actionHref(i, a), Attrs: linkAttrs(act)}) {
+							{ act.Label }
+							<span class="sr-only">{ rowNameOf(ctx, cols, row, v.Keys, i) }</span>
 						}
 					}
 				}
@@ -332,10 +337,10 @@ templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, act
 
 // cell is one value. The row's single anchor lives in the first cell, because
 // the stylesheet stretches it over every other.
-templ (r *Renderer) cell(col columnView, row any, href string, button bool, click string, first bool) {
+templ (r *Renderer) cell(col columnView, row any, href string, external bool, button bool, click string, first bool) {
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
-			@c.RowLink(href) {
+			@c.RowLink(href, external) {
 				@value(col.Field, col.Field.Shown(ctx, row), row)
 			}
 		} else if first && button {

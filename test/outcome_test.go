@@ -161,7 +161,7 @@ func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing
 				Rows:    func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() },
 				Key:     func(d Device) string { return d.Id },
 				Columns: []webui.Accessor[Device]{formID},
-				Actions: []webui.Action[Device]{{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
+				Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
 			},
 		}
 		return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
