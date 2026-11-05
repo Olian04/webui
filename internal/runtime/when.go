@@ -66,29 +66,20 @@ func gatesOf(root ir.Node) map[string][]*ir.When {
 	out := map[string][]*ir.When{}
 	var walk func(n ir.Node, above []*ir.When)
 	walk = func(n ir.Node, above []*ir.When) {
+		if n == nil {
+			return
+		}
 		switch n := n.(type) {
-		case nil:
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c, above)
-			}
-		case *ir.Columns:
-			for _, c := range n.Children {
-				walk(c, above)
-			}
+		case *ir.Stack, *ir.Columns: // they only arrange: there is nothing of theirs to hide
 		case *ir.When:
-			walk(n.Child, append(above[:len(above):len(above)], n))
-		case *ir.Tabs:
+			above = append(above[:len(above):len(above)], n)
+		default: // a leaf, or a Tabs, which is hidden as a whole
 			if len(above) > 0 {
 				out[render.LeafID(n.Addr())] = above
 			}
-			for _, t := range n.Tabs {
-				walk(t.Body, above)
-			}
-		default:
-			if len(above) > 0 {
-				out[render.LeafID(n.Addr())] = above
-			}
+		}
+		for _, c := range n.Children() {
+			walk(c, above)
 		}
 	}
 	walk(root, nil)

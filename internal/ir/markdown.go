@@ -22,3 +22,5 @@ type Markdown struct {
 
 // Addr reports the node's position in the body tree.
 func (m *Markdown) Addr() Addr { return m.At }
+
+func (m *Markdown) Children() []Node { return nil }

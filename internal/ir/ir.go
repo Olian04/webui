@@ -30,6 +30,10 @@ type Node interface {
 	// A section-refresh request names this, and it is stable for the life of
 	// one compiled app.
 	Addr() Addr
+
+	// Children is the nodes directly under this one, in the order a page shows them: a layout's, and a tab's body for each tab, whether it is selected or not. A leaf has none.
+	// A pass that only needs to reach every node asks this, so a new layout is one method here and no edit in each pass; what a pass does with a node of one kind stays its own.
+	Children() []Node
 }
 
 // Addr is a path of child indices from the page body, such as [0 1].

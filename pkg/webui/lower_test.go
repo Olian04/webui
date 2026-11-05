@@ -75,7 +75,7 @@ func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 
 	tabs := details.Body.(*ir.Tabs)
 	assert.Equal(t, tabs.ID, "tabs")
-	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Children[0].(*ir.Columns).Children[0].Addr()), []int{1, 0, 0})
+	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Nodes[0].(*ir.Columns).Nodes[0].Addr()), []int{1, 0, 0})
 
 	table := out.ByPath["/device"].Body.(*ir.Table)
 	assert.Equal(t, table.ID, "devices")

@@ -40,3 +40,5 @@ type Incoming struct {
 
 // Addr reports the node's position in the body tree.
 func (f *FileUpload) Addr() Addr { return f.At }
+
+func (f *FileUpload) Children() []Node { return nil }

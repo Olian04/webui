@@ -55,6 +55,8 @@ type Editor struct {
 // Addr reports the node's position in the body tree.
 func (f *Form) Addr() Addr { return f.At }
 
+func (f *Form) Children() []Node { return nil }
+
 // Resolved is the form with the choices of its selects read, for the request being answered: a copy when a select
 // reads them, and the form itself when none does.
 func (f *Form) Resolved(ctx context.Context) (*Form, error) {

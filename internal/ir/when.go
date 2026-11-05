@@ -19,3 +19,7 @@ type When struct {
 
 // Addr reports the node's position in the body tree.
 func (w *When) Addr() Addr { return w.At }
+
+func (w *When) Children() []Node {
+	return []Node{w.Child}
+}

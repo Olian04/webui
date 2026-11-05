@@ -47,3 +47,5 @@ type Items struct {
 
 // Addr reports the node's position in the body tree.
 func (i *Items) Addr() Addr { return i.At }
+
+func (i *Items) Children() []Node { return nil }
