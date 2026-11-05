@@ -47,14 +47,15 @@ func (a App) lower() (*ir.App, error) {
 		return nil, err
 	}
 	out := &ir.App{
-		Brand:         brand,
-		Description:   a.Description,
-		Theme:         lowerTheme(a.Theme),
-		ExternalLinks: lowerExternalLinks(a.ExternalLinks),
-		Logger:        a.Logger,
-		Secret:        a.Secret,
-		Observer:      a.Observer,
-		ByPath:        map[string]*ir.Page{},
+		Brand:            brand,
+		Description:      a.Description,
+		NoConsoleMessage: a.NoConsoleMessage,
+		Theme:            lowerTheme(a.Theme),
+		ExternalLinks:    lowerExternalLinks(a.ExternalLinks),
+		Logger:           a.Logger,
+		Secret:           a.Secret,
+		Observer:         a.Observer,
+		ByPath:           map[string]*ir.Page{},
 	}
 	for _, p := range a.Pages {
 		page := p.lowerPage(entries)

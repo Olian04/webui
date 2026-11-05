@@ -18,6 +18,11 @@ type App struct {
 	// pages have none, since a made-up one says nothing. Roughly 50 to 160 characters is what a search engine shows whole.
 	Description string
 
+	// NoConsoleMessage turns off the two marks that say what the pages were built with: a `<meta name="generator" content="webui">` in each page's head, and one line in the browser's
+	// console, the first time a tab opens a page, that says so and links to the library's repository. They are for the developer who opens the console or the source of
+	// the page and wonders; they cost nothing a visitor sees, and a page that does not want them says so here.
+	NoConsoleMessage bool
+
 	// Theme restyles the app's colours.
 	Theme Theme
 

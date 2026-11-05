@@ -1713,10 +1713,29 @@
 
   /* --------------------------------- start -------------------------------- */
 
+  // One line in the console for the developer who opens it, the first time a tab opens a page: what the page was built with, and where to find it. The page says so itself, in
+  // its generator meta (an app that does not want the line leaves the meta out), and it is `info` and not an error or a warning, which a page's own would be counted against it.
+  // It is once for a tab and not for each page, since a followed link is a new page.
+  function credit() {
+    if (!$('meta[name="generator"][content="webui"]')) return;
+    try {
+      if (sessionStorage.getItem('webui.credit')) return;
+      sessionStorage.setItem('webui.credit', '1');
+    } catch (e) {
+      // no storage: it is said each time, which is what a console is for
+    }
+    console.info(
+      '%cBuilt with webui%c\nHello, developer. This page is Go from end to end: no HTML, CSS or JavaScript was written for it.\nCurious how? https://github.com/Olian04/webui',
+      'font-weight:bold;font-size:14px;color:#3d71d9',
+      'color:inherit',
+    );
+  }
+
   // The hint beside the search box says the key this platform has.
   var hint = $('.search .kbd');
   if (hint && !isMac) hint.textContent = 'Ctrl K';
 
+  credit();
   syncSidebarToggle();
   syncThemeToggle();
   enhanceSidebarWidth();

@@ -13,6 +13,7 @@ server-rendered UI, with **no HTML, CSS or JavaScript to write**.
 - **Hypermedia-driven.** A hypermedia-driven application (HDA) built on HATEOAS
   (Hypermedia as the Engine of Application State): the server answers with HTML that carries
   every action available in that state.
+- **Says so, once.** Pages carry a `<meta name="generator" content="webui">` and one line in the browser's console, with a link back here, for the developer who opens it. `App.NoConsoleMessage` turns both off.
 - **Secure by default.** CSRF protection, a strict content security policy, and guards per
   page and per action.
 

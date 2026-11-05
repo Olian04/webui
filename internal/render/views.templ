@@ -44,6 +44,10 @@ templ (r *Renderer) early() {
 	<meta name="color-scheme" content="dark light"/>
 	@templ.Raw("<style>" + r.earlyStyle() + "</style>")
 	@templ.Raw("<script>" + r.prefs + "</script>")
+	// What the page was built with, for whoever reads its source; the page script reads it, and says so in the console. An app that does not want either leaves it out.
+	if !r.app.NoConsoleMessage {
+		<meta name="generator" content="webui"/>
+	}
 }
 
 // head is what the page's head has after its stylesheets and scripts: the font, the description, the icons of the tab and, on a page with an editor, the editor.
