@@ -236,6 +236,18 @@ Things that were proposed and dropped. Do not start on them again without a reas
 - A file is held in memory for the request and never written to disk: the body is read once with `MultipartReader`, not `ParseMultipartForm`, which spools to a temporary file. Do not reintroduce a spool, a handle or a lifecycle on the field: a file too large to hold is a transaction of its own, a `FileUpload` panel, and not a form value (three designs that put the store behind the field all leaked it). A `FileUpload[M]` has a model, the options that the visitor chooses beside the file (`Load`, `Fields`, bound before any of the file is read); its `Receive` is an `Action[FileHandle[M]]`, and the library holds none of the file, in memory or on disk.
 - A file is of a kind by what it holds (sniffed, and for JSON, CSV and text read through), never by its name or the browser's type. There is no SVG kind, since a browser runs it.
 
+### Cutting features from Monaco, or changing its source, to make the editor smaller
+
+**Decision:** Monaco is used as it is shipped. No feature of it is dropped to save bytes, and its source is not modified. Decided 2026-11-05, after measuring.
+
+**What was measured:** the editor's static part is 1,038 KB gzipped (the core is 2.7 MB raw of that, its features 1.2 MB). Leaving out Monaco's LSP client and sixteen features that this library does not use (inline completions, sticky scroll, the colour picker, code lenses, inlay hints, drop-and-paste, the WebGPU renderer and others) saves 97 KB gzipped, 9%, about 0.1 s in Lighthouse's simulation of the editor page's Largest Contentful Paint. It needs a changed list of imports in place of Monaco's own `editor.main.js`.
+
+**Why not:** the saving is small for what it takes: a copy of Monaco's entry list that has to be kept in step with each release, and an editor that has fewer features than the one its users know. What the build does is bundle `monaco-editor` as it is, and compress what that makes (`tools/precompress`).
+
+**What is done instead:** the files are served compressed (Brotli, or gzip), preloaded as the head is read, and cached for good (see "Lighthouse" in `design-decisions.md`).
+
+**Revisit when** Monaco itself ships a smaller entry point, or an app asks for an editor without a feature that can be switched off by its options and not by what is bundled.
+
 ## Tests
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
