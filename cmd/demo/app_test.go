@@ -9,6 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/Olian04/webui/pkg/prom"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -121,7 +122,9 @@ func TestABrokenAppServesItsOwnErrors(t *testing.T) {
 func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	a := app
-	a.Metrics = reg
+	observer, err := prom.New(reg)
+	assert.NoError(t, err)
+	a.Observer = observer
 	compiled, err := a.Compile("/admin")
 	assert.NoError(t, err)
 	h := routes(compiled)

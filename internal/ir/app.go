@@ -2,8 +2,6 @@ package ir
 
 import (
 	"log/slog"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // App is one compiled program. It carries no mount prefix: where the app is
@@ -18,8 +16,8 @@ type App struct {
 	// top bar.
 	ExternalLinks []ExternalLink
 
-	// Metrics is where the runtime registers what it counts, or nil for nothing counted.
-	Metrics prometheus.Registerer
+	// Observer is told what the runtime does, or nil for nothing told.
+	Observer Observer
 
 	// Logger is where the runtime says what went wrong that it could not tell the visitor, or nil to say nothing.
 	Logger *slog.Logger

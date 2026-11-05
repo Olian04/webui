@@ -17,7 +17,6 @@ import (
 
 	"github.com/Olian04/webui/internal/assetserve"
 	"github.com/Olian04/webui/internal/ir"
-	"github.com/Olian04/webui/internal/metrics"
 	"github.com/Olian04/webui/internal/render"
 )
 
@@ -46,7 +45,10 @@ type Program struct {
 
 	// m counts and times what the app does. It is nil when the app was given no registry,
 	// and a nil Recorder records nothing.
-	m *metrics.Recorder
+	m ir.Observer // told what the program does: never nil, and a program that was given none is told to something that does nothing
+
+	// observing is whether the app was given an Observer, so that a program that was not given one does not wrap its handlers to time them.
+	observing bool
 
 	// gate answers one question about an address: may this visitor open it? Each page's
 	// handler on it runs the page's argument decoding and Guard, as a real request would,
@@ -90,12 +92,9 @@ func NewProgram(app *ir.App, prefix string) (*Program, error) {
 		p.hasCrumbs = p.hasCrumbs || page.Crumb != nil
 	}
 
-	if app.Metrics != nil {
-		m, err := metrics.New(app.Metrics)
-		if err != nil {
-			return nil, fmt.Errorf("webui: App.Metrics: %w", err)
-		}
-		p.m = m
+	p.m = noObserver{}
+	if app.Observer != nil {
+		p.m, p.observing = app.Observer, true
 	}
 
 	own := func(method, path string, h http.Handler) {
@@ -163,7 +162,7 @@ func (p *Program) handle(mux *http.ServeMux, method, path, page, policy string, 
 // metered counts a request and its time, under the page that answers it. The status is what
 // the handler wrote, and a handler that wrote none answered 200.
 func (p *Program) metered(page string, next http.Handler) http.Handler {
-	if p.m == nil {
+	if !p.observing {
 		return next
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

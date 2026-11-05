@@ -396,14 +396,14 @@ func TestTheConditionsLoadIsCountedAsAWhen(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	var g gate
 	g.open.Store(true)
-	h := webui.App{Metrics: reg, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: g.when(columnPanel("Inside"))}}}.MustCompile("/admin")
+	h := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: g.when(columnPanel("Inside"))}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
 	assert.Equal(t, gathered(t, reg, "webui_load_duration_seconds")["kind=when,page=/w"], 1.0)
 	assert.Equal(t, gathered(t, reg, "webui_load_errors_total")["kind=when,page=/w"], 0.0)
 
 	bad := prometheus.NewRegistry()
 	failing := webui.When[condition]{Load: func(context.Context) (condition, webui.Loaded) { return condition{}, webui.Failed(errors.New("down")) }, Show: conditionOpen, Body: columnPanel("Inside")}
-	h = webui.App{Metrics: bad, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: failing}}}.MustCompile("/admin")
+	h = webui.App{Observer: observe(bad), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: failing}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
 	assert.Equal(t, gathered(t, bad, "webui_load_errors_total")["kind=when,page=/w"], 1.0)
 }

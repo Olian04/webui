@@ -52,7 +52,7 @@ func (a App) lower() (*ir.App, error) {
 		ExternalLinks: lowerExternalLinks(a.ExternalLinks),
 		Logger:        a.Logger,
 		Secret:        a.Secret,
-		Metrics:       a.Metrics,
+		Observer:      a.Observer,
 		ByPath:        map[string]*ir.Page{},
 	}
 	for _, p := range a.Pages {

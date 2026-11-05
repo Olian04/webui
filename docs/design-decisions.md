@@ -1337,15 +1337,14 @@ design element.
 
 ## Metrics
 
-- The app collects and does not serve. `App.Metrics` is a `prometheus.Registerer`, the
-  program's own, and the program serves its registry where it serves its other metrics.
+- **An `Observer` is told, and the Prometheus one is its own package.** `App.Metrics` was a `prometheus.Registerer`, which put the Prometheus client (nine of the eleven modules a program that imports the library links) in the signature of the root package, for every program, whether or not it counts. `App.Observer` is a `webui.Observer`, an interface of seven methods that the app calls as it works (a request begins and ends, a `Load` runs, an action is answered, a table is exported, a search runs or fails, a sidebar entry fails), and `pkg/prom` is the Observer that counts them as Prometheus metrics (`prom.New(registry)`), which a program imports to use. The root package links `templ` and `goldmark` and no more (`test/observer_test.go` checks that `go list -deps` does not name Prometheus). Any other kind of counting is an `Observer` of the program's own, which the interface lets it write, and not a change to the library. It is not a sealed interface: it is for the program to implement, so what it asks of a program is a contract (the page labels are path templates, the kinds and results are the fixed names listed on the methods, and the methods are called concurrently). What it costs: the names that the metrics were free to change are the interface's now, and the program has one line more (`prom.New` returns an error, where `Compile` used to). The app collects and does not serve: the program's own registry is served by the program, where it serves its other metrics.
   A `/_webui/metrics` was proposed and dropped: what is exposed, at which address and to
   whom are the host's decisions, and the metrics name every page template and how much
   each is used, which should not be public by default. What it costs: one line more for
   the program.
 - **Compiling again, or sharing a registry, never fails.** Compiling the app again, or compiling a second app with the same
   registry, works: a metric the registry already has, the same in name, labels and help, is the one that is counted into (the
-  `AlreadyRegisteredError` carries it), so a program that replaces its app as it changes keeps its counts, and nothing fails.
+  `AlreadyRegisteredError` carries it), so a program that replaces its app as it changes keeps its counts, and nothing fails (this is now `prom.New`, which is what takes the registry).
   Failing was the first design, as the safe choice, and was dropped: it made the one common case of a second compile (a program
   that recompiles) an error to work around, in exchange for telling the program about a mistake that is not one. The cost is
   that two *different* apps in one registry add their counts together where a page has the same path template, which is right
