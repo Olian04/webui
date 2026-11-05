@@ -101,12 +101,26 @@ function themeBase() {
   return isLight() ? 'vs' : 'vs-dark';
 }
 
+// The dark base's colours for comments, regular expressions and invalid text are below 4.5:1 on the editor's background, and
+// on the highlighted line (the comment is 4.4:1 and 3.8:1). These are the same hues, lightened to 5:1 on both. The light base
+// passes as it is, and the high-contrast ones are made to.
+function tokenRules() {
+  if (themeBase() !== 'vs-dark') return [];
+  return [
+    { token: 'comment', foreground: '7ca668' },
+    { token: 'regexp', foreground: 'e07a7a' },
+    { token: 'invalid', foreground: 'ff6b6b' },
+  ];
+}
+
 function defineThemes() {
   const colors = {
     'editor.background': colour('--panel', '#181b1f'),
     'editor.foreground': colour('--text', '#ccccdc'),
-    'editorLineNumber.foreground': colour('--text-3', '#6e6e7e'),
-    'editorLineNumber.activeForeground': colour('--text-2', '#9090a0'),
+    // Line numbers are text that a reader uses, so they are the secondary text colour and not the tertiary one, which is
+    // for what can be missed: it is 3.3:1 on the editor's background, and WCAG asks 4.5:1.
+    'editorLineNumber.foreground': colour('--text-2', '#9090a0'),
+    'editorLineNumber.activeForeground': colour('--text', '#ccccdc'),
     'editor.lineHighlightBackground': colour('--hover', '#22252b'),
     'editor.selectionBackground': colour('--ring', '#3d71d955'),
     'editorCursor.foreground': colour('--blue-text', '#6e9fff'),
@@ -121,7 +135,7 @@ function defineThemes() {
     'diffEditor.insertedTextBackground': '#2ea04333',
     'diffEditor.removedTextBackground': '#f8514933',
   };
-  monaco.editor.defineTheme('webui', { base: themeBase(), inherit: true, rules: [], colors });
+  monaco.editor.defineTheme('webui', { base: themeBase(), inherit: true, rules: tokenRules(), colors });
 }
 
 function applyTheme() {
