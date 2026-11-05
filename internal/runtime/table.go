@@ -195,7 +195,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
 	view.Keys, view.Gates, view.ActionHrefs = p.rowControls(ctx, req, page, n, rows)
-	view.ClickRefused = p.clickRefused(ctx, page, n, rows)
+	view.ClickRefused = p.clickRefused(ctx, page, n.Click, "a table", rows)
 	view.BulkGates = p.bulkGates(ctx, page, n, rows)
 	return p.render.Table(view)
 }
@@ -244,16 +244,15 @@ func (p *Program) linkHrefs(ctx context.Context, req *Request, page *ir.Page, li
 	return hrefs
 }
 
-// clickRefused is, for a table whose click on a row is an Action, whether this viewer may not click each row: the Action's
-// Guard, run on the row, as it will be on the POST. A row it refuses is shown but does nothing, whichever
-// error says so: it has no button to hide or to disable.
-func (p *Program) clickRefused(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []bool {
-	if !n.Click.Posts() || n.Click.Action.Guard == nil {
+// clickRefused is, for a click that is an Action, whether this viewer may not click each row, item or day: the Action's Guard, run on it, as it will be on the POST. One it
+// refuses is shown but does nothing, whichever error says so: it has no button to hide or to disable. what names the thing that is clicked, for the log.
+func (p *Program) clickRefused(ctx context.Context, page *ir.Page, click *ir.Control, what string, subjects []any) []bool {
+	if !click.Posts() || click.Action.Guard == nil {
 		return nil
 	}
-	refused := make([]bool, len(rows))
-	for i, row := range rows {
-		refused[i] = !p.gateOf(page, "the RowClick of a table", func() error { return n.Click.Action.Guard(ctx, row) }).Open()
+	refused := make([]bool, len(subjects))
+	for i, subject := range subjects {
+		refused[i] = !p.gateOf(page, "the click on "+what, func() error { return click.Action.Guard(ctx, subject) }).Open()
 	}
 	return refused
 }

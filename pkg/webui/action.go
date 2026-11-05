@@ -119,20 +119,18 @@ func lowerBulk[M any](a Action[[]M]) *ir.Action {
 
 func (Action[M]) posts() bool { return true }
 
-// validateControl checks an Action where it is: it has a Run everywhere, a Label where it is a button, and, where it is the click on a row, no Confirm, since
-// there is no button to ask from. An action is a POST, so it is not what an item, a headline or a day leads with.
+// validateControl checks an Action where it is: it has a Run everywhere, a Label where it is a button, and, where it is the click on a row, an item or a day, no Confirm,
+// since there is no button to ask from.
 func (a Action[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
 	switch slot {
-	case slotRowClick:
+	case slotClick:
 		validateAction(v, at, a, false)
 		if a.Confirm != "" {
-			v.add(at+" has a Confirm, but a click on a row has no button to ask from",
+			v.add(at+" has a Confirm, but a click on a row, an item or a day has no button to ask from",
 				"Remove Confirm, or make the action one of Table.Actions, which has a button for each row.")
 		}
-	case slotRowAction:
+	case slotButton:
 		validateAction(v, at, a, true)
-	case slotItem:
-		v.add(at+" is an Action", "An action is a POST, and an item, a headline or a day is read: lead somewhere with a Link or an Href.")
 	}
 }
 

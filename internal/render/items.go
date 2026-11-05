@@ -23,8 +23,12 @@ type ItemsView struct {
 	Limit int
 	More  bool
 
-	// Hrefs is where each item leads in the app, "" for one that leads nowhere or that the visitor may not follow.
+	// Hrefs is where each item leads, in the app or on another site, "" for one that leads nowhere or that the visitor may not follow.
 	Hrefs []string
+
+	// Keys is each item's identity, and ClickRefused whether this viewer may not click it, for a list whose click is an Action; both are empty for any other.
+	Keys         []string
+	ClickRefused []bool
 
 	Failed  bool // Load failed: the panel says so, the page stands
 	Refusal *ir.Refusal
@@ -53,15 +57,18 @@ func picture(n *ir.Items, row any) string {
 	return src
 }
 
-// external is where an item is on another site, "" for none: the address of its link, which has been checked.
-func (v ItemsView) external(row any) string {
-	if v.Node.External == nil {
-		return ""
-	}
-	return v.Node.External(row)
+// isExternal is whether an item leads to another site, which opens in a tab of its own.
+func (v ItemsView) isExternal() bool { return v.Node.Click != nil && v.Node.Click.External != nil }
+
+// posts is whether a click on an item is an action, and so the list is a form.
+func (v ItemsView) posts() bool { return v.Node.Click.Posts() && len(v.Keys) == len(v.Rows) }
+
+// clicks is whether item i runs the list's action when its headline is clicked.
+func (v ItemsView) clicks(i int) bool {
+	return v.posts() && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
 }
 
-// href is where item i leads in the app, "" for none.
+// href is where item i leads, "" for none.
 func (v ItemsView) href(i int) string {
 	if i < len(v.Hrefs) {
 		return v.Hrefs[i]

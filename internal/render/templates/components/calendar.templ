@@ -7,6 +7,7 @@ type CalendarDayProps struct {
 	Label   string
 	Href    string // "" for a day that leads nowhere
 	Other   bool   // the day leads to another site, which opens in a tab of its own
+	Act     string // the "_act" value of the button that the day is, "" for a day that is not one
 	Today   bool
 	Outside bool // a day of the week at the edge that is not of the month
 	Marked  bool // there are items on it
@@ -93,6 +94,11 @@ templ Calendar(p CalendarProps) {
 										<span aria-hidden="true">{ d.Num }</span>
 										<span class="sr-only">{ d.Label }</span>
 									</a>
+								} else if d.Act != "" {
+									<button class="cal-day cal-button" type="submit" name="_act" value={ d.Act }>
+										<span aria-hidden="true">{ d.Num }</span>
+										<span class="sr-only">{ d.Label }</span>
+									</button>
 								} else {
 									<span class="cal-day">
 										<span aria-hidden="true">{ d.Num }</span>

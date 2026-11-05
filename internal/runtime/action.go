@@ -10,7 +10,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/Olian04/webui/internal/args"
+	"github.com/Olian04/webui/internal/calendar"
 	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/phone"
 	"github.com/Olian04/webui/internal/render"
@@ -62,6 +65,14 @@ func actionable(leaves map[string]ir.Node) bool {
 			}
 		case *ir.Table:
 			if len(n.Bulk) > 0 || n.Click.Posts() || slices.ContainsFunc(n.Actions, (*ir.Control).Posts) {
+				return true
+			}
+		case *ir.Items:
+			if n.Click.Posts() {
+				return true
+			}
+		case *ir.Calendar:
+			if n.Click.Posts() {
 				return true
 			}
 		case *ir.Toolbar:
@@ -130,6 +141,10 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates ma
 			p.tableAct(w, r, page, req, n)
 		case *ir.Toolbar:
 			p.toolbarAct(w, r, page, req, n)
+		case *ir.Items:
+			p.itemsAct(w, r, page, req, n)
+		case *ir.Calendar:
+			p.calendarAct(w, r, page, req, n)
 		case *ir.FileUpload:
 			// A file is received as it arrives, while the body is read, and answers the request itself: this is a post that sent none.
 			p.refuse(w, r, rules.FileRequired())
@@ -491,17 +506,86 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		subject = picked
 	}
 
-	outcome, ok := p.perform(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
+	p.actOn(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
+}
+
+// actOn runs an action on a subject that a request named, and ends the request as an action of a leaf with no fields ends: a failure is refused with its message, which is the reason
+// since there is no field to point at, and a success leaves for the address the request was made at, with the message as a toast.
+func (p *Program) actOn(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, action *ir.Action, subject any, what string) {
+	outcome, ok := p.perform(w, r, page, req, action, subject, what)
 	if !ok {
 		return
 	}
 	switch outcome.Kind {
 	case ir.OutcomeFailure, ir.OutcomeReject:
-		// A table action has no fields to point at, so the messages are the reason.
 		p.refuse(w, r, outcomeText(outcome))
 	case ir.OutcomeSuccess, ir.OutcomeWarning:
 		p.leave(w, r, outcome, r.URL.RequestURI())
 	}
+}
+
+// itemsAct runs the action that a click on an item's headline is. The item is named by Key and found again among those the source returns, never trusted by position: the list may
+// have changed since the visitor saw it.
+func (p *Program) itemsAct(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Items) {
+	ctx := r.Context()
+	kind, _, key, ok := parseAct(r.PostForm.Get("_act"))
+	if !ok || kind != "click" || !n.Click.Posts() || n.Key == nil {
+		p.refuse(w, r, notUnderstood)
+		return
+	}
+	rows, err := timed(p, page, "list", func() ([]any, error) { return n.Load(ctx, maxItems+1) })
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("list load: %w", err))
+		return
+	}
+	for _, row := range rows {
+		if n.Key(row) == key {
+			p.actOn(w, r, page, req, n.Click.Action, row, fmt.Sprintf("action on an item of %q", n.Title))
+			return
+		}
+	}
+	p.refuse(w, r, "That item no longer exists.")
+}
+
+// calendarAct runs the action that a click on a day is. The day is named by its date and found again in the grid the address names, with the items that are on it counted as
+// they were for the page; a day with nothing on it leads nowhere, and so has no action.
+func (p *Program) calendarAct(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Calendar) {
+	ctx := r.Context()
+	kind, _, key, ok := parseAct(r.PostForm.Get("_act"))
+	date, err := time.Parse("2006-01-02", key)
+	if !ok || kind != "click" || !n.Click.Posts() || err != nil {
+		p.refuse(w, r, notUnderstood)
+		return
+	}
+	now := time.Now
+	if n.Today != nil {
+		now = n.Today
+	}
+	month := calendar.Of(calendar.Today(now()))
+	if m, ok := calendar.Parse(req.Raw[args.ViewKey(n.ID, "month")]); ok {
+		month = m
+	}
+	from, to := calendar.Span(month, n.SundayFirst)
+	if date.Before(from) || !date.Before(to) {
+		p.refuse(w, r, "That day is not in the calendar.")
+		return
+	}
+	rows, err := timed(p, page, "calendar", func() ([]any, error) { return n.Load(ctx, from, to) })
+	if err != nil {
+		p.fail(w, r, page, req, fmt.Errorf("calendar load: %w", err))
+		return
+	}
+	count := 0
+	for _, row := range rows {
+		if d := n.Date(row).UTC(); !d.Before(from) && d.Before(to) && calendar.Key(d) == key {
+			count++
+		}
+	}
+	if count == 0 {
+		p.refuse(w, r, "There is nothing on that day.")
+		return
+	}
+	p.actOn(w, r, page, req, n.Click.Action, ir.CalendarDay{Date: date, Items: count}, "action on a day of "+strconv.Quote(n.Title))
 }
 
 // refuse sends the user back with an error toast: nothing was changed.

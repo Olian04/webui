@@ -8,8 +8,8 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Control is a button, a link or an address that belongs to a row of a table: what a click on the row does ([Table.RowClick]), or one of the controls in its trailing
-// cell ([Table.Actions]). It is an [Action], which posts: its Run is handed the row, and may look at it to decide where to go, with [Outcome.Then], or change something,
+// Control is a button, a link or an address that belongs to a row of a table, an item of a list or a day of a calendar: what a click on it does ([Table.RowClick],
+// [List.Open], [Calendar.Open]), or one of the controls in a table row's trailing cell ([Table.Actions]). It is an [Action], which posts: its Run is handed the row, and may look at it to decide where to go, with [Outcome.Then], or change something,
 // and it needs the table's Key; a [Link], which leads to a page of the app; or an [Href], which leads to an address. They are interchangeable where one is taken: the
 // difference is how each is drawn and what it does, a link being a real anchor, so a middle-click, a new tab and the keyboard work, where an action is a POST that
 // cannot be opened in a tab. The interface exists to take any of them, and each type says how it is checked and how it is lowered, so nothing that takes a
@@ -29,9 +29,8 @@ type Control[M any] interface {
 type controlSlot uint8
 
 const (
-	slotRowClick  controlSlot = iota // the click on a whole row: no button, so no Label, and no Confirm to ask from
-	slotRowAction                    // a button in the row's trailing cell: a Label, and a Confirm if it asks first
-	slotItem                         // an item, a headline or a day, which is read: only what leads somewhere
+	slotClick  controlSlot = iota // the click on a whole row, an item or a day: no button, so no Label, and no Confirm to ask from
+	slotButton                    // a button in the row's trailing cell: a Label, and a Confirm if it asks first
 )
 
 // Link names a destination page and how to build its arguments from M. Page is
@@ -57,14 +56,6 @@ type Link[M, A any] struct {
 	Role  Role
 }
 
-// Destination is where an item, a day or a row leads, and it is not something that is done: a [Link] to a page of the app, or an [Href] to an address. It is a
-// [Control] that cannot be an [Action], which is a POST, and is what [List], [Cards] and [Calendar] take, since what they show is read. Every Destination is a Control,
-// so a slot that takes a Control takes it.
-type Destination[M any] interface {
-	Control[M]
-	destination()
-}
-
 // Href is an address as a control: a page on another site, or a path on this one that is not a page of the app, built from M. It opens in a tab of its
 // own, with the mark that says so and rel="noopener noreferrer". An address that is not a path on this site or an http, https or mailto address, such as a
 // script, is not a link, and what would have led there is plain text, so data in the model cannot make one. An item whose URL says "" has no link.
@@ -78,13 +69,11 @@ type Href[M any] struct {
 	Role  Role
 }
 
-// ASSERT: Link, Href and Action implement Control, and Link and Href implement Destination
+// ASSERT: Link, Href and Action implement Control
 var (
-	_ Control[struct{}]     = Link[struct{}, struct{}]{}
-	_ Control[struct{}]     = Href[struct{}]{}
-	_ Control[struct{}]     = Action[struct{}]{}
-	_ Destination[struct{}] = Link[struct{}, struct{}]{}
-	_ Destination[struct{}] = Href[struct{}]{}
+	_ Control[struct{}] = Link[struct{}, struct{}]{}
+	_ Control[struct{}] = Href[struct{}]{}
+	_ Control[struct{}] = Action[struct{}]{}
 )
 
 func (l Link[M, A]) validateLink(v *bodyValidator) {
@@ -109,14 +98,11 @@ func (l Link[M, A]) validateLink(v *bodyValidator) {
 	}
 }
 
-func (Link[M, A]) destination() {}
-func (Href[M]) destination()    {}
-
 func (Link[M, A]) posts() bool { return false }
 func (Href[M]) posts() bool    { return false }
 
 func (l Link[M, A]) validateControl(v *bodyValidator, at string, slot controlSlot) {
-	if slot == slotRowAction && l.Label == "" {
+	if slot == slotButton && l.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
 	l.validateLink(v)
@@ -127,7 +113,7 @@ func (l Link[M, A]) lowerControl() *ir.Control {
 }
 
 func (h Href[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
-	if slot == slotRowAction && h.Label == "" {
+	if slot == slotButton && h.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
 	if h.URL == nil {
@@ -165,5 +151,24 @@ func (l Link[M, A]) lowerLink() *ir.Link {
 	return &ir.Link{
 		Dest: l.Page.pagePath(),
 		Args: func(ctx context.Context, row any) any { return l.Args(ctx, row.(M)) },
+	}
+}
+
+// remapControl makes a lowered control take the subject that the runtime holds where the app's functions take another: a calendar's day is the IR's
+// CalendarDay to the runtime and a Day to the app. Each function that takes a subject is wrapped to convert it first.
+func remapControl(c *ir.Control, convert func(any) any) {
+	if link := c.Link; link != nil {
+		args := link.Args
+		link.Args = func(ctx context.Context, row any) any { return args(ctx, convert(row)) }
+	}
+	if external := c.External; external != nil {
+		c.External = func(row any) string { return external(convert(row)) }
+	}
+	if act := c.Action; act != nil {
+		guard, run := act.Guard, act.Run
+		if guard != nil {
+			act.Guard = func(ctx context.Context, subject any) error { return guard(ctx, convert(subject)) }
+		}
+		act.Run = func(ctx context.Context, subject any) (ir.Outcome, error) { return run(ctx, convert(subject)) }
 	}
 }

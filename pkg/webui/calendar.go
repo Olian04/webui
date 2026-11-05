@@ -48,9 +48,11 @@ type Calendar[M any] struct {
 	// Date is when an item is. Its day is its day in UTC. It is required.
 	Date func(M) time.Time
 
-	// Open is where a day with items leads: a [Link] to a page of the app, built from the [Day], that shows what is on it, with the date as its argument, or an [Href] to an
-	// address. The day is a real anchor. A day whose page refuses the visitor is a plain day, and so is a day with nothing on it. It cannot be an [Action]. Left nil, no day is a link.
-	Open Destination[Day]
+	// Open is what a click on a day with items does: a [Link] to a page of the app, built from the [Day], that shows what is on it, with the date as its argument, an [Href] to
+	// an address, or an [Action] for what neither can do, which is handed the Day. A Link or an Href makes the day a real anchor, and a day whose page refuses the visitor is a
+	// plain day. An Action is a POST, so it cannot be opened in a tab; a day that its Guard refuses is plain too, whichever error says so. A day with nothing on it leads
+	// nowhere. A Label, a Role and a Confirm are not drawn, there being no button. Left nil, no day is a link.
+	Open Control[Day]
 
 	// SundayFirst begins each week on Sunday. It is Monday when left false.
 	SundayFirst bool
@@ -75,7 +77,7 @@ func (c Calendar[M]) validateBody(v *bodyValidator) {
 		v.add("a Calendar has no Date", "Set Date to func(M) time.Time, returning when an item is: its day, in UTC, is where it is marked.")
 	}
 	if c.Open != nil {
-		c.Open.validateControl(v, "Calendar.Open", slotItem)
+		c.Open.validateControl(v, "Calendar.Open", slotClick)
 	}
 	if c.SundayFirst && c.WeekNumbers {
 		v.add("a Calendar has SundayFirst and WeekNumbers", "ISO 8601 week numbers are of weeks that begin on Monday: drop one of the two.")
@@ -95,19 +97,11 @@ func (c Calendar[M]) lowerBody(at ir.Addr) ir.Node {
 		},
 	}
 	if c.Open != nil {
-		control := c.Open.lowerControl()
-		link, external := control.Link, control.External
-		if link != nil {
-			inner := link.Args
-			link.Args = func(ctx context.Context, row any) any {
-				d := row.(ir.CalendarDay)
-				return inner(ctx, Day{Date: d.Date, Items: d.Items})
-			}
-			n.Open = link
-		}
-		if external != nil {
-			n.External = func(d ir.CalendarDay) string { return external(Day{Date: d.Date, Items: d.Items}) }
-		}
+		n.Click = c.Open.lowerControl()
+		remapControl(n.Click, func(row any) any { // what the runtime holds of a day is the IR's, and what the app's functions take is a Day
+			d := row.(ir.CalendarDay)
+			return Day{Date: d.Date, Items: d.Items}
+		})
 	}
 	return n
 }

@@ -1012,13 +1012,25 @@ templ (r *Renderer) Items(v ItemsView) {
 			if len(v.Rows) == 0 {
 				@c.EmptyState(c.EmptyStateProps{Icon: c.IconSearch, Title: "Nothing here yet", Desc: "There is nothing to show."})
 			} else {
-				@c.ItemList(c.ItemListProps{Cards: v.Node.Cards, Scroll: v.Node.Scroll, Label: v.label()}) {
-					for i, row := range v.Rows {
-						@c.Item(r.item(v, i, row))
+				if v.posts() {
+					@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
+						<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+						@r.itemList(v)
 					}
+				} else {
+					@r.itemList(v)
 				}
 			}
 		</div>
+	}
+}
+
+// itemList is the items, one after the other.
+templ (r *Renderer) itemList(v ItemsView) {
+	@c.ItemList(c.ItemListProps{Cards: v.Node.Cards, Scroll: v.Node.Scroll, Label: v.label()}) {
+		for i, row := range v.Rows {
+			@c.Item(r.item(v, i, row))
+		}
 	}
 }
 
@@ -1037,14 +1049,16 @@ templ (r *Renderer) itemsFoot(v ItemsView) {
 // itemHeadline is an item's headline: a link to where it leads in the app when it leads somewhere, or a link to another site, which opens a tab of its own and says so,
 // else as its field shows it.
 templ itemHeadline(v ItemsView, i int, row any) {
-	if href := v.href(i); href != "" {
-		<a class="item-link" href={ href }>{ v.Node.Headline.Shown(ctx, row) }</a>
-	} else if ext := v.external(row); ext != "" {
-		<a class="item-link ext" href={ ext } target="_blank" rel="noopener noreferrer">
+	if href := v.href(i); href != "" && v.isExternal() {
+		<a class="item-link ext" href={ href } target="_blank" rel="noopener noreferrer">
 			{ v.Node.Headline.Shown(ctx, row) }
 			@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
 			<span class="sr-only">(opens in a new tab)</span>
 		</a>
+	} else if href != "" {
+		<a class="item-link" href={ href }>{ v.Node.Headline.Shown(ctx, row) }</a>
+	} else if v.clicks(i) {
+		<button class="item-link item-button" type="submit" name="_act" value={ RowClickValue(v.Keys[i]) }>{ v.Node.Headline.Shown(ctx, row) }</button>
 	} else {
 		@value(v.Node.Headline, v.Node.Headline.Shown(ctx, row), row)
 	}
@@ -1085,7 +1099,14 @@ templ (r *Renderer) Calendar(v CalendarView) {
 		Leaf: LeafID(v.Node.At),
 	}) {
 		<div class="panel-body cal-body">
-			@c.Calendar(r.calendarProps(v))
+			if v.Node.Click.Posts() {
+				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
+					<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+					@c.Calendar(r.calendarProps(v))
+				}
+			} else {
+				@c.Calendar(r.calendarProps(v))
+			}
 		</div>
 	}
 }

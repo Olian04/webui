@@ -41,10 +41,15 @@ type List[M any] struct {
 	// whose text is the same on every row, is not a headline.
 	Headline Accessor[M]
 
-	// Open is where an item leads: a [Link] to a page of the app, built from the item, or an [Href] to an address, such as another site. The headline is a real
-	// anchor to it. An item whose page refuses the visitor is plain text. It cannot be an [Action]: an item is read, and a link can be opened in a new tab.
-	// Left nil, no item leads anywhere.
-	Open Destination[M]
+	// Open is what a click on an item's headline does: a [Link] to a page of the app, built from the item, an [Href] to an address, such as another site, or an
+	// [Action] for what neither can do. A Link or an Href makes the headline a real anchor (an Href opens a tab of its own), and an item whose page refuses
+	// the visitor is plain text. An Action is handed the item, and is a POST, so it cannot be opened in a tab and needs Key; an item that its Guard refuses is plain text too,
+	// whichever error says so, and a Label, a Role and a Confirm are not drawn, there being no button. Left nil, no item leads anywhere.
+	Open Control[M]
+
+	// Key identifies an item, such as by its ID. It is required when Open is an Action, because a request names an item by identity and never by position, and is
+	// asked of the items that Load returns, which are found again when the action is posted.
+	Key func(M) string
 
 	// Meta are the small facts under the headline, in order, separated by a dot: an item that has no value for one (an empty text) is shown without it.
 	Meta []Accessor[M]
@@ -76,14 +81,15 @@ const (
 // Cards is a [List] whose items are cards: a picture over a headline, a badge and the line of small facts, in a grid that wraps or a row that scrolls. It has the same
 // source, the same Show more, and the same fields, and is for items that are looked at as much as read, such as videos or products.
 type Cards[M any] struct {
-	// Title, Desc, Load, PageSize, Headline, Open, Meta, Image, Badge and TrustedOrigins are those of a [List].
+	// Title, Desc, Load, PageSize, Headline, Open, Key, Meta, Image, Badge and TrustedOrigins are those of a [List].
 	Title    string
 	Desc     string
 	Load     func(ctx context.Context, limit int) ([]M, Loaded)
 	PageSize int
 
 	Headline Accessor[M]
-	Open     Destination[M]
+	Open     Control[M]
+	Key      func(M) string
 	Meta     []Accessor[M]
 
 	Image          func(M) string
@@ -111,7 +117,8 @@ type itemsSpec[M any] struct {
 	pageSize int
 
 	headline Accessor[M]
-	open     Destination[M]
+	open     Control[M]
+	key      func(M) string
 	meta     []Accessor[M]
 	image    func(M) string
 	badge    Select[M]
@@ -122,14 +129,14 @@ type itemsSpec[M any] struct {
 func (f List[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
 		what: "List", title: f.Title, desc: f.Desc, load: f.Load, pageSize: f.PageSize,
-		headline: f.Headline, open: f.Open, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
+		headline: f.Headline, open: f.Open, key: f.Key, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
 	}
 }
 
 func (c Cards[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
 		what: "Cards", cards: true, scroll: c.Layout == CardsScroll, layout: c.Layout, title: c.Title, desc: c.Desc, load: c.Load, pageSize: c.PageSize,
-		headline: c.Headline, open: c.Open, meta: c.Meta, image: c.Image, badge: c.Badge, origins: c.TrustedOrigins,
+		headline: c.Headline, open: c.Open, key: c.Key, meta: c.Meta, image: c.Image, badge: c.Badge, origins: c.TrustedOrigins,
 	}
 }
 
@@ -166,7 +173,10 @@ func (s itemsSpec[M]) validate(v *bodyValidator) {
 		v.add(s.what+".Badge has no Load", "Set Load to func(M) []string, or remove the Badge: one with no Load has none.")
 	}
 	if s.open != nil {
-		s.open.validateControl(v, s.what+".Open", slotItem)
+		s.open.validateControl(v, s.what+".Open", slotClick)
+		if s.open.posts() && s.key == nil {
+			v.add(s.what+".Open is an Action but there is no Key", "Set Key to return a stable identity for an item, such as its ID.")
+		}
 	}
 	for i, o := range s.origins {
 		if _, err := markdown.Origin(o); err != nil {
@@ -204,8 +214,10 @@ func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
 		return convert.Any(rows), nil
 	}
 	if s.open != nil {
-		control := s.open.lowerControl()
-		n.Open, n.External = control.Link, control.External
+		n.Click = s.open.lowerControl()
+		if s.key != nil {
+			n.Key = func(item any) string { return s.key(item.(M)) }
+		}
 	}
 	if s.image != nil {
 		f := head("i", "Image", ir.KindString)

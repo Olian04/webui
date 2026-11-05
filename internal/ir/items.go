@@ -26,10 +26,12 @@ type Items struct {
 	// Headline is the item's title. A DisplayLink headline is a link to elsewhere.
 	Headline Field
 
-	// Open is where the item leads in the app, when it does: a link, which is built from the item. External is where it is elsewhere, as an address that
-	// has been checked, or "" for an item that has none; nil for a list that has none.
-	Open     *Link
-	External func(model any) string
+	// Click is what a click on the item's headline does: lead to a page or an address, or run an Action, which is a POST to the page naming the item by Key.
+	// nil means items do not lead anywhere.
+	Click *Control
+
+	// Key identifies an item for an Action; nil when the list declares none.
+	Key func(item any) string
 
 	// Meta are the small facts under the headline, in order.
 	Meta []Field
