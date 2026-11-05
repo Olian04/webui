@@ -340,14 +340,13 @@ func TestACalendarThatCannotBeDrawnIsACompileError(t *testing.T) {
 
 	src := &calendarSource{}
 	_, detail := dayPages(webui.Stack{}, nil)
-	act := webui.Action[webui.Day]{Label: "Go", Run: func(context.Context, webui.Day) (webui.Outcome, error) { return webui.Outcome{}, nil }}
 	for name, tc := range map[string]struct {
 		body webui.PageBody
 		want string
 	}{
 		"no load":                  {webui.Calendar[release]{Date: releaseWhen}, "a Calendar has no Load"},
 		"no date":                  {webui.Calendar[release]{Load: src.load}, "a Calendar has no Date"},
-		"an action open":           {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: act}, "Calendar.Open is an Action"},
+		"an href with no url":      {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Href[webui.Day]{}}, "Calendar.Open is an Href with no URL"},
 		"sunday and week numbers":  {webui.Calendar[release]{Load: src.load, Date: releaseWhen, SundayFirst: true, WeekNumbers: true}, "a Calendar has SundayFirst and WeekNumbers"},
 		"an open that is not here": {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Link[webui.Day, webui.NoArgs]{Page: webui.Page[webui.NoArgs]{Path: "/elsewhere", Body: webui.Stack{}}, Args: func(context.Context, webui.Day) webui.NoArgs { return webui.NoArgs{} }}}, `a link targets "/elsewhere", which is not mounted in this app`},
 	} {
@@ -358,4 +357,20 @@ func TestACalendarThatCannotBeDrawnIsACompileError(t *testing.T) {
 		})
 	}
 	_ = detail
+}
+
+// An Href leads a day to another site, as a link that opens in a tab of its own, for each day that has items and for no other. Its address is built from the Day.
+func TestADayThatHasItemsCanLeadToAnotherSite(t *testing.T) {
+	t.Parallel()
+
+	src := &calendarSource{}
+	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: webui.Href[webui.Day]{URL: func(d webui.Day) string {
+		return "https://example.com/releases/" + d.Date.Format("2006-01-02")
+	}}})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+
+	marked := calendarCell(body, 3, false)
+	assert.Contains(t, marked, `href="https://example.com/releases/2026-09-03" target="_blank" rel="noopener noreferrer"`)
+	assert.Contains(t, marked, ", opens in a new tab")
+	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<a ")) // nothing on it: not a link
 }

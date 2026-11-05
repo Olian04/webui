@@ -81,7 +81,7 @@ var ReleaseDay = webui.Page[ReleaseDayArgs]{
 			return service.ReleasesBetween(day, day.AddDate(0, 0, 1)), webui.Ready()
 		},
 		Headline: releaseTitle,
-		Link:     func(r Release) string { return r.Link },
+		Open:     webui.Href[Release]{URL: func(r Release) string { return r.Link }},
 		Meta:     []webui.Accessor[Release]{releaseAuthor, releaseDownloads},
 		Badge:    releaseChannel,
 	},
@@ -161,7 +161,7 @@ var ActivityAlerts = webui.List[Alert]{
 	Badge: Severity,
 }
 
-// ActivityReleases is what has been published. Each is on another site, so its headline is a Link: it opens a tab of its own and says so, with the mark that a link
+// ActivityReleases is what has been published. Each is on another site, so its headline is an Href: it opens a tab of its own and says so, with the mark that a link
 // to another site has everywhere else. The facts are in order under it, with a dot between them.
 var ActivityReleases = webui.List[Release]{
 	Title:    "Releases",
@@ -170,7 +170,7 @@ var ActivityReleases = webui.List[Release]{
 		return service.Releases(limit), webui.Ready()
 	},
 	Headline: releaseTitle,
-	Link:     func(r Release) string { return r.Link },
+	Open:     webui.Href[Release]{URL: func(r Release) string { return r.Link }},
 	Meta:     []webui.Accessor[Release]{releaseAuthor, releaseAge, releaseDownloads},
 	Badge:    releaseChannel,
 }

@@ -43,10 +43,28 @@ type Link[M, A any] struct {
 	Role  Role
 }
 
-// ASSERT: Link and Action implement RowClick
+// Destination is where an item, a row or a day leads, and it is not something that is done: a [Link] to a page of the app, or an [Href] to an address.
+// It is a real anchor, so a middle-click, a new tab and the keyboard work, which is why it cannot be an [Action], which is a POST. The interface
+// exists to take either.
+type Destination[M any] interface {
+	validateDestination(v *bodyValidator, what string)
+	lowerDestination() (*ir.Link, func(model any) string)
+}
+
+// Href is a destination that is an address: a page on another site, or a path on this one that is not a page of the app, built from M. It opens in a tab of its
+// own, with the mark that says so and rel="noopener noreferrer". An address that is not a path on this site or an http, https or mailto address, such as a
+// script, is not a link, and what would have led there is plain text, so data in the model cannot make one. An item whose URL says "" has no link.
+type Href[M any] struct {
+	// URL is the address, built from the item, the row or the day.
+	URL func(M) string
+}
+
+// ASSERT: Link and Action implement RowClick, and Link and Href implement Destination
 var (
-	_ RowClick[struct{}] = Link[struct{}, struct{}]{}
-	_ RowClick[struct{}] = Action[struct{}]{}
+	_ RowClick[struct{}]    = Link[struct{}, struct{}]{}
+	_ RowClick[struct{}]    = Action[struct{}]{}
+	_ Destination[struct{}] = Link[struct{}, struct{}]{}
+	_ Destination[struct{}] = Href[struct{}]{}
 )
 
 func (l Link[M, A]) validateRow(v *bodyValidator) {
@@ -68,6 +86,28 @@ func (l Link[M, A]) validateRow(v *bodyValidator) {
 		v.add(fmt.Sprintf("a link targets %q with %s arguments, but that page takes %s",
 			path, typeName(got), typeName(want)),
 			"Point the link at the page the mount list contains, not a copy with other arguments.")
+	}
+}
+
+func (l Link[M, A]) validateDestination(v *bodyValidator, _ string) { l.validateRow(v) }
+
+func (l Link[M, A]) lowerDestination() (*ir.Link, func(model any) string) {
+	link, _ := l.lowerRow()
+	return link, nil
+}
+
+func (h Href[M]) validateDestination(v *bodyValidator, what string) {
+	if h.URL == nil {
+		v.add(what+" is an Href with no URL", "Set URL to func(M) string, returning the address.")
+	}
+}
+
+func (h Href[M]) lowerDestination() (*ir.Link, func(model any) string) {
+	return nil, func(m any) string {
+		if u := h.URL(m.(M)); validURL(u) {
+			return u
+		}
+		return ""
 	}
 }
 

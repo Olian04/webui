@@ -93,6 +93,7 @@ func (r *Renderer) calendarProps(v CalendarView) c.CalendarProps {
 				Num:     strconv.Itoa(day.Day()),
 				Label:   dayLabel(day, n),
 				Href:    v.Hrefs[key],
+				Other:   v.Node.External != nil,
 				Today:   day.Equal(v.Today),
 				Outside: calendar.Of(day) != v.Month,
 				Marked:  n > 0,

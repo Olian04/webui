@@ -32,7 +32,7 @@ func ExampleList() {
 				return stories[:min(limit, len(stories))], webui.Ready()
 			},
 			Headline: webui.String[Story]{Label: "Title", Load: func(s Story) string { return s.Title }},
-			Link:     func(s Story) string { return s.URL },
+			Open:     webui.Href[Story]{URL: func(s Story) string { return s.URL }},
 			Meta: []webui.Accessor[Story]{
 				webui.String[Story]{Label: "Age", Load: func(s Story) string { return s.Age }},
 				webui.Int[Story]{Label: "Points", Load: func(s Story) int { return s.Points }, Format: func(n int) string { return fmt.Sprintf("%d points", n) }},
