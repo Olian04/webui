@@ -790,6 +790,17 @@ html.js .search-submit {
 .item-link:hover {
   text-decoration: underline;
 }
+/* The same, for an item whose click is an action: a button, with nothing of its own, that reads as the link does. */
+button.item-button {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: none;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
 .item-meta {
   display: flex;
   flex-wrap: wrap;
@@ -3784,6 +3795,21 @@ a.cal-day {
   color: var(--blue-text);
 }
 a.cal-day:hover {
+  background: var(--hover);
+}
+/* A day whose click is an action is a button that is drawn as the link is. */
+button.cal-day {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  width: 100%;
+  color: var(--blue-text);
+  cursor: pointer;
+}
+button.cal-day:hover {
   background: var(--hover);
 }
 /* the mark of a day with items: a dot under the numeral, in the text colour of the day so that it is as readable as the numeral is */

@@ -449,3 +449,51 @@ func TestAnHrefIsCheckedAtEveryItemAndALinkThatIsNotOneIsText(t *testing.T) {
 	assert.False(t, strings.Contains(body, "javascript:"))
 	assert.Contains(t, body, "Nginx has moved to GitHub") // still shown, as text
 }
+
+// A click on an item's headline can be an Action, as a click on a row can: the headline is a button in a form that posts the item's key, the action is run with the item
+// that was found again by that key, and an item that its Guard refuses is text.
+func TestAnActionOnAnItemRunsWithTheItemThatTheKeyNames(t *testing.T) {
+	t.Parallel()
+
+	var ran []string
+	open := webui.Action[story]{
+		Guard: func(_ context.Context, s story) error {
+			if s.ID == "b" {
+				return webui.Disabled("not this one") // not the button of a row: no button for an item that it refuses, whichever error says so
+			}
+			return nil
+		},
+		Run: func(_ context.Context, s story) (webui.Outcome, error) {
+			ran = append(ran, s.ID)
+			return webui.Success("Opened " + s.ID), nil
+		},
+	}
+	src := &listLoader{}
+	h := editorApp(webui.List[story]{Title: "Latest", Load: src.load, PageSize: 5, Headline: pTitle, Open: open, Key: func(s story) string { return s.ID }})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+
+	assert.Contains(t, body, `<input type="hidden" name="_leaf" value="p">`)
+	assert.Contains(t, body, `<button class="item-link item-button" type="submit" name="_act" value="click:0:a">Show HN: Wealthfolio</button>`)
+	assert.False(t, strings.Contains(body, `value="click:0:b"`)) // refused: plain text
+	assert.Contains(t, body, "Nginx has moved to GitHub")
+
+	assert.Equal(t, post(h, "/admin/e", formValues("_leaf", "p", "_act", "click:0:a")).Code, http.StatusSeeOther)
+	assert.DeepEqual(t, ran, []string{"a"})
+
+	// What names no item that there is, or posts the Guard's refusal, runs nothing.
+	for _, act := range []string{"click:0:nobody", "click:0:b", "row:0:a", "click:0:"} {
+		post(h, "/admin/e", formValues("_leaf", "p", "_act", act))
+	}
+	assert.DeepEqual(t, ran, []string{"a"})
+}
+
+func TestAnActionOnAnItemIsCheckedWhenTheAppCompiles(t *testing.T) {
+	t.Parallel()
+
+	load := (&listLoader{}).load
+	run := func(context.Context, story) (webui.Outcome, error) { return webui.Success("done"), nil }
+	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "List.Open is an Action but there is no Key")
+	assert.Contains(t, editorErrors(t, webui.Cards[story]{Load: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "Cards.Open is an Action but there is no Key")
+	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{Run: run, Confirm: "Sure?"}}), "List.Open has a Confirm")
+	assert.Contains(t, editorErrors(t, webui.List[story]{Load: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{}}), "List.Open has no Run")
+}

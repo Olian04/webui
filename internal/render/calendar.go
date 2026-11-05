@@ -24,6 +24,9 @@ type CalendarView struct {
 	Month, Current calendar.Month
 	Today          time.Time
 
+	// ClickRefused is, for a calendar whose click on a day is an Action, the days with items that this viewer may not click, by calendar.Key.
+	ClickRefused map[string]bool
+
 	// Items is how many items are on each day, by calendar.Key, and Hrefs is where a day leads, "" or absent for one that leads nowhere.
 	Items map[string]int
 	Hrefs map[string]string
@@ -93,7 +96,8 @@ func (r *Renderer) calendarProps(v CalendarView) c.CalendarProps {
 				Num:     strconv.Itoa(day.Day()),
 				Label:   dayLabel(day, n),
 				Href:    v.Hrefs[key],
-				Other:   v.Node.External != nil,
+				Other:   v.Node.Click != nil && v.Node.Click.External != nil,
+				Act:     dayAct(v, key, n),
 				Today:   day.Equal(v.Today),
 				Outside: calendar.Of(day) != v.Month,
 				Marked:  n > 0,
@@ -102,4 +106,12 @@ func (r *Renderer) calendarProps(v CalendarView) c.CalendarProps {
 		p.Weeks = append(p.Weeks, w)
 	}
 	return p
+}
+
+// dayAct is the "_act" value of the button that a day with items is, for a calendar whose click on a day is an Action, and "" for any other day.
+func dayAct(v CalendarView, key string, items int) string {
+	if !v.Node.Click.Posts() || items == 0 || v.ClickRefused[key] {
+		return ""
+	}
+	return RowClickValue(key)
 }

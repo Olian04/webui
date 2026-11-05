@@ -266,7 +266,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 			continue
 		}
 		posts = posts || a.posts()
-		a.validateControl(v, at, slotRowAction)
+		a.validateControl(v, at, slotButton)
 	}
 	if posts && t.Key == nil {
 		v.add("a Table declares actions but no Key", "Set Key to return a stable identity for a row, such as its ID.")
@@ -275,7 +275,7 @@ func (t Table[M]) validateBody(v *bodyValidator) {
 		validateAction(v, fmt.Sprintf("Table.BulkActions[%d]", i), a, true)
 	}
 	if t.RowClick != nil {
-		t.RowClick.validateControl(v, "Table.RowClick", slotRowClick)
+		t.RowClick.validateControl(v, "Table.RowClick", slotClick)
 		if len(t.Columns) > 0 {
 			if _, isLink := t.Columns[0].(URL[M]); isLink {
 				v.add("a Table's first column is a URL, but its RowClick is there",

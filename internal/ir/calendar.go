@@ -22,10 +22,9 @@ type Calendar struct {
 	// Date is the moment of an item, whose UTC day it is on.
 	Date func(model any) time.Time
 
-	// Open is where a day with items leads in the app, built from a CalendarDay; nil for none. External is where it leads elsewhere, as an address that has been
-	// checked, or "" for a day that has none; nil for a calendar that has none. At most one of the two is set.
-	Open     *Link
-	External func(CalendarDay) string
+	// Click is what a click on a day with items does: lead to a page or an address, or run an Action, which is a POST to the page naming the day by its date.
+	// Its functions take a CalendarDay. nil means days do not lead anywhere.
+	Click *Control
 
 	// SundayFirst begins a week on Sunday and not on Monday, and WeekNumbers adds a column of ISO week numbers, which are of weeks that begin on Monday.
 	SundayFirst, WeekNumbers bool

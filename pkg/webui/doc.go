@@ -850,8 +850,8 @@
 //
 // Their source is Load(ctx, limit), a plain list, which is asked for one more than is shown so that the leaf knows there is more. It shows PageSize items, five when that is left zero, and a Show more
 // link that shows that many more: a real link to the same page with the leaf's name and ".limit" in the address, so it works without script and a copied link shows the same, and with
-// script it replaces the list in place. A headline is an accessor for text. Where it leads is Open, a [Destination]: a [Link] to a page of the app (an item whose page refuses the visitor is text), or an [Href], an
-// address that opens in a tab of its own. Meta are the small facts, shown as they are in a cell and separated by a dot, and a fact with no value is left out. Badge is a [Select].
+// script it replaces the list in place. A headline is an accessor for text. Where it leads is Open, a [Control]: a [Link] to a page of the app (an item whose page refuses the visitor is text), an [Href], an
+// address that opens in a tab of its own, or an [Action], which is handed the item (found again by Key) and makes the headline a button. Meta are the small facts, shown as they are in a cell and separated by a dot, and a fact with no value is left out. Badge is a [Select].
 //
 // Image is the address of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
 // policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleList].
@@ -860,7 +860,7 @@
 //
 // A [Calendar] shows a month as a grid of days, each marked when something is on it, with a link when Open says where a day leads. Load is given a [Span], the days that the grid shows (the month, and the days of its
 // first and last weeks that are not of it), and Date says when an item is. A day is a day in UTC. The month is in the address as the leaf's name and ".month" ("releases.month=2026-10"), with real links to the months
-// either side and back to the current one, so it works without script and a copied link shows the same month. Open is a [Destination] built from a [Day], a [Link] or an [Href], and only a day with items has it. A week begins on Monday, or
+// either side and back to the current one, so it works without script and a copied link shows the same month. Open is a [Control] built from a [Day]: a [Link], an [Href], or an [Action] that is handed the Day, and only a day with items has it. A week begins on Monday, or
 // on Sunday with SundayFirst, and WeekNumbers adds ISO 8601 week numbers, which are of Monday weeks. The day that is now is marked by more than colour, and each day is told in full to a reader who goes by the
 // grid. See [ExampleCalendar].
 //

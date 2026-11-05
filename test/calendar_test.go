@@ -374,3 +374,50 @@ func TestADayThatHasItemsCanLeadToAnotherSite(t *testing.T) {
 	assert.Contains(t, marked, ", opens in a new tab")
 	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<a ")) // nothing on it: not a link
 }
+
+// A click on a day can be an Action: a day with items is a button that posts its date, and the action is run with the Day, which is found again in the grid with the items
+// on it counted. A day with nothing on it, one the Guard refuses, and one that is not in the grid run nothing.
+func TestAnActionOnADayRunsWithTheDayAndItsItems(t *testing.T) {
+	t.Parallel()
+
+	var ran []webui.Day
+	open := webui.Action[webui.Day]{
+		Guard: func(_ context.Context, d webui.Day) error {
+			if d.Date.Day() == 15 {
+				return webui.Disabled("not the 15th")
+			}
+			return nil
+		},
+		Run: func(_ context.Context, d webui.Day) (webui.Outcome, error) {
+			ran = append(ran, d)
+			return webui.Success("Opened"), nil
+		},
+	}
+	src := &calendarSource{}
+	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: open})
+	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+
+	assert.Contains(t, body, `<input type="hidden" name="_leaf" value="p">`)
+	assert.Contains(t, calendarCell(body, 3, false), `<button class="cal-day cal-button" type="submit" name="_act" value="click:0:2026-09-03">`)
+	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<button"))  // nothing on it
+	assert.False(t, strings.Contains(calendarCell(body, 15, false), "<button")) // its Guard refuses it
+
+	assert.Equal(t, post(h, "/admin/e", formValues("_leaf", "p", "_act", "click:0:2026-09-03")).Code, http.StatusSeeOther)
+	assert.Equal(t, len(ran), 1)
+	assert.Equal(t, ran[0].Date, time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC))
+	assert.Equal(t, ran[0].Items, 2)
+
+	for _, act := range []string{"click:0:2026-09-04", "click:0:2026-09-15", "click:0:2027-01-01", "click:0:not-a-date", "row:0:2026-09-03"} {
+		post(h, "/admin/e", formValues("_leaf", "p", "_act", act))
+	}
+	assert.Equal(t, len(ran), 1)
+}
+
+func TestAnActionOnADayIsCheckedWhenTheAppCompiles(t *testing.T) {
+	t.Parallel()
+
+	src := &calendarSource{}
+	run := func(context.Context, webui.Day) (webui.Outcome, error) { return webui.Success("done"), nil }
+	assert.Contains(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{Run: run, Confirm: "Sure?"}}), "Calendar.Open has a Confirm")
+	assert.Contains(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{}}), "Calendar.Open has no Run")
+}

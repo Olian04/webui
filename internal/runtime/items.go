@@ -43,6 +43,13 @@ func (p *Program) items(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		rows = rows[:limit]
 	}
 	view.Rows, view.Limit = rows, limit
-	view.Hrefs = p.linkHrefs(ctx, req, page, n.Open, rows)
+	view.Hrefs = p.controlHrefs(ctx, req, page, n.Click, rows)
+	if n.Click.Posts() && n.Key != nil {
+		view.Keys = make([]string, len(rows))
+		for i, row := range rows {
+			view.Keys[i] = n.Key(row)
+		}
+		view.ClickRefused = p.clickRefused(ctx, page, n.Click, "an item", rows)
+	}
 	return p.render.Items(view)
 }

@@ -382,8 +382,8 @@ then loads, and is plain text in a monospace block without script.
 One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
 them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the leaf knows there is more without
 counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the leaf's title as the address spells any label, as a table's is), so it works without script and a copied link shows
-the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open`: a `Link` to a page of the app (left out for an item whose page refuses the visitor) or an `Href` (an address, which
-opens in a tab of its own, as any link to another site does). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
+the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open`: a `Link` to a page of the app (left out for an item whose page refuses the visitor), an `Href` (an address, which
+opens in a tab of its own, as any link to another site does), or an `Action` (the headline is a button, with no button's own look, in a form that posts the item's `Key`). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
 (`TrustedOrigins`, as for `Markdown`), decoration, and an address from anywhere else is not drawn. It only reads, and it refreshes as any panel does. It is not `Table.Feed`, which is a cursor source for a table.
 
 ### `Calendar` → a panel of a month
@@ -601,8 +601,8 @@ Absences that are choices, not gaps:
   concepts. A control plane refreshes a leaf on demand; it does not poll. If
   this ever changes it should change as a declaration on a leaf, not as global
   chrome.
-- **No row actions and no selection in a list of items.** A `List` is read: an item leads somewhere, and a page that needs to change an item has a `Table` for it, which has row and bulk actions and
-  a `Key`. An item that is an `Action` would be a POST that cannot be opened in a new tab, which is not what a headline is.
+- **No row buttons and no selection in a list of items.** A `List` is read: an item leads somewhere, with its headline (a `Link`, an `Href` or, for what neither can say, an `Action`, which is a POST that
+  cannot be opened in a new tab and needs a `Key`), and a page that has a button per item, or acts on a selection, has a `Table` for it.
 - **No axes, no legend and no multi-series chart.** A `Trend`'s chart is a sparkline, the shape of a figure beside the figure, and it is
   drawn as part of a value (a cell) and not as a leaf of its own. It was added after this section said there
   should be no chart or statistic leaf, which was the rule while every leaf was a kind of text a model has: a figure with its change and its shape is that too, if it
