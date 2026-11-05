@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -307,7 +308,7 @@ func TestAPageWithAnEditorAndAHeadRequestAreNotSentAsTheyAreBuilt(t *testing.T) 
 
 	h := streamApp(webui.Stack{
 		delayedTable("Slow", 120*time.Millisecond),
-		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: webui.LangJSON},
+		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: lang.JSON},
 	})
 	rec := newStreamRecorder()
 	get(h, rec, "/admin/p")

@@ -292,7 +292,7 @@
 //
 // The file that is stored is shown as a small picture when the app gives one:
 // [FileInfo.Thumbnail], a path on this site, which a Store that is handed an image
-// makes with [Thumbnail] when it keeps the file. It is shown at 32 pixels beside the
+// makes with thumbnail.Make (in [github.com/Olian04/webui/pkg/thumbnail]) when it keeps the file. It is shown at 32 pixels beside the
 // name, and the visitor is sent that small file and not the image, which is only
 // fetched when they click the picture, to see it at its full size in a dialog. That is
 // in the page and needs no script: when the [FileInfo] also has a URL, which is the
@@ -300,12 +300,12 @@
 // an invoker command, as Confirm does, and the image in the dialog is lazy, which has
 // no box, and so is not fetched, while the dialog is closed (as for Confirm, an older
 // browser needs the script). The library never shows the file itself as a thumbnail, so
-// without a Thumbnail there is no picture. [Thumbnail] reads PNG, JPEG and GIF, and no
+// without a Thumbnail there is no picture. thumbnail.Make reads PNG, JPEG and GIF, and no
 // WebP, which the standard library does not decode; an app that takes more has its own
 // scaler.
 //
-// A File's MaxSize is 5 MiB unless it says, and as large as the app says: the library sets no ceiling, and the body of a page's submission is limited to the sum of its files' MaxSize and a megabyte. [Thumbnail] makes the small picture from an [Upload] and returns
-// [ErrThumbnail] for a kind that it does not read (anything but PNG, JPEG and GIF), a
+// A File's MaxSize is 5 MiB unless it says, and as large as the app says: the library sets no ceiling, and the body of a page's submission is limited to the sum of its files' MaxSize and a megabyte. thumbnail.Make makes the small picture from an [Upload] and returns
+// thumbnail.ErrUnavailable for a kind that it does not read (anything but PNG, JPEG and GIF), a
 // damaged file, or a picture of more than 25 million pixels, which is held whole in
 // memory to be scaled.
 //
@@ -644,7 +644,7 @@
 //		Title:    "Configuration",
 //		Load:     loadConfig,
 //		Content:  ConfigText,
-//		Language: webui.LangYAML,
+//		Language: lang.YAML,
 //		Submit:   webui.Action[Config]{Run: saveConfig},
 //	}
 //
@@ -679,7 +679,7 @@
 //	//go:embed context
 //	var files embed.FS // context/typescript/env.d.ts, context/json/schema.json
 //
-//	webui.Editor[Rule]{ /* ... */ Language: webui.LangTypeScript, Context: files }
+//	webui.Editor[Rule]{ /* ... */ Language: lang.TypeScript, Context: files }
 //
 // An editor reads the directory named for its own language, which can hold a tsconfig.json
 // (only its compilerOptions are read), *.d.ts files at any depth, such as the types of a

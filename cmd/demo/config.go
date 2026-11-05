@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -37,7 +38,7 @@ var ConfigEditor = webui.Editor[Config]{
 	Load:  func(context.Context) (Config, webui.Loaded) { return service.Config(), webui.Ready() },
 
 	Content:  ConfigText,
-	Language: webui.LangJSON,
+	Language: lang.JSON,
 	Context:  editorContext,
 	Submit: webui.Action[Config]{
 		Guard: canEdit[Config],
@@ -55,7 +56,7 @@ var ConfigDiff = webui.Diff[Config]{
 	Load:     func(context.Context) (Config, webui.Loaded) { return service.Config(), webui.Ready() },
 	Original: DeployedText,
 	Modified: SavedText,
-	Language: webui.LangJSON,
+	Language: lang.JSON,
 }
 
 var Configuration = webui.Page[webui.NoArgs]{

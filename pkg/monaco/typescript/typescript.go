@@ -4,7 +4,7 @@
 //
 //	import _ "github.com/Olian04/webui/pkg/monaco/typescript"
 //
-// An [webui.Editor] that can be edited, and whose language is LangTypeScript and LangJavaScript, then
+// An [webui.Editor] that can be edited, and whose language is lang.TypeScript and lang.JavaScript, then
 // offers TypeScript and JavaScript (type checking, completion, signature help, quick info), from a worker that the page loads only when it has such an
 // editor. Without the import the editor still highlights, and the worker is not
 // linked into the program.

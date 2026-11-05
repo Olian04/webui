@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -203,7 +204,7 @@ var LoadingWhole = webui.Page[webui.NoArgs]{
 				return Note{Text: "{\n  \"built\": \"whole\"\n}\n"}, webui.Ready()
 			},
 			Content:  NoteText,
-			Language: webui.LangJSON,
+			Language: lang.JSON,
 		},
 	},
 }

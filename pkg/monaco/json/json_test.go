@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/Olian04/webui/pkg/lang"
 	_ "github.com/Olian04/webui/pkg/monaco/json"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -38,7 +39,7 @@ var workerOf = regexp.MustCompile(`"json":"([^"]+)"`)
 func TestTheJSONServiceIsHandedToAnEditableJSONEditorAndServedFromTheApp(t *testing.T) {
 	t.Parallel()
 
-	h := app(webui.LangJSON, true)
+	h := app(lang.JSON, true)
 	m := workerOf.FindStringSubmatch(get(h, "/admin/e").Body.String())
 	assert.True(t, m != nil)
 	rec := get(h, m[1])
@@ -50,7 +51,7 @@ func TestTheJSONServiceIsHandedToAnEditableJSONEditorAndServedFromTheApp(t *test
 func TestTheJSONServiceIsNotHandedToAViewerOrToAnotherLanguage(t *testing.T) {
 	t.Parallel()
 
-	assert.True(t, workerOf.FindStringSubmatch(get(app(webui.LangJSON, false), "/admin/e").Body.String()) == nil)
-	assert.True(t, workerOf.FindStringSubmatch(get(app(webui.LangGo, true), "/admin/e").Body.String()) == nil)
-	assert.True(t, workerOf.FindStringSubmatch(get(app(webui.LangPlainText, true), "/admin/e").Body.String()) == nil)
+	assert.True(t, workerOf.FindStringSubmatch(get(app(lang.JSON, false), "/admin/e").Body.String()) == nil)
+	assert.True(t, workerOf.FindStringSubmatch(get(app(lang.Go, true), "/admin/e").Body.String()) == nil)
+	assert.True(t, workerOf.FindStringSubmatch(get(app(lang.PlainText, true), "/admin/e").Body.String()) == nil)
 }

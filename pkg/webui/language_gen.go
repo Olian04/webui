@@ -2,182 +2,91 @@
 
 package webui
 
-// The languages the editor highlights: every one Monaco ships a highlighter for, which
-// is all of them whether or not a language service is imported. Their values are
-// Monaco's own language ids.
-const (
-	LangAbap             Language = "abap"
-	LangAes              Language = "aes"
-	LangApex             Language = "apex"
-	LangATS              Language = "postiats"
-	LangAzureCLI         Language = "azcli"
-	LangBatch            Language = "bat"
-	LangBicep            Language = "bicep"
-	LangC                Language = "c"
-	LangCameLIGO         Language = "cameligo"
-	LangClojure          Language = "clojure"
-	LangCoffeeScript     Language = "coffeescript"
-	LangCPP              Language = "cpp"
-	LangCSharp           Language = "csharp"
-	LangCSP              Language = "csp"
-	LangCSS              Language = "css"
-	LangCypher           Language = "cypher"
-	LangDart             Language = "dart"
-	LangDockerfile       Language = "dockerfile"
-	LangECL              Language = "ecl"
-	LangElixir           Language = "elixir"
-	LangFlow9            Language = "flow9"
-	LangFreemarker       Language = "freemarker2"
-	LangFSharp           Language = "fsharp"
-	LangGo               Language = "go"
-	LangGraphQL          Language = "graphql"
-	LangHandlebars       Language = "handlebars"
-	LangHCL              Language = "hcl"
-	LangHTML             Language = "html"
-	LangINI              Language = "ini"
-	LangJava             Language = "java"
-	LangJavaScript       Language = "javascript"
-	LangJSON             Language = "json"
-	LangJulia            Language = "julia"
-	LangKotlin           Language = "kotlin"
-	LangLess             Language = "less"
-	LangLexon            Language = "lexon"
-	LangLiquid           Language = "liquid"
-	LangLua              Language = "lua"
-	LangMarkdown         Language = "markdown"
-	LangMDX              Language = "mdx"
-	LangMips             Language = "mips"
-	LangModula3          Language = "m3"
-	LangMSDAX            Language = "msdax"
-	LangMySQL            Language = "mysql"
-	LangObjectiveC       Language = "objective-c"
-	LangPascal           Language = "pascal"
-	LangPascaLIGO        Language = "pascaligo"
-	LangPerl             Language = "perl"
-	LangPHP              Language = "php"
-	LangPLA              Language = "pla"
-	LangPlainText        Language = "plaintext"
-	LangPostgreSQL       Language = "pgsql"
-	LangPowerQuery       Language = "powerquery"
-	LangPowerShell       Language = "powershell"
-	LangProto            Language = "proto"
-	LangPug              Language = "pug"
-	LangPython           Language = "python"
-	LangQSharp           Language = "qsharp"
-	LangR                Language = "r"
-	LangRazor            Language = "razor"
-	LangRedis            Language = "redis"
-	LangRedshift         Language = "redshift"
-	LangReStructuredText Language = "restructuredtext"
-	LangRuby             Language = "ruby"
-	LangRust             Language = "rust"
-	LangScala            Language = "scala"
-	LangScheme           Language = "scheme"
-	LangSCSS             Language = "scss"
-	LangShell            Language = "shell"
-	LangSmallBasic       Language = "sb"
-	LangSol              Language = "sol"
-	LangSparql           Language = "sparql"
-	LangSQL              Language = "sql"
-	LangStructuredText   Language = "st"
-	LangSwift            Language = "swift"
-	LangSystemVerilog    Language = "systemverilog"
-	LangTcl              Language = "tcl"
-	LangTwig             Language = "twig"
-	LangTypeScript       Language = "typescript"
-	LangTypeSpec         Language = "typespec"
-	LangVerilog          Language = "verilog"
-	LangVisualBasic      Language = "vb"
-	LangWGSL             Language = "wgsl"
-	LangXML              Language = "xml"
-	LangYAML             Language = "yaml"
-)
-
-// languages is every language above, for validation.
+// languages is every language the editor highlights, by Monaco's own language id, for validation. The constants for them are in pkg/lang.
 var languages = map[Language]bool{
-	LangAbap:             true,
-	LangAes:              true,
-	LangApex:             true,
-	LangATS:              true,
-	LangAzureCLI:         true,
-	LangBatch:            true,
-	LangBicep:            true,
-	LangC:                true,
-	LangCameLIGO:         true,
-	LangClojure:          true,
-	LangCoffeeScript:     true,
-	LangCPP:              true,
-	LangCSharp:           true,
-	LangCSP:              true,
-	LangCSS:              true,
-	LangCypher:           true,
-	LangDart:             true,
-	LangDockerfile:       true,
-	LangECL:              true,
-	LangElixir:           true,
-	LangFlow9:            true,
-	LangFreemarker:       true,
-	LangFSharp:           true,
-	LangGo:               true,
-	LangGraphQL:          true,
-	LangHandlebars:       true,
-	LangHCL:              true,
-	LangHTML:             true,
-	LangINI:              true,
-	LangJava:             true,
-	LangJavaScript:       true,
-	LangJSON:             true,
-	LangJulia:            true,
-	LangKotlin:           true,
-	LangLess:             true,
-	LangLexon:            true,
-	LangLiquid:           true,
-	LangLua:              true,
-	LangMarkdown:         true,
-	LangMDX:              true,
-	LangMips:             true,
-	LangModula3:          true,
-	LangMSDAX:            true,
-	LangMySQL:            true,
-	LangObjectiveC:       true,
-	LangPascal:           true,
-	LangPascaLIGO:        true,
-	LangPerl:             true,
-	LangPHP:              true,
-	LangPLA:              true,
-	LangPlainText:        true,
-	LangPostgreSQL:       true,
-	LangPowerQuery:       true,
-	LangPowerShell:       true,
-	LangProto:            true,
-	LangPug:              true,
-	LangPython:           true,
-	LangQSharp:           true,
-	LangR:                true,
-	LangRazor:            true,
-	LangRedis:            true,
-	LangRedshift:         true,
-	LangReStructuredText: true,
-	LangRuby:             true,
-	LangRust:             true,
-	LangScala:            true,
-	LangScheme:           true,
-	LangSCSS:             true,
-	LangShell:            true,
-	LangSmallBasic:       true,
-	LangSol:              true,
-	LangSparql:           true,
-	LangSQL:              true,
-	LangStructuredText:   true,
-	LangSwift:            true,
-	LangSystemVerilog:    true,
-	LangTcl:              true,
-	LangTwig:             true,
-	LangTypeScript:       true,
-	LangTypeSpec:         true,
-	LangVerilog:          true,
-	LangVisualBasic:      true,
-	LangWGSL:             true,
-	LangXML:              true,
-	LangYAML:             true,
+	"abap":             true,
+	"aes":              true,
+	"apex":             true,
+	"postiats":         true,
+	"azcli":            true,
+	"bat":              true,
+	"bicep":            true,
+	"c":                true,
+	"cameligo":         true,
+	"clojure":          true,
+	"coffeescript":     true,
+	"cpp":              true,
+	"csharp":           true,
+	"csp":              true,
+	"css":              true,
+	"cypher":           true,
+	"dart":             true,
+	"dockerfile":       true,
+	"ecl":              true,
+	"elixir":           true,
+	"flow9":            true,
+	"freemarker2":      true,
+	"fsharp":           true,
+	"go":               true,
+	"graphql":          true,
+	"handlebars":       true,
+	"hcl":              true,
+	"html":             true,
+	"ini":              true,
+	"java":             true,
+	"javascript":       true,
+	"json":             true,
+	"julia":            true,
+	"kotlin":           true,
+	"less":             true,
+	"lexon":            true,
+	"liquid":           true,
+	"lua":              true,
+	"markdown":         true,
+	"mdx":              true,
+	"mips":             true,
+	"m3":               true,
+	"msdax":            true,
+	"mysql":            true,
+	"objective-c":      true,
+	"pascal":           true,
+	"pascaligo":        true,
+	"perl":             true,
+	"php":              true,
+	"pla":              true,
+	"plaintext":        true,
+	"pgsql":            true,
+	"powerquery":       true,
+	"powershell":       true,
+	"proto":            true,
+	"pug":              true,
+	"python":           true,
+	"qsharp":           true,
+	"r":                true,
+	"razor":            true,
+	"redis":            true,
+	"redshift":         true,
+	"restructuredtext": true,
+	"ruby":             true,
+	"rust":             true,
+	"scala":            true,
+	"scheme":           true,
+	"scss":             true,
+	"shell":            true,
+	"sb":               true,
+	"sol":              true,
+	"sparql":           true,
+	"sql":              true,
+	"st":               true,
+	"swift":            true,
+	"systemverilog":    true,
+	"tcl":              true,
+	"twig":             true,
+	"typescript":       true,
+	"typespec":         true,
+	"verilog":          true,
+	"vb":               true,
+	"wgsl":             true,
+	"xml":              true,
+	"yaml":             true,
 }

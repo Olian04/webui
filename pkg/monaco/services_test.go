@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/Olian04/webui/pkg/lang"
 	_ "github.com/Olian04/webui/pkg/monaco/css"
 	_ "github.com/Olian04/webui/pkg/monaco/html"
 	_ "github.com/Olian04/webui/pkg/monaco/json"
@@ -38,15 +39,15 @@ func TestEachLanguageIsGivenTheServiceThatCoversItAndNoOther(t *testing.T) {
 	t.Parallel()
 
 	cases := map[webui.Language]string{
-		webui.LangJSON:       "json",
-		webui.LangCSS:        "css",
-		webui.LangSCSS:       "css",
-		webui.LangLess:       "css",
-		webui.LangHTML:       "html",
-		webui.LangHandlebars: "html",
-		webui.LangRazor:      "html",
-		webui.LangTypeScript: "ts",
-		webui.LangJavaScript: "ts",
+		lang.JSON:       "json",
+		lang.CSS:        "css",
+		lang.SCSS:       "css",
+		lang.Less:       "css",
+		lang.HTML:       "html",
+		lang.Handlebars: "html",
+		lang.Razor:      "html",
+		lang.TypeScript: "ts",
+		lang.JavaScript: "ts",
 	}
 	for language, service := range cases {
 		h := editor(language)
@@ -68,7 +69,7 @@ func TestEachLanguageIsGivenTheServiceThatCoversItAndNoOther(t *testing.T) {
 func TestALanguageWithNoServiceIsOnlyHighlighted(t *testing.T) {
 	t.Parallel()
 
-	body := get(editor(webui.LangGo), "/admin/e").Body.String()
+	body := get(editor(lang.Go), "/admin/e").Body.String()
 	for _, service := range []string{"json", "css", "html", "ts"} {
 		assert.False(t, regexp.MustCompile(`"`+service+`":"`).MatchString(body))
 	}
