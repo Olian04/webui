@@ -189,7 +189,7 @@ var FirmwarePage = webui.Page[webui.NoArgs]{
 		// Every image that was uploaded, newest first: what was kept of each, and none of the file.
 		webui.Table[Firmware]{
 			Title: "Upload history", Desc: "Every image that was uploaded, newest first. Only what it was is kept: the file is hashed as it arrives and never held.",
-			Rows: func(context.Context) ([]Firmware, webui.Loaded) { return service.FirmwareHistory(), webui.Ready() },
+			Loader: webui.RowsLoader[Firmware]{Load: func(context.Context) ([]Firmware, webui.Loaded) { return service.FirmwareHistory(), webui.Ready() }},
 			Columns: []webui.Accessor[Firmware]{
 				webui.String[Firmware]{Label: "File", Load: func(f Firmware) string { return f.Name }},
 				webui.String[Firmware]{Label: "Folder", Load: func(f Firmware) string { return f.Folder }},

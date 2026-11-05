@@ -14,8 +14,8 @@ type okArgs struct {
 	Id string
 }
 
-func okRows(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-	return webui.Window[Device]{}, webui.Ready()
+func okRows(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+	return webui.PagedWindow[Device]{}, webui.Ready()
 }
 
 func idCol() webui.Accessor[Device] {
@@ -55,7 +55,7 @@ func TestValidateReportsEveryProblemAtOnce(t *testing.T) {
 		B    string `webui:"x"`
 	}
 	app := webui.App{Pages: webui.Pages{
-		webui.Page[bad]{Path: "/event/{id}", Body: webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}}},
+		webui.Page[bad]{Path: "/event/{id}", Body: webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol()}}},
 	}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 3)
@@ -72,7 +72,7 @@ func TestValidateLinkToUnmountedPage(t *testing.T) {
 	app := webui.App{Pages: webui.Pages{
 		webui.Page[webui.NoArgs]{Path: "/broken", Body: webui.Stack{
 			webui.Table[Device]{
-				Load:    okRows,
+				Loader:  webui.PagedLoader[Device]{Load: okRows},
 				Columns: []webui.Accessor[Device]{idCol()},
 				RowClick: webui.Link[Device, DetailsArgs]{
 					Page: orphan,
@@ -113,33 +113,33 @@ func TestValidateDeclarationChecks(t *testing.T) {
 			Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }, Fields: dupLabel,
 		}}, `label "ID" is used twice`},
 		{"group in columns", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{group},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{group},
 		}}, "Group in Table.Columns"},
 		{"actions need key", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{idCol()},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol()},
 			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
 		}}, "declares actions but no Key"},
 		{"two columns with labels that differ only in case", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},
 		}}, `the labels "ID" and "id" name the same column in the address`},
 		{"two columns with one label", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), idCol()},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), idCol()},
 		}}, `the labels "ID" and "ID" name the same column in the address`},
 		{"a column label with nothing to name it by", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "—", Load: func(Device) string { return "" }}},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "—", Load: func(Device) string { return "" }}},
 		}}, `the label "—" has no letters or digits`},
 		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{
 			{Label: "Raw events", Body: webui.Stack{}}, {Label: "raw  events", Body: webui.Stack{}},
 		}}, `names the same tab as another in the address`},
-		{"negative page size", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{Load: okRows, PageSize: -1}}, "PageSize is negative"},
+		{"negative page size", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, PageSize: -1}}, "PageSize is negative"},
 		{"slider needs a range", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }}},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }}},
 		}}, "has no range"},
 		{"slider range must be ascending", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Min: 5, Max: 5, Load: func(Device) float64 { return 0 }}},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Min: 5, Max: 5, Load: func(Device) float64 { return 0 }}},
 		}}, "has no range"},
 		{"select needs a load", webui.Page[okArgs]{Path: "/a", Body: webui.Table[Device]{
-			Load: okRows, Columns: []webui.Accessor[Device]{webui.Select[Device]{Label: "Status"}},
+			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Select[Device]{Label: "Status"}},
 		}}, "has no Load"},
 		{"tabs need panels", webui.Page[okArgs]{Path: "/a", Body: webui.Tabs{}}, "Tabs has no Tab"},
 	}
@@ -160,7 +160,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 func TestIDsOnlyNeedToBeUniquePerPage(t *testing.T) {
 	t.Parallel()
 
-	table := webui.Table[Device]{Load: okRows, PageSize: 10, Columns: []webui.Accessor[Device]{idCol()}}
+	table := webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, PageSize: 10, Columns: []webui.Accessor[Device]{idCol()}}
 	app := webui.App{Pages: webui.Pages{
 		webui.Page[webui.NoArgs]{Path: "/a", Body: table},
 		webui.Page[webui.NoArgs]{Path: "/b", Body: table}, // the same default ID, on another page
@@ -172,7 +172,7 @@ func TestIDsOnlyNeedToBeUniquePerPage(t *testing.T) {
 func TestPanelsOfOneTabsMayRepeatATable(t *testing.T) {
 	t.Parallel()
 
-	shared := webui.Table[Device]{Load: okRows, Columns: []webui.Accessor[Device]{idCol()}}
+	shared := webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol()}}
 	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: webui.Tabs{
 		{Label: "Overview", Body: webui.Split{webui.Form[Device]{Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }}, shared}},
 		{Label: "Raw", Body: shared},

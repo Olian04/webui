@@ -103,9 +103,9 @@ func newShop() *shop {
 		Path: "/device", Nav: webui.Nav{Label: "Devices"},
 		Body: webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, webui.Ready()
+			}},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},
 			Actions: []webui.Control[Device]{webui.Action[Device]{

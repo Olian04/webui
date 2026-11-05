@@ -181,13 +181,13 @@ func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T)
 
 	read := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
 		Title: "Tasks",
-		Rows: func(context.Context) ([]task, webui.Loaded) {
+		Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) {
 			return []task{
 				{Name: "a", Status: []string{"open"}, Labels: []string{"bug", "ui"}},
 				{Name: "b", Status: []string{"unlisted"}},
 				{Name: "c"},
 			}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[task]{taskName, taskStatus, taskLabels},
 	}}
 	body := serve(webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
@@ -232,7 +232,7 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 	}
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
 		Title:   "Tasks",
-		Rows:    func(context.Context) ([]task, webui.Loaded) { return tasks, webui.Ready() },
+		Loader:  webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return tasks, webui.Ready() }},
 		Columns: []webui.Accessor[task]{taskName, webui.Select[task]{Label: "Labels", Load: func(t task) []string { return t.Labels }}}, // no options: the rows have them
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
@@ -264,9 +264,9 @@ func TestTheSearchAndTheSortOfASelectColumnUseWhatItShows(t *testing.T) {
 
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
 		Title: "Tasks",
-		Rows: func(context.Context) ([]task, webui.Loaded) {
+		Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) {
 			return []task{{Name: "a", Labels: []string{"ui"}}, {Name: "b", Labels: []string{"docs"}}}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[task]{taskName, taskLabels},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
@@ -280,7 +280,7 @@ func TestASelectIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(a webui.Select[task]) string {
 		page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
-			Rows: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }, Columns: []webui.Accessor[task]{a},
+			Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }}, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page}}) {

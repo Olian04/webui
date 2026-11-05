@@ -38,7 +38,7 @@ func loadReading(r reading) func(context.Context) (reading, webui.Loaded) {
 func readingApp(r reading, columns ...webui.Accessor[reading]) http.Handler {
 	return editorApp(webui.Table[reading]{
 		Title: "System", Columns: columns,
-		Rows: func(context.Context) ([]reading, webui.Loaded) { return []reading{r}, webui.Ready() },
+		Loader: webui.RowsLoader[reading]{Load: func(context.Context) ([]reading, webui.Loaded) { return []reading{r}, webui.Ready() }},
 	})
 }
 
@@ -203,7 +203,7 @@ func listedApp(columns ...webui.Accessor[listed]) http.Handler {
 	}
 	return editorApp(webui.Table[listed]{
 		Title: "Markets", Columns: columns, Export: true,
-		Rows: func(context.Context) ([]listed, webui.Loaded) { return rows, webui.Ready() },
+		Loader: webui.RowsLoader[listed]{Load: func(context.Context) ([]listed, webui.Loaded) { return rows, webui.Ready() }},
 	})
 }
 
@@ -293,7 +293,7 @@ func TestATrendColumnIsCheckedLikeAnyColumn(t *testing.T) {
 	t.Parallel()
 
 	got := editorErrors(t, webui.Table[listed]{
-		Title: "T", Rows: func(context.Context) ([]listed, webui.Loaded) { return nil, webui.Ready() },
+		Title: "T", Loader: webui.RowsLoader[listed]{Load: func(context.Context) ([]listed, webui.Loaded) { return nil, webui.Ready() }},
 		Columns: []webui.Accessor[listed]{webui.Trend[listed]{}, webui.Trend[listed]{Label: "S"}},
 	})
 	assert.Contains(t, got, "Table.Columns[0] has no Label")

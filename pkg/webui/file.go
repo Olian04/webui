@@ -135,7 +135,7 @@ type Upload struct {
 // It is an input of a [Form] and a column of a [Table], and nothing else: not of a [Toolbar]'s [Form], which shows values and
 // has only a name to show of a file, and an [Editor]'s content is a [String] by its type.
 type File[M any] struct {
-	// Label is the column header and the input's label. In a table it also names the column in the address and in a [Query].
+	// Label is the column header and the input's label. In a table it also names the column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the file that the model holds, or nil for none.

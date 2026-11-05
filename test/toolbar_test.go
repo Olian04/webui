@@ -95,13 +95,13 @@ func newToolShop(items ...webui.ToolbarItem) *toolShop {
 		webui.Toolbar{Left: items[:2], Right: items[2:]},
 		webui.Table[Device]{
 			Title: "Devices",
-			Rows: func(context.Context) ([]Device, webui.Loaded) {
+			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 				var all []Device
 				for i := range 30 {
 					all = append(all, Device{Id: string(rune('a' + i%26)), Count: i})
 				}
 				return all, webui.Ready()
-			},
+			}},
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},
 	}}

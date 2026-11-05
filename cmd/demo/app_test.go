@@ -112,7 +112,7 @@ func TestABrokenAppServesItsOwnErrors(t *testing.T) {
 	assert.Contains(t, body, "3 problems in this app")
 	assert.False(t, strings.Contains(body, "the path declares"))
 	assert.Contains(t, body, `page &#34;/broken/source&#34;`)
-	assert.Contains(t, body, "a Table has more than one of Rows, Load and Feed")
+	assert.Contains(t, body, "Table.Loader is a RowsLoader with no Load")
 	assert.Contains(t, body, `page &#34;/broken/pattern&#34;`)
 	assert.Contains(t, body, "uses a lookahead, `(?=`, which RE2 does not support")
 	assert.False(t, strings.Contains(body, "Perl")) // Go's own wording names a dialect that says nothing to the reader

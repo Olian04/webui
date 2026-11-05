@@ -50,8 +50,8 @@ func ExampleTable() {
 		Path: "/device",
 		Nav:  webui.Nav{Label: "Devices"},
 		Body: webui.Table[device]{
-			Title: "Devices",
-			Rows:  func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() },
+			Title:  "Devices",
+			Loader: webui.RowsLoader[device]{Load: func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() }},
 			RowClick: webui.Link[device, deviceArgs]{
 				Page: details,
 				Args: func(_ context.Context, d device) deviceArgs { return deviceArgs{ID: d.ID} },

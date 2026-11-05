@@ -29,9 +29,9 @@ var shopList = webui.Page[webui.NoArgs]{
 	Path: shopListPath,
 	Nav:  webui.Nav{Label: "Shop"},
 	Body: webui.Table[Device]{
-		Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-			return webui.Window[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, webui.Ready()
-		},
+		Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+			return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, webui.Ready()
+		}},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Page: shopDetail,
 			Args: func(_ context.Context, d Device) shopItemArgs { return shopItemArgs{ID: d.Id} },
@@ -78,9 +78,9 @@ func TestLinkAcceptsAPageIDInPlaceOfAPage(t *testing.T) {
 	list := webui.Page[webui.NoArgs]{
 		Path: shopListPath,
 		Body: webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
+			}},
 			// The destination named by its ID, not by the page.
 			RowClick: webui.Link[Device, shopItemArgs]{
 				Page: shopDetailPath,
@@ -102,7 +102,7 @@ func TestALinkToAPageIDThatIsNotMountedIsReported(t *testing.T) {
 
 	// At Compile, for a Link.
 	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", Body: webui.Table[Device]{
-		Load: okRows,
+		Loader: webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Page: gone,
 			Args: func(context.Context, Device) shopItemArgs { return shopItemArgs{} },
@@ -117,7 +117,7 @@ func TestALinkWithoutAPageIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", Body: webui.Table[Device]{
-		Load: okRows,
+		Loader: webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Args: func(context.Context, Device) shopItemArgs { return shopItemArgs{} },
 		},

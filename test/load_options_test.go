@@ -130,12 +130,12 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 	var mu sync.Mutex
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title: "Issues",
-		Load: func(_ context.Context, q webui.Query) (webui.Window[issue], webui.Loaded) {
+		Loader: webui.PagedLoader[issue]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[issue], webui.Loaded) {
 			mu.Lock()
 			asked = append(asked, q.Filters)
 			mu.Unlock()
-			return webui.Window[issue]{Items: []issue{{Name: "a", Team: []string{"red"}}}, Total: 1}, webui.Ready()
-		},
+			return webui.PagedWindow[issue]{Items: []issue{{Name: "a", Team: []string{"red"}}}, Total: 1}, webui.Ready()
+		}},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
@@ -173,9 +173,9 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title: "Issues",
-		Rows: func(context.Context) ([]issue, webui.Loaded) {
+		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {
 			return []issue{{Name: "a", Team: []string{"red"}}, {Name: "b", Team: []string{"mauve"}}}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
@@ -242,7 +242,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(a webui.Select[task]) string {
 		page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
-			Rows: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }, Columns: []webui.Accessor[task]{a},
+			Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }}, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page}}) {
@@ -272,9 +272,9 @@ func TestAnExportSaysWhatTheOptionsReadNow(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
 		Title:  "Issues",
 		Export: true,
-		Rows: func(context.Context) ([]issue, webui.Loaded) {
+		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {
 			return []issue{{Name: "a", Team: []string{"red"}}}, webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[issue]{
 			webui.String[issue]{Label: "Name", Load: func(t issue) string { return t.Name }},
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},

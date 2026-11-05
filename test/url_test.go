@@ -24,7 +24,7 @@ func linkApp(urls ...string) http.Handler {
 		webui.URL[Device]{Label: "Site", Load: func(d Device) string { return d.Ip }},
 		webui.URL[Device]{Label: "File", Text: "Download", Load: func(d Device) string { return d.Ip }},
 	}
-	table := webui.Table[Device]{Title: "Links", Columns: cols, Rows: func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }}
+	table := webui.Table[Device]{Title: "Links", Columns: cols, Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return items, webui.Ready() }}}
 	detail := webui.Form[Device]{
 		Title:  "One",
 		Load:   func(context.Context) (Device, webui.Loaded) { return items[0], webui.Ready() },
@@ -86,7 +86,7 @@ func TestARowClickCannotShareTheFirstColumnWithAURL(t *testing.T) {
 	details.Path = "/device/{id}"
 	details.Body = webui.Stack{}
 	table := webui.Table[Device]{
-		Load:     okRows,
+		Loader:   webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, detailsArgs]{Page: details, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }},
 		Columns:  []webui.Accessor[Device]{webui.URL[Device]{Label: "Site", Load: func(d Device) string { return d.Ip }}, formID},
 	}

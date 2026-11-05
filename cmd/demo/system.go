@@ -68,7 +68,7 @@ var Audit = webui.Page[webui.NoArgs]{
 		PageSize: 8,
 		// A feed is exported from its first page to its last, whatever page is on screen.
 		Export: true,
-		Feed: func(_ context.Context, after string, limit int) ([]AuditEntry, string, webui.Loaded) {
+		Loader: webui.FeedLoader[AuditEntry]{Load: func(_ context.Context, after string, limit int) ([]AuditEntry, string, webui.Loaded) {
 			// The cursor is where the page starts. It is whatever the source likes, so long
 			// as it can read it back; here, an index. Asking for one row more than a page is
 			// how this source knows there is a next one.
@@ -78,7 +78,7 @@ var Audit = webui.Page[webui.NoArgs]{
 				return rows, "", webui.Ready()
 			}
 			return rows[:limit], strconv.Itoa(start + limit), webui.Ready()
-		},
+		}},
 		Columns: []webui.Accessor[AuditEntry]{AuditAt, AuditActor, AuditAction, AuditTarget},
 	},
 }

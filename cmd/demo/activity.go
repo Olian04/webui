@@ -76,10 +76,10 @@ var ReleaseDay = webui.Page[ReleaseDayArgs]{
 	},
 	Body: webui.List[Release]{
 		Title: "Published",
-		Load: func(ctx context.Context, _ int) ([]Release, webui.Loaded) {
+		Loader: webui.RowsLoader[Release]{Load: func(ctx context.Context) ([]Release, webui.Loaded) {
 			day, _ := time.Parse(time.DateOnly, webui.ArgsOf[ReleaseDayArgs](ctx).Date)
 			return service.ReleasesBetween(day, day.AddDate(0, 0, 1)), webui.Ready()
-		},
+		}},
 		Headline: releaseTitle,
 		Open:     webui.Href[Release]{URL: func(r Release) string { return r.Link }},
 		Meta:     []webui.Accessor[Release]{releaseAuthor, releaseDownloads},
@@ -148,10 +148,9 @@ var ActivityAlerts = webui.List[Alert]{
 	Title:    "Open alerts",
 	Desc:     "The same alerts as the Alerts page's table, as a list: a headline, the device and how long ago, and a badge for how bad. Show more shows more.",
 	PageSize: 4,
-	Load: func(_ context.Context, limit int) ([]Alert, webui.Loaded) {
-		alerts := service.OpenAlerts()
-		return alerts[:min(limit, len(alerts))], webui.Ready()
-	},
+	Loader: webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) {
+		return service.OpenAlerts(), webui.Ready()
+	}},
 	Headline: alertMessage,
 	Open: webui.Link[Alert, AlertArgs]{
 		Page: AlertDetails,
@@ -166,9 +165,10 @@ var ActivityAlerts = webui.List[Alert]{
 var ActivityReleases = webui.List[Release]{
 	Title:    "Releases",
 	PageSize: 4,
-	Load: func(_ context.Context, limit int) ([]Release, webui.Loaded) {
-		return service.Releases(limit), webui.Ready()
-	},
+	// A source that is asked for the first few: it is given the size of the window, and nothing else of the query.
+	Loader: webui.PagedLoader[Release]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Release], webui.Loaded) {
+		return webui.PagedWindow[Release]{Items: service.Releases(q.Limit)}, webui.Ready()
+	}},
 	Headline: releaseTitle,
 	Open:     webui.Href[Release]{URL: func(r Release) string { return r.Link }},
 	Meta:     []webui.Accessor[Release]{releaseAuthor, releaseAge, releaseDownloads},
@@ -180,10 +180,9 @@ var ActivityReleases = webui.List[Release]{
 var ActivityOnCall = webui.List[Person]{
 	Title:    "People",
 	PageSize: 4,
-	Load: func(_ context.Context, limit int) ([]Person, webui.Loaded) {
-		people := service.OnCall()
-		return people[:min(limit, len(people))], webui.Ready()
-	},
+	Loader: webui.RowsLoader[Person]{Load: func(context.Context) ([]Person, webui.Loaded) {
+		return service.OnCall(), webui.Ready()
+	}},
 	Headline: personName,
 	Meta:     []webui.Accessor[Person]{personRole, personSince},
 	Badge:    personState,
@@ -196,10 +195,9 @@ var ActivityDashboards = webui.Cards[Dashboard]{
 	Title:    "Dashboards",
 	Layout:   webui.CardsScroll,
 	PageSize: 4,
-	Load: func(_ context.Context, limit int) ([]Dashboard, webui.Loaded) {
-		boards := service.Dashboards()
-		return boards[:min(limit, len(boards))], webui.Ready()
-	},
+	Loader: webui.RowsLoader[Dashboard]{Load: func(context.Context) ([]Dashboard, webui.Loaded) {
+		return service.Dashboards(), webui.Ready()
+	}},
 	Headline: dashboardName,
 	Meta:     []webui.Accessor[Dashboard]{dashboardOwner, dashboardPanels, dashboardUpdated},
 	Image:    func(d Dashboard) string { return "/art/" + slug(d.Name) + ".png" },

@@ -157,7 +157,7 @@ func TestAReadOnlyNullableFieldShowsADashForNothingAndTheValueOtherwise(t *testi
 func limitsTable(rows ...limits) http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Table[limits]{
 		Title: "Items", Export: true,
-		Rows: func(context.Context) ([]limits, webui.Loaded) { return rows, webui.Ready() },
+		Loader: webui.RowsLoader[limits]{Load: func(context.Context) ([]limits, webui.Loaded) { return rows, webui.Ready() }},
 		Columns: []webui.Accessor[limits]{
 			webui.String[limits]{Label: "Name", Load: func(l limits) string { return l.Name }},
 			limitRate, limitRatio, limitLevel, limitPaused,

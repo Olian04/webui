@@ -21,15 +21,15 @@ func TestAPanelsLoadHasFinishedWhenARequestThatTheVisitorLeftHasReturned(t *test
 	var started, finished atomic.Bool
 	began := make(chan struct{})
 	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[Device]{
-		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			if started.CompareAndSwap(false, true) {
 				close(began)
 			}
 			<-ctx.Done()
 			time.Sleep(50 * time.Millisecond) // what a Load does to let go of what it holds
 			finished.Store(true)
-			return webui.Window[Device]{}, webui.Ready()
-		},
+			return webui.PagedWindow[Device]{}, webui.Ready()
+		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")

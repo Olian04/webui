@@ -47,7 +47,7 @@ func stockApp(t webui.Table[stock]) http.Handler {
 }
 
 func rowsTable(rows []stock) webui.Table[stock] {
-	return webui.Table[stock]{Rows: func(context.Context) ([]stock, webui.Loaded) { return rows, webui.Ready() }}
+	return webui.Table[stock]{Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return rows, webui.Ready() }}}
 }
 
 func records(t *testing.T, body string) [][]string {
@@ -145,15 +145,15 @@ func TestAnExportOfJSONIsAListOfObjectsWithTypedValues(t *testing.T) {
 func TestALoadTableIsAskedForEveryRowInBatchesFromTheStart(t *testing.T) {
 	t.Parallel()
 
-	var asked []webui.Query
-	h := stockApp(webui.Table[stock]{Load: func(_ context.Context, q webui.Query) (webui.Window[stock], webui.Loaded) {
+	var asked []webui.PagedQuery
+	h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
 		asked = append(asked, q)
 		var items []stock
 		for i := q.Offset; i < min(q.Offset+q.Limit, 1200); i++ {
 			items = append(items, stock{Name: fmt.Sprintf("part%04d", i)})
 		}
-		return webui.Window[stock]{Items: items, Total: 1200}, webui.Ready()
-	}})
+		return webui.PagedWindow[stock]{Items: items, Total: 1200}, webui.Ready()
+	}}})
 	got := records(t, serve(h, http.MethodGet, "/admin/s?items.export=csv&items.offset=300&items.sort=name").Body.String())
 	assert.Equal(t, len(got), 1201)
 	assert.Equal(t, asked[0].Offset, 0)    // not where the page was
@@ -166,10 +166,10 @@ func TestALoadTableThatIgnoresOffsetOrNeverEndsDoesNotLoopForEver(t *testing.T) 
 	t.Parallel()
 
 	calls := 0
-	h := stockApp(webui.Table[stock]{Load: func(context.Context, webui.Query) (webui.Window[stock], webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
 		calls++
-		return webui.Window[stock]{Items: []stock{{Name: "same"}, {Name: "rows"}}, Total: -1}, webui.Ready() // always the first two
-	}})
+		return webui.PagedWindow[stock]{Items: []stock{{Name: "same"}, {Name: "rows"}}, Total: -1}, webui.Ready() // always the first two
+	}}})
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, len(records(t, rec.Body.String())), 3)
 	assert.Equal(t, calls, 2)
@@ -180,7 +180,7 @@ func TestRowsThatAreNotUniqueAreNotTakenForASourceThatIgnoresOffset(t *testing.T
 	t.Parallel()
 
 	// Every batch starts with the same row, as any table whose rows repeat has, and has no Total.
-	h := stockApp(webui.Table[stock]{Load: func(_ context.Context, q webui.Query) (webui.Window[stock], webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
 		var items []stock
 		for i := q.Offset; i < min(q.Offset+q.Limit, 1100); i++ {
 			name := fmt.Sprintf("part%04d", i)
@@ -189,8 +189,8 @@ func TestRowsThatAreNotUniqueAreNotTakenForASourceThatIgnoresOffset(t *testing.T
 			}
 			items = append(items, stock{Name: name})
 		}
-		return webui.Window[stock]{Items: items, Total: -1}, webui.Ready()
-	}})
+		return webui.PagedWindow[stock]{Items: items, Total: -1}, webui.Ready()
+	}}})
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, len(records(t, rec.Body.String())), 1101) // all of them
 	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "")
@@ -199,13 +199,13 @@ func TestRowsThatAreNotUniqueAreNotTakenForASourceThatIgnoresOffset(t *testing.T
 func TestAnExportIsCutAtTheLimitAndSaysSo(t *testing.T) {
 	t.Parallel()
 
-	h := stockApp(webui.Table[stock]{Load: func(_ context.Context, q webui.Query) (webui.Window[stock], webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
 		items := make([]stock, q.Limit)
 		for i := range items {
 			items[i] = stock{Name: fmt.Sprintf("part%d", q.Offset+i)}
 		}
-		return webui.Window[stock]{Items: items, Total: 250_000}, webui.Ready()
-	}})
+		return webui.PagedWindow[stock]{Items: items, Total: 250_000}, webui.Ready()
+	}}})
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, rec.Header().Get("X-Webui-Export-Truncated"), "")
 	assert.Equal(t, len(records(t, rec.Body.String())), 100_001)
@@ -217,9 +217,9 @@ func TestTheFooterSaysWhenAnExportMayBeCut(t *testing.T) {
 	t.Parallel()
 
 	note := func(total int) bool {
-		h := stockApp(webui.Table[stock]{Load: func(context.Context, webui.Query) (webui.Window[stock], webui.Loaded) {
-			return webui.Window[stock]{Items: []stock{{Name: "bolt"}}, Total: total}, webui.Ready()
-		}})
+		h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
+			return webui.PagedWindow[stock]{Items: []stock{{Name: "bolt"}}, Total: total}, webui.Ready()
+		}}})
 		body := serve(h, http.MethodGet, "/admin/s").Body.String()
 		assert.Contains(t, body, "Download the rows as CSV")
 		return strings.Contains(body, `<span class="pager-export-note">cut at 100,000 rows</span>`)
@@ -234,7 +234,7 @@ func TestAFeedIsFollowedFromItsFirstPageToItsLast(t *testing.T) {
 	t.Parallel()
 
 	var cursors []string
-	h := stockApp(webui.Table[stock]{Feed: func(_ context.Context, after string, _ int) ([]stock, string, webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.FeedLoader[stock]{Load: func(_ context.Context, after string, _ int) ([]stock, string, webui.Loaded) {
 		cursors = append(cursors, after)
 		switch after {
 		case "":
@@ -243,15 +243,15 @@ func TestAFeedIsFollowedFromItsFirstPageToItsLast(t *testing.T) {
 			return []stock{{Name: "c"}}, "c2", webui.Ready()
 		}
 		return []stock{{Name: "d"}}, "", webui.Ready()
-	}})
+	}}})
 	// Wherever the address has the feed, the export is the whole feed.
 	got := records(t, serve(h, http.MethodGet, "/admin/s?items.export=csv&items.after=c2").Body.String())
 	assert.Equal(t, len(got), 5)
 	assert.DeepEqual(t, cursors, []string{"", "c1", "c2"})
 
-	loop := stockApp(webui.Table[stock]{Feed: func(context.Context, string, int) ([]stock, string, webui.Loaded) {
+	loop := stockApp(webui.Table[stock]{Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) {
 		return []stock{{Name: "x"}}, "again", webui.Ready() // a cursor that comes back
-	}})
+	}}})
 	assert.Equal(t, len(records(t, serve(loop, http.MethodGet, "/admin/s?items.export=csv").Body.String())), 3)
 }
 
@@ -280,10 +280,10 @@ func TestAnExportRunsThePagesGuardAndLoadsNothingForAVisitorItRefuses(t *testing
 	t.Parallel()
 
 	loaded := false
-	table := webui.Table[stock]{Title: "Items", Columns: stockCols, Export: true, Rows: func(context.Context) ([]stock, webui.Loaded) {
+	table := webui.Table[stock]{Title: "Items", Columns: stockCols, Export: true, Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) {
 		loaded = true
 		return stocks, webui.Ready()
-	}}
+	}}}
 	page := webui.Page[webui.NoArgs]{Path: "/s", Body: table, Guard: func(context.Context, webui.NoArgs) error { return errors.New("members only") }}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
@@ -295,9 +295,9 @@ func TestAnExportRunsThePagesGuardAndLoadsNothingForAVisitorItRefuses(t *testing
 func TestAFailingExportSaysSoAndNotWhy(t *testing.T) {
 	t.Parallel()
 
-	h := stockApp(webui.Table[stock]{Rows: func(context.Context) ([]stock, webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) {
 		return nil, webui.Failed(errors.New("db secret-host is down"))
-	}})
+	}}})
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 	assert.False(t, strings.Contains(rec.Body.String(), "secret-host"))
@@ -340,9 +340,9 @@ func TestTheFooterOffersBothFilesAsPlainLinksThatKeepTheViewAndNotThePage(t *tes
 func TestAFeedsFooterHasTheLinksToo(t *testing.T) {
 	t.Parallel()
 
-	h := stockApp(webui.Table[stock]{Feed: func(context.Context, string, int) ([]stock, string, webui.Loaded) {
+	h := stockApp(webui.Table[stock]{Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) {
 		return []stock{{Name: "a"}}, "next", webui.Ready()
-	}})
+	}}})
 	body := serve(h, http.MethodGet, "/admin/s?items.after=next&items.row=2").Body.String()
 	assert.Contains(t, body, `href="/admin/s?items.export=csv"`) // from its first page, with no cursor
 }
@@ -350,7 +350,7 @@ func TestAFeedsFooterHasTheLinksToo(t *testing.T) {
 func TestAFailedTableOffersNoExport(t *testing.T) {
 	t.Parallel()
 
-	h := stockApp(webui.Table[stock]{Rows: func(context.Context) ([]stock, webui.Loaded) { return nil, webui.Failed(errors.New("down")) }})
+	h := stockApp(webui.Table[stock]{Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, webui.Failed(errors.New("down")) }}})
 	body := serve(h, http.MethodGet, "/admin/s").Body.String()
 	assert.Contains(t, body, "Could not load")
 	assert.False(t, strings.Contains(body, "pager-export"))
@@ -389,13 +389,13 @@ var (
 func ticketApp() http.Handler {
 	table := webui.Table[ticket]{
 		Title: "Tickets", Export: true, Columns: []webui.Accessor[ticket]{ticketName, ticketStatus, ticketLabels},
-		Rows: func(context.Context) ([]ticket, webui.Loaded) {
+		Loader: webui.RowsLoader[ticket]{Load: func(context.Context) ([]ticket, webui.Loaded) {
 			return []ticket{
 				{Name: "a", Status: []string{"open"}, Labels: []string{"ui", "bug"}},
 				{Name: "b", Status: []string{"done"}},
 				{Name: "c", Status: []string{"gone"}, Labels: []string{"=cmd"}}, // a value that is no option
 			}, webui.Ready()
-		},
+		}},
 	}
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
 }

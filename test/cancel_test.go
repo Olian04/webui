@@ -30,9 +30,9 @@ func cancelApp(redirectToPlain bool) http.Handler {
 
 	rows := func(dest webui.PageRef[cancelArgs]) webui.Table[Device] {
 		return webui.Table[Device]{
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
+			}},
 			RowClick: webui.Link[Device, cancelArgs]{
 				Page: dest,
 				Args: func(_ context.Context, d Device) cancelArgs { return cancelArgs{ID: d.Id} },

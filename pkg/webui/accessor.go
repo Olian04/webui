@@ -33,7 +33,7 @@ type accessorMeta struct {
 // String projects a string field of M.
 type String[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model.
@@ -129,7 +129,7 @@ type PatternRule struct {
 // Int projects an int field of M.
 type Int[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model.
@@ -193,7 +193,7 @@ type NumberRules[T int | float64] struct {
 // shown; zero shows the shortest exact representation.
 type Float[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model.
@@ -284,7 +284,7 @@ func (Group[M]) meta() accessorMeta { return accessorMeta{} }
 // and, in a table with Load, the options of the filter.
 type Select[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
+	// the column in the address and in a [PagedQuery].
 	Label string
 
 	// Options are the values it can hold, in the order they are listed, with what each says
@@ -361,7 +361,7 @@ type Option struct {
 // with a RowClick cannot be a URL, since the row's own link is there.
 type URL[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
+	// the column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the address from the model. An empty string is no link.
@@ -399,7 +399,7 @@ func (a URL[M]) meta() accessorMeta {
 // value is shown with the decimals of the step.
 type Slider[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model.
@@ -447,7 +447,7 @@ func (a Slider[M]) meta() accessorMeta {
 // read from a model, as a [When] does, this is the accessor for it.
 type Bool[M any] struct {
 	// Label is the column header and the switch's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model.

@@ -59,9 +59,9 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 			Path: "/things", Nav: webui.Nav{Label: "Things"},
 			Body: webui.Table[thing]{
 				Title: "Things",
-				Load: func(context.Context, webui.Query) (webui.Window[thing], webui.Loaded) {
-					return webui.Window[thing]{Items: []thing{{Name: "a"}}, Total: 1}, webui.Failed(loadErr)
-				},
+				Loader: webui.PagedLoader[thing]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[thing], webui.Loaded) {
+					return webui.PagedWindow[thing]{Items: []thing{{Name: "a"}}, Total: 1}, webui.Failed(loadErr)
+				}},
 				Key:     func(t thing) string { return t.Name },
 				Columns: []webui.Accessor[thing]{thingName},
 				Export:  true,

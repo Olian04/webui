@@ -533,7 +533,7 @@ func (p *Program) itemsAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 		p.refuse(w, r, notUnderstood)
 		return
 	}
-	rows, err := timed(p, page, "list", func() ([]any, error) { return n.Load(ctx, maxItems+1) })
+	rows, err := timed(p, page, "list", func() ([]any, error) { return firstItems(ctx, n, maxItems+1) })
 	if err != nil {
 		p.fail(w, r, page, req, fmt.Errorf("list load: %w", err))
 		return

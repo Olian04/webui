@@ -20,8 +20,9 @@ type Items struct {
 	// PageSize is how many items it shows at first, and how many more each Show more adds.
 	PageSize int
 
-	// Load returns at most limit items, in the order they are shown. It is asked for one more than is shown, to know whether there are more.
-	Load func(ctx context.Context, limit int) ([]any, error)
+	// Load returns the first items, in the order they are shown: the window of the Query's Offset and Limit, which is one more than is shown, to know whether there are more.
+	// It has no sort and no filter.
+	Load func(ctx context.Context, q Query) (Window, error)
 
 	// Headline is the item's title. A DisplayLink headline is a link to elsewhere.
 	Headline Field

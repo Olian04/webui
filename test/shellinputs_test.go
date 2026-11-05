@@ -20,10 +20,10 @@ func TestThePanelsTheGuardsAndTheNavEntriesAreAskedForAtTheSameTime(t *testing.T
 	var arrived, met atomic.Int32
 	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, Body: webui.Table[Device]{
 		Title: "Devices", Columns: []webui.Accessor[Device]{formID},
-		Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			meet(ctx, &arrived, 3, &met)
-			return webui.Window[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
-		},
+			return webui.PagedWindow[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
+		}},
 	}}
 	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, Body: webui.Stack{},
 		Guard: func(ctx context.Context, _ webui.NoArgs) error { meet(ctx, &arrived, 3, &met); return nil }}

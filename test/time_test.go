@@ -29,7 +29,7 @@ var (
 	objCreated  = webui.OptionalTime[object]{Label: "Created", Load: func(o object) *time.Time { return o.Created }}
 )
 
-func objectsApp(seen *webui.Query) http.Handler {
+func objectsApp(seen *webui.PagedQuery) http.Handler {
 	items := []object{
 		{Name: "a", Modified: time.Date(2026, 10, 9, 9, 0, 0, 0, time.FixedZone("CEST", 2*3600)), Created: unix(1791540000)}, // 07:00 UTC, though 09:00 on its own clock
 		{Name: "b", Modified: time.Date(2026, 10, 9, 8, 0, 0, 0, time.UTC)},
@@ -37,11 +37,11 @@ func objectsApp(seen *webui.Query) http.Handler {
 		{Name: "d", Created: unix(1791500000)},
 	}
 	cols := []webui.Accessor[object]{objName, objModified, objCreated}
-	rows := webui.Table[object]{Title: "Objects", Columns: cols, Rows: func(context.Context) ([]object, webui.Loaded) { return items, webui.Ready() }}
-	load := webui.Table[object]{Title: "Loaded", Columns: cols, Load: func(_ context.Context, q webui.Query) (webui.Window[object], webui.Loaded) {
+	rows := webui.Table[object]{Title: "Objects", Columns: cols, Loader: webui.RowsLoader[object]{Load: func(context.Context) ([]object, webui.Loaded) { return items, webui.Ready() }}}
+	load := webui.Table[object]{Title: "Loaded", Columns: cols, Loader: webui.PagedLoader[object]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[object], webui.Loaded) {
 		*seen = q
-		return webui.Window[object]{Items: items, Total: len(items)}, webui.Ready()
-	}}
+		return webui.PagedWindow[object]{Items: items, Total: len(items)}, webui.Ready()
+	}}}
 	detail := webui.Form[object]{
 		Title: "Object",
 		Load: func(context.Context) (object, webui.Loaded) {
@@ -59,7 +59,7 @@ func objectsApp(seen *webui.Query) http.Handler {
 func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 	t.Parallel()
 
-	body := serve(objectsApp(&webui.Query{}), http.MethodGet, "/rows").Body.String()
+	body := serve(objectsApp(&webui.PagedQuery{}), http.MethodGet, "/rows").Body.String()
 
 	assert.Contains(t, body, `<time datetime="2026-10-09T07:00:00Z">2026-10-09 07:00</time>`) // a zone is converted
 	assert.Contains(t, body, `<time datetime="2026-10-10T00:00:00Z">2026-10-10 00:00</time>`) // midnight is a moment like any other
@@ -72,7 +72,7 @@ func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
 	t.Parallel()
 
-	h := objectsApp(&webui.Query{})
+	h := objectsApp(&webui.PagedQuery{})
 	body := serve(h, http.MethodGet, "/rows?objects.sort=modified").Body.String()
 	// a is 07:00 UTC and b 08:00 UTC, though a's wall clock is the greater. The zero time,
 	// which is not set, sorts first, and the next day last.
@@ -85,7 +85,7 @@ func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
 func TestAMomentColumnIsFilteredByAStartAndAnEndInUTC(t *testing.T) {
 	t.Parallel()
 
-	h := objectsApp(&webui.Query{})
+	h := objectsApp(&webui.PagedQuery{})
 	body := serve(h, http.MethodGet, "/rows?objects.min.modified=2026-10-09T07:30&objects.max.modified=2026-10-09T23:00").Body.String()
 
 	assert.Contains(t, body, ">b</td>")
@@ -99,7 +99,7 @@ func TestAMomentColumnIsFilteredByAStartAndAnEndInUTC(t *testing.T) {
 func TestALoadTableIsHandedAMomentsBoundsAsUnixSeconds(t *testing.T) {
 	t.Parallel()
 
-	var seen webui.Query
+	var seen webui.PagedQuery
 	h := objectsApp(&seen)
 	serve(h, http.MethodGet, "/load?loaded.min.modified=2026-10-09T07:30&loaded.max.created=1791600000")
 
@@ -111,7 +111,7 @@ func TestALoadTableIsHandedAMomentsBoundsAsUnixSeconds(t *testing.T) {
 func TestAMomentInAFormIsReadOnlyOutputAndAnEmptyOneIsADash(t *testing.T) {
 	t.Parallel()
 
-	body := serve(objectsApp(&webui.Query{}), http.MethodGet, "/one").Body.String()
+	body := serve(objectsApp(&webui.PagedQuery{}), http.MethodGet, "/one").Body.String()
 	assert.Contains(t, body, `<time datetime="2026-10-09T11:27:00Z">2026-10-09 11:27</time>`)
 	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // Created is nil: not set
 	assert.False(t, strings.Contains(body, "<input class=\"input\""))
@@ -183,7 +183,7 @@ func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
 func TestAMomentThatIsNotSetIsDroppedByAnyRangeEvenOneWithOnlyAnEnd(t *testing.T) {
 	t.Parallel()
 
-	h := objectsApp(&webui.Query{})
+	h := objectsApp(&webui.PagedQuery{})
 
 	// b has no Created (nil is not set), and d no Modified (the zero time is). A filter
 	// with only an end would keep them if "not set" were taken for a very early time.

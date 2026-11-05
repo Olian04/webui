@@ -14,7 +14,7 @@ import (
 // by range. Otherwise it is an [Int], and has what an Int has.
 type OptionalInt[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model: nil when there is none.
@@ -57,7 +57,7 @@ func (a OptionalInt[M]) meta() accessorMeta {
 // OptionalFloat projects a *float64 field of M: a number that may be absent, as [OptionalInt] is a whole number that may.
 type OptionalFloat[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model: nil when there is none.
@@ -104,7 +104,7 @@ func (a OptionalFloat[M]) meta() accessorMeta {
 // drawn, a dash in its place, and a number input that is empty and stores nil when it is left so.
 type OptionalSlider[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model: nil when there is none.
@@ -149,7 +149,7 @@ func (a OptionalSlider[M]) meta() accessorMeta {
 // Select, its filter in a table is a choice among the values. A value that is always one or the other is a [Bool].
 type OptionalBool[M any] struct {
 	// Label is the column header and the input's label. In a table it also names the
-	// column in the address and in a [Query].
+	// column in the address and in a [PagedQuery].
 	Label string
 
 	// Load reads the value from the model: nil when it is not set.

@@ -1,74 +1,17 @@
 package webui
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/Olian04/webui/internal/args"
-	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
-	"github.com/Olian04/webui/internal/tablequery"
 )
-
-// Query is what the address asks of a table: a window and an order. Sort is the
-// Label of the column the table is sorted by, or empty. It is always one of the
-// table's columns.
-type Query struct {
-	// Offset is how many rows to skip: the start of the page.
-	Offset int
-
-	// Limit is how many rows the page shows: the table's PageSize.
-	Limit int
-
-	// Sort is the Label of the column to sort by, or empty for the source's own
-	// order.
-	Sort string
-
-	// Desc sorts descending.
-	Desc bool
-
-	// Filters are the column filters in force, by the column's Label.
-	// A column with a fixed set of options, a Select, whose options are those it
-	// lists, holds the options chosen, always among that set. Any other
-	// column holds the one text typed, trimmed and never empty. Numeric columns
-	// (Int, Float and Slider) and moments (Time and OptionalTime) are not here but
-	// in Ranges. Load does the filtering, as it does the sorting.
-	Filters map[string][]string
-
-	// Ranges are the bounds on the numeric columns and the moments, by the same
-	// Label. A column filters by a minimum and a maximum, either of which may be left
-	// out, so a range is an inequality, not text. A bound is always a finite number;
-	// an unreadable one never arrives. The bounds of a Time or an OptionalTime are
-	// Unix seconds, which the source reads the same way whatever it holds the moment as.
-	// Sort is by the same number, so moments order as moments and not as text.
-	Ranges map[string]Range
-}
-
-// Range bounds a number, both ends inclusive. A nil end is unbounded.
-type Range struct {
-	// Min is the lower bound, or nil for none.
-	Min *float64
-	// Max is the upper bound, or nil for none.
-	Max *float64
-}
-
-// Window is one window of a table's rows, as Load returns it. Total is the count across all pages;
-// when it is smaller than Offset plus len(Items) it is taken as unknown, so a
-// loader that does not count can leave it zero.
-type Window[M any] struct {
-	// Items are the rows of this window.
-	Items []M
-
-	// Total is how many rows match across all pages. Leave it zero when the source
-	// does not count.
-	Total int
-}
 
 // Table is a leaf that lists rows of a model M, one row to a line.
 //
 // Every column header sorts the table and has a filter beside it, unless the column says NoSort or NoFilter, which
 // leave it out of the sorting or the filters: its header has no link or no menu, and an address that asks for
-// one is ignored, so [Query] never carries it. Where the rows
+// one is ignored, so [PagedQuery] never carries it. Where the rows
 // come from is Rows, Load or Feed, one of the three. Rows suits a set small enough to
 // list in full. Load and Feed suit a set too large for that, which the source pages:
 // Load when it pages by offset and can sort and filter on request, and Feed when it
@@ -96,60 +39,10 @@ type Table[M any] struct {
 	// always pages, because one that listed every row would grow without bound.
 	PageSize int
 
-	// Rows returns every row of the table, and the library does the rest: it
-	// filters, sorts and pages them by the columns' own values, comparing numbers
-	// as numbers and text as text.
-	//
-	// Use Rows when the rows are all at hand or cheap to list in full, such as a
-	// slice in memory or a small query. It is all that most tables need.
-	//
-	// If Rows, Load or Feed returns [Failed] the panel says "Could not load", the cause is
-	// logged and the rest of the page stands. The error's text is not shown to the
-	// visitor, since it may name things they should not see. Return no rows, not
-	// a failure, for a table that is empty. A table that shows a job that is still going
-	// returns [Loaded.RefreshAfter].
-	//
-	// Rows is called on every request that needs the table's rows: each page load,
-	// sort, filter, page change, row action, and search. The library keeps nothing
-	// between requests, so if listing is costly, cache it in your app (see the package
-	// documentation on a table's sources, and Example_caching), or use Load.
-	// Set exactly one of Rows, Load and Feed.
-	Rows func(ctx context.Context) ([]M, Loaded)
-
-	// Load returns one page of rows, and does the filtering, sorting and paging
-	// itself. It receives the window, the sort and the filters as a [Query], and
-	// returns a [Window] with the rows and, if it can count them, the total.
-	//
-	// Use Load when the source can do that work better than the library, or is too
-	// large to list in full, such as a database table or a remote API. Set exactly one of
-	// Rows, Load and Feed.
-	Load func(ctx context.Context, q Query) (Window[M], Loaded)
-
-	// Feed is for a source that pages by a cursor, also called a continuation token,
-	// such as an object store's listing or a feed of events. The rows come in the order
-	// the source gives them, and each page continues where the last ended. Feed is
-	// handed the cursor of the page asked for, "" for the first, and how many rows a
-	// page holds, and returns them with the cursor of the page after, "" when there is
-	// none.
-	//
-	// Use Feed when the source pages by cursor, and Load when it pages by offset and
-	// can sort and filter on request. A cursor continues one sequence, so there is
-	// nothing for the library to filter, and a feed table has no filters. Its columns
-	// can be sorted, but only the page on screen: the library orders the rows Feed
-	// returned, by the column's own value, and Feed is not told of it. The page after
-	// continues the sequence and is ordered within itself, so a sort never moves a row
-	// to another page, and the footer says that it is of this page. Its pager is First
-	// page, Previous and Next, with "Showing rows 10032–10054" for a count, since a
-	// cursor has no place in a total.
-	//
-	// The address holds the cursor, the number of the page's first row, and the pages
-	// before it, which is all that Previous and the row numbers are made from: nothing
-	// is kept on the server, and the source is handed only the cursor and the size.
-	// So cursors must be short enough to be in an address, and Previous goes back as
-	// far as the address can remember, which is further for short cursors; the oldest
-	// pages are forgotten first, and First page is always there. Set exactly one of
-	// Rows, Load and Feed.
-	Feed func(ctx context.Context, after string, limit int) (rows []M, next string, loaded Loaded)
+	// Loader is where the rows come from, and how much of the work the library does: a [RowsLoader] hands over every row and lets the library filter, sort and
+	// page them, a [PagedLoader] pages by offset and filters and sorts itself, and a [FeedLoader] pages by a cursor, which continues one sequence and so cannot be sorted or filtered
+	// by the library. A table has one, and exactly one.
+	Loader Loader[M]
 
 	// Export puts two links in the table's footer, CSV and JSON, that download its rows.
 	// The file holds every row the table's sort and filters keep (a feed has no filters, and
@@ -210,7 +103,7 @@ type Table[M any] struct {
 	BulkActions []Action[[]M]
 
 	// Columns are the table's columns, in order. A column is known by its Label,
-	// which the address and a [Query] use to name it, so labels must differ.
+	// which the address and a [PagedQuery] use to name it, so labels must differ.
 	Columns []Accessor[M]
 }
 
@@ -218,19 +111,10 @@ type Table[M any] struct {
 var _ PageBody = Table[struct{}]{}
 
 func (t Table[M]) validateBody(v *bodyValidator) {
-	sources := 0
-	for _, set := range []bool{t.Rows != nil, t.Load != nil, t.Feed != nil} {
-		if set {
-			sources++
-		}
-	}
-	switch {
-	case sources == 0:
-		v.add("a Table has none of Rows, Load and Feed",
-			"Set Rows to func(ctx) ([]M, Loaded) to list every row and let the library filter, sort and page; Load to do that yourself; or Feed for a source paged by a cursor.")
-	case sources > 1:
-		v.add("a Table has more than one of Rows, Load and Feed",
-			"Set one: Rows lets the library filter, sort and page, Load does it yourself, and Feed pages by a cursor, sorting only the page on screen and with no filters.")
+	if t.Loader == nil {
+		v.add("a Table has no Loader", "Set Loader to a RowsLoader, which lists every row and lets the library filter, sort and page; a PagedLoader, which does that itself; or a FeedLoader, for a source paged by a cursor.")
+	} else {
+		t.Loader.validateLoader(v, "Table.Loader")
 	}
 	validateAccessors(v, t.Columns, accessorSite{where: "Table.Columns"})
 
@@ -302,7 +186,8 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 	for _, c := range columns {
 		labels[c.Key] = c.Label
 	}
-	if t.Rows != nil {
+	loading := t.Loader.lowerLoader(columns, labels)
+	if loading.inMemory {
 		// The library holds every row, so a select's choices are the values the rows
 		// have, whether or not its Kinds name them.
 		for i := range columns {
@@ -310,10 +195,10 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		}
 	}
 	out := &ir.Table{
-		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Feed: t.Feed != nil,
-		Export: t.Export, InMemory: t.Rows != nil,
+		At: at, Title: t.Title, Desc: t.Desc, PageSize: pageSizeOf(t.PageSize), Feed: loading.feed,
+		Export: t.Export, InMemory: loading.inMemory,
 		Columns: columns,
-		Load:    t.loader(columns, labels),
+		Load:    loading.load,
 	}
 	if t.Key != nil {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
@@ -330,67 +215,4 @@ func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
 		out.Bulk = append(out.Bulk, lowerBulk(a))
 	}
 	return out
-}
-
-// queryOf is the IR's Query as the user's Load receives it. The IR names a column
-// as the address does, and the user knows it by its label, so each is renamed;
-// the two otherwise differ only in the type of a Range, which the user sees as
-// theirs.
-func queryOf(q ir.Query, labels map[string]string) Query {
-	out := Query{Offset: q.Offset, Limit: q.Limit, Sort: labels[q.Sort], Desc: q.Desc}
-	if q.Filters != nil {
-		out.Filters = make(map[string][]string, len(q.Filters))
-		for name, values := range q.Filters {
-			out.Filters[labels[name]] = values
-		}
-	}
-	if q.Ranges != nil {
-		out.Ranges = make(map[string]Range, len(q.Ranges))
-		for name, r := range q.Ranges {
-			out.Ranges[labels[name]] = Range(r)
-		}
-	}
-	return out
-}
-
-// loader is the table's rows as the IR asks for them, by a Query.
-func (t Table[M]) loader(columns []ir.Field, labels map[string]string) func(context.Context, ir.Query) (ir.Window, error) {
-	if t.Rows != nil {
-		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-			all, loaded := t.Rows(ctx)
-			if err := loaded.apply(ctx); err != nil {
-				return ir.Window{}, err
-			}
-			items := convert.Any(all)
-			window, total := tablequery.Apply(items, columns, q)
-			return ir.Window{Rows: window, Total: total, Options: tablequery.Options(items, columns)}, nil
-		}
-	}
-	if t.Feed != nil {
-		return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-			rows, next, loaded := t.Feed(ctx, q.After, q.Limit)
-			if err := loaded.apply(ctx); err != nil {
-				return ir.Window{}, err
-			}
-			items := convert.Any(rows)
-			if q.Sort != "" {
-				// The source's order is the sequence's, so only the page in hand is ordered: the
-				// next page continues the sequence, and is ordered within itself.
-				items, _ = tablequery.Apply(items, columns, ir.Query{Sort: q.Sort, Desc: q.Desc})
-			}
-			return ir.Window{Rows: items, Total: -1, Next: next}, nil
-		}
-	}
-	return func(ctx context.Context, q ir.Query) (ir.Window, error) {
-		rows, loaded := t.Load(ctx, queryOf(q, labels))
-		if err := loaded.apply(ctx); err != nil {
-			return ir.Window{}, err
-		}
-		items := convert.Any(rows.Items)
-		total := rows.Total
-		if total < q.Offset+len(items) {
-			total = -1
-		}
-		return ir.Window{Rows: items, Total: total}, nil
-	}
 }

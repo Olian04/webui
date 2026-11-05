@@ -200,9 +200,9 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 	act := func(o webui.Outcome) http.Handler {
 		table := webui.Table[Device]{
 			Title: "Devices",
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
+			}},
 			Key:     func(d Device) string { return d.Id },
 			Columns: []webui.Accessor[Device]{formID},
 			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},

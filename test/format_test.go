@@ -62,7 +62,7 @@ func blobApp() http.Handler {
 		),
 		Body: webui.Table[blob]{
 			Title:   "Blobs",
-			Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
+			Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
 			Key:     func(b blob) string { return b.Name },
 			Columns: []webui.Accessor[blob]{blobName, blobSize, blobPct, blobMade, blobSeen},
 			Export:  true,
@@ -182,13 +182,13 @@ func TestAFieldThatCanBeEditedHoldsTheValueAndOneThatCannotReadsAsItsFormat(t *t
 func TestALoadTableShowsTheFormatAndIsHandedTheValuesSort(t *testing.T) {
 	t.Parallel()
 
-	var asked webui.Query
+	var asked webui.PagedQuery
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/l", Body: webui.Table[blob]{
 		Title: "Loaded",
-		Load: func(_ context.Context, q webui.Query) (webui.Window[blob], webui.Loaded) {
+		Loader: webui.PagedLoader[blob]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[blob], webui.Loaded) {
 			asked = q
-			return webui.Window[blob]{Items: blobs(), Total: 3}, webui.Ready()
-		},
+			return webui.PagedWindow[blob]{Items: blobs(), Total: 3}, webui.Ready()
+		}},
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, blobSize},
 	}}}}.MustCompile("/admin")
@@ -206,7 +206,7 @@ func TestAFormatThatPanicsIsLoggedAndTheValueIsShownAsItIs(t *testing.T) {
 	broken := webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: func(int) string { panic("boom") }}
 	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logged, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[blob]{
 		Title:   "Broken",
-		Rows:    func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() },
+		Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
 		Key:     func(b blob) string { return b.Name },
 		Columns: []webui.Accessor[blob]{blobName, broken},
 	}}}}.MustCompile("/admin")

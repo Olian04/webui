@@ -24,9 +24,9 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 		Path: "/entry",
 		Nav:  webui.Nav{Label: "Entries"},
 		Body: webui.Table[Device]{
-			Title: "Entries",
-			Rows:  func(context.Context) ([]Device, webui.Loaded) { return entries, webui.Ready() },
-			Key:   func(d Device) string { return d.Id },
+			Title:  "Entries",
+			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return entries, webui.Ready() }},
+			Key:    func(d Device) string { return d.Id },
 			RowClick: webui.Action[Device]{
 				Guard: guard,
 				Run: func(ctx context.Context, d Device) (webui.Outcome, error) {
@@ -97,7 +97,7 @@ func TestARowClickActionNeedsARunAndAKey(t *testing.T) {
 
 	run := func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }
 	problems := func(tbl webui.Table[Device]) string {
-		tbl.Load = okRows
+		tbl.Loader = webui.PagedLoader[Device]{Load: okRows}
 		tbl.Columns = []webui.Accessor[Device]{formID}
 		var all string
 		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: tbl}}}) {

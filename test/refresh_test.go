@@ -17,9 +17,9 @@ func refreshApp(say webui.Loaded) http.Handler {
 	table := func(title string, say webui.Loaded) webui.Table[stock] {
 		return webui.Table[stock]{
 			Title: title, Columns: stockCols,
-			Load: func(context.Context, webui.Query) (webui.Window[stock], webui.Loaded) {
-				return webui.Window[stock]{Items: []stock{{Name: "bolt"}}, Total: 1}, say
-			},
+			Loader: webui.PagedLoader[stock]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
+				return webui.PagedWindow[stock]{Items: []stock{{Name: "bolt"}}, Total: 1}, say
+			}},
 		}
 	}
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Stack{table("Job", say), table("Other", webui.Ready())}}}}.MustCompile("/admin")
@@ -107,8 +107,8 @@ func TestEveryLeafWithALoadCanSayItIsNotFinal(t *testing.T) {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: body}}}.MustCompile("/admin")
 	}
 	for name, h := range map[string]http.Handler{
-		"Rows": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Rows: func(context.Context) ([]stock, webui.Loaded) { return nil, not }}),
-		"Feed": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Feed: func(context.Context, string, int) ([]stock, string, webui.Loaded) { return nil, "", not }}),
+		"Rows": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, not }}}),
+		"Feed": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) { return nil, "", not }}}),
 		"Form": page(webui.Form[stock]{Title: "Item", Fields: []webui.Accessor[stock]{stockCols[0]}, Load: func(context.Context) (stock, webui.Loaded) { return stock{}, not }}),
 		"Markdown": page(webui.Markdown[handbook]{
 			Title: "Handbook", Content: handbookText, Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: "# Hi"}, not },

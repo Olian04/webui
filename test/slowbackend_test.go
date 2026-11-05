@@ -22,12 +22,12 @@ func slowApp() http.Handler {
 	table := func(title string, delay time.Duration) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(ctx context.Context, _ webui.Query) (webui.Window[Device], webui.Loaded) {
+			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				if !sleep(ctx, delay) {
-					return webui.Window[Device]{}, webui.Failed(ctx.Err())
+					return webui.PagedWindow[Device]{}, webui.Failed(ctx.Err())
 				}
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
-			},
+				return webui.PagedWindow[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
@@ -79,9 +79,9 @@ func BenchmarkPageFastPanels(b *testing.B) {
 	table := func(title string) webui.Table[Device] {
 		return webui.Table[Device]{
 			Title: title,
-			Load: func(context.Context, webui.Query) (webui.Window[Device], webui.Loaded) {
-				return webui.Window[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
-			},
+			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
+				return webui.PagedWindow[Device]{Items: []Device{{Id: title + "-row"}}, Total: 1}, webui.Ready()
+			}},
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}

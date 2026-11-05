@@ -37,7 +37,7 @@ func fixture() App {
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
 				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
-			{Label: "Raw", Body: Stack{Split{Table[dev]{Load: func(context.Context, Query) (Window[dev], Loaded) { return Window[dev]{}, Ready() }}}}},
+			{Label: "Raw", Body: Stack{Split{Table[dev]{Loader: PagedLoader[dev]{Load: func(context.Context, PagedQuery) (PagedWindow[dev], Loaded) { return PagedWindow[dev]{}, Ready() }}}}}},
 		},
 	}
 	list := Page[listArgs]{
@@ -45,9 +45,9 @@ func fixture() App {
 		Nav:  Nav{Label: "Devices"},
 		Body: Table[dev]{
 			Title: "Devices",
-			Load: func(context.Context, Query) (Window[dev], Loaded) {
-				return Window[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, Ready()
-			},
+			Loader: PagedLoader[dev]{Load: func(context.Context, PagedQuery) (PagedWindow[dev], Loaded) {
+				return PagedWindow[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, Ready()
+			}},
 			PageSize: 2,
 			Key:      func(d dev) string { return d.Id },
 			RowClick: Link[dev, detailArgs]{
