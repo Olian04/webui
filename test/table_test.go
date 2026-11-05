@@ -245,6 +245,17 @@ func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
 	assert.Contains(t, css, ".rowlink::after {\n  content: '';\n  position: absolute;\n  inset: 0;")
 }
 
+// Where a box scrolls both ways, the two bars meet in a square. A custom bar
+// leaves that square white unless the corner is cleared with the track, so the
+// surface under the bars shows through. A table panel is the box that does this.
+func TestScrollbarCornerIsClearWhereBothBarsMeet(t *testing.T) {
+	t.Parallel()
+
+	h, _ := tableApp(nil)
+	css := serve(h, http.MethodGet, assetURL(t, h, "app.css")).Body.String()
+	assert.Contains(t, css, "::-webkit-scrollbar-track {\n  background: transparent;\n}\n/* Both bars meet in a square the browser paints white. The track is already\n   clear, so the corner is too and the surface under the bars shows through. */\n::-webkit-scrollbar-corner {\n  background: transparent;\n}")
+}
+
 func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 	t.Parallel()
 
