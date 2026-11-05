@@ -19,7 +19,7 @@ type Device struct {
 	Count                int
 	Stored               int // bytes kept
 	Duration             float64
-	LastSeen             int // Unix seconds
+	LastSeen             time.Time
 	Tags                 []string
 	Notes                string // a few lines, by whoever looks after it
 }
@@ -67,7 +67,7 @@ func (d Device) RecentChange() *float64 {
 
 type Alert struct {
 	ID, Severity, Device, Message string
-	Raised                        string // an ISO 8601 moment
+	Raised                        time.Time
 	Acked                         bool
 }
 
@@ -80,21 +80,21 @@ type Event struct {
 type Settings struct {
 	Name       string
 	Port       int
-	SampleRate float64  // 0 to 1: the share of events kept
-	MaxLoad    float64  // percent: where ingest starts shedding
-	Maintain   int      // Unix seconds: when the next maintenance window starts
-	APIKey     string   // what the collector signs in with: never shown, only replaced
-	Burst      *int     // events a second that are let through at once: nil is no limit, which is not the same as none
-	Quota      *float64 // percent of the plan that this collector may use: nil is all of it
-	Paused     *bool    // yes, no, or nil to follow the maintenance window
-	Compress   bool     // whether events are compressed on the wire
-	Contact    string   // who is told when something breaks
-	OnCall     string   // the number they are reached on
-	Webhook    string   // where alerts are posted
-	Label      string   // the colour its graphs are drawn in, "#rrggbb"
-	CertEnds   int      // Unix seconds: midnight UTC of the day the certificate stops being valid
-	Logo       *Blob    // the image in the header of the reports
-	CertFile   *Blob    // the certificate itself, as a PDF
+	SampleRate float64   // 0 to 1: the share of events kept
+	MaxLoad    float64   // percent: where ingest starts shedding
+	Maintain   time.Time // when the next maintenance window starts
+	APIKey     string    // what the collector signs in with: never shown, only replaced
+	Burst      *int      // events a second that are let through at once: nil is no limit, which is not the same as none
+	Quota      *float64  // percent of the plan that this collector may use: nil is all of it
+	Paused     *bool     // yes, no, or nil to follow the maintenance window
+	Compress   bool      // whether events are compressed on the wire
+	Contact    string    // who is told when something breaks
+	OnCall     string    // the number they are reached on
+	Webhook    string    // where alerts are posted
+	Label      string    // the colour its graphs are drawn in, "#rrggbb"
+	CertEnds   time.Time // midnight UTC of the day the certificate stops being valid
+	Logo       *Blob     // the image in the header of the reports
+	CertFile   *Blob     // the certificate itself, as a PDF
 }
 
 // Blob is a file that the demo keeps, in memory: the library keeps none, so what an app does with the bytes of an upload is its own.
@@ -220,8 +220,8 @@ func newService() *Service {
 	s := &Service{
 		config: Config{Current: seedConfig, Deployed: seedConfig},
 		rule:   seedRule,
-		settings: Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: int(epoch.Add(36 * time.Hour).Unix()), Compress: true,
-			Contact: "oncall@example.com", OnCall: "+46701234567", Label: "#2f9e8f", CertEnds: int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())},
+		settings: Settings{Name: "eu-north-1", Port: 8125, SampleRate: 0.25, MaxLoad: 80, Maintain: epoch.Add(36 * time.Hour), Compress: true,
+			Contact: "oncall@example.com", OnCall: "+46701234567", Label: "#2f9e8f", CertEnds: time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)},
 		retention: RetentionPolicy{Days: 30},
 		started:   time.Now().Add(-9*24*time.Hour - 4*time.Hour),
 	}
@@ -233,7 +233,7 @@ func newService() *Service {
 			ID: fmt.Sprintf("dev_%06x", 0x27c38b+i*977), IP: fmt.Sprintf("10.0.%d.%d", i/8, 10+i),
 			Status: statuses[i%len(statuses)], Site: sites[i%len(sites)], Tags: tags[i%len(tags)],
 			Count: 40 + (i*53)%900, Stored: 1<<(10+i%21) + i*977, Duration: 60 + float64(i%7)*30,
-			LastSeen: int(epoch.Add(-time.Duration(i*17) * time.Minute).Unix()),
+			LastSeen: epoch.Add(-time.Duration(i*17) * time.Minute),
 		}
 		if d.Site == "Göteborg" && d.Status == "degraded" {
 			d.Status = "healthy" // one site is fine, so the sites page has both
@@ -245,7 +245,7 @@ func newService() *Service {
 		s.alerts = append(s.alerts, Alert{
 			ID: fmt.Sprintf("alt_%03d", i), Severity: severities[i%3], Device: s.devices[i*3+i%3].ID, // spread over the three sites; alt_000 is dev_27c38b
 			Message: fmt.Sprintf("Ingest lag above %ds", 5+i),
-			Raised:  epoch.Add(-time.Duration(i*53) * time.Minute).Format(time.RFC3339),
+			Raised:  epoch.Add(-time.Duration(i*53) * time.Minute),
 		})
 	}
 	// A history to scroll: 43 entries, one every 37 minutes.
@@ -265,7 +265,7 @@ func newService() *Service {
 func (s *Service) AddDevice(d Device) Device {
 	s.mu.Lock()
 	d.ID = fmt.Sprintf("dev_new%02d", len(s.devices)-36)
-	d.Duration, d.LastSeen = 60, int(epoch.Unix())
+	d.Duration, d.LastSeen = 60, epoch
 	s.devices = append(s.devices, d)
 	s.mu.Unlock()
 	s.record("created device", d.ID)

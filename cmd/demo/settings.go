@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -109,17 +110,16 @@ var (
 		Store: func(s *Settings, v string) { s.Label = v },
 	}
 	// DateOnly makes a moment a date: the input picks a day, and it is stored as midnight UTC.
-	CertEnds = webui.Timestamp[Settings]{
+	CertEnds = webui.Time[Settings]{
 		Label: "Certificate ends", DateOnly: true,
-		Load:  func(s Settings) int { return s.CertEnds },
-		Store: func(s *Settings, v int) { s.CertEnds = v },
+		Load:  func(s Settings) time.Time { return s.CertEnds },
+		Store: func(s *Settings, v time.Time) { s.CertEnds = v },
 	}
-	// A Timestamp with a Store is a date and time picker, in UTC, that stores Unix
-	// seconds. A Datetime stores an ISO 8601 string the same way.
-	Maintenance = webui.Timestamp[Settings]{
+	// A Time with a Store is a date and time picker, in UTC, that stores a time.Time. The zero time is "not set".
+	Maintenance = webui.Time[Settings]{
 		Label: "Maintenance window starts",
-		Load:  func(s Settings) int { return s.Maintain },
-		Store: func(s *Settings, v int) { s.Maintain = v },
+		Load:  func(s Settings) time.Time { return s.Maintain },
+		Store: func(s *Settings, v time.Time) { s.Maintain = v },
 	}
 	Days = webui.Int[RetentionPolicy]{
 		Label: "Retention (days)",

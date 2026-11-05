@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 )
@@ -112,10 +113,10 @@ var (
 		Load:   func(d Device) int { return d.Stored },
 		Format: humanBytes,
 	}
-	// A Timestamp is a moment held as Unix seconds; it reads as a Datetime does.
-	LastSeen = webui.Timestamp[Device]{
+	// A Time reads as a moment does, in a table sorted and filtered by it.
+	LastSeen = webui.Time[Device]{
 		Label: "Last seen",
-		Load:  func(d Device) int { return d.LastSeen },
+		Load:  func(d Device) time.Time { return d.LastSeen },
 	}
 	Rate = webui.Slider[Device]{
 		Label: "Rate / s", Max: 15, StepSize: 0.01,

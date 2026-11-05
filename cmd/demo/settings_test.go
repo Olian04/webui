@@ -148,7 +148,7 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 	h := handler(t)
 	t.Cleanup(func() {
 		service.mu.Lock()
-		service.settings.Contact, service.settings.OnCall, service.settings.Webhook, service.settings.Label, service.settings.CertEnds = "oncall@example.com", "", "", "#2f9e8f", int(time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC).Unix())
+		service.settings.Contact, service.settings.OnCall, service.settings.Webhook, service.settings.Label, service.settings.CertEnds = "oncall@example.com", "", "", "#2f9e8f", time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)
 		service.mu.Unlock()
 	})
 
@@ -177,7 +177,7 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 	s := service.Settings()
 	assert.Equal(t, s.Contact, "ops@example.com")
 	assert.Equal(t, s.Label, "#336699")
-	assert.Equal(t, s.CertEnds, int(time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC).Unix()))
+	assert.True(t, s.CertEnds.Equal(time.Date(2027, 3, 1, 0, 0, 0, 0, time.UTC)))
 }
 
 // Help is a section of the popover beside a label that says what the field is for.

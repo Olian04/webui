@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
@@ -19,7 +20,7 @@ type stock struct {
 	Name  string
 	Qty   int
 	Price float64
-	Made  int
+	Made  time.Time
 	Page  string
 }
 
@@ -27,15 +28,15 @@ var (
 	stockName  = webui.String[stock]{Label: "Name", Load: func(s stock) string { return s.Name }}
 	stockQty   = webui.Int[stock]{Label: "Qty", Load: func(s stock) int { return s.Qty }}
 	stockPrice = webui.Float[stock]{Label: "Price", Precision: 2, Load: func(s stock) float64 { return s.Price }}
-	stockMade  = webui.Timestamp[stock]{Label: "Made", Load: func(s stock) int { return s.Made }}
+	stockMade  = webui.Time[stock]{Label: "Made", Load: func(s stock) time.Time { return s.Made }}
 	stockPage  = webui.URL[stock]{Label: "Page", Text: "Open", Load: func(s stock) string { return s.Page }}
 	stockCols  = []webui.Accessor[stock]{stockName, stockQty, stockPrice, stockMade, stockPage}
 )
 
 var stocks = []stock{
-	{Name: "bolt", Qty: 40, Price: 0.25, Made: 1_700_000_000, Page: "https://example.com/bolt"},
-	{Name: "nut", Qty: 5, Price: 0.1, Made: 0},
-	{Name: "washer", Qty: -3, Price: 1.5, Made: 1_800_000_000, Page: "https://example.com/washer"},
+	{Name: "bolt", Qty: 40, Price: 0.25, Made: time.Unix(1_700_000_000, 0).UTC(), Page: "https://example.com/bolt"},
+	{Name: "nut", Qty: 5, Price: 0.1},
+	{Name: "washer", Qty: -3, Price: 1.5, Made: time.Unix(1_800_000_000, 0).UTC(), Page: "https://example.com/washer"},
 }
 
 func stockApp(t webui.Table[stock]) http.Handler {

@@ -31,16 +31,15 @@ type Query struct {
 	// A column with a fixed set of options, a Select, whose options are those it
 	// lists, holds the options chosen, always among that set. Any other
 	// column holds the one text typed, trimmed and never empty. Numeric columns
-	// (Int, Float and Slider) and moments (Datetime and Timestamp) are not here but
+	// (Int, Float and Slider) and moments (Time and OptionalTime) are not here but
 	// in Ranges. Load does the filtering, as it does the sorting.
 	Filters map[string][]string
 
 	// Ranges are the bounds on the numeric columns and the moments, by the same
 	// Label. A column filters by a minimum and a maximum, either of which may be left
 	// out, so a range is an inequality, not text. A bound is always a finite number;
-	// an unreadable one never arrives. The bounds of a Datetime or a Timestamp are
-	// Unix seconds, whatever the column holds, and the Datetime's own value, an ISO
-	// 8601 string, is for the source to read the same way.
+	// an unreadable one never arrives. The bounds of a Time or an OptionalTime are
+	// Unix seconds, which the source reads the same way whatever it holds the moment as.
 	// Sort is by the same number, so moments order as moments and not as text.
 	Ranges map[string]Range
 }

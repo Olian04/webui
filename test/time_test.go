@@ -11,24 +11,30 @@ import (
 	"github.com/Olian04/webui/test/util/assert"
 )
 
+// object has a moment that is always a time.Time, and one that may be absent: the zero time is not set for the first, and nil is for the second.
 type object struct {
 	Name     string
-	Modified string // ISO 8601
-	Created  int    // Unix seconds
+	Modified time.Time
+	Created  *time.Time
+}
+
+func unix(seconds int64) *time.Time {
+	t := time.Unix(seconds, 0).UTC()
+	return &t
 }
 
 var (
 	objName     = webui.String[object]{Label: "Name", Load: func(o object) string { return o.Name }}
-	objModified = webui.Datetime[object]{Label: "Modified", Load: func(o object) string { return o.Modified }}
-	objCreated  = webui.Timestamp[object]{Label: "Created", Load: func(o object) int { return o.Created }}
+	objModified = webui.Time[object]{Label: "Modified", Load: func(o object) time.Time { return o.Modified }}
+	objCreated  = webui.OptionalTime[object]{Label: "Created", Load: func(o object) *time.Time { return o.Created }}
 )
 
 func objectsApp(seen *webui.Query) http.Handler {
 	items := []object{
-		{Name: "a", Modified: "2026-10-09T09:00:00+02:00", Created: 1791540000}, // Modified is 07:00 UTC, though its text sorts after b's
-		{Name: "b", Modified: "2026-10-09T08:00:00Z", Created: 0},
-		{Name: "c", Modified: "2026-10-10", Created: 1791624000},
-		{Name: "d", Modified: "not a date", Created: 1791500000},
+		{Name: "a", Modified: time.Date(2026, 10, 9, 9, 0, 0, 0, time.FixedZone("CEST", 2*3600)), Created: unix(1791540000)}, // 07:00 UTC, though 09:00 on its own clock
+		{Name: "b", Modified: time.Date(2026, 10, 9, 8, 0, 0, 0, time.UTC)},
+		{Name: "c", Modified: time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC), Created: unix(1791624000)},
+		{Name: "d", Created: unix(1791500000)},
 	}
 	cols := []webui.Accessor[object]{objName, objModified, objCreated}
 	rows := webui.Table[object]{Title: "Objects", Columns: cols, Rows: func(context.Context) ([]object, webui.Loaded) { return items, webui.Ready() }}
@@ -39,7 +45,7 @@ func objectsApp(seen *webui.Query) http.Handler {
 	detail := webui.Form[object]{
 		Title: "Object",
 		Load: func(context.Context) (object, webui.Loaded) {
-			return object{Modified: "2026-10-09T11:27:00Z"}, webui.Ready()
+			return object{Modified: time.Date(2026, 10, 9, 11, 27, 0, 0, time.UTC)}, webui.Ready()
 		},
 		Fields: []webui.Accessor[object]{objModified, objCreated},
 	}
@@ -50,16 +56,17 @@ func objectsApp(seen *webui.Query) http.Handler {
 	}}.MustCompile("")
 }
 
-func TestADatetimeAndATimestampAreShownInUTCAsAMoment(t *testing.T) {
+func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 	t.Parallel()
 
 	body := serve(objectsApp(&webui.Query{}), http.MethodGet, "/rows").Body.String()
 
 	assert.Contains(t, body, `<time datetime="2026-10-09T07:00:00Z">2026-10-09 07:00</time>`) // a zone is converted
-	assert.Contains(t, body, `<time datetime="2026-10-10">2026-10-10</time>`)                 // a date alone stays one
-	assert.Contains(t, body, ">not a date<")                                                  // text that is not a moment is as written
-	assert.False(t, strings.Contains(body, `datetime="not a date"`))
+	assert.Contains(t, body, `<time datetime="2026-10-10T00:00:00Z">2026-10-10 00:00</time>`) // midnight is a moment like any other
 	assert.Contains(t, body, `<time datetime="2026-10-09T10:00:00Z">2026-10-09 10:00</time>`) // 1791540000
+	// The zero time and nil are not set: they show as nothing, and are no moment in 0001 or 1970.
+	assert.False(t, strings.Contains(body, "0001-01-01"))
+	assert.False(t, strings.Contains(body, "1970-01-01"))
 }
 
 func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
@@ -67,8 +74,8 @@ func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
 
 	h := objectsApp(&webui.Query{})
 	body := serve(h, http.MethodGet, "/rows?objects.sort=modified").Body.String()
-	// a is 07:00 UTC and b 08:00 UTC, though a's text is the greater. The text that is
-	// no moment sorts first, and the date alone last.
+	// a is 07:00 UTC and b 08:00 UTC, though a's wall clock is the greater. The zero time,
+	// which is not set, sorts first, and the next day last.
 	at := func(s string) int { return strings.Index(body, ">"+s+"</td>") }
 	assert.True(t, at("d") < at("a"))
 	assert.True(t, at("a") < at("b"))
@@ -106,19 +113,19 @@ func TestAMomentInAFormIsReadOnlyOutputAndAnEmptyOneIsADash(t *testing.T) {
 
 	body := serve(objectsApp(&webui.Query{}), http.MethodGet, "/one").Body.String()
 	assert.Contains(t, body, `<time datetime="2026-10-09T11:27:00Z">2026-10-09 11:27</time>`)
-	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // Created is zero: not set
+	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // Created is nil: not set
 	assert.False(t, strings.Contains(body, "<input class=\"input\""))
 }
 
 // editMoments is a form whose two moments can be changed. stored is what the last
 // submission left in the model.
 func editMoments(stored *object) http.Handler {
-	when := webui.Datetime[object]{Label: "Modified", Load: func(o object) string { return o.Modified }, Store: func(o *object, v string) { o.Modified = v }}
-	made := webui.Timestamp[object]{Label: "Created", Load: func(o object) int { return o.Created }, Store: func(o *object, v int) { o.Created = v }}
+	when := webui.Time[object]{Label: "Modified", Load: func(o object) time.Time { return o.Modified }, Store: func(o *object, v time.Time) { o.Modified = v }}
+	made := webui.OptionalTime[object]{Label: "Created", Load: func(o object) *time.Time { return o.Created }, Store: func(o *object, v *time.Time) { o.Created = v }}
 	form := webui.Form[object]{
 		Title: "Object",
 		Load: func(context.Context) (object, webui.Loaded) {
-			return object{Modified: "2026-10-09T11:27:00Z", Created: 1791540000}, webui.Ready()
+			return object{Modified: time.Date(2026, 10, 9, 11, 27, 0, 0, time.UTC), Created: unix(1791540000)}, webui.Ready()
 		},
 		Fields: []webui.Accessor[object]{when, made},
 		Submit: webui.Action[object]{Run: func(_ context.Context, o object) (webui.Outcome, error) {
@@ -142,21 +149,22 @@ func TestAMomentWithAStoreIsADateAndTimePickerInUTC(t *testing.T) {
 	assert.Contains(t, body, `<span class="tip-item">Date and time in UTC</span>`)
 }
 
-func TestAMomentIsStoredAsRFC3339InUTCAndAsUnixSeconds(t *testing.T) {
+func TestAMomentIsStoredInUTCAndAClearedPickerIsNotSet(t *testing.T) {
 	t.Parallel()
 
 	var stored object
 	h := editMoments(&stored)
 	rec := post(h, "/edit", formValues("f0", "2026-10-10T08:15:30", "f1", "2026-10-10T08:15"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, stored.Modified, "2026-10-10T08:15:30Z")
-	assert.Equal(t, stored.Created, int(time.Date(2026, 10, 10, 8, 15, 0, 0, time.UTC).Unix()))
+	assert.True(t, stored.Modified.Equal(time.Date(2026, 10, 10, 8, 15, 30, 0, time.UTC)))
+	assert.Equal(t, stored.Modified.Location(), time.UTC)
+	assert.True(t, stored.Created.Equal(time.Date(2026, 10, 10, 8, 15, 0, 0, time.UTC)))
 
-	// A cleared picker is no value, not an error.
+	// A cleared picker is no value, not an error: the zero time for a Time, and nil for an OptionalTime.
 	rec = post(h, "/edit", formValues("f0", "", "f1", ""))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Equal(t, stored.Modified, "")
-	assert.Equal(t, stored.Created, 0)
+	assert.True(t, stored.Modified.IsZero())
+	assert.True(t, stored.Created == nil)
 }
 
 func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
@@ -169,7 +177,7 @@ func TestAMomentThatIsNotOneIsRefusedAndWhatWasTypedStays(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, `value="next tuesday"`)
 	assert.Contains(t, body, "Could not read this value.")
-	assert.Equal(t, stored.Modified, "") // nothing was saved
+	assert.True(t, stored.Modified.IsZero()) // nothing was saved
 }
 
 func TestAMomentThatIsNotSetIsDroppedByAnyRangeEvenOneWithOnlyAnEnd(t *testing.T) {
@@ -177,17 +185,46 @@ func TestAMomentThatIsNotSetIsDroppedByAnyRangeEvenOneWithOnlyAnEnd(t *testing.T
 
 	h := objectsApp(&webui.Query{})
 
-	// b has no Timestamp (zero is not set), and d no Datetime that is one. A filter
+	// b has no Created (nil is not set), and d no Modified (the zero time is). A filter
 	// with only an end would keep them if "not set" were taken for a very early time.
 	created := serve(h, http.MethodGet, "/rows?objects.max.created=1791999999").Body.String()
-	assert.False(t, strings.Contains(created, ">b</td>")) // Created is zero
+	assert.False(t, strings.Contains(created, ">b</td>")) // Created is nil
 	assert.Contains(t, created, ">a</td>")
 
 	modified := serve(h, http.MethodGet, "/rows?objects.max.modified=2026-12-31T00:00").Body.String()
-	assert.False(t, strings.Contains(modified, ">d</td>")) // "not a date"
+	assert.False(t, strings.Contains(modified, ">d</td>")) // Modified is the zero time
 	assert.Contains(t, modified, ">a</td>")
 
 	// And with a start, as before.
 	started := serve(h, http.MethodGet, "/rows?objects.min.created=1").Body.String()
 	assert.False(t, strings.Contains(started, ">b</td>"))
+}
+
+// A Time is blank for the zero time and may be left that way, unless it is Required: the zero time is an empty value of its own, so it is a flag
+// there, as for a String. An OptionalTime has no Required, since a moment that may be absent is not wanted.
+func TestATimeThatIsRequiredRefusesAClearedPicker(t *testing.T) {
+	t.Parallel()
+
+	var stored object
+	required := webui.Time[object]{Label: "Modified", Required: true, Load: func(o object) time.Time { return o.Modified }, Store: func(o *object, v time.Time) { o.Modified = v }}
+	form := webui.Form[object]{
+		Load:   func(context.Context) (object, webui.Loaded) { return object{}, webui.Ready() }, // no moment: the picker is blank
+		Fields: []webui.Accessor[object]{required},
+		Submit: webui.Action[object]{Run: func(_ context.Context, o object) (webui.Outcome, error) {
+			stored = o
+			return webui.Success("Saved"), nil
+		}},
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", Body: form}}}.MustCompile("")
+
+	body := serve(h, http.MethodGet, "/edit").Body.String()
+	assert.Contains(t, body, `type="datetime-local" value=""`)
+	assert.Contains(t, body, `class="req"`)
+	rec := post(h, "/edit", formValues("f0", ""))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	assert.Contains(t, rec.Body.String(), "This field is required.")
+	assert.True(t, stored.Modified.IsZero())
+
+	assert.Equal(t, post(h, "/edit", formValues("f0", "2026-10-10T08:15")).Code, http.StatusSeeOther)
+	assert.False(t, stored.Modified.IsZero())
 }

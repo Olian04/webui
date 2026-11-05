@@ -6,7 +6,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/ir"
@@ -392,108 +391,6 @@ func (a URL[M]) meta() accessorMeta {
 	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
 }
 
-// Datetime projects a string field of M that holds an ISO 8601 moment, such as
-// "2026-10-09T11:27:00Z" or "2026-10-09", as a date and time. It is shown in UTC as
-// "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and filters it
-// as a moment and not as the text: the filter takes a start and an end, in UTC. A
-// value with no zone is taken as UTC, and one that is not a moment at all is shown as
-// written and sorts first.
-//
-// Without Store it is read-only. With Store a form shows a date and time picker, in
-// UTC, and Store is handed the choice as RFC 3339 in UTC, "2026-10-09T11:27:00Z", or
-// an empty string when the picker is cleared.
-type Datetime[M any] struct {
-	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
-	Label string
-
-	// Load reads the ISO 8601 string from the model. An empty string is no value.
-	Load func(M) string
-
-	// Store writes the chosen moment to the model, as RFC 3339 in UTC (or the date, with DateOnly). Without it the
-	// field is read-only.
-	Store func(*M, string)
-
-	// Format says how the moment reads where it is only read, as [Int.Format] does for a
-	// number: a relative "3 h ago", or another layout than the default. It is handed the
-	// moment in UTC, and a date alone as midnight. The column still sorts and filters by the
-	// moment, and its <time> element and the export still hold it. A value that is empty or is
-	// not a moment is not handed to Format: it shows as it does without one.
-	Format func(time.Time) string
-
-	// DateOnly makes the field a date: the input picks a day, with no time of day, and it is shown and filtered as one. A
-	// day is midnight UTC, so what is stored is that moment as "2006-01-02", the date alone. A value that Load returns with a time of day
-	// is shown as the day it is on.
-	DateOnly bool
-
-	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
-	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
-	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
-	Help string
-
-	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
-	// and a sort by it in the address is ignored. It does nothing in a form.
-	NoSort bool
-
-	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
-	// and a filter on it in the address is ignored. It does nothing in a form.
-	NoFilter bool
-}
-
-func (a Datetime[M]) label() string { return a.Label }
-
-func (a Datetime[M]) meta() accessorMeta {
-	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
-}
-
-// Timestamp projects an int field of M that holds a Unix time, in seconds, as a date
-// and time. It is shown, sorted, filtered and, with a Store, picked as [Datetime] is.
-// Zero is "not set": it shows as nothing, and clearing the picker stores it. For a
-// time in milliseconds, divide it in Load and multiply it in Store.
-type Timestamp[M any] struct {
-	// Label is the column header and the field's label. In a table it also names
-	// the column in the address and in a [Query].
-	Label string
-
-	// Load reads the Unix time, in seconds, from the model.
-	Load func(M) int
-
-	// Store writes the chosen moment to the model, as Unix seconds. Without it the
-	// field is read-only.
-	Store func(*M, int)
-
-	// Format says how the moment reads where it is only read, as [Datetime.Format] does. It
-	// is handed the moment in UTC, and is not handed zero, which is "not set" and shows as
-	// nothing.
-	Format func(time.Time) string
-
-	// DateOnly makes the field a date: the input picks a day, with no time of day, and it is shown and filtered as one. A
-	// day is midnight UTC, so what is stored is that moment in Unix seconds. A value that Load returns with a time of day
-	// is shown as the day it is on.
-	DateOnly bool
-
-	// Help is a line or two that tells the visitor what the field is for, or what to put in it, where its label and
-	// its rules cannot: it is in the popover beside the label that lists the rules, under a heading of its own and above
-	// them, on hover and on keyboard focus, and is part of the icon's accessible name. It is shown where the field is, in a
-	// form or a toolbar, read-only too. In a table it is not shown, as a placeholder is not. It is text, not markup.
-	Help string
-
-	// NoSort leaves the sort link off the column's header, in a table: it cannot be sorted by,
-	// and a sort by it in the address is ignored. It does nothing in a form.
-	NoSort bool
-
-	// NoFilter leaves the filter off the column's header, in a table: it cannot be filtered by,
-	// and a filter on it in the address is ignored. It does nothing in a form.
-	NoFilter bool
-}
-
-func (a Timestamp[M]) label() string { return a.Label }
-
-func (a Timestamp[M]) meta() accessorMeta {
-	return accessorMeta{NoSort: a.NoSort, NoFilter: a.NoFilter, Help: a.Help}
-}
-
 // Slider projects a float64 field of M on a range from Min to Max (Max must be
 // greater). Without Store it is a bar: in a table, and read-only in a form. With
 // Store a form shows a range input, and the server rejects a value outside the
@@ -604,8 +501,6 @@ var (
 	_ Accessor[struct{}] = Group[struct{}](nil)
 	_ Accessor[struct{}] = Select[struct{}]{}
 	_ Accessor[struct{}] = URL[struct{}]{}
-	_ Accessor[struct{}] = Datetime[struct{}]{}
-	_ Accessor[struct{}] = Timestamp[struct{}]{}
 	_ Accessor[struct{}] = Slider[struct{}]{}
 	_ Accessor[struct{}] = OptionalInt[struct{}]{}
 	_ Accessor[struct{}] = OptionalFloat[struct{}]{}
@@ -720,10 +615,11 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		validateSelect(v, at, a)
 	case URL[M]:
 		common(a.Label, a.Load == nil, "func(M) string, returning the address")
-	case Datetime[M]:
-		common(a.Label, a.Load == nil, "func(M) string, returning an ISO 8601 moment")
-	case Timestamp[M]:
-		common(a.Label, a.Load == nil, "func(M) int, returning a Unix time in seconds")
+	case Time[M]:
+		common(a.Label, a.Load == nil, "func(M) time.Time")
+		validateTime(v, at, a)
+	case OptionalTime[M]:
+		common(a.Label, a.Load == nil, "func(M) *time.Time")
 	case Slider[M]:
 		common(a.Label, a.Load == nil, "func(M) float64")
 		validateSlider(v, at, a.Min, a.Max, a.StepSize)
@@ -743,7 +639,7 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) *bool")
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Secret, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
+			"Use String, Secret, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Time, Slider, OptionalInt, OptionalFloat, OptionalSlider, OptionalTime, Bool, OptionalBool or Group.")
 	}
 }
 
@@ -891,48 +787,10 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case File[M]:
 		return lowerFile(name, a)
-	case Datetime[M]:
-		f := head(name, a.Label, ir.KindString)
-		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly
-		f.Get = func(m any) string { return datetimeText(a.Load(m.(M)), a.DateOnly) }
-		f.Num = func(m any) float64 { return datetimeNum(a.Load(m.(M))) }
-		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
-			t, _, ok := readDatetime(a.Load(m.(M))) // not a moment: as written
-			return t, ok
-		})
-		f.Set = setter(a.Store, func(raw string) (string, error) {
-			t, blank, err := pickedMoment(raw)
-			if err != nil || blank {
-				return "", err // cleared: stored as nothing
-			}
-			if a.DateOnly {
-				return t.Format(dayLayout), nil
-			}
-			return t.Format(time.RFC3339), nil
-		})
-		f.Unset = unsetter(a.Store)
-		return f
-	case Timestamp[M]:
-		f := head(name, a.Label, ir.KindString)
-		f.Display, f.DateOnly = ir.DisplayTime, a.DateOnly
-		f.Get = func(m any) string { return timestampText(a.Load(m.(M)), a.DateOnly) }
-		f.Num = func(m any) float64 { return timestampNum(a.Load(m.(M))) }
-		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (time.Time, bool) {
-			seconds := a.Load(m.(M)) // zero is not set: shown as nothing
-			return time.Unix(int64(seconds), 0).UTC(), seconds != 0
-		})
-		f.Set = setter(a.Store, func(raw string) (int, error) {
-			t, blank, err := pickedMoment(raw)
-			if err != nil || blank {
-				return 0, err // cleared: stored as not set
-			}
-			if a.DateOnly {
-				t = t.Truncate(24 * time.Hour) // a day is its midnight, whatever time of day was sent by hand
-			}
-			return int(t.Unix()), nil
-		})
-		f.Unset = unsetter(a.Store)
-		return f
+	case Time[M]:
+		return lowerTime(a, name)
+	case OptionalTime[M]:
+		return lowerOptionalTime(a, name)
 	case Email[M]:
 		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 	case Phone[M]:

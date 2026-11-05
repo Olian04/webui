@@ -20,8 +20,8 @@ type blob struct {
 	Name string
 	Size int
 	Pct  float64
-	Made int    // Unix seconds
-	Seen string // an ISO 8601 moment
+	Made time.Time
+	Seen time.Time
 }
 
 // human is the application's own formatter: the library ships none.
@@ -39,16 +39,16 @@ var (
 	blobName = webui.String[blob]{Label: "Name", Load: func(b blob) string { return b.Name }}
 	blobSize = webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: human}
 	blobPct  = webui.Float[blob]{Label: "Share", Load: func(b blob) float64 { return b.Pct }, Format: func(x float64) string { return fmt.Sprintf("%.0f%%", x*100) }}
-	blobMade = webui.Timestamp[blob]{Label: "Made", Load: func(b blob) int { return b.Made }, Format: func(t time.Time) string { return t.Format("Jan 2") }}
-	blobSeen = webui.Datetime[blob]{Label: "Seen", Load: func(b blob) string { return b.Seen }, Format: func(t time.Time) string { return t.Format("15h04") }}
+	blobMade = webui.Time[blob]{Label: "Made", Load: func(b blob) time.Time { return b.Made }, Format: func(t time.Time) string { return t.Format("Jan 2") }}
+	blobSeen = webui.Time[blob]{Label: "Seen", Load: func(b blob) time.Time { return b.Seen }, Format: func(t time.Time) string { return t.Format("15h04") }}
 )
 
 // blobs sort one way as numbers and another as text: "1024" and "1048576" come before "9".
 func blobs() []blob {
 	return []blob{
-		{Name: "a", Size: 1 << 20, Pct: 0.5, Made: 1791540000, Seen: "2026-10-09T11:27:00Z"},
-		{Name: "b", Size: 9, Pct: 0.05, Made: 0, Seen: "not a moment"},
-		{Name: "c", Size: 1 << 10, Pct: 0.25, Made: 1791543600, Seen: ""},
+		{Name: "a", Size: 1 << 20, Pct: 0.5, Made: time.Unix(1791540000, 0).UTC(), Seen: time.Date(2026, 10, 9, 11, 27, 0, 0, time.UTC)},
+		{Name: "b", Size: 9, Pct: 0.05},
+		{Name: "c", Size: 1 << 10, Pct: 0.25, Made: time.Unix(1791543600, 0).UTC()},
 	}
 }
 
@@ -147,11 +147,10 @@ func TestAMomentReadsAsItsFormatAndStillHoldsAndSortsByTheMoment(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/b").Body.String()
 	assert.Contains(t, body, `<time datetime="2026-10-09T10:00:00Z">Oct 9</time>`) // read as the format, held as the moment
 	assert.Contains(t, body, `<time datetime="2026-10-09T11:27:00Z">11h27</time>`)
-	assert.Contains(t, body, ">not a moment<") // not a moment: not handed to Format, shown as written
 
 	asc := serve(h, http.MethodGet, "/admin/b?blobs.sort=made").Body.String()
 	assert.True(t, strings.Index(asc, `datetime="2026-10-09T10:00:00Z"`) < strings.Index(asc, `datetime="2026-10-09T11:00:00Z"`))
-	// A Timestamp of zero is not set: it is not handed to Format and shows as nothing.
+	// The zero time is not set: it is not handed to Format and shows as nothing.
 	assert.False(t, strings.Contains(body, "Jan 1"))
 	assert.Equal(t, strings.Count(body, "<time "), 4) // two Made, one Seen, and the status bar's
 }
