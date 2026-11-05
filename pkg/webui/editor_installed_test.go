@@ -1,7 +1,9 @@
 package webui
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -54,4 +56,37 @@ func TestAMarkdownWithACodeBlockIsPlainWhenTheProgramHasNoEditor(t *testing.T) {
 	assert.Contains(t, body, `data-copy-code=`)
 	assert.False(t, strings.Contains(body, "/monaco/"))
 	assert.False(t, strings.Contains(body, "webui-code"))
+}
+
+// An app that has a logger is told, once for each page, that a Markdown cannot be coloured and how to put it right: the program is the one who can, and the visitor is told nothing.
+func TestAMarkdownThatCannotBeColouredIsSaidOnceForEachPageWhenTheAppHasALogger(t *testing.T) {
+	t.Parallel()
+
+	type doc struct{ Text string }
+	var out bytes.Buffer
+	page := func(path string) Page[NoArgs] {
+		return Page[NoArgs]{Path: PageID[NoArgs](path), Body: Markdown[doc]{
+			Title:   "Notes",
+			Load:    func(context.Context) (doc, Loaded) { return doc{Text: "```go\nx\n```\n"}, Ready() },
+			Content: String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }},
+		}}
+	}
+	h := App{Logger: slog.New(slog.NewTextHandler(&out, nil)), Pages: Pages{page("/a"), page("/b")}}.MustCompile("/admin")
+	for _, target := range []string{"/admin/a", "/admin/a", "/admin/b"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, target, nil))
+		assert.Equal(t, rec.Code, http.StatusOK)
+	}
+	logged := out.String()
+	assert.Equal(t, strings.Count(logged, "level=WARN"), 2) // each page once, and not at each request
+	assert.Contains(t, logged, "does not carry the code editor")
+	assert.Contains(t, logged, `import _ \"github.com/Olian04/webui/pkg/monaco\"`)
+	assert.Contains(t, logged, "page=/a")
+	assert.Contains(t, logged, "page=/b")
+
+	// An app that has no logger says nothing, and is not the worse for it.
+	quiet := App{Pages: Pages{page("/a")}}.MustCompile("/admin")
+	rec := httptest.NewRecorder()
+	quiet.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/a", nil))
+	assert.Equal(t, rec.Code, http.StatusOK)
 }

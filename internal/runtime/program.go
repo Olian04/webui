@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Olian04/webui/internal/assetserve"
@@ -46,6 +47,9 @@ type Program struct {
 	// m counts and times what the app does. It is nil when the app was given no registry,
 	// and a nil Recorder records nothing.
 	m ir.Observer // told what the program does: never nil, and a program that was given none is told to something that does nothing
+
+	// unhighlighted is the pages that have been said to have a Markdown that cannot be coloured, so that it is said once for each and not at every request.
+	unhighlighted sync.Map
 
 	// observing is whether the app was given an Observer, so that a program that was not given one does not wrap its handlers to time them.
 	observing bool

@@ -258,3 +258,6 @@ func monacoType(name string) string {
 	}
 	return "application/octet-stream"
 }
+
+// HasEditor is whether the program carries the code editor, so that a page can link it: it is there when the program imported pkg/monaco.
+func (r *Renderer) HasEditor() bool { return r.monaco.Entry != "" }

@@ -30,7 +30,8 @@ import (
 // (pkg/monaco, imported for its effect); a block that does not, every block without script, and
 // every block in a program that has not imported the editor, is plain text in a monospace block, with
 // its button that copies it. A Markdown is not refused for lacking the editor, as an Editor is: it
-// is read, and its text is whole without the colour.
+// is read, and its text is whole without the colour. An app that has a [App.Logger] is told of it, once
+// for each page, as a warning that says how to put it right.
 type Markdown[M any] struct {
 	// Title is the panel's heading.
 	Title string
