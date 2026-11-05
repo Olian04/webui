@@ -11,6 +11,14 @@ type Tabs struct {
 // Addr reports the node's position in the body tree.
 func (t *Tabs) Addr() Addr { return t.At }
 
+func (t *Tabs) Children() []Node {
+	out := make([]Node, len(t.Tabs))
+	for i, tab := range t.Tabs {
+		out[i] = tab.Body
+	}
+	return out
+}
+
 // Tab is one labeled panel.
 type Tab struct {
 	Key   string // the argument value that selects this tab

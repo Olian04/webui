@@ -95,9 +95,9 @@ func (p *Program) visible(ctx context.Context, req *Request, page *ir.Page, n ir
 		shown, ok := req.conditionShown(ctx, p, page, n)
 		return ok && shown && p.visible(ctx, req, page, n.Child)
 	case *ir.Stack:
-		return p.anyVisible(ctx, req, page, n.Children)
+		return p.anyVisible(ctx, req, page, n.Nodes)
 	case *ir.Columns:
-		return p.anyVisible(ctx, req, page, n.Children)
+		return p.anyVisible(ctx, req, page, n.Nodes)
 	case *ir.Tabs:
 		for _, t := range n.Tabs {
 			if p.visible(ctx, req, page, t.Body) {

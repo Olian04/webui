@@ -32,6 +32,8 @@ type ToolbarItem struct {
 // Addr reports the node's position in the body tree.
 func (t *Toolbar) Addr() Addr { return t.At }
 
+func (t *Toolbar) Children() []Node { return nil }
+
 // Values are the fields of the toolbar's forms, in order.
 func (t *Toolbar) Values() []Field {
 	var out []Field

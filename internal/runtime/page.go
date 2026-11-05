@@ -259,10 +259,10 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.Node) (templ.Component, error) {
 	switch n := n.(type) {
 	case *ir.Stack:
-		kids, err := p.children(ctx, req, page, n.Children)
+		kids, err := p.children(ctx, req, page, n.Nodes)
 		return render.Stack(kids), err
 	case *ir.Columns:
-		kids, err := p.children(ctx, req, page, n.Children)
+		kids, err := p.children(ctx, req, page, n.Nodes)
 		return render.Columns(kids, n.Weights), err
 	case *ir.When:
 		shown, ok := req.conditionShown(ctx, p, page, n)

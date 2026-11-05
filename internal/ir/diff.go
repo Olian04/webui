@@ -22,3 +22,5 @@ type Diff struct {
 
 // Addr reports the node's position in the body tree.
 func (d *Diff) Addr() Addr { return d.At }
+
+func (d *Diff) Children() []Node { return nil }

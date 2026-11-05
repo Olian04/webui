@@ -8,21 +8,8 @@ func Walk(n Node, visit func(Node)) {
 		return
 	}
 	visit(n)
-	switch n := n.(type) {
-	case *Stack:
-		for _, c := range n.Children {
-			Walk(c, visit)
-		}
-	case *Columns:
-		for _, c := range n.Children {
-			Walk(c, visit)
-		}
-	case *When:
-		Walk(n.Child, visit)
-	case *Tabs:
-		for _, t := range n.Tabs {
-			Walk(t.Body, visit)
-		}
+	for _, c := range n.Children() {
+		Walk(c, visit)
 	}
 }
 

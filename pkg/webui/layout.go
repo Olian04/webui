@@ -157,11 +157,11 @@ func (t Tabs) validateBody(v *bodyValidator) {
 }
 
 func (s Stack) lowerBody(at ir.Addr) ir.Node {
-	return &ir.Stack{At: at, Children: lowerChildren(at, s)}
+	return &ir.Stack{At: at, Nodes: lowerChildren(at, s)}
 }
 
 func (s Split) lowerBody(at ir.Addr) ir.Node {
-	out := &ir.Columns{At: at, Children: lowerChildren(at, s)}
+	out := &ir.Columns{At: at, Nodes: lowerChildren(at, s)}
 	for range s {
 		out.Weights = append(out.Weights, 1)
 	}
@@ -171,7 +171,7 @@ func (s Split) lowerBody(at ir.Addr) ir.Node {
 func (c Columns) lowerBody(at ir.Addr) ir.Node {
 	out := &ir.Columns{At: at}
 	for i, col := range c {
-		out.Children = append(out.Children, col.Body.lowerBody(childAddr(at, i)))
+		out.Nodes = append(out.Nodes, col.Body.lowerBody(childAddr(at, i)))
 		out.Weights = append(out.Weights, max(int(col.Weight), 1))
 	}
 	return out
@@ -222,22 +222,12 @@ func assignViewIDs(body ir.Node) {
 	}
 	walk = func(n ir.Node, taken map[string]bool) {
 		switch n := n.(type) {
-		case *ir.Stack:
-			for _, c := range n.Children {
-				walk(c, taken)
-			}
-		case *ir.Columns:
-			for _, c := range n.Children {
-				walk(c, taken)
-			}
-		case *ir.When:
-			walk(n.Child, taken)
 		case *ir.Tabs:
 			n.ID = claim("tabs", taken)
 			all := maps.Clone(taken)
-			for _, t := range n.Tabs {
+			for _, body := range n.Children() {
 				panel := maps.Clone(taken)
-				walk(t.Body, panel)
+				walk(body, panel)
 				maps.Copy(all, panel)
 			}
 			maps.Copy(taken, all)
@@ -251,6 +241,12 @@ func assignViewIDs(body ir.Node) {
 			n.ID = claim(itemsViewID(n), taken)
 		case *ir.Calendar:
 			n.ID = claim(calendarViewID(n), taken)
+		default: // a layout: what it holds is named among what is around it
+			if n != nil {
+				for _, c := range n.Children() {
+					walk(c, taken)
+				}
+			}
 		}
 	}
 	walk(body, map[string]bool{})

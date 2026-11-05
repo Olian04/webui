@@ -41,3 +41,5 @@ type CalendarDay struct {
 
 // Addr reports the node's position in the body tree.
 func (c *Calendar) Addr() Addr { return c.At }
+
+func (c *Calendar) Children() []Node { return nil }
