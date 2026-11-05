@@ -16,10 +16,11 @@ type snippet struct{ Text, Before string }
 
 var (
 	snippetText = webui.String[snippet]{
-		Label: "Snippet",
-		Load:  func(s snippet) string { return s.Text },
-		Store: func(s *snippet, v string) { s.Text = v },
-		Rules: webui.StringRules{Required: true, MaxLen: 40},
+		Label:    "Snippet",
+		Load:     func(s snippet) string { return s.Text },
+		Store:    func(s *snippet, v string) { s.Text = v },
+		Required: true,
+		Rules:    webui.StringRules{MaxLen: 40},
 	}
 	snippetView = webui.String[snippet]{Label: "Snippet", Load: func(s snippet) string { return s.Text }}
 	snippetOld  = webui.String[snippet]{Label: "Before", Load: func(s snippet) string { return s.Before }}

@@ -24,6 +24,9 @@ type Email[M any] struct {
 	// Store writes the submitted address to the model. Without it the field is read-only.
 	Store func(*M, string)
 
+	// Required refuses an empty submission: an input left empty is an error that says so, and the browser asks for a value before it sends.
+	Required bool
+
 	// Rules are checked in the browser and again on the server.
 	Rules StringRules
 
@@ -68,6 +71,9 @@ type Phone[M any] struct {
 
 	// Store writes the submitted number to the model. Without it the field is read-only.
 	Store func(*M, string)
+
+	// Required refuses an empty submission: an input left empty is an error that says so, and the browser asks for a value before it sends.
+	Required bool
 
 	// Rules are checked in the browser and again on the server, on the number as it is sent. With script that is E.164,
 	// which has no spaces and starts with "+", and the browser leaves the length and the pattern to the server: what is
@@ -117,6 +123,9 @@ type Website[M any] struct {
 
 	// Store writes the submitted address to the model. Without it the field is read-only.
 	Store func(*M, string)
+
+	// Required refuses an empty submission: an input left empty is an error that says so, and the browser asks for a value before it sends.
+	Required bool
 
 	// Rules are checked in the browser and again on the server.
 	Rules StringRules
@@ -195,15 +204,15 @@ func validateTextRules(v *bodyValidator, at string, r StringRules) {
 	if r.MinLen < 0 || r.MaxLen < 0 || (r.MaxLen > 0 && r.MinLen > r.MaxLen) {
 		v.add(at+" has inconsistent length rules", "MinLen and MaxLen must be non-negative with MinLen <= MaxLen.")
 	}
-	for _, p := range rules.Unsatisfiable(lowerStringRules(r)) {
+	for _, p := range rules.Unsatisfiable(lowerStringRules(r, false)) {
 		v.add(at+": "+p[0], p[1])
 	}
 }
 
 // lowerFormatted is a string field of a kind of text that has an input of its own, as the IR holds it.
-func lowerFormatted[M any](name, label string, format ir.Format, r StringRules, placeholder string, load func(M) string, store func(*M, string)) ir.Field {
+func lowerFormatted[M any](name, label string, format ir.Format, required bool, r StringRules, placeholder string, load func(M) string, store func(*M, string)) ir.Field {
 	f := head(name, label, ir.KindString)
-	f.Rules, f.Placeholder = lowerStringRules(r), placeholder
+	f.Rules, f.Placeholder = lowerStringRules(r, required), placeholder
 	f.Rules.Format = format
 	f.Get = func(m any) string { return load(m.(M)) }
 	parse := func(raw string) (string, error) { return raw, nil }

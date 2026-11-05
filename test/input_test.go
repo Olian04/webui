@@ -93,7 +93,7 @@ func TestTheServerHoldsAValueToTheKindOfItsInput(t *testing.T) {
 func TestAnInputKindIsHeldToTheOtherRulesToo(t *testing.T) {
 	t.Parallel()
 
-	email := webui.Email[contact]{Label: "Email", Rules: webui.StringRules{Required: true, MaxLen: 20, EndsWith: ".com"},
+	email := webui.Email[contact]{Label: "Email", Required: true, Rules: webui.StringRules{MaxLen: 20, EndsWith: ".com"},
 		Load: func(c contact) string { return c.Email }, Store: func(c *contact, v string) { c.Email = v }}
 	h, saved := contactApp(contact{}, email)
 	body := serve(h, http.MethodGet, "/admin/c").Body.String()

@@ -167,8 +167,16 @@
 // [ColorPicker], [OptionalInt], [OptionalFloat], [OptionalSlider], [OptionalBool] and [File]
 // are below, and a [Group] lays accessors side by side in a form. Without a Store an
 // accessor is read-only, and a [URL] never has one. An accessor's Rules (a
-// [StringRules] or a [NumberRules]: required, length, a pattern, bounds) are rendered
+// [StringRules] or a [NumberRules]: length, a pattern, bounds) are rendered
 // as HTML constraint attributes and checked again on the server, and its Placeholder is shown in an input while it is empty. A [Float] shows Precision decimals.
+//
+// Whether a value is required is the accessor's, and is written once. A value that is always there is required where it is edited, with no flag to
+// say so: an [Int], a [Float] and a [Slider] have a number, so an input that is emptied is refused, in the browser and on the server, and a [Bool] is a
+// switch that is on or off. A value that may be absent is an Optional accessor: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool]
+// load a pointer, and an input that is emptied is stored as nil. Where the type has an empty value of its own, which is a legitimate one (the "" of a
+// [String], no choice in a [Select], no file in a [File]), a Required field refuses it: it is on [String], [Email], [Phone], [Website], [Select] and
+// [File], and on no other. So an accessor is required or optional, as its type says, and a form starts its field with the accessor's default: the value
+// that Load gives for one that always has a value (0 for a model that has none), and nothing, "not set", for one that may be absent.
 //
 // Every accessor but a [Group] has a Help, a line or two on what the field is for,
 // which a form and a toolbar show in the popover beside the label that lists the rules,
@@ -197,19 +205,22 @@
 // is typed, and [Phone.DefaultCountry] is where the selector starts. A colour is
 // "#rrggbb", and a picker cannot be empty, so a field with no value shows black. They
 // have the rules of a [String], except the colour, which has none; a [String] is the
-// accessor for any other text, and for a password or a text area. [URL] is the one that
+// accessor for any other text, and for a text area. [URL] is the one that
 // links, and has no Store.
 //
-// A [String] with Secret set is a password input for a value that is never read back,
-// such as an API key. The stored value is not in the page, in a table, in a file or in
-// a search, and not in the form that answers a refused submission; the input shows a
-// row of bullets, the same whatever the value is, when there is one. A submission that
-// leaves it empty leaves it as it is, so only a key that is typed is stored. A Secret
-// needs a Store, cannot be Required (an empty submission leaves it as it is), and is
-// for a form only: not a table's column, an editor's text or a toolbar's value.
+// A [Secret] is a password input for a value that is never read back, such as an API
+// key. Its Load returns a bool, whether there is a value, so the library is never given
+// the value: it is not in the page, in a file or in a search, and not in the form that
+// answers a refused submission, and the input shows a row of bullets, the same whatever
+// the value is, when there is one. Its Store is handed what was typed. A submission that
+// leaves it empty leaves the stored value as it is, so only a key that is typed is
+// stored, and a Secret has no Required, which an empty submission could not meet.
+// Removing a key is a choice of its own, which an app offers as an [Action]. A Secret
+// needs a Store, and is for a form only: not a table's column or a toolbar's value, and
+// an [Editor], a [Diff] and a [Markdown] take a [String], so not one.
 //
 // A [String] with Multiline set is a text area, for text of more than one line. Its
-// rules are Required, MinLen and MaxLen; a Pattern and the text rules are one line's
+// rules are MinLen and MaxLen, and it may be Required; a Pattern and the text rules are one line's
 // and are refused, and a line break is one "\n" character whatever the browser sent, so
 // MaxLen counts what the browser's maxlength counts. In a table the cell shows the
 // first lines. It is not for a toolbar, which shows one line for a value.
@@ -217,7 +228,7 @@
 // A number or a choice that may be absent has an accessor of its own, since a Go int
 // cannot say it: [OptionalInt], [OptionalFloat], [OptionalSlider] and [OptionalBool] load a pointer,
 // and an [OptionalBool] is a yes, a no, or neither. Absent is not zero. It reads as a dash, an
-// input that is emptied is stored as nil (and a Required one refuses it), a table sorts
+// input that is emptied is stored as nil, a table sorts
 // it before every number and leaves it out of a filter by range, a CSV leaves it empty
 // and a JSON export has null. An [OptionalBool] is a choice of Yes and No with an empty one, as
 // a [Select] is, and not a checkbox, which cannot be none of them and sends nothing

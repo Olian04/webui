@@ -20,7 +20,7 @@ type thingArgs struct{ ID string }
 var (
 	thingName = webui.String[thing]{
 		Label: "Name", Load: func(t thing) string { return t.Name }, Store: func(t *thing, v string) { t.Name = v },
-		Rules: webui.StringRules{Required: true},
+		Required: true,
 	}
 )
 

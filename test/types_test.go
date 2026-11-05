@@ -32,12 +32,12 @@ func TestSketchTypes(t *testing.T) {
 			Load:  func(d Device) string { return d.Id },
 		}
 		IP = webui.String[Device]{
-			Label: "IP",
-			Load:  func(d Device) string { return d.Ip },
-			Store: func(d *Device, val string) { d.Ip = val },
+			Label:    "IP",
+			Load:     func(d Device) string { return d.Ip },
+			Store:    func(d *Device, val string) { d.Ip = val },
+			Required: true,
 			Rules: webui.StringRules{
-				Required: true,
-				MinLen:   7,
+				MinLen: 7,
 				Pattern: &webui.PatternRule{
 					Expr:    `^\d{1,3}(\.\d{1,3}){3}$`,
 					Message: "must be a valid IPv4 address",

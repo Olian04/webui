@@ -30,12 +30,12 @@ func credentialApp(start credential) (http.Handler, func() credential) {
 		},
 		Fields: []webui.Accessor[credential]{
 			webui.String[credential]{
-				Label: "Name", Rules: webui.StringRules{Required: true, MaxLen: 20},
+				Label: "Name", Required: true, Rules: webui.StringRules{MaxLen: 20},
 				Load: func(c credential) string { return c.Name }, Store: func(c *credential, v string) { c.Name = v },
 			},
-			webui.String[credential]{
-				Label: "API key", Secret: true, Rules: webui.StringRules{MinLen: 8},
-				Load: func(c credential) string { return c.Key }, Store: func(c *credential, v string) { c.Key = v },
+			webui.Secret[credential]{
+				Label: "API key", Rules: webui.StringRules{MinLen: 8},
+				Load: func(c credential) bool { return c.Key != "" }, Store: func(c *credential, v string) { c.Key = v },
 			},
 		},
 		Submit: webui.Action[credential]{Run: func(_ context.Context, c credential) (webui.Outcome, error) {
@@ -131,7 +131,7 @@ func TestASecretIsNotEchoedInTheFormThatAnswersARefusal(t *testing.T) {
 func TestASecretIsNotSearchable(t *testing.T) {
 	t.Parallel()
 
-	secret := webui.String[Device]{Label: "Key", Secret: true, Load: func(d Device) string { return d.Ip }, Store: func(*Device, string) {}}
+	secret := webui.Secret[Device]{Label: "Key", Load: func(d Device) bool { return d.Ip != "" }, Store: func(*Device, string) {}}
 	h := searchApp(webui.SearchRows(
 		func(context.Context) ([]Device, webui.Loaded) { return searchDevices(), webui.Ready() },
 		deviceHit, secret,
@@ -139,10 +139,13 @@ func TestASecretIsNotSearchable(t *testing.T) {
 	assert.Equal(t, len(search(t, h, "10.0.0.1").Results), 0)
 }
 
+// What a secret may not be is mostly not a thing the compiler is asked about: it has no Required, no Multiline and no Load that gives the value, and
+// an Editor, a Diff and a Markdown take a String, so a Secret is not one that they accept. What is left for Compile is a secret with no Store, and
+// one where there is nothing to hold an input.
 func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	load := func(c credential) string { return c.Key }
+	load := func(c credential) bool { return c.Key != "" }
 	store := func(*credential, string) {}
 	problems := func(body webui.PageBody) string {
 		var all string
@@ -151,21 +154,17 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 		return all
 	}
-	form := func(s webui.String[credential]) webui.PageBody {
+	form := func(s webui.Secret[credential]) webui.PageBody {
 		return webui.Form[credential]{
 			Load:   func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
 			Fields: []webui.Accessor[credential]{s},
 			Submit: webui.Action[credential]{Run: func(context.Context, credential) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 		}
 	}
-	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load})), "is a Secret but has no Store")
-	assert.Contains(t, problems(form(webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store, Rules: webui.StringRules{Required: true}})), "is a Secret and Required")
+	assert.Contains(t, problems(form(webui.Secret[credential]{Label: "Key", Load: load})), "has no Store")
+	assert.Contains(t, problems(form(webui.Secret[credential]{Label: "Key", Store: store})), "has no Load")
 	assert.Contains(t, problems(webui.Table[credential]{
 		Rows:    func(context.Context) ([]credential, webui.Loaded) { return nil, webui.Ready() },
-		Columns: []webui.Accessor[credential]{webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store}},
+		Columns: []webui.Accessor[credential]{webui.Secret[credential]{Label: "Key", Load: load, Store: store}},
 	}), "is a Secret in a table")
-	assert.Contains(t, problems(webui.Editor[credential]{
-		Load:    func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
-		Content: webui.String[credential]{Label: "Key", Secret: true, Load: load, Store: store},
-	}), "is a Secret in an editor")
 }

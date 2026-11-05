@@ -17,10 +17,11 @@ type Rule struct{ Source string }
 // fixing one removes it.
 var (
 	RuleSource = webui.String[Rule]{
-		Label: "Paging rule",
-		Load:  func(r Rule) string { return r.Source },
-		Store: func(r *Rule, v string) { r.Source = v },
-		Rules: webui.StringRules{Required: true, MaxLen: 64 << 10},
+		Label:    "Paging rule",
+		Load:     func(r Rule) string { return r.Source },
+		Store:    func(r *Rule, v string) { r.Source = v },
+		Required: true,
+		Rules:    webui.StringRules{MaxLen: 64 << 10},
 	}
 
 	RuleEditor = webui.Editor[Rule]{

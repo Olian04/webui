@@ -44,19 +44,14 @@ type String[M any] struct {
 	// read-only.
 	Store func(*M, string)
 
+	// Required refuses an empty submission: an input left empty is an error that says so, and the browser asks for a value before it sends.
+	Required bool
+
 	// Rules are checked in the browser and again on the server.
 	Rules StringRules
 
 	// Placeholder is shown in the input while it is empty.
 	Placeholder string
-
-	// Secret makes the field a password input for a value that is never read back, such as an API key. The stored value is
-	// not in the page, not even in the form that answers a refused submission. Whether there is one is: Load is asked only
-	// whether it returns something, and the input then shows a row of bullets, the same however long the value is, in
-	// place of the Placeholder. A submission that leaves it empty leaves the stored value as it is, so only a
-	// value that is typed is stored. A Secret must have a Store and is not Required, which would contradict the empty
-	// submission, and it is for a form: not for a table, a toolbar or an editor.
-	Secret bool
 
 	// Multiline makes the field a text area, for text of more than one line, such as a description or some JSON. Its
 	// rules are Required, MinLen and MaxLen, which the browser checks too; a Pattern and the text rules are one line's, a
@@ -89,12 +84,9 @@ func (a String[M]) meta() accessorMeta {
 // Scalar zero means "no constraint". Pattern is a pointer because the
 // expression needs a user-facing message.
 //
-// Like every rule but Required, they are not checked on an empty value: a value that is not there is not one that
-// fails them.
+// They are not checked on an empty value: a value that is not there is not one that fails them. Whether an empty value is refused is the
+// accessor's Required.
 type StringRules struct {
-	// Required refuses an empty value.
-	Required bool
-
 	// MinLen is the fewest characters, or zero for no minimum.
 	MinLen int
 
@@ -191,9 +183,6 @@ func (a Int[M]) meta() accessorMeta {
 // NumberRules is declarative validation for a numeric value.
 // Min and Max are pointers because a zero bound is a real constraint.
 type NumberRules[T int | float64] struct {
-	// Required refuses an empty value.
-	Required bool
-
 	// Min is the smallest allowed value, or nil for none.
 	Min *T
 
@@ -672,20 +661,6 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 	case String[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
 		validateTextRules(v, at, a.Rules)
-		if a.Secret {
-			switch {
-			case a.Store == nil:
-				v.add(at+" is a Secret but has no Store", "A secret is a value to be typed and stored, never read back: set Store, or remove Secret.")
-			case a.Rules.Required:
-				v.add(at+" is a Secret and Required", "An empty submission leaves a secret as it is, so it cannot be required: remove Required.")
-			case site.where == "Table.Columns":
-				v.add(at+" is a Secret in a table", "A secret is never shown, and a column would be empty: put it in a form.")
-			case site.where == "Editor.Content":
-				v.add(at+" is a Secret in an editor", "An editor shows its text: use a Form with the secret as a field.")
-			case site.where == "Toolbar":
-				v.add(at+" is a Secret in a toolbar", "A toolbar shows values and takes no input, and a secret is never shown: put it in a Form.")
-			}
-		}
 		if a.Multiline {
 			switch {
 			case a.Rules.Pattern != nil:
@@ -696,6 +671,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 				v.add(at+" is Multiline in a toolbar", "A toolbar shows one line for each value: put the text in a Form.")
 			}
 		}
+	case Secret[M]:
+		common(a.Label, a.Load == nil, "func(M) bool, saying whether a value is stored")
+		validateSecret(v, at, a, site.where)
 	case Email[M]:
 		common(a.Label, a.Load == nil, "func(M) string")
 		validateTextRules(v, at, a.Rules)
@@ -752,12 +730,10 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 	case OptionalInt[M]:
 		common(a.Label, a.Load == nil, "func(M) *int")
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-		validateOptional(v, at, a.Rules.Required, a.Store != nil)
 	case OptionalFloat[M]:
 		common(a.Label, a.Load == nil, "func(M) *float64")
 		validatePrecision(v, at, a.Precision)
 		validateBounds(v, at, a.Rules.Min, a.Rules.Max)
-		validateOptional(v, at, a.Rules.Required, a.Store != nil)
 	case OptionalSlider[M]:
 		common(a.Label, a.Load == nil, "func(M) *float64")
 		validateSlider(v, at, a.Min, a.Max, a.StepSize)
@@ -765,10 +741,9 @@ func validateAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site 
 		common(a.Label, a.Load == nil, "func(M) bool")
 	case OptionalBool[M]:
 		common(a.Label, a.Load == nil, "func(M) *bool")
-		validateOptional(v, at, a.Required, a.Store != nil)
 	default:
 		v.add(fmt.Sprintf("%s has unsupported accessor type %T", at, acc),
-			"Use String, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
+			"Use String, Secret, Email, Phone, Website, ColorPicker, File, Int, Float, Trend, Select, URL, Datetime, Timestamp, Slider, OptionalInt, OptionalFloat, OptionalSlider, Bool, OptionalBool or Group.")
 	}
 }
 
@@ -848,30 +823,14 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 	switch a := acc.(type) {
 	case String[M]:
 		f := head(name, a.Label, ir.KindString)
-		f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules), a.Placeholder, a.Multiline
+		f.Rules, f.Placeholder, f.Multiline = lowerStringRules(a.Rules, a.Required), a.Placeholder, a.Multiline
 		f.Get = func(m any) string { return a.Load(m.(M)) }
 		f.Set = setter(a.Store, func(raw string) (string, error) { return raw, nil })
 		f.Unset = unsetter(a.Store)
-		if a.Secret {
-			// Everything that reads a field reads Get, so the stored value is nowhere: not in the input, a cell, a file,
-			// a search or a sort. What is typed is stored, and nothing typed leaves it as it is.
-			f.Secret = true
-			f.Get = func(any) string { return "" }
-			f.Stored = func(m any) bool { return a.Load(m.(M)) != "" }
-			if store := a.Store; store != nil {
-				f.Set = func(m any, raw string) error {
-					if raw != "" {
-						store(m.(*M), raw)
-					}
-					return nil
-				}
-				f.Unset = func(any) {}
-			}
-		}
 		return f
 	case Int[M]:
 		f := head(name, a.Label, ir.KindInt)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
 		f.Get = func(m any) string { return strconv.Itoa(a.Load(m.(M))) }
 		f.Num = func(m any) float64 { return float64(a.Load(m.(M))) }
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (int, bool) { return a.Load(m.(M)), true })
@@ -880,12 +839,14 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		return f
 	case Float[M]:
 		f := head(name, a.Label, ir.KindFloat)
-		f.Rules, f.Placeholder = lowerNumberRules(a.Rules), a.Placeholder
+		f.Rules, f.Placeholder = lowerNumberRules(a.Rules, a.Store != nil), a.Placeholder
 		f.Get, f.Num = floatReads(a.Load, a.Precision)
 		f.Show = shown(a.Label, f.Get, a.Format, func(m any) (float64, bool) { return a.Load(m.(M)), true })
 		f.Set = setter(a.Store, parseFloat)
 		f.Unset = unsetter(a.Store)
 		return f
+	case Secret[M]:
+		return lowerSecret(a, name)
 	case Trend[M]:
 		return lowerTrend(a, name)
 	case Group[M]:
@@ -973,15 +934,15 @@ func lowerOne[M any](acc Accessor[M], name string) ir.Field {
 		f.Unset = unsetter(a.Store)
 		return f
 	case Email[M]:
-		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Rules, a.Placeholder, a.Load, a.Store)
+		return lowerFormatted(name, a.Label, ir.FormatEmail, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 	case Phone[M]:
-		f := lowerFormatted(name, a.Label, ir.FormatTel, a.Rules, a.Placeholder, a.Load, a.Store)
+		f := lowerFormatted(name, a.Label, ir.FormatTel, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 		f.Country = a.DefaultCountry
 		return f
 	case Website[M]:
-		return lowerFormatted(name, a.Label, ir.FormatURL, a.Rules, a.Placeholder, a.Load, a.Store)
+		return lowerFormatted(name, a.Label, ir.FormatURL, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 	case ColorPicker[M]:
-		return lowerFormatted(name, a.Label, ir.FormatColor, StringRules{}, "", a.Load, a.Store)
+		return lowerFormatted(name, a.Label, ir.FormatColor, false, StringRules{}, "", a.Load, a.Store)
 	case OptionalInt[M]:
 		return lowerOptionalInt(a, name)
 	case OptionalFloat[M]:
@@ -1083,9 +1044,9 @@ func sliderReads[M any](load func(M) float64, lo, step float64) (get func(any) s
 		func(m any) float64 { return load(m.(M)) }
 }
 
-func lowerStringRules(r StringRules) ir.Rules {
+func lowerStringRules(r StringRules, required bool) ir.Rules {
 	out := ir.Rules{
-		Required: r.Required, MinLen: r.MinLen, MaxLen: r.MaxLen,
+		Required: required, MinLen: r.MinLen, MaxLen: r.MaxLen,
 		StartsWith: r.StartsWith, EndsWith: r.EndsWith, Contains: r.Contains,
 		NotStartsWith: r.NotStartsWith, NotEndsWith: r.NotEndsWith, NotContains: r.NotContains,
 	}
@@ -1097,8 +1058,8 @@ func lowerStringRules(r StringRules) ir.Rules {
 	return out
 }
 
-func lowerNumberRules[T int | float64](r NumberRules[T]) ir.Rules {
-	out := ir.Rules{Required: r.Required}
+func lowerNumberRules[T int | float64](r NumberRules[T], required bool) ir.Rules {
+	out := ir.Rules{Required: required}
 	if r.Min != nil {
 		f := float64(*r.Min)
 		out.Min = &f

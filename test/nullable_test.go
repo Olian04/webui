@@ -100,15 +100,14 @@ func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {
 func TestAnAbsentValueIsStillHeldToItsRulesWhenThereIsOne(t *testing.T) {
 	t.Parallel()
 
-	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: new(1), Max: new(10), Required: true},
+	rate := webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Min: new(1), Max: new(10)},
 		Load: func(l limits) *int { return l.Rate }, Store: func(l *limits, v *int) { l.Rate = v }}
-	paused := webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
-	h, saved := limitsApp(limits{}, rate, paused)
+	paused := webui.OptionalBool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }, Store: func(l *limits, v *bool) { l.Paused = v }}
+	h, saved := limitsApp(limits{Rate: new(4), Paused: new(true)}, rate, paused)
 
-	// Required is what makes a value that must be there.
+	// An optional value may be left empty, and is then stored as nil: there is no Required to say otherwise.
 	rec := post(h, "/admin/l", formValues("f0", "", "f1", ""))
-	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "Rate")
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.DeepEqual(t, saved(), limits{})
 
 	rec = post(h, "/admin/l", formValues("f0", "11", "f1", "true"))
@@ -238,8 +237,6 @@ func TestNullableFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 		return all
 	}
-	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate", Rules: webui.NumberRules[int]{Required: true}, Load: func(l limits) *int { return l.Rate }}), "is Required but has no Store")
-	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused", Required: true, Load: func(l limits) *bool { return l.Paused }}), "is Required but has no Store")
 	assert.Contains(t, problems(webui.OptionalSlider[limits]{Label: "Level", Load: func(l limits) *float64 { return l.Level }}), "has no range")
 	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate"}), "Load")
 	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused"}), "Load")
