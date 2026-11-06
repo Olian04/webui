@@ -2,6 +2,7 @@ package webui_test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -101,40 +102,43 @@ func TestAnAssetTheAppMakesIsCompressedInBrotliWhenFirstAsked(t *testing.T) {
 	assert.Equal(t, unbrotli(t, rec.Body.Bytes()), serve(h, http.MethodGet, target).Body.String())
 }
 
-func TestAPageAndASearchAreCompressedInBrotliAsTheyAreBuilt(t *testing.T) {
+// A page is built for one request, and compressing it with Brotli took more CPU than building it: it is gzip, for a client that takes Brotli as for one that does not.
+func TestAPageAndASearchAreGzippedAsTheyAreBuiltEvenForAClientThatTakesBrotli(t *testing.T) {
 	t.Parallel()
 
 	h := navApp()
 	page := serve(h, http.MethodGet, "/admin/device")
-	rec := accepting(h, "/admin/device", "gzip, deflate, br")
-	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Equal(t, rec.Header().Get("Content-Encoding"), "br")
-	assert.Contains(t, strings.Join(rec.Header().Values("Vary"), ","), "Accept-Encoding") // a page varies on the leaf header as well
-	assert.Equal(t, builtless(unbrotli(t, rec.Body.Bytes())), builtless(page.Body.String()))
+	for _, accept := range []string{"gzip, deflate, br", "br, gzip", "gzip"} {
+		rec := accepting(h, "/admin/device", accept)
+		assert.Equal(t, rec.Code, http.StatusOK)
+		assert.Equal(t, rec.Header().Get("Content-Encoding"), "gzip")
+		assert.Contains(t, strings.Join(rec.Header().Values("Vary"), ","), "Accept-Encoding") // a page varies on the leaf header as well
+		assert.Equal(t, builtless(unzip(t, rec.Body.Bytes())), builtless(page.Body.String()))
+	}
 
-	missing := accepting(h, "/admin/nowhere", "br")
+	missing := accepting(h, "/admin/nowhere", "gzip, br")
 	assert.Equal(t, missing.Code, http.StatusNotFound)
-	assert.Contains(t, unbrotli(t, missing.Body.Bytes()), "Page not found")
+	assert.Contains(t, unzip(t, missing.Body.Bytes()), "Page not found")
 
-	// A client that takes only gzip is sent gzip, and one that takes neither is sent the page as it is.
-	assert.Equal(t, accepting(h, "/admin/device", "gzip").Header().Get("Content-Encoding"), "gzip")
+	// A client that takes neither is sent the page as it is, and so is one that takes only Brotli (no client says so: Brotli is offered with gzip).
 	assert.Equal(t, accepting(h, "/admin/device", "identity").Header().Get("Content-Encoding"), "")
+	assert.Equal(t, accepting(h, "/admin/device", "br").Header().Get("Content-Encoding"), "")
 
 	// An answer that is not a document is left alone: a redirect has no body to compress.
-	root := accepting(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}}.MustCompile("/admin"), "/admin/", "br")
+	root := accepting(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}}.MustCompile("/admin"), "/admin/", "gzip, br")
 	assert.Equal(t, root.Header().Get("Content-Encoding"), "")
 }
 
-func TestAnExportIsCompressedInBrotliWhenTheBrowserAccepts(t *testing.T) {
+func TestAnExportIsGzippedForAClientThatTakesBrotliToo(t *testing.T) {
 	t.Parallel()
 
-	rec := accepting(stockApp(rowsTable(stocks)), "/admin/s?items.export=csv", "br")
-	assert.Equal(t, rec.Header().Get("Content-Encoding"), "br")
-	assert.Contains(t, unbrotli(t, rec.Body.Bytes()), "bolt")
+	rec := accepting(stockApp(rowsTable(stocks)), "/admin/s?items.export=csv", "gzip, br")
+	assert.Equal(t, rec.Header().Get("Content-Encoding"), "gzip")
+	assert.Contains(t, unzip(t, rec.Body.Bytes()), "bolt")
 }
 
-// The bytes sent so far are a Brotli stream that can be read up to there.
-func TestAStreamedPageIsCompressedInBrotliSoThatItCanBeReadAsItArrives(t *testing.T) {
+// A page that is sent as it is built is gzip, for a client that takes Brotli too, and the bytes sent so far are a stream that can be read up to there.
+func TestAStreamedPageIsGzippedForAClientThatTakesBrotliToo(t *testing.T) {
 	t.Parallel()
 
 	slow := newGated()
@@ -142,23 +146,21 @@ func TestAStreamedPageIsCompressedInBrotliSoThatItCanBeReadAsItArrives(t *testin
 	rec := newStreamRecorder()
 	done := make(chan struct{})
 	go func() {
-		get(h, rec, "/admin/p", func(r *http.Request) { r.Header.Set("Accept-Encoding", "gzip, br") })
+		get(h, rec, "/admin/p", func(r *http.Request) { r.Header.Set("Accept-Encoding", "gzip, deflate, br") })
 		close(done)
 	}()
 	<-slow.asked
 	waitFor(t, "the first flush", func() bool { return rec.flushCount() > 0 })
-	assert.Equal(t, rec.header.Get("Content-Encoding"), "br")
+	assert.Equal(t, rec.header.Get("Content-Encoding"), "gzip")
 
-	partial, _ := io.ReadAll(brotli.NewReader(bytes.NewReader(rec.sentSoFar()))) // not finished: it reads as far as there is, and then says so
+	zr, err := gzip.NewReader(bytes.NewReader(rec.sentSoFar()))
+	assert.NoError(t, err)
+	partial, _ := io.ReadAll(zr) // not finished: it reads as far as there is, and then says so
 	assert.Contains(t, string(partial), "First-row")
 	assert.False(t, strings.Contains(string(partial), "Slow-row"))
 
 	close(slow.release)
 	<-done
-	full, err := io.ReadAll(brotli.NewReader(bytes.NewReader([]byte(rec.all()))))
-	assert.NoError(t, err)
-	assert.Contains(t, string(full), "Slow-row")
-	assert.True(t, strings.HasSuffix(string(full), "</html>"))
 }
 
 // The editor is megabytes, and is where Brotli is worth most: its files are the build's copies, and the copies have no address of their own.
