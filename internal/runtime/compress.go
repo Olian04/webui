@@ -7,34 +7,27 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/andybalholm/brotli"
-
 	"github.com/Olian04/webui/internal/assetserve"
 )
 
-// brotliLevel is how hard a response that is built for one request is compressed. The best level, 11, is for files that are compressed once: it takes about as long as a
-// second to do a megabyte. Measured on a 64 KB page: gzip's default takes 0.9 ms and makes 11.5 KB, level 4 takes 1.6 ms for 11.1 KB, level 5 takes 2.5 ms for 10.3 KB
-// and level 6 the same time for 10.3 KB. Level 5 is the one that is smaller than gzip by a tenth, for a cost that building the page makes small.
-const brotliLevel = 5
+// A response that is built for one request is compressed with gzip, even for a client that takes Brotli. Measured on a 64 KB page, gzip's default takes 0.9 ms and makes 11.5 KB,
+// Brotli at level 4 takes 1.6 ms for 11.1 KB and at level 5 2.5 ms for 10.3 KB; the page itself takes about 1 ms to build, so the better compression was more CPU than the page, for a
+// tenth of its bytes. The files that are compressed once (the stylesheets, the scripts, the editor) are Brotli at the best level, which is where the bytes are: see assetserve.
 
-// encoder is what a response is compressed with: gzip's writer and Brotli's are the same to this.
+// encoder is what a response is compressed with.
 type encoder interface {
 	io.WriteCloser
 	Flush() error
 	Reset(io.Writer)
 }
 
-var (
-	gzipPool   = sync.Pool{New: func() any { return gzip.NewWriter(nil) }}
-	brotliPool = sync.Pool{New: func() any { return brotli.NewWriterLevel(nil, brotliLevel) }}
-)
+var gzipPool = sync.Pool{New: func() any { return gzip.NewWriter(nil) }}
 
-// compressed compresses a response with Brotli or gzip, whichever the client takes (Brotli where it takes both) and the content is text, JSON or SVG: the pages and
-// the search, which are built per request. The assets are compressed when they are built, and never reach this. The decision is made when the status is written, from
+// compressed gzips a response when the client takes it and the content is text, JSON or SVG: the pages and the search, which are built per request. The assets are compressed when they are built, and never reach this. The decision is made when the status is written, from
 // the content type the handler set, so a response that is already encoded, has no body, or is an image or font is left alone.
 func compressed(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		coding := assetserve.Negotiate(r, "br", "gzip")
+		coding := assetserve.Negotiate(r, "gzip")
 		if r.Method == http.MethodHead || coding == "" {
 			next.ServeHTTP(w, r)
 			return
@@ -47,7 +40,7 @@ func compressed(next http.Handler) http.Handler {
 
 type compressWriter struct {
 	http.ResponseWriter
-	coding  string // "br" or "gzip", whichever the client takes
+	coding  string // "gzip": the one coding that a built response is compressed with
 	zw      encoder
 	pool    *sync.Pool
 	decided bool
@@ -68,9 +61,6 @@ func (c *compressWriter) decide(status int) {
 	h.Set("Content-Encoding", c.coding)
 	h.Del("Content-Length") // the length of what is sent is not the length of what was written
 	c.pool = &gzipPool
-	if c.coding == "br" {
-		c.pool = &brotliPool
-	}
 	c.zw = c.pool.Get().(encoder)
 	c.zw.Reset(c.ResponseWriter)
 }

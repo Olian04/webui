@@ -55,11 +55,11 @@ func BenchmarkPage(b *testing.B) {
 	}
 }
 
-// BenchmarkPageCompressed is BenchmarkPage for a client that takes gzip, or Brotli: what a page costs to send as well as to build. Compression of what is built for one
-// request is a cost of the same size as building it.
+// BenchmarkPageCompressed is BenchmarkPage for a client that takes gzip, and for one that takes Brotli too (a page that is built for one request is gzip for both): what a page
+// costs to send as well as to build. Compression of what is built for one request is a cost of the same size as building it.
 func BenchmarkPageCompressed(b *testing.B) {
 	h := benchSite(b)
-	for _, coding := range []string{"gzip", "br"} {
+	for _, coding := range []string{"gzip", "gzip, deflate, br"} {
 		for _, path := range []string{"/admin/", "/admin/device"} {
 			b.Run(coding+path, func(b *testing.B) {
 				b.ReportAllocs()
@@ -71,8 +71,8 @@ func BenchmarkPageCompressed(b *testing.B) {
 					if rec.Code != http.StatusOK {
 						b.Fatalf("%s answered %d", path, rec.Code)
 					}
-					if rec.Header().Get("Content-Encoding") != coding {
-						b.Fatalf("%s was not sent in %s", path, coding)
+					if rec.Header().Get("Content-Encoding") != "gzip" {
+						b.Fatalf("%s was not sent in gzip", path)
 					}
 				}
 			})
