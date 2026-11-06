@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/a-h/templ"
@@ -153,18 +154,36 @@ func FailureHandler(problems []render.Problem) http.Handler {
 // and must not be what takes it down. The sidebar leaves these out, and the search, which reads
 // the sidebar, with it; the page itself still answers 403 to anyone who types the address.
 func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
-	var hide map[string]bool
+	var withGuard []*ir.Page
 	for _, path := range p.render.NavPaths() {
-		page := p.App.ByPath[path]
-		if page == nil || page.Guard == nil {
-			continue
+		if page := p.App.ByPath[path]; page != nil && page.Guard != nil {
+			withGuard = append(withGuard, page)
 		}
-		args, err := page.Decode(map[string]string{})
-		if err == nil {
-			_, err = guarded("Guard", func() (struct{}, error) {
-				return struct{}{}, page.Guard(p.reqCtx(ctx, args, map[string]string{}), args)
+	}
+	if len(withGuard) == 0 {
+		return nil
+	}
+	// Each is the Guard of another page, which may read a store, so they are asked at the same time, a few at once, and the sidebar waits for the slowest and not for the sum. A page whose
+	// Guard has been asked in this request already (the one being drawn, or one that a link leads to) is not asked again: see verdict.go.
+	refused := make([]error, len(withGuard))
+	if len(withGuard) == 1 {
+		refused[0] = p.bareVerdict(ctx, withGuard[0]) // nothing to wait beside
+	} else {
+		var wg sync.WaitGroup
+		slots := make(chan struct{}, maxNavGuards)
+		for i, page := range withGuard {
+			wg.Go(func() {
+				slots <- struct{}{}
+				defer func() { <-slots }()
+				refused[i] = p.bareVerdict(ctx, page)
 			})
 		}
+		wg.Wait()
+	}
+
+	var hide map[string]bool
+	for i, page := range withGuard {
+		err := refused[i]
 		if err == nil {
 			continue
 		}
@@ -177,9 +196,26 @@ func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 		if hide == nil {
 			hide = map[string]bool{}
 		}
-		hide[path] = true
+		hide[page.PathTemplate] = true
 	}
 	return hide
+}
+
+// maxNavGuards bounds how many of the sidebar's Guards run at once: an app with fifty pages and a Guard that takes a connection from a pool does not ask for fifty.
+const maxNavGuards = 8
+
+// bareVerdict is what the Guard of page says of the address with no arguments, which is how the sidebar asks. An address that does not decode bare is not one that could
+// be opened bare.
+func (p *Program) bareVerdict(ctx context.Context, page *ir.Page) error {
+	raw := map[string]string{}
+	args, err := page.Decode(raw)
+	if err != nil {
+		return err //nolint:wrapcheck // the page's own decoder
+	}
+	_, err = guarded("Guard", func() (struct{}, error) {
+		return struct{}{}, askVerdict(ctx, page, raw, func() error { return page.Guard(p.reqCtx(ctx, args, raw), args) })
+	})
+	return err
 }
 
 const (
@@ -242,13 +278,14 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 		if e.Label == "" {
 			continue
 		}
-		if page.Guard != nil && page.Guard(p.reqCtx(ctx, e.Args, raw), e.Args) != nil {
-			continue // the visitor could not open it
-		}
 		path, query, err := page.Encode(e.Args)
 		if err != nil {
 			p.log.Error("webui: a navigation entry is dropped: its address cannot be built", "page", page.PathTemplate, "label", e.Label, "err", err)
 			continue
+		}
+		// The Guard of the address the entry leads to, which a link or the page itself may have asked already in this request: see verdict.go.
+		if page.Guard != nil && askVerdict(ctx, page, rawOf(path, query), func() error { return page.Guard(p.reqCtx(ctx, e.Args, raw), e.Args) }) != nil {
+			continue // the visitor could not open it
 		}
 		link := render.NavLink{Label: e.Label, Href: p.Prefix + args.Href(page.PathTemplate, path, query)}
 		if score := entryScore(page, here, active, path, query); score >= 0 {

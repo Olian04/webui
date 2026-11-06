@@ -66,6 +66,17 @@ type Page[A any] struct {
 	// a [Refusal], which answers with its own status (404, 401 or 403) and says what it
 	// says, with a link on if it has one. The pages a Guard refuses are also left out
 	// of the sidebar and the search.
+	//
+	// A Guard is asked for an address once in a request, whoever asks: the request for the page,
+	// the sidebar's entry for it, a breadcrumb, Cancel and Back, and every link that leads there
+	// (a table of a hundred rows that lead to three pages runs the Guard of that page three
+	// times, not a hundred) share one answer, so a page agrees with itself even when the Guard's
+	// answer changes in the middle of a request. What the address has besides the page's own
+	// arguments (a table's sort, where the visitor came from) is not part of it. The Guards of the
+	// pages in the sidebar are asked at the same time, up to eight at once, so a Guard is
+	// called from several goroutines and must be safe for that, as the application's other
+	// functions are. An answer that came of a visitor who left, or of a deadline that ran
+	// out, is not kept.
 	Guard func(ctx context.Context, a A) error
 
 	// NavEntries gives a page with arguments entries of its own in the sidebar: one for each

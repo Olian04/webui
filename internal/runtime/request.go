@@ -55,6 +55,10 @@ type Request struct {
 
 	// conditions is what each conditional node decided in this request. It is nil for a request that draws one leaf, or none.
 	conditions *conditionCache
+
+	// verdicts is what the Guard of each address said in this request, so that each is asked once however many parts of the page ask. It is shared by the copies of the
+	// request that the panels are built with, and by the in-process requests that ask whether a link may be followed. See verdict.go.
+	verdicts *verdictCache
 }
 
 // reqCtx is ctx with a request for the page's arguments in it, for the application's funcs the runtime
