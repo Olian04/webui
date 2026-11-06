@@ -252,6 +252,8 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
 
+A change made for speed quotes `cmd/demo/bench_test.go` before and after (`go test ./cmd/demo -run '^$' -bench BenchmarkPage -benchmem -count=6`, compared with `benchstat`): the cost of making each kind of page, with and without compression, and of requests that arrive together. The demo is the one app with every kind of page and the least work of its own.
+
 ---
 
 ## Go proverbs ([source](https://go-proverbs.github.io/), caveman compress)
