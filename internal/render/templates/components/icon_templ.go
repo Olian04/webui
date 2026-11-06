@@ -8,6 +8,12 @@ package components
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import (
+	"html"
+	"strings"
+	"sync"
+)
+
 // IconName is a Font Awesome Free solid icon, by its name without the class prefix:
 // "house" is the house icon. The renderer draws it with the icon font, which has a
 // file for each group of icons: the ones below are what the design itself uses, and
@@ -46,94 +52,63 @@ type IconProps struct {
 	Title string
 }
 
+// Icon is the markup of an icon: an i element with the classes of the icon font, hidden from a reader unless it has a title. It is Go and not a templ component because it is on a page dozens of times and has nothing to
+// say that a string does not: a templ component costs a closure, a context and the processing of its class for each use, and this costs nothing after the first of its kind.
 func Icon(p IconProps) templ.Component {
-	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
-		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
-		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
-			return templ_7745c5c3_CtxErr
-		}
-		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
-		if !templ_7745c5c3_IsBuffer {
-			defer func() {
-				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
-				if templ_7745c5c3_Err == nil {
-					templ_7745c5c3_Err = templ_7745c5c3_BufErr
-				}
-			}()
-		}
-		ctx = templ.InitializeContext(ctx)
-		templ_7745c5c3_Var1 := templ.GetChildren(ctx)
-		if templ_7745c5c3_Var1 == nil {
-			templ_7745c5c3_Var1 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		if p.Name != IconNone {
-			var templ_7745c5c3_Var2 = []any{"fa-solid", "fa-" + string(p.Name), templ.KV(p.Class, p.Class != "")}
-			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<i class=\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var2).String())
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 1, Col: 0}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			if p.Title == "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " aria-hidden=\"true\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			} else {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, " role=\"img\" aria-label=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var4 string
-				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 49, Col: 24}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" title=\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				var templ_7745c5c3_Var5 string
-				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Title)
-				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/icon.templ`, Line: 50, Col: 19}
-				}
-				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\"")
-				if templ_7745c5c3_Err != nil {
-					return templ_7745c5c3_Err
-				}
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "></i>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-		}
-		return nil
-	})
+	if p.Name == IconNone {
+		return templ.NopComponent
+	}
+	if p.Title != "" {
+		return templ.Raw(iconMarkup(p)) // a title is the application's words, and is not kept
+	}
+	return iconOf(p.Name, p.Class).component
+}
+
+type iconKey struct {
+	name  IconName
+	class string
+}
+
+// iconEntry is an icon that has no title, as markup and as the component that writes it.
+type iconEntry struct {
+	markup    string
+	component templ.Component
+}
+
+// icons is the entry of each icon that has no title, by what it is made of: the icons that the library draws, with the few classes that it gives them, and the icons that an app
+// names, with none. It is never more than that.
+var icons sync.Map
+
+// iconOf is the icon of a name and a class, made once.
+func iconOf(name IconName, class string) iconEntry {
+	key := iconKey{name: name, class: class}
+	if e, ok := icons.Load(key); ok {
+		return e.(iconEntry)
+	}
+	markup := iconMarkup(IconProps{Name: name, Class: class})
+	e, _ := icons.LoadOrStore(key, iconEntry{markup: markup, component: templ.Raw(markup)})
+	return e.(iconEntry)
+}
+
+func iconMarkup(p IconProps) string {
+	// What templ made of class={ "fa-solid", "fa-"+name, templ.KV(p.Class, p.Class != "") }: each is one item, never split at a space, and an item is left out when it is
+	// the same, as a whole, as one before it.
+	class := "fa-solid fa-" + string(p.Name)
+	if p.Class != "" && p.Class != "fa-solid" && p.Class != "fa-"+string(p.Name) {
+		class += " " + p.Class
+	}
+	var b strings.Builder
+	b.WriteString(`<i class="`)
+	b.WriteString(html.EscapeString(class))
+	b.WriteByte('"')
+	if p.Title == "" {
+		b.WriteString(` aria-hidden="true"`)
+	} else {
+		title := html.EscapeString(p.Title)
+		b.WriteString(` role="img" aria-label="` + title + `" title="` + title + `"`)
+	}
+	b.WriteString("></i>")
+	return b.String()
 }
 
 var _ = templruntime.GeneratedTemplate

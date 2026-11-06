@@ -1,5 +1,9 @@
 package components
 
+import (
+	"html"
+	"strings"
+)
 
 // The sidebar is the one piece of structure that does not disappear, as long as
 // the app declares a list to show: the page leaves it out when no page has an
@@ -84,20 +88,30 @@ type NavItemProps struct {
 	Active bool
 }
 
-templ NavItem(p NavItemProps) {
-	<a
-		class={ "nav-item", templ.KV("active", p.Active) }
-		href={ p.Href }
-		title={ p.Label }
-		if p.Active {
-			aria-current="page"
-		}
-	>
-		if p.Icon != IconNone {
-			@Icon(IconProps{Name: p.Icon, Class: "ni"})
-		} else if p.Letter != "" {
-			<span class="ni ni-letter" aria-hidden="true">{ p.Letter }</span>
-		}
-		<span>{ p.Label }</span>
-	</a>
+// NavItem is one entry of the sidebar. It is Go and not a templ component, for the same reason as Icon: it is on every page, once for each page of the app, and a component costs a closure, a
+// context and the processing of its class for each. The markup is what the component made (leaf_test.go has it, to the byte): the address is made safe as templ makes it, and what a person
+// wrote is escaped.
+func NavItem(p NavItemProps) templ.Component {
+	var b strings.Builder
+	b.Grow(200 + 2*len(p.Label) + len(p.Href)) // the markup is these and about a hundred and fifty bytes: one allocation, and no regrowing
+	b.WriteString(`<a class="nav-item`)
+	if p.Active {
+		b.WriteString(" active")
+	}
+	b.WriteString(`" href="`)
+	b.WriteString(html.EscapeString(string(templ.URL(p.Href))))
+	b.WriteString(`" title="`)
+	b.WriteString(html.EscapeString(p.Label))
+	b.WriteByte('"')
+	if p.Active {
+		b.WriteString(` aria-current="page"`)
+	}
+	b.WriteByte('>')
+	if p.Icon != IconNone {
+		b.WriteString(iconOf(p.Icon, "ni").markup)
+	} else if p.Letter != "" {
+		b.WriteString(`<span class="ni ni-letter" aria-hidden="true">` + html.EscapeString(p.Letter) + `</span> `)
+	}
+	b.WriteString("<span>" + html.EscapeString(p.Label) + "</span></a>")
+	return templ.Raw(b.String())
 }

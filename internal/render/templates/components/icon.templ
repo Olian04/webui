@@ -1,5 +1,11 @@
 package components
 
+import (
+	"html"
+	"strings"
+	"sync"
+)
+
 // IconName is a Font Awesome Free solid icon, by its name without the class prefix:
 // "house" is the house icon. The renderer draws it with the icon font, which has a
 // file for each group of icons: the ones below are what the design itself uses, and
@@ -38,17 +44,61 @@ type IconProps struct {
 	Title string
 }
 
-templ Icon(p IconProps) {
-	if p.Name != IconNone {
-		<i
-			class={ "fa-solid", "fa-" + string(p.Name), templ.KV(p.Class, p.Class != "") }
-			if p.Title == "" {
-				aria-hidden="true"
-			} else {
-				role="img"
-				aria-label={ p.Title }
-				title={ p.Title }
-			}
-		></i>
+// Icon is the markup of an icon: an i element with the classes of the icon font, hidden from a reader unless it has a title. It is Go and not a templ component because it is on a page dozens of times and has nothing to
+// say that a string does not: a templ component costs a closure, a context and the processing of its class for each use, and this costs nothing after the first of its kind.
+func Icon(p IconProps) templ.Component {
+	if p.Name == IconNone {
+		return templ.NopComponent
 	}
+	if p.Title != "" {
+		return templ.Raw(iconMarkup(p)) // a title is the application's words, and is not kept
+	}
+	return iconOf(p.Name, p.Class).component
+}
+
+type iconKey struct {
+	name  IconName
+	class string
+}
+
+// iconEntry is an icon that has no title, as markup and as the component that writes it.
+type iconEntry struct {
+	markup    string
+	component templ.Component
+}
+
+// icons is the entry of each icon that has no title, by what it is made of: the icons that the library draws, with the few classes that it gives them, and the icons that an app
+// names, with none. It is never more than that.
+var icons sync.Map
+
+// iconOf is the icon of a name and a class, made once.
+func iconOf(name IconName, class string) iconEntry {
+	key := iconKey{name: name, class: class}
+	if e, ok := icons.Load(key); ok {
+		return e.(iconEntry)
+	}
+	markup := iconMarkup(IconProps{Name: name, Class: class})
+	e, _ := icons.LoadOrStore(key, iconEntry{markup: markup, component: templ.Raw(markup)})
+	return e.(iconEntry)
+}
+
+func iconMarkup(p IconProps) string {
+	// What templ made of class={ "fa-solid", "fa-"+name, templ.KV(p.Class, p.Class != "") }: each is one item, never split at a space, and an item is left out when it is
+	// the same, as a whole, as one before it.
+	class := "fa-solid fa-" + string(p.Name)
+	if p.Class != "" && p.Class != "fa-solid" && p.Class != "fa-"+string(p.Name) {
+		class += " " + p.Class
+	}
+	var b strings.Builder
+	b.WriteString(`<i class="`)
+	b.WriteString(html.EscapeString(class))
+	b.WriteByte('"')
+	if p.Title == "" {
+		b.WriteString(` aria-hidden="true"`)
+	} else {
+		title := html.EscapeString(p.Title)
+		b.WriteString(` role="img" aria-label="` + title + `" title="` + title + `"`)
+	}
+	b.WriteString("></i>")
+	return b.String()
 }
