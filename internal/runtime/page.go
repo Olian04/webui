@@ -136,10 +136,12 @@ func (p *Program) admit(r *http.Request, page *ir.Page, parser args.ArgParser) (
 	if err != nil {
 		return nil, raw, http.StatusBadRequest, nil
 	}
-	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey]), Languages: r.Header.Get("Accept-Language"), conditions: &conditionCache{}}
+	req = &Request{program: p, Args: decoded, Raw: raw, Address: r.URL.RequestURI(), From: p.local(raw[args.FromKey]), Languages: r.Header.Get("Accept-Language"), conditions: &conditionCache{}, verdicts: verdictsOf(r.Context())}
 	*r = *r.WithContext(With(r.Context(), req))
 	if page.Guard != nil {
-		if err := page.Guard(r.Context(), decoded); err != nil {
+		ctx := r.Context()
+		// Asked once for this address in the request, whoever asks: the request for the page, the sidebar, a breadcrumb, a link that leads here (see verdict.go).
+		if err := req.verdicts.ask(ctx, verdictKey(page, raw), func() error { return page.Guard(ctx, decoded) }); err != nil {
 			if ref, ok := errors.AsType[*ir.Refusal](err); ok {
 				return req, raw, ref.Status, err // its own: not found, not signed in, or not permitted
 			}
@@ -440,7 +442,7 @@ func (p *Program) crumbLabels(ctx context.Context, page *ir.Page, req *Request, 
 		ctx, cancel := context.WithDeadline(ctx, deadline)
 		defer cancel()
 		rc := p.reqCtx(ctx, a, raw)
-		if target.Guard != nil && target.Guard(rc, a) != nil {
+		if target.Guard != nil && askVerdict(ctx, target, raw, func() error { return target.Guard(rc, a) }) != nil {
 			return ""
 		}
 		label, err := guarded("Crumb", func() (string, error) { return target.Crumb(rc, a), nil })

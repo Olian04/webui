@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 	"log/slog"
-	"runtime/debug"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -147,7 +146,7 @@ func (p *Program) panel(ctx context.Context, req *Request, page *ir.Page, n ir.N
 		defer close(pn.done)
 		defer func() {
 			if v := recover(); v != nil {
-				pn.caught = &workerPanic{value: v, stack: debug.Stack()}
+				pn.caught = newWorkerPanic(v)
 			}
 		}()
 		own := *req // its own copy for what it records

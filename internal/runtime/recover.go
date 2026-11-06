@@ -63,6 +63,15 @@ type workerPanic struct {
 	stack []byte
 }
 
+// newWorkerPanic is r as a panic caught on a goroutine of the request, with the stack of where it happened: r itself when it is one already, raised again from a verdict that
+// kept it, so that it is not wrapped in another and its stack is the first one's.
+func newWorkerPanic(r any) *workerPanic {
+	if w, ok := r.(*workerPanic); ok {
+		return w
+	}
+	return &workerPanic{value: r, stack: debug.Stack()}
+}
+
 func (w *workerPanic) raise() {
 	if err, ok := w.value.(error); ok && errors.Is(err, http.ErrAbortHandler) {
 		panic(w.value) // the server's own way to end a response, which it handles
@@ -100,6 +109,9 @@ func (w *statusWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 func guarded[T any](what string, f func() (T, error)) (v T, err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			if w, ok := r.(*workerPanic); ok {
+				r = w.value // a panic that a verdict kept and raised again: what broke, not how it was carried
+			}
 			err = &panicError{what: what, value: r}
 		}
 	}()

@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"runtime/debug"
 	"sync"
 
 	"github.com/Olian04/webui/internal/render"
@@ -29,7 +28,7 @@ func (p *Program) startShell(ctx context.Context, here render.Here, active strin
 		s.wg.Go(func() {
 			defer func() {
 				if v := recover(); v != nil {
-					s.caught[i] = &workerPanic{value: v, stack: debug.Stack()}
+					s.caught[i] = newWorkerPanic(v)
 				}
 			}()
 			f()
