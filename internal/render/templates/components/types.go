@@ -106,6 +106,18 @@ func (a Align) cell() string {
 	return ""
 }
 
+// CellOpen is the opening of a table cell of this alignment: what the Cell component writes before what it holds. A cell that has nothing but text is written without the component
+// (see Renderer.cell), and takes its class from the same place.
+func (a Align) CellOpen() string { return `<td class="` + a.cell() + `">` }
+
+// Open is the opening of a table row: what the Row component writes before its cells. A row is written without the component (see Renderer.tableRow), from the same rule.
+func (p RowProps) Open() string {
+	if p.Href != "" || p.Clickable {
+		return `<tr class="clickable">`
+	}
+	return `<tr class="">`
+}
+
 // SortDir is set on the one column a table is sorted by.
 type SortDir string
 

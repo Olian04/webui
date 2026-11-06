@@ -252,6 +252,8 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 `test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
 
+A change that is meant to change no markup is held to it with `TestSnapshot` in `cmd/demo/snapshot_test.go`: it writes every page of the demo (for an editor and a viewer) to a directory, with what differs between two runs made the same, and an empty `diff -rq` between `main`'s and the branch's is the same bytes on every page (its comment says how). The tests that assert on parts of a page cannot say that, and it caught a space that they did not.
+
 A change made for speed quotes `cmd/demo/bench_test.go` before and after (`go test ./cmd/demo -run '^$' -bench BenchmarkPage -benchmem -count=6`, compared with `benchstat`): the cost of making each kind of page, with and without compression, and of requests that arrive together. The demo is the one app with every kind of page and the least work of its own.
 
 ---

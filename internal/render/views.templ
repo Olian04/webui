@@ -1,6 +1,8 @@
 package render
 
 import (
+	"context"
+	"io"
 	"slices"
 	"strconv"
 
@@ -320,41 +322,98 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 	return c.Pager(r.pager(v))
 }
 
-templ (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, actions bool) {
-	@c.Row(c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}) {
+// tableRow is a row of a table. It is written directly, as the Row component would have written it, since a table has a row for each of its rows and the component is a closure and
+// a context for each; its cells are what cell makes, and the cell of its buttons, when it has any, is rowActions.
+func (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, actions bool) templ.Component {
+	open := c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}.Open()
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil {
+			return err //nolint:wrapcheck // the visitor went away
+		}
+		if _, err := io.WriteString(w, open); err != nil {
+			return err //nolint:wrapcheck // the writer's own
+		}
 		if v.selectable() {
-			@c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select " + rowName(ctx, cols, row, v.Keys[i])})
+			if err := c.SelectCell(c.SelectCellProps{Name: "_sel", Value: v.Keys[i], Label: "Select " + rowName(ctx, cols, row, v.Keys[i])}).Render(ctx, w); err != nil {
+				return err //nolint:wrapcheck // a component's own error
+			}
 		}
 		for j, col := range cols {
-			@r.cell(col, row, v.Hrefs[i], v.clickIsExternal(), v.clicks(i), v.rowClickValue(i), j == 0)
+			if err := r.cell(col, row, v.Hrefs[i], v.clickIsExternal(), v.clicks(i), v.rowClickValue(i), j == 0).Render(ctx, w); err != nil {
+				return err //nolint:wrapcheck // a component's own error
+			}
+		}
+		if _, err := io.WriteString(w, " "); err != nil { // the one space that the component wrote after the cells, before its buttons if it has any and before the end of the row if not
+			return err //nolint:wrapcheck // the writer's own
 		}
 		if actions {
-			<td class="actions">
-				for a, act := range v.Node.Actions {
-					if v.gate(i, a).Drawn() && act.Action != nil {
-						@c.Button(c.ButtonProps{
-							Variant: variant(act.Role), Size: c.SizeSmall,
-							Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a).Reason,
-							Confirm: act.Action.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
-						}) {
-							{ act.Label }
-							<span class="sr-only">{ rowName(ctx, cols, row, v.Keys[i]) }</span>
-						}
-					} else if v.gate(i, a).Drawn() {
-						@c.Button(c.ButtonProps{Variant: variant(act.Role), Size: c.SizeSmall, Href: v.actionHref(i, a), Attrs: linkAttrs(act)}) {
-							{ act.Label }
-							<span class="sr-only">{ rowNameOf(ctx, cols, row, v.Keys, i) }</span>
-						}
-					}
-				}
-			</td>
+			if err := r.rowActions(v, cols, i, row).Render(ctx, w); err != nil {
+				return err //nolint:wrapcheck // a component's own error
+			}
 		}
-	}
+		_, err := io.WriteString(w, "</tr>")
+		return err //nolint:wrapcheck // the writer's own
+	})
+}
+
+templ (r *Renderer) rowActions(v TableView, cols []columnView, i int, row any) {
+	<td class="actions">
+		for a, act := range v.Node.Actions {
+			if v.gate(i, a).Drawn() && act.Action != nil {
+				@c.Button(c.ButtonProps{
+					Variant: variant(act.Role), Size: c.SizeSmall,
+					Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a).Reason,
+					Confirm: act.Action.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
+				}) {
+					{ act.Label }
+					<span class="sr-only">{ rowName(ctx, cols, row, v.Keys[i]) }</span>
+				}
+			} else if v.gate(i, a).Drawn() {
+				@c.Button(c.ButtonProps{Variant: variant(act.Role), Size: c.SizeSmall, Href: v.actionHref(i, a), Attrs: linkAttrs(act)}) {
+					{ act.Label }
+					<span class="sr-only">{ rowNameOf(ctx, cols, row, v.Keys, i) }</span>
+				}
+			}
+		}
+	</td>
 }
 
 // cell is one value. The row's single anchor lives in the first cell, because
 // the stylesheet stretches it over every other.
-templ (r *Renderer) cell(col columnView, row any, href string, external bool, button bool, click string, first bool) {
+//
+// A table is a cell for each column of each row, and a cell that holds plain text, which is most of them, went through five components (the cell, its children, the value, how to
+// present it, and the text), each a closure and a context: it is written directly instead, as the components would have written it. Any cell that is more than that (an anchor or a
+// button, a badge, a bar, a link, a moment, a chart, text that keeps its lines, a value that may be empty) is drawn by cellComponents, as it was. cell_test.go draws both
+// for a matrix of cells and holds them to the same bytes.
+func (r *Renderer) cell(col columnView, row any, href string, external bool, button bool, click string, first bool) templ.Component {
+	f := col.Field
+	if f.Display != ir.DisplayText || f.Multiline || f.Nullable {
+		return r.cellComponents(col, row, href, external, button, click, first)
+	}
+	// What is around the text: the row's one anchor or button, in the first cell, or nothing. What the anchor and the button write is what RowLink and RowButton write.
+	var before, after string
+	switch {
+	case first && href != "":
+		before, after = `<a class="rowlink" href="`+templ.EscapeString(string(templ.URL(href)))+`"`, "</a>"
+		if external {
+			before += ` target="_blank" rel="noopener noreferrer"`
+		}
+		before += ">"
+	case first && button:
+		before, after = `<button class="rowlink rowbutton" type="submit" name="_act" value="`+templ.EscapeString(click)+`">`, "</button>"
+	}
+	open := col.Align.CellOpen() + before
+	close := after + "</td>"
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
+		if err := ctx.Err(); err != nil {
+			return err //nolint:wrapcheck // the visitor went away
+		}
+		_, err := io.WriteString(w, open+templ.EscapeString(f.Shown(ctx, row))+close)
+		return err //nolint:wrapcheck // the writer's own
+	})
+}
+
+templ (r *Renderer) cellComponents(col columnView, row any, href string, external bool, button bool, click string, first bool) {
 	@c.Cell(c.CellProps{Align: col.Align}) {
 		if first && href != "" {
 			@c.RowLink(href, external) {
