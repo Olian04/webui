@@ -22,13 +22,13 @@ var benchPages = []string{
 }
 
 // benchSite is the whole site, for an editor, who may do everything and so is drawn every control.
-func benchSite(b testing.TB) http.Handler {
-	b.Helper()
+func benchSite(tb testing.TB) http.Handler {
+	tb.Helper()
 
 	service = newService()
 	compiled, err := app.Compile("/admin")
 	if err != nil {
-		b.Fatal(err)
+		tb.Fatal(err)
 	}
 	site := routes(compiled)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
