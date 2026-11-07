@@ -85,7 +85,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 	parser := argParser(page)
 	mayStream := streamable(page.Body)
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Add("Vary", LeafHeader)
+		w.Header().Add("Vary", ViewHeader)
 		if p.render.NeedsPhone(page) {
 			w.Header().Add("Vary", "Accept-Language") // the country a number starts at is the visitor's
 		}
@@ -101,7 +101,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 			p.export(w, r, page, req, table, format) // a table that is hidden by a When is asked for no export, as one that does not declare it is not
 			return
 		}
-		if id := r.Header.Get(LeafHeader); id != "" {
+		if id := r.Header.Get(ViewHeader); id != "" {
 			// A panel, or a Tabs: a request for one of them loads that and nothing else of the page.
 			// What is under a When that does not hold is not there: a Tabs or a leaf named for it is answered as one that is not.
 			if t, ok := tabs[id]; ok && p.shown(ctx, page, gates[id]) {

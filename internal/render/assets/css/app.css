@@ -1605,7 +1605,7 @@ html:not(.js) .actionbar .dim {
   color: var(--text-2);
 }
 /* A panel that is being asked for again says so with aria-busy: its rows pulse and are out of reach, and they are the rows that were there. */
-[data-leaf][aria-busy='true'] tbody {
+[data-view][aria-busy='true'] tbody {
   animation: pulse 1.1s ease-in-out infinite;
   pointer-events: none;
 }
@@ -2947,7 +2947,7 @@ html.js .status-meta [data-built] {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-  [data-leaf][aria-busy='true'] tbody {
+  [data-view][aria-busy='true'] tbody {
     opacity: 0.6;
   }
   .spin {

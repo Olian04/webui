@@ -163,7 +163,7 @@ func TestAToolbarOfLinksAndFormsHasNoForm(t *testing.T) {
 	)
 	bar := toolbarOf(serve(s.h, http.MethodGet, "/admin/tools?minutes=15").Body.String())
 	assert.False(t, strings.Contains(bar, "<form"))
-	assert.False(t, strings.Contains(bar, "_leaf"))
+	assert.False(t, strings.Contains(bar, "_view"))
 	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
 	assert.Contains(t, bar, `<a class="btn btn-secondary btn-sm" href="/admin/device/new">Create device</a>`)
 }
@@ -283,7 +283,7 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/tools?minutes=15").Body.String()
 	root := body[strings.Index(body, `<div class="toolbar"`):]
 	root = root[:strings.Index(root, ">")]
-	assert.Contains(t, root, `data-leaf="p"`)
+	assert.Contains(t, root, `data-view="p"`)
 	assert.Contains(t, root, `data-refresh-after="4"`)
 	// A toolbar has little room, and a note in the row would move what is in it: it says nothing that is seen.
 	assert.False(t, strings.Contains(body, "refresh-note"))
@@ -292,19 +292,19 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	// Asked for alone, as script does, the toolbar answers with its own root first, which carries it.
 	rec := serveLeaf(h, "/admin/tools?minutes=15", "p")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(rec.Body.String(), `<div class="toolbar" data-toolbar data-leaf="p" data-refresh-after="4">`))
+	assert.True(t, strings.HasPrefix(rec.Body.String(), `<div class="toolbar" data-toolbar data-view="p" data-refresh-after="4">`))
 
 	// A toolbar of forms that are final says nothing of it.
 	final := serve(webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput)}}}}}.MustCompile("/admin"), http.MethodGet, "/admin/tools").Body.String()
 	assert.False(t, strings.Contains(final, "data-refresh-after"))
-	assert.Contains(t, final, `<div class="toolbar" data-toolbar data-leaf="p">`)
+	assert.Contains(t, final, `<div class="toolbar" data-toolbar data-view="p">`)
 }
 
 func TestAnActionOfAToolbarReadsThePagesArgumentsFromTheRequest(t *testing.T) {
 	t.Parallel()
 
 	s := newToolShop()
-	rec := post(s.h, "/admin/tools?minutes=15&site=north", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	rec := post(s.h, "/admin/tools?minutes=15&site=north", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/tools?minutes=15&site=north")
 	assert.Equal(t, flashOf(rec), "oSynced")
@@ -312,7 +312,7 @@ func TestAnActionOfAToolbarReadsThePagesArgumentsFromTheRequest(t *testing.T) {
 
 	// What is not a button is not understood, and nothing is done.
 	for _, act := range []string{"0", "2", "9", "-1", "x", ""} {
-		rec = post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {act}})
+		rec = post(s.h, "/admin/tools", url.Values{"_view": {"p.0"}, "_act": {act}})
 		assert.Equal(t, rec.Code, http.StatusSeeOther)
 		assert.Equal(t, flashOf(rec), "eThat request was not understood.")
 	}
@@ -348,7 +348,7 @@ func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) 
 	assert.Contains(t, body, `href="/admin/device/new">Create device</a>`)
 	assert.False(t, strings.Contains(body, `<form action="/admin/tools" method="post"`)) // and with no button there is nothing to post
 
-	rec := post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	rec := post(s.h, "/admin/tools", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 	assert.Equal(t, len(s.ran), 0)
@@ -357,7 +357,7 @@ func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) 
 	body = serve(s.h, http.MethodGet, "/admin/tools").Body.String()
 	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button><span class="sr-only">Not available: requires the editor role</span></span>`)
 
-	rec = post(s.h, "/admin/tools", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	rec = post(s.h, "/admin/tools", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 	assert.Equal(t, len(s.ran), 0)
 }

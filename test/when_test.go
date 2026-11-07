@@ -52,7 +52,7 @@ func whenTable(title string) webui.Table[flags] {
 
 func askLeaf(h http.Handler, target, id string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
-	req.Header.Set("X-Webui-Leaf", id)
+	req.Header.Set("X-Webui-View", id)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
@@ -76,8 +76,8 @@ func TestAWhenShowsItsBodyOnlyWhileTheConditionHolds(t *testing.T) {
 	assert.Contains(t, body, ">Before<")
 	assert.Contains(t, body, ">After<")
 	// It leaves nothing of its own in the page: the panels either side are as they are, at the positions they were declared at.
-	assert.Contains(t, body, `data-leaf="p.0"`)
-	assert.Contains(t, body, `data-leaf="p.2"`)
+	assert.Contains(t, body, `data-view="p.0"`)
+	assert.Contains(t, body, `data-view="p.2"`)
 }
 
 // A body is where it was declared whether it is shown or not, so its leaf is named the same.
@@ -87,7 +87,7 @@ func TestTheLeafUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 	var g gate
 	g.open.Store(true)
 	h := editorApp(webui.Stack{columnPanel("Before"), g.when(columnPanel("Inside"))})
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-leaf="p.1.0"`)
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-view="p.1.0"`)
 
 	// And it is the one that is asked for, as any leaf is.
 	assert.Equal(t, askLeaf(h, "/admin/e", "p.1.0").Code, http.StatusOK)
@@ -150,7 +150,7 @@ func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 	g.open.Store(true)
 	assert.Equal(t, askLeaf(h, "/admin/e", table).Code, http.StatusOK)
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e?table.export=csv").Body.String(), "Name,Compress")
-	rec := post(h, "/admin/e", url.Values{"_leaf": {formID}, "f0": {"x"}})
+	rec := post(h, "/admin/e", url.Values{"_view": {formID}, "f0": {"x"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, saved.Load().Name, "x")
 
@@ -163,8 +163,8 @@ func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 	assert.Equal(t, exp.Code, http.StatusOK)
 	assert.False(t, strings.Contains(exp.Body.String(), "Name,Compress"))
 	// A post is refused as one to a leaf that does not exist is, and nothing is saved.
-	hidden := post(h, "/admin/e", url.Values{"_leaf": {formID}, "f0": {"x"}})
-	unknown := post(h, "/admin/e", url.Values{"_leaf": {"p.9"}, "f0": {"x"}})
+	hidden := post(h, "/admin/e", url.Values{"_view": {formID}, "f0": {"x"}})
+	unknown := post(h, "/admin/e", url.Values{"_view": {"p.9"}, "f0": {"x"}})
 	assert.Equal(t, hidden.Code, unknown.Code)
 	assert.Equal(t, hidden.Code, http.StatusSeeOther) // back to the page with the message that it was not understood, as for any leaf the page does not have
 	assert.Equal(t, hidden.Header().Get("Location"), unknown.Header().Get("Location"))

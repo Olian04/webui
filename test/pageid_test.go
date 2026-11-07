@@ -67,7 +67,7 @@ func TestPagesThatLinkBothWaysAreStaticVars(t *testing.T) {
 	assert.Contains(t, list, `<a class="rowlink" href="/admin/shop/a?webui.from=%2Fadmin%2Fshop">a</a>`)
 
 	// Back: the detail page's action redirects to the list.
-	rec := post(h, "/admin/shop/a", url.Values{"_leaf": {"p"}, "f1": {"10.0.0.2"}})
+	rec := post(h, "/admin/shop/a", url.Values{"_view": {"p"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/shop")
 }

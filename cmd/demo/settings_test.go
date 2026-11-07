@@ -21,13 +21,13 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 	assert.Contains(t, body, `minlength="3" maxlength="32"`)
 
 	// Rules run on the server too, and every failure is reported at once.
-	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"ab"}, "f0_1": {"70000"}, "f1_0": {"2"}, "f1_1": {"150"}})
+	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"ab"}, "f0_1": {"70000"}, "f1_0": {"2"}, "f1_1": {"150"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	page := rec
 	for _, want := range []string{"Must be at least 3 characters.", "Must be at most 65535.", "Must be at most 1.", "Must be at most 100."} {
 		assert.Contains(t, page.Body.String(), want)
 	}
-	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
+	rec = post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 }
 
@@ -45,7 +45,7 @@ func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 		"eu--north":  `Must not contain &#34;--&#34;.`,
 		"EU-north-1": "must be lowercase letters, digits and dashes",
 	} {
-		rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {value}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
+		rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {value}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
 		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 		assert.Contains(t, rec.Body.String(), want)
 	}
@@ -68,10 +68,10 @@ func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
 	assert.Contains(t, body, `placeholder="••••••••"`) // there is one, and that is all that is said
 	assert.False(t, strings.Contains(body, "sk-live-0123456789"))
 
-	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {""}})
+	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {""}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, service.Settings().APIKey, "sk-live-0123456789") // empty leaves it
-	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {"sk-new-abcdefghij"}})
+	rec = post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {"sk-new-abcdefghij"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, service.Settings().APIKey, "sk-new-abcdefghij")
 }
@@ -84,7 +84,7 @@ func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
 }
 
 func ingest(sample, load string) url.Values {
-	return url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {sample}, "f1_1": {load}}
+	return url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {sample}, "f1_1": {load}}
 }
 
 func TestIngestShowsEveryKindOfOutcome(t *testing.T) {
@@ -109,7 +109,7 @@ func TestIngestShowsEveryKindOfOutcome(t *testing.T) {
 }
 
 func TestSavingRetentionGoesOnToTheSystemPage(t *testing.T) {
-	rec := post(handler(t), "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})
+	rec := post(handler(t), "/admin/retention", url.Values{"_view": {"p"}, "f0": {"45"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/system") // Then, in place of staying on the form
 	assert.Equal(t, flashOf(rec), "oSaved")
@@ -128,7 +128,7 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	assert.Contains(t, body, `placeholder="No limit"`)
 	assert.Contains(t, body, `<option value="">—</option>`)
 
-	rec := post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5_0": {"true"}, "f5_1": {"true"}})
+	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5_0": {"true"}, "f5_1": {"true"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s := service.Settings()
 	assert.True(t, s.Burst != nil && *s.Burst == 0) // a limit of zero, which is one
@@ -136,7 +136,7 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 	assert.True(t, s.Paused != nil && *s.Paused)
 	assert.True(t, s.Compress) // a checked box is sent as "true"
 
-	rec = post(h, "/admin/settings", url.Values{"_leaf": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {""}, "f4_1": {""}, "f5_0": {""}})
+	rec = post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {""}, "f4_1": {""}, "f5_0": {""}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	s = service.Settings()
 	assert.True(t, s.Burst == nil && s.Quota == nil && s.Paused == nil)

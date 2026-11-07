@@ -56,7 +56,7 @@ func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInElementsThatFollowIt(t *testi
 	t.Parallel()
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/s", nil)
-	req.Header.Set("X-Webui-Leaf", "p")
+	req.Header.Set("X-Webui-View", "p")
 	rec := httptest.NewRecorder()
 	statusApp().ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -71,5 +71,5 @@ func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInElementsThatFollowIt(t *testi
 	assert.NotNil(t, m)
 	_, err := time.Parse(time.RFC3339Nano, m[1])
 	assert.NoError(t, err)
-	assert.True(t, strings.Index(body, "<div hidden data-oob>") > strings.Index(body, `data-leaf="p"`)) // after the panel, which is what the script puts in its place
+	assert.True(t, strings.Index(body, "<div hidden data-oob>") > strings.Index(body, `data-view="p"`)) // after the panel, which is what the script puts in its place
 }

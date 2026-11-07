@@ -119,7 +119,7 @@ func TestAMarkdownRefreshesAsALeafOfItsOwn(t *testing.T) {
 		webui.Markdown[handbook]{Title: "Other", Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: "# Second"}, webui.Ready() }, Content: handbookText},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e", nil)
-	req.Header.Set("X-Webui-Leaf", "p.1")
+	req.Header.Set("X-Webui-View", "p.1")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -250,7 +250,7 @@ func TestThePolicyHasTheOriginsOfEveryMarkdownOnThePageOnceEach(t *testing.T) {
 	assert.Equal(t, policyOf(h, "/admin/e?tabs.tab=two"), want) // the same whichever tab is shown
 	// A refresh of one leaf is a fetch inside the document that has the policy.
 	req := httptest.NewRequest(http.MethodGet, "/admin/e", nil)
-	req.Header.Set("X-Webui-Leaf", "p.0")
+	req.Header.Set("X-Webui-View", "p.0")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Header().Get("Content-Security-Policy"), want)

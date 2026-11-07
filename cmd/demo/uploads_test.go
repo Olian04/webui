@@ -31,7 +31,7 @@ type upload struct {
 func saveIngest(h http.Handler, extra map[string]string, files ...upload) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	for k, v := range map[string]string{"_leaf": "p", "f0_0": "eu-north-1", "f0_1": "8125", "f1_0": "0.5", "f1_1": "60"} {
+	for k, v := range map[string]string{"_view": "p", "f0_0": "eu-north-1", "f0_1": "8125", "f1_0": "0.5", "f1_1": "60"} {
 		_ = w.WriteField(k, v)
 	}
 	for k, v := range extra {
@@ -180,7 +180,7 @@ func postFirmware(h http.Handler, name string, data []byte) *httptest.ResponseRe
 func postFirmwareChoosing(h http.Handler, taken, channel, name string, data []byte) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	_ = w.WriteField("_leaf", "p.0")
+	_ = w.WriteField("_view", "p.0")
 	_ = w.WriteField("f0", taken)
 	_ = w.WriteField("f1", channel)
 	hdr := textproto.MIMEHeader{}

@@ -87,7 +87,7 @@ func TestTableRendersRowsLinksAndCells(t *testing.T) {
 	assert.Contains(t, body, `<span>1.33</span>`) // Precision
 	assert.Contains(t, body, `class="gauge-fill"`)
 	assert.Contains(t, body, `<h2 class="panel-title">Devices</h2>`)
-	assert.Contains(t, body, `data-leaf="p"`)
+	assert.Contains(t, body, `data-view="p"`)
 }
 
 func TestTablePagerLinksAndRange(t *testing.T) {

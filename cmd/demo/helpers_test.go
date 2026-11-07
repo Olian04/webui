@@ -110,7 +110,7 @@ func flashOf(rec *httptest.ResponseRecorder) string {
 // searchBox is the handler as script asks it for the search box's list: with the header that a request for one panel carries, named for the box.
 func searchBox(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Header.Set("X-Webui-Leaf", "search")
+		r.Header.Set("X-Webui-View", "search")
 		h.ServeHTTP(w, r)
 	})
 }

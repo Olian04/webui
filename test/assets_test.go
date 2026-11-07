@@ -180,7 +180,7 @@ func TestPagesAndTheSearchAreCompressedToo(t *testing.T) {
 	assert.Equal(t, zipped.Header().Get("Content-Encoding"), "gzip")
 	vary := strings.Join(zipped.Header().Values("Vary"), ",")
 	assert.Contains(t, vary, "Accept-Encoding")
-	assert.Contains(t, vary, "X-Webui-Leaf") // the page's own is kept
+	assert.Contains(t, vary, "X-Webui-View") // the page's own is kept
 	assert.Equal(t, zipped.Header().Get("Content-Length"), "")
 	assert.Equal(t, builtless(unzip(t, zipped.Body.Bytes())), builtless(page.Body.String()))
 	assert.True(t, zipped.Body.Len() < page.Body.Len()/2)

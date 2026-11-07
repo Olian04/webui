@@ -36,9 +36,9 @@ type PanelProps struct {
 	// Retry is where a failed panel leads on to try again: the address of the page it is on, which asks for it again. "" for none.
 	Retry string
 
-	// Leaf names this panel so a link inside it can replace it on its own. A
+	// ViewID names this panel so a link inside it can replace it on its own. A
 	// panel that cannot be replaced independently leaves it empty.
-	Leaf string
+	ViewID string
 
 	// Grows is a panel whose body is the one thing on the page that scrolls, when the
 	// page is not tall enough for it: it takes the height there is, its head and foot
@@ -170,15 +170,15 @@ func Panel(p PanelProps) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if p.Leaf != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " data-leaf=\"")
+		if p.ViewID != "" {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " data-view=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Leaf)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ViewID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 92, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/panel.templ`, Line: 92, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -222,7 +222,7 @@ func Panel(p PanelProps) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		if p.Leaf != "" {
+		if p.ViewID != "" {
 			templ_7745c5c3_Err = RefreshNote(ctx).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

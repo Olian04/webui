@@ -59,7 +59,7 @@ func confirmApp(confirm string, guard func(context.Context, parcel) error) (http
 
 // leafValues is a post to the leaf at an address, which formValues cannot be: it posts to the first.
 func leafValues(leaf string, kv ...string) url.Values {
-	v := url.Values{"_leaf": {leaf}}
+	v := url.Values{"_view": {leaf}}
 	for i := 0; i+1 < len(kv); i += 2 {
 		v.Add(kv[i], kv[i+1])
 	}

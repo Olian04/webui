@@ -57,8 +57,8 @@ func (p *Program) search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Add("Vary", LeafHeader)
-	if r.Header.Get(LeafHeader) == searchLeaf {
+	w.Header().Add("Vary", ViewHeader)
+	if r.Header.Get(ViewHeader) == searchLeaf {
 		// The box's own list, which script asks for with the header that a request for one panel carries, and not with a parameter of the address.
 		if err := writeHTML(r.Context(), w, http.StatusOK, render.SearchFragment(groups)); err != nil {
 			p.log.Error("webui: render failed", "path", r.URL.Path, "err", err)

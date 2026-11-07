@@ -101,7 +101,7 @@ func (p *Program) receive(w http.ResponseWriter, r *http.Request, page *ir.Page,
 			values.Add(name, string(b))
 			continue
 		}
-		leaf, known := leaves[values.Get("_leaf")]
+		leaf, known := leaves[values.Get("_view")]
 		if !known {
 			p.refuse(w, r, notUnderstood)
 			return false

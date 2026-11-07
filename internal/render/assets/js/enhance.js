@@ -8,7 +8,7 @@
 (function () {
   'use strict';
 
-  var LEAF_HEADER = 'X-Webui-Leaf';
+  var VIEW_HEADER = 'X-Webui-View';
   var inflight = new Map();
 
   function $(selector, root) {
@@ -18,7 +18,7 @@
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
   function leafSelector(id) {
-    return '[data-leaf="' + CSS.escape(id) + '"]';
+    return '[data-view="' + CSS.escape(id) + '"]';
   }
 
   // What this script changes without a navigation is said once, in words, in a status region that the page has and that is empty until then, so that a reader
@@ -251,10 +251,10 @@
   // when the answer is anything but that panel: the caller falls back to a
   // plain navigation, which is what the link was all along.
   async function fetchLeaf(id, href, signal, marker) {
-    marker = marker || 'data-leaf'; // a panel, or the set of tabs, which is named by its own attribute
+    marker = marker || 'data-view'; // a panel, or the set of tabs, which is named by its own attribute
     var started = performance.now();
     var res = await fetch(href, {
-      headers: { [LEAF_HEADER]: id, Accept: 'text/html' },
+      headers: { [VIEW_HEADER]: id, Accept: 'text/html' },
       credentials: 'same-origin',
       signal: signal,
     });
@@ -306,7 +306,7 @@
   var armed = new WeakSet();
 
   function armRefresh(scope) {
-    $$('[data-leaf][data-refresh-after]', scope).concat(scope.matches && scope.matches('[data-leaf][data-refresh-after]') ? [scope] : []).forEach(function (el) {
+    $$('[data-view][data-refresh-after]', scope).concat(scope.matches && scope.matches('[data-view][data-refresh-after]') ? [scope] : []).forEach(function (el) {
       if (armed.has(el)) return;
       armed.add(el);
       var secs = parseInt(el.getAttribute('data-refresh-after'), 10);
@@ -317,7 +317,7 @@
   async function pollLeaf(el, secs) {
     if (!el.isConnected) return; // replaced since: the one that replaced it has its own say
     if (el.hasAttribute('data-paused')) return; // the reader stopped it, and starts it again with the same button
-    var id = el.getAttribute('data-leaf');
+    var id = el.getAttribute('data-view');
     if (document.hidden) {
       document.addEventListener('visibilitychange', function again() {
         if (document.hidden) return;
@@ -350,7 +350,7 @@
   // again: it is not asked for while it is paused, and is asked for at once when it is not.
   document.addEventListener('click', function (e) {
     var button = e.target.closest('[data-refresh-pause]');
-    var leaf = button && button.closest('[data-leaf]');
+    var leaf = button && button.closest('[data-view]');
     if (!leaf) return;
     var state = $('[data-refresh-state]', leaf);
     var title = $('.panel-title', leaf);
@@ -389,10 +389,10 @@
     var apart = function (el) {
       return !moved || (el !== moved && !moved.contains(el) && !el.contains(moved));
     };
-    $$('[data-leaf]')
+    $$('[data-view]')
       .filter(apart)
       .forEach(function (el) {
-        var id = el.getAttribute('data-leaf');
+        var id = el.getAttribute('data-view');
         var replaces = $('a[data-in-place]', el);
         var forms = $$('form[method="post"]', el);
         if (!replaces && !forms.length) return;
@@ -439,9 +439,9 @@
   // server, as they are by a link that replaces one. A panel that is a form is left alone, since it holds what the visitor has typed; a table is not,
   // though it has a form for its filters, which are in the address and so are asked for again with it.
   document.addEventListener('webui:changed', function (e) {
-    var from = e.detail && e.detail.leaf;
-    $$('[data-leaf]').forEach(function (leaf) {
-      var id = leaf.getAttribute('data-leaf');
+    var from = e.detail && e.detail.view;
+    $$('[data-view]').forEach(function (leaf) {
+      var id = leaf.getAttribute('data-view');
       if (id === from || ($('form', leaf) && !$('table', leaf))) return;
       fetchLeaf(id, location.pathname + location.search)
         .then(function (next) {
@@ -459,13 +459,13 @@
     // since the panel is asked for at the same path, and anything else is left to the browser.
     var a = e.target.closest('a[href][data-in-place]');
     if (!a || a.target || a.hasAttribute('download')) return;
-    var leaf = a.closest('[data-leaf]');
+    var leaf = a.closest('[data-view]');
     if (!leaf) return;
     var dest = new URL(a.href, location.href);
     if (dest.origin !== location.origin || dest.pathname !== location.pathname) return;
 
     e.preventDefault();
-    refreshLeaf(leaf.getAttribute('data-leaf'), dest.pathname + dest.search, true);
+    refreshLeaf(leaf.getAttribute('data-view'), dest.pathname + dest.search, true);
   });
 
   /* ------------------------------- validation ------------------------------ */
@@ -583,7 +583,7 @@
     try {
       var started = performance.now();
       var res = await fetch(href, {
-        headers: { [LEAF_HEADER]: id, Accept: 'text/html' },
+        headers: { [VIEW_HEADER]: id, Accept: 'text/html' },
         credentials: 'same-origin',
         signal: ctl.signal,
       });
@@ -720,7 +720,7 @@
   document.addEventListener('submit', function (e) {
     var form = e.target;
     if (!form.matches || !form.matches('[data-filter-form]')) return;
-    var leaf = form.closest('[data-leaf]');
+    var leaf = form.closest('[data-view]');
     if (!leaf) return;
     var params = new URLSearchParams();
     new FormData(form).forEach(function (value, name) {
@@ -729,7 +729,7 @@
     var dest = new URL(form.getAttribute('action'), location.href);
     var href = dest.pathname + (params.toString() ? '?' + params : '');
     e.preventDefault();
-    refreshLeaf(leaf.getAttribute('data-leaf'), href, true);
+    refreshLeaf(leaf.getAttribute('data-view'), href, true);
   });
 
   /* ------------------------------ description tips ------------------------------ */
@@ -1253,7 +1253,7 @@
       palette.ctl = ctl;
       try {
         var res = await fetch(url + '?q=' + encodeURIComponent(query), {
-          headers: { [LEAF_HEADER]: 'search', Accept: 'text/html' },
+          headers: { [VIEW_HEADER]: 'search', Accept: 'text/html' },
           credentials: 'same-origin',
           signal: ctl.signal,
         });

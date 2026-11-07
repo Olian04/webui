@@ -25,7 +25,7 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a form could not be read", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a form could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
 		}
 		view.Failed = true
 		return p.render.Form(view)

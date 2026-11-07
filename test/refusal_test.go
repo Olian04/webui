@@ -108,7 +108,7 @@ func TestAPostToAPageThatRefusesIsSentToWhatSaysIt(t *testing.T) {
 	t.Parallel()
 
 	h := refusalApp(nil)
-	rec := post(h, "/admin/records/missing", url.Values{"_leaf": {"p.0"}, "_act": {"0"}})
+	rec := post(h, "/admin/records/missing", url.Values{"_view": {"p.0"}, "_act": {"0"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, serve(h, http.MethodGet, rec.Header().Get("Location")).Code, http.StatusNotFound)
 }

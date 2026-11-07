@@ -84,7 +84,7 @@ func TestColumnsGiveTheirLeavesPositionalIDsLikeASplitDoes(t *testing.T) {
 		webui.Columns{{Weight: 1, Body: columnPanel("A")}, {Weight: 2, Body: columnPanel("B")}},
 		webui.Split{columnPanel("C"), columnPanel("D")},
 	}), http.MethodGet, "/admin/e").Body.String()
-	for _, id := range []string{`data-leaf="p.0.0"`, `data-leaf="p.0.1"`, `data-leaf="p.1.0"`, `data-leaf="p.1.1"`} {
+	for _, id := range []string{`data-view="p.0.0"`, `data-view="p.0.1"`, `data-view="p.1.0"`, `data-view="p.1.1"`} {
 		assert.Contains(t, body, id)
 	}
 }

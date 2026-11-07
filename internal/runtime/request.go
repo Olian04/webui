@@ -131,7 +131,7 @@ func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what st
 			return v, false, refused
 		}
 		if ctx.Err() == nil {
-			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "leaf", render.LeafID(at), "err", err)
+			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "view", render.LeafID(at), "err", err)
 		}
 		return v, false, nil
 	}

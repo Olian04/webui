@@ -165,7 +165,7 @@ func TestARejectedSubmissionKeepsTheCancelItHad(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp(false)
-	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_leaf": {"p.0"}, "f1": {"not-an-ip"}})
+	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_view": {"p.0"}, "f1": {"not-an-ip"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	page := rec
 	assert.Contains(t, page.Body.String(), `href="/admin/other">Cancel`)
@@ -177,12 +177,12 @@ func TestASavedFormReturnsToThePageItWasOpenedFrom(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp(false)
-	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother%3Ftable.sort%3Did", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
+	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother%3Ftable.sort%3Did", url.Values{"_view": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/other?table.sort=id")
 
 	// Opened directly, it stays where it was, as it always did.
-	rec = post(h, "/admin/device/a", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
+	rec = post(h, "/admin/device/a", url.Values{"_view": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/a")
 }
 
@@ -190,7 +190,7 @@ func TestAnExplicitRedirectBeatsTheOrigin(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp(true)
-	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
+	rec := post(h, "/admin/device/a?webui.from=%2Fadmin%2Fother", url.Values{"_view": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/plain")
 }
 
@@ -198,6 +198,6 @@ func TestASavedFormNeverReturnsToAnAddressThatIsNotInTheApp(t *testing.T) {
 	t.Parallel()
 
 	h := cancelApp(false)
-	rec := post(h, "/admin/device/a?webui.from=https%3A%2F%2Fevil.example%2F", url.Values{"_leaf": {"p.0"}, "f1": {"10.0.0.2"}})
+	rec := post(h, "/admin/device/a?webui.from=https%3A%2F%2Fevil.example%2F", url.Values{"_view": {"p.0"}, "f1": {"10.0.0.2"}})
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/a?webui.from=https%3A%2F%2Fevil.example%2F")
 }

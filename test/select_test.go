@@ -51,7 +51,7 @@ func taskApp(start task, saved *task) http.Handler {
 }
 
 func submitTask(h http.Handler, values url.Values) (code int, body string) {
-	values.Set("_leaf", "p")
+	values.Set("_view", "p")
 	rec := post(h, "/admin/t", values) // a refused one is the form again, with what was typed
 	return rec.Code, rec.Body.String()
 }

@@ -76,7 +76,7 @@ func newUploadShop(edit func(*webui.FileUpload[struct{}]), pageOpts ...func(*web
 
 // upload posts the one file of a panel, as a browser does: the leaf first.
 func upload(h http.Handler, filename, content string, wrap func(io.Reader) io.Reader) *httptest.ResponseRecorder {
-	return orderedPost(h, "/admin/up", wrap, rawPart{"_leaf", "", "p"}, rawPart{"file", filename, content})
+	return orderedPost(h, "/admin/up", wrap, rawPart{"_view", "", "p"}, rawPart{"file", filename, content})
 }
 
 func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
@@ -117,7 +117,7 @@ func TestAFileUploadIsAFormOfItsOwnWithTheLeafBeforeTheFile(t *testing.T) {
 	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
 	assert.Contains(t, body, "Upload firmware")
 	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	leaf, file := strings.Index(body, `name="_leaf"`), strings.Index(body, `type="file"`)
+	leaf, file := strings.Index(body, `name="_view"`), strings.Index(body, `type="file"`)
 	assert.True(t, leaf >= 0 && file > leaf)
 	assert.Contains(t, body, `name="file" accept="image/png,.png,image/jpeg,.jpg,.jpeg" required`)
 	assert.Contains(t, body, "A PNG or JPEG file")
@@ -175,7 +175,7 @@ func TestAFileUploadIsStreamedToRunAndNotHeldFirst(t *testing.T) {
 		s.h.ServeHTTP(rec, req)
 	}()
 	go func() {
-		_ = mw.WriteField("_leaf", "p")
+		_ = mw.WriteField("_view", "p")
 		hdr := textproto.MIMEHeader{}
 		hdr.Set("Content-Disposition", `form-data; name="file"; filename="a.bin"`)
 		part, _ := mw.CreatePart(hdr)
@@ -318,7 +318,7 @@ func TestAFileUploadRunCanReadThePagesArguments(t *testing.T) {
 			return webui.Success("Uploaded"), nil
 		}},
 	}}}}.MustCompile("/admin")
-	rec := orderedPost(h, "/admin/up/firmware", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "a.bin", "data"})
+	rec := orderedPost(h, "/admin/up/firmware", nil, rawPart{"_view", "", "p"}, rawPart{"file", "a.bin", "data"})
 	assert.Equal(t, flashOf(rec), "oUploaded")
 	assert.Equal(t, got, "firmware")
 }
@@ -408,8 +408,8 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 
 	s := newUploadShop(nil)
 	for name, parts := range map[string][]rawPart{
-		"no part":      {{"_leaf", "", "p"}},
-		"an empty one": {{"_leaf", "", "p"}, {"file", "", ""}},
+		"no part":      {{"_view", "", "p"}},
+		"an empty one": {{"_view", "", "p"}, {"file", "", ""}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			rec := orderedPost(s.h, "/admin/up", nil, parts...)
@@ -420,7 +420,7 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 	assert.Equal(t, s.count(), 0)
 
 	// A file with a name and no bytes is handed to Run, as any file is, with a reader that is at its end.
-	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "dir/installer.yaml", ""})
+	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_view", "", "p"}, rawPart{"file", "dir/installer.yaml", ""})
 	assert.Equal(t, flashOf(rec), "oUploaded installer.yaml")
 	assert.Equal(t, s.count(), 1)
 	assert.Equal(t, len(s.last().data), 0)
@@ -428,7 +428,7 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 
 	// One that the panel does not take by its kind is told that it is empty, and not that a kind of file is to be chosen.
 	png := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
-	assert.Equal(t, flashOf(orderedPost(png.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "a.png", ""})), "eThis file is empty.")
+	assert.Equal(t, flashOf(orderedPost(png.h, "/admin/up", nil, rawPart{"_view", "", "p"}, rawPart{"file", "a.png", ""})), "eThis file is empty.")
 	assert.Equal(t, png.count(), 0)
 
 	// The same as a fragment for script, which sends a folder's empty files as it sends the others.
@@ -437,7 +437,7 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 	assert.False(t, strings.Contains(fragment.Body.String(), "Choose a file."))
 
 	// The file before the leaf is not anybody's.
-	before := orderedPost(s.h, "/admin/up", nil, rawPart{"file", "a.bin", "data"}, rawPart{"_leaf", "", "p"})
+	before := orderedPost(s.h, "/admin/up", nil, rawPart{"file", "a.bin", "data"}, rawPart{"_view", "", "p"})
 	assert.Equal(t, flashOf(before), "eThat request was not understood.")
 	assert.Equal(t, s.count(), 2)
 }
@@ -468,7 +468,7 @@ func TestFileUploadsAtTheSameTimeAreEachTheirOwn(t *testing.T) {
 func typedUpload(h http.Handler, filename, declared, content string) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	_ = w.WriteField("_leaf", "p")
+	_ = w.WriteField("_view", "p")
 	hdr := textproto.MIMEHeader{}
 	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+filename+`"`)
 	if declared != "" {
@@ -580,7 +580,7 @@ func newChoiceShop(edit func(*webui.FileUpload[choice])) *choiceShop {
 // chosen posts a panel with options: the leaf, the fields in the order that the form has them, and then the one file.
 func chosen(h http.Handler, wrap func(io.Reader) io.Reader, note, channel, content string) *httptest.ResponseRecorder {
 	return orderedPost(h, "/admin/up", wrap,
-		rawPart{"_leaf", "", "p"}, rawPart{"f0", "", note}, rawPart{"f1", "", channel}, rawPart{"file", "a.bin", content})
+		rawPart{"_view", "", "p"}, rawPart{"f0", "", note}, rawPart{"f1", "", channel}, rawPart{"file", "a.bin", content})
 }
 
 func TestAFileUploadHasInputsBesideTheFileWithTheirDefaultsAndTheirRules(t *testing.T) {
@@ -593,7 +593,7 @@ func TestAFileUploadHasInputsBesideTheFileWithTheirDefaultsAndTheirRules(t *test
 	assert.Contains(t, body, `value="a note"`)                    // the defaults that Load gave
 	assert.Contains(t, body, `minlength="3"`)                     // the rules, as a form's inputs have them
 	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	assert.Equal(t, strings.Count(body, `name="_leaf"`), 1)
+	assert.Equal(t, strings.Count(body, `name="_view"`), 1)
 }
 
 func TestAFileUploadHandsRunWhatWasChosenBesideTheFile(t *testing.T) {
@@ -651,7 +651,7 @@ func TestAFileUploadFieldAfterTheFileIsIgnored(t *testing.T) {
 
 	s := newChoiceShop(nil)
 	rec := orderedPost(s.h, "/admin/up", nil,
-		rawPart{"_leaf", "", "p"}, rawPart{"f0", "", "first"}, rawPart{"f1", "", "stable"}, rawPart{"file", "a.bin", "data"}, rawPart{"f0", "", "late"})
+		rawPart{"_view", "", "p"}, rawPart{"f0", "", "first"}, rawPart{"f1", "", "stable"}, rawPart{"file", "a.bin", "data"}, rawPart{"f0", "", "late"})
 	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
 	assert.Equal(t, s.runs[0].Options.Note, "first")
 }
@@ -663,7 +663,7 @@ func TestAFileUploadOptionsAreOptional(t *testing.T) {
 	s := newChoiceShop(func(f *webui.FileUpload[choice]) { f.Load, f.Fields = nil, nil })
 	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
 	assert.False(t, strings.Contains(body, `name="f0"`))
-	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_leaf", "", "p"}, rawPart{"file", "a.bin", "data"})
+	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_view", "", "p"}, rawPart{"file", "a.bin", "data"})
 	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
 	assert.Equal(t, s.runs[0].Options, choice{})
 }
@@ -697,7 +697,7 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 func postFragment(h http.Handler, filename, content string) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	_ = w.WriteField("_leaf", "p")
+	_ = w.WriteField("_view", "p")
 	hdr := textproto.MIMEHeader{}
 	hdr.Set("Content-Disposition", `form-data; name="file"; filename="`+filename+`"`)
 	part, _ := w.CreatePart(hdr)
@@ -705,7 +705,7 @@ func postFragment(h http.Handler, filename, content string) *httptest.ResponseRe
 	_ = w.Close()
 	req := httptest.NewRequest(http.MethodPost, "/admin/up", &body)
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	req.Header.Set("X-Webui-Leaf", "p")
+	req.Header.Set("X-Webui-View", "p")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
@@ -842,9 +842,9 @@ func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 
 	js := assetSource(t, "upload.js")
 	for _, want := range []string{
-		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(LEAF_HEADER, leaf)", "'X-Webui-Leaf'", "new FormData()", "data.append('file', item.file,",
+		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(VIEW_HEADER, leaf)", "'X-Webui-View'", "new FormData()", "data.append('file', item.file,",
 		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.result", "hasAttribute('data-multiple')", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
-		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.result-next", "li._ok", "xhr.status >= 200 && xhr.status < 300", "window.location.assign(next.href)", "X-Webui-Leaf",
+		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.result-next", "li._ok", "xhr.status >= 200 && xhr.status < 300", "window.location.assign(next.href)", "X-Webui-View",
 	} {
 		assert.Contains(t, js, want)
 	}

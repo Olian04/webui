@@ -67,7 +67,7 @@ func ExampleTable() {
 	// that found it, and a link.
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/admin/_webui/search?q=192.168", nil)
-	req.Header.Set("X-Webui-Leaf", "search") // as the box's script asks for its list: with the header that a request for one panel carries
+	req.Header.Set("X-Webui-View", "search") // as the box's script asks for its list: with the header that a request for one panel carries
 	handler.ServeHTTP(rec, req)
 
 	group := regexp.MustCompile(`<div class="pal-label[^"]*"[^>]*>(.*?)</div>`).FindStringSubmatch(rec.Body.String())

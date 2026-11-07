@@ -62,7 +62,7 @@ func TestADisabledActionIsDrawnWithItsReasonAndStillRefused(t *testing.T) {
 	assert.Contains(t, body, `value="row:0:`+other+`">Dismiss`) // the button is a dialog's, whose own button submits
 
 	// A request that is made by hand is refused for the same reason,.
-	rec := post(h, "/admin/alert", url.Values{"_leaf": {"p"}, "_act": {"row:0:" + critical}})
+	rec := post(h, "/admin/alert", url.Values{"_view": {"p"}, "_act": {"row:0:" + critical}})
 	assert.Equal(t, flashOf(rec), "eA critical alert is acknowledged, not dismissed")
 	_, still := service.Alert(critical)
 	assert.True(t, still)
