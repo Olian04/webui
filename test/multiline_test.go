@@ -41,7 +41,7 @@ func noteApp(start note) (http.Handler, func() note) {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/n", Body: form}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/n", View: form}}}.MustCompile("/admin")
 	return h, func() note {
 		mu.Lock()
 		defer mu.Unlock()
@@ -86,11 +86,11 @@ func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
 		return []note{{Title: "a", Body: "one\ntwo\nthree\nfour"}}, webui.Ready()
 	}
 	h := webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[note]{
+		webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[note]{
 			Title: "Notes", Loader: webui.RowsLoader[note]{Load: notes}, Export: true,
 			Columns: []webui.Accessor[note]{webui.String[note]{Label: "Title", Load: func(n note) string { return n.Title }}, body},
 		}},
-		webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[note]{
+		webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[note]{
 			Load:   func(context.Context) (note, webui.Loaded) { return note{Body: "one\ntwo"}, webui.Ready() },
 			Fields: []webui.Accessor[note]{body},
 		}},
@@ -110,14 +110,14 @@ func TestAMultilineStringIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	load := func(n note) string { return n.Body }
 	store := func(*note, string) {}
-	problems := func(body webui.PageBody) string {
+	problems := func(body webui.View) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/n", Body: body}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/n", View: body}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
 	}
-	form := func(s webui.String[note]) webui.PageBody {
+	form := func(s webui.String[note]) webui.View {
 		return webui.Form[note]{
 			Load:   func(context.Context) (note, webui.Loaded) { return note{}, webui.Ready() },
 			Fields: []webui.Accessor[note]{s},

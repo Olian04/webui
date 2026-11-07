@@ -203,9 +203,9 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 	r.monaco, _ = assets.MonacoFiles() // embedded by the build: it is there
 	r.phones, r.uploads, r.queues = map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for _, p := range app.Pages {
-		r.phones[p.PathTemplate] = editsPhone(p.Body)
-		r.uploads[p.PathTemplate] = editsFile(p.Body)
-		r.queues[p.PathTemplate] = hasUpload(p.Body)
+		r.phones[p.PathTemplate] = editsPhone(p.Root)
+		r.uploads[p.PathTemplate] = editsFile(p.Root)
+		r.queues[p.PathTemplate] = hasUpload(p.Root)
 	}
 	r.buildContexts()
 	for _, p := range app.Pages {

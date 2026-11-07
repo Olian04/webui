@@ -32,7 +32,7 @@ func ExampleTable() {
 			},
 			id, ip,
 		),
-		Body: webui.Form[device]{
+		View: webui.Form[device]{
 			Load: func(ctx context.Context) (device, webui.Loaded) {
 				want := webui.ArgsOf[deviceArgs](ctx).ID
 				for _, d := range devices {
@@ -49,7 +49,7 @@ func ExampleTable() {
 	list := webui.Page[webui.NoArgs]{
 		Path: "/device",
 		Nav:  webui.Nav{Label: "Devices"},
-		Body: webui.Table[device]{
+		View: webui.Table[device]{
 			Title:  "Devices",
 			Loader: webui.RowsLoader[device]{Load: func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() }},
 			RowClick: webui.Link[device, deviceArgs]{

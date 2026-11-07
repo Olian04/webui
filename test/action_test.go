@@ -71,7 +71,7 @@ func newShop() *shop {
 		Guard: func(context.Context, detailsArgs) error {
 			return s.pageGate
 		},
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Title: "Device",
 			Load: func(ctx context.Context) (Device, webui.Loaded) {
 				a := webui.ArgsOf[detailsArgs](ctx)
@@ -101,7 +101,7 @@ func newShop() *shop {
 	}
 	list = webui.Page[webui.NoArgs]{
 		Path: "/device", Nav: webui.Nav{Label: "Devices"},
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Title: "Devices",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				return webui.PagedWindow[Device]{Items: []Device{{Id: "a:1"}, {Id: "b"}, {Id: "locked"}}, Total: 3}, webui.Ready()

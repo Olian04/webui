@@ -20,12 +20,12 @@ const ActivityPath webui.PageID[webui.NoArgs] = "/activity"
 var Activity = webui.Page[webui.NoArgs]{
 	Path: ActivityPath,
 	Nav:  webui.Nav{Label: "Activity", Icon: "bolt", Section: "Platform"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		webui.Split{
 			// The two views of what is new share one panel's place: only the tab that is selected is read.
 			webui.Tabs{
-				{Label: "Alerts", Body: ActivityAlerts},
-				{Label: "Releases", Body: ActivityReleases},
+				{Label: "Alerts", View: ActivityAlerts},
+				{Label: "Releases", View: ActivityReleases},
 			},
 			ActivityOnCall,
 		},
@@ -42,7 +42,7 @@ type Escalation struct{ Critical int }
 var CriticalOpen = webui.Bool[Escalation]{Load: func(e Escalation) bool { return e.Critical > 0 }}
 
 // ActivityEscalation is a When: a notice that is shown only while critical alerts are open, and leaves no gap when there are none. Its Load reads what the
-// condition is decided from, its Show says whether it holds, and its Body loads its own data (here the count again: the model is not handed on). Dismiss or
+// condition is decided from, its Show says whether it holds, and its View loads its own data (here the count again: the model is not handed on). Dismiss or
 // acknowledge the critical alerts on the Alerts page and it is gone, with whatever was in it out of reach. A When is for what a page shows: what lets a
 // visitor act on an alert is the Guard of its action.
 var ActivityEscalation = webui.When[Escalation]{
@@ -50,7 +50,7 @@ var ActivityEscalation = webui.When[Escalation]{
 		return Escalation{Critical: service.CriticalOpen()}, webui.Ready()
 	},
 	Show: CriticalOpen,
-	Body: webui.Markdown[Escalation]{
+	View: webui.Markdown[Escalation]{
 		Title: "Escalation",
 		Load: func(context.Context) (Escalation, webui.Loaded) {
 			return Escalation{Critical: service.CriticalOpen()}, webui.Ready()
@@ -74,7 +74,7 @@ var ReleaseDay = webui.Page[ReleaseDayArgs]{
 		}
 		return nil
 	},
-	Body: webui.List[Release]{
+	View: webui.List[Release]{
 		Title: "Published",
 		Loader: webui.RowsLoader[Release]{Load: func(ctx context.Context) ([]Release, webui.Loaded) {
 			day, _ := time.Parse(time.DateOnly, webui.ArgsOf[ReleaseDayArgs](ctx).Date)

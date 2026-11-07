@@ -72,7 +72,7 @@ func backend(title string, d time.Duration, rows int) webui.Table[Probe] {
 var LoadingOrder = webui.Page[webui.NoArgs]{
 	Path: "/loading/order",
 	Nav:  webui.Nav{Label: "In order", Icon: "list-ol", Section: "Loading"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("The sidebar and the panels above the slow one are on screen at once. The 400 ms panel arrives, and the 250 ms panel, which was ready before it, is drawn after it, because the page arrives in the order it is written. The page moves down as each panel arrives. Reload to see it again."),
 		backend("Quick (10 ms)", 10*time.Millisecond, 2),
 		backend("Slow (400 ms)", 400*time.Millisecond, 4),
@@ -93,7 +93,7 @@ const staircasePanels = 10
 var LoadingStaircase = webui.Page[webui.NoArgs]{
 	Path: "/loading/staircase",
 	Nav:  webui.Nav{Label: "Staircase (10 s)", Icon: "stairs", Section: "Loading"},
-	Body: staircase(),
+	View: staircase(),
 }
 
 func staircase() webui.Stack {
@@ -130,13 +130,13 @@ func stamped(title string, d time.Duration) webui.Table[Stamp] {
 var LoadingTabs = webui.Page[webui.NoArgs]{
 	Path: "/loading/tabs",
 	Nav:  webui.Nav{Label: "Tabs read one tab", Icon: "window-restore", Section: "Loading"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Follow a tab. The panels above and below the Tabs keep the moment they were read at, because only the Tabs is asked for, and only the tab that you chose is read: its panels say when, and the tab you left is read again only if you come back. Each tab takes 500 ms. Reload the page, which reads all of it, to see the difference. Without script a tab is a link to the page, and the whole page is read."),
 		stamped("Above the tabs (read with the page)", 0),
 		webui.Tabs{
-			{Label: "First", Body: webui.Split{stamped("First, left (500 ms)", 500*time.Millisecond), stamped("First, right (500 ms)", 500*time.Millisecond)}},
-			{Label: "Second", Body: stamped("Second (500 ms)", 500*time.Millisecond)},
-			{Label: "Third", Body: stamped("Third (500 ms)", 500*time.Millisecond)},
+			{Label: "First", View: webui.Split{stamped("First, left (500 ms)", 500*time.Millisecond), stamped("First, right (500 ms)", 500*time.Millisecond)}},
+			{Label: "Second", View: stamped("Second (500 ms)", 500*time.Millisecond)},
+			{Label: "Third", View: stamped("Third (500 ms)", 500*time.Millisecond)},
 		},
 		stamped("Below the tabs (read with the page)", 0),
 	},
@@ -147,15 +147,15 @@ var LoadingTabs = webui.Page[webui.NoArgs]{
 var LoadingNested = webui.Page[webui.NoArgs]{
 	Path: "/loading/nested",
 	Nav:  webui.Nav{Label: "Nested layouts", Icon: "layer-group", Section: "Loading"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("A Split of a slow panel (300 ms) and a quick one (20 ms), then Tabs whose selected tab is slow (200 ms), then a last panel. A layout is sent in order like the page: the quick panel on the right of the Split is ready first and is drawn after the slow one on its left. The Tabs strip arrives together with the tab it selects. Each part waits for the part above it."),
 		webui.Split{
 			backend("Split, left (300 ms)", 300*time.Millisecond, 3),
 			backend("Split, right (20 ms)", 20*time.Millisecond, 3),
 		},
 		webui.Tabs{
-			{Label: "Slow tab (200 ms)", Body: backend("Selected tab (200 ms)", 200*time.Millisecond, 2)},
-			{Label: "Other tab (20 ms)", Body: backend("Other tab (20 ms)", 20*time.Millisecond, 2)},
+			{Label: "Slow tab (200 ms)", View: backend("Selected tab (200 ms)", 200*time.Millisecond, 2)},
+			{Label: "Other tab (20 ms)", View: backend("Other tab (20 ms)", 20*time.Millisecond, 2)},
 		},
 		backend("After the layouts (100 ms)", 100*time.Millisecond, 2),
 	},
@@ -167,7 +167,7 @@ var LoadingNested = webui.Page[webui.NoArgs]{
 var LoadingFailures = webui.Page[webui.NoArgs]{
 	Path: "/loading/failures",
 	Nav:  webui.Nav{Label: "Panels that fail", Icon: "triangle-exclamation", Section: "Loading"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("The first panel is slow (300 ms), so the page is on its way when the others fail. A panel whose Load returns an error and a panel whose Load panics each say that they could not load, where they are, and the panel after them is drawn. The cause of each is in the server's log, and is never shown."),
 		backend("Slow (300 ms)", 300*time.Millisecond, 2),
 		webui.Table[Probe]{
@@ -195,7 +195,7 @@ var LoadingFailures = webui.Page[webui.NoArgs]{
 var LoadingWhole = webui.Page[webui.NoArgs]{
 	Path: "/loading/whole",
 	Nav:  webui.Nav{Label: "Built whole (editor)", Icon: "file-code", Section: "Loading"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("This page has a code editor, and an editor needs its script and stylesheet in the head of the page, which is sent first. So it is not sent as it is built: nothing of it arrives until the 400 ms panel has answered, and then all of it does, as one piece. Compare with 'In order'."),
 		backend("Slow (400 ms)", 400*time.Millisecond, 3),
 		webui.Editor[Note]{
@@ -214,7 +214,7 @@ var LoadingGuarded = webui.Page[webui.NoArgs]{
 	Path:  "/loading/guarded",
 	Nav:   webui.Nav{Label: "Guard refuses", Icon: "shield-halved", Section: "Loading"},
 	Guard: canEdit[webui.NoArgs],
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("This page is for editors. As a viewer it is the 'Not permitted' state at once, with the status 403, and its slow panels were never read. As an editor it is sent as it is built, like 'In order'."),
 		backend("Slow (300 ms)", 300*time.Millisecond, 3),
 		backend("Medium (150 ms)", 150*time.Millisecond, 2),
@@ -231,7 +231,7 @@ var LoadingFast = webui.Page[webui.NoArgs]{
 		wait(ctx, *slowSidebar)
 		return nil
 	},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Every panel here answers within 50 ms, so the page is built whole and sent in one piece, with nothing flushed early. Start the demo with -slow-sidebar 300ms and every page, this one included, waits 300 ms for its sidebar, because the Guard of this entry is asked for on every page, beside the panels."),
 		backend("Instant", 0, 3),
 		backend("Quick (20 ms)", 20*time.Millisecond, 2),

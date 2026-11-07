@@ -33,7 +33,7 @@ func editable(title string, fields ...string) webui.Form[Note] {
 var LayoutSplit = webui.Page[webui.NoArgs]{
 	Path: "/layout/split",
 	Nav:  webui.Nav{Label: "Split rows", Icon: "table-columns", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Five panels in one Split are five equal columns, none narrower than 280 px, so as many as fit are in a row and the rest wrap to rows below, each sharing its width. In each row the panels are as tall as the tallest one, with their borders lined up, and a pager or a Save button at the bottom of its box. A row with one panel leaves it as tall as it is, and the rows do not follow one another. The Split after it is its own. Narrow the window and the rows become shorter, down to one column, each panel its natural height."),
 		webui.Split{
 			editable("Row 1, left: a tall form", "Name", "Address", "Owner", "Region", "Notes"),
@@ -88,7 +88,7 @@ func compactAlerts(title string) webui.Table[Alert] {
 var LayoutRail = webui.Page[webui.NoArgs]{
 	Path: "/layout/rail",
 	Nav:  webui.Nav{Label: "Main and rail", Icon: "table-cells-large", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("A table of devices, and beside it a rail of three panels: the collector's status, the open alerts and the sites. The rail is a Stack inside a Split, so it is one column of the grid. The table is as tall as the rail needs or its own rows do, whichever is more. The rail's table takes the height the table beside it has, so the two end together with their pagers at the bottom, and the status panel keeps its own height. Below 1100 px the rail goes under the table."),
 		webui.Split{
 			compactDevices("Devices", 14),
@@ -107,7 +107,7 @@ var LayoutRail = webui.Page[webui.NoArgs]{
 var LayoutColumns = webui.Page[webui.NoArgs]{
 	Path: "/layout/columns",
 	Nav:  webui.Nav{Label: "Columns in columns", Icon: "grip", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("A Split whose first child is a Split: three columns, two narrow and one wide. In the first block they are a list, a status and a wide table. In the second block the panels say how tall they are: those in the inner Split are as tall as each other, and the cell they are in is as tall as the panel beside it. Narrow the window below 1100 px and every Split becomes one column. The Weighted columns page does it with weights instead."),
 		webui.Split{
 			webui.Split{
@@ -142,26 +142,26 @@ var LayoutColumns = webui.Page[webui.NoArgs]{
 var LayoutWeights = webui.Page[webui.NoArgs]{
 	Path: "/layout/weights",
 	Nav:  webui.Nav{Label: "Weighted columns", Icon: "table-columns", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Columns of unequal width, from the weights they are given: 25/75, 75/25 and 25/50/25 below, then four columns of equal weight. A column is never narrower than 280 px: narrow the window and the last column of a row moves to a row of its own, and each row shares its width by weight in turn, down to one column. The panels of a row are as tall as the tallest."),
 		webui.Columns{
-			{Weight: 1, Body: compactAlerts("Alerts: 1")},
-			{Weight: 3, Body: compactDevices("Devices: 3", 8)},
+			{Weight: 1, View: compactAlerts("Alerts: 1")},
+			{Weight: 3, View: compactDevices("Devices: 3", 8)},
 		},
 		webui.Columns{
-			{Weight: 3, Body: compactDevices("Devices: 3", 8)},
-			{Weight: 1, Body: SystemStatus},
+			{Weight: 3, View: compactDevices("Devices: 3", 8)},
+			{Weight: 1, View: SystemStatus},
 		},
 		webui.Columns{
-			{Weight: 25, Body: compactAlerts("Alerts: 25")},
-			{Weight: 50, Body: compactDevices("Devices: 50", 8)},
-			{Weight: 25, Body: SystemStatus},
+			{Weight: 25, View: compactAlerts("Alerts: 25")},
+			{Weight: 50, View: compactDevices("Devices: 50", 8)},
+			{Weight: 25, View: SystemStatus},
 		},
 		webui.Columns{
-			{Body: backend("One", 0, 2)},
-			{Body: backend("Two", 0, 4)},
-			{Body: backend("Three", 0, 1)},
-			{Body: backend("Four", 0, 3)},
+			{View: backend("One", 0, 2)},
+			{View: backend("Two", 0, 4)},
+			{View: backend("Three", 0, 1)},
+			{View: backend("Four", 0, 3)},
 		},
 	},
 }
@@ -172,21 +172,21 @@ var LayoutWeights = webui.Page[webui.NoArgs]{
 var LayoutTabs = webui.Page[webui.NoArgs]{
 	Path: "/layout/tabs",
 	Nav:  webui.Nav{Label: "Tabs side by side", Icon: "window-restore", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Two sets of Tabs in a Split, and a third under them. Each remembers its own tab in the address (tabs.tab, tabs-2.tab, tabs-3.tab), so you can read alerts on the left while the right shows the sites, reload, and find both as they were. Only the selected tab of each loads. The third has a Split in its first tab and a plain table in its second."),
 		webui.Split{
 			webui.Tabs{
-				{Label: "Alerts", Body: compactAlerts("Open alerts")},
-				{Label: "Devices", Body: compactDevices("Devices", 6)},
+				{Label: "Alerts", View: compactAlerts("Open alerts")},
+				{Label: "Devices", View: compactDevices("Devices", 6)},
 			},
 			webui.Tabs{
-				{Label: "Sites", Body: SitesTable},
-				{Label: "Status", Body: SystemStatus},
+				{Label: "Sites", View: SitesTable},
+				{Label: "Status", View: SystemStatus},
 			},
 		},
 		webui.Tabs{
-			{Label: "Side by side", Body: webui.Split{compactAlerts("Alerts, again"), editable("A short form", "Name", "Owner")}},
-			{Label: "Devices", Body: compactDevices("All devices", 8)},
+			{Label: "Side by side", View: webui.Split{compactAlerts("Alerts, again"), editable("A short form", "Name", "Owner")}},
+			{Label: "Devices", View: compactDevices("All devices", 8)},
 		},
 	},
 }
@@ -196,18 +196,18 @@ var LayoutTabs = webui.Page[webui.NoArgs]{
 var LayoutDeep = webui.Page[webui.NoArgs]{
 	Path: "/layout/deep",
 	Nav:  webui.Nav{Label: "Nested five deep", Icon: "layer-group", Section: "Layout"},
-	Body: webui.Tabs{
-		{Label: "Fleet", Body: webui.Stack{
+	View: webui.Tabs{
+		{Label: "Fleet", View: webui.Stack{
 			intro("Tabs, then a Stack, then a Split, then Tabs, then a Split: the panels at the bottom are five layouts down. The outer Tabs choose between this and 'Health'; the inner Tabs, in the right column, choose between two pairs of panels. Both choices are in the address."),
 			webui.Split{
 				compactDevices("Devices", 8),
 				webui.Tabs{
-					{Label: "Alerts and sites", Body: webui.Split{compactAlerts("Alerts"), SitesTable}},
-					{Label: "Status and a form", Body: webui.Split{SystemStatus, editable("A note", "Subject", "Body")}},
+					{Label: "Alerts and sites", View: webui.Split{compactAlerts("Alerts"), SitesTable}},
+					{Label: "Status and a form", View: webui.Split{SystemStatus, editable("A note", "Subject", "Body")}},
 				},
 			},
 		}},
-		{Label: "Health", Body: webui.Stack{
+		{Label: "Health", View: webui.Stack{
 			SystemStatus,
 			webui.Split{compactAlerts("Open alerts"), SitesTable},
 		}},
@@ -220,12 +220,12 @@ var LayoutDeep = webui.Page[webui.NoArgs]{
 var LayoutReview = webui.Page[webui.NoArgs]{
 	Path: "/layout/review",
 	Nav:  webui.Nav{Label: "Review a change", Icon: "code-compare", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("The collector's status above, and under it Tabs of the things you read before a deploy. The first tab puts the editor beside what has changed since the last deploy (a Diff), the second is the runbook, a Markdown text. The page has an editor, a diff and Markdown, so its head needs their script: it is built whole, and arrives as one piece."),
 		SystemStatus,
 		webui.Tabs{
-			{Label: "Editor and changes", Body: webui.Split{ConfigEditor, ConfigDiff}},
-			{Label: "Runbook", Body: handbookPanel("Runbook", "runbook.md", "A Markdown, in a tab.")},
+			{Label: "Editor and changes", View: webui.Split{ConfigEditor, ConfigDiff}},
+			{Label: "Runbook", View: handbookPanel("Runbook", "runbook.md", "A Markdown, in a tab.")},
 		},
 	},
 }
@@ -235,7 +235,7 @@ var LayoutReview = webui.Page[webui.NoArgs]{
 var LayoutRunbook = webui.Page[webui.NoArgs]{
 	Path: "/layout/runbook",
 	Nav:  webui.Nav{Label: "Runbook and state", Icon: "book-open", Section: "Layout"},
-	Body: webui.Split{
+	View: webui.Split{
 		handbookPanel("Runbook", "incidents.md", "Markdown on the left, live panels on the right."),
 		webui.Stack{
 			SystemStatus,
@@ -249,7 +249,7 @@ var LayoutRunbook = webui.Page[webui.NoArgs]{
 func tabsOf(prefix string, labels ...string) webui.Tabs {
 	tabs := make([]webui.Tab, len(labels))
 	for i, label := range labels {
-		tabs[i] = webui.Tab{Label: label, Body: backend(prefix+" / "+label, 0, i%3+1)}
+		tabs[i] = webui.Tab{Label: label, View: backend(prefix+" / "+label, 0, i%3+1)}
 	}
 	return webui.Tabs(tabs)
 }
@@ -260,12 +260,12 @@ func tabsOf(prefix string, labels ...string) webui.Tabs {
 var LayoutManyTabs = webui.Page[webui.NoArgs]{
 	Path: "/layout/many-tabs",
 	Nav:  webui.Nav{Label: "Many tabs", Icon: "folder-tree", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Tabs with three tabs, which fit; two Tabs of six in a Split, each half the width of the page, which do not fit until the window is wide; and a Tabs of sixteen with long labels. When the tabs need more room than the strip has it scrolls sideways, with a thin bar, and the tabs keep their size. Choose a tab far to the right and follow it: the strip stays where it was scrolled and the tab you chose is brought into view. Open the address of a tab out of sight and the strip is scrolled to it."),
 		webui.Tabs{
-			{Label: "Devices", Body: compactDevices("Three tabs: devices", 5)},
-			{Label: "Alerts", Body: compactAlerts("Three tabs: alerts")},
-			{Label: "Sites", Body: SitesTable},
+			{Label: "Devices", View: compactDevices("Three tabs: devices", 5)},
+			{Label: "Alerts", View: compactAlerts("Three tabs: alerts")},
+			{Label: "Sites", View: SitesTable},
 		},
 		webui.Split{
 			tabsOf("Left", "Overview", "Devices", "Alerts", "Sites", "Configuration", "Audit log"),
@@ -331,7 +331,7 @@ func listOf(title, desc string, n int) webui.List[listLine] {
 var LayoutList = webui.Page[webui.NoArgs]{
 	Path: "/layout/list",
 	Nav:  webui.Nav{Label: "A long list", Icon: "list", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("A List of a few items is as tall as they are. A long one is no taller than the window less the shell (the top bar and the content region's padding), and no shorter than 16rem unless its items are fewer: past that the list scrolls, as a table panel does, so it does not push the page. The two lists share a row, so the short panel is as tall as the long one and its items stay at the top; only the long list has a bar."),
 		webui.Split{
 			listOf("A few items", "Three items, as tall as they are. The panel matches the one beside it; the list does not grow.", shortListCount),

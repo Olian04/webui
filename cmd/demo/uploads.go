@@ -133,7 +133,7 @@ type FirmwareChoice struct {
 var FirmwarePage = webui.Page[webui.NoArgs]{
 	Path: "/firmware",
 	Nav:  webui.Nav{Label: "Firmware", Icon: "database", Section: "Operations"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		webui.FileUpload[FirmwareChoice]{
 			Title: "Upload firmware", Desc: "A FileUpload: one file, of any size up to its MaxSize, handed to Receive as it arrives. The demo hashes it as it is read and keeps only what it was.",
 			Help:    "The image to roll out to the collectors. It is hashed on the way in, and not kept.",

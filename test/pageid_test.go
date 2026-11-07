@@ -28,7 +28,7 @@ const (
 var shopList = webui.Page[webui.NoArgs]{
 	Path: shopListPath,
 	Nav:  webui.Nav{Label: "Shop"},
-	Body: webui.Table[Device]{
+	View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, webui.Ready()
 		}},
@@ -42,7 +42,7 @@ var shopList = webui.Page[webui.NoArgs]{
 
 var shopDetail = webui.Page[shopItemArgs]{
 	Path: shopDetailPath,
-	Body: webui.Form[Device]{
+	View: webui.Form[Device]{
 		Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.0.1"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{formID, formIP},
 		Submit: shopSave,
@@ -77,7 +77,7 @@ func TestLinkAcceptsAPageIDInPlaceOfAPage(t *testing.T) {
 
 	list := webui.Page[webui.NoArgs]{
 		Path: shopListPath,
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()
 			}},
@@ -89,7 +89,7 @@ func TestLinkAcceptsAPageIDInPlaceOfAPage(t *testing.T) {
 			Columns: []webui.Accessor[Device]{formID},
 		},
 	}
-	detail := webui.Page[shopItemArgs]{Path: shopDetailPath, Body: webui.Stack{}}
+	detail := webui.Page[shopItemArgs]{Path: shopDetailPath, View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin")
 
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/shop").Body.String(), `href="/admin/shop/a"`)
@@ -101,7 +101,7 @@ func TestALinkToAPageIDThatIsNotMountedIsReported(t *testing.T) {
 	const gone webui.PageID[shopItemArgs] = "/gone/{id}"
 
 	// At Compile, for a Link.
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", Body: webui.Table[Device]{
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Page: gone,
@@ -116,7 +116,7 @@ func TestALinkToAPageIDThatIsNotMountedIsReported(t *testing.T) {
 func TestALinkWithoutAPageIsACompileError(t *testing.T) {
 	t.Parallel()
 
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", Body: webui.Table[Device]{
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/x", View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, shopItemArgs]{
 			Args: func(context.Context, Device) shopItemArgs { return shopItemArgs{} },
@@ -131,8 +131,8 @@ func TestAPlainStringStillWorksAsAPath(t *testing.T) {
 	t.Parallel()
 
 	const untyped = "/plain" // an untyped constant converts to PageID[A]
-	a := webui.Page[webui.NoArgs]{Path: "/literal", Body: webui.Stack{}}
-	b := webui.Page[webui.NoArgs]{Path: untyped, Body: webui.Stack{}}
+	a := webui.Page[webui.NoArgs]{Path: "/literal", View: webui.Stack{}}
+	b := webui.Page[webui.NoArgs]{Path: untyped, View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{a, b}}.MustCompile("")
 	assert.Equal(t, serve(h, http.MethodGet, "/literal").Code, http.StatusOK)
 	assert.Equal(t, serve(h, http.MethodGet, "/plain").Code, http.StatusOK)

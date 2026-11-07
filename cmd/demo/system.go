@@ -38,7 +38,7 @@ var (
 var System = webui.Page[webui.NoArgs]{
 	Path: "/system",
 	Nav:  webui.Nav{Label: "System", Icon: "wave-square", Section: "Operations"},
-	Body: SystemStatus,
+	View: SystemStatus,
 }
 
 // SystemStatus is the status page.
@@ -62,7 +62,7 @@ var Audit = webui.Page[webui.NoArgs]{
 	Path:  "/audit",
 	Nav:   webui.Nav{Label: "Audit log", Icon: "list", Section: "Operations"},
 	Guard: canEdit[webui.NoArgs],
-	Body: webui.Table[AuditEntry]{
+	View: webui.Table[AuditEntry]{
 		Title:    "Audit log",
 		Desc:     "A Feed: a source that pages by a cursor and hands out its rows newest first, in its own order. A cursor continues one sequence, so there are no filters, and a column sorts only the page on screen: the next page continues the sequence and is ordered within itself.",
 		PageSize: 8,

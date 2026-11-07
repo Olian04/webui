@@ -107,10 +107,10 @@ type Table[M any] struct {
 	Columns []Accessor[M]
 }
 
-// ASSERT: Table implements PageBody
-var _ PageBody = Table[struct{}]{}
+// ASSERT: Table implements View
+var _ View = Table[struct{}]{}
 
-func (t Table[M]) validateBody(v *bodyValidator) {
+func (t Table[M]) validateView(v *viewValidator) {
 	if t.Loader == nil {
 		v.add("a Table has no Loader", "Set Loader to a RowsLoader, which lists every row and lets the library filter, sort and page; a PagedLoader, which does that itself; or a FeedLoader, for a source paged by a cursor.")
 	} else {
@@ -174,7 +174,7 @@ func pageSizeOf(size int) int {
 	return size
 }
 
-func (t Table[M]) lowerBody(at ir.Addr) ir.Node {
+func (t Table[M]) lowerView(at ir.Addr) ir.Node {
 	columns := lowerAccessors(t.Columns, "c")
 	labels := make(map[string]string, len(columns)) // the address's name for a column → its label
 	for _, c := range columns {

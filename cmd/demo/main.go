@@ -78,13 +78,13 @@ var (
 // has the one problem.
 type brokenArgs struct{ When map[string]int }
 
-var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", Body: webui.Stack{}}
+var Broken = webui.Page[brokenArgs]{Path: "/event/{when}", View: webui.Stack{}}
 
 // A Table is given one source of its rows, a Loader, and a Table that is given two cannot be written. This one is given a loader that has nothing to load with: Compile says so, with what to
 // set.
 var BrokenTable = webui.Page[webui.NoArgs]{
 	Path: "/broken/source",
-	Body: webui.Table[Device]{
+	View: webui.Table[Device]{
 		Title:   "Events",
 		Loader:  webui.RowsLoader[Device]{},
 		Columns: []webui.Accessor[Device]{DeviceID},
@@ -94,7 +94,7 @@ var BrokenTable = webui.Page[webui.NoArgs]{
 // A pattern is RE2, which has no lookahead, and this one has: Compile says so, and what to write instead.
 var BrokenPattern = webui.Page[webui.NoArgs]{
 	Path: "/broken/pattern",
-	Body: webui.Form[Note]{
+	View: webui.Form[Note]{
 		Title: "A code",
 		Load:  func(context.Context) (Note, webui.Loaded) { return Note{}, webui.Ready() },
 		Fields: []webui.Accessor[Note]{webui.String[Note]{

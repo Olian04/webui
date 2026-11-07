@@ -50,9 +50,9 @@ func objectsApp(seen *webui.PagedQuery) http.Handler {
 		Fields: []webui.Accessor[object]{objModified, objCreated},
 	}
 	return webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/rows", Body: rows},
-		webui.Page[webui.NoArgs]{Path: "/load", Body: load},
-		webui.Page[webui.NoArgs]{Path: "/one", Body: detail},
+		webui.Page[webui.NoArgs]{Path: "/rows", View: rows},
+		webui.Page[webui.NoArgs]{Path: "/load", View: load},
+		webui.Page[webui.NoArgs]{Path: "/one", View: detail},
 	}}.MustCompile("")
 }
 
@@ -133,7 +133,7 @@ func editMoments(stored *object) http.Handler {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", Body: form}}}.MustCompile("")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", View: form}}}.MustCompile("")
 }
 
 func TestAMomentWithAStoreIsADateAndTimePickerInUTC(t *testing.T) {
@@ -215,7 +215,7 @@ func TestATimeThatIsRequiredRefusesAClearedPicker(t *testing.T) {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", Body: form}}}.MustCompile("")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", View: form}}}.MustCompile("")
 
 	body := serve(h, http.MethodGet, "/edit").Body.String()
 	assert.Contains(t, body, `type="datetime-local" value=""`)

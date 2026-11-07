@@ -12,6 +12,9 @@ import (
 	"github.com/Olian04/webui/internal/theme"
 )
 
+// viewKinds is what every error about a missing View says one may be, so that the four of them agree.
+const viewKinds = "a panel (Table, Form, Editor, Diff, Markdown, List, Cards, Calendar, Toolbar or FileUpload) or a layout (Stack, Split, Columns, When or Tabs)"
+
 // validate checks what the type system cannot, and never stops at the first
 // problem: Compile reports every error at once so one fix cycle clears them
 // all. It emits nothing and decides nothing about shape.
@@ -67,9 +70,9 @@ func (a App) collectFacts() *facts {
 	return f
 }
 
-// bodyValidator carries one page's coordinates so every error from anywhere in
+// viewValidator carries one page's coordinates so every error from anywhere in
 // its body names the page.
-type bodyValidator struct {
+type viewValidator struct {
 	page    string // Path
 	args    string // argument type name
 	argType reflect.Type
@@ -87,7 +90,7 @@ type bodyValidator struct {
 	compilers map[string]string
 }
 
-func (v *bodyValidator) add(detail, fix string) {
+func (v *viewValidator) add(detail, fix string) {
 	v.errs = append(v.errs, CompileError{Page: v.page, Args: v.args, Detail: detail, Fix: fix})
 }
 
@@ -182,14 +185,14 @@ func validURL(s string) bool {
 }
 
 // needLoad reports a body that has no Load. what is the body as the message names it, such as "a Form".
-func needLoad(v *bodyValidator, what string, loads bool) {
+func needLoad(v *viewValidator, what string, loads bool) {
 	if !loads {
 		v.add(what+" has no Load", "Set Load to func(ctx) (M, webui.Loaded).")
 	}
 }
 
 // validateLanguage reports a Language that is not one the editor highlights. where is the body, such as "Editor".
-func validateLanguage(v *bodyValidator, where string, l Language) {
+func validateLanguage(v *viewValidator, where string, l Language) {
 	if !l.known() {
 		v.add(fmt.Sprintf("%s.Language %q is not a language the editor highlights", where, string(l)),
 			"Use one of the constants of pkg/lang, such as lang.JSON or lang.Go; there is one for each language the editor knows.")

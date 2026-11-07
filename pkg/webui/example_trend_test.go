@@ -22,7 +22,7 @@ type Latency struct {
 func ExampleTrend() {
 	page := webui.Page[webui.NoArgs]{
 		Path: "/status",
-		Body: webui.Table[Latency]{
+		View: webui.Table[Latency]{
 			Title: "Latency",
 			Loader: webui.RowsLoader[Latency]{Load: func(context.Context) ([]Latency, webui.Loaded) {
 				return []Latency{{P95: 184, Change: -12, Samples: []float64{140, 150, 190, 184}}}, webui.Ready()

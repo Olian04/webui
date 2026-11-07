@@ -45,10 +45,10 @@ type Form[M any] struct {
 	Fields []Accessor[M]
 }
 
-// ASSERT: Form implements PageBody
-var _ PageBody = Form[struct{}]{}
+// ASSERT: Form implements View
+var _ View = Form[struct{}]{}
 
-func (f Form[M]) validateBody(v *bodyValidator) {
+func (f Form[M]) validateView(v *viewValidator) {
 	needLoad(v, "a Form", f.Load != nil)
 	validateAccessors(v, f.Fields, accessorSite{where: "Form.Fields", allowGroup: true, uniqueLbl: true})
 	if f.Submit.Run != nil {
@@ -58,7 +58,7 @@ func (f Form[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (f Form[M]) lowerBody(at ir.Addr) ir.Node {
+func (f Form[M]) lowerView(at ir.Addr) ir.Node {
 	fields := lowerAccessors(f.Fields, "f")
 	out := &ir.Form{
 		At: at, Title: f.Title, Desc: f.Desc, Fields: fields,

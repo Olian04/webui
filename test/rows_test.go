@@ -28,7 +28,7 @@ func rowsApp(load func(context.Context) ([]Device, webui.Loaded)) http.Handler {
 	}
 	page := webui.Page[webui.NoArgs]{
 		Path: "/device",
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Title:    "Devices",
 			PageSize: 10,
 			Loader:   webui.RowsLoader[Device]{Load: load},
@@ -137,7 +137,7 @@ func TestATableNeedsALoaderAndEachKindOfItNeedsItsLoad(t *testing.T) {
 	t.Parallel()
 
 	page := func(table webui.Table[Device]) webui.App {
-		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}}}
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: table}}}
 	}
 	rows := func(context.Context) ([]Device, webui.Loaded) { return nil, webui.Ready() }
 	load := func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -165,7 +165,7 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 	var acted []string
 	page := webui.Page[webui.NoArgs]{
 		Path: "/device",
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 				return []Device{{Id: "a"}, {Id: "b"}, {Id: "c"}}, webui.Ready()
 			}},
@@ -202,7 +202,7 @@ func storageTable(rows bool) http.Handler {
 			return webui.PagedWindow[Device]{Items: items, Total: len(items)}, webui.Ready()
 		}}
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/o", Body: tbl}}}.MustCompile("")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/o", View: tbl}}}.MustCompile("")
 }
 
 // classBoxes is the checkbox of each choice in the Class filter.

@@ -98,10 +98,10 @@ type Cards[M any] struct {
 	Layout CardLayout
 }
 
-// ASSERT: List and Cards implement PageBody
+// ASSERT: List and Cards implement View
 var (
-	_ PageBody = List[struct{}]{}
-	_ PageBody = Cards[struct{}]{}
+	_ View = List[struct{}]{}
+	_ View = Cards[struct{}]{}
 )
 
 // itemsSpec is what a List and a Cards share, so that they are validated and lowered in one place.
@@ -138,13 +138,13 @@ func (c Cards[M]) spec() itemsSpec[M] {
 	}
 }
 
-func (f List[M]) validateBody(v *bodyValidator)  { f.spec().validate(v) }
-func (c Cards[M]) validateBody(v *bodyValidator) { c.spec().validate(v) }
+func (f List[M]) validateView(v *viewValidator)  { f.spec().validate(v) }
+func (c Cards[M]) validateView(v *viewValidator) { c.spec().validate(v) }
 
-func (f List[M]) lowerBody(at ir.Addr) ir.Node  { return f.spec().lower(at) }
-func (c Cards[M]) lowerBody(at ir.Addr) ir.Node { return c.spec().lower(at) }
+func (f List[M]) lowerView(at ir.Addr) ir.Node  { return f.spec().lower(at) }
+func (c Cards[M]) lowerView(at ir.Addr) ir.Node { return c.spec().lower(at) }
 
-func (s itemsSpec[M]) validate(v *bodyValidator) {
+func (s itemsSpec[M]) validate(v *viewValidator) {
 	if s.loader == nil {
 		v.add("a "+s.what+" has no Loader", "Set Loader to a RowsLoader, which lists every item, a PagedLoader, or a FeedLoader: the first items are asked of it.")
 	} else {

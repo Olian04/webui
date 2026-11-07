@@ -31,8 +31,8 @@ func linkApp(urls ...string) http.Handler {
 		Fields: []webui.Accessor[Device]{cols[2], cols[3]},
 	}
 	return webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/list", Body: table},
-		webui.Page[webui.NoArgs]{Path: "/one", Body: detail},
+		webui.Page[webui.NoArgs]{Path: "/list", View: table},
+		webui.Page[webui.NoArgs]{Path: "/one", View: detail},
 	}}.MustCompile("")
 }
 
@@ -84,12 +84,12 @@ func TestARowClickCannotShareTheFirstColumnWithAURL(t *testing.T) {
 
 	var details webui.Page[detailsArgs]
 	details.Path = "/device/{id}"
-	details.Body = webui.Stack{}
+	details.View = webui.Stack{}
 	table := webui.Table[Device]{
 		Loader:   webui.PagedLoader[Device]{Load: okRows},
 		RowClick: webui.Link[Device, detailsArgs]{Page: details, Args: func(_ context.Context, d Device) detailsArgs { return detailsArgs{Id: d.Id} }},
 		Columns:  []webui.Accessor[Device]{webui.URL[Device]{Label: "Site", Load: func(d Device) string { return d.Ip }}, formID},
 	}
-	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: table}, details}})
+	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: table}, details}})
 	assert.Contains(t, errs[0].Detail, "first column is a URL")
 }

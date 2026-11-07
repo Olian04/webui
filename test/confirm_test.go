@@ -51,8 +51,8 @@ func confirmApp(confirm string, guard func(context.Context, parcel) error) (http
 		},
 	}}}
 	h := webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Stack{bar, table}},
-		webui.Page[webui.NoArgs]{Path: "/f", Body: form},
+		webui.Page[webui.NoArgs]{Path: "/t", View: webui.Stack{bar, table}},
+		webui.Page[webui.NoArgs]{Path: "/f", View: form},
 	}}.MustCompile("/admin")
 	return h, ran
 }
@@ -158,6 +158,6 @@ func TestAConfirmOnARowClickIsACompileError(t *testing.T) {
 		Columns:  []webui.Accessor[parcel]{parcelName},
 		RowClick: webui.Action[parcel]{Confirm: "Sure?", Run: func(context.Context, parcel) (webui.Outcome, error) { return webui.Success("x"), nil }},
 	}
-	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}})
+	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}})
 	assert.Contains(t, errs[0].Error(), "Table.RowClick has a Confirm")
 }

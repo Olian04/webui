@@ -24,7 +24,7 @@ func ExamplePageID() {
 	// The detail page's form saves, and then goes back to the list by its PageID.
 	detail := webui.Page[itemArgs]{
 		Path: "/item/{id}",
-		Body: webui.Form[item]{
+		View: webui.Form[item]{
 			Load: func(ctx context.Context) (item, webui.Loaded) {
 				return item{ID: webui.ArgsOf[itemArgs](ctx).ID}, webui.Ready()
 			},
@@ -41,7 +41,7 @@ func ExamplePageID() {
 	list := webui.Page[webui.NoArgs]{
 		Path: listPath,
 		Nav:  webui.Nav{Label: "Items"},
-		Body: webui.Table[item]{
+		View: webui.Table[item]{
 			Loader: webui.RowsLoader[item]{Load: func(context.Context) ([]item, webui.Loaded) { return []item{{ID: "a", Name: "Alpha"}}, webui.Ready() }},
 			RowClick: webui.Link[item, itemArgs]{
 				Page: detail,

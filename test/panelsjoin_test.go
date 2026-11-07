@@ -20,7 +20,7 @@ func TestAPanelsLoadHasFinishedWhenARequestThatTheVisitorLeftHasReturned(t *test
 
 	var started, finished atomic.Bool
 	began := make(chan struct{})
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Table[Device]{
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			if started.CompareAndSwap(false, true) {
 				close(began)

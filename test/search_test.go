@@ -93,9 +93,9 @@ func deviceHit(d Device) webui.Hit[detailsArgs] {
 // searchApp has a list page, and the detail page that finds the devices: its Search, and the Guard
 // that decides which of them a visitor may open.
 func searchApp(search func(context.Context, string, int) ([]webui.Hit[detailsArgs], error), guard func(context.Context, detailsArgs) error) http.Handler {
-	details := webui.Page[detailsArgs]{Path: "/device/{id}", Guard: guard, Search: search, Body: webui.Stack{}}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
-	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, Body: webui.Stack{}}
+	details := webui.Page[detailsArgs]{Path: "/device/{id}", Guard: guard, Search: search, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, View: webui.Stack{}}
 	return webui.App{Pages: webui.Pages{list, details, other}}.MustCompile("/admin")
 }
 
@@ -132,13 +132,13 @@ func TestAPagesResultsAreListedUnderItsNameInTheNavigationOrTheEntryItBorrowsFro
 	assert.Equal(t, search(t, searchApp(rowsSearch(), nil), "gate").Results[0].Group, "Devices")
 
 	// A page with an entry of its own is its own group.
-	labelled := webui.Page[detailsArgs]{Path: "/thing/{id}", Search: rowsSearch(), Body: webui.Stack{}}
+	labelled := webui.Page[detailsArgs]{Path: "/thing/{id}", Search: rowsSearch(), View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{labelled}}.MustCompile("/admin")
 	assert.Equal(t, search(t, h, "gate").Results[0].Group, "/thing/{id}") // none at all: the path
 
 	own := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "All devices"}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		return []webui.Hit[webui.NoArgs]{{Title: "The list"}}, nil
-	}, Body: webui.Stack{}}
+	}, View: webui.Stack{}}
 	h = webui.App{Pages: webui.Pages{own}}.MustCompile("/admin")
 	assert.Equal(t, search(t, h, "x").Results[0].Group, "All devices")
 	assert.Equal(t, search(t, h, "x").Results[0].Href, "/admin/devices")
@@ -187,13 +187,13 @@ func TestSearchCapsTheHitsOfAPageAndSurvivesAFailingOrPanickingPage(t *testing.T
 	}
 	assert.Equal(t, len(search(t, searchApp(many, nil), "d").Results), 8)
 
-	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, Body: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		return nil, errors.New("db secret-host is down")
 	}}
-	panics := webui.Page[webui.NoArgs]{Path: "/panics", Nav: webui.Nav{Label: "Panics"}, Body: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+	panics := webui.Page[webui.NoArgs]{Path: "/panics", Nav: webui.Nav{Label: "Panics"}, View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		panic("boom")
 	}}
-	ok := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}, Search: rowsSearch()}
+	ok := webui.Page[detailsArgs]{Path: "/device/{id}", View: webui.Stack{}, Search: rowsSearch()}
 	h := webui.App{Pages: webui.Pages{broken, panics, ok}}.MustCompile("/admin")
 	got := search(t, h, "gate")
 	assert.Equal(t, len(got.Results), 1) // the others answer
@@ -203,8 +203,8 @@ func TestSearchCapsTheHitsOfAPageAndSurvivesAFailingOrPanickingPage(t *testing.T
 func TestAThingFoundByTwoPagesIsOneResult(t *testing.T) {
 	t.Parallel()
 
-	a := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}, Search: rowsSearch()}
-	again := webui.Page[detailsArgs]{Path: "/device/{id}/log", Body: webui.Stack{}, Search: rowsSearch()}
+	a := webui.Page[detailsArgs]{Path: "/device/{id}", View: webui.Stack{}, Search: rowsSearch()}
+	again := webui.Page[detailsArgs]{Path: "/device/{id}/log", View: webui.Stack{}, Search: rowsSearch()}
 	h := webui.App{Pages: webui.Pages{a, again}}.MustCompile("/admin")
 	// Two pages, two addresses: two results. The same address twice is one.
 	assert.Equal(t, len(search(t, h, "gateway").Results), 2)
@@ -356,7 +356,7 @@ func TestAPageWithPathArgumentsFindsThingsAcrossAllOfThem(t *testing.T) {
 			}
 			return hits, nil
 		},
-		Body: webui.Stack{},
+		View: webui.Stack{},
 	}
 	h := webui.App{Pages: webui.Pages{object}}.MustCompile("/admin")
 	got := search(t, h, "cat")

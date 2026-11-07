@@ -71,7 +71,7 @@ func Disabled(message string) error { return &ir.Disabled{Message: message} }
 
 // validateAction checks what every action needs. needLabel is false only for a
 // Form's Submit and a row's click, which have a default or no button.
-func validateAction[S any](v *bodyValidator, at string, a Action[S], needLabel bool) {
+func validateAction[S any](v *viewValidator, at string, a Action[S], needLabel bool) {
 	if a.Run == nil {
 		v.add(at+" has no Run", "Set Run, or remove the action.")
 	}
@@ -99,7 +99,7 @@ func lowerActionWith[S, M any](a Action[S], arg func(any) S) *ir.Action {
 
 func (Action[M]) toolbarItem(M) {}
 
-func (a Action[M]) validateToolbarItem(v *bodyValidator, at string, _ map[string]bool) {
+func (a Action[M]) validateToolbarItem(v *viewValidator, at string, _ map[string]bool) {
 	validateAction(v, at, a, true)
 }
 
@@ -123,7 +123,7 @@ func (Action[M]) posts() bool { return true }
 
 // validateControl checks an Action where it is: it has a Run everywhere, a Label where it is a button, and, where it is the click on a row, an item or a day, no Confirm,
 // since there is no button to ask from.
-func (a Action[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+func (a Action[M]) validateControl(v *viewValidator, at string, slot controlSlot) {
 	switch slot {
 	case slotClick:
 		validateAction(v, at, a, false)

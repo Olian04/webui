@@ -19,9 +19,9 @@ type objectArgs struct {
 // bucketApp is a bucket, and the objects in it at any depth: the key is the rest of
 // the path, so a nested folder is a path of its own.
 func bucketApp() http.Handler {
-	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, Body: webui.Stack{}}
-	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", Body: webui.Stack{}}
-	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Body: webui.Stack{}}
+	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, View: webui.Stack{}}
+	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", View: webui.Stack{}}
+	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
 	return webui.App{Pages: webui.Pages{buckets, bucket, object}}.MustCompile("/admin")
 }
 
@@ -57,7 +57,7 @@ func TestARestPlaceholderIsRequiredLikeAnyPathArgument(t *testing.T) {
 func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 	t.Parallel()
 
-	middle := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}/more", Body: webui.Stack{}}
+	middle := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}/more", View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{middle}})
 	assert.Contains(t, errs[0].Detail, "takes the rest of the path but is not the last")
 
@@ -65,7 +65,7 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 		Name string
 		Key  string
 	}
-	wrong := webui.Page[text]{Path: "/bucket/{name}/{key...}", Body: webui.Stack{}}
+	wrong := webui.Page[text]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
 	errs = compileErrors(t, webui.App{Pages: webui.Pages{wrong}})
 	assert.Contains(t, errs[0].Detail, "is not a []string")
 	assert.Contains(t, errs[0].Fix, "one element for each")
@@ -74,7 +74,7 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 		Name string
 		Tags []string
 	}
-	list := webui.Page[tagged]{Path: "/bucket/{name}/{tags}", Body: webui.Stack{}}
+	list := webui.Page[tagged]{Path: "/bucket/{name}/{tags}", View: webui.Stack{}}
 	errs = compileErrors(t, webui.App{Pages: webui.Pages{list}})
 	assert.Contains(t, errs[0].Detail, "is one segment of the path")
 }
@@ -83,7 +83,7 @@ func TestARestPlaceholderArrivesAsAListOfSegments(t *testing.T) {
 	t.Parallel()
 
 	var seen []string
-	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Body: webui.Form[Device]{
+	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", View: webui.Form[Device]{
 		Load: func(ctx context.Context) (Device, webui.Loaded) {
 			seen = webui.ArgsOf[objectArgs](ctx).Key
 			return Device{Id: "a"}, webui.Ready()
@@ -104,8 +104,8 @@ func TestALinkToARestPlaceholderBuildsTheAddressFromTheList(t *testing.T) {
 
 	var object webui.Page[objectArgs]
 	object.Path = "/bucket/{name}/{key...}"
-	object.Body = webui.Stack{}
-	from := webui.Page[webui.NoArgs]{Path: "/from", Body: webui.Table[Device]{
+	object.View = webui.Stack{}
+	from := webui.Page[webui.NoArgs]{Path: "/from", View: webui.Table[Device]{
 		Title:   "Objects",
 		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},
@@ -121,7 +121,7 @@ func TestALinkToARestPlaceholderBuildsTheAddressFromTheList(t *testing.T) {
 	assert.Contains(t, body, `href="/admin/bucket/photos/2026/a%20b/a"`) // each element escaped on its own
 
 	// An element with a slash would be read back as two, so no link is made.
-	bad := webui.Page[webui.NoArgs]{Path: "/bad", Body: webui.Table[Device]{
+	bad := webui.Page[webui.NoArgs]{Path: "/bad", View: webui.Table[Device]{
 		Title:   "Objects",
 		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},
@@ -146,7 +146,7 @@ func TestASliceIsAQueryParameterThatRepeats(t *testing.T) {
 	t.Parallel()
 
 	var seen pickArgs
-	picked := webui.Page[pickArgs]{Path: "/pick/{name}", Body: webui.Table[Device]{
+	picked := webui.Page[pickArgs]{Path: "/pick/{name}", View: webui.Table[Device]{
 		Title: "Picked",
 		Loader: webui.RowsLoader[Device]{Load: func(ctx context.Context) ([]Device, webui.Loaded) {
 			seen = webui.ArgsOf[pickArgs](ctx)
@@ -180,8 +180,8 @@ func TestALinkToAPageThatTakesAListRepeatsTheParameter(t *testing.T) {
 
 	var picked webui.Page[pickArgs]
 	picked.Path = "/pick/{name}"
-	picked.Body = webui.Stack{}
-	from := webui.Page[webui.NoArgs]{Path: "/from", Body: webui.Table[Device]{
+	picked.View = webui.Stack{}
+	from := webui.Page[webui.NoArgs]{Path: "/from", View: webui.Table[Device]{
 		Title:   "Devices",
 		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{formID},

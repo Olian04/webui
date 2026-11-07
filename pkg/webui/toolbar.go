@@ -64,16 +64,16 @@ type ToolbarItem interface {
 	toolbarItem(NoArgs)
 
 	// validateToolbarItem checks the control where it is, which at names. seen is the labels of the fields of the forms before it, which must differ.
-	validateToolbarItem(v *bodyValidator, at string, seen map[string]bool)
+	validateToolbarItem(v *viewValidator, at string, seen map[string]bool)
 
 	// lowerToolbarItem is the control as the IR holds it. at is the toolbar's address, and prefix what a form names its fields by.
 	lowerToolbarItem(at ir.Addr, prefix string) ir.ToolbarItem
 }
 
-// ASSERT: Toolbar implements PageBody
-var _ PageBody = Toolbar{}
+// ASSERT: Toolbar implements View
+var _ View = Toolbar{}
 
-func (t Toolbar) validateBody(v *bodyValidator) {
+func (t Toolbar) validateView(v *viewValidator) {
 	if len(t.Left)+len(t.Right) == 0 {
 		v.add("a Toolbar has no controls", "Put the controls it is for in Left or in Right: an Action, a Link, or a Form to show.")
 	}
@@ -91,7 +91,7 @@ func (t Toolbar) validateBody(v *bodyValidator) {
 	}
 }
 
-func (t Toolbar) lowerBody(at ir.Addr) ir.Node {
+func (t Toolbar) lowerView(at ir.Addr) ir.Node {
 	out := &ir.Toolbar{At: at, RightFrom: len(t.Left)}
 	for i, item := range t.items() {
 		out.Items = append(out.Items, item.lowerToolbarItem(at, "t"+strconv.Itoa(i)+"_"))
@@ -101,7 +101,7 @@ func (t Toolbar) lowerBody(at ir.Addr) ir.Node {
 
 func (f Form[M]) toolbarItem(NoArgs) {}
 
-func (f Form[M]) validateToolbarItem(v *bodyValidator, at string, seen map[string]bool) {
+func (f Form[M]) validateToolbarItem(v *viewValidator, at string, seen map[string]bool) {
 	if f.Title == "" {
 		v.add(at+" is a Form with no Title", "Set Title: in a toolbar it names the group of values, and is what is said when they cannot be loaded.")
 	}

@@ -23,9 +23,9 @@ func TestEachColumnCarriesItsWeightAndHoldsOneBody(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Columns{
-		{Weight: 25, Body: columnPanel("Left")},
-		{Weight: 50, Body: columnPanel("Middle")},
-		{Weight: 25, Body: columnPanel("Right")},
+		{Weight: 25, View: columnPanel("Left")},
+		{Weight: 50, View: columnPanel("Middle")},
+		{Weight: 25, View: columnPanel("Right")},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 
@@ -44,11 +44,11 @@ func TestEachColumnCarriesItsWeightAndHoldsOneBody(t *testing.T) {
 func TestAWeightIsRelativeAndZeroIsOne(t *testing.T) {
 	t.Parallel()
 
-	body := serve(editorApp(webui.Columns{{Weight: 1, Body: columnPanel("A")}, {Weight: 3, Body: columnPanel("B")}}), http.MethodGet, "/admin/e").Body.String()
+	body := serve(editorApp(webui.Columns{{Weight: 1, View: columnPanel("A")}, {Weight: 3, View: columnPanel("B")}}), http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `style="--w:1;"`)
 	assert.Contains(t, body, `style="--w:3;"`)
 
-	body = serve(editorApp(webui.Columns{{Body: columnPanel("A")}, {Body: columnPanel("B")}, {Weight: 2, Body: columnPanel("C")}}), http.MethodGet, "/admin/e").Body.String()
+	body = serve(editorApp(webui.Columns{{View: columnPanel("A")}, {View: columnPanel("B")}, {Weight: 2, View: columnPanel("C")}}), http.MethodGet, "/admin/e").Body.String()
 	assert.Equal(t, strings.Count(body, `style="--w:1;"`), 2) // a Column with no Weight is as wide as any other
 	assert.Contains(t, body, `style="--w:2;"`)
 	assert.False(t, strings.Contains(body, `--w:0`))
@@ -57,7 +57,7 @@ func TestAWeightIsRelativeAndZeroIsOne(t *testing.T) {
 func TestOneColumnIsStillAColumnThatFillsTheRow(t *testing.T) {
 	t.Parallel()
 
-	body := serve(editorApp(webui.Columns{{Body: columnPanel("Only")}}), http.MethodGet, "/admin/e").Body.String()
+	body := serve(editorApp(webui.Columns{{View: columnPanel("Only")}}), http.MethodGet, "/admin/e").Body.String()
 	assert.Equal(t, strings.Count(body, `class="col"`), 1)
 }
 
@@ -81,7 +81,7 @@ func TestColumnsGiveTheirLeavesPositionalIDsLikeASplitDoes(t *testing.T) {
 	t.Parallel()
 
 	body := serve(editorApp(webui.Stack{
-		webui.Columns{{Weight: 1, Body: columnPanel("A")}, {Weight: 2, Body: columnPanel("B")}},
+		webui.Columns{{Weight: 1, View: columnPanel("A")}, {Weight: 2, View: columnPanel("B")}},
 		webui.Split{columnPanel("C"), columnPanel("D")},
 	}), http.MethodGet, "/admin/e").Body.String()
 	for _, id := range []string{`data-leaf="p.0.0"`, `data-leaf="p.0.1"`, `data-leaf="p.1.0"`, `data-leaf="p.1.1"`} {
@@ -93,10 +93,10 @@ func TestColumnsNestInAnyLayoutAndTakeAnyBody(t *testing.T) {
 	t.Parallel()
 
 	body := serve(editorApp(webui.Columns{
-		{Weight: 1, Body: webui.Stack{columnPanel("Top"), columnPanel("Bottom")}},
-		{Weight: 3, Body: webui.Columns{{Body: columnPanel("Inner left")}, {Weight: 2, Body: columnPanel("Inner right")}}},
-		{Weight: 1, Body: webui.Tabs{{Label: "One", Body: columnPanel("Tabbed")}}},
-		{Weight: 1, Body: webui.Split{columnPanel("S1"), columnPanel("S2")}},
+		{Weight: 1, View: webui.Stack{columnPanel("Top"), columnPanel("Bottom")}},
+		{Weight: 3, View: webui.Columns{{View: columnPanel("Inner left")}, {Weight: 2, View: columnPanel("Inner right")}}},
+		{Weight: 1, View: webui.Tabs{{Label: "One", View: columnPanel("Tabbed")}}},
+		{Weight: 1, View: webui.Split{columnPanel("S1"), columnPanel("S2")}},
 	}), http.MethodGet, "/admin/e").Body.String()
 	for _, want := range []string{"Top", "Bottom", "Inner left", "Inner right", "Tabbed", "S1", "S2"} {
 		assert.Contains(t, body, ">"+want+"<")
@@ -110,8 +110,8 @@ func TestColumnsInASplitAndASplitInAColumn(t *testing.T) {
 	t.Parallel()
 
 	body := serve(editorApp(webui.Split{
-		webui.Columns{{Body: columnPanel("A")}, {Weight: 3, Body: columnPanel("B")}},
-		webui.Columns{{Body: webui.Split{columnPanel("C"), columnPanel("D")}}},
+		webui.Columns{{View: columnPanel("A")}, {Weight: 3, View: columnPanel("B")}},
+		webui.Columns{{View: webui.Split{columnPanel("C"), columnPanel("D")}}},
 	}), http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;"><div class="columns">`)
 	assert.Contains(t, body, `<div class="col" style="--w:1;"><div class="columns"><div class="col" style="--w:1;"><div class="panel`)
@@ -120,7 +120,7 @@ func TestColumnsInASplitAndASplitInAColumn(t *testing.T) {
 func TestTheColumnsOfALoadingPageStreamInOrder(t *testing.T) {
 	t.Parallel()
 
-	rec := serve(editorApp(webui.Columns{{Weight: 1, Body: columnPanel("First")}, {Weight: 1, Body: columnPanel("Second")}}), http.MethodGet, "/admin/e")
+	rec := serve(editorApp(webui.Columns{{Weight: 1, View: columnPanel("First")}, {Weight: 1, View: columnPanel("Second")}}), http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
 	assert.True(t, strings.Index(body, ">First<") < strings.Index(body, ">Second<"))
@@ -130,12 +130,12 @@ func TestAColumnsThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		body webui.PageBody
+		body webui.View
 		want string
 	}{
 		"none":     {webui.Columns{}, "Columns has no Column"},
-		"nil body": {webui.Columns{{Weight: 1}, {Body: columnPanel("B")}}, "Columns[0].Body is nil"},
-		"a bad body inside": {webui.Columns{{Body: webui.Markdown[handbook]{Title: "No load"}}},
+		"nil body": {webui.Columns{{Weight: 1}, {View: columnPanel("B")}}, "Columns[0].View is nil"},
+		"a bad body inside": {webui.Columns{{View: webui.Markdown[handbook]{Title: "No load"}}},
 			"Markdown"},
 	} {
 		t.Run(name, func(t *testing.T) {

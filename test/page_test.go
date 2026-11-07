@@ -21,8 +21,8 @@ type pageArgs struct {
 // app builds the README's two-page shape with empty bodies: a list that owns
 // a nav entry and a detail page below it, which has none of its own.
 func app(guard func(context.Context, pageArgs) error) (webui.App, webui.Page[pageArgs], webui.Page[webui.NoArgs]) {
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices", Section: "Platform"}, Body: webui.Stack{}}
-	details := webui.Page[pageArgs]{Path: "/device/{id}", Guard: guard, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices", Section: "Platform"}, View: webui.Stack{}}
+	details := webui.Page[pageArgs]{Path: "/device/{id}", Guard: guard, View: webui.Stack{}}
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{list, details}}, details, list
 }
 
@@ -107,7 +107,7 @@ func TestRootRedirectsToFirstNavEntryOrServesRootPage(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusFound)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device")
 
-	home := webui.Page[webui.NoArgs]{Path: "/", Nav: webui.Nav{Label: "Home"}, Body: webui.Stack{}}
+	home := webui.Page[webui.NoArgs]{Path: "/", Nav: webui.Nav{Label: "Home"}, View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{home}}.MustCompile("/admin")
 	for _, target := range []string{"/admin", "/admin/"} {
 		rec := serve(h, http.MethodGet, target)

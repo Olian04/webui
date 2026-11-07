@@ -26,9 +26,9 @@ func controlPages(refuse string, table webui.Table[parcel]) http.Handler {
 			}
 			return nil
 		},
-		Body: webui.Stack{},
+		View: webui.Stack{},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}, detail}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}, detail}}.MustCompile("/admin")
 }
 
 func openParcel(label string, detail webui.Page[parcelArgs]) webui.Link[parcel, parcelArgs] {
@@ -40,7 +40,7 @@ func openParcel(label string, detail webui.Page[parcelArgs]) webui.Link[parcel, 
 func TestALinkInARowsActionsIsAButtonThatLeadsToTheRowsPage(t *testing.T) {
 	t.Parallel()
 
-	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", Body: webui.Stack{}}
+	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", View: webui.Stack{}}
 	h := controlPages("b", webui.Table[parcel]{Actions: []webui.Control[parcel]{openParcel("Open", detail)}})
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 
@@ -70,7 +70,7 @@ func TestAnHrefInARowsActionsIsAButtonThatOpensAnotherSite(t *testing.T) {
 func TestAnActionALinkAndAnHrefShareARowsActionsInTheOrderDeclared(t *testing.T) {
 	t.Parallel()
 
-	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", Body: webui.Stack{}}
+	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", View: webui.Stack{}}
 	var ran []string
 	table := webui.Table[parcel]{
 		Key: func(p parcel) string { return p.Name },
@@ -115,7 +115,7 @@ func TestARowThatLeadsToAnHrefOpensAnotherSiteInATabOfItsOwn(t *testing.T) {
 func TestWhatAControlNeedsDependsOnWhereItIsAndATableNeedsAKeyOnlyForWhatPosts(t *testing.T) {
 	t.Parallel()
 
-	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", Body: webui.Stack{}}
+	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", View: webui.Stack{}}
 	load := func(context.Context) ([]parcel, webui.Loaded) { return parcelsData, webui.Ready() }
 	cols := []webui.Accessor[parcel]{parcelName}
 	run := func(context.Context, parcel) (webui.Outcome, error) { return webui.Success("done"), nil }
@@ -136,7 +136,7 @@ func TestWhatAControlNeedsDependsOnWhereItIsAndATableNeedsAKeyOnlyForWhatPosts(t
 			t.Parallel()
 
 			tc.table.Loader, tc.table.Columns = webui.RowsLoader[parcel]{Load: load}, cols
-			app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: tc.table}, detail}}
+			app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: tc.table}, detail}}
 			_, err := app.Compile("/admin")
 			if tc.want == "" {
 				assert.NoError(t, err)

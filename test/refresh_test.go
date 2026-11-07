@@ -22,7 +22,7 @@ func refreshApp(say webui.Loaded) http.Handler {
 			}},
 		}
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Stack{table("Job", say), table("Other", webui.Ready())}}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: webui.Stack{table("Job", say), table("Other", webui.Ready())}}}}.MustCompile("/admin")
 }
 
 // A panel whose Load says that it is not final says so, to the reader in its head and to script in an attribute, and only that panel does.
@@ -103,8 +103,8 @@ func TestEveryLeafWithALoadCanSayItIsNotFinal(t *testing.T) {
 	t.Parallel()
 
 	not := webui.Ready().RefreshAfter(4 * time.Second)
-	page := func(body webui.PageBody) http.Handler {
-		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: body}}}.MustCompile("/admin")
+	page := func(body webui.View) http.Handler {
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: body}}}.MustCompile("/admin")
 	}
 	for name, h := range map[string]http.Handler{
 		"Rows": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, not }}}),

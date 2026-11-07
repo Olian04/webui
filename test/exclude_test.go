@@ -42,7 +42,7 @@ func leftOutApp(source string) (http.Handler, *webui.PagedQuery) {
 			return webui.PagedWindow[Device]{Items: devices, Total: len(devices)}, webui.Ready()
 		}}
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/d", Body: table}}}.MustCompile("/admin"), &last
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/d", View: table}}}.MustCompile("/admin"), &last
 }
 
 func TestAColumnThatLeavesItselfOutHasNoSortLinkAndNoFilter(t *testing.T) {

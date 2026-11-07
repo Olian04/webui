@@ -24,9 +24,9 @@ type crumbSub struct {
 
 // crumbApp is a list, a page for one thing at "/thing/{id}" whose crumb says its name, and a page below it.
 func crumbApp(logger *slog.Logger, crumb func(context.Context, crumbArgs) string, guard func(context.Context, crumbArgs) error) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: "/thing", Nav: webui.Nav{Label: "Things"}, Body: webui.Stack{}}
-	one := webui.Page[crumbArgs]{Path: "/thing/{id}", Crumb: crumb, Guard: guard, Body: webui.Stack{}}
-	log := webui.Page[crumbSub]{Path: "/thing/{id}/log", Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/thing", Nav: webui.Nav{Label: "Things"}, View: webui.Stack{}}
+	one := webui.Page[crumbArgs]{Path: "/thing/{id}", Crumb: crumb, Guard: guard, View: webui.Stack{}}
+	log := webui.Page[crumbSub]{Path: "/thing/{id}/log", View: webui.Stack{}}
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Logger: logger, Pages: webui.Pages{list, one, log}}.MustCompile("/admin")
 }
 
@@ -115,13 +115,13 @@ func TestACrumbIsHandedTheContextOfTheRequest(t *testing.T) {
 func TestACrumbOnAPageThatTakesTheRestIsACompileErrorAndAParentAboveItMayHaveOne(t *testing.T) {
 	t.Parallel()
 
-	rest := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Crumb: func(context.Context, objectArgs) string { return "x" }, Body: webui.Stack{}}
+	rest := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Crumb: func(context.Context, objectArgs) string { return "x" }, View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{rest}})
 	assert.Contains(t, errs[0].Error(), "has a Crumb and its path ends in a {name...}")
 
-	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, Body: webui.Stack{}}
-	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", Crumb: func(_ context.Context, a bucketArgs) string { return "Bucket " + a.Name }, Body: webui.Stack{}}
-	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Body: webui.Stack{}}
+	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, View: webui.Stack{}}
+	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", Crumb: func(_ context.Context, a bucketArgs) string { return "Bucket " + a.Name }, View: webui.Stack{}}
+	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{buckets, bucket, object}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/bucket/photos/2026/img.png").Body.String()
 	assert.Contains(t, body, `<a href="/admin/bucket/photos">Bucket photos</a>`)
@@ -133,7 +133,7 @@ func TestACrumbOnAPageThatTakesTheRestIsACompileErrorAndAParentAboveItMayHaveOne
 func TestTheLandingPagesCrumbReplacesItsNavigationLabelInTheTrail(t *testing.T) {
 	t.Parallel()
 
-	home := webui.Page[webui.NoArgs]{Path: "/", Nav: webui.Nav{Label: "Status"}, Crumb: func(context.Context, webui.NoArgs) string { return "All systems" }, Body: webui.Stack{}}
+	home := webui.Page[webui.NoArgs]{Path: "/", Nav: webui.Nav{Label: "Status"}, Crumb: func(context.Context, webui.NoArgs) string { return "All systems" }, View: webui.Stack{}}
 	body := serve(webui.App{Pages: webui.Pages{home}}.MustCompile("/admin"), http.MethodGet, "/admin/").Body.String()
 	assert.Contains(t, body, `<span class="cur" aria-current="page">All systems</span>`)
 }

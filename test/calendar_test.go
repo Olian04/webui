@@ -78,9 +78,9 @@ func calendarCell(body string, day int, out bool) string {
 }
 
 // dayPages is the page a calendar is on, and the page its days open.
-func dayPages(body webui.PageBody, guard func(context.Context, dayArgs) error) (http.Handler, webui.Page[dayArgs]) {
-	detail := webui.Page[dayArgs]{Path: "/day/{date}", Guard: guard, Body: webui.Stack{}}
-	list := webui.Page[webui.NoArgs]{Path: "/e", Body: body}
+func dayPages(body webui.View, guard func(context.Context, dayArgs) error) (http.Handler, webui.Page[dayArgs]) {
+	detail := webui.Page[dayArgs]{Path: "/day/{date}", Guard: guard, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/e", View: body}
 	return webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin"), detail
 }
 
@@ -341,14 +341,14 @@ func TestACalendarThatCannotBeDrawnIsACompileError(t *testing.T) {
 	src := &calendarSource{}
 	_, detail := dayPages(webui.Stack{}, nil)
 	for name, tc := range map[string]struct {
-		body webui.PageBody
+		body webui.View
 		want string
 	}{
 		"no load":                  {webui.Calendar[release]{Date: releaseWhen}, "a Calendar has no Load"},
 		"no date":                  {webui.Calendar[release]{Load: src.load}, "a Calendar has no Date"},
 		"an href with no url":      {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Href[webui.Day]{}}, "Calendar.Open is an Href with no URL"},
 		"sunday and week numbers":  {webui.Calendar[release]{Load: src.load, Date: releaseWhen, SundayFirst: true, WeekNumbers: true}, "a Calendar has SundayFirst and WeekNumbers"},
-		"an open that is not here": {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Link[webui.Day, webui.NoArgs]{Page: webui.Page[webui.NoArgs]{Path: "/elsewhere", Body: webui.Stack{}}, Args: func(context.Context, webui.Day) webui.NoArgs { return webui.NoArgs{} }}}, `a link targets "/elsewhere", which is not mounted in this app`},
+		"an open that is not here": {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Link[webui.Day, webui.NoArgs]{Page: webui.Page[webui.NoArgs]{Path: "/elsewhere", View: webui.Stack{}}, Args: func(context.Context, webui.Day) webui.NoArgs { return webui.NoArgs{} }}}, `a link targets "/elsewhere", which is not mounted in this app`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

@@ -10,7 +10,7 @@ type Page struct {
 	PathTemplate string
 	Args         []ArgSpec
 	Nav          Nav
-	Body         Node
+	Root         Node // the page's View, as a node
 
 	// Decode builds the argument struct from raw request values, path and
 	// query merged by name. Built while lowering, so no reflection happens per

@@ -45,7 +45,7 @@ func (a Secret[M]) meta() accessorMeta {
 var _ Accessor[struct{}] = Secret[struct{}]{}
 
 // validateSecret checks what a secret needs besides what every accessor does: a Store, and a place that can hold an input.
-func validateSecret[M any](v *bodyValidator, at string, a Secret[M], where string) {
+func validateSecret[M any](v *viewValidator, at string, a Secret[M], where string) {
 	validateTextRules(v, at, a.Rules)
 	switch {
 	case a.Store == nil:
@@ -77,7 +77,7 @@ func lowerSecret[M any](a Secret[M], name string) ir.Field {
 	return f
 }
 
-func (a Secret[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Secret[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool, saying whether a value is stored")
 	validateSecret(v, at, a, site.where)
 }

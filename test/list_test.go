@@ -76,9 +76,9 @@ func (f *listLoader) asked() []int {
 }
 
 // listPages is the page a list is on, and the page its items open, which has an argument.
-func listPages(body webui.PageBody, guard func(context.Context, storyArgs) error) (http.Handler, webui.Page[storyArgs]) {
-	detail := webui.Page[storyArgs]{Path: "/story/{id}", Guard: guard, Body: webui.Stack{}}
-	list := webui.Page[webui.NoArgs]{Path: "/e", Body: body}
+func listPages(body webui.View, guard func(context.Context, storyArgs) error) (http.Handler, webui.Page[storyArgs]) {
+	detail := webui.Page[storyArgs]{Path: "/story/{id}", Guard: guard, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/e", View: body}
 	return webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin"), detail
 }
 
@@ -339,11 +339,11 @@ func TestThePolicyOfAPageThatTrustsAnOriginForPicturesHasItAndNoOtherPageDoes(t 
 	t.Parallel()
 
 	src := &listLoader{}
-	with := webui.Page[webui.NoArgs]{Path: "/with", Body: webui.Stack{
+	with := webui.Page[webui.NoArgs]{Path: "/with", View: webui.Stack{
 		webui.List[story]{Title: "A", Loader: src.loader(), Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://a.example", "https://shared.example"}},
 		webui.Cards[story]{Title: "B", Loader: src.loader(), Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"https://shared.example", "https://B.example:443"}},
 	}}
-	without := webui.Page[webui.NoArgs]{Path: "/without", Body: webui.List[story]{Title: "C", Loader: src.loader(), Headline: pTitle}}
+	without := webui.Page[webui.NoArgs]{Path: "/without", View: webui.List[story]{Title: "C", Loader: src.loader(), Headline: pTitle}}
 	h := webui.App{Pages: webui.Pages{with, without}}.MustCompile("/admin")
 
 	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example", 1)
@@ -386,8 +386,8 @@ func TestTabsOfListsAreReadOnlyForTheSelectedTab(t *testing.T) {
 
 	first, second := &listLoader{}, &listLoader{}
 	h := editorApp(webui.Tabs{
-		{Label: "Hacker News", Body: webui.List[story]{Title: "Hacker News", Loader: first.loader(), Headline: pTitle}},
-		{Label: "Lobsters", Body: webui.List[story]{Title: "Lobsters", Loader: second.loader(), Headline: pTitle}},
+		{Label: "Hacker News", View: webui.List[story]{Title: "Hacker News", Loader: first.loader(), Headline: pTitle}},
+		{Label: "Lobsters", View: webui.List[story]{Title: "Lobsters", Loader: second.loader(), Headline: pTitle}},
 	})
 	serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, len(first.asked()), 1)
@@ -403,7 +403,7 @@ func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 
 	load := (&listLoader{}).loader()
 	for name, tc := range map[string]struct {
-		body webui.PageBody
+		body webui.View
 		want string
 	}{
 		"no load":               {webui.List[story]{Headline: pTitle}, "a List has no Load"},
@@ -434,7 +434,7 @@ func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 func TestAnOpenIsCheckedLikeAnyLink(t *testing.T) {
 	t.Parallel()
 
-	elsewhere := webui.Page[webui.NoArgs]{Path: "/elsewhere", Body: webui.Stack{}}
+	elsewhere := webui.Page[webui.NoArgs]{Path: "/elsewhere", View: webui.Stack{}}
 	lost := webui.Link[story, webui.NoArgs]{Page: elsewhere, Args: func(context.Context, story) webui.NoArgs { return webui.NoArgs{} }}
 	got := editorErrors(t, webui.List[story]{Loader: (&listLoader{}).loader(), Headline: pTitle, Open: lost})
 	assert.Contains(t, got, `a link targets "/elsewhere", which is not mounted in this app`)

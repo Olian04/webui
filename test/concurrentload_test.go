@@ -44,7 +44,7 @@ func TestAPagesPanelsLoadAtTheSameTime(t *testing.T) {
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
 		webui.Split{
 			webui.Form[Device]{
 				Title: "Form",
@@ -79,7 +79,7 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 	t.Parallel()
 
 	var others atomic.Int32
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
 		webui.Table[Device]{
 			Title: "Fine",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -117,7 +117,7 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
 		webui.Table[Device]{
 			Title: "Table",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
