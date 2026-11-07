@@ -1,0 +1,11 @@
+{
+  "name": "webui-e2e",
+  "private": true,
+  "description": "The browser suite: what the scripts and the stylesheet do, against the demo. Not part of go test; make e2e runs it.",
+  "scripts": {
+    "test": "playwright test --trace off"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

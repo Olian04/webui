@@ -52,3 +52,7 @@ tools/monaco/node_modules/
 
 # a binary that `go build ./cmd/demo` leaves here
 /demo
+tools/e2e/node_modules/
+tools/e2e/demo
+tools/e2e/test-results/
+tools/e2e/playwright-report/

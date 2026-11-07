@@ -297,6 +297,10 @@ tests too, so the documentation on pkg.go.dev cannot drift from the code.
 Code that only a test uses does not belong in the library. If nothing reachable from
 the public API needs it, it is deleted, or moved into the tests.
 
+What the scripts and the stylesheet do is tested in a browser, not by reading their text:
+`make e2e` runs the suite in `tools/e2e` (Node and headless Chromium, against the demo). It
+is not part of `make test`, and CI runs it as a job of its own.
+
 ### Documentation authoring
 
 | Where                                                  | What                                                                                                                                                              |
