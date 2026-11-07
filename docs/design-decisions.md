@@ -9,7 +9,7 @@ JavaScript switched off.
 
 HTML is the state of the application, and the only thing the server answers a browser with (hypermedia as the engine of application state, as in
 [HATEOAS](https://htmx.org/essays/hateoas) and [hypermedia-driven applications](https://htmx.org/essays/hypermedia-driven-applications), whose thinking is a big
-inspiration here): a page, a panel that script asks for by `X-Webui-Leaf`, and whatever a script-made request is answered with are HTML, which holds the links, forms and
+inspiration here): a page, a panel that script asks for by `X-Webui-View`, and whatever a script-made request is answered with are HTML, which holds the links, forms and
 buttons that a visitor can use in that state, and the script only asks for it and puts it in the page. There is no JSON endpoint, and a script does not learn what the
 server's states mean or build markup from data. What this costs: a script feature needs a fragment that the server renders, which is more work than a JSON answer, and a
 client that is not a browser has no data format to read.
@@ -362,7 +362,7 @@ design element.
   dropped and a `..` is not followed, controls are taken out, elements and depth are bounded); `RawName` is the name exactly as sent, so that an app can tell the visitor that it
   changed; `DeclaredType` is the media type the browser said, without parameters, beside `ContentType`, which is what the first bytes hold, since the visitor often knows better
   what an object is (a `.json` file sniffs as `text/plain`). Go's `Part.FileName` applies `filepath.Base`, so the raw name is read from `Content-Disposition`. The costs: three
-  more fields on a type every upload sees, two of them the visitor's word and to be trusted with nothing; and there is **no test helper** in the public API: the names that a test posts (`_leaf`
+  more fields on a type every upload sees, two of them the visitor's word and to be trusted with nothing; and there is **no test helper** in the public API: the names that a test posts (`_view`
   and `file`) are documented as stable instead, which `httptest` and a few lines of `mime/multipart` can use.
 
 - **A file is of a kind by what it holds.** `Accept` lists kinds (`FilePNG`, `FileJPEG`, `FileGIF`, `FileWebP`, `FileImage`, `FilePDF`,
@@ -386,7 +386,7 @@ design element.
   and a progress bar are one feature, because they all need what a plain form post cannot do: a request for each file that script makes. So `upload.js`, linked only by a page
   that has a `FileUpload` and after `file.js`, takes over the form's submit: for each chosen file, in order, it sends the form's controls and then the file (with its
   folder in its name, which the server reads as `Path`) with an `XMLHttpRequest`, for the progress events that `fetch` has none of, to the form's own address, with the
-  `X-Webui-Leaf` header that a request for one panel's HTML carries. A POST with that header is answered with **HTML, never data**, and the status says how it went (below): one list item with the outcome's
+  `X-Webui-View` header that a request for one panel's HTML carries. A POST with that header is answered with **HTML, never data**, and the status says how it went (below): one list item with the outcome's
   tone and text and, when the outcome goes somewhere, a link to it, written at the places where a flash and a redirect are, so every other post is unchanged. The script
   puts the item in the file's row as it is and reads nothing from it but that link, and whether a file went well is its status: when every file was a success and the last
   outcome went somewhere it follows the link, as a browser that was redirected would, and the panels around it (tables) are asked for again from the
@@ -402,7 +402,7 @@ design element.
 
 - **A post that script makes is answered in HTML, for any panel, with the status of how it went.** The first version of the upload's answer was the upload's: a list item that
   any other post with the header would have been given with no place to go, a form that was refused was given the whole page, and the script told success from failure by the
-  word in the item's tone. It is one contract now, for every leaf. A post with `X-Webui-Leaf` is answered with HTML and never with a redirect, a cookie or data: **an accepted
+  word in the item's tone. It is one contract now, for every leaf. A post with `X-Webui-View` is answered with HTML and never with a redirect, a cookie or data: **an accepted
   action is the item with a 200** (a warning too: it was done), **a refused outcome, rule or file is the item with a 422** (understood, and refused), **a Guard's refusal is the item
   with a 403** (the visitor may not, which is not that what they sent was refused), **a failure is the item with a 500**, and a refused page Guard, a post from another site and an
   argument that did not parse are the item with their own statuses; **a form that was refused is the form**: the HTML of the leaf, drawn again with what was typed and what was
@@ -469,7 +469,7 @@ design element.
   browser that is not read to the end resets the connection and the visitor sees that instead of the reason; the other parts are still read, so the form
   is drawn again with what was typed. An action's own `Guard` runs after `Bind` (it is handed the model), so for a refused action the file has been received
   and is dropped with the request. The costs: memory for each upload that is arriving is up to its `MaxSize`, so the app sets one that it can hold
-  for as many visitors as send at once; `_leaf` names the form that the files are of, so it must come before them, as the markup of the library has it, and a
+  for as many visitors as send at once; `_view` names the form that the files are of, so it must come before them, as the markup of the library has it, and a
   body that has it after is "not understood". A program that takes uploads sets `ReadTimeout`, which the demo does, since `ReadHeaderTimeout` does not bound a body.
 
 - **A file is stored only when the whole submission is accepted.** `Bind` checks every field and applies each value that passed,
@@ -629,13 +629,13 @@ design element.
   which already has a `Load`, fields and a title. The item list is a sealed interface, `ToolbarItem`, whose method takes `NoArgs`: `Action[M]`, `Link[M, B]`
   and `Form[M]` have such a method, and `Action[M]` and `Link[M, B]` match it only when `M` is `NoArgs`, so a button with a subject of its own does not
   compile (the accessors have no such method any more, so an accessor is not an item). The toolbar is the leaf, and so what is refreshed: a `Form`'s
-  `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-leaf` and `data-refresh-after`, without a note: a panel says "Updating…" in its head, but a toolbar's row has little room
+  `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-view` and `data-refresh-after`, without a note: a panel says "Updating…" in its head, but a toolbar's row has little room
   and an inline note moves what is in it, so a visitor without script is not told to reload one. A form in a toolbar is a group (`role="group"`, named by its `Title`, which is required), is read-only (no `Submit`),
   has no `Desc` or `Help` of its own and no field that is multiline, secret or a file; the compile says so, with what to do. A form whose `Load` fails is
   its title and "Could not load" (or a refusal's words) in its place, and the rest of the toolbar stands, where a failed read of a select's options still
   fails the whole toolbar. The costs: every toolbar was changed once (the type parameter, the accessors, the subject of the buttons); a `Form` in a
   toolbar is a restricted use of a general type, checked when the app compiles; a slow `Load` holds the whole toolbar, as a panel's holds its panel; and
-  the toolbar now has a `data-leaf`, so `syncPanels` asks for it again after a panel or tab moves, which also keeps the address its buttons post to right.
+  the toolbar now has a `data-view`, so `syncPanels` asks for it again after a panel or tab moves, which also keeps the address its buttons post to right.
   Writable fields, a `Form`'s `Submit` drawn in the toolbar, are not here.
 
 - **A toolbar shows values and has no inputs.** It once had inputs that wrote the page's arguments, and they were removed outright: an input that changes
@@ -704,17 +704,17 @@ design element.
   query arguments: they come from the address (a link, `Open`), and a `Toolbar` can show their values (a `Form` that reads them with `ArgsOf`) but not change them.
 
 - A link inside a panel that changes only that panel's arguments
-  fetches the *same URL* with an `X-Webui-Leaf` header and replaces that panel;
+  fetches the *same URL* with an `X-Webui-View` header and replaces that panel;
   without script it is an ordinary navigation. The page `Guard` runs on every
   request, leaf addresses are derived from the `View` tree by position, and
-  framework parameters never touch the URL. `Vary: X-Webui-Leaf` is set. After
+  framework parameters never touch the URL. `Vary: X-Webui-View` is set. After
   a leaf moves, sibling panels that embed the old address are fetched again and
   forms keep what was typed (only their `action` is patched). After an action
   the whole page re-renders (a leaf-level refresh after an action is not done).
 - Transport parameters travel as headers, never in the URL; *view state* is in
   the URL, because it is what a copied address has to reproduce. The URL
   carries the page's arguments and the view state of its tables and tabs,
-  headers carry read-side transport (`X-Webui-Leaf`), form bodies carry
+  headers carry read-side transport (`X-Webui-View`), form bodies carry
   write-side routing. View state is named `<id>.<param>` (`devices.offset`,
   `devices.sort`, `devices.desc`, `tabs.tab`), and an argument name may not
   contain `.`, so the two can never collide; `Compile` rejects one that does.
@@ -810,7 +810,7 @@ design element.
   every `Search` to behave. Results are **not** streamed as each page answers: they would arrive in the order the pages happened to be
   fast, move under the pointer as they came, and the visitor would click the wrong one; the answer is sent once, ranked.
 - **The search answers in HTML, with one renderer for the box and the page.** The same endpoint answers in HTML, not JSON: for
-  script, which asks with the `X-Webui-Leaf` header (named `search`, as a request for one panel is, and not with a parameter of the address; the answer varies by it and says so with `Vary`), the box's own list (the labels and the links, with `role="option"`), which it puts in the box; and
+  script, which asks with the `X-Webui-View` header (named `search`, as a request for one panel is, and not with a parameter of the address; the answer varies by it and says so with `Vary`), the box's own list (the labels and the links, with `role="option"`), which it puts in the box; and
   without it, a page of results in the shell, with the sidebar and a breadcrumb, which is what the box's button submits to when
   there is no script to list the results as it is typed in. One renderer makes both, so they cannot disagree, and the script has
   no markup of its own to keep in step with the server's. The cost is that the script inserts server HTML (escaped by the
@@ -822,7 +822,7 @@ design element.
 
 - A tab, with script, is read alone. Following one was a navigation to the same page with another `tabs.tab`, which read
   every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the leaf
-  header a panel's refresh uses (`X-Webui-Leaf`, the id of the `Tabs` in the form of a panel's, which the page carries
+  header a panel's refresh uses (`X-Webui-View`, the id of the `Tabs` in the form of a panel's, which the page carries
   as `data-tabs`), and the answer, the strip and the selected tab, replaces it; the address moves with
   `pushState`, and back and forward reload the page as they do for a panel. It is the page's own request, so the Guard
   runs and an id that names nothing is a 404. What it costs, and how it is paid:
@@ -1310,14 +1310,14 @@ design element.
 ## Conditional bodies: `When`
 
 - **One body, not a repeat.** The first idea was a `Repeat[M]` that would also do conditional rendering as a repeat of 0 or 1. It was not built, because N copies of a body cannot be named: a leaf is named by its **position** in the body tree
-  (`p.0.1`), and that name is the `X-Webui-Leaf` header, the `_leaf` field of a post, `data-leaf`, the ids derived for fields and dialogs, the leaf map built once at registration, the script's one element for an id, and, through `assignViewIDs` and
+  (`p.0.1`), and that name is the `X-Webui-View` header, the `_view` field of a post, `data-view`, the ids derived for fields and dialogs, the leaf map built once at registration, the script's one element for an id, and, through `assignViewIDs` and
   the argument allowlist, the view-state keys (`devices.sort`). A post finds its leaf by position and never by data, so N copies of one template would share all of it. A body that is shown or not has the one position it was declared at, and none of that moves.
-- **What N copies would need, so it is not started from scratch:** a `Key func(M) string` for each copy, as `Table.Key` names rows, and never position; leaf ids qualified by it (`p.0.1~eu-north`) in the header, the post field, `data-leaf` and every derived DOM id;
+- **What N copies would need, so it is not started from scratch:** a `Key func(M) string` for each copy, as `Table.Key` names rows, and never position; leaf ids qualified by it (`p.0.1~eu-north`) in the header, the post field, `data-view` and every derived DOM id;
   per-copy view-state keys, with an argument allowlist that is data-dependent; refresh and posts that run the list's `Load` again to find the item by its key; the script's one-element-per-id assumption; a cap on copies, as `NavEntries` has (50); a way
   for the child to receive its item (the context, with a runtime assertion like `ArgsOf`'s, since `View` erases the child's model); and nested repeats refused.
 - **`Load` and `Show`, in the library's own terms.** `Load` is a data source and an accessor reads the model it loads, so a condition is a `Load` for a model and a `Bool` that reads it. `Show` takes a `BoolLike`, an interface that `Bool` and `OptionalBool` both satisfy (sealed, with no method an app could implement), so that the author does not choose between the plain accessor and the tri-state one, or write a second accessor of a value that already has one; a value that is not set reads as no. `IntLike`, `FloatLike` and `SliderLike` are the same pair and were not added: nothing takes an int, float or slider accessor by kind, and they come the day something does. The accessor is written once and reused: a `Bool` that a form shows is the `Show` of a
   `When`, and the fields it has no use for there are ignored, as `NoSort` is in a form. A bare `func(M) bool` was drafted and dropped for that reason. It needed `Bool` to be a `bool`, which it was not (it loaded a `*bool`); that was fixed first, and the tri-state one is `OptionalBool`.
-- **A layout that loads: the one exception.** The IR says layouts only arrange. A `When` loads, for the condition, because a condition is data and the body cannot be told it (it is another model, erased by `View`). It is not a leaf: no `data-leaf`, no entry in the
+- **A layout that loads: the one exception.** The IR says layouts only arrange. A `When` loads, for the condition, because a condition is data and the body cannot be told it (it is another model, erased by `View`). It is not a leaf: no `data-view`, no entry in the
   leaf map, no refresh hint (a `Loaded.RefreshAfter` from its `Load` does nothing), and a request cannot name it. What it costs: its `Load` runs in front of its child's, and again for each refresh or post to a leaf under it, and an app whose body needs the same data loads it twice.
 - **Hidden means unreachable.** If it were only not drawn, a forged request could still refresh, post to or export a leaf that was meant to be shown to some visitors. So a leaf under a `When` that does not hold is answered as an unknown one is (a 404 for a refresh, the "not understood" flash
   for a post, an ignored parameter for an export), the condition is asked again for that request, and a failed `Load` counts as not holding. It is a gate that keeps what is drawn and what is allowed in step, as an action's `Guard` does for its button. It is not an authorization of the page, and an

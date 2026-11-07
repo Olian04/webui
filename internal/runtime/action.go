@@ -134,7 +134,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates ma
 		if multipart && !p.receive(w, r, page, req, reachable, rec, valueLimit) {
 			return
 		}
-		switch n := reachable[r.PostForm.Get("_leaf")].(type) {
+		switch n := reachable[r.PostForm.Get("_view")].(type) {
 		case *ir.Form:
 			p.submit(w, r, page, req, n, rec)
 		case *ir.Table:
@@ -351,7 +351,7 @@ func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, page *ir.
 			return
 		}
 		if err := writeHTML(ctx, w, http.StatusUnprocessableEntity, body); err != nil {
-			p.log.Error("webui: render failed", "path", r.URL.Path, "leaf", r.Header.Get(LeafHeader), "err", err)
+			p.log.Error("webui: render failed", "path", r.URL.Path, "view", r.Header.Get(ViewHeader), "err", err)
 		}
 		return
 	}

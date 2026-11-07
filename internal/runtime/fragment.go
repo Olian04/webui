@@ -6,11 +6,11 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// wantsFragment is whether a request is a POST that script made, which names the leaf that it is for, as a request for that leaf's HTML does (see LeafHeader). It is
+// wantsFragment is whether a request is a POST that script made, which names the leaf that it is for, as a request for that leaf's HTML does (see ViewHeader). It is
 // answered with the HTML of what happened, a fragment that script puts in the page, and not with a flash and a redirect, which a page that is navigated to shows: the
 // server answers script with HTML, never with data that script has to read (see docs/AGENTS.md).
 func wantsFragment(r *http.Request) bool {
-	return r.Method == http.MethodPost && r.Header.Get(LeafHeader) != ""
+	return r.Method == http.MethodPost && r.Header.Get(ViewHeader) != ""
 }
 
 // writeResult answers a script-made POST with the result as a list item: the tone and the text of what the toast would have said, and, when the outcome goes somewhere

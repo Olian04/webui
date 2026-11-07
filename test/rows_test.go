@@ -181,7 +181,7 @@ func TestRowActionsWorkOverRows(t *testing.T) {
 		},
 	}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
-	rec := post(h, "/admin/device", map[string][]string{"_leaf": {"p"}, "_act": {"row:0:b"}})
+	rec := post(h, "/admin/device", map[string][]string{"_view": {"p"}, "_act": {"row:0:b"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.DeepEqual(t, acted, []string{"b"})
 }

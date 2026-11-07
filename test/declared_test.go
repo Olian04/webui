@@ -55,11 +55,11 @@ func TestTheSearchBoxIsAskedForByTheHeaderAndNotByAParameter(t *testing.T) {
 	list := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=eth")
 	assert.Equal(t, list.Code, http.StatusOK)
 	assert.False(t, strings.Contains(list.Body.String(), "<html"))
-	assert.Contains(t, strings.Join(list.Header().Values("Vary"), ","), "X-Webui-Leaf")
+	assert.Contains(t, strings.Join(list.Header().Values("Vary"), ","), "X-Webui-View")
 
 	page := serve(h, http.MethodGet, "/admin/_webui/search?q=eth")
 	assert.Contains(t, page.Body.String(), "<html")
-	assert.Contains(t, strings.Join(page.Header().Values("Vary"), ","), "X-Webui-Leaf")
+	assert.Contains(t, strings.Join(page.Header().Values("Vary"), ","), "X-Webui-View")
 
 	// The parameter that used to say it is a parameter like any other: the page.
 	old := serve(h, http.MethodGet, "/admin/_webui/search?fragment=1&q=eth")
@@ -76,7 +76,7 @@ func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing
 	for _, want := range []string{
 		"a[href][data-in-place]", "function syncPanels(href, moved)", "function settle(href, moved)", "syncPanels(href, moved)", "el.setAttribute('aria-busy', 'true')",
 		"a[data-in-place]", "form[method=\"post\"]", "setAttribute('action', fresh[i].getAttribute('action') || '')", "fetchLeaf(id, href, undefined, 'data-tabs')",
-		"template[data-palette-pending]", "template[data-palette-down]", "[LEAF_HEADER]: 'search'", "settle(href, next)",
+		"template[data-palette-pending]", "template[data-palette-down]", "[VIEW_HEADER]: 'search'", "settle(href, next)",
 	} {
 		assert.Contains(t, js, want)
 	}
@@ -84,6 +84,6 @@ func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing
 		assert.False(t, strings.Contains(js, gone))
 	}
 	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "[data-leaf][aria-busy='true'] tbody {")
+	assert.Contains(t, css, "[data-view][aria-busy='true'] tbody {")
 	assert.False(t, strings.Contains(css, ".skel-row"))
 }

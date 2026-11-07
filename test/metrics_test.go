@@ -181,7 +181,7 @@ func TestActionsAreCountedByWhatCameOfThem(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	h := metricsApp(reg, nil, nil)
 	submit := func(name string) {
-		post(h, "/admin/thing/a", url.Values{"_leaf": {"p"}, "f0": {name}})
+		post(h, "/admin/thing/a", url.Values{"_view": {"p"}, "f0": {name}})
 	}
 	submit("ok")
 	submit("warn")
@@ -195,7 +195,7 @@ func TestActionsAreCountedByWhatCameOfThem(t *testing.T) {
 
 	failing := prometheus.NewRegistry()
 	broken := metricsApp(failing, nil, errors.New("boom"))
-	post(broken, "/admin/thing/a", url.Values{"_leaf": {"p"}, "f0": {"ok"}})
+	post(broken, "/admin/thing/a", url.Values{"_view": {"p"}, "f0": {"ok"}})
 	assert.Equal(t, gathered(t, failing, "webui_actions_total")["page=/thing/{id},result=error"], 1.0)
 }
 

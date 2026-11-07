@@ -17,7 +17,7 @@ func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) 
 	assert.Contains(t, body, `data-language="json"`)
 	assert.Contains(t, body, "No differences")
 
-	rec := post(h, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{\n  \"collector\": \"eu-west-2\"\n}\n"}})
+	rec := post(h, "/admin/config", url.Values{"_view": {"p.0"}, "f0": {"{\n  \"collector\": \"eu-west-2\"\n}\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	body = get(h, "/admin/config").Body.String()
 	assert.False(t, strings.Contains(body, "No differences"))
@@ -28,7 +28,7 @@ func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) 
 	body = get(v, "/admin/config").Body.String()
 	assert.Contains(t, body, `<pre class="code-view"`)
 	assert.False(t, strings.Contains(body, "<textarea"))
-	refused := post(v, "/admin/config", url.Values{"_leaf": {"p.0"}, "f0": {"{}"}})
+	refused := post(v, "/admin/config", url.Values{"_view": {"p.0"}, "f0": {"{}"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
 	assert.Contains(t, follow(v, refused).Body.String(), `class="toast raise tone-bad"`)
 }
@@ -53,10 +53,10 @@ func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAVie
 
 	// The text has type errors on purpose, and saving it is the editor's.
 	assert.Contains(t, body, "pageOnCall(signal, ")
-	rec := post(editor, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"export const ok: number = 1;\n"}})
+	rec := post(editor, "/admin/rule", url.Values{"_view": {"p"}, "f0": {"export const ok: number = 1;\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
-	refused := post(viewer, "/admin/rule", url.Values{"_leaf": {"p"}, "f0": {"x"}})
+	refused := post(viewer, "/admin/rule", url.Values{"_view": {"p"}, "f0": {"x"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
 	assert.Contains(t, follow(viewer, refused).Body.String(), `class="toast raise tone-bad"`)
 }

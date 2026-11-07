@@ -912,7 +912,7 @@ func (r *Renderer) Table(v TableView) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "<input type=\"hidden\" name=\"_view\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -959,7 +959,7 @@ func (r *Renderer) Table(v TableView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-			Leaf:   LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 			Grows:  true,
 			Footer: r.tableFooter(v),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var34), templ_7745c5c3_Buffer)
@@ -1943,7 +1943,7 @@ func (r *Renderer) Form(v FormView) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<input type=\"hidden\" name=\"_view\" value=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -2128,7 +2128,7 @@ func (r *Renderer) Form(v FormView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-			Leaf: LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var76), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -2810,12 +2810,12 @@ func (r *Renderer) Toolbar(v ToolbarView) templ.Component {
 				ctx = templ.InitializeContext(ctx)
 				return nil
 			})
-			templ_7745c5c3_Err = c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var112), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var112), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else if v.drawn() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<div class=\"toolbar\" data-toolbar data-leaf=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 89, "<div class=\"toolbar\" data-toolbar data-view=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -2853,7 +2853,7 @@ func (r *Renderer) Toolbar(v ToolbarView) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 92, "<input type=\"hidden\" name=\"_view\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -3260,7 +3260,7 @@ func (r *Renderer) FileUpload(v FileUploadView) templ.Component {
 				ctx = templ.InitializeContext(ctx)
 				return nil
 			})
-			templ_7745c5c3_Err = c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var128), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var128), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -3289,7 +3289,7 @@ func (r *Renderer) FileUpload(v FileUploadView) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 112, "<input type=\"hidden\" name=\"_view\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -3382,7 +3382,7 @@ func (r *Renderer) FileUpload(v FileUploadView) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var129), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, ViewID: LeafID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var129), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -3488,7 +3488,7 @@ func Result(tone ToastTone, text string, next string) templ.Component {
 // them in a grid) sees one child. The strip is links, because the selected tab is a page argument: it is in the
 // address, survives a reload, and works without script.
 //
-// With script a tab is followed by asking for this element alone (see LeafHeader), which loads only the tab that is
+// With script a tab is followed by asking for this element alone (see ViewHeader), which loads only the tab that is
 // selected: data-tabs is its id, in the same form as a panel's. The panels around it that hold its selection in their addresses are asked for again by
 // script, from the server, which writes them: the script has no knowledge of how an address is made.
 func Tabs(label string, strip []c.Tab, content templ.Component, id string) templ.Component {
@@ -4540,7 +4540,7 @@ func (r *Renderer) Diff(v DiffView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-			Leaf: LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var193), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -4616,7 +4616,7 @@ func (r *Renderer) Markdown(v MarkdownView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-			Leaf: LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var201), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -4683,7 +4683,7 @@ func (r *Renderer) Items(v ItemsView) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 212, "<input type=\"hidden\" name=\"_view\" value=\"")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -4727,7 +4727,7 @@ func (r *Renderer) Items(v ItemsView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-			Leaf:   LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 			Footer: r.itemsFoot(v),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var204), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
@@ -5125,7 +5125,7 @@ func (r *Renderer) Calendar(v CalendarView) templ.Component {
 						}()
 					}
 					ctx = templ.InitializeContext(ctx)
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 229, "<input type=\"hidden\" name=\"_leaf\" value=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 229, "<input type=\"hidden\" name=\"_view\" value=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -5168,7 +5168,7 @@ func (r *Renderer) Calendar(v CalendarView) templ.Component {
 			Title:  v.Node.Title,
 			Desc:   v.Node.Desc,
 			Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-			Leaf: LeafID(v.Node.At),
+			ViewID: LeafID(v.Node.At),
 		}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var223), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

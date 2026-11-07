@@ -188,7 +188,7 @@ func TestAListRefreshesAsALeafOfItsOwn(t *testing.T) {
 		webui.List[story]{Title: "Second", Loader: src.loader(), PageSize: 2, Headline: pTitle},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e?second.limit=3", nil)
-	req.Header.Set("X-Webui-Leaf", "p.1")
+	req.Header.Set("X-Webui-View", "p.1")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -196,7 +196,7 @@ func TestAListRefreshesAsALeafOfItsOwn(t *testing.T) {
 	assert.Equal(t, strings.Count(body, `<li class="item">`), 3)
 	assert.False(t, strings.Contains(body, "<html"))
 	assert.False(t, strings.Contains(body, ">First<"))
-	assert.Contains(t, body, `data-leaf="p.1"`)
+	assert.Contains(t, body, `data-view="p.1"`)
 }
 
 func TestAFailingListLoadFailsThePanelAndNotThePage(t *testing.T) {
@@ -480,17 +480,17 @@ func TestAnActionOnAnItemRunsWithTheItemThatTheKeyNames(t *testing.T) {
 	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 5, Headline: pTitle, Open: open, Key: func(s story) string { return s.ID }})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 
-	assert.Contains(t, body, `<input type="hidden" name="_leaf" value="p">`)
+	assert.Contains(t, body, `<input type="hidden" name="_view" value="p">`)
 	assert.Contains(t, body, `<button class="item-link item-button" type="submit" name="_act" value="click:0:a">Show HN: Wealthfolio</button>`)
 	assert.False(t, strings.Contains(body, `value="click:0:b"`)) // refused: plain text
 	assert.Contains(t, body, "Nginx has moved to GitHub")
 
-	assert.Equal(t, post(h, "/admin/e", formValues("_leaf", "p", "_act", "click:0:a")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/e", formValues("_view", "p", "_act", "click:0:a")).Code, http.StatusSeeOther)
 	assert.DeepEqual(t, ran, []string{"a"})
 
 	// What names no item that there is, or posts the Guard's refusal, runs nothing.
 	for _, act := range []string{"click:0:nobody", "click:0:b", "row:0:a", "click:0:"} {
-		post(h, "/admin/e", formValues("_leaf", "p", "_act", act))
+		post(h, "/admin/e", formValues("_view", "p", "_act", act))
 	}
 	assert.DeepEqual(t, ran, []string{"a"})
 }

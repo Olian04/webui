@@ -56,7 +56,7 @@ func outcomeApp() http.Handler {
 }
 
 func submitIP(h http.Handler, ip string) (code int, location, flash, body string) {
-	rec := post(h, "/admin/device/a", url.Values{"_leaf": {"p"}, "f1": {ip}, "f2": {"5"}})
+	rec := post(h, "/admin/device/a", url.Values{"_view": {"p"}, "f1": {ip}, "f2": {"5"}})
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "webui_flash" {
 			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)
@@ -167,7 +167,7 @@ func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing
 		return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	}
 	flashOf := func(h http.Handler) string {
-		rec := post(h, "/admin/device", url.Values{"_leaf": {"p"}, "_act": {"row:0:a"}})
+		rec := post(h, "/admin/device", url.Values{"_view": {"p"}, "_act": {"row:0:a"}})
 		assert.Equal(t, rec.Code, http.StatusSeeOther)
 		for _, c := range rec.Result().Cookies() {
 			raw, _ := base64.RawURLEncoding.DecodeString(c.Value)

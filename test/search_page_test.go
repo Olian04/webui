@@ -135,7 +135,7 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	assert.False(t, strings.Contains(list, "<html"))
 
 	js := assetSource(t, "enhance.js")
-	for _, want := range []string{"'?q='", "[LEAF_HEADER]: 'search'", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'", "template[data-palette-pending]", "template[data-palette-down]"} {
+	for _, want := range []string{"'?q='", "[VIEW_HEADER]: 'search'", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'", "template[data-palette-pending]", "template[data-palette-down]"} {
 		assert.Contains(t, js, want)
 	}
 	assert.False(t, strings.Contains(js, "res.json()"))      // it is not JSON any more

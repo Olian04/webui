@@ -435,7 +435,7 @@ func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 // formAttrs are the attributes of the form's element: the mark that script finds it by, and the encoding of a form that has a file
 // chooser, which is what carries a file. A form without one is posted as it always was.
 func (v FormView) formAttrs() templ.Attributes {
-	attrs := templ.Attributes{"data-leaf-form": LeafID(v.Node.At)}
+	attrs := templ.Attributes{"data-view-form": LeafID(v.Node.At)}
 	for f := range ir.Leaves(v.Node.Fields) {
 		if f.File != nil && v.editable(f) {
 			attrs["enctype"] = "multipart/form-data"

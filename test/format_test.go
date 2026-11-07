@@ -175,7 +175,7 @@ func TestAFieldThatCanBeEditedHoldsTheValueAndOneThatCannotReadsAsItsFormat(t *t
 	body := serve(h, http.MethodGet, "/admin/s").Body.String()
 	assert.Contains(t, body, `value="1048576"`) // what is edited is the number, so what is typed is what is stored
 	assert.Contains(t, body, "1 MiB")           // what is only read is the format
-	assert.Equal(t, post(h, "/admin/s", url.Values{"_leaf": {"p"}, "f0": {"2048"}}).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/s", url.Values{"_view": {"p"}, "f0": {"2048"}}).Code, http.StatusSeeOther)
 	assert.Equal(t, saved.Size, 2048)
 }
 

@@ -86,7 +86,7 @@ func TestLayoutsGiveLeavesPositionalIDs(t *testing.T) {
 
 	h, _ := layoutApp(nil)
 	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	for _, id := range []string{`data-leaf="p.0.0"`, `data-leaf="p.0.1"`, `data-leaf="p.1.0"`} {
+	for _, id := range []string{`data-view="p.0.0"`, `data-view="p.0.1"`, `data-view="p.1.0"`} {
 		assert.Contains(t, body, id)
 	}
 	assert.Contains(t, body, `class="columns"`)
@@ -125,16 +125,16 @@ func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 
 	h, loads := layoutApp(nil)
 	req := httptest.NewRequest(http.MethodGet, "/admin/device/d1", nil)
-	req.Header.Set("X-Webui-Leaf", "p.0.1")
+	req.Header.Set("X-Webui-View", "p.0.1")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
-	assert.True(t, strings.HasPrefix(body, `<div class="panel grows" data-leaf="p.0.1">`))
+	assert.True(t, strings.HasPrefix(body, `<div class="panel grows" data-view="p.0.1">`))
 	assert.False(t, strings.Contains(body, "<html"))
 	assert.Contains(t, body, "Events-row")
-	assert.Contains(t, rec.Header().Get("Vary"), "X-Webui-Leaf")
+	assert.Contains(t, rec.Header().Get("Vary"), "X-Webui-View")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 	// Only that leaf was read; the rest of the screen holds still.
 	assert.Equal(t, loads[0].Load(), int32(0))
@@ -142,7 +142,7 @@ func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 	assert.Equal(t, loads[2].Load(), int32(0))
 
 	// A full page says it varies on the header too, so no cache serves one for the other.
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Header().Get("Vary"), "X-Webui-Leaf")
+	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Header().Get("Vary"), "X-Webui-View")
 }
 
 func TestLeafRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
@@ -158,7 +158,7 @@ func TestLeafRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
 
 	ask := func(id string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodGet, "/admin/device/d1", nil)
-		req.Header.Set("X-Webui-Leaf", id)
+		req.Header.Set("X-Webui-View", id)
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
 		return rec
@@ -181,8 +181,8 @@ func TestOnlyATablePanelGrowsToTheHeightThereIsAndAFormKeepsItsOwn(t *testing.T)
 	h, _ := layoutApp(nil)
 	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
 	// The table's panel is the one that scrolls inside itself; the form's is not.
-	assert.Contains(t, body, `<div class="panel grows" data-leaf="p.0.1">`)
-	assert.Contains(t, body, `<div class="panel" data-leaf="p.0.0">`)
+	assert.Contains(t, body, `<div class="panel grows" data-view="p.0.1">`)
+	assert.Contains(t, body, `<div class="panel" data-view="p.0.0">`)
 }
 
 // Tabs is one child of the Split it is in: the strip and the selected panel are one element, so a Split, which puts
@@ -280,7 +280,7 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 
 func serveLeaf(h http.Handler, target, leaf string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
-	req.Header.Set("X-Webui-Leaf", leaf)
+	req.Header.Set("X-Webui-View", leaf)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec

@@ -63,7 +63,7 @@ type sent struct {
 }
 
 func submitTo(h http.Handler, target, ip string) sent {
-	rec := post(h, target, url.Values{"_leaf": {"p"}, "f1": {"10.0." + ip}})
+	rec := post(h, target, url.Values{"_view": {"p"}, "f1": {"10.0." + ip}})
 	out := sent{code: rec.Code, location: rec.Header().Get("Location")}
 	for _, c := range rec.Result().Cookies() {
 		if c.Name == "webui_flash" {
@@ -107,7 +107,7 @@ func TestBackLeavesForWhereTheUserCameFromWhateverTheKindOfOutcome(t *testing.T)
 func TestAFailureThatGoesBackDoesNotShowTheFormAgain(t *testing.T) {
 	t.Parallel()
 
-	rec := post(returnsApp(), openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.3.1"}})
+	rec := post(returnsApp(), openedFromLink, url.Values{"_view": {"p"}, "f1": {"10.0.3.1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Body.Len(), 0) // a redirect, not a page: what was typed is not kept
 }
@@ -153,10 +153,10 @@ func TestStayChangesNothingForAnOutcomeThatAlreadyStays(t *testing.T) {
 		got := submitTo(h, openedFromLink, ip)
 		assert.True(t, got.rerender)      // the form again, with what was typed and the reasons
 		assert.Equal(t, got.location, "") // as the answer, with no redirect
-		page := post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0." + ip}}).Body.String()
+		page := post(h, openedFromLink, url.Values{"_view": {"p"}, "f1": {"10.0." + ip}}).Body.String()
 		assert.Contains(t, page, "webui.from=%2Fadmin%2Felsewhere") // and it still posts to the address that has where it came from
 	}
-	body := post(h, openedFromLink, url.Values{"_leaf": {"p"}, "f1": {"10.0.4.2"}}).Body.String()
+	body := post(h, openedFromLink, url.Values{"_view": {"p"}, "f1": {"10.0.4.2"}}).Body.String()
 	assert.Contains(t, body, "Taken") // a Reject still says it beside the field
 }
 
@@ -187,7 +187,7 @@ func TestAnOutcomeCannotSayMoreThanOneThingAboutWhereToGo(t *testing.T) {
 			Submit: webui.Action[Device]{Run: func(ctx context.Context, _ Device) (webui.Outcome, error) { return outcome(ctx), nil }},
 		}}
 		h := webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}}.MustCompile("/admin")
-		rec := post(h, "/admin/solo", url.Values{"_leaf": {"p"}, "f1": {"10.0.0.1"}})
+		rec := post(h, "/admin/solo", url.Values{"_view": {"p"}, "f1": {"10.0.0.1"}})
 		if rec.Code != http.StatusSeeOther || !strings.Contains(follow(h, rec).Body.String(), "Something went wrong") {
 			t.Errorf("%s: status %d, want a redirect that says something went wrong, a mistake in the action's Run", name, rec.Code)
 		}
@@ -212,7 +212,7 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 		return webui.App{Pages: webui.Pages{parent, child}}.MustCompile("/admin")
 	}
 	post1 := func(h http.Handler) *httptest.ResponseRecorder {
-		return post(h, "/admin/device/log", url.Values{"_leaf": {"p"}, "_act": {"row:0:a"}})
+		return post(h, "/admin/device/log", url.Values{"_view": {"p"}, "_act": {"row:0:a"}})
 	}
 	// Back leaves for the breadcrumb parent, even for a Failure; Stay and the default stay.
 	rec := post1(act(webui.Failure("Nope").Back()))

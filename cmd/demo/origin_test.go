@@ -54,7 +54,7 @@ func TestCancelFallsBackToTheListWhenThereIsNoOrigin(t *testing.T) {
 func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 	h := handler(t)
 	from := "/admin/site/Malm\u00f6?open-alerts.sort=severity"
-	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
+	rec := post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_view": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.8.8.8"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	to, err := url.Parse(rec.Header().Get("Location")) // http.Redirect percent-encodes non-ASCII
 	assert.NoError(t, err)
@@ -63,7 +63,7 @@ func TestSavingReturnsToWhereTheDeviceWasOpenedFrom(t *testing.T) {
 
 	// A rejection keeps the Cancel it had.
 	taken, _ := service.Device("dev_27c38b")
-	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
+	rec = post(h, "/admin/device/dev_27c75c?webui.from="+url.QueryEscape(from), url.Values{"_view": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), `>Cancel</a>`)
 }

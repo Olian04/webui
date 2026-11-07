@@ -33,13 +33,13 @@ func TestSaveRejectsADuplicateIPThenStaysWhenOpenedDirectly(t *testing.T) {
 	h := handler(t)
 	// Fields: Group{ID, IP} f0_0 f0_1, Group{Status, Site} f1_*, Rate f2.
 	taken, _ := service.Device("dev_27c75c") // another device's address
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_view": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {taken.IP}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the form, drawn again with what was typed, as the answer
 	page := rec
 	assert.Contains(t, page.Body.String(), "already in use by another device")
 	assert.Contains(t, page.Body.String(), `value="`+taken.IP+`"`) // what was typed
 
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_view": {"p.0.0"}, "f1_0": {"healthy"}, "f0_1": {"10.9.9.9"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/device/dev_27c38b") // opened directly: nowhere to return to
 	device, _ := service.Device("dev_27c38b")
@@ -64,7 +64,7 @@ func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
 		assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", name, n))
 	}
 
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {other}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_view": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {other}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	moved, _ := service.Device("dev_27c38b")
 	assert.Equal(t, moved.Site, other)
@@ -73,7 +73,7 @@ func TestADevicesSiteIsChosenFromTheSitesThereAreNow(t *testing.T) {
 	assert.Contains(t, body, fmt.Sprintf(">%s (%d devices)</option>", device.Site, counts[device.Site]-1))
 
 	// A site that is not one of them is refused.
-	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {"Atlantis"}})
+	rec = post(h, "/admin/device/dev_27c38b", url.Values{"_view": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f1_1": {"Atlantis"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "Choose from the options offered.")
 }
@@ -99,7 +99,7 @@ func TestTheDeviceListHasAToolbarOfALinkAndAnAction(t *testing.T) {
 	assert.Contains(t, editor, `<a class="btn btn-primary btn-sm" href="/admin/device/new?webui.from=%2Fadmin%2Fdevice">Create device</a>`)
 	assert.Contains(t, editor, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1">Sync now</button>`)
 
-	rec := post(handler(t), "/admin/device", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	rec := post(handler(t), "/admin/device", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), fmt.Sprintf("oSynced %d devices", len(service.devices)))
 
@@ -109,7 +109,7 @@ func TestTheDeviceListHasAToolbarOfALinkAndAnAction(t *testing.T) {
 	assert.False(t, strings.Contains(viewer, "Sync now"))
 	assert.False(t, strings.Contains(viewer, "Create device"))
 	assert.False(t, strings.Contains(viewer, "data-toolbar"))
-	rec = post(handlerAs(t, Viewer), "/admin/device", url.Values{"_leaf": {"p.0"}, "_act": {"1"}})
+	rec = post(handlerAs(t, Viewer), "/admin/device", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 }
 
@@ -128,11 +128,11 @@ func TestTheDeviceThatIsCreatedHasAnAddressOfItsOwn(t *testing.T) {
 	assert.Contains(t, form, `>Create</button>`)
 
 	taken, _ := service.Device("dev_27c75c")
-	rec := post(h, "/admin/device/new", url.Values{"_leaf": {"p"}, "f0": {taken.IP}, "f1_0": {"healthy"}, "f1_1": {"Malmö"}})
+	rec := post(h, "/admin/device/new", url.Values{"_view": {"p"}, "f0": {taken.IP}, "f1_0": {"healthy"}, "f1_1": {"Malmö"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "already in use by another device")
 
-	rec = post(h, "/admin/device/new", url.Values{"_leaf": {"p"}, "f0": {"10.7.7.7"}, "f1_0": {"quiet"}, "f1_1": {"Malmö"}, "f2": {"edge", "gpu"}})
+	rec = post(h, "/admin/device/new", url.Values{"_view": {"p"}, "f0": {"10.7.7.7"}, "f1_0": {"quiet"}, "f1_1": {"Malmö"}, "f2": {"edge", "gpu"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, len(service.devices), before+1)
 	created := service.devices[before]
@@ -166,7 +166,7 @@ func TestADevicesNotesAreATextAreaThatKeepsItsLines(t *testing.T) {
 	assert.Contains(t, get(h, "/admin/device/dev_27c38b").Body.String(), `<textarea id="p-0-0-f3" class="input" name="f3"`)
 
 	device, _ := service.Device("dev_27c38b")
-	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_leaf": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f3": {"Looked after by Ines.\r\nCall before a restart."}})
+	rec := post(h, "/admin/device/dev_27c38b", url.Values{"_view": {"p.0.0"}, "f0_1": {device.IP}, "f1_0": {device.Status}, "f3": {"Looked after by Ines.\r\nCall before a restart."}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	device, _ = service.Device("dev_27c38b")
 	assert.Equal(t, device.Notes, "Looked after by Ines.\nCall before a restart.")

@@ -56,7 +56,7 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 
 	assert.Contains(t, body, `<h2 class="panel-title">Configuration</h2>`)
 	assert.Contains(t, body, `<form action="/admin/device/dev1" method="post"`)
-	assert.Contains(t, body, `name="_leaf" value="p"`)
+	assert.Contains(t, body, `name="_view" value="p"`)
 
 	// ID has no Store: shown as output, not as an input that is refused, and never
 	// submitted (no name).

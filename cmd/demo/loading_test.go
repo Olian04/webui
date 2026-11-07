@@ -107,7 +107,7 @@ func TestTheTabsPageReadsOnlyTheTabThatIsAskedFor(t *testing.T) {
 	assert.Contains(t, page, "First, left (500 ms)")
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/loading/tabs?tabs.tab=second", nil)
-	req.Header.Set("X-Webui-Leaf", "p.2")
+	req.Header.Set("X-Webui-View", "p.2")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	body := rec.Body.String()

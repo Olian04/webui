@@ -171,7 +171,7 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	resolved, err := resolve(p, page, n, func() (*ir.Table, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a table could not be read", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a table could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
 		}
 		view := render.TableView{Node: n, Page: page, Failed: true}
 		view.Path, view.Query = req.encode(page)

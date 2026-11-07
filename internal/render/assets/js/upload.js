@@ -2,7 +2,7 @@
 // and what the server answers to each, which is HTML, is what is shown for it. Without this script the panel is a form with a file chooser
 // and a button, and the browser posts one file, which is all that it needs.
 //
-// The server answers script with HTML and nothing else. A post that carries X-Webui-Leaf (the header that a request for one panel's HTML
+// The server answers script with HTML and nothing else. A post that carries X-Webui-View (the header that a request for one panel's HTML
 // carries) is answered with one list item: the tone and the text of the outcome, and a link when the outcome goes somewhere, with a status that
 // says how it went, as HTTP does. The item is put in the list as it is, and nothing is read from it but a link to follow when every file went
 // well, which is every status that was a success. What is sent is the form: its controls, in order, and then the one file, which the server
@@ -15,7 +15,7 @@
 (function () {
   'use strict';
 
-  var LEAF_HEADER = 'X-Webui-Leaf';
+  var VIEW_HEADER = 'X-Webui-View';
 
   function element(tag, className, text) {
     var el = document.createElement(tag);
@@ -101,12 +101,12 @@
     if (form.hasAttribute('data-upload-ready')) return;
     var multiple = form.hasAttribute('data-multiple');
     var input = form.querySelector('input[type="file"][name="file"]');
-    var leafInput = form.querySelector('input[name="_leaf"]');
+    var leafInput = form.querySelector('input[name="_view"]');
     if (!input || input.disabled || !leafInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
     form.setAttribute('data-upload-ready', '');
 
     var leaf = leafInput.value;
-    var panel = form.closest('[data-leaf]') || form;
+    var panel = form.closest('[data-view]') || form;
     var submit = form.querySelector('.panel-foot button[type="submit"], .panel-foot button:not([type])');
     var wasRequired = input.required;
     var zone = form.querySelector('.file-drop');
@@ -256,7 +256,7 @@
       input.required = wasRequired;
       // The panels around this one may show what was just sent: they are asked for again. An outcome that went somewhere is followed, as it would
       // be by a browser that was redirected, when every file went well.
-      document.dispatchEvent(new CustomEvent('webui:changed', { detail: { leaf: leaf } }));
+      document.dispatchEvent(new CustomEvent('webui:changed', { detail: { view: leaf } }));
       if (all && next) window.location.assign(next.href);
     }
 
@@ -288,7 +288,7 @@
       var xhr = new XMLHttpRequest();
       running = xhr;
       xhr.open('POST', form.getAttribute('action') || window.location.href);
-      xhr.setRequestHeader(LEAF_HEADER, leaf);
+      xhr.setRequestHeader(VIEW_HEADER, leaf);
       xhr.upload.onprogress = function (e) {
         if (e.lengthComputable) {
           progress.max = e.total;

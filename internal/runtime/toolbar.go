@@ -21,7 +21,7 @@ func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *i
 	resolved, err := resolve(p, page, n, func() (*ir.Toolbar, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a toolbar could not be read", "page", page.PathTemplate, "leaf", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a toolbar could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
 		}
 		view.Failed = true
 		return p.render.Toolbar(view)

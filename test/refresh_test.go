@@ -36,8 +36,8 @@ func TestAPanelWhoseLoadIsNotFinalSaysSoAndOnlyThatPanelDoes(t *testing.T) {
 	assert.Contains(t, body, `<span class="refresh-js" data-refresh-state>Updating…</span>`)
 	assert.Contains(t, body, `<span class="refresh-nojs">Updating, reload in 5 s</span>`)
 	// It is the first table's panel that carries it, and the second has no say.
-	first := body[strings.Index(body, `data-leaf="p.0"`):]
-	second := first[strings.Index(first, `data-leaf="p.1"`):]
+	first := body[strings.Index(body, `data-view="p.0"`):]
+	second := first[strings.Index(first, `data-view="p.1"`):]
 	assert.True(t, strings.Contains(first[:len(first)-len(second)], "data-refresh-after"))
 	assert.False(t, strings.Contains(second, "data-refresh-after"))
 
@@ -139,7 +139,7 @@ func TestTheScriptThatAsksAgainDoesWhatItSaysItDoes(t *testing.T) {
 
 	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
-		"[data-leaf][data-refresh-after]", "function armRefresh", "async function pollLeaf", "document.hidden", "'visibilitychange'",
+		"[data-view][data-refresh-after]", "function armRefresh", "async function pollLeaf", "document.hidden", "'visibilitychange'",
 		"el.contains(document.activeElement)", "fetchLeaf(id, location.pathname + location.search", "el.replaceWith(next)",
 	} {
 		assert.Contains(t, js, want)

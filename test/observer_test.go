@@ -56,7 +56,7 @@ func TestAnAppTellsAnObserverOfTheProgramsOwnWhatItDoes(t *testing.T) {
 	}}}}.MustCompile("/admin")
 
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/p").Code, http.StatusOK)
-	assert.Equal(t, post(h, "/admin/p", formValues("_leaf", "p", "f0", "y")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/p", formValues("_view", "p", "f0", "y")).Code, http.StatusSeeOther)
 
 	told := rec.told()
 	assert.Contains(t, told, "load form /p failed=OK")

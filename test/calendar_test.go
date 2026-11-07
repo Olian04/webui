@@ -280,13 +280,13 @@ func TestACalendarRefreshesAsALeafOfItsOwn(t *testing.T) {
 		webui.List[story]{Title: "Latest", Loader: (&listLoader{}).loader(), PageSize: 1, Headline: pTitle},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/admin/e?releases.month=2026-10", nil)
-	req.Header.Set("X-Webui-Leaf", "p.0")
+	req.Header.Set("X-Webui-View", "p.0")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
 	assert.Contains(t, body, ">October 2026</h3>")
-	assert.Contains(t, body, `data-leaf="p.0"`)
+	assert.Contains(t, body, `data-view="p.0"`)
 	assert.False(t, strings.Contains(body, "<html"))
 	assert.False(t, strings.Contains(body, "Latest"))
 }
@@ -397,18 +397,18 @@ func TestAnActionOnADayRunsWithTheDayAndItsItems(t *testing.T) {
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: open})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 
-	assert.Contains(t, body, `<input type="hidden" name="_leaf" value="p">`)
+	assert.Contains(t, body, `<input type="hidden" name="_view" value="p">`)
 	assert.Contains(t, calendarCell(body, 3, false), `<button class="cal-day cal-button" type="submit" name="_act" value="click:0:2026-09-03">`)
 	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<button"))  // nothing on it
 	assert.False(t, strings.Contains(calendarCell(body, 15, false), "<button")) // its Guard refuses it
 
-	assert.Equal(t, post(h, "/admin/e", formValues("_leaf", "p", "_act", "click:0:2026-09-03")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/e", formValues("_view", "p", "_act", "click:0:2026-09-03")).Code, http.StatusSeeOther)
 	assert.Equal(t, len(ran), 1)
 	assert.Equal(t, ran[0].Date, time.Date(2026, 9, 3, 0, 0, 0, 0, time.UTC))
 	assert.Equal(t, ran[0].Items, 2)
 
 	for _, act := range []string{"click:0:2026-09-04", "click:0:2026-09-15", "click:0:2027-01-01", "click:0:not-a-date", "row:0:2026-09-03"} {
-		post(h, "/admin/e", formValues("_leaf", "p", "_act", act))
+		post(h, "/admin/e", formValues("_view", "p", "_act", act))
 	}
 	assert.Equal(t, len(ran), 1)
 }

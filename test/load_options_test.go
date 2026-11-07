@@ -63,7 +63,7 @@ func issueForm(s *teams, saved *issue) http.Handler {
 }
 
 func submitTeam(h http.Handler, value string) (int, string) {
-	rec := post(h, "/admin/t", url.Values{"_leaf": {"p"}, "f0": {value}})
+	rec := post(h, "/admin/t", url.Values{"_view": {"p"}, "f0": {value}})
 	return rec.Code, rec.Body.String()
 }
 

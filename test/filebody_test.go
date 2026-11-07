@@ -97,7 +97,7 @@ func TestAFileOverTheLimitIsRefusedAndTheRestOfTheFormIsStillRead(t *testing.T) 
 		return f
 	})
 	rec := orderedPost(s.h, "/admin/f", nil,
-		rawPart{"_leaf", "", "p"},
+		rawPart{"_view", "", "p"},
 		rawPart{"f1", "big.bin", strings.Repeat("x", 100_000)},
 		rawPart{"f0", "", "Late title"})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
@@ -113,7 +113,7 @@ func TestAFieldAfterTheFileIsKeptAndTheLeafAfterItIsNotUnderstood(t *testing.T) 
 
 	s := newFileShop(plainFile(webui.FilePNG))
 	rec := orderedPost(s.h, "/admin/f", nil,
-		rawPart{"_leaf", "", "p"},
+		rawPart{"_view", "", "p"},
 		rawPart{"f1", "a.png", string(pngBytes)},
 		rawPart{"f0", "", "Late title"})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -123,7 +123,7 @@ func TestAFieldAfterTheFileIsKeptAndTheLeafAfterItIsNotUnderstood(t *testing.T) 
 	s = newFileShop(plainFile(webui.FilePNG))
 	rec = orderedPost(s.h, "/admin/f", nil,
 		rawPart{"f1", "a.png", string(pngBytes)},
-		rawPart{"_leaf", "", "p"})
+		rawPart{"_view", "", "p"})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "eThat request was not understood.")
 	assert.Equal(t, s.stores, 0)
@@ -135,7 +135,7 @@ func TestABodyThatEndsEarlyStoresNothing(t *testing.T) {
 
 	s := newFileShop(plainFile(webui.FilePNG))
 	rec := orderedPost(s.h, "/admin/f", func(r io.Reader) io.Reader { return io.LimitReader(r, 700) },
-		rawPart{"_leaf", "", "p"},
+		rawPart{"_view", "", "p"},
 		rawPart{"f1", "a.png", string(pngBytes) + strings.Repeat("x", 4000)})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, flashOf(rec), "eThat submission could not be read.")

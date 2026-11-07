@@ -144,7 +144,7 @@ func newShop() *shop {
 }
 
 func formValues(kv ...string) url.Values {
-	v := url.Values{"_leaf": {"p"}}
+	v := url.Values{"_view": {"p"}}
 	for i := 0; i+1 < len(kv); i += 2 {
 		v.Add(kv[i], kv[i+1])
 	}
@@ -262,7 +262,7 @@ func TestUnknownLeafAndOversizedBody(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()
-	bad := url.Values{"_leaf": {"p.9"}}
+	bad := url.Values{"_view": {"p.9"}}
 	rec := post(s.h, "/admin/device/dev1", bad)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, follow(s.h, rec).Body.String(), "That request was not understood.")

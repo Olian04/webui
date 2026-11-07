@@ -28,7 +28,7 @@ func addressApp(rules webui.StringRules) http.Handler {
 }
 
 func submitAddress(h http.Handler, v string) (code int, body string) {
-	rec := post(h, "/admin/a", url.Values{"_leaf": {"p"}, "f0": {v}})
+	rec := post(h, "/admin/a", url.Values{"_view": {"p"}, "f0": {v}})
 	return rec.Code, rec.Body.String()
 }
 

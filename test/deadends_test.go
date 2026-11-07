@@ -40,7 +40,7 @@ func TestACrossOriginPostIsRefusedInThePageAndAsAFragmentForScript(t *testing.T)
 	assert.Contains(t, page.Body.String(), "That request came from another site, and was refused.")
 	assert.Contains(t, page.Body.String(), `href="/admin/device/dev1"`)
 
-	fragment := post(s.h, "/admin/device/dev1", form, cross, func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") })
+	fragment := post(s.h, "/admin/device/dev1", form, cross, func(r *http.Request) { r.Header.Set("X-Webui-View", "p") })
 	assert.Equal(t, fragment.Code, http.StatusForbidden)
 	assert.Contains(t, fragment.Body.String(), `<li class="result" data-tone="bad">`)
 	assert.Contains(t, fragment.Body.String(), "came from another site")
@@ -124,7 +124,7 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 		}},
 	}
 	h := webui.App{Pages: webui.Pages{list, one}}.MustCompile("/admin")
-	rec := post(h, "/admin/records/x", nil, func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") })
+	rec := post(h, "/admin/records/x", nil, func(r *http.Request) { r.Header.Set("X-Webui-View", "p") })
 	assert.Equal(t, rec.Code, http.StatusNotFound)
 	assert.Contains(t, rec.Body.String(), "There is no record x.")
 	assert.Contains(t, rec.Body.String(), `<a class="btn btn-ghost btn-sm result-next" href="/admin/records">Continue</a>`)
@@ -185,7 +185,7 @@ func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing.T) {
 	t.Parallel()
 
-	leaf := func(r *http.Request) { r.Header.Set("X-Webui-Leaf", "p") }
+	leaf := func(r *http.Request) { r.Header.Set("X-Webui-View", "p") }
 
 	s := newShop()
 	ok := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"), leaf)
@@ -201,7 +201,7 @@ func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing
 	assert.Contains(t, body, "must be a valid IPv4 address")
 	assert.Contains(t, body, `value="nope"`)
 	assert.False(t, strings.Contains(body, "<!doctype") || strings.Contains(body, `class="sidebar`))
-	assert.Contains(t, body, `data-leaf="p"`)
+	assert.Contains(t, body, `data-view="p"`)
 
 	// The same post without the header is as it always was: a page, with the 422.
 	page := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"))

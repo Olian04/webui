@@ -166,7 +166,7 @@ func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
 		assert.Contains(t, motion, want)
 	}
 	// What was drawn for a reader that moves is a still cue when it does not: a panel that is busy is dimmed.
-	assert.Contains(t, motion, "[data-leaf][aria-busy='true'] tbody")
+	assert.Contains(t, motion, "[data-view][aria-busy='true'] tbody")
 }
 
 // A narrow window, which is what 320 pixels and 400 percent make of any, keeps its search.

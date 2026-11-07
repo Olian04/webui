@@ -28,7 +28,7 @@ func TestAFeedPagesByACursorAndSortsOnlyThePageInHandWithNoFilters(t *testing.T)
 	assert.Contains(t, last, `disabled data-in-place>Next</button>`)
 
 	// Actions are recorded: the newest entry is the one just made.
-	post(h, "/admin/retention", url.Values{"_leaf": {"p"}, "f0": {"45"}})
+	post(h, "/admin/retention", url.Values{"_view": {"p"}, "f0": {"45"}})
 	assert.Contains(t, get(h, "/admin/audit").Body.String(), "saved retention")
 }
 

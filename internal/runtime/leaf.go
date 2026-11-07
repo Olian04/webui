@@ -13,10 +13,10 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// LeafHeader names the leaf a request wants refreshed. Framework parameters
+// ViewHeader names the leaf a request wants refreshed. Framework parameters
 // travel as headers, never in the URL: the URL carries user state, so nothing
 // framework-owned appears in an address anyone might copy.
-const LeafHeader = "X-Webui-Leaf"
+const ViewHeader = "X-Webui-View"
 
 // leaf answers a refresh of one panel. It is the same URL as the page, so the
 // page Guard has already run, the arguments are the page's, and the markup is
@@ -35,7 +35,7 @@ func (p *Program) leaf(w http.ResponseWriter, r *http.Request, page *ir.Page, re
 	w.Header().Set("Cache-Control", "no-store")
 	built, took := timing(w, r)
 	if err := writeHTML(r.Context(), w, http.StatusOK, templ.Join(body, render.StatusUpdate(built, took))); err != nil {
-		p.log.Error("webui: render failed", "path", r.URL.Path, "leaf", r.Header.Get(LeafHeader), "err", err)
+		p.log.Error("webui: render failed", "path", r.URL.Path, "view", r.Header.Get(ViewHeader), "err", err)
 	}
 }
 

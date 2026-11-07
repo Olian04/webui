@@ -282,7 +282,7 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 	}}}}.MustCompile("/admin")
 	body = serve(h, http.MethodGet, "/admin/tools").Body.String()
 	assert.False(t, strings.Contains(body, "data-toolbar"))
-	assert.False(t, strings.Contains(body, `name="_leaf"`))
+	assert.False(t, strings.Contains(body, `name="_view"`))
 }
 
 // A link is drawn when the page it leads to would open for the visitor, and is not when that page's Guard refuses them.
@@ -350,7 +350,7 @@ func TestAHiddenActionPostedByHandIsRefused(t *testing.T) {
 				Label: "Drop", Guard: func(context.Context, parcel) error { return err },
 				Run: func(context.Context, parcel) (webui.Outcome, error) { ran.Add(1); return webui.Success("done"), nil },
 			}}, nil, nil)
-			rec := post(h, "/admin/t", url.Values{"_leaf": {"p"}, "_act": {"row:0:a"}})
+			rec := post(h, "/admin/t", url.Values{"_view": {"p"}, "_act": {"row:0:a"}})
 			assert.Equal(t, flashOf(rec), "eno")
 			assert.Equal(t, ran.Load(), int32(0))
 		})

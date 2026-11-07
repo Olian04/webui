@@ -217,13 +217,13 @@ templ (r *Renderer) Table(v TableView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		Leaf:   LeafID(v.Node.At),
+		ViewID:   LeafID(v.Node.At),
 		Grows:  true,
 		Footer: r.tableFooter(v),
 	}) {
 		if v.interactive() {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+				<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 				@r.tableContent(v, cols)
 			}
 		} else {
@@ -503,13 +503,13 @@ templ (r *Renderer) Form(v FormView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		Leaf:   LeafID(v.Node.At),
+		ViewID:   LeafID(v.Node.At),
 	}) {
 		@c.Form(c.FormProps{
 			Action: r.PageHref(v.Page, v.Path, v.Query),
 			Attrs:  v.formAttrs(),
 		}) {
-			<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+			<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 			if v.Node.Editor != nil {
 				@r.editorBody(v)
 			} else {
@@ -717,13 +717,13 @@ templ Refused(ref *ir.Refusal) {
 // as one, so it is at the right edge of the row that it is in.
 templ (r *Renderer) Toolbar(v ToolbarView) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}) {
 		}
 	} else if v.drawn() {
-		<div class="toolbar" data-toolbar data-leaf={ LeafID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
+		<div class="toolbar" data-toolbar data-view={ LeafID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
 			if v.hasActions() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+					<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 					@r.toolbarItems(v)
 				}
 			} else {
@@ -843,12 +843,12 @@ templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
 // with any other error has no panel.
 templ (r *Renderer) FileUpload(v FileUploadView) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), Leaf: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}) {
 		}
 	} else if v.Gate.Drawn() {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Leaf: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, ViewID: LeafID(v.Node.At)}) {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: v.formAttrs()}) {
-				<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+				<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 				<div class="panel-body pad">
 					for _, f := range v.Form.Node.Fields {
 						@r.formField(v.Form, f)
@@ -888,7 +888,7 @@ templ Result(tone ToastTone, text string, next string) {
 // them in a grid) sees one child. The strip is links, because the selected tab is a page argument: it is in the
 // address, survives a reload, and works without script.
 //
-// With script a tab is followed by asking for this element alone (see LeafHeader), which loads only the tab that is
+// With script a tab is followed by asking for this element alone (see ViewHeader), which loads only the tab that is
 // selected: data-tabs is its id, in the same form as a panel's. The panels around it that hold its selection in their addresses are asked for again by
 // script, from the server, which writes them: the script has no knowledge of how an address is made.
 templ Tabs(label string, strip []c.Tab, content templ.Component, id string) {
@@ -1040,7 +1040,7 @@ templ (r *Renderer) Diff(v DiffView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		Leaf:   LeafID(v.Node.At),
+		ViewID:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body code-body">
 			<div class="code-sides" aria-hidden="true">
@@ -1064,7 +1064,7 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		Leaf:   LeafID(v.Node.At),
+		ViewID:   LeafID(v.Node.At),
 	}) {
 		<div class="panel-body pad">
 			<article class="md" aria-label={ v.Node.Content.Label }>
@@ -1081,7 +1081,7 @@ templ (r *Renderer) Items(v ItemsView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		Leaf:   LeafID(v.Node.At),
+		ViewID:   LeafID(v.Node.At),
 		Footer: r.itemsFoot(v),
 	}) {
 		<div class="panel-body items-body">
@@ -1090,7 +1090,7 @@ templ (r *Renderer) Items(v ItemsView) {
 			} else {
 				if v.posts() {
 					@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-						<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+						<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 						@r.itemList(v)
 					}
 				} else {
@@ -1172,12 +1172,12 @@ templ (r *Renderer) Calendar(v CalendarView) {
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		Leaf: LeafID(v.Node.At),
+		ViewID: LeafID(v.Node.At),
 	}) {
 		<div class="panel-body cal-body">
 			if v.Node.Click.Posts() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_leaf" value={ LeafID(v.Node.At) }/>
+					<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
 					@c.Calendar(r.calendarProps(v))
 				}
 			} else {

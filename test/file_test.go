@@ -133,7 +133,7 @@ func multipartPostBody(h http.Handler, target string, values map[string]string, 
 }
 
 func withLeaf(values map[string]string) map[string]string {
-	out := map[string]string{"_leaf": "p", "f0": "Report"}
+	out := map[string]string{"_view": "p", "f0": "Report"}
 	maps.Copy(out, values)
 	return out
 }
@@ -501,7 +501,7 @@ func TestAUrlencodedPostToAPageWithAFileIsAsItWas(t *testing.T) {
 	t.Parallel()
 
 	s := newFileShop(plainFile())
-	rec := post(s.h, "/admin/f", url.Values{"_leaf": {"p"}, "f0": {"Report"}})
+	rec := post(s.h, "/admin/f", url.Values{"_view": {"p"}, "f0": {"Report"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, s.stores, 0)
 }
