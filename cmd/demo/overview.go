@@ -14,7 +14,7 @@ import (
 // Without such a page the root goes to the first page it can find that needs no arguments, with no message.
 var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
-	Body: webui.Stack{
+	View: webui.Stack{
 		OverviewToolbar,
 		webui.Split{OverviewDevices, OverviewAlerts},
 		webui.Split{OverviewEvents, OverviewSettings},

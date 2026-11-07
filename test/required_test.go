@@ -43,7 +43,7 @@ func wantsApp(start wants, field webui.Accessor[wants]) (http.Handler, func() wa
 			return webui.Success("Saved"), nil
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: form}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", View: form}}}.MustCompile("/admin")
 	return h, func() wants {
 		mu.Lock()
 		defer mu.Unlock()

@@ -27,7 +27,7 @@ func ExampleCalendar() {
 	}
 	page := webui.Page[webui.NoArgs]{
 		Path: "/due",
-		Body: webui.Calendar[Deadline]{
+		View: webui.Calendar[Deadline]{
 			Title: "Deadlines",
 			Load: func(_ context.Context, span webui.Span) ([]Deadline, webui.Loaded) {
 				var due []Deadline

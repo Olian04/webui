@@ -17,9 +17,9 @@ import (
 func timedPages(wait func(context.Context), names ...string) webui.Pages {
 	var pages webui.Pages
 	for _, name := range names {
-		list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/" + name), Nav: webui.Nav{Label: strings.ToUpper(name[:1]) + name[1:]}, Body: webui.Stack{}}
+		list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/" + name), Nav: webui.Nav{Label: strings.ToUpper(name[:1]) + name[1:]}, View: webui.Stack{}}
 		one := webui.Page[detailsArgs]{
-			Path: webui.PageID[detailsArgs]("/" + name + "/{id}"), Body: webui.Stack{},
+			Path: webui.PageID[detailsArgs]("/" + name + "/{id}"), View: webui.Stack{},
 			Search: func(ctx context.Context, _ string, _ int) ([]webui.Hit[detailsArgs], error) {
 				wait(ctx)
 				return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: name}, Title: name}}, nil
@@ -79,7 +79,7 @@ func TestAPageThatDoesNotAnswerInTimeIsLeftOutAndTheOthersAnswer(t *testing.T) {
 func TestSearchResultsAreEscaped(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[detailsArgs]{Path: "/thing/{id}", Body: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+	page := webui.Page[detailsArgs]{Path: "/thing/{id}", View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
 		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "a"}, Title: `<img src=x onerror=alert(1)>`, Desc: `<b>bold</b>`}}, nil
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")

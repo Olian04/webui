@@ -42,14 +42,14 @@ func returnsApp() http.Handler {
 	}
 	details := webui.Page[detailsArgs]{
 		Path: "/device/{id}",
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.1.0"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP},
 			Submit: webui.Action[Device]{Run: run},
 		},
 	}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
-	return webui.App{Pages: webui.Pages{list, details, webui.Page[webui.NoArgs]{Path: elsewhere, Body: webui.Stack{}}}}.MustCompile("/admin")
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+	return webui.App{Pages: webui.Pages{list, details, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}}.MustCompile("/admin")
 }
 
 // sent is what the user is left with after a submit: the status, where they go, and the
@@ -116,7 +116,7 @@ func TestBackWithNowhereToGoStaysWhereTheUserIs(t *testing.T) {
 	t.Parallel()
 
 	// A form on a page with no breadcrumb parent, and opened directly.
-	page := webui.Page[webui.NoArgs]{Path: "/solo", Body: webui.Form[Device]{
+	page := webui.Page[webui.NoArgs]{Path: "/solo", View: webui.Form[Device]{
 		Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a"}, webui.Ready() },
 		Fields: []webui.Accessor[Device]{formID, formIP},
 		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) {
@@ -181,12 +181,12 @@ func TestAnOutcomeCannotSayMoreThanOneThingAboutWhereToGo(t *testing.T) {
 			return webui.Success("x").Stay().Then(webui.Open(ctx, elsewhere, webui.NoArgs{}))
 		},
 	} {
-		page := webui.Page[webui.NoArgs]{Path: "/solo", Body: webui.Form[Device]{
+		page := webui.Page[webui.NoArgs]{Path: "/solo", View: webui.Form[Device]{
 			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP},
 			Submit: webui.Action[Device]{Run: func(ctx context.Context, _ Device) (webui.Outcome, error) { return outcome(ctx), nil }},
 		}}
-		h := webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, Body: webui.Stack{}}}}.MustCompile("/admin")
+		h := webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}}.MustCompile("/admin")
 		rec := post(h, "/admin/solo", url.Values{"_view": {"p"}, "f1": {"10.0.0.1"}})
 		if rec.Code != http.StatusSeeOther || !strings.Contains(follow(h, rec).Body.String(), "Something went wrong") {
 			t.Errorf("%s: status %d, want a redirect that says something went wrong, a mistake in the action's Run", name, rec.Code)
@@ -207,8 +207,8 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 			Columns: []webui.Accessor[Device]{formID},
 			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
 		}
-		parent := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
-		child := webui.Page[webui.NoArgs]{Path: "/device/log", Body: table}
+		parent := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+		child := webui.Page[webui.NoArgs]{Path: "/device/log", View: table}
 		return webui.App{Pages: webui.Pages{parent, child}}.MustCompile("/admin")
 	}
 	post1 := func(h http.Handler) *httptest.ResponseRecorder {

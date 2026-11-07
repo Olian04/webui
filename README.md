@@ -66,7 +66,7 @@ var (
 var Devices = webui.Page[webui.NoArgs]{
  Path: "/device",
  Nav:  webui.Nav{Label: "Devices", Icon: "display"},
- Body: webui.Table[Device]{
+ View: webui.Table[Device]{
   Title: "Devices",
   // A RowsLoader is every row. The library sorts, filters and pages them.
   Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {

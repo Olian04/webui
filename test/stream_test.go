@@ -121,9 +121,9 @@ func quickTable(title string) webui.Table[Device] {
 	}
 }
 
-func streamApp(body webui.PageBody) http.Handler {
+func streamApp(body webui.View) http.Handler {
 	// The page has an entry, which is what gives the app a sidebar, the first of the page that is sent.
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, Body: body}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, View: body}}}.MustCompile("/admin")
 }
 
 func get(h http.Handler, rec http.ResponseWriter, path string, mod ...func(*http.Request)) {
@@ -329,7 +329,7 @@ func TestAGuardsRefusalIsStillAnErrorStatusForASlowPage(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{
 		Path:  "/p",
 		Guard: func(context.Context, webui.NoArgs) error { return context.Canceled },
-		Body:  webui.Stack{delayedTable("Slow", 120*time.Millisecond), quickTable("Fast")},
+		View:  webui.Stack{delayedTable("Slow", 120*time.Millisecond), quickTable("Fast")},
 	}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	rec := newStreamRecorder()

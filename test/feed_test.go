@@ -46,7 +46,7 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 			return webui.Success("done"), nil
 		}}},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: tbl}}}.MustCompile("")
 }
 
 // pagerHref is the address a footer button of a page leads to, "" when it is disabled.
@@ -134,7 +134,7 @@ func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testi
 		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: tbl}}}.MustCompile("")
 
 	at := "/f"
 	var hops int
@@ -221,7 +221,7 @@ func TestAFeedsCursorIsEscapedInTheAddressAndALongOneIsAFirstPage(t *testing.T) 
 		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: tbl}}}.MustCompile("")
 
 	body := serve(h, http.MethodGet, "/f").Body.String()
 	assert.Contains(t, body, `href="/f?objects.after=a+b%26c%3Dd%2F%C3%A9&amp;objects.back=1%3A&amp;objects.row=2" data-in-place>Next`)
@@ -256,7 +256,7 @@ func TestAFailingFeedFailsThePanelAndTheCauseIsNotShown(t *testing.T) {
 		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: tbl}}}.MustCompile("")
 	body := serve(h, http.MethodGet, "/f").Body.String()
 	assert.Contains(t, body, "Could not load")
 	assert.False(t, strings.Contains(body, "secret-name"))
@@ -269,7 +269,7 @@ func TestATableTakesExactlyOneSource(t *testing.T) {
 	problems := func(tbl webui.Table[Device]) string {
 		tbl.Columns = []webui.Accessor[Device]{formID}
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: tbl}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: tbl}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
@@ -297,7 +297,7 @@ func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
 		}},
 		Columns: []webui.Accessor[Device]{formID},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: tbl}}}.MustCompile("")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: tbl}}}.MustCompile("")
 
 	at := "/f"
 	longest := 0

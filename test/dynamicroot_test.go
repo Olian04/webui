@@ -16,10 +16,10 @@ type tenantRestArgs struct {
 
 func dynamicRootApp(prefix string) http.Handler {
 	return webui.App{Pages: webui.Pages{
-		webui.Page[tenantArgs]{Path: "/{tenant}/info", Body: webui.Stack{}},
-		webui.Page[tenantArgs]{Path: "/{tenant}/monaco/x", Body: webui.Stack{}},
-		webui.Page[tenantRestArgs]{Path: "/{tenant}/files/{rest...}", Body: webui.Stack{}},
-		webui.Page[tenantArgs]{Path: "/{tenant}", Body: webui.Stack{}},
+		webui.Page[tenantArgs]{Path: "/{tenant}/info", View: webui.Stack{}},
+		webui.Page[tenantArgs]{Path: "/{tenant}/monaco/x", View: webui.Stack{}},
+		webui.Page[tenantRestArgs]{Path: "/{tenant}/files/{rest...}", View: webui.Stack{}},
+		webui.Page[tenantArgs]{Path: "/{tenant}", View: webui.Stack{}},
 	}}.MustCompile(prefix)
 }
 
@@ -54,8 +54,8 @@ func TestTwoPagesThatMatchTheSameAddressWithNeitherMoreSpecificAreACompileErrorN
 	type a struct{ A string }
 	type b struct{ B string }
 	app := webui.App{Pages: webui.Pages{
-		webui.Page[a]{Path: "/{a}/x", Body: webui.Stack{}},
-		webui.Page[b]{Path: "/y/{b}", Body: webui.Stack{}},
+		webui.Page[a]{Path: "/{a}/x", View: webui.Stack{}},
+		webui.Page[b]{Path: "/y/{b}", View: webui.Stack{}},
 	}}
 	errs := compileErrors(t, app)
 	assert.Contains(t, errs[0].Detail, `"/y/x"`)
@@ -64,8 +64,8 @@ func TestTwoPagesThatMatchTheSameAddressWithNeitherMoreSpecificAreACompileErrorN
 
 	// One that is strictly more specific than the other is fine.
 	_, err := webui.App{Pages: webui.Pages{
-		webui.Page[a]{Path: "/{a}/x", Body: webui.Stack{}},
-		webui.Page[webui.NoArgs]{Path: "/y/x", Body: webui.Stack{}},
+		webui.Page[a]{Path: "/{a}/x", View: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/y/x", View: webui.Stack{}},
 	}}.Compile("")
 	assert.NoError(t, err)
 }

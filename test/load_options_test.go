@@ -59,7 +59,7 @@ func issueForm(s *teams, saved *issue) http.Handler {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: form}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: form}}}.MustCompile("/admin")
 }
 
 func submitTeam(h http.Handler, value string) (int, string) {
@@ -113,7 +113,7 @@ func TestASelectThatIsReadSaysWhatTheOptionsReadNow(t *testing.T) {
 		},
 		Fields: []webui.Accessor[issue]{webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: form}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: form}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, body, `<span class="badge tone-bad"><span class="dot" aria-hidden="true"></span>Red team</span>`)
 	assert.Contains(t, body, `>gone</span>`) // a value that is not an option says what it is
@@ -128,7 +128,7 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
 	var asked []map[string][]string
 	var mu sync.Mutex
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title: "Issues",
 		Loader: webui.PagedLoader[issue]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[issue], webui.Loaded) {
 			mu.Lock()
@@ -171,7 +171,7 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 
 	s := &teams{}
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title: "Issues",
 		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {
 			return []issue{{Name: "a", Team: []string{"red"}}, {Name: "b", Team: []string{"mauve"}}}, webui.Ready()
@@ -241,7 +241,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
 	problems := func(a webui.Select[task]) string {
-		page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
+		page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 			Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }}, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string
@@ -255,7 +255,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a"}}, LoadOptions: source}), "has both Options and LoadOptions")
 
 	// A Store with a source is a select with something to choose from.
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Form[task]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
 		Load:   func(context.Context) (task, webui.Loaded) { return task{}, webui.Ready() },
 		Fields: []webui.Accessor[task]{webui.Select[task]{Label: "S", Load: load, Store: func(*task, []string) {}, LoadOptions: source}},
 	}}
@@ -269,7 +269,7 @@ func TestAnExportSaysWhatTheOptionsReadNow(t *testing.T) {
 
 	s := &teams{}
 	s.set(webui.Option{Value: "red", Label: "Red team"})
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[issue]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title:  "Issues",
 		Export: true,
 		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {

@@ -29,7 +29,7 @@ var (
 var Devices = webui.Page[webui.NoArgs]{
 	Path: "/device",
 	Nav:  webui.Nav{Label: "Devices", Icon: "display"},
-	Body: webui.Table[Device]{
+	View: webui.Table[Device]{
 		Title:   "Devices",
 		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return devices, webui.Ready() }},
 		Columns: []webui.Accessor[Device]{ID, IP},

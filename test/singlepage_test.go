@@ -15,14 +15,14 @@ import (
 
 // noNav is an app with pages and not one entry in the navigation: the pages are reached by link, and by the address.
 func noNav() http.Handler {
-	home := webui.Page[webui.NoArgs]{Path: "/devices", Body: webui.Stack{}}
-	alerts := webui.Page[webui.NoArgs]{Path: "/alerts", Body: webui.Stack{}}
+	home := webui.Page[webui.NoArgs]{Path: "/devices", View: webui.Stack{}}
+	alerts := webui.Page[webui.NoArgs]{Path: "/alerts", View: webui.Stack{}}
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{home, alerts}}.MustCompile("/admin")
 }
 
 // onePage is an app whose one page has an entry in the navigation.
 func onePage(guard func(context.Context, webui.NoArgs) error) http.Handler {
-	only := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "Devices"}, Guard: guard, Body: webui.Stack{}}
+	only := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "Devices"}, Guard: guard, View: webui.Stack{}}
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{only}}.MustCompile("/admin")
 }
 
@@ -106,7 +106,7 @@ func TestAPageThatListsEntriesGivesTheAppASidebar(t *testing.T) {
 
 			site := webui.Page[siteArgs]{
 				Path: "/site/{name}", Nav: webui.Nav{Icon: "location-dot"},
-				NavEntries: siteEntries(names...), Body: webui.Stack{},
+				NavEntries: siteEntries(names...), View: webui.Stack{},
 			}
 			h := webui.App{Pages: webui.Pages{site}}.MustCompile("/admin")
 			body := serve(h, http.MethodGet, "/admin/site/Stockholm").Body.String()
@@ -141,7 +141,7 @@ func TestTheMarkOfAnAppWithNoSidebarLeadsTheTopBar(t *testing.T) {
 
 	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})
-	only := webui.Page[webui.NoArgs]{Path: "/devices", Body: webui.Stack{}}
+	only := webui.Page[webui.NoArgs]{Path: "/devices", View: webui.Stack{}}
 	h := webui.App{Brand: webui.Brand{Name: "Demo", Logo: img}, Pages: webui.Pages{only}}.MustCompile("/admin")
 	top = topBar(t, serve(h, http.MethodGet, "/admin/devices").Body.String())
 	assert.Contains(t, top, `<img class="logo-img" src="`+assetURL(t, h, "logo")+`" alt="">`)

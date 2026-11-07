@@ -18,16 +18,16 @@ func TestThePanelsTheGuardsAndTheNavEntriesAreAskedForAtTheSameTime(t *testing.T
 	t.Parallel()
 
 	var arrived, met atomic.Int32
-	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, Body: webui.Table[Device]{
+	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, View: webui.Table[Device]{
 		Title: "Devices", Columns: []webui.Accessor[Device]{formID},
 		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			meet(ctx, &arrived, 3, &met)
 			return webui.PagedWindow[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
 		}},
 	}}
-	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, Body: webui.Stack{},
+	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, View: webui.Stack{},
 		Guard: func(ctx context.Context, _ webui.NoArgs) error { meet(ctx, &arrived, 3, &met); return nil }}
-	site := webui.Page[navSiteArgs]{Path: "/site/{name}", Nav: webui.Nav{Section: "Sites"}, Body: webui.Stack{},
+	site := webui.Page[navSiteArgs]{Path: "/site/{name}", Nav: webui.Nav{Section: "Sites"}, View: webui.Stack{},
 		NavEntries: func(ctx context.Context) ([]webui.NavEntry[navSiteArgs], error) {
 			meet(ctx, &arrived, 3, &met)
 			return []webui.NavEntry[navSiteArgs]{{Args: navSiteArgs{Name: "a"}, Label: "Site A"}}, nil

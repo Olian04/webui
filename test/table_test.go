@@ -26,11 +26,11 @@ func tableApp(load func(context.Context, webui.PagedQuery) (webui.PagedWindow[De
 		mu   sync.Mutex
 		last webui.PagedQuery
 	)
-	details := webui.Page[detailsArgs]{Path: "/device/{id}", Body: webui.Stack{}}
+	details := webui.Page[detailsArgs]{Path: "/device/{id}", View: webui.Stack{}}
 	list := webui.Page[tableArgs]{
 		Path: "/device",
 		Nav:  webui.Nav{Label: "Devices"},
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Title: "Devices",
 			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				mu.Lock()
@@ -192,7 +192,7 @@ func twoTables() (http.Handler, *[2]webui.PagedQuery) {
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		}
 	}
-	page := webui.Page[tableArgs]{Path: "/p", Body: webui.Split{table(0), table(1)}}
+	page := webui.Page[tableArgs]{Path: "/p", View: webui.Split{table(0), table(1)}}
 	return webui.App{Pages: webui.Pages{page}}.MustCompile(""), &seen
 }
 
@@ -470,7 +470,7 @@ func TestATableWithNoPageSizePagesBy25(t *testing.T) {
 	t.Parallel()
 
 	var asked int
-	page := webui.Page[webui.NoArgs]{Path: "/device", Body: webui.Table[Device]{
+	page := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			asked = q.Limit
 			var all []Device
@@ -507,7 +507,7 @@ func TestATablesStateIsNamedByItsTitleAndAnUntitledOneIsTable(t *testing.T) {
 	t.Parallel()
 
 	var a, b webui.PagedQuery
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{viewTable("Open alerts", &a), viewTable("", &b)}}
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{viewTable("Open alerts", &a), viewTable("", &b)}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 	serve(h, http.MethodGet, "/p?open-alerts.sort=id&table.sort=id&table.desc=true")
 
@@ -519,7 +519,7 @@ func TestTablesWithTheSameTitleOnScreenTogetherAreToldApartByANumber(t *testing.
 	t.Parallel()
 
 	var first, second webui.PagedQuery
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Split{viewTable("Devices", &first), viewTable("Devices", &second)}}
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Split{viewTable("Devices", &first), viewTable("Devices", &second)}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 	serve(h, http.MethodGet, "/p?devices.sort=id&devices-2.offset=3")
 
@@ -535,13 +535,13 @@ func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
 	// The same table in both panels of a Tabs keeps its state in both, since they are
 	// never shown together. A second Tabs is told apart by a number.
 	var outside, inA, inB, inOther webui.PagedQuery
-	page := webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
 		viewTable("Events", &outside),
 		webui.Tabs{
-			{Label: "A", Body: viewTable("Events", &inA)},
-			{Label: "B", Body: viewTable("Events", &inB)},
+			{Label: "A", View: viewTable("Events", &inA)},
+			{Label: "B", View: viewTable("Events", &inB)},
 		},
-		webui.Tabs{{Label: "Other", Body: viewTable("Other", &inOther)}, {Label: "More", Body: webui.Stack{}}},
+		webui.Tabs{{Label: "Other", View: viewTable("Other", &inOther)}, {Label: "More", View: webui.Stack{}}},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("")
 

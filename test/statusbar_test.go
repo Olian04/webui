@@ -16,7 +16,7 @@ import (
 func statusApp() http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{
 		Path: "/s",
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Title: "Devices",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}}, Total: 1}, webui.Ready()

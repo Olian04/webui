@@ -14,14 +14,14 @@ func (t *Tabs) Addr() Addr { return t.At }
 func (t *Tabs) Children() []Node {
 	out := make([]Node, len(t.Tabs))
 	for i, tab := range t.Tabs {
-		out[i] = tab.Body
+		out[i] = tab.Child
 	}
 	return out
 }
 
-// Tab is one labeled panel.
+// Tab is one labeled child of Tabs.
 type Tab struct {
 	Key   string // the argument value that selects this tab
 	Label string
-	Body  Node
+	Child Node
 }

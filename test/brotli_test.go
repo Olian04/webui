@@ -125,7 +125,7 @@ func TestAPageAndASearchAreGzippedAsTheyAreBuiltEvenForAClientThatTakesBrotli(t 
 	assert.Equal(t, accepting(h, "/admin/device", "br").Header().Get("Content-Encoding"), "")
 
 	// An answer that is not a document is left alone: a redirect has no body to compress.
-	root := accepting(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}}.MustCompile("/admin"), "/admin/", "gzip, br")
+	root := accepting(webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}}.MustCompile("/admin"), "/admin/", "gzip, br")
 	assert.Equal(t, root.Header().Get("Content-Encoding"), "")
 }
 

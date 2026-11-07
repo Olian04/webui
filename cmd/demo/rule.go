@@ -46,7 +46,7 @@ var (
 var PagingRule = webui.Page[webui.NoArgs]{
 	Path: "/rule",
 	Nav:  webui.Nav{Label: "Paging rule", Icon: "code", Section: "Configuration"},
-	Body: RuleEditor,
+	View: RuleEditor,
 }
 
 // seedRule has three type errors, on purpose, for the language service to find: a kind that no

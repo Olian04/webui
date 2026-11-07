@@ -122,8 +122,8 @@ type FileHandle[M any] struct {
 	Reader io.Reader
 }
 
-// ASSERT: FileUpload implements PageBody
-var _ PageBody = FileUpload[struct{}]{}
+// ASSERT: FileUpload implements View
+var _ View = FileUpload[struct{}]{}
 
 // headKind is whether a kind is told by the first bytes of a file alone, which is all that a panel that reads the file once can take.
 func headKind(k FileKind) bool {
@@ -135,7 +135,7 @@ func headKind(k FileKind) bool {
 	return false
 }
 
-func (f FileUpload[M]) validateBody(v *bodyValidator) {
+func (f FileUpload[M]) validateView(v *viewValidator) {
 	validateAction(v, "FileUpload.Receive", f.Receive, false)
 	validateAccessors(v, f.Fields, accessorSite{where: "FileUpload.Fields", allowGroup: true, uniqueLbl: true})
 	for i, acc := range f.Fields {
@@ -157,7 +157,7 @@ func (f FileUpload[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (f FileUpload[M]) lowerBody(at ir.Addr) ir.Node {
+func (f FileUpload[M]) lowerView(at ir.Addr) ir.Node {
 	spec := &ir.FileSpec{Max: f.MaxSize}
 	for _, k := range f.Accept {
 		spec.Kinds = append(spec.Kinds, k.ir())

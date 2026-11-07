@@ -20,7 +20,7 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 	broken := webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: func(int) string { panic("format") }}
 	home := webui.Page[webui.NoArgs]{
 		Path: "/home", Nav: webui.Nav{Label: "Home"},
-		Body: webui.Stack{
+		View: webui.Stack{
 			webui.Table[blob]{
 				Title:   "Formatted",
 				Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
@@ -42,12 +42,12 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 		),
 	}
 	guarded := webui.Page[webui.NoArgs]{
-		Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, Body: webui.Stack{},
+		Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, View: webui.Stack{},
 		Guard: func(context.Context, webui.NoArgs) error { panic("guard") },
 	}
 	crash := webui.Page[webui.NoArgs]{
 		Path: "/crash",
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Load:   func(context.Context) (Device, webui.Loaded) { panic("load") },
 			Fields: []webui.Accessor[Device]{formID},
 		},
@@ -116,7 +116,7 @@ func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
 
 	var started, done atomic.Int32
 	slow := webui.Page[webui.NoArgs]{
-		Path: "/slow", Nav: webui.Nav{Label: "Slow"}, Body: webui.Stack{},
+		Path: "/slow", Nav: webui.Nav{Label: "Slow"}, View: webui.Stack{},
 		Guard: func(context.Context, webui.NoArgs) error {
 			if started.Add(1) == 1 {
 				time.Sleep(300 * time.Millisecond) // the first, which is the workers of the request that panics: the error page's own are quick
@@ -127,7 +127,7 @@ func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
 	}
 	crash := webui.Page[webui.NoArgs]{
 		Path: "/crash",
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Load:   func(context.Context) (Device, webui.Loaded) { panic("load") },
 			Fields: []webui.Accessor[Device]{formID},
 		},

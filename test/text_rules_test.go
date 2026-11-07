@@ -24,7 +24,7 @@ func addressForm(rules webui.StringRules) webui.Form[Device] {
 }
 
 func addressApp(rules webui.StringRules) http.Handler {
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: addressForm(rules)}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: addressForm(rules)}}}.MustCompile("/admin")
 }
 
 func submitAddress(h http.Handler, v string) (code int, body string) {
@@ -93,7 +93,7 @@ func TestARefusedTextIsSaidInTheWordsOfTheRule(t *testing.T) {
 func TestTextThatNoValueCanHoldIsAProblemOfTheApp(t *testing.T) {
 	t.Parallel()
 
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: addressForm(webui.StringRules{
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: addressForm(webui.StringRules{
 		StartsWith: "https://", NotContains: "//", Contains: "a\nb", MaxLen: 4,
 	})}}}
 	errs := compileErrors(t, app)

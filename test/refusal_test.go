@@ -21,7 +21,7 @@ const recordsPath webui.PageID[webui.NoArgs] = "/records"
 
 // refusalApp is a list of records and a page for one of them, whose Guard refuses in the way that its id asks.
 func refusalApp(log *slog.Logger) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: recordsPath, Nav: webui.Nav{Label: "Records"}, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: recordsPath, Nav: webui.Nav{Label: "Records"}, View: webui.Stack{}}
 	one := webui.Page[recordArgs]{
 		Path: "/records/{id}",
 		Guard: func(ctx context.Context, a recordArgs) error {
@@ -40,7 +40,7 @@ func refusalApp(log *slog.Logger) http.Handler {
 			}
 			return nil
 		},
-		Body: webui.Stack{
+		View: webui.Stack{
 			// Something that posts, so that the page has a POST to refuse.
 			webui.Toolbar{Left: []webui.ToolbarItem{
 				webui.Action[webui.NoArgs]{Label: "Close", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }},
@@ -97,7 +97,7 @@ func TestAGuardThatReturnsAnyOtherErrorStillAnswers403(t *testing.T) {
 	assert.False(t, strings.Contains(rec.Body.String(), "ran before anything was loaded"))
 
 	// An error with no words of its own says that there is no access, and nothing else.
-	page := webui.Page[webui.NoArgs]{Path: "/quiet", Body: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("") }}
+	page := webui.Page[webui.NoArgs]{Path: "/quiet", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("") }}
 	rec = serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/quiet")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), `<p class="state-desc">You do not have access to this page.</p>`)
@@ -130,7 +130,7 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	page := webui.Page[webui.NoArgs]{Path: "/stuff", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/stuff", View: webui.Stack{
 		webui.Table[Device]{
 			Title: "Gone",
 			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -153,7 +153,7 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},
 	}}
-	list := webui.Page[webui.NoArgs]{Path: recordsPath, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: recordsPath, View: webui.Stack{}}
 	h := webui.App{Logger: slog.New(slog.NewTextHandler(&buf, nil)), Pages: webui.Pages{page, list}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/stuff")

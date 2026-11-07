@@ -15,7 +15,7 @@ import (
 
 func navApp() http.Handler {
 	empty := func(path string, nav webui.Nav) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: nav, Body: webui.Stack{}}
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: nav, View: webui.Stack{}}
 	}
 	return webui.App{
 		Brand: webui.Brand{Name: "Acme"},
@@ -46,8 +46,8 @@ func TestTheBrandLinksToTheLandingPage(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}},
-		webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}},
 	}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `<a class="side-brand" href="/admin/"`)
@@ -68,9 +68,9 @@ func TestTheBrandLinksToTheFirstPageThatNeedsNoArgumentsWhenNothingIsInTheNaviga
 	t.Parallel()
 
 	type one struct{ ID string }
-	byID := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}
-	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, Body: webui.Stack{}}
-	open := webui.Page[webui.NoArgs]{Path: "/overview", Body: webui.Stack{}}
+	byID := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}}
+	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, View: webui.Stack{}}
+	open := webui.Page[webui.NoArgs]{Path: "/overview", View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
 
 	// No page declares an entry, so there is no sidebar: the brand is the first crumb, which leads where the sidebar's would.
@@ -81,7 +81,7 @@ func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }
-	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}}}.MustCompile("/admin")
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}}}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/device/x").Body.String()
 	assert.False(t, strings.Contains(body, `<a href="/admin/">Acme</a>`))
@@ -103,8 +103,8 @@ func TestAPageAtTheRootIsTheLandingPage(t *testing.T) {
 	h := webui.App{
 		Brand: webui.Brand{Name: "Acme"},
 		Pages: webui.Pages{
-			webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}},
-			webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}},
+			webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}},
+			webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}},
 		},
 	}.MustCompile("/admin")
 
@@ -123,7 +123,7 @@ func TestCompileRefusesAnIconThatIsNotAFontAwesomeIcon(t *testing.T) {
 		"fa-house":    `Write the icon's name without the "fa-" prefix: "house".`,
 	} {
 		app := webui.App{Pages: webui.Pages{
-			webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: icon}, Body: webui.Stack{}},
+			webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: icon}, View: webui.Stack{}},
 		}}
 		var all string
 		for _, e := range compileErrors(t, app) {
@@ -166,7 +166,7 @@ func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
 // ancestryApp has pages at several depths, to see which entry a page lights.
 func ancestryApp() http.Handler {
 	page := func(path string, label string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, Body: webui.Stack{}}
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, View: webui.Stack{}}
 	}
 	return webui.App{Pages: webui.Pages{
 		page("/", "Overview"),
@@ -217,11 +217,11 @@ func guardedNavApp(allowed func(context.Context) error) http.Handler {
 	guarded := func(path, label, section string) webui.Page[webui.NoArgs] {
 		return webui.Page[webui.NoArgs]{
 			Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section},
-			Guard: func(ctx context.Context, _ webui.NoArgs) error { return allowed(ctx) }, Body: webui.Stack{},
+			Guard: func(ctx context.Context, _ webui.NoArgs) error { return allowed(ctx) }, View: webui.Stack{},
 		}
 	}
 	open := func(path, label, section string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, Body: webui.Stack{}}
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, View: webui.Stack{}}
 	}
 	return webui.App{Pages: webui.Pages{
 		guarded("/audit", "Audit log", "Operations"),
@@ -276,7 +276,7 @@ func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	t.Parallel()
 
 	page := func(path, label, section string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, Body: webui.Stack{}}
+		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, View: webui.Stack{}}
 	}
 	// Given out of order: sections interleaved, and entries with no Section among them.
 	h := webui.App{Pages: webui.Pages{
@@ -308,7 +308,7 @@ func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testi
 	t.Parallel()
 
 	type one struct{ ID string }
-	page := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, Body: webui.Stack{}}
+	page := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{page}})
 	assert.Contains(t, errs[0].Detail, `navigation entry "Device" but its path has arguments`)
 }
@@ -317,7 +317,7 @@ func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T)
 	t.Parallel()
 
 	type one struct{ ID string }
-	page := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}} // no Nav, and none at "/"
+	page := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // no Nav, and none at "/"
 	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{page}}.MustCompile("/admin")
 
 	for _, at := range []string{"/admin", "/admin/"} {
@@ -351,9 +351,9 @@ func TestWithNoEntryTheRootSendsYouToTheFirstPageThatNeedsNoArgumentsAndYouMayOp
 	t.Parallel()
 
 	type one struct{ ID string }
-	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, Body: webui.Stack{}}
-	byID := webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}} // needs an argument: not a start
-	open := webui.Page[webui.NoArgs]{Path: "/overview", Body: webui.Stack{}}
+	locked := webui.Page[webui.NoArgs]{Path: "/locked", Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") }, View: webui.Stack{}}
+	byID := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // needs an argument: not a start
+	open := webui.Page[webui.NoArgs]{Path: "/overview", View: webui.Stack{}}
 	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/")
@@ -365,7 +365,7 @@ func TestWithNoEntryTheRootSendsYouToTheFirstPageThatNeedsNoArgumentsAndYouMayOp
 func TestARootThatHasAPageIsServedWithNoRedirectAndNoWarning(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}}}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Equal(t, flashOfRoot(rec), "")
@@ -375,7 +375,7 @@ func TestTheRootHasNoWarningToGiveWhenThereIsNowhereToSendYou(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }
-	h := webui.App{Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", Body: webui.Stack{}}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}}}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/")
 	assert.Equal(t, rec.Code, http.StatusOK) // the page that says so
 	assert.Equal(t, flashOfRoot(rec), "")

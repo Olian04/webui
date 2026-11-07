@@ -19,7 +19,7 @@ import (
 // is followed; a loader that is asked for them by a Query or a cursor is given a window of the first rows, with no sort and no filter.
 type Loader[M any] interface {
 	// validateLoader checks the loader where it is, which at names.
-	validateLoader(v *bodyValidator, at string)
+	validateLoader(v *viewValidator, at string)
 
 	// lowerLoader is the loader as the IR asks for rows, by a Query, for columns that the leaf has (none, for a list), named for the address by labels.
 	lowerLoader(columns []ir.Field, labels map[string]string) loading
@@ -79,19 +79,19 @@ var (
 	_ Loader[struct{}] = FeedLoader[struct{}]{}
 )
 
-func (l RowsLoader[M]) validateLoader(v *bodyValidator, at string) {
+func (l RowsLoader[M]) validateLoader(v *viewValidator, at string) {
 	if l.Load == nil {
 		v.add(at+" is a RowsLoader with no Load", "Set Load to func(ctx) ([]M, Loaded), returning every row.")
 	}
 }
 
-func (l PagedLoader[M]) validateLoader(v *bodyValidator, at string) {
+func (l PagedLoader[M]) validateLoader(v *viewValidator, at string) {
 	if l.Load == nil {
 		v.add(at+" is a PagedLoader with no Load", "Set Load to func(ctx, PagedQuery) (PagedWindow[M], Loaded), returning the rows of the window asked for.")
 	}
 }
 
-func (l FeedLoader[M]) validateLoader(v *bodyValidator, at string) {
+func (l FeedLoader[M]) validateLoader(v *viewValidator, at string) {
 	if l.Load == nil {
 		v.add(at+" is a FeedLoader with no Load", "Set Load to func(ctx, after string, limit int) (rows []M, next string, loaded Loaded), returning the page that starts at the cursor.")
 	}

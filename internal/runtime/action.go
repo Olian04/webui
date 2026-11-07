@@ -357,7 +357,7 @@ func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, page *ir.
 	}
 	req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 	req.panels = &panelSet{}
-	body := p.panel(ctx, req, page, page.Body)
+	body := p.panel(ctx, req, page, page.Root)
 	if err := req.panels.wait(&req.code); err != nil {
 		p.fail(w, r, page, req, err)
 		return

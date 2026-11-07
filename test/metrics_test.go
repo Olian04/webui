@@ -47,7 +47,7 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 			Search: func(context.Context, string, int) ([]webui.Hit[thingArgs], error) {
 				return []webui.Hit[thingArgs]{{Args: thingArgs{ID: "a"}, Title: "A"}}, nil
 			},
-			Body: webui.Form[thing]{
+			View: webui.Form[thing]{
 				Load:   func(context.Context) (thing, webui.Loaded) { return thing{Name: "x"}, webui.Failed(loadErr) },
 				Fields: []webui.Accessor[thing]{thingName},
 				Submit: webui.Action[thing]{
@@ -71,7 +71,7 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 		},
 		webui.Page[webui.NoArgs]{
 			Path: "/things", Nav: webui.Nav{Label: "Things"},
-			Body: webui.Table[thing]{
+			View: webui.Table[thing]{
 				Title: "Things",
 				Loader: webui.PagedLoader[thing]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[thing], webui.Loaded) {
 					return webui.PagedWindow[thing]{Items: []thing{{Name: "a"}}, Total: 1}, webui.Failed(loadErr)
@@ -221,7 +221,7 @@ func TestAnAppCompiledAgainOrAnotherGivenTheSameRegistryCountsIntoTheSameMetrics
 	second := metricsApp(reg, nil, nil) // the same app again
 	serve(second, http.MethodGet, "/admin/thing/a")
 	serve(first, http.MethodGet, "/admin/thing/a") // and the first goes on counting too
-	other, err := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/admin")
+	other, err := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}}}}.Compile("/admin")
 	assert.NoError(t, err)
 	serve(other, http.MethodGet, "/admin/")
 
@@ -238,7 +238,7 @@ func TestWrappingTheRegistryForEachAppKeepsTheirCountsApart(t *testing.T) {
 	one := prometheus.NewRegistry()
 	for _, name := range []string{"a", "b"} {
 		wrapped := prometheus.WrapRegistererWith(prometheus.Labels{"app": name}, one)
-		h, err := webui.App{Observer: observe(wrapped), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}}.Compile("/" + name)
+		h, err := webui.App{Observer: observe(wrapped), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}}}}.Compile("/" + name)
 		assert.NoError(t, err)
 		serve(h, http.MethodGet, "/"+name+"/")
 	}

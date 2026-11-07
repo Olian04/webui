@@ -26,7 +26,7 @@ func folder() fstest.MapFS {
 }
 
 func contextEditor(fsys fstest.MapFS, language webui.Language, guard func(context.Context, doc) error, secret []byte) http.Handler {
-	return webui.App{Secret: secret, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Editor[doc]{
+	return webui.App{Secret: secret, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Editor[doc]{
 		Title: "Doc", Language: language, Context: fsys,
 		Content: webui.String[doc]{
 			Label: "Text", Load: func(d doc) string { return d.Text }, Store: func(d *doc, v string) { d.Text = v },
@@ -165,7 +165,7 @@ func TestTwoEditorsGivenOneFolderHandOverEachFileOnce(t *testing.T) {
 	second := editor
 	second.Title = "Another"
 	second.Content.Label = "Other text"
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Stack{editor, second}}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Stack{editor, second}}}}.MustCompile("/admin")
 	assert.Equal(t, len(configOf(t, get(h, "/admin/e").Body.String()).Context.Libs["typescript"]), 1)
 }
 

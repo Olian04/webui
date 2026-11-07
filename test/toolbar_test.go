@@ -26,7 +26,7 @@ type toolArgs struct {
 
 type newArgs struct{ From string }
 
-var newDevice = webui.Page[newArgs]{Path: "/device/new", Body: webui.Stack{}}
+var newDevice = webui.Page[newArgs]{Path: "/device/new", View: webui.Stack{}}
 
 // toolState is the model that the toolbar's form loads, here from the page's arguments, and shows.
 type toolState struct {
@@ -91,7 +91,7 @@ func newToolShop(items ...webui.ToolbarItem) *toolShop {
 			settings(minutesInput, siteInput, tagsInput),
 		}
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Stack{
+	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Stack{
 		webui.Toolbar{Left: items[:2], Right: items[2:]},
 		webui.Table[Device]{
 			Title: "Devices",
@@ -175,7 +175,7 @@ func TestAToolbarShowsAnAccessorReadOnlyWhateverItsStore(t *testing.T) {
 	withStore := webui.Int[toolState]{Label: "Minutes", Load: func(a toolState) int { return a.Minutes }, Store: func(a *toolState, v int) { a.Minutes = v }}
 	without := webui.Int[toolState]{Label: "Minutes", Load: func(a toolState) int { return a.Minutes }}
 	page := func(field webui.Accessor[toolState]) http.Handler {
-		return webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{settings(field)}}}}}.MustCompile("/admin")
+		return webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(field)}}}}}.MustCompile("/admin")
 	}
 	a := serve(page(withStore), http.MethodGet, "/admin/tools?minutes=15").Body.String()
 	b := serve(page(without), http.MethodGet, "/admin/tools?minutes=15").Body.String()
@@ -193,7 +193,7 @@ func TestAToolbarValueIsAsAReadOnlyFieldShowsItAndMayHaveHelp(t *testing.T) {
 		Size int
 		Name string
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[state]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[state]{
 		Title: "State", Load: func(context.Context) (state, webui.Loaded) { return state{}, webui.Ready() },
 		Fields: []webui.Accessor[state]{
 			webui.OptionalBool[state]{Label: "Paused", Load: func(a state) *bool {
@@ -230,7 +230,7 @@ func TestAToolbarMayHaveFormsOfDifferentModels(t *testing.T) {
 		Title: "Queue", Load: func(context.Context) (queue, webui.Loaded) { return queue{Depth: 128}, webui.Ready() },
 		Fields: []webui.Accessor[queue]{webui.Int[queue]{Label: "Depth", Load: func(q queue) int { return q.Depth }}},
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput), depth}}}
+	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput), depth}}}
 	body := serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/tools?minutes=15").Body.String()
 	assert.Contains(t, body, `<span class="toolbar-form" role="group" aria-label="Settings">`)
 	assert.Contains(t, body, `<span class="toolbar-form" role="group" aria-label="Queue">`)
@@ -277,7 +277,7 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	other := going(9 * time.Second)
 	other.Title = "Other"
 	other.Fields = []webui.Accessor[toolState]{siteInput}
-	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{going(4 * time.Second), other}}}
+	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{going(4 * time.Second), other}}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/tools?minutes=15").Body.String()
@@ -295,7 +295,7 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	assert.True(t, strings.HasPrefix(rec.Body.String(), `<div class="toolbar" data-toolbar data-view="p" data-refresh-after="4">`))
 
 	// A toolbar of forms that are final says nothing of it.
-	final := serve(webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput)}}}}}.MustCompile("/admin"), http.MethodGet, "/admin/tools").Body.String()
+	final := serve(webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput)}}}}}.MustCompile("/admin"), http.MethodGet, "/admin/tools").Body.String()
 	assert.False(t, strings.Contains(final, "data-refresh-after"))
 	assert.Contains(t, final, `<div class="toolbar" data-toolbar data-view="p">`)
 }
@@ -325,7 +325,7 @@ func TestAToolbarWithControlsAtOneEdgeHasTheGapOnTheOtherSide(t *testing.T) {
 	item := webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}
 	gap := `<span class="toolbar-gap" aria-hidden="true"></span>`
 	pageOf := func(tb webui.Toolbar) string {
-		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: tb}}}.MustCompile("/admin")
+		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: tb}}}.MustCompile("/admin")
 		return serve(h, http.MethodGet, "/admin/tools").Body.String()
 	}
 	both := pageOf(webui.Toolbar{Left: []webui.ToolbarItem{item}, Right: []webui.ToolbarItem{item}})
@@ -371,7 +371,7 @@ func TestASelectInAToolbarMayReadItsOptions(t *testing.T) {
 	team := webui.Select[toolState]{
 		Label: "Team", Load: func(a toolState) []string { return []string{a.Site} }, LoadOptions: s.load,
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{settings(team)}}}
+	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(team)}}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/tools?site=blue").Body.String(), `</span>Blue team</span>`)
@@ -384,9 +384,9 @@ func TestASelectInAToolbarMayReadItsOptions(t *testing.T) {
 func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	problems := func(body webui.PageBody) string {
+	problems := func(body webui.View) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: body}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: body}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
@@ -399,7 +399,7 @@ func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 		webui.Link[webui.NoArgs, newArgs]{Page: newDevice, Args: func(context.Context, webui.NoArgs) newArgs { return newArgs{} }},
 	}}), "Toolbar.Left[0] has no Label")
 	// A value to read needs no Store.
-	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{
+	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{
 		settings(webui.String[toolState]{Label: "Site", Load: func(a toolState) string { return a.Site }}),
 	}}}}}.Compile("/admin")
 	assert.NoError(t, err)
@@ -413,13 +413,13 @@ func TestAFormInAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(items ...webui.ToolbarItem) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: items}}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: items}}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
 	}
 	ok := settings(minutesInput)
-	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{Left: []webui.ToolbarItem{ok}}}}}.Compile("/admin")
+	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{ok}}}}}.Compile("/admin")
 	assert.NoError(t, err)
 
 	noTitle := ok
@@ -460,7 +460,7 @@ func TestTheGroupWithMoreValuesIsTheOneThatFlows(t *testing.T) {
 		webui.String[toolArgs]{Label: "B", Load: func(toolArgs) string { return "b" }},
 	}}
 	bar := func(tb webui.Toolbar) string {
-		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: tb}}}.MustCompile("/admin")
+		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: tb}}}.MustCompile("/admin")
 		return serve(h, http.MethodGet, "/admin/tools").Body.String()
 	}
 

@@ -158,7 +158,7 @@ func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) 
 	t.Parallel()
 
 	text := handbook{Text: "[here](/e) and [there](/device/d1?minutes=5) and [out](//evil.example/x) and [odd](/\\evil.example)"}
-	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Markdown[handbook]{
+	page := webui.Page[webui.NoArgs]{Path: "/e", View: webui.Markdown[handbook]{
 		Title: "Handbook", Content: handbookText,
 		Load: func(context.Context) (handbook, webui.Loaded) { return text, webui.Ready() },
 	}}
@@ -224,9 +224,9 @@ func TestAPageThatTrustsNoOriginHasTheSamePolicyAsEveryOtherPage(t *testing.T) {
 
 	assert.Equal(t, policyOf(markdownApp("![x](https://cdn.example.com/l.png)"), "/admin/e"), basePolicy)
 	other := webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/with", Body: markdownWithOrigins("x", "https://cdn.example.com")},
-		webui.Page[webui.NoArgs]{Path: "/without", Body: markdownWithOrigins("x")},
-		webui.Page[webui.NoArgs]{Path: "/plain", Body: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/with", View: markdownWithOrigins("x", "https://cdn.example.com")},
+		webui.Page[webui.NoArgs]{Path: "/without", View: markdownWithOrigins("x")},
+		webui.Page[webui.NoArgs]{Path: "/plain", View: webui.Stack{}},
 	}}.MustCompile("/admin")
 	assert.True(t, policyOf(other, "/admin/with") != basePolicy)
 	assert.Equal(t, policyOf(other, "/admin/without"), basePolicy)
@@ -237,11 +237,11 @@ func TestAPageThatTrustsNoOriginHasTheSamePolicyAsEveryOtherPage(t *testing.T) {
 func TestThePolicyHasTheOriginsOfEveryMarkdownOnThePageOnceEach(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Stack{
+	page := webui.Page[webui.NoArgs]{Path: "/e", View: webui.Stack{
 		markdownWithOrigins("a", "https://a.example", "https://shared.example"),
 		webui.Tabs{
-			{Label: "One", Body: markdownWithOrigins("b", "https://shared.example", "https://B.example:443")},
-			{Label: "Two", Body: markdownWithOrigins("c", "https://c.example:8443")}, // a tab that is not selected still counts
+			{Label: "One", View: markdownWithOrigins("b", "https://shared.example", "https://B.example:443")},
+			{Label: "Two", View: markdownWithOrigins("c", "https://c.example:8443")}, // a tab that is not selected still counts
 		},
 	}}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
@@ -262,7 +262,7 @@ func TestTheErrorPagesOfAPageHaveItsPolicyToo(t *testing.T) {
 	page := webui.Page[webui.NoArgs]{
 		Path:  "/e",
 		Guard: func(context.Context, webui.NoArgs) error { return errors.New("no") },
-		Body:  markdownWithOrigins("x", "https://cdn.example.com"),
+		View:  markdownWithOrigins("x", "https://cdn.example.com"),
 	}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/e")
@@ -287,7 +287,7 @@ func TestATrustedOriginMustBeAnOriginAndNothingThatCouldChangeThePolicy(t *testi
 	assert.Contains(t, problems("nope"), `Write it as "https://example.com"`)
 
 	for _, ok := range []string{"https://cdn.example.com", "https://cdn.example.com:8443", "https://CDN.example.com"} {
-		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: markdownWithOrigins("x", ok)}}}.Compile("/admin")
+		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: markdownWithOrigins("x", ok)}}}.Compile("/admin")
 		assert.NoError(t, err)
 	}
 }
@@ -297,7 +297,7 @@ func TestAMarkdownCodeBlockIsNotWarnedAboutWhenTheProgramHasTheEditor(t *testing
 	t.Parallel()
 
 	var out bytes.Buffer
-	h := webui.App{Logger: slog.New(slog.NewTextHandler(&out, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Markdown[handbook]{
+	h := webui.App{Logger: slog.New(slog.NewTextHandler(&out, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Markdown[handbook]{
 		Title: "Handbook",
 		Load: func(context.Context) (handbook, webui.Loaded) {
 			return handbook{Text: "```go\nx\n```\n"}, webui.Ready()

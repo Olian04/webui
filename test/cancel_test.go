@@ -53,13 +53,13 @@ func cancelApp(redirectToPlain bool) http.Handler {
 			return webui.Outcome{}, nil
 		}},
 	}
-	details.Body = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain
-	notes.Body = webui.Stack{}                      // a page with no form has nothing to cancel out of
+	details.View = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain
+	notes.View = webui.Stack{}                      // a page with no form has nothing to cancel out of
 
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: rows(details)}
-	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, Body: rows(details)}
-	plain := webui.Page[webui.NoArgs]{Path: plainPath, Body: rows(notes)}
-	solo := webui.Page[cancelArgs]{Path: "/solo/{id}", Body: form} // no parent page to cancel to
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: rows(details)}
+	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, View: rows(details)}
+	plain := webui.Page[webui.NoArgs]{Path: plainPath, View: rows(notes)}
+	solo := webui.Page[cancelArgs]{Path: "/solo/{id}", View: form} // no parent page to cancel to
 	return webui.App{Pages: webui.Pages{list, other, plain, details, notes, solo}}.MustCompile("/admin")
 }
 

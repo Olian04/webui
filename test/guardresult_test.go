@@ -33,7 +33,7 @@ func guardedParcels(logger *slog.Logger, actions []webui.Action[parcel], bulk []
 	for _, a := range actions {
 		table.Actions = append(table.Actions, a)
 	}
-	return webui.App{Logger: logger, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
+	return webui.App{Logger: logger, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}}.MustCompile("/admin")
 }
 
 func rowAction(label string, guard func(context.Context, parcel) error) webui.Action[parcel] {
@@ -201,7 +201,7 @@ func TestATableWithNoRowsDrawsNoBulkAction(t *testing.T) {
 			Run:   func(context.Context, []parcel) (webui.Outcome, error) { return webui.Success("bagged"), nil },
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.False(t, strings.Contains(body, "Bag"))
 	assert.Contains(t, body, "Nothing to show")
@@ -266,7 +266,7 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 		return errors.New("no")
 	}
 	run := func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Success("done"), nil }
-	h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{
+	h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{
 		Left:  []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "One", Guard: refused, Run: run}},
 		Right: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Two", Run: run}},
 	}}}}.MustCompile("/admin")
@@ -277,7 +277,7 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 	assert.Contains(t, body, `name="_act" value="1">Two</button>`)                   // and is still the second
 
 	// With every button refused, no toolbar is drawn: not an empty row, and not a form.
-	h = webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", Body: webui.Toolbar{
+	h = webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{
 		Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "One", Guard: refused, Run: run}},
 	}}}}.MustCompile("/admin")
 	body = serve(h, http.MethodGet, "/admin/tools").Body.String()
@@ -290,7 +290,7 @@ func TestALinkToAPageThatRefusesTheVisitorIsNotDrawn(t *testing.T) {
 	t.Parallel()
 
 	var open atomic.Bool
-	dest := webui.Page[webui.NoArgs]{Path: "/dest", Body: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error {
+	dest := webui.Page[webui.NoArgs]{Path: "/dest", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error {
 		if open.Load() {
 			return nil
 		}
@@ -305,7 +305,7 @@ func TestALinkToAPageThatRefusesTheVisitorIsNotDrawn(t *testing.T) {
 	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, webui.NoArgs]{
 		Label: "Open it", Page: dest, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 	}}}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Stack{bar, table}}, dest}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Stack{bar, table}}, dest}}.MustCompile("/admin")
 
 	visitor := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.False(t, strings.Contains(visitor, `href="/admin/dest"`))
@@ -325,11 +325,11 @@ func TestAPageGuardThatPanicsOnTheWayToALinkHidesTheLink(t *testing.T) {
 	t.Parallel()
 
 	var logs bytes.Buffer
-	dest := webui.Page[webui.NoArgs]{Path: "/dest", Body: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { panic("the page guard fell over") }}
+	dest := webui.Page[webui.NoArgs]{Path: "/dest", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { panic("the page guard fell over") }}
 	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, webui.NoArgs]{
 		Label: "Open it", Page: dest, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} },
 	}}}
-	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logs, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: bar}, dest}}.MustCompile("/admin")
+	h := webui.App{Logger: slog.New(slog.NewTextHandler(&logs, nil)), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: bar}, dest}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/t")
 	assert.Equal(t, rec.Code, http.StatusOK)

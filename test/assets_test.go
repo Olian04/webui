@@ -201,7 +201,7 @@ func TestAnErrorPageIsCompressedAndARedirectIsNot(t *testing.T) {
 	assert.Equal(t, missing.Code, http.StatusNotFound)
 	assert.Contains(t, unzip(t, missing.Body.Bytes()), "Page not found")
 
-	root := gzipped(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}}.MustCompile("/admin"), "/admin/")
+	root := gzipped(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}}.MustCompile("/admin"), "/admin/")
 	assert.Equal(t, root.Code, http.StatusFound)
 	assert.Equal(t, root.Header().Get("Content-Encoding"), "")
 }

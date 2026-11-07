@@ -49,7 +49,7 @@ func TestAnAppTellsAnObserverOfTheProgramsOwnWhatItDoes(t *testing.T) {
 	t.Parallel()
 
 	var rec recorder
-	h := webui.App{Observer: &rec, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Body: webui.Form[thing]{
+	h := webui.App{Observer: &rec, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", View: webui.Form[thing]{
 		Load:   func(context.Context) (thing, webui.Loaded) { return thing{Name: "x"}, webui.Ready() },
 		Fields: []webui.Accessor[thing]{thingName},
 		Submit: webui.Action[thing]{Run: func(context.Context, thing) (webui.Outcome, error) { return webui.Success("done"), nil }},

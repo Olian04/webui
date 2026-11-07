@@ -34,8 +34,8 @@ func (g *gate) load(context.Context) (condition, webui.Loaded) {
 	return condition{Open: g.open.Load()}, webui.Ready()
 }
 
-func (g *gate) when(body webui.PageBody) webui.When[condition] {
-	return webui.When[condition]{Load: g.load, Show: conditionOpen, Body: body}
+func (g *gate) when(body webui.View) webui.When[condition] {
+	return webui.When[condition]{Load: g.load, Show: conditionOpen, View: body}
 }
 
 // stockTable is a table with an export, to put under a When.
@@ -118,7 +118,7 @@ func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 	g.open.Store(true)
 	full := webui.Bool[condition]{Label: "Open", Help: "Whether it is open.", NoSort: true, NoFilter: true,
 		Load: func(c condition) bool { return c.Open }, Store: func(c *condition, v bool) { c.Open = v }}
-	h := editorApp(webui.When[condition]{Load: g.load, Show: full, Body: columnPanel("Inside")})
+	h := editorApp(webui.When[condition]{Load: g.load, Show: full, View: columnPanel("Inside")})
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<")
 	g.open.Store(false)
 	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<"))
@@ -126,7 +126,7 @@ func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 	// "Show when false" is a Bool that says the opposite.
 	g.open.Store(false)
 	not := webui.Bool[condition]{Load: func(c condition) bool { return !c.Open }}
-	h = editorApp(webui.When[condition]{Load: g.load, Show: not, Body: columnPanel("When closed")})
+	h = editorApp(webui.When[condition]{Load: g.load, Show: not, View: columnPanel("When closed")})
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">When closed<")
 }
 
@@ -200,7 +200,7 @@ func TestAFailingLoadSaysSoAndHidesTheBody(t *testing.T) {
 			return condition{}, webui.Failed(errors.New("store secret-bucket is gone"))
 		},
 		Show: conditionOpen,
-		Body: webui.Markdown[handbook]{Title: "Inside", Load: func(context.Context) (handbook, webui.Loaded) {
+		View: webui.Markdown[handbook]{Title: "Inside", Load: func(context.Context) (handbook, webui.Loaded) {
 			shownLoads.Add(1)
 			return handbook{Text: "x"}, webui.Ready()
 		}, Content: handbookText},
@@ -223,14 +223,14 @@ func TestAPanicInALoadOrAShowIsRecoveredLikeAnyPanels(t *testing.T) {
 
 	panicking := webui.When[condition]{
 		Load: func(context.Context) (condition, webui.Loaded) { panic("the condition fell over") },
-		Show: conditionOpen, Body: columnPanel("Inside"),
+		Show: conditionOpen, View: columnPanel("Inside"),
 	}
 	rec := serve(editorApp(webui.Stack{panicking}), http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 
 	var g gate
 	g.open.Store(true)
-	bad := webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Load: func(condition) bool { panic("show fell over") }}, Body: columnPanel("Inside")}
+	bad := webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Load: func(condition) bool { panic("show fell over") }}, View: columnPanel("Inside")}
 	assert.Equal(t, serve(editorApp(webui.Stack{bad}), http.MethodGet, "/admin/e").Code, http.StatusInternalServerError)
 }
 
@@ -254,7 +254,7 @@ func TestTheBodyLoadsAfterTheConditionAndSiblingsStillLoadTogether(t *testing.T)
 			return condition{Open: true}, webui.Ready()
 		},
 		Show: conditionOpen,
-		Body: webui.Table[flags]{Title: "Inside", Columns: []webui.Accessor[flags]{flagName}, Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { note("body"); return nil, webui.Ready() }}},
+		View: webui.Table[flags]{Title: "Inside", Columns: []webui.Accessor[flags]{flagName}, Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { note("body"); return nil, webui.Ready() }}},
 	}
 	sibling := webui.Table[flags]{Title: "Sibling", Columns: []webui.Accessor[flags]{flagName}, Loader: webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { note("sibling"); return nil, webui.Ready() }}}
 	serve(editorApp(webui.Stack{when, sibling}), http.MethodGet, "/admin/e")
@@ -280,7 +280,7 @@ func TestAColumnWhoseWhenDoesNotHoldIsEmptyAndNotDrawn(t *testing.T) {
 	t.Parallel()
 
 	var g gate
-	h := editorApp(webui.Columns{{Weight: 1, Body: g.when(columnPanel("Inside"))}, {Weight: 2, Body: columnPanel("Next")}})
+	h := editorApp(webui.Columns{{Weight: 1, View: g.when(columnPanel("Inside"))}, {Weight: 2, View: columnPanel("Next")}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `<div class="col" style="--w:1;"></div>`) // empty, which the stylesheet does not draw
 	assert.Contains(t, body, ">Next<")
@@ -295,8 +295,8 @@ func TestATabWithNoVisiblePanelIsHidden(t *testing.T) {
 
 	var g gate
 	h := editorApp(webui.Tabs{
-		{Label: "Maybe", Body: g.when(columnPanel("Inside"))},
-		{Label: "Always", Body: columnPanel("Outside")},
+		{Label: "Maybe", View: g.when(columnPanel("Inside"))},
+		{Label: "Always", View: columnPanel("Outside")},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.False(t, strings.Contains(body, ">Maybe<"))
@@ -316,8 +316,8 @@ func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
 
 	var g gate
 	h := editorApp(webui.Tabs{
-		{Label: "Maybe", Body: g.when(columnPanel("Inside"))},
-		{Label: "Always", Body: columnPanel("Outside")},
+		{Label: "Maybe", View: g.when(columnPanel("Inside"))},
+		{Label: "Always", View: columnPanel("Outside")},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, `class="tab active" href="/admin/e?tabs.tab=always"`)
@@ -334,7 +334,7 @@ func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
 
 	var g gate
 	g.open.Store(true)
-	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
+	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.Contains(t, body, ">Inside<")
 	assert.Equal(t, int(g.loads.Load()), 1)
@@ -344,7 +344,7 @@ func TestTabsWithNoVisibleTabDrawNothing(t *testing.T) {
 	t.Parallel()
 
 	var g gate
-	h := editorApp(webui.Tabs{{Label: "Maybe", Body: g.when(columnPanel("Inside"))}})
+	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.False(t, strings.Contains(body, ">Maybe<"))
 	assert.False(t, strings.Contains(body, ">Inside<"))
@@ -358,7 +358,7 @@ func TestARefreshHintFromTheLoadIsAcceptedAndDrawsNothing(t *testing.T) {
 		Load: func(context.Context) (condition, webui.Loaded) {
 			return condition{Open: true}, webui.Ready().RefreshAfter(5 * time.Second)
 		},
-		Show: conditionOpen, Body: columnPanel("Inside"),
+		Show: conditionOpen, View: columnPanel("Inside"),
 	}
 	rec := serve(editorApp(webui.Stack{when}), http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -371,15 +371,15 @@ func TestAWhenThatCannotBeDrawnIsACompileError(t *testing.T) {
 
 	var g gate
 	for name, tc := range map[string]struct {
-		body webui.PageBody
+		body webui.View
 		want string
 	}{
-		"no load":                      {webui.When[condition]{Show: conditionOpen, Body: columnPanel("A")}, "a When has no Load"},
-		"no show load":                 {webui.When[condition]{Load: g.load, Body: columnPanel("A")}, "When.Show has no Load"},
-		"a Bool with no load":          {webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Label: "Open"}, Body: columnPanel("A")}, "When.Show has no Load"},
-		"an OptionalBool with no load": {webui.When[condition]{Load: g.load, Show: webui.OptionalBool[condition]{Label: "Open"}, Body: columnPanel("A")}, "When.Show has no Load"},
-		"no body":                      {webui.When[condition]{Load: g.load, Show: conditionOpen}, "When.Body is nil"},
-		"a bad body":                   {webui.When[condition]{Load: g.load, Show: conditionOpen, Body: webui.Markdown[handbook]{Title: "No load"}}, "Markdown"},
+		"no load":                      {webui.When[condition]{Show: conditionOpen, View: columnPanel("A")}, "a When has no Load"},
+		"no show load":                 {webui.When[condition]{Load: g.load, View: columnPanel("A")}, "When.Show has no Load"},
+		"a Bool with no load":          {webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Label: "Open"}, View: columnPanel("A")}, "When.Show has no Load"},
+		"an OptionalBool with no load": {webui.When[condition]{Load: g.load, Show: webui.OptionalBool[condition]{Label: "Open"}, View: columnPanel("A")}, "When.Show has no Load"},
+		"no body":                      {webui.When[condition]{Load: g.load, Show: conditionOpen}, "When.View is nil"},
+		"a bad body":                   {webui.When[condition]{Load: g.load, Show: conditionOpen, View: webui.Markdown[handbook]{Title: "No load"}}, "Markdown"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -396,14 +396,14 @@ func TestTheConditionsLoadIsCountedAsAWhen(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	var g gate
 	g.open.Store(true)
-	h := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: g.when(columnPanel("Inside"))}}}.MustCompile("/admin")
+	h := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", View: g.when(columnPanel("Inside"))}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
 	assert.Equal(t, gathered(t, reg, "webui_load_duration_seconds")["kind=when,page=/w"], 1.0)
 	assert.Equal(t, gathered(t, reg, "webui_load_errors_total")["kind=when,page=/w"], 0.0)
 
 	bad := prometheus.NewRegistry()
-	failing := webui.When[condition]{Load: func(context.Context) (condition, webui.Loaded) { return condition{}, webui.Failed(errors.New("down")) }, Show: conditionOpen, Body: columnPanel("Inside")}
-	h = webui.App{Observer: observe(bad), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", Body: failing}}}.MustCompile("/admin")
+	failing := webui.When[condition]{Load: func(context.Context) (condition, webui.Loaded) { return condition{}, webui.Failed(errors.New("down")) }, Show: conditionOpen, View: columnPanel("Inside")}
+	h = webui.App{Observer: observe(bad), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", View: failing}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
 	assert.Equal(t, gathered(t, bad, "webui_load_errors_total")["kind=when,page=/w"], 1.0)
 }
@@ -428,7 +428,7 @@ func TestAShowThatIsAnOptionalBoolIsShownOnlyWhenItIsYes(t *testing.T) {
 			defer mu.Unlock()
 			return value
 		}},
-		Body: columnPanel("Inside"),
+		View: columnPanel("Inside"),
 	}
 	h := editorApp(webui.Stack{when})
 	shown := func() bool { return strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<") }

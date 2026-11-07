@@ -16,7 +16,7 @@ func item(label, url string) webui.ExternalLink {
 func linksApp(items ...webui.ExternalLink) http.Handler {
 	return webui.App{
 		ExternalLinks: items,
-		Pages:         webui.Pages{webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}},
+		Pages:         webui.Pages{webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}},
 	}.MustCompile("/admin")
 }
 

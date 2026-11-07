@@ -213,7 +213,7 @@ func contextType(name string) string {
 func (r *Renderer) buildContexts() {
 	r.contexts = map[string]*contextEntry{}
 	for _, p := range r.app.Pages {
-		for _, f := range ir.Editors(p.Body) {
+		for _, f := range ir.Editors(p.Root) {
 			if f.Editor.Context == nil {
 				continue
 			}

@@ -23,7 +23,7 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 	list := webui.Page[webui.NoArgs]{
 		Path: "/entry",
 		Nav:  webui.Nav{Label: "Entries"},
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Title:  "Entries",
 			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return entries, webui.Ready() }},
 			Key:    func(d Device) string { return d.Id },
@@ -39,8 +39,8 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 			Columns: []webui.Accessor[Device]{formID},
 		},
 	}
-	folder := webui.Page[detailsArgs]{Path: folderPath, Body: webui.Stack{}}
-	object := webui.Page[detailsArgs]{Path: objectPath, Body: webui.Stack{}}
+	folder := webui.Page[detailsArgs]{Path: folderPath, View: webui.Stack{}}
+	object := webui.Page[detailsArgs]{Path: objectPath, View: webui.Stack{}}
 	return webui.App{Pages: webui.Pages{list, folder, object}}.MustCompile("/admin")
 }
 
@@ -100,7 +100,7 @@ func TestARowClickActionNeedsARunAndAKey(t *testing.T) {
 		tbl.Loader = webui.PagedLoader[Device]{Load: okRows}
 		tbl.Columns = []webui.Accessor[Device]{formID}
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: tbl}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: tbl}}}) {
 			all += e.Error() + "\n"
 		}
 		return all

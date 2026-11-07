@@ -66,10 +66,10 @@ type Calendar[M any] struct {
 	Today func() time.Time
 }
 
-// ASSERT: Calendar implements PageBody
-var _ PageBody = Calendar[struct{}]{}
+// ASSERT: Calendar implements View
+var _ View = Calendar[struct{}]{}
 
-func (c Calendar[M]) validateBody(v *bodyValidator) {
+func (c Calendar[M]) validateView(v *viewValidator) {
 	if c.Load == nil {
 		v.add("a Calendar has no Load", "Set Load to func(ctx, span Span) ([]M, Loaded), returning the items that are in the span.")
 	}
@@ -84,7 +84,7 @@ func (c Calendar[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (c Calendar[M]) lowerBody(at ir.Addr) ir.Node {
+func (c Calendar[M]) lowerView(at ir.Addr) ir.Node {
 	n := &ir.Calendar{
 		At: at, Title: c.Title, Desc: c.Desc, SundayFirst: c.SundayFirst, WeekNumbers: c.WeekNumbers, Today: c.Today,
 		Date: func(m any) time.Time { return c.Date(m.(M)) },

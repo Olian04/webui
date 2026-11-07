@@ -31,7 +31,7 @@ func TestArgsOfPanicsOutsideAPage(t *testing.T) {
 func panicApp(load func(ctx context.Context) (Device, webui.Loaded)) http.Handler {
 	page := webui.Page[pageArgs]{
 		Path: "/device/{id}",
-		Body: webui.Form[Device]{Load: load, Fields: []webui.Accessor[Device]{formID}},
+		View: webui.Form[Device]{Load: load, Fields: []webui.Accessor[Device]{formID}},
 	}
 	return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 }
@@ -74,8 +74,8 @@ func TestThePageStillServesAfterAPanic(t *testing.T) {
 }
 
 func brokenGuardApp(log *slog.Logger, guard func(context.Context, webui.NoArgs) error) http.Handler {
-	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, Body: webui.Stack{}}
-	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, Body: webui.Stack{}, Guard: guard}
+	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, View: webui.Stack{}}
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, View: webui.Stack{}, Guard: guard}
 	return webui.App{Logger: log, Pages: webui.Pages{home, broken}}.MustCompile("/admin")
 }
 

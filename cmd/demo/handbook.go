@@ -51,7 +51,7 @@ func handbookPage(path webui.PageID[webui.NoArgs], label, icon, file, desc strin
 	return webui.Page[webui.NoArgs]{
 		Path: path,
 		Nav:  webui.Nav{Label: label, Icon: icon, Section: "Handbook"},
-		Body: handbookPanel("Handbook", file, desc),
+		View: handbookPanel("Handbook", file, desc),
 	}
 }
 

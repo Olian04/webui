@@ -31,8 +31,8 @@ var (
 )
 
 func formApp(form webui.Form[Device]) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, Body: webui.Stack{}}
-	details := webui.Page[detailsArgs]{Path: "/device/{id}", Body: form}
+	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+	details := webui.Page[detailsArgs]{Path: "/device/{id}", View: form}
 	return webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
 }
 
@@ -144,7 +144,7 @@ func TestAFormTheVisitorMayNotSubmitAndCannotLeaveHasNoFooter(t *testing.T) {
 
 	f := okForm()
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
-	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/solo", Body: f}}} // no parent, no origin
+	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/solo", View: f}}} // no parent, no origin
 	body := serve(app.MustCompile("/admin"), http.MethodGet, "/admin/solo").Body.String()
 	assert.False(t, strings.Contains(body, "panel-foot"))
 	assert.False(t, strings.Contains(body, ">Save</button>"))

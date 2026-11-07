@@ -15,7 +15,7 @@ func ExampleApp_Compile() {
 
 	broken := webui.Page[deviceArgs]{
 		Path: "/device/{id}",
-		Body: webui.Form[device]{
+		View: webui.Form[device]{
 			Load: func(context.Context) (device, webui.Loaded) { return device{}, webui.Ready() },
 		},
 	}

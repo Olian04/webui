@@ -33,7 +33,7 @@ func slowApp() http.Handler {
 	}
 	page := webui.Page[webui.NoArgs]{
 		Path: "/slow",
-		Body: webui.Stack{
+		View: webui.Stack{
 			webui.Form[Device]{
 				Title: "Form",
 				Load: func(ctx context.Context) (Device, webui.Loaded) {
@@ -85,7 +85,7 @@ func BenchmarkPageFastPanels(b *testing.B) {
 			Columns: []webui.Accessor[Device]{formID},
 		}
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/fast", Body: webui.Stack{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/fast", View: webui.Stack{
 		webui.Form[Device]{Title: "Form", Load: func(context.Context) (Device, webui.Loaded) { return Device{Id: "x"}, webui.Ready() }, Fields: []webui.Accessor[Device]{formID}},
 		table("One"), table("Two"), table("Three"),
 	}}}}.MustCompile("/admin")

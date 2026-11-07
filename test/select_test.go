@@ -47,7 +47,7 @@ func taskApp(start task, saved *task) http.Handler {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: form}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: form}}}.MustCompile("/admin")
 }
 
 func submitTask(h http.Handler, values url.Values) (code int, body string) {
@@ -84,7 +84,7 @@ func TestASelectThatIsNotRequiredCanBeLeftEmpty(t *testing.T) {
 
 	optional := taskStatus
 	optional.Required = false
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Form[task]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
 		Load:   func(context.Context) (task, webui.Loaded) { return task{Name: "a"}, webui.Ready() },
 		Fields: []webui.Accessor[task]{optional},
 		Submit: webui.Action[task]{Run: func(context.Context, task) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
@@ -179,7 +179,7 @@ func TestASelectIsMarkedForTheScriptThatTurnsItIntoADropDown(t *testing.T) {
 func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T) {
 	t.Parallel()
 
-	read := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
+	read := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 		Title: "Tasks",
 		Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) {
 			return []task{
@@ -202,7 +202,7 @@ func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T)
 func TestASelectInAFormThatCannotBeEditedIsReadAndAnEmptyOneIsADash(t *testing.T) {
 	t.Parallel()
 
-	read := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Form[task]{
+	read := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
 		Load: func(context.Context) (task, webui.Loaded) {
 			return task{Name: "a", Status: []string{"done"}}, webui.Ready()
 		},
@@ -230,7 +230,7 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 		{Name: "one", Labels: []string{"bug"}}, {Name: "two", Labels: []string{"bug", "ui"}}, {Name: "three", Labels: []string{"docs"}},
 		{Name: "four"}, {Name: "five", Labels: []string{"ui"}},
 	}
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 		Title:   "Tasks",
 		Loader:  webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return tasks, webui.Ready() }},
 		Columns: []webui.Accessor[task]{taskName, webui.Select[task]{Label: "Labels", Load: func(t task) []string { return t.Labels }}}, // no options: the rows have them
@@ -262,7 +262,7 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 func TestTheSearchAndTheSortOfASelectColumnUseWhatItShows(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
+	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 		Title: "Tasks",
 		Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) {
 			return []task{{Name: "a", Labels: []string{"ui"}}, {Name: "b", Labels: []string{"docs"}}}, webui.Ready()
@@ -279,7 +279,7 @@ func TestASelectIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
 	problems := func(a webui.Select[task]) string {
-		page := webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[task]{
+		page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 			Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }}, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string

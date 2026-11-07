@@ -46,13 +46,13 @@ func outcomeApp() http.Handler {
 	}
 	page := webui.Page[detailsArgs]{
 		Path: "/device/{id}",
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Load:   func(context.Context) (Device, webui.Loaded) { return Device{Id: "a", Ip: "10.0.0.1"}, webui.Ready() },
 			Fields: []webui.Accessor[Device]{formID, formIP, formCount},
 			Submit: webui.Action[Device]{Run: run},
 		},
 	}
-	return webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, Body: webui.Stack{}}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{page, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}}.MustCompile("/admin")
 }
 
 func submitIP(h http.Handler, ip string) (code int, location, flash, body string) {
@@ -157,7 +157,7 @@ func TestATableActionsFailureAndRejectAreAnErrorToastAndASuccessIsNot(t *testing
 	run := func(o webui.Outcome) http.Handler {
 		page := webui.Page[webui.NoArgs]{
 			Path: "/device",
-			Body: webui.Table[Device]{
+			View: webui.Table[Device]{
 				Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return []Device{{Id: "a"}}, webui.Ready() }},
 				Key:     func(d Device) string { return d.Id },
 				Columns: []webui.Accessor[Device]{formID},

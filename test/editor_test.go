@@ -34,15 +34,15 @@ func loadSnippet(context.Context) (snippet, webui.Loaded) {
 }
 
 // editorApp has one page, with the leaf as its body, and records what was saved.
-func editorApp(body webui.PageBody) http.Handler {
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: body}}}.MustCompile("/admin")
+func editorApp(body webui.View) http.Handler {
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: body}}}.MustCompile("/admin")
 }
 
-func editorErrors(t *testing.T, body webui.PageBody) string {
+func editorErrors(t *testing.T, body webui.View) string {
 	t.Helper()
 
 	var all string
-	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: body}}}) {
+	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: body}}}) {
 		all += e.Error() + "\n"
 	}
 	return all

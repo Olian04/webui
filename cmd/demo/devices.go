@@ -145,7 +145,7 @@ var Devices = webui.Page[webui.NoArgs]{
 	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
 	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device and a button
 	// that does something.
-	Body: webui.Stack{DevicesToolbar, DevicesTable},
+	View: webui.Stack{DevicesToolbar, DevicesTable},
 }
 
 // DevicesToolbar is the controls of the list. A Link to another page is at the left edge, and an Action, a button that posts and says how it
@@ -205,7 +205,7 @@ var DevicesTable = webui.Table[Device]{
 var NewDevicePage = webui.Page[webui.NoArgs]{
 	Path:  "/device/new",
 	Guard: canEdit[webui.NoArgs],
-	Body: webui.Form[Device]{
+	View: webui.Form[Device]{
 		Title: "New device",
 		Desc:  "The same fields as a device's own form, over a device that does not exist yet.",
 		Load:  func(context.Context) (Device, webui.Loaded) { return Device{Status: "healthy"}, webui.Ready() },
@@ -261,9 +261,9 @@ var Details = webui.Page[DeviceArgs]{
 	},
 	// The selected tab is ?tabs.tab=raw-events, named by its label; the first tab,
 	// Overview, needs no parameter.
-	Body: webui.Tabs{
-		{Label: "Overview", Body: webui.Split{DeviceForm, RecentEvents}},
-		{Label: "Raw events", Body: RawEvents},
+	View: webui.Tabs{
+		{Label: "Overview", View: webui.Split{DeviceForm, RecentEvents}},
+		{Label: "Raw events", View: RawEvents},
 	},
 }
 

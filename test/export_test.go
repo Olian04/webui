@@ -43,7 +43,7 @@ func stockApp(t webui.Table[stock]) http.Handler {
 	t.Title = "Items"
 	t.Columns = stockCols
 	t.Export = true
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: t}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: t}}}.MustCompile("/admin")
 }
 
 func rowsTable(rows []stock) webui.Table[stock] {
@@ -260,7 +260,7 @@ func TestATableThatDoesNotExportIgnoresTheParameter(t *testing.T) {
 
 	table := rowsTable(stocks)
 	table.Title, table.Columns = "Items", stockCols
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: table}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: table}}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
@@ -284,7 +284,7 @@ func TestAnExportRunsThePagesGuardAndLoadsNothingForAVisitorItRefuses(t *testing
 		loaded = true
 		return stocks, webui.Ready()
 	}}}
-	page := webui.Page[webui.NoArgs]{Path: "/s", Body: table, Guard: func(context.Context, webui.NoArgs) error { return errors.New("members only") }}
+	page := webui.Page[webui.NoArgs]{Path: "/s", View: table, Guard: func(context.Context, webui.NoArgs) error { return errors.New("members only") }}
 	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/s?items.export=csv")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
@@ -311,7 +311,7 @@ func TestOnlyTheTableThatWasAskedForIsExported(t *testing.T) {
 	a.Title, a.Columns, a.Export = "First", stockCols, true
 	b := rowsTable([]stock{{Name: "only"}})
 	b.Title, b.Columns, b.Export = "Second", []webui.Accessor[stock]{stockName}, true
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", Body: webui.Stack{a, b}}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: webui.Stack{a, b}}}}.MustCompile("/admin")
 	got := records(t, serve(h, http.MethodGet, "/admin/s?second.export=csv").Body.String())
 	assert.DeepEqual(t, got, [][]string{{"Name"}, {"only"}})
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/s?first.export=csv").Header().Get("Content-Disposition"), `attachment; filename=first.csv`)
@@ -397,7 +397,7 @@ func ticketApp() http.Handler {
 			}, webui.Ready()
 		}},
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: table}}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}}.MustCompile("/admin")
 }
 
 func TestASelectInACSVIsTheLabelsOfItsValuesAndNeverTheInternalSeparator(t *testing.T) {

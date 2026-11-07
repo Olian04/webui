@@ -63,7 +63,7 @@ var CompareDevices = webui.Table[Device]{
 var Compare = webui.Page[CompareArgs]{
 	Path: "/compare",
 	Nav:  webui.Nav{Label: "Compare devices", Icon: "code-compare", Section: "Platform"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		webui.Markdown[Handbook]{
 			Title:   "Compare devices",
 			Desc:    "Query parameters that repeat.",

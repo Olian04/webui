@@ -45,7 +45,7 @@ func credentialApp(start credential) (http.Handler, func() credential) {
 			return webui.Success("Saved"), nil
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: form}}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", View: form}}}.MustCompile("/admin")
 	return h, func() credential {
 		mu.Lock()
 		defer mu.Unlock()
@@ -147,14 +147,14 @@ func TestASecretIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	load := func(c credential) bool { return c.Key != "" }
 	store := func(*credential, string) {}
-	problems := func(body webui.PageBody) string {
+	problems := func(body webui.View) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", Body: body}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/c", View: body}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
 	}
-	form := func(s webui.Secret[credential]) webui.PageBody {
+	form := func(s webui.Secret[credential]) webui.View {
 		return webui.Form[credential]{
 			Load:   func(context.Context) (credential, webui.Loaded) { return credential{}, webui.Ready() },
 			Fields: []webui.Accessor[credential]{s},

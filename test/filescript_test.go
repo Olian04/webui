@@ -63,7 +63,7 @@ func TestAPageLinksTheFileScriptOnlyWhenItHasAFileToChoose(t *testing.T) {
 	assert.False(t, strings.Contains(serve(plain.h, http.MethodGet, "/admin/device/dev1").Body.String(), "file."))
 
 	// A form that is only read has no chooser, and no script for one.
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[attachment]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[attachment]{
 		Load: func(context.Context) (attachment, webui.Loaded) {
 			return attachment{Held: &webui.FileInfo{Name: "a.pdf"}}, webui.Ready()
 		},
