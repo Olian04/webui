@@ -33,6 +33,7 @@
 | `internal/render`  | IR + loaded data → HTML. `templates/components` is the design language. The assets are built here (hashed, compressed) and served through `internal/assetserve` by the runtime's routes. |
 | `test/`            | Integration tests against `pkg/webui` only. External test package (`webui_test`). |
 | `test/util/assert` | Test assertions (`got`, `want`). No import of `pkg/` or `internal/`.              |
+| `test/util/page`   | Reads a response body by role and name, by text, by field name: `page.Parse(t, body).ByRole("link", "Devices")`. No import of `pkg/` or `internal/`. |
 | `.claude-plugin`, `.cursor-plugin` | Packaging of the skills. The Claude Code marketplace installs `skills/webui` and `skills/webui-upgrade` as two plugins (each a `git-subdir` source, so users do not pull the Go source); the Cursor plugin takes the repo root. No `version` is set, so installs follow the default branch. |
 | `skills/webui`     | Skill for agents building *with* the library. Method and judgement, no API list; points at `go doc` for the pinned version. `test/skill_test.go` guards it. |
 | `skills/webui-upgrade` | Skill for agents moving a project between two versions of the library. Reads `docs/migrations/<version>.md` from the module cache; guarded by `test/skill_test.go`. |
@@ -255,7 +256,17 @@ Things that were proposed and dropped. Do not start on them again without a reas
 
 ## Tests
 
-`test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` is the exception: assertions only, imported by tests.
+`test/` must import `pkg/webui` only, not `internal/`. `test/util/assert` and `test/util/page` are the exceptions: assertions, and the reading of a page, imported by tests and importing nothing of this module.
+
+**A test says a behaviour or a rule, not how the code is built.** A change to the insides that leaves the library's API and what a visitor gets as it was must not make a test change, and the history says what that costs when it does: a refactor of the stylesheet's class names (`badge-bad` to `tone-bad`) rewrote 92 assertions in 35 test files, and a refactor that moved a constant or removed an internal error rewrote the unit tests that named them. So a test may pin:
+
+- status codes, `Location`, headers (`X-Webui-View`, `Cache-Control`, `Content-Encoding`, the content security policy), and addresses with their parameters;
+- the names of form fields (`_view`, `_act`) and what a post does, and what an app's own function (`Load`, `Guard`, `Run`) is handed;
+- what a visitor reads or can do: text, ARIA roles, names and labels, a control present or absent by role and name (`page.Parse(t, body).ByRole("button", "Save")`), a field by its name;
+- `data-view` and `data-refresh-after`, which the scripts depend on, hashed asset URLs, `<time datetime>`, escaping, and that nothing from untrusted input runs;
+- the Observer's log lines, and in the packages that own them the algorithms and codecs, and the wording of the pattern and text-rule messages.
+
+A test may not pin a CSS class or an id, the order or nesting of tags, an inline style, the text of a script or a stylesheet, the name of an internal function, type or field, how many times an internal step ran when no app can see it, or the sentence of a compile error's `Fix` (it says which page and which field are named, and that a `Fix` is there). Read a page with `test/util/page`, which is by role and name, and not with `strings.Contains` on its markup; where a test needs what a script does, it is in the browser suite and not in a search of the script's source.
 
 A change that is meant to change no markup is held to it with `TestSnapshot` in `cmd/demo/snapshot_test.go`: it writes every page of the demo (for an editor and a viewer) to a directory, with what differs between two runs made the same, and an empty `diff -rq` between `main`'s and the branch's is the same bytes on every page (its comment says how). The tests that assert on parts of a page cannot say that, and it caught a space that they did not.
 
