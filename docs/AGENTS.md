@@ -51,6 +51,7 @@ The runnable `Example` functions in `pkg/webui` are the documentation's tests, a
 | `docs/design.md`         | The visual language: tokens, metrics, components, states.                     |
 | `docs/design-mapping.md` | Which declared type produces which design element, and where the two disagree. |
 | `docs/design-decisions.md` | Why the API is shaped as it is, and what each decision costs. |
+| `docs/terminology.md`    | The words: which are the library's (what a user reads and writes) and which are the internals', and which word each retired. A new term goes in it first. |
 
 `internal/render` implements `design.md`. Every colour, radius and elevation is a
 design token (the app's `webui.Theme` is the only thing that may override them: the four colours, and for each mode a `Canvas` that its surfaces derive from); no component reads a literal value, but for the white label of a primary or a destructive button, the dimmed backdrop of a dialog and the default mark. When the two documents and
