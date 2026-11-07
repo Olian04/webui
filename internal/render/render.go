@@ -241,7 +241,7 @@ func Refreshing(comp templ.Component, after time.Duration) templ.Component {
 func (r *Renderer) hasTheme() bool { return r.app.Theme != (ir.Theme{}) }
 func (r *Renderer) hasLogo() bool  { return len(r.app.Brand.Logo) > 0 }
 
-// FirstEntry is the address of the first navigation entry the visitor may
+// FirstEntry is the address of the first sidebar entry the visitor may
 // open, or "". hide is the paths of the entries they may not.
 func (r *Renderer) FirstEntry(hide map[string]bool) string {
 	if shown := r.shown(hide, nil); len(shown) > 0 {
@@ -250,7 +250,7 @@ func (r *Renderer) FirstEntry(hide map[string]bool) string {
 	return ""
 }
 
-// NavPaths is the path template of every navigation entry, in order, so the runtime
+// NavPaths is the path template of every sidebar entry, in order, so the runtime
 // can ask which of them the visitor may open.
 func (r *Renderer) NavPaths() []string {
 	out := make([]string, 0, len(r.nav))
@@ -329,7 +329,7 @@ func NoPages() templ.Component {
 func NoStart() templ.Component {
 	return c.EmptyState(c.EmptyStateProps{
 		Icon: c.IconInfo, Title: "Nothing to open from here",
-		Desc: "This app has no page at \"/\" and no navigation entry you may open. Declare a page at \"/\", or give a page a Nav entry.",
+		Desc: "This app has no page at \"/\" and no sidebar entry you may open. Declare a page at \"/\", or give a page a Nav entry.",
 	})
 }
 

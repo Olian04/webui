@@ -7,7 +7,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Table is a leaf that lists rows of a model M, one row to a line.
+// Table is a panel that lists rows of a model M, one row to a line.
 //
 // Every column header sorts the table and has a filter beside it, unless the column says NoSort or NoFilter, which
 // leave it out of the sorting or the filters: its header has no link or no menu, and an address that asks for

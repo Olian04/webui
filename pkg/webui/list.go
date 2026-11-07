@@ -9,27 +9,27 @@ import (
 	"github.com/Olian04/webui/internal/markdown"
 )
 
-// List is a leaf that lists items of a model, newest first or in whatever order the source gives them: each has a headline, a line of small facts beneath it
+// List is a panel that lists items of a model, newest first or in whatever order the source gives them: each has a headline, a line of small facts beneath it
 // (its age, its author, a count, where it came from), and, when it has them, a picture and a badge. It is for the things a page says "here is what is new" about,
 // where a [Table] would be a column of cells and a reader wants the headlines.
 //
 // It shows the first of what its Loader gives it, and, when there are more, a Show more link that shows PageSize more: a real link, so it works without
-// script, which with script replaces the list in place. How many are shown is in the address as the leaf's name and ".limit", as a table keeps its page. Nothing is kept
+// script, which with script replaces the list in place. How many are shown is in the address as the panel's name and ".limit", as a table keeps its page. Nothing is kept
 // on the server. It only reads: a headline leads to where the item is, with [List.Open], and a list has no row actions.
 //
 // Its source is a [Loader], as a table's is, and it asks for the first items only: a [RowsLoader] suits a list of what is at hand, and a [PagedLoader] or a [FeedLoader] one that is
 // asked for a few.
 type List[M any] struct {
-	// Title is the panel's heading, and names the leaf's view state in the address: "latest" for a List titled "Latest", and "list" when it has none.
+	// Title is the panel's heading, and names the panel's view state in the address: "latest" for a List titled "Latest", and "list" when it has none.
 	Title string
 
 	// Desc is a description, shown in a popover from an information icon beside the title.
 	Desc string
 
 	// Loader is where the items come from, in the order they are shown: a [RowsLoader] hands over every item and the library shows the first of them, a [PagedLoader] is asked for the
-	// window of the first items (an Offset of 0 and a Limit of what is on screen plus one, so that the leaf can tell whether there are more, with no sort and no filter), and a
+	// window of the first items (an Offset of 0 and a Limit of what is on screen plus one, so that the panel can tell whether there are more, with no sort and no filter), and a
 	// [FeedLoader] for the first page of that size. A source that has more than it was asked for is not asked again to count. The loader is called on every request that needs
-	// the leaf's items, and the library keeps nothing between requests: if asking is costly, cache it in your app.
+	// the panel's items, and the library keeps nothing between requests: if asking is costly, cache it in your app.
 	Loader Loader[M]
 
 	// PageSize is how many items are shown at first, and how many more each Show more adds. Five when it is left zero.
@@ -52,7 +52,7 @@ type List[M any] struct {
 	// Meta are the small facts under the headline, in order, separated by a dot: an item that has no value for one (an empty text) is shown without it.
 	Meta []Accessor[M]
 
-	// Image is the address of the item's picture, when it has one: a path on this site, which the app serves, or an https address from one of TrustedOrigins.
+	// Image is the URL of the item's picture, when it has one: a path on this site, which the app serves, or an https address from one of TrustedOrigins.
 	// Any other address is not drawn, and the item has no picture, as one with none has not: never a broken one. It is decoration, with no text of its own, since the
 	// headline names the item. Left nil, no item has one.
 	Image func(M) string
@@ -61,7 +61,7 @@ type List[M any] struct {
 	Badge Select[M]
 
 	// TrustedOrigins are the origins that serve the pictures of Image besides this site, each written as https://host or https://host:port, with nothing after it, as
-	// they are for a [Markdown]. The content security policy of a page with a leaf that names origins has them in its img-src, and no other page does.
+	// they are for a [Markdown]. The content security policy of a page with a panel that names origins has them in its img-src, and no other page does.
 	TrustedOrigins []string
 }
 

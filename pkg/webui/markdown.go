@@ -9,7 +9,7 @@ import (
 	"github.com/Olian04/webui/internal/markdown"
 )
 
-// Markdown is a leaf that shows one text of a model, set as markdown: headings,
+// Markdown is a panel that shows one text of a model, set as markdown: headings,
 // emphasis, lists, links, quotes and code, and the tables, task lists, strikethrough
 // and bare links of GitHub's flavour. It is for text the application has, such as a
 // runbook, release notes or a README, and it only reads: the accessor has no Store.

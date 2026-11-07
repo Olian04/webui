@@ -91,7 +91,7 @@ does, and they let you design before you look up names.
 - **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: a `File` in a form is held in memory for the request and `Store` is handed it
   to copy, a file too large for that is a `FileUpload` panel whose `Receive` action reads it as a stream, and `Load` says what is kept. Do not
   look for a place in the library to put them, or to serve them from.
-- **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, not a panel, with no type parameter: its buttons are
+- **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, a panel with no frame and no type parameter: its buttons are
   `Action[webui.NoArgs]` and `Link[webui.NoArgs, B]` (the page's arguments come from `webui.ArgsOf(ctx)`), and its values are a read-only `Form` of
   a model that it loads, which may return `webui.Ready().RefreshAfter(d)` to have the toolbar asked for again. A toolbar takes no input: that is a `Form` panel.
 
@@ -105,7 +105,7 @@ next.
 2. **Accessors.** One per field you will show or edit, written once and reused as both
    column and form field. Give every accessor a clear, unique label: labels name
    columns and tabs, and appear in addresses, so renaming one changes links.
-3. **Leaves.** A table for lists and a form for one record. A form with nothing to
+3. **Panels.** A table for lists and a form for one record. A form with nothing to
    submit is the way to show one record read-only. For a table, choose where the rows
    come from by how many there are and whether the source can order and filter them;
    the documentation for the table says which option fits which size, and what the
@@ -113,8 +113,8 @@ next.
 4. **Actions.** Mutations are actions with a guard and a way of reporting how they
    ended. Keep them thin: call your own functions, return an outcome.
 5. **Pages.** A path (with arguments in it where a page is about one thing), a
-   navigation entry only where the page belongs in the menu, an optional guard, and a
-   body. Detail pages usually have no entry of their own; the library works out which
+   sidebar entry only where the page belongs in the sidebar, an optional guard, and a
+   view. Detail pages usually have no entry of their own; the library works out which
    entry to light.
 6. **The app.** Pages, the brand, an optional theme, and the links to places outside the app.
 7. **Mount it.** Compile with the prefix the app lives under, and mount the handler

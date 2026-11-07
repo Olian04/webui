@@ -8,7 +8,7 @@ import (
 	"github.com/Olian04/webui/internal/rules"
 )
 
-// Form is a leaf that loads one model M, shows it as fields, and submits it through
+// Form is a panel that loads one model M, shows it as fields, and submits it through
 // an [Action]. After a submit that was accepted the user returns to the page they came
 // from; one that was not shows the form again with what they typed.
 //

@@ -92,7 +92,7 @@
 //
 // A page whose path is "/" is the landing page, and the brand in the sidebar and the first
 // breadcrumb link to it. Without one they link to where the root would go: the first entry in
-// the navigation the visitor may open, or failing that the first page whose path has no
+// the sidebar the visitor may open, or failing that the first page whose path has no
 // arguments and whose guard lets them in. Typing the root's address goes there too, with no
 // message. If there is nowhere to go, the brand is plain text.
 //
@@ -375,7 +375,7 @@
 // # Toolbars
 //
 // A [Toolbar] is a row of controls for the page it is on, such as "Create device" above
-// a list of devices. It is not a panel, so it has no frame, and it sits on the page in
+// a list of devices. It is a panel with no frame, and it sits on the page in
 // a [Stack] with what it is for. It has no type parameter, because it has no model of its
 // own: its buttons are about the page, which they read from the request with [ArgsOf], and
 // what it shows is in its [Form]s, each of which loads a model of its own:
@@ -416,7 +416,7 @@
 // panel is for editing. Several Forms of different models may share a toolbar, and a Form
 // whose Load fails says so in its place and leaves the rest of the toolbar as it was.
 //
-// The toolbar is the leaf that refreshes, as any panel is: a Form whose Load returns
+// A toolbar refreshes as any panel does: a Form whose Load returns
 // [Loaded.RefreshAfter] has the whole toolbar asked for again (see Following a job), after the
 // shortest delay of its Forms. Unlike a panel, a toolbar says nothing of it in the row, which has little room; without script it is not refreshed.
 //
@@ -786,7 +786,7 @@
 //
 // For rows that are held in memory, [SearchRows] makes the Search: it looks in the fields
 // it is given and the library does the matching. Results are listed under the page's
-// name in the navigation, or under the entry it borrows its place from. A result is
+// name in the sidebar, or under the entry it borrows its place from. A result is
 // offered only to a visitor who could open the page it leads to: the page's Guard is run
 // for each, with its own arguments.
 //
@@ -809,7 +809,7 @@
 // results are ranked, and not result by result, so that nothing in it moves while the
 // visitor reaches for it. It is HTML. With script the box lists it as it is typed in;
 // without, the box is a form with a button, and what it submits is answered with a page
-// of results in the shell of the app. The query is cut at 200 characters, and an
+// of results, drawn with the sidebar and the top bar of the app. The query is cut at 200 characters, and an
 // address that two pages find is listed once.
 //
 // # Looks
@@ -820,8 +820,8 @@
 // top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
 // address opens in a tab of its own, and a path on this site in the same one. Its
 // Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#1f7a6d" that Compile refuses when it is anything else, and the library derives
-// the rest for light and dark, which follow the viewer's system. A Theme may also give Light and Dark, each a [ModeColors], the page's Canvas in that mode, from which the surfaces, borders and
-// text of the mode are derived, and colours that win over the shared ones in that mode: a look of its own in each, with the viewer still choosing between the modes. Compile checks that what a Theme
+// the rest for light and dark, which follow the visitor's system. A Theme may also give Light and Dark, each a [ModeColors], the page's Canvas in that mode, from which the surfaces, borders and
+// text of the mode are derived, and colours that win over the shared ones in that mode: a look of its own in each, with the visitor still choosing between the modes. Compile checks that what a Theme
 // derives can be read, and refuses one that cannot, naming the field and the pair. A [Nav] Icon is the
 // name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
 // itself.
@@ -840,7 +840,7 @@
 //
 // # Figures
 //
-// There is no leaf for a few figures of one model: it is a [Table] of one row, with a value column and a [Trend] column beside it for each figure. Each Trend has
+// There is no panel for a few figures of one model: it is a [Table] of one row, with a value column and a [Trend] column beside it for each figure. Each Trend has
 // the direction of its own, so a latency that falls and a count that rises can both be good news in the one row.
 //
 // A Trend is the shape of a figure over time and how much it moved. Its Load returns the points of a small chart and a change, as a percent. The chart is a
@@ -858,18 +858,18 @@
 // A [List] lists items of a model: each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. [Cards] are the same
 // items as boxes, in a grid that wraps or, with Layout: CardsScroll, a row that scrolls sideways. They are for what is new, where a [Table] would be a column of cells.
 //
-// Their source is Load(ctx, limit), a plain list, which is asked for one more than is shown so that the leaf knows there is more. It shows PageSize items, five when that is left zero, and a Show more
-// link that shows that many more: a real link to the same page with the leaf's name and ".limit" in the address, so it works without script and a copied link shows the same, and with
+// Their source is Load(ctx, limit), a plain list, which is asked for one more than is shown so that the panel knows there is more. It shows PageSize items, five when that is left zero, and a Show more
+// link that shows that many more: a real link to the same page with the panel's name and ".limit" in the address, so it works without script and a copied link shows the same, and with
 // script it replaces the list in place. A headline is an accessor for text. Where it leads is Open, a [Control]: a [Link] to a page of the app (an item whose page refuses the visitor is text), an [Href], an
 // address that opens in a tab of its own, or an [Action], which is handed the item (found again by Key) and makes the headline a button. Meta are the small facts, shown as they are in a cell and separated by a dot, and a fact with no value is left out. Badge is a [Select].
 //
-// Image is the address of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
+// Image is the URL of a picture: a path on this site, or an https address from one of TrustedOrigins, which are written as they are for [Markdown] and which the page's content security
 // policy then allows for this page and no other. A picture from anywhere else is not drawn. See [ExampleList].
 //
 // # Calendar
 //
 // A [Calendar] shows a month as a grid of days, each marked when something is on it, with a link when Open says where a day leads. Load is given a [Span], the days that the grid shows (the month, and the days of its
-// first and last weeks that are not of it), and Date says when an item is. A day is a day in UTC. The month is in the address as the leaf's name and ".month" ("releases.month=2026-10"), with real links to the months
+// first and last weeks that are not of it), and Date says when an item is. A day is a day in UTC. The month is in the address as the panel's name and ".month" ("releases.month=2026-10"), with real links to the months
 // either side and back to the current one, so it works without script and a copied link shows the same month. Open is a [Control] built from a [Day]: a [Link], an [Href], or an [Action] that is handed the Day, and only a day with items has it. A week begins on Monday, or
 // on Sunday with SundayFirst, and WeekNumbers adds ISO 8601 week numbers, which are of Monday weeks. The day that is now is marked by more than colour, and each day is told in full to a reader who goes by the
 // grid. See [ExampleCalendar].
@@ -936,7 +936,7 @@
 //
 // The library sets no authentication: mount the handler behind your own. A [Page]'s
 // Guard and an [Action]'s Guard decide what a visitor may see and do, and the same
-// check that draws or leaves out a control also authorises the request. Navigation entries and
+// check that draws or leaves out a control also authorises the request. Sidebar entries and
 // search results a visitor could not open are left out. POST requests are
 // protected against cross-site request forgery (CSRF) with
 // [net/http.CrossOriginProtection], responses carry a content security policy, and

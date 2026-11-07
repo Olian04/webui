@@ -326,7 +326,7 @@ design element.
   transaction (bind, rules, Guard, `Run`, all-or-nothing), which is why a file in a form is held in memory and checked with the rest: a stream
   of several gigabytes to an object store is not part of that, and three designs that put the store behind the field (a writer with `Submit` and
   `Discard`, a typed token with `Commit` and `Discard`, an `UploadSpool` that `Store` is handed a handle of) each leaked how a file is stored into
-  every form with a file, and made the form's order the upload's lifecycle. A `FileUpload` is a leaf of its own with its own POST, so none of that is
+  every form with a file, and made the form's order the upload's lifecycle. A `FileUpload` is a panel of its own with its own POST, so none of that is
   there: `Receive` is an `Action[FileHandle[M]]`, the `FileHandle` (name, sniffed content type, kind and a `Reader`) is its subject, and its `Run` is the upload,
   which reads the `Reader` wherever it goes and returns an `Outcome`; the Guard, which is the action's, decides how the panel is drawn (asked with a
   `FileHandle` that has no reader: `Disabled` disables, any other error leaves the panel out) and refuses the post. What `Run` needs of the page it reads with `ArgsOf`. One file per panel, in one request: what the visitor chooses beside it is the panel's options (below). The first 512 bytes are read before the Guard, so that it can see the kind, and the
@@ -343,7 +343,7 @@ design element.
 - **What is chosen beside the file is the panel's model: `FileUpload[M]`.** The first version had no inputs and was not generic, since a panel's type parameter is its loaded model and
   it had none; an app that moved to it needed a choice beside the file ("replace if it exists", a storage class, a folder) that was made before the file was sent, and a second step
   after the upload cannot be. So the panel has a model, the options, as a form has: `Load` gives the defaults (optional), `Fields` are the inputs, any accessor of a form with a `Store`
-  and rules (a `File` among them is a compile error), and the type parameter is named `M` as on every other leaf. They are lowered, bound (`bindFunc`) and drawn (`formField`) by the
+  and rules (a `File` among them is a compile error), and the type parameter is named `M` as on every other panel. They are lowered, bound (`bindFunc`) and drawn (`formField`) by the
   form's own machinery, and are an `ir.Form` with a placeholder Submit, which is what makes its fields inputs. The fields come before the file in the page, so the request sends them first:
   they are bound, and checked by their rules, before any of the file is read, a refusal answers like a table action's (a toast of the messages) without reading the file, and the options
   are `FileHandle.Options` for the Guard and `Run`. A field that arrives after the file is ignored. Dropped: only page arguments (a visitor cannot choose with them on the page that
@@ -402,11 +402,11 @@ design element.
 
 - **A post that script makes is answered in HTML, for any panel, with the status of how it went.** The first version of the upload's answer was the upload's: a list item that
   any other post with the header would have been given with no place to go, a form that was refused was given the whole page, and the script told success from failure by the
-  word in the item's tone. It is one contract now, for every leaf. A post with `X-Webui-View` is answered with HTML and never with a redirect, a cookie or data: **an accepted
+  word in the item's tone. It is one contract now, for every panel. A post with `X-Webui-View` is answered with HTML and never with a redirect, a cookie or data: **an accepted
   action is the item with a 200** (a warning too: it was done), **a refused outcome, rule or file is the item with a 422** (understood, and refused), **a Guard's refusal is the item
   with a 403** (the visitor may not, which is not that what they sent was refused), **a failure is the item with a 500**, and a refused page Guard, a post from another site and an
-  argument that did not parse are the item with their own statuses; **a form that was refused is the form**: the HTML of the leaf, drawn again with what was typed and what was
-  refused, and nothing round it, as a request for the leaf is answered, with the 422. The item is `li.result` with `data-tone` for how to draw it, `.result-text` and, when the
+  argument that did not parse are the item with their own statuses; **a form that was refused is the form**: the HTML of the panel, drawn again with what was typed and what was
+  refused, and nothing round it, as a request for the panel is answered, with the 422. The item is `li.result` with `data-tone` for how to draw it, `.result-text` and, when the
   outcome goes somewhere, `a.result-next`: a link that is the next action, which the script follows and has not to know. So a script reads the status that HTTP has for it and the
   link that the HTML has, and never a tone, and an app's tone is for the eye. What the script still says itself is what only it can know: "Not sent." for a file that a *Cancel*
   stopped before it was sent, "Cancelled." and "The upload could not be completed." for a request that did not reach an answer, which have no response to be the server's words. The
@@ -620,15 +620,15 @@ design element.
 
 ## Toolbar
 
-- **A `Toolbar` is a row of controls for the page, with no type parameter, and its values are a `Form` that it loads.** It is a leaf and not
+- **A `Toolbar` is a row of controls for the page, with no type parameter, and its values are a `Form` that it loads.** It is a panel and not
   a panel (no frame), in a `Stack` with what it is for. It was `Toolbar[A]`, typed by the page's arguments, with the arguments handed to its `Action`s and
-  `Link`s and read by its accessors, but a type parameter of a leaf is the model that the leaf's own `Load` fills and the leaf then reads, and a toolbar had
+  `Link`s and read by its accessors, but a type parameter of a panel is the model that the panel's own `Load` fills and the panel then reads, and a toolbar had
   no `Load`: the arguments were passed through it, which is what `ArgsOf(ctx)` is for, and the values it showed were computed from them or from a global, with
   nothing to say that they were still changing. Now the buttons are the existing `Action[NoArgs]` and `Link[NoArgs, B]` (no `ToolbarAction`, no
   `ToolbarLink`: a button with no model has the empty one, and reads the page with `ArgsOf`), and the values are a plain `Form[M]` in the toolbar's item list,
   which already has a `Load`, fields and a title. The item list is a sealed interface, `ToolbarItem`, whose method takes `NoArgs`: `Action[M]`, `Link[M, B]`
   and `Form[M]` have such a method, and `Action[M]` and `Link[M, B]` match it only when `M` is `NoArgs`, so a button with a subject of its own does not
-  compile (the accessors have no such method any more, so an accessor is not an item). The toolbar is the leaf, and so what is refreshed: a `Form`'s
+  compile (the accessors have no such method any more, so an accessor is not an item). The toolbar is the panel, and so what is refreshed: a `Form`'s
   `Load` returns `Loaded`, and the shortest `RefreshAfter` of the forms makes the toolbar `data-view` and `data-refresh-after`, without a note: a panel says "Updating…" in its head, but a toolbar's row has little room
   and an inline note moves what is in it, so a visitor without script is not told to reload one. A form in a toolbar is a group (`role="group"`, named by its `Title`, which is required), is read-only (no `Submit`),
   has no `Desc` or `Help` of its own and no field that is multiline, secret or a file; the compile says so, with what to do. A form whose `Load` fails is
@@ -706,11 +706,11 @@ design element.
 - A link inside a panel that changes only that panel's arguments
   fetches the *same URL* with an `X-Webui-View` header and replaces that panel;
   without script it is an ordinary navigation. The page `Guard` runs on every
-  request, leaf addresses are derived from the `View` tree by position, and
+  request, view ids are derived from the `View` tree by position, and
   framework parameters never touch the URL. `Vary: X-Webui-View` is set. After
-  a leaf moves, sibling panels that embed the old address are fetched again and
+  a panel moves, sibling panels that embed the old address are fetched again and
   forms keep what was typed (only their `action` is patched). After an action
-  the whole page re-renders (a leaf-level refresh after an action is not done).
+  the whole page re-renders (a panel-level refresh after an action is not done).
 - Transport parameters travel as headers, never in the URL; *view state* is in
   the URL, because it is what a copied address has to reproduce. The URL
   carries the page's arguments and the view state of its tables and tabs,
@@ -719,15 +719,15 @@ design element.
   `devices.sort`, `devices.desc`, `tabs.tab`), and an argument name may not
   contain `.`, so the two can never collide; `Compile` rejects one that does.
   An ID is a lower-case word, unique within its page (two pages may reuse one),
-  and defaults to the component's name. Parameters for a leaf the page does not
+  and defaults to the component's name. Parameters for a panel the page does not
   have are ignored. Consequence: an iframe cannot set headers, so embedding a
-  leaf later needs its own path and a standalone document, rather than reusing
+  panel later needs its own path and a standalone document, rather than reusing
   the refresh mechanism.
 - Why the library owns view state instead of the argument struct: the struct
   would have to carry `Offset`, `Sort`, `Desc` and `Tab` fields for the
   framework's benefit, and the table would name them by string. The cost is
-  that nothing outside the leaf can read or set that state — `Guard` and
-  sibling leaves cannot depend on the selected tab, and `Open` cannot link to a
+  that nothing outside the panel can read or set that state — `Guard` and
+  sibling panels cannot depend on the selected tab, and `Open` cannot link to a
   sorted table.
 - `Rows` is filtered and sorted by the library from the accessors' own values (`internal/tablequery`); `Load` is the escape hatch. A column is known by its `Label`
   in the address and in `Query`, lower-cased with dashes in the address; there is no
@@ -736,7 +736,7 @@ design element.
 - Export is the table's, and opt-in. `Table.Export` puts two links in the footer, CSV and
   JSON, that download every row the sort and filters keep. It is a declaration and not
   a default because it is a way to take all of the rows at once, and a table that
-  does not say so offers nothing and ignores the parameter, as for any leaf the page
+  does not say so offers nothing and ignores the parameter, as for any panel the page
   does not have. The address is the page's own with `<table>.export=csv|json`, so
   it runs the page's Guard like any request, and it never appears in the links of the
   page the visitor then sees. The parameter is read from the request and is not one
@@ -821,7 +821,7 @@ design element.
 ## Navigation and links
 
 - A tab, with script, is read alone. Following one was a navigation to the same page with another `tabs.tab`, which read
-  every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the leaf
+  every panel of the page again though only the tab had changed. The click now asks for the `Tabs` alone, with the panel
   header a panel's refresh uses (`X-Webui-View`, the id of the `Tabs` in the form of a panel's, which the page carries
   as `data-tabs`), and the answer, the strip and the selected tab, replaces it; the address moves with
   `pushState`, and back and forward reload the page as they do for a panel. It is the page's own request, so the Guard
@@ -857,7 +857,7 @@ design element.
   depend on who is looking as anything, and a cache the library cannot key would be
   wrong for someone. The price is paid on the way of every page, so it is bounded: a
   deadline of two seconds, the first fifty entries, and a panic or an error leaves the
-  page drawn without them and logs the cause. A fragment (a refreshed leaf), an asset
+  page drawn without them and logs the cause. A fragment (a refreshed panel), an asset
   and the search do not load it, since none of them draws the sidebar.
 - An entry that lists several is left out when the page's `Guard` refuses the visitor
   with that entry's own arguments. The `Guard` is not asked with no arguments to decide
@@ -924,7 +924,7 @@ design element.
   stop it); the toasts that come with a page are announced a moment after it loads, by being put in again, which moves them in the DOM; and without script nothing is
   announced, though nothing needs to be, since each action is a page.
 
-- **A page has one h1, a way past the chrome, and landmarks for the readers who go by them.** The audit found no h1 (the page's name was only the breadcrumb and
+- **A page has one h1, a way past the sidebar and the top bar, and landmarks for the readers who go by them.** The audit found no h1 (the page's name was only the breadcrumb and
   the title), no skip link (the sidebar, search and menus come before the content), a status bar outside every landmark, header cells with no `scope`, a column of
   "Dismiss" buttons that were the same button to a reader, a filter that was on and said nothing, a control whose help was in a popover that nothing referred to, and
   a state page title that was a paragraph. Now the shell holds an `h1` with the last crumb's label, hidden with `.sr-only` (the breadcrumb is where the page's name is
@@ -1180,7 +1180,7 @@ design element.
 
 ## Markdown
 
-- `Markdown` is a leaf that reads one text of a model, with an accessor as `Diff` has
+- `Markdown` is a panel that reads one text of a model, with an accessor as `Diff` has
   one, and has no Store: editing a text is an `Editor`'s job. It is rendered on the
   server, by goldmark (CommonMark and GitHub's extensions), so it needs no script and
   its markup is the same on every request.
@@ -1210,9 +1210,9 @@ design element.
   compared as a parsed origin, never as a string prefix: `cdn.example.com.evil.example`,
   `cdn.example.com@evil.example`, a backslash, a protocol-relative address and a
   subdomain are all other origins and stay links.
-- The policy is set per page, at compile time, from the origins of the Markdown leaves and of the lists of items (`List`, `Cards`)
+- The policy is set per page, at compile time, from the origins of the Markdown panels and of the lists of items (`List`, `Cards`)
   the page declares, tabs that are not selected included. It is not computed while a
-  request is served: the header is written before the body is built, and a leaf
+  request is served: the header is written before the body is built, and a panel
   refresh is a fetch inside a document that already has its policy. A page whose
   Markdown names no origin has the library's policy byte for byte, and so has every
   other page. Links get no such treatment: they were never behind a warning page, so
@@ -1230,12 +1230,12 @@ design element.
 
 ## Figures: Trend
 
-- **A figure with its change and its shape is a kind of value, and not a leaf.** The design had no statistic or chart leaf on purpose (`design-mapping.md`): a leaf
-  showed a model, or a list of models, and each leaf was a kind of text a model has. A figure is that too, once it is an accessor, so the piece is an accessor first: `Trend` is a
+- **A figure with its change and its shape is a kind of value, and not a panel.** The design had no statistic or chart panel on purpose (`design-mapping.md`): a panel
+  showed a model, or a list of models, and each panel was a kind of text a model has. A figure is that too, once it is an accessor, so the piece is an accessor first: `Trend` is a
   list of numbers drawn as a line, with a signed percent drawn with an arrow and a colour for whether the direction is good. It works wherever an accessor does:
   a column (a row of markets, with its change and its chart) and a read-only field of a form or a toolbar. A few figures of one model are a `Table` of one row, with a value column and a
-  `Trend` column for each. A `Stat` leaf that laid them out as tiles was built first and removed: it did nothing that a table of one row and a form do not (a tile's label, value and trend are a header and two
-  cells), and it was a leaf with its own node, loader, view and registries to keep in step with every other. What it cost to remove it: no tiles side by side, and a one-row table says "1–1 of 1" in its foot and has
+  `Trend` column for each. A `Stat` panel that laid them out as tiles was built first and removed: it did nothing that a table of one row and a form do not (a tile's label, value and trend are a header and two
+  cells), and it was a panel with its own node, loader, view and registries to keep in step with every other. What it cost to remove it: no tiles side by side, and a one-row table says "1–1 of 1" in its foot and has
   sort and filter links that each column turns off with `NoSort` and `NoFilter`. What it did not cost: the direction of each figure, since a `Trend` has its own `LowerIsBetter`, so the one row has a latency that is good
   falling and a count that is good rising. The same direction in one column of many rows (a table with a row for each metric) could not say it, and that is what a per-row direction would add, and was left out.
 - **One accessor, and not a `Delta` and a `Series`.** They were two accessors that a table had two columns for, when what a reader takes in is one thing: the
@@ -1259,12 +1259,12 @@ design element.
 - **A trend sorts and filters by its change, and has no number without one.** A column holds the change as a number (`KindFloat`), so the table's sort and range filter are the ones every number has, and a file of it
   holds that number, and `null` in JSON where there is none, and not the points. A row with no change has nothing to be ordered by: it sorts first, as an empty number does, and a range leaves it out. A trend that never has a
   change is declared with `NoSort` and `NoFilter`. What it costs: a chart with no change sorts as if it were empty, and the points of a line are not in the file.
-- **Dropped:** a `Chart` leaf with axes, a legend, a time range and several lines (the dashboard the design says it is not, and a place where the app's own panel or a link to the tool that
-  does it is the answer); a `Stat` leaf of tiles, which drew a value of its own through an accessor and was removed for a table of one row; sparklines made by script from data in an attribute (a second source of markup); a `Stat` taking a list of models for one tile each (the markets pattern is a `Table` with a
+- **Dropped:** a `Chart` panel with axes, a legend, a time range and several lines (the dashboard the design says it is not, and a place where the app's own panel or a link to the tool that
+  does it is the answer); a `Stat` panel of tiles, which drew a value of its own through an accessor and was removed for a table of one row; sparklines made by script from data in an attribute (a second source of markup); a `Stat` taking a list of models for one tile each (the markets pattern is a `Table` with a
   `Trend` column, which sorts, filters and pages); bars, and a choice of a point to mark.
 - **What it costs:** an accessor, and a display kind in the cell; an SVG in the
   page, which the content security policy allows as it is inline markup and not a fetch; a table's width, export and search to know about it; a chart that cannot
-  be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic leaf" statement of the design stands, with a sparkline as a kind of value.
+  be told apart in its detail by anyone who does not read its name (the point); and the "no chart or statistic panel" statement of the design stands, with a sparkline as a kind of value.
 
 ## Calendar
 
@@ -1287,16 +1287,16 @@ design element.
 
 - **A list of items is not a table with the header taken off.** A `Table` is a list of rows with columns, which sort and filter and page, and have actions on a row and in a selection: every one of them is
   about finding and changing a row. A list is about reading what is new, and has the opposite needs: a headline and a few facts, nothing to find by, nothing to change, and a place where the picture is. Making
-  it a presentation of `Table` was weighed (it was the first of the two designs offered for this change, and not the one chosen) and the leaf was made instead, so that it has no sort links, filters, bulk
+  it a presentation of `Table` was weighed (it was the first of the two designs offered for this change, and not the one chosen) and the panel was made instead, so that it has no sort links, filters, bulk
   actions or export to switch off, and no columns to read as a header.
-- **It is called `List`, and not `Feed`.** `FeedLoader` (then `Table.Feed`) is a source that pages by a cursor, and a leaf with the same name reads as the same thing: a page with `Feed` in two places that mean different things. `List` is what it is, a list of items.
-- **`List` and `Cards` are one leaf with two drawings.** They have the same source, the same fields, the same Show more and the same view state, so they are one node in the IR (`ir.Items`) with one component,
+- **It is called `List`, and not `Feed`.** `FeedLoader` (then `Table.Feed`) is a source that pages by a cursor, and a panel with the same name reads as the same thing: a page with `Feed` in two places that mean different things. `List` is what it is, a list of items.
+- **`List` and `Cards` are one panel with two drawings.** They have the same source, the same fields, the same Show more and the same view state, so they are one node in the IR (`ir.Items`) with one component,
   and two public types that differ only in that `Cards` has a `Layout`. Duplicated fields are the cost of two types, and the types are kept apart because the name says how it is drawn.
 - **The source is a plain list, asked for one more than is shown.** `Load(ctx, limit)`. The library asks for `limit+1` to know that there is more without a count, and trims it. The other sources a table has
   were not offered: a cursor needs a cursor in the address and a way back, and a list that needs one is a table (with a `FeedLoader`); a source that sorts and filters is a table. *Show more* adds to what is
-  shown, so it is a limit in the address, and nothing is kept on the server. It is capped at 200, so that a hand-edited address cannot ask a source for a million, and the cap is the leaf's and
+  shown, so it is a limit in the address, and nothing is kept on the server. It is capped at 200, so that a hand-edited address cannot ask a source for a million, and the cap is the panel's and
   not the app's: an app that wants more has a table.
-- **Show more is a link.** It is the same page with a larger limit, so it works without script, a copied link shows the same view, and with script it replaces the leaf in place as the sort and pager links of a table do.
+- **Show more is a link.** It is the same page with a larger limit, so it works without script, a copied link shows the same view, and with script it replaces the panel in place as the sort and pager links of a table do.
   What it costs: without script it is a navigation to the same page, which scrolls to the top, and each press asks the source for more than the last, so a long list asks again for what it showed.
 - **A headline is text, and where it leads is `Open`, which is a `Control`.** A `Link` to a page of the app, built from the item (left out for an item whose page refuses the visitor), an `Href`, an address, which opens in a tab of its own with the mark that says so (`List.Link func(M) string` was this, and was a second field, so that "an `Open` and a `Link`" was a `Compile` error; it is one field with one type now), or an `Action`. A `URL` accessor was not used for the headline because its text is the same on every row: it is a column of links and not a headline.
   An `Action` there was first refused (an item is read, a link opens in a new tab, and an action is a POST), by a type, `Destination`, that a `Link` and an `Href` were and an `Action` was not. It is accepted now: a list is a form when its click is an action, the headline is a button that reads as the link does (`item-button`) and posts the item's `Key` (a `Key` is required for it, and asked of the items that `Load` returns, which are found again when the action is posted: up to the most a list can show, which is 200), and an item that its `Guard` refuses is text. A POST that names no such item is refused with "That item no longer exists.". `Destination` was removed, since no slot takes one: `List`, `Cards`, `Calendar` and a `Table`'s `RowClick` and `Actions` take a `Control`. A `Confirm` on it is refused, there being no button to ask from, as for a click on a row.
@@ -1309,17 +1309,17 @@ design element.
 
 ## Conditional bodies: `When`
 
-- **One body, not a repeat.** The first idea was a `Repeat[M]` that would also do conditional rendering as a repeat of 0 or 1. It was not built, because N copies of a body cannot be named: a leaf is named by its **position** in the body tree
-  (`p.0.1`), and that name is the `X-Webui-View` header, the `_view` field of a post, `data-view`, the ids derived for fields and dialogs, the leaf map built once at registration, the script's one element for an id, and, through `assignViewIDs` and
-  the argument allowlist, the view-state keys (`devices.sort`). A post finds its leaf by position and never by data, so N copies of one template would share all of it. A body that is shown or not has the one position it was declared at, and none of that moves.
-- **What N copies would need, so it is not started from scratch:** a `Key func(M) string` for each copy, as `Table.Key` names rows, and never position; leaf ids qualified by it (`p.0.1~eu-north`) in the header, the post field, `data-view` and every derived DOM id;
+- **One body, not a repeat.** The first idea was a `Repeat[M]` that would also do conditional rendering as a repeat of 0 or 1. It was not built, because N copies of a body cannot be named: a panel is named by its **position** in the view tree
+  (`p.0.1`), and that name is the `X-Webui-View` header, the `_view` field of a post, `data-view`, the ids derived for fields and dialogs, the panel map built once at registration, the script's one element for an id, and, through `assignViewIDs` and
+  the argument allowlist, the view-state keys (`devices.sort`). A post finds its panel by position and never by data, so N copies of one template would share all of it. A body that is shown or not has the one position it was declared at, and none of that moves.
+- **What N copies would need, so it is not started from scratch:** a `Key func(M) string` for each copy, as `Table.Key` names rows, and never position; view ids qualified by it (`p.0.1~eu-north`) in the header, the post field, `data-view` and every derived DOM id;
   per-copy view-state keys, with an argument allowlist that is data-dependent; refresh and posts that run the list's `Load` again to find the item by its key; the script's one-element-per-id assumption; a cap on copies, as `NavEntries` has (50); a way
   for the child to receive its item (the context, with a runtime assertion like `ArgsOf`'s, since `View` erases the child's model); and nested repeats refused.
 - **`Load` and `Show`, in the library's own terms.** `Load` is a data source and an accessor reads the model it loads, so a condition is a `Load` for a model and a `Bool` that reads it. `Show` takes a `BoolLike`, an interface that `Bool` and `OptionalBool` both satisfy (sealed, with no method an app could implement), so that the author does not choose between the plain accessor and the tri-state one, or write a second accessor of a value that already has one; a value that is not set reads as no. `IntLike`, `FloatLike` and `SliderLike` are the same pair and were not added: nothing takes an int, float or slider accessor by kind, and they come the day something does. The accessor is written once and reused: a `Bool` that a form shows is the `Show` of a
   `When`, and the fields it has no use for there are ignored, as `NoSort` is in a form. A bare `func(M) bool` was drafted and dropped for that reason. It needed `Bool` to be a `bool`, which it was not (it loaded a `*bool`); that was fixed first, and the tri-state one is `OptionalBool`.
-- **A layout that loads: the one exception.** The IR says layouts only arrange. A `When` loads, for the condition, because a condition is data and the body cannot be told it (it is another model, erased by `View`). It is not a leaf: no `data-view`, no entry in the
-  leaf map, no refresh hint (a `Loaded.RefreshAfter` from its `Load` does nothing), and a request cannot name it. What it costs: its `Load` runs in front of its child's, and again for each refresh or post to a leaf under it, and an app whose body needs the same data loads it twice.
-- **Hidden means unreachable.** If it were only not drawn, a forged request could still refresh, post to or export a leaf that was meant to be shown to some visitors. So a leaf under a `When` that does not hold is answered as an unknown one is (a 404 for a refresh, the "not understood" flash
+- **A layout that loads: the one exception.** The IR says layouts only arrange. A `When` loads, for the condition, because a condition is data and the body cannot be told it (it is another model, erased by `View`). It is not a panel: no `data-view`, no entry in the
+  panel map, no refresh hint (a `Loaded.RefreshAfter` from its `Load` does nothing), and a request cannot name it. What it costs: its `Load` runs in front of its child's, and again for each refresh or post to a panel under it, and an app whose body needs the same data loads it twice.
+- **Hidden means unreachable.** If it were only not drawn, a forged request could still refresh, post to or export a panel that was meant to be shown to some visitors. So a panel under a `When` that does not hold is answered as an unknown one is (a 404 for a refresh, the "not understood" flash
   for a post, an ignored parameter for an export), the condition is asked again for that request, and a failed `Load` counts as not holding. It is a gate that keeps what is drawn and what is allowed in step, as an action's `Guard` does for its button. It is not an authorization of the page, and an
   author who hides a Delete panel with a `When` must still give the action a `Guard`.
 - **Nothing is drawn when it does not hold:** no wrapper, so a `Stack` has no gap. A `Columns` cell is a wrapper of its own, so an empty one is hidden by `.col:empty`; a `Tabs` panel is a tab, so one with nothing in it is a blank tab, and the `When` belongs outside it.
@@ -1342,7 +1342,7 @@ design element.
 - **`Split` is `Columns` of equal weights; `Tabs` is a slice.** Two layouts that arrange Views side by side, with two wrap rules (in twos below 1100px, and by the 280px floor), was one concept written twice, and a person had to know which wrapped how. `Split` stays as the short way to write equal columns (its element is `View`, so it cannot be a Go alias of `Columns`), lowers to `Columns` with every weight 1, and has no node, markup or stylesheet of its own. What changes for a page: four panels in a `Split` were two rows of two and are four across wherever they hold at 280px; an app that wants rows of two writes a `Stack` of `Split`s (the demo's landing page does). `Tabs` was `struct{ Panels []Tab }`, the one layout that was not a slice, with a single field; it is `[]Tab`, so `Tabs{{Label: "A", Body: a}}`.
 - **A value that is always there is always required; `Required` is only where a type has an empty value of its own.** A number had four states: `Int` or `OptionalInt`, each with or without `Required`. The types already say it: an `Int` has a value, so an empty input is refused (the browser's `required`, the `*`, and "This field is required." from the server, with no flag), and an `OptionalInt` may be absent, so an emptied one is stored as nil. That is two states, and the flag is gone from `Int`, `Float` and every `Optional*`. `Slider` and `Bool` already had none (a range always has a value, and a switch is on or off). `Required` stays where the Go type has an empty value that is a legitimate one, so that the type cannot say whether it is wanted: the `""` of `String`, `Email`, `Phone` and `Website`, no choice in a `Select`, no file in a `File`; it is a field of the accessor and not of `StringRules`, since it is about whether a value is wanted and `Rules` are about the shape of one. The asymmetry (a type for the number, a flag for the text) is Go's: `int` cannot say none, and `string` can. What it costs: a mandatory number or yes/no with no default (an `OptionalInt` that must be answered, a forced `OptionalBool`) cannot be said; a number shows the value `Load` gives, which is `0` for a model that has none, and a forced yes/no is a `Select` of Yes and No that is `Required`. The one rule underneath is that a form fills a field with the accessor's default (the value `Load` gives for one that always has a value, nil for one that may be absent), so a person sees what is stored; an out-of-range default (`Min` 10 over a model holding 0) is shown as it is and is invalid until corrected, with no clamping and no `Default` field, since the form's `Load` owns its defaults. An `Int` or `Float` that was not `Required` and was emptied used to leave the loaded value alone, which the form never said; it is now refused. Not taken: a sibling type for every kind (`X` and `OptionalX`, no flag), which adds about eleven types and still needs `""` as the none of a text; an `Optional` wrapper that takes `Has` and `Clear` functions, which is worse for a pointer model, the common case; and an `Optional` flag with zero as none, which loses "absent is not zero".
 - **A moment is a `time.Time`: `Time` and `OptionalTime` replace `Datetime` and `Timestamp`.** `Datetime` held a moment as an ISO 8601 string and `Timestamp` as Unix seconds with 0 for "not set": one concept stored two ways, and neither the type an admin model holds. `Time` loads a `time.Time` and `OptionalTime` a `*time.Time`, as `Int` and `OptionalInt` are, so the Go type says whether a moment may be absent, and the same rule as the numbers decides the rest. The zero time is "not set" (year 1 is not a moment a person can read): a `Time` shows it blank, it sorts first and is in no range, and clearing the picker stores it; because the zero time is an empty value of its own that is a legitimate one, a `Time` has a `Required` flag, as a `String` does, which refuses a cleared picker, and an `OptionalTime` (nil, or the zero time, is none) has none. Shown and picked in UTC, `Store` is handed a UTC time (a day at midnight with `DateOnly`), `Format` is handed the moment in UTC and never an unset one. The IR is unchanged: both lower to the field that `Datetime` and `Timestamp` lowered to. The cost is an adapter for a model that holds a string or Unix seconds (`time.Parse`, `time.Unix` and back, in `Load` and `Store`), which the `Timestamp` docs already asked for with milliseconds; `Datetime` and `Timestamp` were not kept as wrappers, since that is the duplication this removes. Text that is not a moment, which a `Datetime` showed as written, cannot be one now: it is the adapter's to handle.
-- **A control of a row is a `Control`: an `Action`, a `Link` or an `Href`.** `RowClick` took a `Link` or an `Action` and `Actions` only an `Action`, so that a row could lead somewhere from its click and not from a button: an "Edit" that opens the row's page was not a thing a table could say. Both take a sealed `Control[M]` now. They are not one thing underneath, and the docs say so (an `Action` is a POST with CSRF, a re-run `Guard`, a `Confirm` and an `Outcome`, and a link is a GET anchor that opens in a tab), but the declaration does not need to know which one it holds: each type says how it is checked in the slot it is in (`validateControl`: a button needs a `Label`, a click on a row has none and an `Action` there has no `Confirm`; an `Action` is refused where a thing is read) and how it is lowered (`lowerControl`), and the code that takes a `Control` has nothing to switch on, which is the shape that `View` already had. A table needs a `Key` for what posts and for nothing else (`posts()`), so a table of links needs none. A row's controls are one `ir.Control` each (an `Action`, a `Link` or an external address, one of the three), and the POST that names a control by its position is refused unless that control is an `Action`. `Label` and `Role` are on `Href` as on `Link`, for the slot where they are a button, and are ignored where the whole row is the control. Still to come: an `Action` where something is read (an item of a list, a day), which needs the POST machinery that a table, a form and a toolbar have: a key for the subject, the `Guard` on the post, and the refresh of the leaf.
+- **A control of a row is a `Control`: an `Action`, a `Link` or an `Href`.** `RowClick` took a `Link` or an `Action` and `Actions` only an `Action`, so that a row could lead somewhere from its click and not from a button: an "Edit" that opens the row's page was not a thing a table could say. Both take a sealed `Control[M]` now. They are not one thing underneath, and the docs say so (an `Action` is a POST with CSRF, a re-run `Guard`, a `Confirm` and an `Outcome`, and a link is a GET anchor that opens in a tab), but the declaration does not need to know which one it holds: each type says how it is checked in the slot it is in (`validateControl`: a button needs a `Label`, a click on a row has none and an `Action` there has no `Confirm`; an `Action` is refused where a thing is read) and how it is lowered (`lowerControl`), and the code that takes a `Control` has nothing to switch on, which is the shape that `View` already had. A table needs a `Key` for what posts and for nothing else (`posts()`), so a table of links needs none. A row's controls are one `ir.Control` each (an `Action`, a `Link` or an external address, one of the three), and the POST that names a control by its position is refused unless that control is an `Action`. `Label` and `Role` are on `Href` as on `Link`, for the slot where they are a button, and are ignored where the whole row is the control. Still to come: an `Action` where something is read (an item of a list, a day), which needs the POST machinery that a table, a form and a toolbar have: a key for the subject, the `Guard` on the post, and the refresh of the panel.
 - **Where rows come from is a `Loader`, and a list takes the same one as a table.** The three kinds of source (`RowsLoader`, `PagedLoader`, `FeedLoader`) were `Table.Rows`, `Table.Load` and `Table.Feed`, and a list had a `Load(ctx, limit)` of its own, which is a fourth shape of "give me the first few". One sealed `Loader[M]`, taken by `Table`, `List` and `Cards`, removes the compile checks for "none" and "more than one" of a table's sources, and a list is given the loader that says what it has: a slice is a `RowsLoader` and the library shows the first of it (the demo's lists no longer slice by a limit themselves), and a source that is asked for a few is a `PagedLoader` that is given the window, an Offset of 0 and a Limit of what is shown plus one, with no sort and no filter. Each kind says how it is checked (`validateLoader`) and how it is loaded (`lowerLoader`), so what takes a `Loader` has nothing to switch on. `Query`, `Window` and `Range`, which were the names of a table's `Load`, are `PagedQuery`, `PagedWindow` and `PagedRange`, the paged loader's own, which also stops them being the generic names of the package. A `Calendar` keeps its `Load(ctx, Span)`, which is not a source of rows to page: its window is a span of time and its control is a month. A one-model `Load(ctx) (M, Loaded)`, of a `Form`, an `Editor` and the rest, is another thing and is not a loader.
 - **The language constants and the thumbnail helper are packages of their own.** About ninety `Lang*` constants, one for each language the editor highlights, were a quarter of the exported names of the root package, so that a reader of its documentation scrolled past them to the types; and `Thumbnail` is a pure function of an `*Upload` and the standard library's `image`, which nothing in the root package needs. They are `pkg/lang` (`lang.Go`, `lang.JSON`: the prefix `Lang` is the package's name now) and `pkg/thumbnail` (`thumbnail.Make` and `thumbnail.ErrUnavailable`). `Language` stays in `webui`, since it is `Editor.Language`'s type, and the constants are typed `webui.Language`, so `pkg/lang` imports `webui` and not the other way: the list of languages that `Compile` checks against stays in `webui`, as an unexported set of the ids (`language_gen.go`), and `tools/monaco` writes both from the one list. A `Language` is a string, so a program may write `webui.Language("go")` and need no import, and a language that Monaco does not highlight is still refused when the app is compiled. What it costs: one import for the program that names a language or makes a thumbnail, which is a program that wants to.
 - **No breakpoint at 1100px.** `Split` collapses there; `Columns` collapses where it has no room for two columns at the floor (about 570px of content: a window of about 650px, where the sidebar is a rail, and about 830px with the full sidebar), because that is what the rule says at every
@@ -1423,7 +1423,7 @@ design element.
 - **An interface that this library defines carries the methods its implementers need, and nothing type-switches over its implementations.** Most of the library's interfaces only limited what could be assigned (a sealed marker), and the code that took one split on the type that was passed: `Accessor[M]` was `label()` and `meta()` and nothing else, and what an accessor *is* lived in two type switches of about twenty cases each (`validateAccessor` and `lowerOne`), a `default` branch that said "unsupported accessor type" with a list of names to keep in step by hand, and three type assertions (`Group`, and `URL` twice). Go wants the other shape, which `View` (`validateView`, `lowerView`), `Control` (`validateControl`, `lowerControl`) and `Loader` (`validateLoader`, `lowerLoader`) already had, and which `Accessor` (`validateAccessor`, `lowerAccessor`) and `ToolbarItem` (`validateToolbarItem`, `lowerToolbarItem`) have now: each type says how it is checked and how it is lowered, so what takes the interface calls a method and the compiler picks the implementation.
 - **What it changed.** An accessor is one file's worth: its type, its two methods and the helpers they call, and adding one is that. An accessor that lacks the methods does not compile, so the `default` branch and the list of names are gone (they only caught a type that someone forgot to add to the switch). The case bodies moved into the methods with no line changed, and the existing suite passed with no test edited, which is what showed that they said what they said. `ToolbarItem` was a marker (`toolbarItem(NoArgs)`, which is what makes an `Action` or a `Link` with a subject of its own not an item) beside two capability interfaces (`toolbarButton`, `toolbarForm`) and a switch in `validateView` and in `lowerView`; it has the two methods itself now, and the marker stays, since it is the type restriction.
 - **What a place needs that a type does not say is in the site.** A list's headline may not be a `Group` or a `URL`, the first column of a table whose rows are links or buttons may not be a `URL`, and a group may not be inside a group: those were assertions in the place (`List`, `Table`, `Group`'s loop). They are the `accessorSite` the accessor is checked in (`headline`, `rowClick` with `first`, `nested`), and `Group` and `URL` read it in their own methods, so the place does not look at which type it was given and the same message is said.
-- **The IR is the exception.** `internal/ir` is data, which the runtime and the renderer are passes over and which must not know about them (`docs/AGENTS.md`, "Dependency direction"), so a pass switches on the node it is handed: about a dozen switches in the runtime, the renderer and `assignViewIDs`. That is a switch over a closed set of data and not a split over what an interface means, and giving the nodes the passes' behaviour would make `ir` depend on them. What the passes do share is the shape of the tree, and that is data too: `ir.Node` has `Children()`, which every node implements (a leaf returns none), so `ir.Walk` is a loop and a new layout is one method there and no edit in each pass that only needs to reach every node. `gatesOf` and `assignViewIDs` use it for the recursion and keep their own cases for what a `When` or a `Tabs` means to them; `visible` and `body` do not, since what a layout does with its children is their behaviour and differs per layout. `Stack` and `Columns` hold their children in `Nodes`, as the method has the name `Children`.
+- **The IR is the exception.** `internal/ir` is data, which the runtime and the renderer are passes over and which must not know about them (`docs/AGENTS.md`, "Dependency direction"), so a pass switches on the node it is handed: about a dozen switches in the runtime, the renderer and `assignViewIDs`. That is a switch over a closed set of data and not a split over what an interface means, and giving the nodes the passes' behaviour would make `ir` depend on them. What the passes do share is the shape of the tree, and that is data too: `ir.Node` has `Children()`, which every node implements (a panel returns none), so `ir.Walk` is a loop and a new layout is one method there and no edit in each pass that only needs to reach every node. `gatesOf` and `assignViewIDs` use it for the recursion and keep their own cases for what a `When` or a `Tabs` means to them; `visible` and `body` do not, since what a layout does with its children is their behaviour and differs per layout. `Stack` and `Columns` hold their children in `Nodes`, as the method has the name `Children`.
 - **What stays as it is.** `BoolLike`'s `hasLoad` and `boolLike` are a constraint and a capability, and not a split, so they stay. `Outcome`'s `rejected[M]` assertion is the erasure of a type parameter in a struct that has none, not a split over variants. `PageRef` and `Loaded` have no switch. The accessors' places still compare `site.where` with a string in a few messages (a toolbar, a table): a typed place would be sturdier, and it is not a split.
 
 ## Dev tools

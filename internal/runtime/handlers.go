@@ -36,7 +36,7 @@ func (p *Program) root(w http.ResponseWriter, r *http.Request) {
 }
 
 // start is the address the brand leads to, and where the root goes: the page at "/" if the
-// visitor may open it, else the first navigation entry they may open, else the first page
+// visitor may open it, else the first sidebar entry they may open, else the first page
 // declared whose path has no arguments and whose guard lets them in. hide is the entries they
 // may not open. It is "" when there is nowhere to go, and the brand is then not a link.
 func (p *Program) start(ctx context.Context, hide map[string]bool) string {
@@ -191,7 +191,7 @@ func (p *Program) hiddenNav(ctx context.Context) map[string]bool {
 			return nil // the visitor went away: nothing to draw for
 		}
 		if pe := (*panicError)(nil); errors.As(err, &pe) {
-			p.log.Error("webui: a page's Guard panicked, so its navigation entry is hidden", "page", page.PathTemplate, "err", err)
+			p.log.Error("webui: a page's Guard panicked, so its sidebar entry is hidden", "page", page.PathTemplate, "err", err)
 		}
 		if hide == nil {
 			hide = map[string]bool{}
@@ -280,7 +280,7 @@ func (p *Program) pageNavLinks(ctx context.Context, page *ir.Page, here render.H
 		}
 		path, query, err := page.Encode(e.Args)
 		if err != nil {
-			p.log.Error("webui: a navigation entry is dropped: its address cannot be built", "page", page.PathTemplate, "label", e.Label, "err", err)
+			p.log.Error("webui: a sidebar entry is dropped: its address cannot be built", "page", page.PathTemplate, "label", e.Label, "err", err)
 			continue
 		}
 		// The Guard of the address the entry leads to, which a link or the page itself may have asked already in this request: see verdict.go.

@@ -222,7 +222,7 @@ var LoadingGuarded = webui.Page[webui.NoArgs]{
 }
 
 // A page whose panels answer at once is built whole and sent in one piece, as it always was. Run the demo with
-// -slow-sidebar 300ms to see what a sidebar that waits on the app does: the Guard of this page's navigation entry is
+// -slow-sidebar 300ms to see what a sidebar that waits on the app does: the Guard of this page's sidebar entry is
 // asked for on every page, beside the panels, so every page's first byte waits for it and for nothing else.
 var LoadingFast = webui.Page[webui.NoArgs]{
 	Path: "/loading/fast",

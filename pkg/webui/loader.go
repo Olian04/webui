@@ -21,7 +21,7 @@ type Loader[M any] interface {
 	// validateLoader checks the loader where it is, which at names.
 	validateLoader(v *viewValidator, at string)
 
-	// lowerLoader is the loader as the IR asks for rows, by a Query, for columns that the leaf has (none, for a list), named for the address by labels.
+	// lowerLoader is the loader as the IR asks for rows, by a Query, for columns that the panel has (none, for a list), named for the address by labels.
 	lowerLoader(columns []ir.Field, labels map[string]string) loading
 }
 

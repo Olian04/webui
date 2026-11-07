@@ -131,7 +131,7 @@ type Page[A any] struct {
 	View View
 }
 
-// Nav is a navbar entry. A page with an empty Label has no entry of its own, and
+// Nav is a sidebar entry. A page with an empty Label has no entry of its own, and
 // lights the entry of its nearest ancestor: the page whose path is the longest
 // prefix of its own that has a Label. A page at "/device/{id}" borrows the
 // "Devices" entry of the page at "/device", so there is nothing to declare. A page whose
@@ -155,8 +155,8 @@ type Nav struct {
 	Section string
 }
 
-// View is what a page shows: a leaf, [Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards], [Calendar], [Toolbar] or [FileUpload], or a layout of them,
-// [Stack], [Split] or [Tabs]. Only this package implements it.
+// View is what a page shows, and what a layout holds: a panel, which loads its own data ([Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards],
+// [Calendar], [Toolbar] or [FileUpload]), or a layout, which arranges other Views ([Stack], [Split], [Columns], [When] or [Tabs]). Only this package implements it.
 type View interface {
 	validateView(v *viewValidator)
 	lowerView(at ir.Addr) ir.Node
@@ -210,11 +210,11 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 	}
 
 	if p.Nav.Label != "" && len(args.Placeholders(path)) > 0 {
-		v.add(fmt.Sprintf("the page has the navigation entry %q but its path has arguments", p.Nav.Label),
+		v.add(fmt.Sprintf("the page has the sidebar entry %q but its path has arguments", p.Nav.Label),
 			"A sidebar entry is a link with one address, and a path with {arguments} has none until they are filled in. Remove Nav.Label, give the page NavEntries to list an entry for each address, or link to the page from another page's table with a Link.")
 	}
 	if p.NavEntries != nil && p.Nav.Label != "" {
-		v.add(fmt.Sprintf("the page has NavEntries and the navigation label %q", p.Nav.Label),
+		v.add(fmt.Sprintf("the page has NavEntries and Nav.Label %q", p.Nav.Label),
 			"Each entry says its own words, in NavEntry.Label. Remove Nav.Label; Nav.Icon and Nav.Section are the icon and the group of all the entries.")
 	}
 	if p.Crumb != nil {

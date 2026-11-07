@@ -6,7 +6,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Diff is a leaf that shows two texts of one model and what changed between them,
+// Diff is a panel that shows two texts of one model and what changed between them,
 // side by side in a code editor when the page is wide enough and one above the other
 // when it is not, with both highlighted for the [Language]. It only reads: the two
 // accessors have no Store.

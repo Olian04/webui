@@ -47,7 +47,7 @@ A page's View is a panel or a layout. There is no other kind, so a new kind of V
 | **Outcome** | How an action ended: `Success`, `Warning`, `Failure`, `Reject`. | An outcome **rejects** when the input was wrong; a Guard **refuses**. They are not the same word on purpose. |
 | **visitor** | The person using the app. | Not "viewer", not "user" (the user is the developer who writes the declaration). |
 | **sidebar**, **entry** | The list of pages at the side, and one line in it. `Nav` is an entry, `NavEntry` is one of several that a page lists. | Not "navbar", "navigation" or "menu". |
-| **top bar**, **status bar**, **breadcrumb**, **crumb** | The strip with search, Refresh and the theme; the bar that says how old the page is; the trail of parents and one step in it. | Not "shell" or "chrome". |
+| **top bar**, **status bar**, **breadcrumb**, **crumb** | The strip with search, Refresh and the theme; the bar that says how old the page is; the trail of parents and one step in it. | Not "chrome". The three of them around a page's content are the **shell** to the code and the design documents; text that a user reads says which one it means. |
 
 ## Internal terms
 
@@ -67,6 +67,7 @@ These do not appear in anything a user reads. Each is one thing in one layer.
 | **verdict** | One Guard's answer for one address, kept for the length of a request. | `verdictCache` |
 | **access** | A control as it is drawn for a visitor: hidden, or disabled and why. Made of a Guard's answer. | `render.Access` (was `render.Gate`) |
 | **condition** | A `When`'s test, and the map from a node to the `When`s above it. | `conditionsOf` (was `gatesOf`) |
+| **shell** | The sidebar, the top bar and the status bar around a page's content. Text that a user reads says which one it means. | `templates/shell.templ`, `docs/design*.md` |
 | **shell inputs** | What the sidebar and the brand need and the runtime fetches beside the panels. | `internal/runtime/shell.go` |
 | **facts**, **view validator** | What `Compile` knows across pages, and the state of checking one page's View. | `pkg/webui/validate.go` |
 

@@ -310,7 +310,7 @@ func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testi
 	type one struct{ ID string }
 	page := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{page}})
-	assert.Contains(t, errs[0].Detail, `navigation entry "Device" but its path has arguments`)
+	assert.Contains(t, errs[0].Detail, `sidebar entry "Device" but its path has arguments`)
 }
 
 func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// FileUpload is a leaf that is a panel for sending one file, of any size, to the app, which reads it as it arrives. It is for a file that is too
+// FileUpload is a panel for sending one file, of any size, to the app, which reads it as it arrives. It is for a file that is too
 // large to be held in memory, a firmware image or a backup on its way to an object store; a file that can be held is a [File] in a [Form], which
 // is part of a submission and is checked with the rest of it.
 //
