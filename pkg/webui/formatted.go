@@ -191,7 +191,7 @@ func (a ColorPicker[M]) meta() accessorMeta {
 
 // validateTextRules checks what the rules of a text say of themselves: that the pattern can be read by both engines, that the lengths
 // agree, and that no value could satisfy them all.
-func validateTextRules(v *bodyValidator, at string, r StringRules) {
+func validateTextRules(v *viewValidator, at string, r StringRules) {
 	if p := r.Pattern; p != nil {
 		if _, err := rules.Compile(p.Expr, p.Message); err != nil {
 			fix := "Rewrite the pattern in RE2 syntax."
@@ -226,7 +226,7 @@ func lowerFormatted[M any](name, label string, format ir.Format, required bool, 
 
 // ------------------------------------------------- the accessors of this file, each as it is checked and lowered
 
-func (a Email[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Email[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 }
@@ -235,7 +235,7 @@ func (a Email[M]) lowerAccessor(name string) ir.Field {
 	return lowerFormatted(name, a.Label, ir.FormatEmail, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 }
 
-func (a Phone[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Phone[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 	if a.DefaultCountry != "" && !phone.Known(a.DefaultCountry) {
@@ -249,7 +249,7 @@ func (a Phone[M]) lowerAccessor(name string) ir.Field {
 	return f
 }
 
-func (a Website[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Website[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 }
@@ -258,7 +258,7 @@ func (a Website[M]) lowerAccessor(name string) ir.Field {
 	return lowerFormatted(name, a.Label, ir.FormatURL, a.Required, a.Rules, a.Placeholder, a.Load, a.Store)
 }
 
-func (a ColorPicker[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a ColorPicker[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, `func(M) string, returning "#rrggbb"`)
 }
 

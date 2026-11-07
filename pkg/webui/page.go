@@ -127,8 +127,8 @@ type Page[A any] struct {
 	// A page with no Search is not searched, though its [Nav] entry is still listed.
 	Search func(ctx context.Context, query string, limit int) ([]Hit[A], error)
 
-	// Body is what the page shows: a [Table], a [Form], or a layout of them.
-	Body PageBody
+	// View is what the page shows: a [Table], a [Form], or a layout of them.
+	View View
 }
 
 // Nav is a navbar entry. A page with an empty Label has no entry of its own, and
@@ -155,11 +155,11 @@ type Nav struct {
 	Section string
 }
 
-// PageBody is what a page shows: a leaf, [Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards], [Calendar], [Toolbar] or [FileUpload], or a layout of them,
+// View is what a page shows: a leaf, [Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards], [Calendar], [Toolbar] or [FileUpload], or a layout of them,
 // [Stack], [Split] or [Tabs]. Only this package implements it.
-type PageBody interface {
-	validateBody(v *bodyValidator)
-	lowerBody(at ir.Addr) ir.Node
+type View interface {
+	validateView(v *viewValidator)
+	lowerView(at ir.Addr) ir.Node
 }
 
 // NavEntry is one entry in the sidebar of a [Page] that has [Page.NavEntries]: an address
@@ -190,7 +190,7 @@ var (
 func (p Page[A]) validatePage(f *facts) []CompileError {
 	typ := reflect.TypeFor[A]()
 	path := string(p.Path)
-	v := &bodyValidator{page: path, args: typeName(typ), argType: typ, facts: f}
+	v := &viewValidator{page: path, args: typeName(typ), argType: typ, facts: f}
 
 	if detail, fix := validatePath(path); detail != "" {
 		v.add(detail, fix)
@@ -231,11 +231,11 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		}
 		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
 	}
-	if p.Body == nil {
-		v.add("Body is nil", "Set Body to a Table, Form, Editor, Diff, Markdown, List, Cards, Calendar, Toolbar, FileUpload, Stack, Split or Tabs.")
+	if p.View == nil {
+		v.add("View is nil", "Set View to "+viewKinds+".")
 		return v.errs
 	}
-	p.Body.validateBody(v)
+	p.View.validateView(v)
 	return v.errs
 }
 
@@ -317,7 +317,7 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 			return convert.Slice(found, func(h Hit[A]) ir.Hit { return ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc} }), nil
 		}
 	}
-	page.Body = p.Body.lowerBody(ir.Addr{})
-	assignViewIDs(page.Body)
+	page.Root = p.View.lowerView(ir.Addr{})
+	assignViewIDs(page.Root)
 	return page
 }

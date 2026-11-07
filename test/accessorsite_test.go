@@ -14,7 +14,7 @@ func TestAGroupIsRefusedWhereItIsNotAllowedAndWhereItIsNested(t *testing.T) {
 	t.Parallel()
 
 	load := func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }
-	form := func(fields ...webui.Accessor[Device]) webui.PageBody {
+	form := func(fields ...webui.Accessor[Device]) webui.View {
 		return webui.Form[Device]{Load: load, Fields: fields}
 	}
 
@@ -37,8 +37,8 @@ func TestAURLIsRefusedAsTheFirstColumnOfATableWhoseRowsAreLinksAndNowhereElse(t 
 	click := webui.Href[Device]{URL: func(d Device) string { return "/" + d.Id }}
 
 	assert.Contains(t, editorErrors(t, webui.Table[Device]{Loader: rows, RowClick: click, Columns: []webui.Accessor[Device]{link, formID}}), "first column is a URL, but its RowClick is there")
-	compiles := func(body webui.PageBody) error {
-		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: body}}}.Compile("/admin")
+	compiles := func(body webui.View) error {
+		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: body}}}.Compile("/admin")
 		return err
 	}
 	assert.NoError(t, compiles(webui.Table[Device]{Loader: rows, RowClick: click, Columns: []webui.Accessor[Device]{formID, link}})) // the second column is no one's cover

@@ -45,7 +45,7 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	first := n.Tabs[0].Key
 	var shown []ir.Tab // a tab with nothing visible in it (every panel under a When that does not hold) is left out
 	for _, t := range n.Tabs {
-		if p.visible(ctx, req, page, t.Body) {
+		if p.visible(ctx, req, page, t.Child) {
 			shown = append(shown, t)
 		}
 	}
@@ -78,7 +78,7 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 		strip[i] = render.TabLink{Label: t.Label, Href: p.render.PageHref(page, path, q), Active: i == selected}
 	}
 
-	content, err := p.body(ctx, req, page, n.Tabs[selected].Body)
+	content, err := p.body(ctx, req, page, n.Tabs[selected].Child)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (p *Program) visible(ctx context.Context, req *Request, page *ir.Page, n ir
 		return p.anyVisible(ctx, req, page, n.Nodes)
 	case *ir.Tabs:
 		for _, t := range n.Tabs {
-			if p.visible(ctx, req, page, t.Body) {
+			if p.visible(ctx, req, page, t.Child) {
 				return true
 			}
 		}

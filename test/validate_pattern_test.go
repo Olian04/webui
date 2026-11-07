@@ -65,7 +65,7 @@ func TestValidatePatternAgreesWithCompile(t *testing.T) {
 		field.Rules.Pattern = &webui.PatternRule{Expr: expr}
 		f := okForm()
 		f.Fields = []webui.Accessor[Device]{field}
-		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Body: f}}}.Compile("/admin")
+		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: f}}}.Compile("/admin")
 		if (err != nil) != (webui.ValidatePattern(expr) != nil) {
 			t.Errorf("%q: Compile says %v, ValidatePattern says %v", expr, err, webui.ValidatePattern(expr))
 		}

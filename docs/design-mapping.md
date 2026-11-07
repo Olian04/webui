@@ -33,7 +33,7 @@ into existence, and nothing is configured twice.
 | Search, with and without script | Every page's search is asked at once and the answer is sent whole, as HTML: with script the box lists it as it is typed; without, the box is a form with a *Search* button joined to its right edge, and its answer is a page of results in the shell |
 | `App.ExternalLinks` | The button in the top bar, beside Refresh, and the popover list of the app's links to places outside it behind it. An `ExternalLink` is a `Nav` entry (label, icon, section caption) with a `URL`, used as written (a web address opens in a tab of its own; the list groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
-| `Page.Body` → `PageBody` | The arrangement of panels inside the content region |
+| `Page.View` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
 | `Split` | `Columns` of equal weights: a list of bodies as equal columns, with the wrap rule of `Columns` |
 | `Columns` / `Column.Weight` | One row of columns of unequal width, each as wide as its weight says; never narrower than 280px, so the last columns of a row that cannot hold them wrap to a row below |
@@ -295,7 +295,7 @@ and a layout in one is one cell: a layout inside it, such as `Tabs`, is one cell
 ### `When`
 
 One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a leaf's `Load` does, and `Show` is a `BoolLike` of that model (a `Bool`, or an `OptionalBool`, whose not set is not shown): the same accessor that a form or a table shows it with, written
-once, with what a use has no purpose for (`Label`, `Store`, `Help`, `NoSort`, `NoFilter`) ignored. "Show when false" is a `Bool` whose `Load` returns the negation. The `Body` loads its own data and is not handed the model, so a body
+once, with what a use has no purpose for (`Label`, `Store`, `Help`, `NoSort`, `NoFilter`) ignored. "Show when false" is a `Bool` whose `Load` returns the negation. The `View` loads its own data and is not handed the model, so a body
 that needs what the condition read asks for it too, and an app that cares caches it, as it does for any two panels. A `When` is a layout that loads, for the condition alone: it runs `Load`, then `Show`, then builds the child, so its `Load` is in front of
 the child's, and a leaf request under it runs the `Load` again. A failed `Load` is a panel that says "Could not load" with the cause in the log, and the child is not shown: a condition that cannot be decided does not hold. When it does not
 hold the `When` draws nothing, and what is under it cannot be reached: a refresh, a form post or an export that names a leaf there is answered as it is for a leaf that is not (a hidden table's `export` is a parameter for a table that is not there, which is ignored), so what is drawn and what is allowed

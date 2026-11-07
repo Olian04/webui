@@ -31,19 +31,19 @@ func fixture() App {
 	count := Int[dev]{Label: "Count", Load: func(d dev) int { return d.Count }, Store: func(d *dev, v int) { d.Count = v }}
 	details := Page[detailArgs]{
 		Path: "/device/{id}",
-		Body: Tabs{
-			{Label: "Overview", Body: Form[dev]{
+		View: Tabs{
+			{Label: "Overview", View: Form[dev]{
 				Load:   func(context.Context) (dev, Loaded) { return dev{Id: "d1", Ip: "1.2.3.4"}, Ready() },
 				Fields: []Accessor[dev]{Group[dev]{id, ip}, count},
 				Submit: Action[dev]{Run: func(context.Context, dev) (Outcome, error) { return Outcome{}, nil }},
 			}},
-			{Label: "Raw", Body: Stack{Split{Table[dev]{Loader: PagedLoader[dev]{Load: func(context.Context, PagedQuery) (PagedWindow[dev], Loaded) { return PagedWindow[dev]{}, Ready() }}}}}},
+			{Label: "Raw", View: Stack{Split{Table[dev]{Loader: PagedLoader[dev]{Load: func(context.Context, PagedQuery) (PagedWindow[dev], Loaded) { return PagedWindow[dev]{}, Ready() }}}}}},
 		},
 	}
 	list := Page[listArgs]{
 		Path: "/device",
 		Nav:  Nav{Label: "Devices"},
-		Body: Table[dev]{
+		View: Table[dev]{
 			Title: "Devices",
 			Loader: PagedLoader[dev]{Load: func(context.Context, PagedQuery) (PagedWindow[dev], Loaded) {
 				return PagedWindow[dev]{Items: []dev{{Id: "a"}, {Id: "b"}}}, Ready()
@@ -73,11 +73,11 @@ func TestLowerResolvesShadowLinkAndTabs(t *testing.T) {
 	assert.True(t, details.Nav.Hidden)
 	assert.Equal(t, out.ByPath["/device"].Nav.Label, "Devices")
 
-	tabs := details.Body.(*ir.Tabs)
+	tabs := details.Root.(*ir.Tabs)
 	assert.Equal(t, tabs.ID, "tabs")
-	assert.DeepEqual(t, []int(tabs.Tabs[1].Body.(*ir.Stack).Nodes[0].(*ir.Columns).Nodes[0].Addr()), []int{1, 0, 0})
+	assert.DeepEqual(t, []int(tabs.Tabs[1].Child.(*ir.Stack).Nodes[0].(*ir.Columns).Nodes[0].Addr()), []int{1, 0, 0})
 
-	table := out.ByPath["/device"].Body.(*ir.Table)
+	table := out.ByPath["/device"].Root.(*ir.Table)
 	assert.Equal(t, table.ID, "devices")
 	assert.Equal(t, table.PageSize, 2)
 	assert.Equal(t, table.Click.Link.Dest, "/device/{id}")
@@ -89,7 +89,7 @@ func TestLowerTableLoadNormalisesTotal(t *testing.T) {
 	t.Parallel()
 
 	out, _ := fixture().lower()
-	table := out.ByPath["/device"].Body.(*ir.Table)
+	table := out.ByPath["/device"].Root.(*ir.Table)
 	window, err := table.Load(context.Background(), ir.Query{})
 	assert.NoError(t, err)
 	assert.Equal(t, len(window.Rows), 2)
@@ -100,7 +100,7 @@ func TestBindStartsFromLoadedModelAndReportsEveryFailure(t *testing.T) {
 	t.Parallel()
 
 	out, _ := fixture().lower()
-	form := out.ByPath["/device/{id}"].Body.(*ir.Tabs).Tabs[0].Body.(*ir.Form)
+	form := out.ByPath["/device/{id}"].Root.(*ir.Tabs).Tabs[0].Child.(*ir.Form)
 	base, _ := form.Load(context.Background())
 
 	ipName := form.Fields[0].Group[1].Name

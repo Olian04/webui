@@ -19,7 +19,7 @@ import (
 type doc struct{ Text string }
 
 func editor(language webui.Language) http.Handler {
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Editor[doc]{
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Editor[doc]{
 		Title: "Doc", Language: language,
 		Content: webui.String[doc]{
 			Label: "Text", Load: func(d doc) string { return d.Text }, Store: func(d *doc, v string) { d.Text = v },

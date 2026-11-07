@@ -60,7 +60,7 @@ func TestSketchTypes(t *testing.T) {
 			_ = a.Id
 			return nil
 		},
-		Body: webui.Form[Device]{
+		View: webui.Form[Device]{
 			Load: func(ctx context.Context) (Device, webui.Loaded) {
 				_ = webui.ArgsOf[DetailsArgs](ctx)
 				return Device{}, webui.Ready()
@@ -85,7 +85,7 @@ func TestSketchTypes(t *testing.T) {
 	var Devices = webui.Page[webui.NoArgs]{
 		Path: "/device",
 		Nav:  DevicesNav,
-		Body: webui.Table[Device]{
+		View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				return webui.PagedWindow[Device]{}, webui.Ready()
 			}},
@@ -109,7 +109,7 @@ func TestSketchTypes(t *testing.T) {
 			webui.Form[Device]{},
 			webui.Table[Device]{},
 		},
-		webui.Tabs{{Label: "Raw", Body: webui.Table[Device]{}}},
+		webui.Tabs{{Label: "Raw", View: webui.Table[Device]{}}},
 	}
 
 	app := webui.App{

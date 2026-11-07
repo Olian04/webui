@@ -86,12 +86,12 @@ type Editor[M any] struct {
 	Submit Action[M]
 }
 
-// ASSERT: Editor implements PageBody
-var _ PageBody = Editor[struct{}]{}
+// ASSERT: Editor implements View
+var _ View = Editor[struct{}]{}
 
 func (e Editor[M]) editable() bool { return e.Content.Store != nil }
 
-func (e Editor[M]) validateBody(v *bodyValidator) {
+func (e Editor[M]) validateView(v *viewValidator) {
 	needEditor(v, "an Editor")
 	needLoad(v, "an Editor", e.Load != nil)
 	validateAccessors(v, []Accessor[M]{e.Content}, accessorSite{where: "Editor.Content", uniqueLbl: true})
@@ -107,14 +107,14 @@ func (e Editor[M]) validateBody(v *bodyValidator) {
 	}
 }
 
-func (e Editor[M]) lowerBody(at ir.Addr) ir.Node {
+func (e Editor[M]) lowerView(at ir.Addr) ir.Node {
 	f := Form[M]{Title: e.Title, Desc: e.Desc, Load: e.Load, Fields: []Accessor[M]{e.Content}, Submit: e.Submit}
-	out := f.lowerBody(at).(*ir.Form)
+	out := f.lowerView(at).(*ir.Form)
 	out.Editor = &ir.Editor{Language: e.Language.id(), Service: e.Language.service(), Context: lowerContext(e.Context, e.Language)}
 	return out
 }
 
-func (e Editor[M]) validateContext(v *bodyValidator) {
+func (e Editor[M]) validateContext(v *viewValidator) {
 	if e.Context == nil {
 		return
 	}
@@ -173,7 +173,7 @@ func lowerContext(fsys fs.FS, language Language) *editorctx.Context {
 
 // needEditor checks that the program carries the code editor, which an Editor and a Diff are drawn with: it is the files of pkg/monaco, which a program imports to have them, so
 // that one with no editor or diff does not link a few megabytes that it never serves.
-func needEditor(v *bodyValidator, what string) {
+func needEditor(v *viewValidator, what string) {
 	if !assets.EditorInstalled() {
 		v.add(what+" is drawn with the code editor, which this program does not carry",
 			`Import it for its effect, in the program: import _ "github.com/Olian04/webui/pkg/monaco". The language services (pkg/monaco/json, css, html and typescript) import it themselves.`)

@@ -22,9 +22,9 @@ func titles(r searchResponse) []string {
 // resultsPages are a list page that is named label, and the page for one of its things, whose Search finds the given titles, each leading to
 // the page with its own argument, which is what makes them different results. They are listed under the list's name.
 func resultsPages(path, label string, titles ...string) webui.Pages {
-	list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, View: webui.Stack{}}
 	one := webui.Page[detailsArgs]{
-		Path: webui.PageID[detailsArgs](path + "/{id}"), Body: webui.Stack{},
+		Path: webui.PageID[detailsArgs](path + "/{id}"), View: webui.Stack{},
 		Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
 			var hits []webui.Hit[detailsArgs]
 			for _, title := range titles {
@@ -93,7 +93,7 @@ func TestSearchRowsKeepsTheBestMatchesAndNotTheFirstOnes(t *testing.T) {
 func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 	t.Parallel()
 
-	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}}.MustCompile("/admin")
+	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}}.MustCompile("/admin")
 	body := serve(without, http.MethodGet, "/admin/a").Body.String()
 	for _, absent := range []string{"data-palette-input", "data-palette", `class="search"`, "data-search-url", `id="palette"`} {
 		assert.False(t, strings.Contains(body, absent))

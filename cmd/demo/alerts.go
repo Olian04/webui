@@ -54,7 +54,7 @@ const AlertsPath webui.PageID[webui.NoArgs] = "/alert"
 var Alerts = webui.Page[webui.NoArgs]{
 	Path: AlertsPath,
 	Nav:  webui.Nav{Label: "Alerts", Icon: "bell", Section: "Platform"},
-	Body: webui.Table[Alert]{
+	View: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",
 		// Rows is all it takes: the library filters, sorts and pages them by the columns, so
@@ -99,7 +99,7 @@ var AlertDetails = webui.Page[AlertArgs]{
 		}
 		return nil
 	},
-	Body: webui.Split{AlertForm, AlertDeviceTable},
+	View: webui.Split{AlertForm, AlertDeviceTable},
 }
 
 // A form with no writable field: every accessor lacks a Store, so it only shows

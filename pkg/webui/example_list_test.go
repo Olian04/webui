@@ -26,7 +26,7 @@ func ExampleList() {
 	}
 	page := webui.Page[webui.NoArgs]{
 		Path: "/news",
-		Body: webui.List[Story]{
+		View: webui.List[Story]{
 			Title: "Latest", PageSize: 2,
 			Loader: webui.RowsLoader[Story]{Load: func(context.Context) ([]Story, webui.Loaded) {
 				return stories, webui.Ready()

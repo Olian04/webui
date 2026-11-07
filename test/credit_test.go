@@ -16,7 +16,7 @@ func TestEveryPageSaysItWasBuiltWithTheLibraryAndAnAppCanLeaveThatOut(t *testing
 	t.Parallel()
 
 	page := func(app webui.App) http.Handler {
-		app.Pages = webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, Body: webui.Stack{}}}
+		app.Pages = webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}
 		return app.MustCompile("/admin")
 	}
 	on, off := page(webui.App{}), page(webui.App{NoConsoleMessage: true})

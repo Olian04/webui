@@ -24,7 +24,7 @@ func TestCompileFailureServesEveryPathAndMethod(t *testing.T) {
 
 	type bad struct{ When map[string]int }
 	app := webui.App{Pages: webui.Pages{
-		webui.Page[bad]{Path: "/event/{id}", Body: webui.Stack{}},
+		webui.Page[bad]{Path: "/event/{id}", View: webui.Stack{}},
 	}}
 	h, err := app.Compile("/admin")
 	assert.Error(t, err)
@@ -195,7 +195,7 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 	t.Parallel()
 
 	h := webui.App{Brand: webui.Brand{Name: "A name that is far too long for the sidebar to hold"}, Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "An entry that is far too long for the sidebar to hold", Section: "A caption that is far too long for the sidebar to hold"}, Body: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "An entry that is far too long for the sidebar to hold", Section: "A caption that is far too long for the sidebar to hold"}, View: webui.Stack{}},
 	}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/a").Body.String()
 	assert.Contains(t, body, `title="An entry that is far too long for the sidebar to hold"`)

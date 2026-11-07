@@ -152,7 +152,7 @@ const FilesPath webui.PageID[webui.NoArgs] = "/files"
 var FilesRoot = webui.Page[webui.NoArgs]{
 	Path: FilesPath,
 	Nav:  webui.Nav{Label: "Files", Icon: "folder-open", Section: "Operations"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		fileTable("Files", func(context.Context) []string { return nil }),
 	},
 }
@@ -171,5 +171,5 @@ var FilesAt = webui.Page[FileArgs]{
 		}
 		return nil
 	},
-	Body: webui.Split{fileTable("Folder", pathOf), fileNotePanel(pathOf)},
+	View: webui.Split{fileTable("Folder", pathOf), fileNotePanel(pathOf)},
 }

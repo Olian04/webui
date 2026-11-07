@@ -22,7 +22,7 @@ func app(language webui.Language, editable bool) http.Handler {
 		text.Store = func(d *doc, v string) { d.Text = v }
 		submit.Run = func(context.Context, doc) (webui.Outcome, error) { return webui.Success("Saved"), nil }
 	}
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Editor[doc]{
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Editor[doc]{
 		Title: "Doc", Language: language, Content: text, Submit: submit,
 		Load: func(context.Context) (doc, webui.Loaded) { return doc{Text: "{}"}, webui.Ready() },
 	}}}}.MustCompile("/admin")

@@ -16,7 +16,7 @@ import (
 // Control looks at which one it was given.
 type Control[M any] interface {
 	// validateControl checks the control where it is, which says what it needs: a button needs a Label, a click on a row has none.
-	validateControl(v *bodyValidator, at string, slot controlSlot)
+	validateControl(v *viewValidator, at string, slot controlSlot)
 
 	// lowerControl is the control as the IR holds it.
 	lowerControl() *ir.Control
@@ -76,7 +76,7 @@ var (
 	_ Control[struct{}] = Action[struct{}]{}
 )
 
-func (l Link[M, A]) validateLink(v *bodyValidator) {
+func (l Link[M, A]) validateLink(v *viewValidator) {
 	if l.Args == nil {
 		v.add("a Link has no Args", "Set Args to build the destination's argument struct from the row.")
 	}
@@ -101,7 +101,7 @@ func (l Link[M, A]) validateLink(v *bodyValidator) {
 func (Link[M, A]) posts() bool { return false }
 func (Href[M]) posts() bool    { return false }
 
-func (l Link[M, A]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+func (l Link[M, A]) validateControl(v *viewValidator, at string, slot controlSlot) {
 	if slot == slotButton && l.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
@@ -112,7 +112,7 @@ func (l Link[M, A]) lowerControl() *ir.Control {
 	return &ir.Control{Label: l.Label, Role: ir.Role(l.Role), Link: l.lowerLink()}
 }
 
-func (h Href[M]) validateControl(v *bodyValidator, at string, slot controlSlot) {
+func (h Href[M]) validateControl(v *viewValidator, at string, slot controlSlot) {
 	if slot == slotButton && h.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}
@@ -132,7 +132,7 @@ func (h Href[M]) lowerControl() *ir.Control {
 
 func (Link[M, A]) toolbarItem(M) {}
 
-func (l Link[M, A]) validateToolbarItem(v *bodyValidator, at string, _ map[string]bool) {
+func (l Link[M, A]) validateToolbarItem(v *viewValidator, at string, _ map[string]bool) {
 	if l.Label == "" {
 		v.add(at+" has no Label", "Set Label; it is the button text.")
 	}

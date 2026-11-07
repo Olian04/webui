@@ -108,7 +108,7 @@ var (
 )
 
 // validateTime checks what a Time needs besides what every accessor does: Required needs a Store, since an input that cannot be filled in cannot be required.
-func validateTime[M any](v *bodyValidator, at string, a Time[M]) {
+func validateTime[M any](v *viewValidator, at string, a Time[M]) {
 	if a.Required && a.Store == nil {
 		v.add(at+" is Required but has no Store", "Required is about a submission, and a read-only field has none: remove it, or add a Store.")
 	}
@@ -180,14 +180,14 @@ func lowerOptionalTime[M any](a OptionalTime[M], name string) ir.Field {
 	return f
 }
 
-func (a Time[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Time[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) time.Time")
 	validateTime(v, at, a)
 }
 
 func (a Time[M]) lowerAccessor(name string) ir.Field { return lowerTime(a, name) }
 
-func (a OptionalTime[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a OptionalTime[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *time.Time")
 }
 

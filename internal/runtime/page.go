@@ -46,15 +46,15 @@ func pictureOrigins(body ir.Node) []string {
 
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
-	leaves := leavesOf(page.Body)
-	gates := gatesOf(page.Body)
-	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Body), gates))
+	leaves := leavesOf(page.Root)
+	gates := gatesOf(page.Root)
+	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Root), gates))
 	patterns := []string{p.pagePattern(page.PathTemplate)}
 	if page.PathTemplate == "/" && p.Prefix != "" {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
 	}
 	posts := actionable(leaves)
-	policy := policy(p.pageCSP, pictureOrigins(page.Body))
+	policy := policy(p.pageCSP, pictureOrigins(page.Root))
 	for _, pattern := range patterns {
 		p.handle(p.mux, http.MethodGet, pattern, page.PathTemplate, policy, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
@@ -83,7 +83,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // unauthorised page is never read.
 func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map[string]*ir.Tabs, gates map[string][]*ir.When) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
-	mayStream := streamable(page.Body)
+	mayStream := streamable(page.Root)
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Vary", LeafHeader)
 		if p.render.NeedsPhone(page) {
@@ -118,7 +118,7 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 		path, query := p.address(page, req)
 		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
 		req.panels = &panelSet{}
-		p.writeBuilt(w, r, page, req, p.panel(ctx, req, page, page.Body), mayStream)
+		p.writeBuilt(w, r, page, req, p.panel(ctx, req, page, page.Root), mayStream)
 	}
 }
 
@@ -202,7 +202,7 @@ func argParser(page *ir.Page) args.ArgParser {
 			}
 		}
 	}
-	view, viewLists := viewKeys(page.Body)
+	view, viewLists := viewKeys(page.Root)
 	lists = append(lists, viewLists...)
 	parser.QueryKeys = append(parser.QueryKeys, args.FromKey)
 	parser.QueryKeys = append(parser.QueryKeys, view...)

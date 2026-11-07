@@ -36,7 +36,7 @@ func TestAnAppCanNameAnyIconAndEachGetsItsRule(t *testing.T) {
 	pages := make(webui.Pages, 0, len(codes))
 	i := 0
 	for name := range codes {
-		pages = append(pages, webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/i" + strconv.Itoa(i)), Nav: webui.Nav{Label: name, Icon: name}, Body: webui.Stack{}})
+		pages = append(pages, webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/i" + strconv.Itoa(i)), Nav: webui.Nav{Label: name, Icon: name}, View: webui.Stack{}})
 		i++
 	}
 	h := webui.App{Pages: pages}.MustCompile("/admin")
@@ -55,7 +55,7 @@ func TestTheFontOfOneAppHasTheSameAddressWheneverItIsMade(t *testing.T) {
 	t.Parallel()
 
 	app := func() http.Handler {
-		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: "bell"}, Body: webui.Stack{}}}}.MustCompile("/admin")
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: "bell"}, View: webui.Stack{}}}}.MustCompile("/admin")
 	}
 	first, second := app(), app()
 	assert.Equal(t, assetURL(t, first, "fa-solid.woff"), assetURL(t, second, "fa-solid.woff"))

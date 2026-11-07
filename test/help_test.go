@@ -17,7 +17,7 @@ type helped struct {
 }
 
 func helpedApp(fields ...webui.Accessor[helped]) http.Handler {
-	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", Body: webui.Form[helped]{
+	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", View: webui.Form[helped]{
 		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
 		Fields: fields,
 		Submit: webui.Action[helped]{Run: func(context.Context, helped) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
@@ -86,7 +86,7 @@ func TestAReadOnlyFieldShowsItsHelpAndEveryKindOfAccessorHasOne(t *testing.T) {
 		webui.OptionalSlider[helped]{Label: "O", Help: help, Min: 0, Max: 5, Load: func(_ helped) *float64 { return nil }},
 		webui.OptionalBool[helped]{Label: "P", Help: help, Load: func(_ helped) *bool { return nil }},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", Body: webui.Form[helped]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/h", View: webui.Form[helped]{
 		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
 		Fields: fields,
 	}}}}.MustCompile("/admin")
@@ -101,7 +101,7 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 	body := serve(helpedApp(webui.Group[helped]{helpedName("In a group.", webui.StringRules{})}), http.MethodGet, "/admin/h").Body.String()
 	assert.Contains(t, body, `aria-label="Help: In a group."`)
 
-	table := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[helped]{
+	table := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[helped]{
 		Loader:  webui.RowsLoader[helped]{Load: func(context.Context) ([]helped, webui.Loaded) { return []helped{{Name: "n"}}, webui.Ready() }},
 		Columns: []webui.Accessor[helped]{helpedName("Not in a table.", webui.StringRules{})},
 	}}}}.MustCompile("/admin")
@@ -111,7 +111,7 @@ func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 func TestHelpIsOnAToolbarValue(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[note]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Toolbar{Left: []webui.ToolbarItem{webui.Form[note]{
 		Title: "Search", Load: func(context.Context) (note, webui.Loaded) { return note{}, webui.Ready() },
 		Fields: []webui.Accessor[note]{webui.String[note]{Label: "Q", Help: "Search by name.", Load: func(note) string { return "" }}},
 	}}}}}}.MustCompile("/admin")

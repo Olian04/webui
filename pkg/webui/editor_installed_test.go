@@ -22,11 +22,11 @@ func TestAnEditorOrADiffWithoutTheCodeEditorIsACompileError(t *testing.T) {
 	type doc struct{ Text string }
 	text := String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }}
 	load := func(context.Context) (doc, Loaded) { return doc{}, Ready() }
-	for name, body := range map[string]PageBody{
+	for name, body := range map[string]View{
 		"an Editor": Editor[doc]{Title: "Doc", Load: load, Content: text},
 		"a Diff":    Diff[doc]{Title: "Doc", Load: load, Original: text, Modified: String[doc]{Label: "New", Load: text.Load}},
 	} {
-		_, err := App{Pages: Pages{Page[NoArgs]{Path: "/e", Body: body}}}.Compile("/admin")
+		_, err := App{Pages: Pages{Page[NoArgs]{Path: "/e", View: body}}}.Compile("/admin")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), name+" is drawn with the code editor, which this program does not carry")
 		assert.True(t, strings.Contains(err.Error(), `import _ "github.com/Olian04/webui/pkg/monaco"`))
@@ -39,7 +39,7 @@ func TestAMarkdownWithACodeBlockIsPlainWhenTheProgramHasNoEditor(t *testing.T) {
 	t.Parallel()
 
 	type doc struct{ Text string }
-	h, err := App{Pages: Pages{Page[NoArgs]{Path: "/m", Body: Markdown[doc]{
+	h, err := App{Pages: Pages{Page[NoArgs]{Path: "/m", View: Markdown[doc]{
 		Title: "Notes",
 		Load: func(context.Context) (doc, Loaded) {
 			return doc{Text: "Run it:\n\n```go\nfmt.Println(1)\n```\n"}, Ready()
@@ -65,7 +65,7 @@ func TestAMarkdownThatCannotBeColouredIsSaidOnceForEachPageWhenTheAppHasALogger(
 	type doc struct{ Text string }
 	var out bytes.Buffer
 	page := func(path string) Page[NoArgs] {
-		return Page[NoArgs]{Path: PageID[NoArgs](path), Body: Markdown[doc]{
+		return Page[NoArgs]{Path: PageID[NoArgs](path), View: Markdown[doc]{
 			Title:   "Notes",
 			Load:    func(context.Context) (doc, Loaded) { return doc{Text: "```go\nx\n```\n"}, Ready() },
 			Content: String[doc]{Label: "Text", Load: func(d doc) string { return d.Text }},

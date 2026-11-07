@@ -24,7 +24,7 @@ var (
 
 func flagsApp(start flags, fields ...webui.Accessor[flags]) (http.Handler, func() flags) {
 	var saved = start
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[flags]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[flags]{
 		Load:   func(context.Context) (flags, webui.Loaded) { return saved, webui.Ready() },
 		Fields: fields,
 		Submit: webui.Action[flags]{Run: func(_ context.Context, f flags) (webui.Outcome, error) {
@@ -104,7 +104,7 @@ func TestABoolIsAColumnWithAFilterAndExportsAsTrueAndFalse(t *testing.T) {
 	t.Parallel()
 
 	rows := []flags{{Name: "a", Compress: true}, {Name: "b", Compress: false}, {Name: "c", Compress: true}}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", Body: webui.Table[flags]{
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[flags]{
 		Title:   "Flags",
 		Loader:  webui.RowsLoader[flags]{Load: func(context.Context) ([]flags, webui.Loaded) { return rows, webui.Ready() }},
 		Columns: []webui.Accessor[flags]{flagName, flagCompress},
@@ -134,7 +134,7 @@ func TestABoolThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	var all string
-	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[flags]{
+	for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[flags]{
 		Load:   func(context.Context) (flags, webui.Loaded) { return flags{}, webui.Ready() },
 		Fields: []webui.Accessor[flags]{webui.Bool[flags]{Label: "Compress"}, webui.Bool[flags]{Load: func(flags) bool { return false }}},
 		Submit: webui.Action[flags]{Run: func(context.Context, flags) (webui.Outcome, error) { return webui.Success("ok"), nil }},

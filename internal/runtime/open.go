@@ -37,7 +37,7 @@ func (p *Program) open(pathTemplate string, argv any, from string) (string, erro
 	if err != nil {
 		return "", fmt.Errorf("%w", err)
 	}
-	if from = bounded(from); from != "" && hasForm(page.Body) {
+	if from = bounded(from); from != "" && hasForm(page.Root) {
 		query[args.FromKey] = from
 	}
 	return p.Prefix + args.Href(page.PathTemplate, path, query), nil

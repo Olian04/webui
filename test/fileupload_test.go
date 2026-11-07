@@ -66,7 +66,7 @@ func newUploadShop(edit func(*webui.FileUpload[struct{}]), pageOpts ...func(*web
 	if edit != nil {
 		edit(&up)
 	}
-	page := webui.Page[webui.NoArgs]{Path: "/up", Body: up}
+	page := webui.Page[webui.NoArgs]{Path: "/up", View: up}
 	for _, o := range pageOpts {
 		o(&page)
 	}
@@ -84,7 +84,7 @@ func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(f webui.FileUpload[struct{}]) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: f}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: f}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
@@ -100,7 +100,7 @@ func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 		assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileImage, k}}), "told by all of the file")
 	}
 	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileKind(99)}}), "is not a FileKind")
-	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: webui.FileUpload[struct{}]{
+	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: webui.FileUpload[struct{}]{
 		Receive: receive, MaxSize: 1 << 40, Accept: []webui.FileKind{webui.FileImage, webui.FilePDF, webui.FileAny},
 	}}}}.Compile("/admin")
 	assert.NoError(t, err) // as large as the app says, with no ceiling
@@ -310,7 +310,7 @@ func TestAFileUploadRunCanReadThePagesArguments(t *testing.T) {
 		Bucket string `webui:"bucket"`
 	}
 	var got string
-	h := webui.App{Pages: webui.Pages{webui.Page[args]{Path: "/up/{bucket}", Body: webui.FileUpload[struct{}]{
+	h := webui.App{Pages: webui.Pages{webui.Page[args]{Path: "/up/{bucket}", View: webui.FileUpload[struct{}]{
 		MaxSize: 1 << 20,
 		Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(ctx context.Context, f webui.FileHandle[struct{}]) (webui.Outcome, error) {
 			_, _ = io.Copy(io.Discard, f.Reader)
@@ -573,7 +573,7 @@ func newChoiceShop(edit func(*webui.FileUpload[choice])) *choiceShop {
 	if edit != nil {
 		edit(&up)
 	}
-	s.h = webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: up}}}.MustCompile("/admin")
+	s.h = webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: up}}}.MustCompile("/admin")
 	return s
 }
 
@@ -673,7 +673,7 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 
 	problems := func(f webui.FileUpload[choice]) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: f}}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: f}}}) {
 			all += e.Error() + "\n"
 		}
 		return all
@@ -687,7 +687,7 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 		MaxSize: 1, Receive: receive,
 		Fields: []webui.Accessor[choice]{webui.File[choice]{Label: "F", Load: func(choice) *webui.FileInfo { return nil }}},
 	}), "is a File")
-	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: webui.FileUpload[choice]{
+	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: webui.FileUpload[choice]{
 		MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note},
 	}}}}.Compile("/admin")
 	assert.NoError(t, err)
@@ -775,7 +775,7 @@ func TestAnUploadFragmentOffersALinkToWhereTheOutcomeGoes(t *testing.T) {
 	noop := webui.Action[webui.FileHandle[struct{}]]{Run: func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
 		return webui.Success("ok"), nil
 	}}
-	done := webui.Page[webui.NoArgs]{Path: "/done", Body: webui.FileUpload[struct{}]{MaxSize: 1, Receive: noop}}
+	done := webui.Page[webui.NoArgs]{Path: "/done", View: webui.FileUpload[struct{}]{MaxSize: 1, Receive: noop}}
 	up := webui.FileUpload[struct{}]{
 		MaxSize: 1 << 20,
 		Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(ctx context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
@@ -783,7 +783,7 @@ func TestAnUploadFragmentOffersALinkToWhereTheOutcomeGoes(t *testing.T) {
 			return webui.Success("Uploaded").Then(webui.Open(ctx, done, webui.NoArgs{})), nil
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", Body: up}, done}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: up}, done}}.MustCompile("/admin")
 	body := postFragment(h, "a.bin", "data").Body.String()
 	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm result-next" href="/admin/done">Continue</a>`)
 	assert.Contains(t, body, `data-tone="ok"`)

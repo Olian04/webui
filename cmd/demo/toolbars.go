@@ -50,7 +50,7 @@ func fixture(says string, tb webui.Toolbar) webui.Stack {
 var LayoutToolbars = webui.Page[webui.NoArgs]{
 	Path: "/layout/toolbars",
 	Nav:  webui.Nav{Label: "Toolbars", Icon: "grip", Section: "Layout"},
-	Body: webui.Stack{
+	View: webui.Stack{
 		intro("Every toolbar below is one case of how a toolbar fills its rows. Change the width of the window, down to a phone's (640 px and under, where a trend is only its change, a bar only its number, and a description is its underlined label), and read each against what is said above it. The group with fewer values is whole: in a row or in the next one, never split. The group with more flows in rows from its own edge."),
 		fixture("1. Many on the left, few on the right (the landing page). The values flow from the left. Sync and its button are one group at the right edge, and when they do not fit beside the last value, both go to the next row, at its right edge. They are never one in each row.", webui.Toolbar{
 			Left: []webui.ToolbarItem{

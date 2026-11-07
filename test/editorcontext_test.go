@@ -35,7 +35,7 @@ func TestAnEditorContextThatCannotBeUsedIsACompileErrorThatSaysWhy(t *testing.T)
 
 	ts := map[string]string{"typescript/env.d.ts": "declare const x: 1;"}
 	cases := []struct {
-		body webui.PageBody
+		body webui.View
 		want string
 	}{
 		{editorWith(lang.TypeScript, ctxFiles(ts), false), "Editor.Context is set but Content has no Store"},
@@ -70,14 +70,14 @@ func TestEditorsOnOnePageShareOneProgramSoTheyMayNotDisagreeAboutIt(t *testing.T
 	same := ctxFiles(map[string]string{"typescript/env.d.ts": "declare const x: 1;", "javascript/env.d.ts": "declare const y: 2;"})
 	e, f := editorWith(lang.TypeScript, same, true), editorWith(lang.JavaScript, same, true)
 	f.Content = b.Content
-	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", Body: webui.Stack{e, f}}}}.Compile("/admin")
+	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: webui.Stack{e, f}}}}.Compile("/admin")
 	assert.NoError(t, err)
 }
 
 func TestASecretThatIsTooShortToKeepAnAddressPrivateIsACompileError(t *testing.T) {
 	t.Parallel()
 
-	errs := compileErrors(t, webui.App{Secret: []byte("short"), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", Body: webui.Stack{}}}})
+	errs := compileErrors(t, webui.App{Secret: []byte("short"), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}}}})
 	assert.Contains(t, errs[0].Detail, "App.Secret is 5 bytes")
 }
 

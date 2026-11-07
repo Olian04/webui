@@ -34,10 +34,10 @@ type Diff[M any] struct {
 	Language Language
 }
 
-// ASSERT: Diff implements PageBody
-var _ PageBody = Diff[struct{}]{}
+// ASSERT: Diff implements View
+var _ View = Diff[struct{}]{}
 
-func (d Diff[M]) validateBody(v *bodyValidator) {
+func (d Diff[M]) validateView(v *viewValidator) {
 	needEditor(v, "a Diff")
 	needLoad(v, "a Diff", d.Load != nil)
 	validateAccessors(v, []Accessor[M]{d.Original, d.Modified}, accessorSite{where: "Diff", uniqueLbl: true})
@@ -47,7 +47,7 @@ func (d Diff[M]) validateBody(v *bodyValidator) {
 	validateLanguage(v, "Diff", d.Language)
 }
 
-func (d Diff[M]) lowerBody(at ir.Addr) ir.Node {
+func (d Diff[M]) lowerView(at ir.Addr) ir.Node {
 	return &ir.Diff{
 		At: at, Title: d.Title, Desc: d.Desc, Language: d.Language.id(),
 		Load:     eraseLoad(d.Load),

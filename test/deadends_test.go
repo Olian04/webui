@@ -111,13 +111,13 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 	t.Parallel()
 
 	back := webui.PageID[webui.NoArgs]("/records")
-	list := webui.Page[webui.NoArgs]{Path: back, Nav: webui.Nav{Label: "Records"}, Body: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: back, Nav: webui.Nav{Label: "Records"}, View: webui.Stack{}}
 	one := webui.Page[recordArgs]{
 		Path: "/records/{id}",
 		Guard: func(ctx context.Context, a recordArgs) error {
 			return webui.NotFound("There is no record "+a.ID+".").WithLink("Back to the records", webui.Open(ctx, back, webui.NoArgs{}))
 		},
-		Body: webui.FileUpload[struct{}]{MaxSize: 1, Receive: webui.Action[webui.FileHandle[struct{}]]{
+		View: webui.FileUpload[struct{}]{MaxSize: 1, Receive: webui.Action[webui.FileHandle[struct{}]]{
 			Run: func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
 				return webui.Success("ok"), nil
 			},
@@ -137,7 +137,7 @@ func TestABreadcrumbParentAndACancelThatLeadToARefusedPageAreLeftOut(t *testing.
 
 	build := func(allowed bool) string {
 		parent := webui.Page[webui.NoArgs]{
-			Path: "/a", Body: webui.Stack{},
+			Path: "/a", View: webui.Stack{},
 			Guard: func(context.Context, webui.NoArgs) error {
 				if allowed {
 					return nil
@@ -145,7 +145,7 @@ func TestABreadcrumbParentAndACancelThatLeadToARefusedPageAreLeftOut(t *testing.
 				return errors.New("no")
 			},
 		}
-		child := webui.Page[webui.NoArgs]{Path: "/a/b", Body: webui.Form[struct{}]{
+		child := webui.Page[webui.NoArgs]{Path: "/a/b", View: webui.Form[struct{}]{
 			Load:   func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, webui.Ready() },
 			Submit: webui.Action[struct{}]{Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}
@@ -167,7 +167,7 @@ func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 	t.Parallel()
 
 	page := func(guard func(context.Context, struct{}) error) string {
-		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", Body: webui.Form[struct{}]{
+		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[struct{}]{
 			Load:   func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, webui.Ready() },
 			Submit: webui.Action[struct{}]{Guard: guard, Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}}}.MustCompile("/admin")

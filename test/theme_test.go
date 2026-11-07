@@ -72,7 +72,7 @@ func TestACanvasForOneModeDerivesTheSurfacesOfThatModeAndLeavesTheOtherAlone(t *
 	t.Parallel()
 
 	theme := webui.Theme{Accent: "#4361e8", Dark: webui.ModeColors{Canvas: "#0e1224"}}
-	h := webui.App{Theme: theme, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, Body: webui.Stack{}}}}.MustCompile("/admin")
+	h := webui.App{Theme: theme, Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/p", Nav: webui.Nav{Label: "P"}, View: webui.Stack{}}}}.MustCompile("/admin")
 	page := serve(h, http.MethodGet, "/admin/p").Body.String()
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css")).Body.String()
 

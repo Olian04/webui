@@ -20,7 +20,7 @@
 //	var Devices = webui.Page[webui.NoArgs]{
 //		Path: "/device",
 //		Nav:  webui.Nav{Label: "Devices", Icon: "display"},
-//		Body: webui.Table[Device]{
+//		View: webui.Table[Device]{
 //			Title: "Devices",
 //			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
 //				return service.Devices(), webui.Ready()
@@ -43,7 +43,7 @@
 //
 // # Pages and arguments
 //
-// A [Page] has a path, an optional [Nav] entry, an optional Guard, and a Body. Its
+// A [Page] has a path, an optional [Nav] entry, an optional Guard, and a View. Its
 // type parameter is the page's argument struct. A field named by a placeholder in
 // the path is a path segment, and every other field is a query parameter:
 //
@@ -52,7 +52,7 @@
 //		Minutes int                 // ?minutes=15
 //	}
 //
-//	var Details = webui.Page[DeviceArgs]{Path: "/device/{id}", Body: ...}
+//	var Details = webui.Page[DeviceArgs]{Path: "/device/{id}", View: ...}
 //
 // Arguments may be string, bool, int, int64 or float64, and a slice of any of them (see
 // Arguments that repeat). A field left at its zero value is absent from the address. A
@@ -107,7 +107,7 @@
 //		Prefix []string `webui:"prefix"` // ...2026/summer/img.png
 //	}
 //
-//	var Object = webui.Page[ObjectArgs]{Path: "/bucket/{bucket}/{prefix...}", Body: ...}
+//	var Object = webui.Page[ObjectArgs]{Path: "/bucket/{bucket}/{prefix...}", View: ...}
 //
 // The address /bucket/photos/2026/summer/img.png gives Prefix as
 // ["2026", "summer", "img.png"]. Each segment is a crumb in the breadcrumb that leads to
@@ -139,25 +139,24 @@
 //
 // # Layouts
 //
-// A page's Body is a single [PageBody]. [Table], [Form], [Editor], [Diff] and
-// [Markdown] are leaves; they load their own data and refresh on their own, a
-// [Toolbar] is a leaf that is a row of controls and the values of its forms, and a [FileUpload] is a leaf that is a
-// panel for sending one large file. [Stack], [Split], [Columns], [When] and [Tabs] arrange
-// other bodies and nest:
+// A page shows one [View], which is a panel or a layout. A panel loads its own data and refreshes on
+// its own: [Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards], [Calendar], a [Toolbar], which is a row of
+// controls and the values of its forms and has no frame, and a [FileUpload], which is for sending one large file.
+// A layout arranges other Views, and nests: [Stack], [Split], [Columns], [When] and [Tabs]:
 //
-//	Body: webui.Stack{
+//	View: webui.Stack{
 //		webui.Split{DeviceForm, Events},
-//		webui.Tabs{{Label: "Raw events", Body: Events}},
+//		webui.Tabs{{Label: "Raw events", View: Events}},
 //	}
 //
 // The selected tab is kept in the address, so it survives a reload and can be linked
 // to, and only the selected panel is loaded.
 //
-// A [When] shows one body only while a condition holds: Load reads a model, Show is a [BoolLike] of it (a [Bool], or an [OptionalBool] whose not set is no), and Body is what is shown. What it hides is out of reach of a refresh,
-// a form post and an export, and it leaves no gap. It loads, for the condition alone, so keep its Load cheap; the body loads its own data.
+// A [When] shows one View only while a condition holds: Load reads a model, Show is a [BoolLike] of it (a [Bool], or an [OptionalBool] whose not set is no), and View is what is shown. What it hides is out of reach of a refresh,
+// a form post and an export, and it leaves no gap. It loads, for the condition alone, so keep its Load cheap; the View loads its own data.
 //
 // [Columns] is a row of columns of unequal width, each [Column] with a Weight that is its share relative to the others
-// (zero is 1): {1, 3} is 25/75 and {25, 50, 25} is 25/50/25. A [Split] is Columns of equal weights, written as a list of bodies. A column is never narrower than 280px, so where a row cannot hold its columns the last move to a row below, each row sharing its width
+// (zero is 1): {1, 3} is 25/75 and {25, 50, 25} is 25/50/25. A [Split] is Columns of equal weights, written as a list of Views. A column is never narrower than 280px, so where a row cannot hold its columns the last move to a row below, each row sharing its width
 // by weight in turn, down to one column on a narrow screen. The weights are numbers, not a pattern, so there is nothing to mistype and no sum that must come to 100.
 //
 // # Accessors
@@ -341,7 +340,7 @@
 // that it was changed, and [FileHandle.DeclaredType] is the type that the browser said, which is
 // what to prefer for the type of what is stored when the visitor's word is better than the first
 // bytes. A test posts the panel's form as a browser does: a multipart body of the field "_leaf",
-// which is where the panel is in the page's Body ("p" when it is the Body, "p.0" for the first
+// which is where the panel is in the page's View ("p" when it is the page's View, "p.0" for the first
 // of a [Stack], "p.1.0" for the first in the second, and so on), and then the field "file", in
 // that order. Those names are stable.
 //
@@ -381,7 +380,7 @@
 // own: its buttons are about the page, which they read from the request with [ArgsOf], and
 // what it shows is in its [Form]s, each of which loads a model of its own:
 //
-//	Body: webui.Stack{
+//	View: webui.Stack{
 //		webui.Toolbar{
 //			Left: []webui.ToolbarItem{
 //				webui.Link[webui.NoArgs, NewDeviceArgs]{Label: "Create device", Role: webui.RolePrimary, Page: NewDevice, Args: newDeviceArgs},

@@ -58,10 +58,10 @@ type Markdown[M any] struct {
 	TrustedOrigins []string
 }
 
-// ASSERT: Markdown implements PageBody
-var _ PageBody = Markdown[struct{}]{}
+// ASSERT: Markdown implements View
+var _ View = Markdown[struct{}]{}
 
-func (m Markdown[M]) validateBody(v *bodyValidator) {
+func (m Markdown[M]) validateView(v *viewValidator) {
 	needLoad(v, "a Markdown", m.Load != nil)
 	validateAccessors(v, []Accessor[M]{m.Content}, accessorSite{where: "Markdown.Content", uniqueLbl: true})
 	if m.Content.Store != nil {
@@ -87,7 +87,7 @@ func (m Markdown[M]) origins() []string {
 	return out
 }
 
-func (m Markdown[M]) lowerBody(at ir.Addr) ir.Node {
+func (m Markdown[M]) lowerView(at ir.Addr) ir.Node {
 	return &ir.Markdown{
 		At: at, Title: m.Title, Desc: m.Desc,
 		Load:    eraseLoad(m.Load),

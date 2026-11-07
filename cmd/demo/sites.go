@@ -44,7 +44,7 @@ const SitesPath webui.PageID[webui.NoArgs] = "/site"
 var Sites = webui.Page[webui.NoArgs]{
 	Path: SitesPath,
 	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot", Section: "Platform"},
-	Body: SitesTable,
+	View: SitesTable,
 }
 
 // SitesTable is also on the landing page: a leaf is a value, so any page can
@@ -95,7 +95,7 @@ var SiteDetail = webui.Page[SiteArgs]{
 	// Two tables side by side. Each keeps its own sort, filters and page in the
 	// address under its title, so ?devices.sort=… and ?open-alerts.sort=… do not
 	// touch each other.
-	Body: webui.Split{SiteDevices, SiteAlerts},
+	View: webui.Split{SiteDevices, SiteAlerts},
 }
 
 var SiteDevices = webui.Table[Device]{

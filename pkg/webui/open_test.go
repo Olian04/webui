@@ -27,7 +27,7 @@ func probeApp(probe func(ctx context.Context)) (App, Page[openArgs]) {
 			probe(ctx)
 			return nil
 		},
-		Body: Stack{},
+		View: Stack{},
 	}
 	return App{Pages: Pages{details}}, details
 }

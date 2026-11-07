@@ -179,7 +179,7 @@ func (a File[M]) meta() accessorMeta {
 }
 
 // validateFile checks what a File says of itself, and where it is.
-func validateFile[M any](v *bodyValidator, at string, a File[M]) {
+func validateFile[M any](v *viewValidator, at string, a File[M]) {
 	switch {
 	case a.Removable && a.Store == nil:
 		v.add(at+" is Removable but has no Store", "A file is removed by calling Store with nil: set Store, or remove Removable.")
@@ -253,7 +253,7 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 	return f
 }
 
-func (a File[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a File[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *FileInfo")
 	validateFile(v, at, a)
 	if site.where == "Toolbar" {

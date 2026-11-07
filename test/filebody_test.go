@@ -57,13 +57,13 @@ func TestAFileIsHeldInMemoryAndNothingIsWrittenToDisk(t *testing.T) {
 
 	var inRun []os.DirEntry
 	s := newFileShop(plainFile(webui.FilePNG), func(p *webui.Page[webui.NoArgs]) {
-		f := p.Body.(webui.Form[attachment])
+		f := p.View.(webui.Form[attachment])
 		run := f.Submit.Run
 		f.Submit.Run = func(ctx context.Context, a attachment) (webui.Outcome, error) {
 			inRun, _ = os.ReadDir(dir)
 			return run(ctx, a)
 		}
-		p.Body = f
+		p.View = f
 	})
 	data := string(pngBytes) + strings.Repeat("x", 3<<20)
 	rec := multipartPost(s.h, "/admin/f", nil, part{"f1", "big.png", data})

@@ -24,7 +24,7 @@ type Accessor[M any] interface {
 
 	// validateAccessor checks the accessor where it is, which site says, and names it at in what it reports. seen is the labels of the accessors of its list that have
 	// been checked, for the labels that must differ.
-	validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool)
+	validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool)
 
 	// lowerAccessor is the accessor as the IR holds it, named name. validateAccessor has run, so nothing that it refused reaches it.
 	lowerAccessor(name string) ir.Field
@@ -541,7 +541,7 @@ type accessorSite struct {
 	first, nested bool
 }
 
-func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accessorSite) {
+func validateAccessors[M any](v *viewValidator, accs []Accessor[M], site accessorSite) {
 	seen := map[string]bool{}
 	for i, acc := range accs {
 		at := site
@@ -551,7 +551,7 @@ func validateAccessors[M any](v *bodyValidator, accs []Accessor[M], site accesso
 }
 
 // checkAccessor is validateAccessor of an accessor that may be nil, which is the one thing that the accessor itself cannot say.
-func checkAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
+func checkAccessor[M any](v *viewValidator, acc Accessor[M], at string, site accessorSite, seen map[string]bool) {
 	if acc == nil {
 		v.add(at+" is nil", "Remove it or declare an accessor.")
 		return
@@ -560,7 +560,7 @@ func checkAccessor[M any](v *bodyValidator, acc Accessor[M], at string, site acc
 }
 
 // validateLeaf is what every accessor that is not a group needs: a label, unique where that matters, and a Load. sig is what Load must be, for the message.
-func validateLeaf(v *bodyValidator, at string, site accessorSite, seen map[string]bool, label string, noLoad bool, sig string) {
+func validateLeaf(v *viewValidator, at string, site accessorSite, seen map[string]bool, label string, noLoad bool, sig string) {
 	switch {
 	case label == "":
 		v.add(at+" has no Label", "Give the accessor a Label; it is the column header and the input label.")
@@ -576,7 +576,7 @@ func validateLeaf(v *bodyValidator, at string, site accessorSite, seen map[strin
 }
 
 // validateSlider checks a slider's range and step.
-func validateSlider(v *bodyValidator, at string, lo, hi, step float64) {
+func validateSlider(v *viewValidator, at string, lo, hi, step float64) {
 	if !(hi > lo) {
 		v.add(at+" has no range", "Set Max greater than Min; the slider is drawn between them.")
 	}
@@ -588,7 +588,7 @@ func validateSlider(v *bodyValidator, at string, lo, hi, step float64) {
 	}
 }
 
-func validatePrecision(v *bodyValidator, at string, precision int) {
+func validatePrecision(v *viewValidator, at string, precision int) {
 	if precision < 0 {
 		v.add(at+" has a negative Precision", "Use 0 for the shortest exact form, or a number of decimals.")
 	}
@@ -596,7 +596,7 @@ func validatePrecision(v *bodyValidator, at string, precision int) {
 
 // validateSelect checks a select's options: each has a value, none twice, and one that could not be told
 // from a list of several; and that one that is edited has some to choose from.
-func validateSelect[M any](v *bodyValidator, at string, a Select[M]) {
+func validateSelect[M any](v *viewValidator, at string, a Select[M]) {
 	seen := map[string]bool{}
 	for i, o := range a.Options {
 		switch {
@@ -620,7 +620,7 @@ func validateSelect[M any](v *bodyValidator, at string, a Select[M]) {
 	}
 }
 
-func validateBounds[T int | float64](v *bodyValidator, at string, lo, hi *T) {
+func validateBounds[T int | float64](v *viewValidator, at string, lo, hi *T) {
 	if lo != nil && hi != nil && *lo > *hi {
 		v.add(at+" has Min greater than Max", "Swap them, or drop one.")
 	}
@@ -628,7 +628,7 @@ func validateBounds[T int | float64](v *bodyValidator, at string, lo, hi *T) {
 
 // ------------------------------------------------- the accessors of this file, each as it is checked and lowered
 
-func (a String[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a String[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 	if a.Multiline {
@@ -652,7 +652,7 @@ func (a String[M]) lowerAccessor(name string) ir.Field {
 	return f
 }
 
-func (a Int[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Int[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) int")
 	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 }
@@ -668,7 +668,7 @@ func (a Int[M]) lowerAccessor(name string) ir.Field {
 	return f
 }
 
-func (a Float[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Float[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
 	validatePrecision(v, at, a.Precision)
 	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
@@ -686,7 +686,7 @@ func (a Float[M]) lowerAccessor(name string) ir.Field {
 
 // validateAccessor checks a group, which is for the places that compose form fields: a group in a group is refused, as is one that is a list's headline, and the accessors
 // in it are checked as they would be beside it.
-func (g Group[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (g Group[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	switch {
 	case site.nested:
 		v.add(at+" nests a Group in a Group", "Flatten it; groups are one level deep.")
@@ -709,7 +709,7 @@ func (g Group[M]) lowerAccessor(name string) ir.Field {
 	return ir.Field{Name: name, Group: lowerAccessors[M](g, name+"_")}
 }
 
-func (a Select[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Select[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) []string")
 	validateSelect(v, at, a)
 }
@@ -740,7 +740,7 @@ func (a Select[M]) lowerAccessor(name string) ir.Field {
 
 // validateAccessor checks a URL, which says the same on every row, so it is a column and not a headline, and which is a link of its own, so it is not the first column of a table whose
 // rows are links or buttons.
-func (a URL[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a URL[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	if site.headline {
 		v.add(at+" is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Open: a Link for a page of this app, or an Href for an address.")
 		return
@@ -770,7 +770,7 @@ func (a URL[M]) lowerAccessor(name string) ir.Field {
 	return f
 }
 
-func (a Slider[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Slider[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
 	validateSlider(v, at, a.Min, a.Max, a.StepSize)
 }
@@ -794,7 +794,7 @@ func (a Slider[M]) lowerAccessor(name string) ir.Field {
 	return f
 }
 
-func (a Bool[M]) validateAccessor(v *bodyValidator, at string, site accessorSite, seen map[string]bool) {
+func (a Bool[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
 	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool")
 }
 

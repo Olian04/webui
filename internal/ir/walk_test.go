@@ -12,7 +12,7 @@ import (
 func tree() (root ir.Node, want []ir.Node) {
 	a, b, c, d, e := &ir.Markdown{}, &ir.Markdown{}, &ir.Markdown{}, &ir.Markdown{}, &ir.Markdown{}
 	when := &ir.When{Child: c}
-	tabs := &ir.Tabs{Tabs: []ir.Tab{{Key: "x", Body: d}, {Key: "y", Body: e}}}
+	tabs := &ir.Tabs{Tabs: []ir.Tab{{Key: "x", Child: d}, {Key: "y", Child: e}}}
 	cols := &ir.Columns{Nodes: []ir.Node{when, tabs}}
 	root = &ir.Stack{Nodes: []ir.Node{a, b, cols}}
 	return root, []ir.Node{root, a, b, cols, when, c, tabs, d, e}

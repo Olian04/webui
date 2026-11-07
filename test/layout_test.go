@@ -37,7 +37,7 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 	page := webui.Page[layoutArgs]{
 		Path:  "/device/{id}",
 		Guard: guard,
-		Body: webui.Stack{
+		View: webui.Stack{
 			webui.Split{
 				webui.Form[Device]{
 					Title:  "Form",
@@ -47,8 +47,8 @@ func layoutApp(guard func(context.Context, layoutArgs) error) (http.Handler, *[4
 				table(1, "Events"),
 			},
 			webui.Tabs{
-				{Label: "Overview", Body: table(2, "Overview")},
-				{Label: "Raw", Body: table(3, "Raw")},
+				{Label: "Overview", View: table(2, "Overview")},
+				{Label: "Raw", View: table(3, "Raw")},
 			},
 		},
 	}
@@ -191,7 +191,7 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Split{
-		webui.Tabs{{Label: "One", Body: quickTable("In tabs")}, {Label: "Two", Body: quickTable("Other")}},
+		webui.Tabs{{Label: "One", View: quickTable("In tabs")}, {Label: "Two", View: quickTable("Other")}},
 		quickTable("Beside"),
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
@@ -262,7 +262,7 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy"}, {Value: "staging"}}}
 	state := webui.Select[blob]{Label: "State", Load: func(blob) []string { return nil },
 		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
-	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", Body: webui.Table[blob]{
+	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", View: webui.Table[blob]{
 		Title:   "Blobs",
 		Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
 		Key:     func(b blob) string { return b.Name },
@@ -322,7 +322,7 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 
 	panels := make([]webui.Tab, 20)
 	for i := range panels {
-		panels[i] = webui.Tab{Label: "A tab with a label number " + strconv.Itoa(i), Body: quickTable("Panel " + strconv.Itoa(i))}
+		panels[i] = webui.Tab{Label: "A tab with a label number " + strconv.Itoa(i), View: quickTable("Panel " + strconv.Itoa(i))}
 	}
 	h := streamApp(webui.Tabs(panels))
 	body := serve(h, http.MethodGet, "/admin/p?tabs.tab=a-tab-with-a-label-number-19").Body.String()
@@ -398,8 +398,8 @@ func TestEachStripOfTabsHasItsOwnName(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Split{
-		webui.Tabs{{Label: "One", Body: quickTable("A")}, {Label: "Two", Body: quickTable("B")}},
-		webui.Tabs{{Label: "Red", Body: quickTable("C")}, {Label: "Green", Body: quickTable("D")}, {Label: "Blue", Body: quickTable("E")}, {Label: "Grey", Body: quickTable("F")}},
+		webui.Tabs{{Label: "One", View: quickTable("A")}, {Label: "Two", View: quickTable("B")}},
+		webui.Tabs{{Label: "Red", View: quickTable("C")}, {Label: "Green", View: quickTable("D")}, {Label: "Blue", View: quickTable("E")}, {Label: "Grey", View: quickTable("F")}},
 	})
 	body := serve(h, http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: One, Two">`)
