@@ -7,7 +7,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Toolbar is a leaf that is a row of controls for the page it is on: buttons that do something or lead somewhere, and the values of the
+// Toolbar is a panel, drawn with no frame, that is a row of controls for the page it is on: buttons that do something or lead somewhere, and the values of the
 // models that its forms load, to read. It has no type parameter, because it has no model of its own: what it shows is in its Forms, each of
 // which loads one, and its buttons are about the page, which they read from the request as any Load does.
 //

@@ -10,7 +10,7 @@ import (
 
 // App is the declaration of an admin UI. Compile produces the runtime handler.
 type App struct {
-	// Brand is the name and logo shown in the chrome.
+	// Brand is the name and logo shown in the sidebar, or at the start of the top bar when the app has no sidebar.
 	Brand Brand
 
 	// Description is what the app is, in a sentence or two of plain text, for the pages' `<meta name="description">`: what a search engine and a link preview show
@@ -90,7 +90,7 @@ type ExternalLink struct {
 	URL string
 }
 
-// Brand is the product identity shown in the chrome.
+// Brand is the product identity shown in the sidebar, or at the start of the top bar when the app has no sidebar.
 //
 // The browser tab's icon is made from Logo: scaled to the sizes browsers ask
 // for and served by the app, so there is no file to produce and host. An app with

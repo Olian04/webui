@@ -255,7 +255,7 @@ func TestNavEntriesAreCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	// Entries say their own words: a label on the page is a mistake.
 	assert.Contains(t, problems(webui.Page[siteArgs]{Path: "/site/{name}", Nav: webui.Nav{Label: "Site"}, NavEntries: siteEntries("x"), View: webui.Stack{}}),
-		`NavEntries and the navigation label "Site"`)
+		`NavEntries and Nav.Label "Site"`)
 	// And without NavEntries, a page with arguments still has no entry, with the way out said.
 	assert.Contains(t, problems(webui.Page[siteArgs]{Path: "/site/{name}", Nav: webui.Nav{Label: "Site"}, View: webui.Stack{}}), "give the page NavEntries")
 	// Icon and Section are the group's.

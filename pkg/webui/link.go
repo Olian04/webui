@@ -12,7 +12,7 @@ import (
 // [List.Open], [Calendar.Open]), or one of the controls in a table row's trailing cell ([Table.Actions]). It is an [Action], which posts: its Run is handed the row, and may look at it to decide where to go, with [Outcome.Then], or change something,
 // and it needs the table's Key; a [Link], which leads to a page of the app; or an [Href], which leads to an address. They are interchangeable where one is taken: the
 // difference is how each is drawn and what it does, a link being a real anchor, so a middle-click, a new tab and the keyboard work, where an action is a POST that
-// cannot be opened in a tab. The interface exists to take any of them, and each type says how it is checked and how it is lowered, so nothing that takes a
+// cannot be opened in a tab. The interface exists to take any of them, and each type says how it is checked and how it is built, so nothing that takes a
 // Control looks at which one it was given.
 type Control[M any] interface {
 	// validateControl checks the control where it is, which says what it needs: a button needs a Label, a click on a row has none.

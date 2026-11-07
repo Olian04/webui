@@ -20,7 +20,7 @@ func (a App) MustCompile(prefix string) http.Handler {
 	return h
 }
 
-// Compile validates the declaration, lowers it to the runtime IR, and returns
+// Compile validates the declaration, builds the app from it, and returns
 // a handler. The handler is never nil: a failed compile still serves, at every
 // path under prefix, rendering the problems, so a broken app is diagnosable in
 // the browser. The returned error wraps a [CompileError] for each problem found.

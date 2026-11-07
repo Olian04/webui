@@ -35,7 +35,7 @@ import (
 // (page.go, form.go, table.go, layout.go, link.go, action.go), and the
 // interiors are ordinary switches (accessor.go).
 func (a App) lower() (*ir.App, error) {
-	entries := map[string]bool{} // the paths of the pages that have a navigation entry
+	entries := map[string]bool{} // the paths of the pages that have a sidebar entry
 	for _, p := range a.Pages {
 		if p.hasNavEntry() {
 			entries[p.pagePath()] = true

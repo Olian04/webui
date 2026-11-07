@@ -44,14 +44,14 @@ type Columns []Column
 // panel says "Could not load", the cause is logged and the View is not shown, since a condition that cannot be decided does not hold. A [Loaded.RefreshAfter] from it does nothing, since a
 // layout has nowhere to be refreshed from; the View's own panels refresh themselves.
 //
-// What a When hides cannot be reached. A refresh, a form post or an export that names a leaf under a When that does not hold is answered as it would be for a leaf that is not there, and
+// What a When hides cannot be reached. A refresh, a form post or an export that names a panel under a When that does not hold is answered as it would be for a panel that is not there, and
 // a failed Load is as good as a condition that does not hold. The condition is asked again for each such request. That is how a panel that is shown only to some stays out of reach of the others, but
 // a When is for what a page shows: the page's Guard is what lets a visitor open it, and an Action's Guard is what lets them act.
 //
-// Its position is that of one child, so a leaf's address is the same whether it is shown or not. A When in a [Columns] that does not hold leaves an empty column, which is not drawn,
+// Its position is that of one child, so a panel's view id is the same whether it is shown or not. A When in a [Columns] that does not hold leaves an empty column, which is not drawn,
 // so the row wraps as if it were not declared; in a [Tabs] it leaves a blank tab, so put it outside.
 type When[M any] struct {
-	// Load reads what the condition is decided from. It is called on every request that draws the page, and on every request for a leaf under it.
+	// Load reads what the condition is decided from. It is called on every request that draws the page, and on every request for a panel under it.
 	Load func(ctx context.Context) (M, Loaded)
 
 	// Show says whether the View is shown, of the model Load read: a [Bool], or an [OptionalBool], which is not shown when it is not set. Its Label, Store, Help, NoSort and NoFilter do nothing here,

@@ -10,7 +10,7 @@ import (
 	"github.com/Olian04/webui/internal/render/assets"
 )
 
-// Editor is a leaf that shows one text of a model in a code editor: with syntax
+// Editor is a panel that shows one text of a model in a code editor: with syntax
 // highlighting for its [Language], line numbers, search, and what a code editor has.
 // With a Store on its Content it edits the text and saves it, like a [Form]; without
 // one it is a viewer of the text, with the same highlighting and no way to change it.

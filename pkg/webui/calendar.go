@@ -21,10 +21,10 @@ type Day struct {
 	Items int
 }
 
-// Calendar is a leaf that shows a month as a grid of days: each day with a mark when something is on it, and a link when Open says where a day leads. It is for a
+// Calendar is a panel that shows a month as a grid of days: each day with a mark when something is on it, and a link when Open says where a day leads. It is for a
 // page that says what is on, such as releases, deadlines or what a team did, where a [Table] of the same things would be a list to scan for a date.
 //
-// The month that is shown is in the address, as the leaf's name and ".month" ("september-releases.month=2026-09"), with links to the month before and the month after, and, when it
+// The month that is shown is in the address, as the panel's name and ".month" ("september-releases.month=2026-09"), with links to the month before and the month after, and, when it
 // is not the current one, a link back to it: they are real links, so the calendar works without script and a copied link shows the same month, and with script they replace the calendar in place.
 // Nothing is kept on the server. Load is asked for the days the grid shows, the days of the weeks round the month included, and the month is of whole weeks.
 //
@@ -34,7 +34,7 @@ type Day struct {
 //
 // Every day has a name that a reader who goes by the grid is told, such as "Sunday 6 September 2026, 3 items". It only reads.
 type Calendar[M any] struct {
-	// Title is the panel's heading, and names the leaf's view state in the address: "releases" for a calendar titled "Releases", and "calendar" when it has none.
+	// Title is the panel's heading, and names the panel's view state in the address: "releases" for a calendar titled "Releases", and "calendar" when it has none.
 	Title string
 
 	// Desc is a description, shown in a popover from an information icon beside the title.

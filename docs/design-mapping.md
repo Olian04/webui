@@ -39,12 +39,12 @@ into existence, and nothing is configured twice.
 | `Columns` / `Column.Weight` | One row of columns of unequal width, each as wide as its weight says; never narrower than 280px, so the last columns of a row that cannot hold them wrap to a row below |
 | `When` | One child, drawn only while a condition on a model that its `Load` reads holds (a `Bool` accessor says so), and nothing when it does not. What it hides is out of reach of a refresh, a post and an export |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
-| `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a leaf (`data-view`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
+| `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a panel (`data-view`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
 | `FileUpload.Multiple`, with script | The chooser takes several files, a *Choose folder* button beside it takes a folder, a folder can be dropped on the frame, and the files are listed under it: each is sent in a request of its own with a native `<progress>` and then shows the server's words for it, green, amber or red, with a link when the outcome goes somewhere; *Cancel* stops the queue. Without script, one file, as before |
 | `FileUpload`, `Fields`, `Load` | The options beside the file: a form's inputs, above the file chooser in the same panel, with the defaults that `Load` gives and the rules and the `Select` choices of a form; bound before the file is read |
-| `FileUpload` | One panel containing a file chooser and a button, in a native `multipart/form-data` form of its own with the leaf first: one file, of any size up to its `MaxSize` (which has no default), handed to `Receive` as it arrives, with nothing held. `FileHandle` also has the folder (`Path`), the name as sent (`RawName`) and the type the browser said (`DeclaredType`). A drop zone with script (the `File` script), a Disabled Guard draws the chooser and button disabled with the reason and any other error leaves the panel out |
+| `FileUpload` | One panel containing a file chooser and a button, in a native `multipart/form-data` form of its own with the `_view` field first: one file, of any size up to its `MaxSize` (which has no default), handed to `Receive` as it arrives, with nothing held. `FileHandle` also has the folder (`Path`), the name as sent (`RawName`) and the type the browser said (`DeclaredType`). A drop zone with script (the `File` script), a Disabled Guard draws the chooser and button disabled with the reason and any other error leaves the panel out |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
 | `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
@@ -103,7 +103,7 @@ into existence, and nothing is configured twice.
 | `Failure` | A red toast over the form shown again, with what was typed kept |
 | `Reject`, `Field` | Invalid borders and per-field messages, with typed values preserved |
 | `Outcome.Then` | A navigation after an accepted action |
-| leaf address (`p.0.1`) | Which panel a refresh replaces |
+| view id (`p.0.1`) | Which panel a refresh replaces |
 | `CompileError` | The **Failed to compile** page, served at every address |
 
 ---
@@ -257,14 +257,14 @@ nothing to declare for it: it is a page with no `Label`.
 
 ---
 
-## Body: layouts
+## Layouts
 
-### The body tree
+### The view tree
 
-The body tree is the panel arrangement. A leaf's address — its path of child
+The view tree is the panel arrangement. A view id — its path of child
 indices — is what a refresh names. Practically, this is the difference between
 "the screen reloaded" and "one panel reloaded": with JavaScript, a control
-belonging to a leaf re-renders the panel at that address and the rest of the
+belonging to a panel re-renders the panel at that address and the rest of the
 screen never moves; without it, the same link reloads the page. The loading
 state in §10 of the design document exists precisely to make that address
 visible while it is happening.
@@ -278,7 +278,7 @@ A column of panels, 8px apart.
 `Columns` with no weight on any column, written as a list of bodies. It has no layout of its own: how it is drawn, and how it wraps, is the rule of `Columns` below. It constrains
 nothing about what its children are *about* — a form for one model beside a table of
 another is the ordinary case, and the design has to hold two panels of different content
-next to each other without implying a relationship between them. Identical panel chrome
+next to each other without implying a relationship between them. The same frame
 and a shared height do that work; the height says only *these are side by side*.
 
 ### `Columns` and `Column.Weight`
@@ -294,12 +294,12 @@ and a layout in one is one cell: a layout inside it, such as `Tabs`, is one cell
 
 ### `When`
 
-One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a leaf's `Load` does, and `Show` is a `BoolLike` of that model (a `Bool`, or an `OptionalBool`, whose not set is not shown): the same accessor that a form or a table shows it with, written
+One child, shown only while a condition holds. `Load` reads the model that the condition is decided from, as a panel's `Load` does, and `Show` is a `BoolLike` of that model (a `Bool`, or an `OptionalBool`, whose not set is not shown): the same accessor that a form or a table shows it with, written
 once, with what a use has no purpose for (`Label`, `Store`, `Help`, `NoSort`, `NoFilter`) ignored. "Show when false" is a `Bool` whose `Load` returns the negation. The `View` loads its own data and is not handed the model, so a body
 that needs what the condition read asks for it too, and an app that cares caches it, as it does for any two panels. A `When` is a layout that loads, for the condition alone: it runs `Load`, then `Show`, then builds the child, so its `Load` is in front of
-the child's, and a leaf request under it runs the `Load` again. A failed `Load` is a panel that says "Could not load" with the cause in the log, and the child is not shown: a condition that cannot be decided does not hold. When it does not
-hold the `When` draws nothing, and what is under it cannot be reached: a refresh, a form post or an export that names a leaf there is answered as it is for a leaf that is not (a hidden table's `export` is a parameter for a table that is not there, which is ignored), so what is drawn and what is allowed
-cannot disagree. Its child keeps the position it was declared at, so a leaf's id is the same whether it is shown or not. A `When` is not an authorization: the page's `Guard` lets a visitor open the page, and an action's `Guard` lets them act.
+the child's, and a panel request under it runs the `Load` again. A failed `Load` is a panel that says "Could not load" with the cause in the log, and the child is not shown: a condition that cannot be decided does not hold. When it does not
+hold the `When` draws nothing, and what is under it cannot be reached: a refresh, a form post or an export that names a panel there is answered as it is for a panel that is not (a hidden table's `export` is a parameter for a table that is not there, which is ignored), so what is drawn and what is allowed
+cannot disagree. Its child keeps the position it was declared at, so a view id is the same whether it is shown or not. A `When` is not an authorization: the page's `Guard` lets a visitor open the page, and an action's `Guard` lets them act.
 
 ### `Tabs` and `Tab.Label`
 
@@ -311,7 +311,7 @@ A tab is navigation that happens to look like a tab.
 
 ---
 
-## Body: leaves
+## Panels
 
 ### `Form` → a panel
 
@@ -380,8 +380,8 @@ then loads, and is plain text in a monospace block without script.
 ### `List` and `Cards` → a panel of items
 
 One panel. Header as above; the body is a list of items of one model, each a headline over a line of small facts, with a badge beside the headline and a picture when it has them. A `List` is a column of
-them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the leaf knows there is more without
-counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the leaf's title as the address spells any label, as a table's is), so it works without script and a copied link shows
+them and `Cards` are the same items as boxes, in a grid that wraps or a row that scrolls. The source is a plain list, `Load(ctx, limit)`, asked for one more than is shown, which is how the panel knows there is more without
+counting; *Show more* is a link to the same page with `<name>.limit` larger in the address (the name is the panel's title as the address spells any label, as a table's is), so it works without script and a copied link shows
 the same, and with script it replaces the list in place. A headline is text, and where it leads is `Open`: a `Link` to a page of the app (left out for an item whose page refuses the visitor), an `Href` (an address, which
 opens in a tab of its own, as any link to another site does), or an `Action` (the headline is a button, with no button's own look, in a form that posts the item's `Key`). The facts are accessors, shown as they are in a cell, in order, with a dot between them. A picture is `Image`, an address from this site or from a trusted origin
 (`TrustedOrigins`, as for `Markdown`), decoration, and an address from anywhere else is not drawn. It only reads, and it refreshes as any panel does. It is not `Table.Feed`, which is a cursor source for a table.
@@ -389,7 +389,7 @@ opens in a tab of its own, as any link to another site does), or an `Action` (th
 ### `Calendar` → a panel of a month
 
 One panel. Header as above; the body is a table of whole weeks that holds a month, each day marked when something is on it. The source is `Load(ctx, Span)`, asked for the days that the grid shows (the month, and the days of the first and last weeks
-that are not of it, so that a day at the edge shows what is on it), and `Date` says when an item is, whose day in UTC it is on. The month is in the address as `<name>.month=2026-10`, where the name is the leaf's title as the address spells any
+that are not of it, so that a day at the edge shows what is on it), and `Date` says when an item is, whose day in UTC it is on. The month is in the address as `<name>.month=2026-10`, where the name is the panel's title as the address spells any
 label, as a table's is; the links to the months either side, and back to the current one, are real links to the same page with the rest of the address as it was, so it works without script and a copied link shows the same month, and with script it replaces the panel in place. A month that is
 not one, or not within 1900 to 2200, is the current month and not an error. `Open` is a `Link` built from a `Day` (its date and how many items are on it), or an `Href` (an address, which opens in a tab of its own), shown only on a day with items and, for a `Link`, only if the visitor may follow it; the calendar does not own
 a list of the items of a day, and the page that does is the app's. A week begins on Monday, or on Sunday with `SundayFirst`; `WeekNumbers` adds the ISO week numbers, which are of weeks that begin on Monday, so it cannot be combined with `SundayFirst`. `Today` is the clock unless
@@ -598,18 +598,18 @@ one is deferred on purpose.
 Absences that are choices, not gaps:
 
 - **No time-range picker and no auto-refresh interval.** Both are dashboard
-  concepts. A control plane refreshes a leaf on demand; it does not poll. If
-  this ever changes it should change as a declaration on a leaf, not as global
-  chrome.
+  concepts. A control plane refreshes a panel on demand; it does not poll. If
+  this ever changes it should change as a declaration on a panel, not as a setting of
+  the whole page.
 - **No row buttons and no selection in a list of items.** A `List` is read: an item leads somewhere, with its headline (a `Link`, an `Href` or, for what neither can say, an `Action`, which is a POST that
   cannot be opened in a new tab and needs a `Key`), and a page that has a button per item, or acts on a selection, has a `Table` for it.
 - **No axes, no legend and no multi-series chart.** A `Trend`'s chart is a sparkline, the shape of a figure beside the figure, and it is
-  drawn as part of a value (a cell) and not as a leaf of its own. It was added after this section said there
-  should be no chart or statistic leaf, which was the rule while every leaf was a kind of text a model has: a figure with its change and its shape is that too, if it
+  drawn as part of a value (a cell) and not as a panel of its own. It was added after this section said there
+  should be no chart or statistic panel, which was the rule while every panel was a kind of text a model has: a figure with its change and its shape is that too, if it
   is an accessor, and so `Trend` works in a table and a form. What a page needs beyond that, a chart with a scale, a time range or two lines, is
   not here, and is the app's own panel or a link to the tool that does it; see `design-decisions.md` for what the figures cost.
 - **No per-panel menu.** A panel's header carries a title, a description and a
   status. Reloading is the page's Refresh, so a panel is replaced only by
   following its own sort, pager or row links, which are the only per-panel
   operations that exist. A panel-level menu would mean inventing a concept the
-  body tree does not have.
+  view tree does not have.
