@@ -159,7 +159,7 @@ type Nav struct {
 // [Calendar], [Toolbar] or [FileUpload]), or a layout, which arranges other Views ([Stack], [Split], [Columns], [When] or [Tabs]). Only this package implements it.
 type View interface {
 	validateView(v *viewValidator)
-	lowerView(at ir.Addr) ir.Node
+	lowerView(at ir.Pos) ir.Node
 }
 
 // NavEntry is one entry in the sidebar of a [Page] that has [Page.NavEntries]: an address
@@ -317,7 +317,7 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 			return convert.Slice(found, func(h Hit[A]) ir.Hit { return ir.Hit{Args: h.Args, Title: h.Title, Desc: h.Desc} }), nil
 		}
 	}
-	page.Root = p.View.lowerView(ir.Addr{})
+	page.Root = p.View.lowerView(ir.Pos{})
 	assignViewIDs(page.Root)
 	return page
 }

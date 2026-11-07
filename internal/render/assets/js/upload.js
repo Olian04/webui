@@ -101,11 +101,11 @@
     if (form.hasAttribute('data-upload-ready')) return;
     var multiple = form.hasAttribute('data-multiple');
     var input = form.querySelector('input[type="file"][name="file"]');
-    var leafInput = form.querySelector('input[name="_view"]');
-    if (!input || input.disabled || !leafInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
+    var viewInput = form.querySelector('input[name="_view"]');
+    if (!input || input.disabled || !viewInput) return; // a panel that the Guard disabled has a chooser that is disabled, which there is nothing to add to
     form.setAttribute('data-upload-ready', '');
 
-    var leaf = leafInput.value;
+    var viewId = viewInput.value;
     var panel = form.closest('[data-view]') || form;
     var submit = form.querySelector('.panel-foot button[type="submit"], .panel-foot button:not([type])');
     var wasRequired = input.required;
@@ -256,7 +256,7 @@
       input.required = wasRequired;
       // The panels around this one may show what was just sent: they are asked for again. An outcome that went somewhere is followed, as it would
       // be by a browser that was redirected, when every file went well.
-      document.dispatchEvent(new CustomEvent('webui:changed', { detail: { view: leaf } }));
+      document.dispatchEvent(new CustomEvent('webui:changed', { detail: { view: viewId } }));
       if (all && next) window.location.assign(next.href);
     }
 
@@ -288,7 +288,7 @@
       var xhr = new XMLHttpRequest();
       running = xhr;
       xhr.open('POST', form.getAttribute('action') || window.location.href);
-      xhr.setRequestHeader(VIEW_HEADER, leaf);
+      xhr.setRequestHeader(VIEW_HEADER, viewId);
       xhr.upload.onprogress = function (e) {
         if (e.lengthComputable) {
           progress.max = e.total;

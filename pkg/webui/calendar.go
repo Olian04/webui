@@ -84,7 +84,7 @@ func (c Calendar[M]) validateView(v *viewValidator) {
 	}
 }
 
-func (c Calendar[M]) lowerView(at ir.Addr) ir.Node {
+func (c Calendar[M]) lowerView(at ir.Pos) ir.Node {
 	n := &ir.Calendar{
 		At: at, Title: c.Title, Desc: c.Desc, SundayFirst: c.SundayFirst, WeekNumbers: c.WeekNumbers, Today: c.Today,
 		Date: func(m any) time.Time { return c.Date(m.(M)) },

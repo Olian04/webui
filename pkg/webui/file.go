@@ -254,7 +254,7 @@ func lowerFile[M any](name string, a File[M]) ir.Field {
 }
 
 func (a File[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *FileInfo")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) *FileInfo")
 	validateFile(v, at, a)
 	if site.where == "Toolbar" {
 		v.add(at+" is a File in a toolbar", "A toolbar shows values and takes no input, and a file is a form's input: put it in a Form panel.")

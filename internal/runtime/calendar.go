@@ -12,7 +12,7 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// calendar loads a calendar leaf for the month that the address names, or the current one, and builds its view. The source is asked for the days that the grid shows, and
+// calendar loads a calendar panel for the month that the address names, or the current one, and builds its view. The source is asked for the days that the grid shows, and
 // the items are counted by their day in UTC. A day with items leads where Open says, if the visitor may go there. A failed Load fails that panel, not the page.
 func (p *Program) calendar(ctx context.Context, req *Request, page *ir.Page, n *ir.Calendar) templ.Component {
 	now := time.Now
@@ -24,7 +24,7 @@ func (p *Program) calendar(ctx context.Context, req *Request, page *ir.Page, n *
 	if m, ok := calendar.Parse(req.Raw[args.ViewKey(n.ID, "month")]); ok {
 		month = m
 	}
-	view := render.CalendarView{Node: n, Page: page, Month: month, Current: calendar.Of(today), Today: today}
+	view := render.LoadedCalendar{Node: n, Page: page, Month: month, Current: calendar.Of(today), Today: today}
 	view.Path, view.Query = req.encode(page)
 
 	from, to := calendar.Span(month, n.SundayFirst)
@@ -93,7 +93,7 @@ func (p *Program) dayRefused(ctx context.Context, page *ir.Page, n *ir.Calendar,
 	refused := map[string]bool{}
 	for key, count := range items {
 		if day, ok := dayOf(key, count); ok {
-			refused[key] = !p.gateOf(page, "the click on a day", func() error { return n.Click.Action.Guard(ctx, day) }).Open()
+			refused[key] = !p.accessOf(page, "the click on a day", func() error { return n.Click.Action.Guard(ctx, day) }).Open()
 		}
 	}
 	return refused

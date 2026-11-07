@@ -271,7 +271,7 @@ func TestAWeekBeginsOnSundayOrHasItsNumberShown(t *testing.T) {
 	assert.Contains(t, body, `<span class="sr-only">Week </span>40</th>`)                                // and of 28 September
 }
 
-func TestACalendarRefreshesAsALeafOfItsOwn(t *testing.T) {
+func TestACalendarRefreshesAsAPanelOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	src := &calendarSource{}

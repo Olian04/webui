@@ -47,7 +47,7 @@ var Sites = webui.Page[webui.NoArgs]{
 	View: SitesTable,
 }
 
-// SitesTable is also on the landing page: a leaf is a value, so any page can
+// SitesTable is also on the landing page: a panel is a value, so any page can
 // hold the one a page already has.
 var SitesTable = webui.Table[SiteSummary]{
 	Title:  "Sites",

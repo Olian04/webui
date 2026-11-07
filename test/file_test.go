@@ -109,7 +109,7 @@ func multipartPost(h http.Handler, target string, values map[string]string, part
 func multipartPostBody(h http.Handler, target string, values map[string]string, wrap func(io.Reader) io.Reader, parts ...part) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
-	values = withLeaf(values)
+	values = withView(values)
 	for k, v := range values {
 		_ = w.WriteField(k, v)
 	}
@@ -132,7 +132,7 @@ func multipartPostBody(h http.Handler, target string, values map[string]string, 
 	return rec
 }
 
-func withLeaf(values map[string]string) map[string]string {
+func withView(values map[string]string) map[string]string {
 	out := map[string]string{"_view": "p", "f0": "Report"}
 	maps.Copy(out, values)
 	return out

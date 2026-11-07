@@ -17,12 +17,12 @@ type Problem struct {
 	Fix    string
 }
 
-// ViewSep separates a leaf's ID from the name of one of its view parameters in
+// ViewSep separates a panel's ID from the name of one of its view parameters in
 // the address ("devices.offset"). Argument names may not contain it, so a view
 // parameter can never collide with a page argument.
 const ViewSep = "."
 
-// ViewKey is the address parameter for one piece of a leaf's view state.
+// ViewKey is the address parameter for one piece of a panel's view state.
 func ViewKey(id, param string) string { return id + ViewSep + param }
 
 // FilterKey is the address parameter for the filter on one column of a table:

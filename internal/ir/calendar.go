@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-// Calendar is a leaf that shows a month as a grid of days, each with a mark when it has items and a link when it leads somewhere. The visible month is in the
+// Calendar is a panel that shows a month as a grid of days, each with a mark when it has items and a link when it leads somewhere. The visible month is in the
 // address, and is changed by links. It only reads.
 type Calendar struct {
-	At Addr
+	At Pos
 
-	// ID names this leaf's view state in the address: "<ID>.month" is the month that is shown.
+	// ID names this panel's view state in the address: "<ID>.month" is the month that is shown.
 	ID string
 
 	Title string
@@ -39,7 +39,7 @@ type CalendarDay struct {
 	Items int
 }
 
-// Addr reports the node's position in the body tree.
-func (c *Calendar) Addr() Addr { return c.At }
+// Pos reports the node's position in the view tree.
+func (c *Calendar) Pos() Pos { return c.At }
 
 func (c *Calendar) Children() []Node { return nil }

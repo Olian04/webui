@@ -20,7 +20,7 @@ func (p *Program) whenShown(ctx context.Context, page *ir.Page, n *ir.When) (sho
 
 // conditionCache is what each conditional node of a page decided, for one request, so that a condition is asked once
 // however many times it is looked at: to say whether a tab is shown, and again to draw it. It is shared by the copies of the
-// request that its panels are built with. A request without one (a refresh of a leaf, an export) asks each time.
+// request that its panels are built with. A request without one (a refresh of a panel, an export) asks each time.
 type conditionCache struct {
 	mu sync.Mutex
 	m  map[ir.Node]*conditionResult
@@ -60,9 +60,9 @@ func (p *Program) decide(ctx context.Context, page *ir.Page, n ir.Node) (shown, 
 	return true, true
 }
 
-// gatesOf maps the id of each leaf and each Tabs that is under a When to the Whens above it, the outermost first. A leaf that is under none is not in it. The ids
-// are positions, as leavesOf has them, so what is hidden is named by the same thing that names what is shown.
-func gatesOf(root ir.Node) map[string][]*ir.When {
+// conditionsOf maps the id of each panel and each Tabs that is under a When to the Whens above it, the outermost first. A panel that is under none is not in it. The ids
+// are positions, as panelsOf has them, so what is hidden is named by the same thing that names what is shown.
+func conditionsOf(root ir.Node) map[string][]*ir.When {
 	out := map[string][]*ir.When{}
 	var walk func(n ir.Node, above []*ir.When)
 	walk = func(n ir.Node, above []*ir.When) {
@@ -73,9 +73,9 @@ func gatesOf(root ir.Node) map[string][]*ir.When {
 		case *ir.Stack, *ir.Columns: // they only arrange: there is nothing of theirs to hide
 		case *ir.When:
 			above = append(above[:len(above):len(above)], n)
-		default: // a leaf, or a Tabs, which is hidden as a whole
+		default: // a panel, or a Tabs, which is hidden as a whole
 			if len(above) > 0 {
-				out[render.LeafID(n.Addr())] = above
+				out[render.ViewID(n.Pos())] = above
 			}
 		}
 		for _, c := range n.Children() {
@@ -87,7 +87,7 @@ func gatesOf(root ir.Node) map[string][]*ir.When {
 }
 
 // shown is whether every When in whens holds, asked in order and stopping at the first that does not, and a Load that fails counts as one that does not. It is what a
-// request for a leaf under them is let through by: a leaf that is hidden is answered as one that is not there.
+// request for a panel under them is let through by: a panel that is hidden is answered as one that is not there.
 func (p *Program) shown(ctx context.Context, page *ir.Page, whens []*ir.When) bool {
 	for _, w := range whens {
 		if shown, ok := p.whenShown(ctx, page, w); !ok || !shown {
@@ -97,16 +97,16 @@ func (p *Program) shown(ctx context.Context, page *ir.Page, whens []*ir.When) bo
 	return true
 }
 
-// reachable is the leaves that a request may name: all of them, less those that are under a When that does not hold. A page with no When has the map as it is.
-func (p *Program) reachable(ctx context.Context, page *ir.Page, leaves map[string]ir.Node, gates map[string][]*ir.When) map[string]ir.Node {
-	if len(gates) == 0 {
-		return leaves
+// reachable is the panels that a request may name: all of them, less those that are under a When that does not hold. A page with no When has the map as it is.
+func (p *Program) reachable(ctx context.Context, page *ir.Page, panels map[string]ir.Node, conditions map[string][]*ir.When) map[string]ir.Node {
+	if len(conditions) == 0 {
+		return panels
 	}
-	held := map[*ir.When]bool{} // each When is asked once, however many leaves are under it
-	out := make(map[string]ir.Node, len(leaves))
-	for id, leaf := range leaves {
+	held := map[*ir.When]bool{} // each When is asked once, however many panels are under it
+	out := make(map[string]ir.Node, len(panels))
+	for id, panel := range panels {
 		ok := true
-		for _, w := range gates[id] {
+		for _, w := range conditions[id] {
 			if _, asked := held[w]; !asked {
 				shown, loaded := p.whenShown(ctx, page, w)
 				held[w] = loaded && shown
@@ -117,7 +117,7 @@ func (p *Program) reachable(ctx context.Context, page *ir.Page, leaves map[strin
 			}
 		}
 		if ok {
-			out[id] = leaf
+			out[id] = panel
 		}
 	}
 	return out

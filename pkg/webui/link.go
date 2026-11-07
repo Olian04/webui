@@ -141,7 +141,7 @@ func (l Link[M, A]) validateToolbarItem(v *viewValidator, at string, _ map[strin
 
 // lowerToolbarItem is a toolbar's link: its Args are built with no subject, so what the runtime hands over is ignored, and the zero M, which is NoArgs,
 // is what they are given.
-func (l Link[M, A]) lowerToolbarItem(ir.Addr, string) ir.ToolbarItem {
+func (l Link[M, A]) lowerToolbarItem(ir.Pos, string) ir.ToolbarItem {
 	link := l.lowerLink()
 	link.Args = func(ctx context.Context, _ any) any { var none M; return l.Args(ctx, none) }
 	return ir.ToolbarItem{Label: l.Label, Role: ir.Role(l.Role), Link: link}

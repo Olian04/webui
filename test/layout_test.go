@@ -81,7 +81,7 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 	assert.Contains(t, stale, "Overview-row")
 }
 
-func TestLayoutsGiveLeavesPositionalIDs(t *testing.T) {
+func TestLayoutsGivePanelsPositionalIDs(t *testing.T) {
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
@@ -120,7 +120,7 @@ func TestAColumnAndATabInAColumnsFillTheRow(t *testing.T) {
 	assert.Contains(t, css, ".tabset[aria-busy='true'] > [data-tabbody] {\n  opacity: 0.55;")
 }
 
-func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
+func TestPanelRequestReturnsOnlyThatPanel(t *testing.T) {
 	t.Parallel()
 
 	h, loads := layoutApp(nil)
@@ -136,7 +136,7 @@ func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 	assert.Contains(t, body, "Events-row")
 	assert.Contains(t, rec.Header().Get("Vary"), "X-Webui-View")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
-	// Only that leaf was read; the rest of the screen holds still.
+	// Only that panel was read; the rest of the screen holds still.
 	assert.Equal(t, loads[0].Load(), int32(0))
 	assert.Equal(t, loads[1].Load(), int32(1))
 	assert.Equal(t, loads[2].Load(), int32(0))
@@ -145,7 +145,7 @@ func TestLeafRequestReturnsOnlyThatPanel(t *testing.T) {
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/d1").Header().Get("Vary"), "X-Webui-View")
 }
 
-func TestLeafRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
+func TestPanelRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
 	t.Parallel()
 
 	var denied bool
@@ -165,11 +165,11 @@ func TestLeafRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
 	}
 
 	assert.Equal(t, ask("p.9").Code, http.StatusNotFound)
-	assert.Equal(t, ask("p.0").Code, http.StatusNotFound) // a layout is not a leaf
+	assert.Equal(t, ask("p.0").Code, http.StatusNotFound) // a layout is not a panel
 	assert.Equal(t, ask("../../etc").Code, http.StatusNotFound)
 
 	denied = true
-	rec := ask("p.0.1") // the leaf URL is the page URL: the same Guard runs first
+	rec := ask("p.0.1") // the panel URL is the page URL: the same Guard runs first
 	assert.Equal(t, rec.Code, http.StatusForbidden)
 	assert.Contains(t, rec.Body.String(), "not for you")
 	assert.Equal(t, loads[1].Load(), int32(0))
@@ -278,9 +278,9 @@ func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T)
 	assert.True(t, name+st+multi+size > 99.9 && name+st+multi+size < 100.1)
 }
 
-func serveLeaf(h http.Handler, target, leaf string) *httptest.ResponseRecorder {
+func serveView(h http.Handler, target, panel string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
-	req.Header.Set("X-Webui-View", leaf)
+	req.Header.Set("X-Webui-View", panel)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	return rec
@@ -292,7 +292,7 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	t.Parallel()
 
 	h, loads := layoutApp(nil)
-	rec := serveLeaf(h, "/admin/device/d1?tabs.tab=raw", "p.1")
+	rec := serveView(h, "/admin/device/d1?tabs.tab=raw", "p.1")
 	body := rec.Body.String()
 
 	assert.Equal(t, rec.Code, http.StatusOK)
@@ -311,8 +311,8 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 
 	// It is the page's own request: the Guard runs, and an id that is not a Tabs or a panel is a 404.
 	refused, _ := layoutApp(func(context.Context, layoutArgs) error { return errors.New("no") })
-	assert.Equal(t, serveLeaf(refused, "/admin/device/d1", "p.1").Code, http.StatusForbidden)
-	assert.Equal(t, serveLeaf(h, "/admin/device/d1", "p.9").Code, http.StatusNotFound)
+	assert.Equal(t, serveView(refused, "/admin/device/d1", "p.1").Code, http.StatusForbidden)
+	assert.Equal(t, serveView(h, "/admin/device/d1", "p.9").Code, http.StatusNotFound)
 }
 
 // A Tabs has as many tabs as it is given, and a strip that has more than fit scrolls sideways with its tabs at their own size:

@@ -13,7 +13,7 @@ func Walk(n Node, visit func(Node)) {
 	}
 }
 
-// Markdowns is every markdown leaf under n, in the order the page shows them.
+// Markdowns is every markdown panel under n, in the order the page shows them.
 func Markdowns(n Node) []*Markdown {
 	var out []*Markdown
 	Walk(n, func(n Node) {

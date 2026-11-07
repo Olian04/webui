@@ -67,7 +67,7 @@ type ToolbarItem interface {
 	validateToolbarItem(v *viewValidator, at string, seen map[string]bool)
 
 	// lowerToolbarItem is the control as the IR holds it. at is the toolbar's address, and prefix what a form names its fields by.
-	lowerToolbarItem(at ir.Addr, prefix string) ir.ToolbarItem
+	lowerToolbarItem(at ir.Pos, prefix string) ir.ToolbarItem
 }
 
 // ASSERT: Toolbar implements View
@@ -91,7 +91,7 @@ func (t Toolbar) validateView(v *viewValidator) {
 	}
 }
 
-func (t Toolbar) lowerView(at ir.Addr) ir.Node {
+func (t Toolbar) lowerView(at ir.Pos) ir.Node {
 	out := &ir.Toolbar{At: at, RightFrom: len(t.Left)}
 	for i, item := range t.items() {
 		out.Items = append(out.Items, item.lowerToolbarItem(at, "t"+strconv.Itoa(i)+"_"))
@@ -117,6 +117,6 @@ func (f Form[M]) validateToolbarItem(v *viewValidator, at string, seen map[strin
 	}
 }
 
-func (f Form[M]) lowerToolbarItem(at ir.Addr, prefix string) ir.ToolbarItem {
+func (f Form[M]) lowerToolbarItem(at ir.Pos, prefix string) ir.ToolbarItem {
 	return ir.ToolbarItem{Form: &ir.Form{At: at, Title: f.Title, Fields: lowerAccessors(f.Fields, prefix), Load: eraseLoad(f.Load)}}
 }

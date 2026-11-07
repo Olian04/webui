@@ -13,16 +13,16 @@ import (
 	"github.com/Olian04/webui/internal/render"
 )
 
-// ViewHeader names the leaf a request wants refreshed. Framework parameters
+// ViewHeader names the panel a request wants refreshed. Framework parameters
 // travel as headers, never in the URL: the URL carries user state, so nothing
 // framework-owned appears in an address anyone might copy.
 const ViewHeader = "X-Webui-View"
 
-// leaf answers a refresh of one panel. It is the same URL as the page, so the
+// panel answers a refresh of one panel. It is the same URL as the page, so the
 // page Guard has already run, the arguments are the page's, and the markup is
-// what the full page would hold for that leaf — one implementation, two
-// callers. An id that names no leaf is a 404, not a fall back to the page.
-func (p *Program) leaf(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n ir.Node) {
+// what the full page would hold for that panel — one implementation, two
+// callers. An id that names no panel is a 404, not a fall back to the page.
+func (p *Program) panel(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n ir.Node) {
 	if n == nil {
 		http.NotFound(w, r)
 		return
@@ -82,11 +82,11 @@ func (p *Program) tabs(ctx context.Context, req *Request, page *ir.Page, n *ir.T
 	if err != nil {
 		return nil, err
 	}
-	return render.Tabs(tabsName(n), strip, content, render.LeafID(n.At)), nil
+	return render.Tabs(tabsName(n), strip, content, render.ViewID(n.At)), nil
 }
 
 // visible is whether n can show anything: a conditional node (today a When) shows when its condition holds and its child
-// can show something, a layout when any of its children can (one declared with none is as declared), and a leaf always. A
+// can show something, a layout when any of its children can (one declared with none is as declared), and a panel always. A
 // condition that cannot be decided counts as hidden, as it does where it is drawn. Another kind of conditional node is
 // a case here, beside When.
 func (p *Program) visible(ctx context.Context, req *Request, page *ir.Page, n ir.Node) bool {

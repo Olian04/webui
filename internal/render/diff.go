@@ -7,8 +7,8 @@ import (
 	"github.com/Olian04/webui/internal/textdiff"
 )
 
-// DiffView is a diff leaf with its model loaded. The runtime fills it.
-type DiffView struct {
+// LoadedDiff is a diff panel with its model loaded. The runtime fills it.
+type LoadedDiff struct {
 	Node *ir.Diff
 
 	Original, Modified string
@@ -29,8 +29,8 @@ type DiffView struct {
 }
 
 // NewDiffView compares the two texts of a diff.
-func NewDiffView(n *ir.Diff, original, modified string) DiffView {
-	v := DiffView{Node: n, Original: original, Modified: modified}
+func NewDiffView(n *ir.Diff, original, modified string) LoadedDiff {
+	v := LoadedDiff{Node: n, Original: original, Modified: modified}
 	v.Hunks, v.Added, v.Removed, v.Compared = textdiff.Unified(original, modified, 3)
 	return v
 }

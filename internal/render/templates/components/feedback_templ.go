@@ -194,7 +194,7 @@ func Toast(p ToastProps) templ.Component {
 	})
 }
 
-// EmptyStateProps replaces a leaf's rows when there are none. It names the
+// EmptyStateProps replaces a panel's rows when there are none. It names the
 // condition and then names the way out — an empty state that only says
 // "nothing here" has wasted the one moment it had.
 type EmptyStateProps struct {

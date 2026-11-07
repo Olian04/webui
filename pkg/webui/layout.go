@@ -156,11 +156,11 @@ func (t Tabs) validateView(v *viewValidator) {
 	}
 }
 
-func (s Stack) lowerView(at ir.Addr) ir.Node {
+func (s Stack) lowerView(at ir.Pos) ir.Node {
 	return &ir.Stack{At: at, Nodes: lowerChildren(at, s)}
 }
 
-func (s Split) lowerView(at ir.Addr) ir.Node {
+func (s Split) lowerView(at ir.Pos) ir.Node {
 	out := &ir.Columns{At: at, Nodes: lowerChildren(at, s)}
 	for range s {
 		out.Weights = append(out.Weights, 1)
@@ -168,39 +168,39 @@ func (s Split) lowerView(at ir.Addr) ir.Node {
 	return out
 }
 
-func (c Columns) lowerView(at ir.Addr) ir.Node {
+func (c Columns) lowerView(at ir.Pos) ir.Node {
 	out := &ir.Columns{At: at}
 	for i, col := range c {
-		out.Nodes = append(out.Nodes, col.View.lowerView(childAddr(at, i)))
+		out.Nodes = append(out.Nodes, col.View.lowerView(childPos(at, i)))
 		out.Weights = append(out.Weights, max(int(col.Weight), 1))
 	}
 	return out
 }
 
-func (w When[M]) lowerView(at ir.Addr) ir.Node {
-	return &ir.When{At: at, Load: eraseLoad(w.Load), Show: fieldOf[M](w.Show, "w"), Child: w.View.lowerView(childAddr(at, 0))}
+func (w When[M]) lowerView(at ir.Pos) ir.Node {
+	return &ir.When{At: at, Load: eraseLoad(w.Load), Show: fieldOf[M](w.Show, "w"), Child: w.View.lowerView(childPos(at, 0))}
 }
 
-func (t Tabs) lowerView(at ir.Addr) ir.Node {
+func (t Tabs) lowerView(at ir.Pos) ir.Node {
 	out := &ir.Tabs{At: at}
 	for i, p := range t {
-		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Child: p.View.lowerView(childAddr(at, i))})
+		out.Tabs = append(out.Tabs, ir.Tab{Key: p.key(), Label: p.Label, Child: p.View.lowerView(childPos(at, i))})
 	}
 	return out
 }
 
-func lowerChildren(at ir.Addr, children []View) []ir.Node {
+func lowerChildren(at ir.Pos, children []View) []ir.Node {
 	out := make([]ir.Node, len(children))
 	for i, c := range children {
-		out[i] = c.lowerView(childAddr(at, i))
+		out[i] = c.lowerView(childPos(at, i))
 	}
 	return out
 }
 
-// childAddr is the only place an Addr grows. It is derived from position and
+// childPos is the only place an Addr grows. It is derived from position and
 // nothing the user typed, so a refresh request cannot name anything else.
-func childAddr(at ir.Addr, i int) ir.Addr {
-	return append(append(ir.Addr(nil), at...), i)
+func childPos(at ir.Pos, i int) ir.Pos {
+	return append(append(ir.Pos(nil), at...), i)
 }
 
 // assignViewIDs names the view state of every table, list of items, calendar and tabs on a page: the part

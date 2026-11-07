@@ -105,7 +105,7 @@ func (a Action[M]) validateToolbarItem(v *viewValidator, at string, _ map[string
 
 // lowerToolbarItem is a toolbar's button: it has no subject, so what the runtime hands over is ignored, and the action is done to the zero M, which is
 // NoArgs, the only subject that a toolbar's item can have.
-func (a Action[M]) lowerToolbarItem(ir.Addr, string) ir.ToolbarItem {
+func (a Action[M]) lowerToolbarItem(ir.Pos, string) ir.ToolbarItem {
 	return ir.ToolbarItem{Label: a.Label, Role: ir.Role(a.Role), Action: lowerActionWith[M, M](a, func(any) M { var none M; return none })}
 }
 

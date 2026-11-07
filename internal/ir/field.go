@@ -164,9 +164,9 @@ type Choice struct {
 	Tone  Tone
 }
 
-// Leaves are the fields of fs that are not groups, in order, with the fields of a group in the
+// Flatten is the fields of fs that are not groups, in order, with the fields of a group in the
 // place of the group.
-func Leaves(fs []Field) iter.Seq[Field] {
+func Flatten(fs []Field) iter.Seq[Field] {
 	return func(yield func(Field) bool) {
 		for _, f := range fs {
 			if len(f.Group) == 0 {
@@ -175,8 +175,8 @@ func Leaves(fs []Field) iter.Seq[Field] {
 				}
 				continue
 			}
-			for leaf := range Leaves(f.Group) {
-				if !yield(leaf) {
+			for inner := range Flatten(f.Group) {
+				if !yield(inner) {
 					return
 				}
 			}

@@ -17,7 +17,7 @@
   function $$(selector, root) {
     return Array.prototype.slice.call((root || document).querySelectorAll(selector));
   }
-  function leafSelector(id) {
+  function viewSelector(id) {
     return '[data-view="' + CSS.escape(id) + '"]';
   }
 
@@ -33,10 +33,10 @@
   }
 
   // A panel in words: its title, and how much of it is shown when it says (a table's range).
-  function describeLeaf(leaf, what) {
-    var title = $('.panel-title', leaf);
-    var info = $('.pager-info', leaf);
-    return (title ? title.textContent.trim() : leaf.hasAttribute('data-toolbar') ? 'Toolbar' : 'Panel') + ' ' + what + (info ? ': ' + info.textContent.trim() : '');
+  function describeView(view, what) {
+    var title = $('.panel-title', view);
+    var info = $('.pager-info', view);
+    return (title ? title.textContent.trim() : view.hasAttribute('data-toolbar') ? 'Toolbar' : 'Panel') + ' ' + what + (info ? ': ' + info.textContent.trim() : '');
   }
 
   // The focus of a panel that was replaced while it was in it goes to the new panel's title, which is where a reader starts reading it, and not to the page.
@@ -250,7 +250,7 @@
   // The same URL, asking for one panel. Returns the panel element, or throws
   // when the answer is anything but that panel: the caller falls back to a
   // plain navigation, which is what the link was all along.
-  async function fetchLeaf(id, href, signal, marker) {
+  async function fetchView(id, href, signal, marker) {
     marker = marker || 'data-view'; // a panel, or the set of tabs, which is named by its own attribute
     var started = performance.now();
     var res = await fetch(href, {
@@ -268,8 +268,8 @@
     return next;
   }
 
-  async function refreshLeaf(id, href, push) {
-    var el = $(leafSelector(id));
+  async function refreshView(id, href, push) {
+    var el = $(viewSelector(id));
     if (!el) return false;
 
     var previous = inflight.get(id);
@@ -281,10 +281,10 @@
     status('GET', href, 'panel ' + id);
     try {
       var hadFocus = el.contains(document.activeElement);
-      var next = await fetchLeaf(id, href, ctl.signal);
+      var next = await fetchView(id, href, ctl.signal);
       el.replaceWith(next);
       if (hadFocus) refocus(next);
-      announce(describeLeaf(next, 'updated'));
+      announce(describeView(next, 'updated'));
       if (push) moveTo(href);
       settle(href, next);
     } catch (err) {
@@ -310,11 +310,11 @@
       if (armed.has(el)) return;
       armed.add(el);
       var secs = parseInt(el.getAttribute('data-refresh-after'), 10);
-      if (secs > 0) setTimeout(function () { pollLeaf(el, secs); }, secs * 1000);
+      if (secs > 0) setTimeout(function () { pollView(el, secs); }, secs * 1000);
     });
   }
 
-  async function pollLeaf(el, secs) {
+  async function pollView(el, secs) {
     if (!el.isConnected) return; // replaced since: the one that replaced it has its own say
     if (el.hasAttribute('data-paused')) return; // the reader stopped it, and starts it again with the same button
     var id = el.getAttribute('data-view');
@@ -322,22 +322,22 @@
       document.addEventListener('visibilitychange', function again() {
         if (document.hidden) return;
         document.removeEventListener('visibilitychange', again);
-        pollLeaf(el, secs);
+        pollView(el, secs);
       });
       return;
     }
     if (el.contains(document.activeElement) || inflight.has(id)) {
-      setTimeout(function () { pollLeaf(el, secs); }, secs * 1000);
+      setTimeout(function () { pollView(el, secs); }, secs * 1000);
       return;
     }
     var ctl = new AbortController();
     inflight.set(id, ctl);
     try {
-      var next = await fetchLeaf(id, location.pathname + location.search, ctl.signal);
+      var next = await fetchView(id, location.pathname + location.search, ctl.signal);
       if (el.isConnected) {
         el.replaceWith(next);
         // A poll that finds the same thing going on says nothing, which a reader would not want said every few seconds; the one that finds it done says so.
-        if (!next.hasAttribute('data-refresh-after')) announce(describeLeaf(next, 'is up to date'));
+        if (!next.hasAttribute('data-refresh-after')) announce(describeView(next, 'is up to date'));
       }
     } catch (err) {
       // The panel stays as it was, and says to reload.
@@ -350,20 +350,20 @@
   // again: it is not asked for while it is paused, and is asked for at once when it is not.
   document.addEventListener('click', function (e) {
     var button = e.target.closest('[data-refresh-pause]');
-    var leaf = button && button.closest('[data-view]');
-    if (!leaf) return;
-    var state = $('[data-refresh-state]', leaf);
-    var title = $('.panel-title', leaf);
+    var view = button && button.closest('[data-view]');
+    if (!view) return;
+    var state = $('[data-refresh-state]', view);
+    var title = $('.panel-title', view);
     var name = title ? title.textContent.trim() : 'Panel';
-    if (leaf.hasAttribute('data-paused')) {
-      leaf.removeAttribute('data-paused');
+    if (view.hasAttribute('data-paused')) {
+      view.removeAttribute('data-paused');
       button.setAttribute('aria-pressed', 'false');
       button.textContent = 'Pause';
       if (state) state.textContent = 'Updating…';
       announce(name + ' is updating again');
-      pollLeaf(leaf, parseInt(leaf.getAttribute('data-refresh-after'), 10) || 2);
+      pollView(view, parseInt(view.getAttribute('data-refresh-after'), 10) || 2);
     } else {
-      leaf.setAttribute('data-paused', '');
+      view.setAttribute('data-paused', '');
       button.setAttribute('aria-pressed', 'true');
       button.textContent = 'Resume';
       if (state) state.textContent = 'Paused';
@@ -396,10 +396,10 @@
         var replaces = $('a[data-in-place]', el);
         var forms = $$('form[method="post"]', el);
         if (!replaces && !forms.length) return;
-        fetchLeaf(id, href)
+        fetchView(id, href)
           .then(function (next) {
             if (replaces) {
-              var current = $(leafSelector(id));
+              var current = $(viewSelector(id));
               if (current && !current.contains(document.activeElement)) current.replaceWith(next); // not from under someone who is typing in it
               return;
             }
@@ -417,7 +417,7 @@
       })
       .forEach(function (set) {
         var id = set.getAttribute('data-tabs');
-        fetchLeaf(id, href, undefined, 'data-tabs')
+        fetchView(id, href, undefined, 'data-tabs')
           .then(function (next) {
             var strip = $('.tabs', set);
             var fresh = $('.tabs', next);
@@ -440,12 +440,12 @@
   // though it has a form for its filters, which are in the address and so are asked for again with it.
   document.addEventListener('webui:changed', function (e) {
     var from = e.detail && e.detail.view;
-    $$('[data-view]').forEach(function (leaf) {
-      var id = leaf.getAttribute('data-view');
-      if (id === from || ($('form', leaf) && !$('table', leaf))) return;
-      fetchLeaf(id, location.pathname + location.search)
+    $$('[data-view]').forEach(function (view) {
+      var id = view.getAttribute('data-view');
+      if (id === from || ($('form', view) && !$('table', view))) return;
+      fetchView(id, location.pathname + location.search)
         .then(function (next) {
-          var current = $(leafSelector(id));
+          var current = $(viewSelector(id));
           if (current && !current.contains(document.activeElement)) current.replaceWith(next);
         })
         .catch(function () {});
@@ -459,13 +459,13 @@
     // since the panel is asked for at the same path, and anything else is left to the browser.
     var a = e.target.closest('a[href][data-in-place]');
     if (!a || a.target || a.hasAttribute('download')) return;
-    var leaf = a.closest('[data-view]');
-    if (!leaf) return;
+    var view = a.closest('[data-view]');
+    if (!view) return;
     var dest = new URL(a.href, location.href);
     if (dest.origin !== location.origin || dest.pathname !== location.pathname) return;
 
     e.preventDefault();
-    refreshLeaf(leaf.getAttribute('data-view'), dest.pathname + dest.search, true);
+    refreshView(view.getAttribute('data-view'), dest.pathname + dest.search, true);
   });
 
   /* ------------------------------- validation ------------------------------ */
@@ -720,8 +720,8 @@
   document.addEventListener('submit', function (e) {
     var form = e.target;
     if (!form.matches || !form.matches('[data-filter-form]')) return;
-    var leaf = form.closest('[data-view]');
-    if (!leaf) return;
+    var view = form.closest('[data-view]');
+    if (!view) return;
     var params = new URLSearchParams();
     new FormData(form).forEach(function (value, name) {
       if (typeof value === 'string' && value.trim() !== '') params.append(name, value);
@@ -729,7 +729,7 @@
     var dest = new URL(form.getAttribute('action'), location.href);
     var href = dest.pathname + (params.toString() ? '?' + params : '');
     e.preventDefault();
-    refreshLeaf(leaf.getAttribute('data-view'), href, true);
+    refreshView(view.getAttribute('data-view'), href, true);
   });
 
   /* ------------------------------ description tips ------------------------------ */

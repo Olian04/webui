@@ -57,9 +57,9 @@ func confirmApp(confirm string, guard func(context.Context, parcel) error) (http
 	return h, ran
 }
 
-// leafValues is a post to the leaf at an address, which formValues cannot be: it posts to the first.
-func leafValues(leaf string, kv ...string) url.Values {
-	v := url.Values{"_view": {leaf}}
+// viewValues is a post to the panel at an address, which formValues cannot be: it posts to the first.
+func viewValues(panel string, kv ...string) url.Values {
+	v := url.Values{"_view": {panel}}
 	for i := 0; i+1 < len(kv); i += 2 {
 		v.Add(kv[i], kv[i+1])
 	}
@@ -93,9 +93,9 @@ func TestSubmittingFromTheDialogDoesTheActionAsTheButtonDoes(t *testing.T) {
 	t.Parallel()
 
 	h, ran := confirmApp("Sure?", nil)
-	assert.Equal(t, post(h, "/admin/t", leafValues("p.1", "_act", "row:0:a")).Code, http.StatusSeeOther)
-	assert.Equal(t, post(h, "/admin/t", leafValues("p.1", "_act", "bulk:0", "_sel", "a")).Code, http.StatusSeeOther)
-	assert.Equal(t, post(h, "/admin/t", leafValues("p.0", "_act", "0")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/t", viewValues("p.1", "_act", "row:0:a")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/t", viewValues("p.1", "_act", "bulk:0", "_sel", "a")).Code, http.StatusSeeOther)
+	assert.Equal(t, post(h, "/admin/t", viewValues("p.0", "_act", "0")).Code, http.StatusSeeOther)
 	assert.Equal(t, post(h, "/admin/f", formValues("f0", "y")).Code, http.StatusSeeOther)
 	assert.Equal(t, ran["row"], 1)
 	assert.Equal(t, ran["bulk"], 1)

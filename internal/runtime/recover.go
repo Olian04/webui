@@ -31,8 +31,8 @@ func (p *Program) recovered(next http.Handler) http.Handler {
 			if req.shell != nil {
 				req.shell.join()
 			}
-			if req.panels != nil {
-				req.panels.settle()
+			if req.parts != nil {
+				req.parts.settle()
 			}
 		}()
 		defer func() {

@@ -2,10 +2,10 @@ package ir
 
 import "context"
 
-// Toolbar is a leaf that is a row of controls for the page it is on: buttons, links, and the values of the models that its forms load, read-only.
-// It is the leaf, and so what is refreshed: the forms in it have no address of their own.
+// Toolbar is a panel that is a row of controls for the page it is on: buttons, links, and the values of the models that its forms load, read-only.
+// It is the panel, and so what is refreshed: the forms in it have no address of their own.
 type Toolbar struct {
-	At Addr
+	At Pos
 
 	// Items are the controls: the ones for the left, and then the ones for the right, which start at RightFrom.
 	Items     []ToolbarItem
@@ -29,8 +29,8 @@ type ToolbarItem struct {
 	Form *Form
 }
 
-// Addr reports the node's position in the body tree.
-func (t *Toolbar) Addr() Addr { return t.At }
+// Pos reports the node's position in the view tree.
+func (t *Toolbar) Pos() Pos { return t.At }
 
 func (t *Toolbar) Children() []Node { return nil }
 

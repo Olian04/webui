@@ -559,8 +559,8 @@ func checkAccessor[M any](v *viewValidator, acc Accessor[M], at string, site acc
 	acc.validateAccessor(v, at, site, seen)
 }
 
-// validateLeaf is what every accessor that is not a group needs: a label, unique where that matters, and a Load. sig is what Load must be, for the message.
-func validateLeaf(v *viewValidator, at string, site accessorSite, seen map[string]bool, label string, noLoad bool, sig string) {
+// validateValue is what every accessor that is not a group needs: a label, unique where that matters, and a Load. sig is what Load must be, for the message.
+func validateValue(v *viewValidator, at string, site accessorSite, seen map[string]bool, label string, noLoad bool, sig string) {
 	switch {
 	case label == "":
 		v.add(at+" has no Label", "Give the accessor a Label; it is the column header and the input label.")
@@ -629,7 +629,7 @@ func validateBounds[T int | float64](v *viewValidator, at string, lo, hi *T) {
 // ------------------------------------------------- the accessors of this file, each as it is checked and lowered
 
 func (a String[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 	if a.Multiline {
 		switch {
@@ -653,7 +653,7 @@ func (a String[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Int[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) int")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) int")
 	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 }
 
@@ -669,7 +669,7 @@ func (a Int[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Float[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
 	validatePrecision(v, at, a.Precision)
 	validateBounds(v, at, a.Rules.Min, a.Rules.Max)
 }
@@ -710,7 +710,7 @@ func (g Group[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Select[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) []string")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) []string")
 	validateSelect(v, at, a)
 }
 
@@ -745,7 +745,7 @@ func (a URL[M]) validateAccessor(v *viewValidator, at string, site accessorSite,
 		v.add(at+" is a URL", "A URL says the same on every row. Make the headline a String, and put where the item is in Open: a Link for a page of this app, or an Href for an address.")
 		return
 	}
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string, returning the address")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) string, returning the address")
 	if site.rowClick && site.first {
 		v.add("a Table's first column is a URL, but its RowClick is there",
 			"The row's own link or button covers the first column, and a link cannot hold a link: put the URL in another column.")
@@ -771,7 +771,7 @@ func (a URL[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Slider[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) float64")
 	validateSlider(v, at, a.Min, a.Max, a.StepSize)
 }
 
@@ -795,7 +795,7 @@ func (a Slider[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Bool[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool")
 }
 
 func (a Bool[M]) lowerAccessor(name string) ir.Field { return lowerBool(a, name) }

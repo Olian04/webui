@@ -17,16 +17,16 @@ import (
 	c "github.com/Olian04/webui/internal/render/templates/components"
 )
 
-// LeafID is the address of a leaf as it appears in the document and in the
-// header of a refresh request: "p" for a body that is itself a leaf, then one
+// ViewID is the address of a panel as it appears in the document and in the
+// header of a refresh request: "p" for a body that is itself a panel, then one
 // index per level, such as "p.0.1". It comes from position only.
-// confirmID is the id of the dialog that a button of a leaf asks in: the leaf, the kind of place the button is in, and its place
+// confirmID is the id of the dialog that a button of a panel asks in: the panel, the kind of place the button is in, and its place
 // there. It is a position and never a key, so it holds nothing that a row says.
-func confirmID(at ir.Addr, kind string, n int) string {
-	return "confirm-" + LeafID(at) + "-" + kind + strconv.Itoa(n)
+func confirmID(at ir.Pos, kind string, n int) string {
+	return "confirm-" + ViewID(at) + "-" + kind + strconv.Itoa(n)
 }
 
-func LeafID(at ir.Addr) string {
+func ViewID(at ir.Pos) string {
 	var b strings.Builder
 	b.WriteString("p")
 	for _, i := range at {
@@ -36,9 +36,9 @@ func LeafID(at ir.Addr) string {
 	return b.String()
 }
 
-// TableView is a table with its data loaded. The runtime fills it; nothing
+// LoadedTable is a table with its data loaded. The runtime fills it; nothing
 // here loads or decides.
-type TableView struct {
+type LoadedTable struct {
 	Node *ir.Table
 	Page *ir.Page
 
@@ -63,17 +63,17 @@ type TableView struct {
 	// may not be clicked by this viewer.
 	ClickRefused []bool
 
-	// Keys is each row's identity, and Gates what each row's action is for this
+	// Keys is each row's identity, and Access what each row's action is for this
 	// viewer, by row then action, as the declared actions number them. Both are
 	// empty for a table with no actions.
-	Keys  []string
-	Gates [][]Gate
+	Keys   []string
+	Access [][]Access
 
 	// ActionHrefs is where each row's controls lead, by row then control, "" for an action, which posts, and for a link that leads nowhere for this viewer.
 	ActionHrefs [][]string
 
-	// BulkGates is what each bulk action is for this viewer, as the declared actions number them.
-	BulkGates []Gate
+	// BulkAccess is what each bulk action is for this viewer, as the declared actions number them.
+	BulkAccess []Access
 
 	Failed bool // Load failed: the panel says so, the page stands
 
@@ -95,7 +95,7 @@ type columnView struct {
 // columns resolves the header: alignment from the value kind, and the sort
 // link for every column that declares a key, when the table has a Sort
 // argument for it to write to.
-func (r *Renderer) columns(v TableView) []columnView {
+func (r *Renderer) columns(v LoadedTable) []columnView {
 	out := make([]columnView, len(v.Node.Columns))
 	for i, f := range v.Node.Columns {
 		col := columnView{Field: f}
@@ -119,7 +119,7 @@ func (r *Renderer) columns(v TableView) []columnView {
 // descending (when the table has somewhere to record that). Either way the
 // table returns to its first page, except a feed, which stays where it is: it
 // orders the page on screen, and its cursor is the way back to it.
-func (r *Renderer) sortLink(v TableView, key string) (string, c.SortDir) {
+func (r *Renderer) sortLink(v LoadedTable, key string) (string, c.SortDir) {
 	id := v.Node.ID
 	current := c.SortNone
 	if v.Q.Sort == key {
@@ -140,7 +140,7 @@ func (r *Renderer) sortLink(v TableView, key string) (string, c.SortDir) {
 
 // tableHref is this table's address with some of its view state changed: the keys in drop are removed
 // and those in set are written, and the rest, the page's arguments and every other table's state, stays.
-func (r *Renderer) tableHref(v TableView, set map[string]string, drop ...string) string {
+func (r *Renderer) tableHref(v LoadedTable, set map[string]string, drop ...string) string {
 	query := maps.Clone(v.Query)
 	if query == nil {
 		query = map[string]string{}
@@ -154,7 +154,7 @@ func (r *Renderer) tableHref(v TableView, set map[string]string, drop ...string)
 
 // emptyLinks are the ways on from a table that shows nothing: to its first page when it is past the end of what there is, and to the table without its filters when
 // some are set, "" for each that does not apply. The empty state says why there is nothing, and these are what the visitor can do about it.
-func (r *Renderer) emptyLinks(v TableView) (first, unfiltered string) {
+func (r *Renderer) emptyLinks(v LoadedTable) (first, unfiltered string) {
 	id := v.Node.ID
 	pages := []string{args.ViewKey(id, "offset"), args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)}
 	if v.Q.Offset > 0 || v.Query[args.ViewKey(id, "after")] != "" {
@@ -176,7 +176,7 @@ func (r *Renderer) emptyLinks(v TableView) (first, unfiltered string) {
 }
 
 // pagerLinks are the previous and next addresses; "" means there is none.
-func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
+func (r *Renderer) pagerLinks(v LoadedTable) (prev, next string) {
 	size := v.Node.PageSize
 	offsetKey := args.ViewKey(v.Node.ID, "offset")
 	at := func(offset int) string {
@@ -201,7 +201,7 @@ func (r *Renderer) pagerLinks(v TableView) (prev, next string) {
 // feedLinks are the addresses of a feed's first page, of the one before this, and of
 // the one after. The cursor is a parameter of the address, with the number of the
 // page's first row and the pages before it, so the first page has none of them.
-func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
+func (r *Renderer) feedLinks(v LoadedTable) (first, prev, next string) {
 	id := v.Node.ID
 	after, row, back := args.ViewKey(id, "after"), args.RowKey(id), args.BackKey(id)
 	// at is this table's address at a page, with the pages before it.
@@ -234,7 +234,7 @@ func (r *Renderer) feedLinks(v TableView) (first, prev, next string) {
 	return first, prev, next
 }
 
-func (r *Renderer) pager(v TableView) c.PagerProps {
+func (r *Renderer) pager(v LoadedTable) c.PagerProps {
 	prev, next := r.pagerLinks(v)
 	p := c.PagerProps{Label: v.label(), Offset: v.Q.Offset, Size: v.Node.PageSize, Total: v.Total, PrevHref: prev, NextHref: next, Export: r.exportLinks(v), ExportNote: exportNote(v)}
 	if v.Total < 0 {
@@ -251,7 +251,7 @@ const ExportCap = 100_000
 
 // exportNote is what the footer says beside the export links when the download may not have every row: the table has more than
 // ExportCap, or does not say how many it has. It is "" when the whole table fits.
-func exportNote(v TableView) string {
+func exportNote(v LoadedTable) string {
 	if v.Total >= 0 && v.Total <= ExportCap {
 		return ""
 	}
@@ -270,7 +270,7 @@ func thousands(n int) string {
 // exportLinks are the links that download a table, for its footer: its sort and filters are kept,
 // and where it is in its pages is not, since a download is every row. A table that does not
 // export, or has failed, has none.
-func (r *Renderer) exportLinks(v TableView) []c.ExportLink {
+func (r *Renderer) exportLinks(v LoadedTable) []c.ExportLink {
 	if !v.Node.Export || v.Failed {
 		return nil
 	}
@@ -289,7 +289,7 @@ func gauge(f ir.Field, text string) c.GaugeProps {
 	return c.GaugeProps{Value: x - f.Min, Max: f.Max - f.Min, Text: text}
 }
 
-func (v TableView) label() string {
+func (v LoadedTable) label() string {
 	if v.Node.Title != "" {
 		return v.Node.Title
 	}
@@ -299,18 +299,18 @@ func (v TableView) label() string {
 // interactive reports whether the table posts: a row action or a bulk action is drawn for
 // this viewer, or a click on a row is an action. A table with none has no form, no checkbox column and
 // no bar: absence is the configuration, and for a viewer whose Guards refuse every action, so it is for them.
-func (v TableView) interactive() bool {
+func (v LoadedTable) interactive() bool {
 	return v.selectable() || v.hasRowActions() || v.Node.Click.Posts()
 }
 
 // clicks is whether row i runs the table's action when clicked.
-func (v TableView) clicks(i int) bool {
+func (v LoadedTable) clicks(i int) bool {
 	return v.Node.Click.Posts() && i < len(v.Keys) && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
 }
 
 // selectable is whether a bulk action is drawn, and so a column to select the rows with and a bar to act on them from.
-func (v TableView) selectable() bool {
-	return slices.ContainsFunc(v.BulkGates, Gate.Drawn)
+func (v LoadedTable) selectable() bool {
+	return slices.ContainsFunc(v.BulkAccess, Access.Drawn)
 }
 
 // linkOf is the address a DisplayLink field has for a row, "" for any other field or
@@ -345,7 +345,7 @@ func momentAttr(text string) string {
 	return ""
 }
 
-func (v TableView) rowClickValue(i int) string {
+func (v LoadedTable) rowClickValue(i int) string {
 	if i < len(v.Keys) {
 		return RowClickValue(v.Keys[i])
 	}
@@ -354,12 +354,12 @@ func (v TableView) rowClickValue(i int) string {
 
 // hasRowActions is whether a row of this window has a row action drawn, and so a column to draw it in: it comes and goes
 // with the rows that the window holds, as the Guards say.
-func (v TableView) hasRowActions() bool {
-	return slices.ContainsFunc(v.Gates, func(row []Gate) bool { return slices.ContainsFunc(row, Gate.Drawn) })
+func (v LoadedTable) hasRowActions() bool {
+	return slices.ContainsFunc(v.Access, func(row []Access) bool { return slices.ContainsFunc(row, Access.Drawn) })
 }
 
 // width is the column count including the ones the table adds itself.
-func (v TableView) width() int {
+func (v LoadedTable) width() int {
 	n := len(v.Node.Columns)
 	if v.selectable() {
 		n++
@@ -393,16 +393,16 @@ func RowClickValue(key string) string { return "click:0:" + key }
 // BulkActionValue is the "_act" value of a bulk action button.
 func BulkActionValue(action int) string { return fmt.Sprintf("bulk:%d", action) }
 
-// gate is what row's action is for this viewer: not drawn, disabled, or as it is.
-func (v TableView) gate(row, action int) Gate {
-	if row < len(v.Gates) && action < len(v.Gates[row]) {
-		return v.Gates[row][action]
+// access is what row's action is for this visitor: not drawn, disabled, or as it is.
+func (v LoadedTable) access(row, action int) Access {
+	if row < len(v.Access) && action < len(v.Access[row]) {
+		return v.Access[row][action]
 	}
-	return Gate{}
+	return Access{}
 }
 
 // actionHref is where row's control leads, "" for one that posts.
-func (v TableView) actionHref(row, action int) string {
+func (v LoadedTable) actionHref(row, action int) string {
 	if row < len(v.ActionHrefs) && action < len(v.ActionHrefs[row]) {
 		return v.ActionHrefs[row][action]
 	}
@@ -410,17 +410,19 @@ func (v TableView) actionHref(row, action int) string {
 }
 
 // clickIsExternal is whether a click on a row leads to another site, which opens in a tab of its own.
-func (v TableView) clickIsExternal() bool { return v.Node.Click != nil && v.Node.Click.External != nil }
+func (v LoadedTable) clickIsExternal() bool {
+	return v.Node.Click != nil && v.Node.Click.External != nil
+}
 
 // externalAttrs is what makes a link open another site in a tab of its own, without handing it this page.
 var externalAttrs = templ.Attributes{"target": "_blank", "rel": "noopener noreferrer"}
 
-// bulkGate is what a bulk action is for this viewer.
-func (v TableView) bulkGate(action int) Gate {
-	if action < len(v.BulkGates) {
-		return v.BulkGates[action]
+// bulkAccess is what a bulk action is for this viewer.
+func (v LoadedTable) bulkAccess(action int) Access {
+	if action < len(v.BulkAccess) {
+		return v.BulkAccess[action]
 	}
-	return Gate{}
+	return Access{}
 }
 
 type carried struct{ Name, Value string }
@@ -520,7 +522,7 @@ func linkAttrs(c *ir.Control) templ.Attributes {
 // name is what an option of the filter says: for a select, its label, and otherwise the value.
 func (f filterView) name(option string) string { return f.Field.LabelOf(option) }
 
-func (r *Renderer) filter(v TableView, f ir.Field) filterView {
+func (r *Renderer) filter(v LoadedTable, f ir.Field) filterView {
 	id := v.Node.ID
 	fv := filterView{Label: f.Label, Field: f, Action: r.PageHref(v.Page, v.Path, nil), FormID: fieldID(v.Node.At, "filter-"+f.Name)}
 	gone := []string{} // the address parameters this filter owns

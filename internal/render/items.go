@@ -9,8 +9,8 @@ import (
 	"github.com/Olian04/webui/internal/markdown"
 )
 
-// ItemsView is a list of items with its items loaded. The runtime fills it.
-type ItemsView struct {
+// LoadedItems is a list of items with its items loaded. The runtime fills it.
+type LoadedItems struct {
 	Node *ir.Items
 	Page *ir.Page
 
@@ -35,7 +35,7 @@ type ItemsView struct {
 }
 
 // moreHref is this list's address with a larger limit: the same page, with everything else in the address as it was.
-func (r *Renderer) moreHref(v ItemsView) string {
+func (r *Renderer) moreHref(v LoadedItems) string {
 	query := maps.Clone(v.Query)
 	if query == nil {
 		query = map[string]string{}
@@ -58,18 +58,18 @@ func picture(n *ir.Items, row any) string {
 }
 
 // isExternal is whether an item leads to another site, which opens in a tab of its own.
-func (v ItemsView) isExternal() bool { return v.Node.Click != nil && v.Node.Click.External != nil }
+func (v LoadedItems) isExternal() bool { return v.Node.Click != nil && v.Node.Click.External != nil }
 
 // posts is whether a click on an item is an action, and so the list is a form.
-func (v ItemsView) posts() bool { return v.Node.Click.Posts() && len(v.Keys) == len(v.Rows) }
+func (v LoadedItems) posts() bool { return v.Node.Click.Posts() && len(v.Keys) == len(v.Rows) }
 
 // clicks is whether item i runs the list's action when its headline is clicked.
-func (v ItemsView) clicks(i int) bool {
+func (v LoadedItems) clicks(i int) bool {
 	return v.posts() && (i >= len(v.ClickRefused) || !v.ClickRefused[i])
 }
 
 // href is where item i leads, "" for none.
-func (v ItemsView) href(i int) string {
+func (v LoadedItems) href(i int) string {
 	if i < len(v.Hrefs) {
 		return v.Hrefs[i]
 	}
@@ -77,7 +77,7 @@ func (v ItemsView) href(i int) string {
 }
 
 // label is what the list is called, for a reader who is told that a row of cards scrolls.
-func (v ItemsView) label() string {
+func (v LoadedItems) label() string {
 	if v.Node.Title != "" {
 		return v.Node.Title
 	}

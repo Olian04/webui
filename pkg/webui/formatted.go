@@ -227,7 +227,7 @@ func lowerFormatted[M any](name, label string, format ir.Format, required bool, 
 // ------------------------------------------------- the accessors of this file, each as it is checked and lowered
 
 func (a Email[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 }
 
@@ -236,7 +236,7 @@ func (a Email[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Phone[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 	if a.DefaultCountry != "" && !phone.Known(a.DefaultCountry) {
 		v.add(fmt.Sprintf("%s has the unknown DefaultCountry %q", at, a.DefaultCountry), "Use the ISO 3166 alpha-2 code of a country, such as \"SE\" or \"US\", or leave it empty.")
@@ -250,7 +250,7 @@ func (a Phone[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a Website[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) string")
 	validateTextRules(v, at, a.Rules)
 }
 
@@ -259,7 +259,7 @@ func (a Website[M]) lowerAccessor(name string) ir.Field {
 }
 
 func (a ColorPicker[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, `func(M) string, returning "#rrggbb"`)
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, `func(M) string, returning "#rrggbb"`)
 }
 
 func (a ColorPicker[M]) lowerAccessor(name string) ir.Field {

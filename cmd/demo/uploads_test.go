@@ -171,7 +171,7 @@ func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *test
 	assert.Equal(t, get(h, "/uploads/logo/thumb").Code, http.StatusNotFound)
 }
 
-// postFirmware posts the one file of the Firmware panel, as a browser does: the leaf first.
+// postFirmware posts the one file of the Firmware panel, as a browser does: the panel first.
 func postFirmware(h http.Handler, name string, data []byte) *httptest.ResponseRecorder {
 	return postFirmwareChoosing(h, "refuse", "stable", name, data)
 }

@@ -128,7 +128,7 @@ Addresses, payloads and code (the editor, a diff, a Markdown code block) use a m
 use tabular figures and right alignment.
 
 Nothing is bold. 500 is the heaviest weight in the system; 600 appears only in full-page error headings and the status bar's two badges. The exception is the strong emphasis of a
-`Markdown` leaf, which is 600: in running text 500 cannot be told from 400, and a
+`Markdown` panel, which is 600: in running text 500 cannot be told from 400, and a
 reader must be able to see what the author stressed.
 
 ---
@@ -300,7 +300,7 @@ Panels never nest. A `Group` is layout only, with no frame and no caption.
   Columns beside something taller or the body of a tab in one, gives it to its tables, which share it, and to its last
   panel when it has none, so the column ends where the row does.
 - **When** — one child that is drawn only while a condition holds, and nothing at all when it does not: no box, no gap. In a Stack the panels either side close up; in Columns the empty column is not drawn, so the row wraps as if it were not declared; in Tabs it is a blank tab, which is why it
-  belongs outside them. What it hides cannot be reached: a refresh, a post or an export that names a leaf under it is answered as for a leaf that is not there.
+  belongs outside them. What it hides cannot be reached: a refresh, a post or an export that names a panel under it is answered as for a panel that is not there.
 - **Split** — `Columns` of equal weights, written as a list of bodies. There is no layout of its own: it has the rule of Columns below.
 - **Columns** — one row of columns of unequal width, 8px apart, each as wide as its weight says of the row: 1 and 3 is 25/75,
   and 25, 50 and 25 is 25/50/25. A column is never narrower than 280px, so where a row cannot hold its columns at that width the last of them

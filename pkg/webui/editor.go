@@ -107,7 +107,7 @@ func (e Editor[M]) validateView(v *viewValidator) {
 	}
 }
 
-func (e Editor[M]) lowerView(at ir.Addr) ir.Node {
+func (e Editor[M]) lowerView(at ir.Pos) ir.Node {
 	f := Form[M]{Title: e.Title, Desc: e.Desc, Load: e.Load, Fields: []Accessor[M]{e.Content}, Submit: e.Submit}
 	out := f.lowerView(at).(*ir.Form)
 	out.Editor = &ir.Editor{Language: e.Language.id(), Service: e.Language.service(), Context: lowerContext(e.Context, e.Language)}

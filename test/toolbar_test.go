@@ -142,7 +142,7 @@ func TestAToolbarIsARowOfButtonsAndTheValuesOfItsForms(t *testing.T) {
 	for _, input := range []string{"<input type=\"number\"", "<select", "<textarea", "toolbar-apply", "data-toolbar-form", "_toolbar", `method="get"`, `<label`} {
 		assert.False(t, strings.Contains(bar, input))
 	}
-	// The one form is the buttons': it posts the leaf and the action's position, and nothing else.
+	// The one form is the buttons': it posts the panel and the action's position, and nothing else.
 	assert.Equal(t, strings.Count(bar, "<form"), 1)
 	assert.Contains(t, bar, `method="post"`)
 	// The right controls are the many, so they are the group that flows, and the left one is whole, before it.
@@ -262,7 +262,7 @@ func TestAFormThatCannotBeLoadedDoesNotTakeTheToolbarDown(t *testing.T) {
 	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
 }
 
-// A toolbar is a leaf of its own, and its forms are not: a form that says it is not final has the whole toolbar asked for again, by the shortest of them.
+// A toolbar is a panel of its own, and its forms are not: a form that says it is not final has the whole toolbar asked for again, by the shortest of them.
 func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	t.Parallel()
 
@@ -290,7 +290,7 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	assert.Equal(t, strings.Count(body, "data-refresh-after="), 1)
 
 	// Asked for alone, as script does, the toolbar answers with its own root first, which carries it.
-	rec := serveLeaf(h, "/admin/tools?minutes=15", "p")
+	rec := serveView(h, "/admin/tools?minutes=15", "p")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.True(t, strings.HasPrefix(rec.Body.String(), `<div class="toolbar" data-toolbar data-view="p" data-refresh-after="4">`))
 

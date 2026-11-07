@@ -77,7 +77,7 @@ func TestTheStylesheetWrapsColumnsThatWouldBeTooNarrow(t *testing.T) {
 	assert.False(t, strings.Contains(css, "@media (max-width: 1100px) {\n  .split"))
 }
 
-func TestColumnsGiveTheirLeavesPositionalIDsLikeASplitDoes(t *testing.T) {
+func TestColumnsGiveTheirPanelsPositionalIDsLikeASplitDoes(t *testing.T) {
 	t.Parallel()
 
 	body := serve(editorApp(webui.Stack{

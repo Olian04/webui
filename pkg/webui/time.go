@@ -181,14 +181,14 @@ func lowerOptionalTime[M any](a OptionalTime[M], name string) ir.Field {
 }
 
 func (a Time[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) time.Time")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) time.Time")
 	validateTime(v, at, a)
 }
 
 func (a Time[M]) lowerAccessor(name string) ir.Field { return lowerTime(a, name) }
 
 func (a OptionalTime[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) *time.Time")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) *time.Time")
 }
 
 func (a OptionalTime[M]) lowerAccessor(name string) ir.Field { return lowerOptionalTime(a, name) }

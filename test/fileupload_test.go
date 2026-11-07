@@ -74,7 +74,7 @@ func newUploadShop(edit func(*webui.FileUpload[struct{}]), pageOpts ...func(*web
 	return s
 }
 
-// upload posts the one file of a panel, as a browser does: the leaf first.
+// upload posts the one file of a panel, as a browser does: the panel first.
 func upload(h http.Handler, filename, content string, wrap func(io.Reader) io.Reader) *httptest.ResponseRecorder {
 	return orderedPost(h, "/admin/up", wrap, rawPart{"_view", "", "p"}, rawPart{"file", filename, content})
 }
@@ -106,8 +106,8 @@ func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.NoError(t, err) // as large as the app says, with no ceiling
 }
 
-// The panel is a native form of its own: the leaf comes before the one file, and the file chooser has what the script reads, so that it works as a File does.
-func TestAFileUploadIsAFormOfItsOwnWithTheLeafBeforeTheFile(t *testing.T) {
+// The panel is a native form of its own: the panel comes before the one file, and the file chooser has what the script reads, so that it works as a File does.
+func TestAFileUploadIsAFormOfItsOwnWithTheViewIDBeforeTheFile(t *testing.T) {
 	t.Parallel()
 
 	s := newUploadShop(func(f *webui.FileUpload[struct{}]) {
@@ -117,8 +117,8 @@ func TestAFileUploadIsAFormOfItsOwnWithTheLeafBeforeTheFile(t *testing.T) {
 	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
 	assert.Contains(t, body, "Upload firmware")
 	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	leaf, file := strings.Index(body, `name="_view"`), strings.Index(body, `type="file"`)
-	assert.True(t, leaf >= 0 && file > leaf)
+	panel, file := strings.Index(body, `name="_view"`), strings.Index(body, `type="file"`)
+	assert.True(t, panel >= 0 && file > panel)
 	assert.Contains(t, body, `name="file" accept="image/png,.png,image/jpeg,.jpg,.jpeg" required`)
 	assert.Contains(t, body, "A PNG or JPEG file")
 	assert.Contains(t, body, "Up to 2 GiB")
@@ -436,7 +436,7 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 	assert.Contains(t, fragment.Body.String(), `data-tone="ok"`)
 	assert.False(t, strings.Contains(fragment.Body.String(), "Choose a file."))
 
-	// The file before the leaf is not anybody's.
+	// The file before the panel is not anybody's.
 	before := orderedPost(s.h, "/admin/up", nil, rawPart{"file", "a.bin", "data"}, rawPart{"_view", "", "p"})
 	assert.Equal(t, flashOf(before), "eThat request was not understood.")
 	assert.Equal(t, s.count(), 2)
@@ -577,7 +577,7 @@ func newChoiceShop(edit func(*webui.FileUpload[choice])) *choiceShop {
 	return s
 }
 
-// chosen posts a panel with options: the leaf, the fields in the order that the form has them, and then the one file.
+// chosen posts a panel with options: the panel, the fields in the order that the form has them, and then the one file.
 func chosen(h http.Handler, wrap func(io.Reader) io.Reader, note, channel, content string) *httptest.ResponseRecorder {
 	return orderedPost(h, "/admin/up", wrap,
 		rawPart{"_view", "", "p"}, rawPart{"f0", "", note}, rawPart{"f1", "", channel}, rawPart{"file", "a.bin", content})
@@ -693,7 +693,7 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// postFragment posts the one file of a panel as the upload script does: a request for the panel's HTML, which carries the leaf's header.
+// postFragment posts the one file of a panel as the upload script does: a request for the panel's HTML, which carries the panel's header.
 func postFragment(h http.Handler, filename, content string) *httptest.ResponseRecorder {
 	var body bytes.Buffer
 	w := multipart.NewWriter(&body)
@@ -842,7 +842,7 @@ func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
 
 	js := assetSource(t, "upload.js")
 	for _, want := range []string{
-		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(VIEW_HEADER, leaf)", "'X-Webui-View'", "new FormData()", "data.append('file', item.file,",
+		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(VIEW_HEADER, viewId)", "'X-Webui-View'", "new FormData()", "data.append('file', item.file,",
 		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.result", "hasAttribute('data-multiple')", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
 		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.result-next", "li._ok", "xhr.status >= 200 && xhr.status < 300", "window.location.assign(next.href)", "X-Webui-View",
 	} {

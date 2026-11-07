@@ -111,7 +111,7 @@ func TestTheCopyButtonIsHandledByTheScriptAndStyledByTheSheet(t *testing.T) {
 	assert.Contains(t, css, ".md-copy")
 }
 
-func TestAMarkdownRefreshesAsALeafOfItsOwn(t *testing.T) {
+func TestAMarkdownRefreshesAsAPanelOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Stack{
@@ -248,7 +248,7 @@ func TestThePolicyHasTheOriginsOfEveryMarkdownOnThePageOnceEach(t *testing.T) {
 	want := strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://a.example https://shared.example https://b.example https://c.example:8443", 1)
 	assert.Equal(t, policyOf(h, "/admin/e"), want)
 	assert.Equal(t, policyOf(h, "/admin/e?tabs.tab=two"), want) // the same whichever tab is shown
-	// A refresh of one leaf is a fetch inside the document that has the policy.
+	// A refresh of one panel is a fetch inside the document that has the policy.
 	req := httptest.NewRequest(http.MethodGet, "/admin/e", nil)
 	req.Header.Set("X-Webui-View", "p.0")
 	rec := httptest.NewRecorder()

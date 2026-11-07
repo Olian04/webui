@@ -58,7 +58,7 @@ func (f Form[M]) validateView(v *viewValidator) {
 	}
 }
 
-func (f Form[M]) lowerView(at ir.Addr) ir.Node {
+func (f Form[M]) lowerView(at ir.Pos) ir.Node {
 	fields := lowerAccessors(f.Fields, "f")
 	out := &ir.Form{
 		At: at, Title: f.Title, Desc: f.Desc, Fields: fields,
@@ -85,7 +85,7 @@ func bindFunc[M any](fields []ir.Field, base any, values map[string]string, file
 	m := base.(M)
 	var errs []ir.FieldError
 	var stores []func() // the files, which are stored when nothing in the submission is refused
-	for f := range ir.Leaves(fields) {
+	for f := range ir.Flatten(fields) {
 		if f.File != nil {
 			if f.File.Store != nil {
 				if msg, store := bindFile(f, base, files); msg != "" {

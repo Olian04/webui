@@ -2,10 +2,10 @@ package ir
 
 import "io"
 
-// FileUpload is a leaf that is a panel for sending one file, of any size, to the app, which reads it as it arrives. Its model is the options that the
+// FileUpload is a panel that is a panel for sending one file, of any size, to the app, which reads it as it arrives. Its model is the options that the
 // visitor chooses beside the file, if there are any; what it does is its Receive.
 type FileUpload struct {
-	At Addr
+	At Pos
 
 	Title, Desc string
 	Help        string
@@ -38,7 +38,7 @@ type Incoming struct {
 	Kind         FileKind
 }
 
-// Addr reports the node's position in the body tree.
-func (f *FileUpload) Addr() Addr { return f.At }
+// Pos reports the node's position in the view tree.
+func (f *FileUpload) Pos() Pos { return f.At }
 
 func (f *FileUpload) Children() []Node { return nil }

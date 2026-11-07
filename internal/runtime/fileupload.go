@@ -23,12 +23,12 @@ import (
 // not arrived and those options, which decides how the panel is drawn for this visitor; the same Guard, asked with the file, refuses the POST. A load or a source
 // of options that fails fails the panel, which says so, and not the page.
 func (p *Program) fileUpload(ctx context.Context, req *Request, page *ir.Page, n *ir.FileUpload) templ.Component {
-	view := render.FileUploadView{Node: n, Page: page}
+	view := render.LoadedFileUpload{Node: n, Page: page}
 	view.Path, view.Query = req.encode(page)
 	resolved, err := resolve(p, page, n.Options, func() (*ir.Form, error) { return n.Options.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a file upload could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a file upload could not be read", "page", page.PathTemplate, "view", render.ViewID(n.At), "err", err)
 		}
 		view.Failed = true
 		return p.render.FileUpload(view)
@@ -38,12 +38,12 @@ func (p *Program) fileUpload(ctx context.Context, req *Request, page *ir.Page, n
 		view.Failed, view.Refusal = true, refusal
 		return p.render.FileUpload(view)
 	}
-	view.Form = render.FormView{Node: resolved, Page: page, Path: view.Path, Query: view.Query, Model: model}
+	view.Form = render.LoadedForm{Node: resolved, Page: page, Path: view.Path, Query: view.Query, Model: model}
 	if n.Receive.Guard != nil {
-		view.Gate = p.gateOf(page, "the Receive of a file upload", func() error {
+		view.Access = p.accessOf(page, "the Receive of a file upload", func() error {
 			return n.Receive.Guard(ctx, n.Subject(ir.Incoming{Kind: ir.FileAny}, model, nil))
 		})
-		view.Form.SubmitRefused = view.Gate.Reason != "" // a panel that is disabled shows its options and takes none
+		view.Form.SubmitRefused = view.Access.Reason != "" // a panel that is disabled shows its options and takes none
 	}
 	return p.render.FileUpload(view)
 }

@@ -17,7 +17,7 @@ type Story struct {
 }
 
 // A List lists items: a headline, a line of small facts, and, when it has them, a badge and a picture. Its source is a plain list, asked for one more than is shown,
-// which is how the leaf knows to offer Show more. A headline is text, and where it leads is Link (an address, which opens in a tab of its own) or Open (a page of the app).
+// which is how the panel knows to offer Show more. A headline is text, and where it leads is Link (an address, which opens in a tab of its own) or Open (a page of the app).
 func ExampleList() {
 	stories := []Story{
 		{"Nginx has moved to GitHub", "3h", "mailman.nginx.org", "https://mailman.nginx.org/", "", 100},
