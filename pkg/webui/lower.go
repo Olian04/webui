@@ -31,7 +31,7 @@ import (
 //	Accessor[M] inside Form[M] M known        -> type switch
 //	Reject[M] inside Outcome   M known        -> type switch
 //
-// So the leaves of the lowering are methods that live beside their types
+// So the panels of the lowering are methods that live beside their types
 // (page.go, form.go, table.go, layout.go, link.go, action.go), and the
 // interiors are ordinary switches (accessor.go).
 func (a App) lower() (*ir.App, error) {

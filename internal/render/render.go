@@ -231,7 +231,7 @@ func StatusUpdate(built time.Time, took time.Duration) templ.Component {
 	return c.StatusUpdate(c.StatusBarProps{Built: built, BuildTime: took})
 }
 
-// Refreshing draws a leaf that its Load said is not final: it is to be asked for again after after. The leaf's panel says so, in its head and in data-refresh-after.
+// Refreshing draws a panel that its Load said is not final: it is to be asked for again after after. The panel's panel says so, in its head and in data-refresh-after.
 func Refreshing(comp templ.Component, after time.Duration) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		return comp.Render(c.WithRefresh(ctx, after), w) //nolint:wrapcheck // a component's own error

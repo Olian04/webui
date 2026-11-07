@@ -49,16 +49,16 @@ func TestTheLandingPageForAViewerIsWhatTheyMayUse(t *testing.T) {
 func TestTheSettingsFormOnTheLandingPageSavesTheSettings(t *testing.T) {
 	h := handler(t)
 	body := get(h, "/admin/").Body.String()
-	leaf := regexp.MustCompile(`name="_view" value="([^"]*)"`).FindAllStringSubmatch(body[strings.Index(body, "Collector settings"):], 1)
-	assert.Equal(t, len(leaf), 1)
+	panel := regexp.MustCompile(`name="_view" value="([^"]*)"`).FindAllStringSubmatch(body[strings.Index(body, "Collector settings"):], 1)
+	assert.Equal(t, len(panel), 1)
 
-	form := url.Values{"_view": {leaf[0][1]}, "f0_0": {"0.5"}, "f0_1": {"60"}, "f1_1": {"ops@example.com"}, "f2_1": {"#ff8800"}}
+	form := url.Values{"_view": {panel[0][1]}, "f0_0": {"0.5"}, "f0_1": {"60"}, "f1_1": {"ops@example.com"}, "f2_1": {"#ff8800"}}
 	rec := post(h, "/admin/", form)
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, service.Settings().Contact, "ops@example.com")
 	assert.Equal(t, service.Settings().Label, "#ff8800")
 
-	refused := post(h, "/admin/", url.Values{"_view": {leaf[0][1]}, "f0_0": {"7"}})
+	refused := post(h, "/admin/", url.Values{"_view": {panel[0][1]}, "f0_0": {"7"}})
 	assert.Equal(t, refused.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, refused.Body.String(), "Must be at most 1.")
 }

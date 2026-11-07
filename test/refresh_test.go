@@ -42,10 +42,10 @@ func TestAPanelWhoseLoadIsNotFinalSaysSoAndOnlyThatPanelDoes(t *testing.T) {
 	assert.False(t, strings.Contains(second, "data-refresh-after"))
 
 	// The same request for that panel alone, as script makes it, says it too: the answer that asks again is the one that carries it.
-	leaf := serveLeaf(h, "/admin/s", "p.0")
-	assert.Equal(t, leaf.Code, http.StatusOK)
-	assert.Contains(t, leaf.Body.String(), `data-refresh-after="5"`)
-	assert.False(t, strings.Contains(serveLeaf(h, "/admin/s", "p.1").Body.String(), "data-refresh-after"))
+	panel := serveView(h, "/admin/s", "p.0")
+	assert.Equal(t, panel.Code, http.StatusOK)
+	assert.Contains(t, panel.Body.String(), `data-refresh-after="5"`)
+	assert.False(t, strings.Contains(serveView(h, "/admin/s", "p.1").Body.String(), "data-refresh-after"))
 }
 
 // A panel that is ready and says nothing more is final: the answer that does not say it is what ends the loop.
@@ -98,8 +98,8 @@ func TestTheDelayIsAtLeastASecondInWholeSeconds(t *testing.T) {
 	}
 }
 
-// Every kind of leaf that has a Load says it: the three sources of a table, a form, an editor's markdown and diff, and a file upload.
-func TestEveryLeafWithALoadCanSayItIsNotFinal(t *testing.T) {
+// Every kind of panel that has a Load says it: the three sources of a table, a form, an editor's markdown and diff, and a file upload.
+func TestEveryPanelWithALoadCanSayItIsNotFinal(t *testing.T) {
 	t.Parallel()
 
 	not := webui.Ready().RefreshAfter(4 * time.Second)
@@ -139,13 +139,13 @@ func TestTheScriptThatAsksAgainDoesWhatItSaysItDoes(t *testing.T) {
 
 	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
-		"[data-view][data-refresh-after]", "function armRefresh", "async function pollLeaf", "document.hidden", "'visibilitychange'",
-		"el.contains(document.activeElement)", "fetchLeaf(id, location.pathname + location.search", "el.replaceWith(next)",
+		"[data-view][data-refresh-after]", "function armRefresh", "async function pollView", "document.hidden", "'visibilitychange'",
+		"el.contains(document.activeElement)", "fetchView(id, location.pathname + location.search", "el.replaceWith(next)",
 	} {
 		assert.Contains(t, js, want)
 	}
 	// A poll is not a navigation: it neither pushes the address nor asks for the panels around it.
-	poll := js[strings.Index(js, "async function pollLeaf"):]
+	poll := js[strings.Index(js, "async function pollView"):]
 	poll = poll[:strings.Index(poll, "armRefresh(document);")]
 	assert.False(t, strings.Contains(poll, "pushState"))
 	assert.False(t, strings.Contains(poll, "settle("))

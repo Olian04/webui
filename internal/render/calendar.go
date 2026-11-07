@@ -11,8 +11,8 @@ import (
 	c "github.com/Olian04/webui/internal/render/templates/components"
 )
 
-// CalendarView is a calendar with the month it shows and what is on its days. The runtime fills it.
-type CalendarView struct {
+// LoadedCalendar is a calendar with the month it shows and what is on its days. The runtime fills it.
+type LoadedCalendar struct {
 	Node *ir.Calendar
 	Page *ir.Page
 
@@ -36,7 +36,7 @@ type CalendarView struct {
 }
 
 // monthHref is this page with another month: everything else in the address as it was. The current month is the default, so its address has no month in it.
-func (r *Renderer) monthHref(v CalendarView, m calendar.Month) string {
+func (r *Renderer) monthHref(v LoadedCalendar, m calendar.Month) string {
 	query := maps.Clone(v.Query)
 	if query == nil {
 		query = map[string]string{}
@@ -63,9 +63,9 @@ func dayLabel(day time.Time, items int) string {
 }
 
 // calendarProps is the grid as the component takes it.
-func (r *Renderer) calendarProps(v CalendarView) c.CalendarProps {
+func (r *Renderer) calendarProps(v LoadedCalendar) c.CalendarProps {
 	p := c.CalendarProps{
-		TitleID:     LeafID(v.Node.At) + "-month",
+		TitleID:     ViewID(v.Node.At) + "-month",
 		Title:       v.Month.Title(),
 		WeekNumbers: v.Node.WeekNumbers,
 		LinkAttrs:   inPlace,
@@ -109,7 +109,7 @@ func (r *Renderer) calendarProps(v CalendarView) c.CalendarProps {
 }
 
 // dayAct is the "_act" value of the button that a day with items is, for a calendar whose click on a day is an Action, and "" for any other day.
-func dayAct(v CalendarView, key string, items int) string {
+func dayAct(v LoadedCalendar, key string, items int) string {
 	if !v.Node.Click.Posts() || items == 0 || v.ClickRefused[key] {
 		return ""
 	}

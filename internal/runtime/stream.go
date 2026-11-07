@@ -33,10 +33,10 @@ func streamable(body ir.Node) bool {
 
 // writeBuilt answers with a page whose panels have been started: whole when they are all done within streamAfter, and
 // as they are built when they are not and the page may be.
-func (p *Program) writeBuilt(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, body *panel, mayStream bool) {
+func (p *Program) writeBuilt(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, body *part, mayStream bool) {
 	if mayStream && r.Method == http.MethodGet {
 		ready := make(chan struct{})
-		go func() { req.panels.settle(); close(ready) }()
+		go func() { req.parts.settle(); close(ready) }()
 		timer := time.NewTimer(streamAfter)
 		defer timer.Stop()
 		select {
@@ -48,7 +48,7 @@ func (p *Program) writeBuilt(w http.ResponseWriter, r *http.Request, page *ir.Pa
 			return
 		}
 	}
-	if err := req.panels.wait(&req.code); err != nil {
+	if err := req.parts.wait(&req.code); err != nil {
 		p.fail(w, r, page, req, err)
 		return
 	}
@@ -59,7 +59,7 @@ func (p *Program) writeBuilt(w http.ResponseWriter, r *http.Request, page *ir.Pa
 // and then each panel as it is done, in the order the page has them. The status is the page's, so it is decided
 // already: what the Guard refused or the address did not decode never gets here. After the first byte nothing can
 // make it an error page, so a panel that fails says so where it is (see [panel.Render]).
-func (p *Program) stream(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, body *panel) {
+func (p *Program) stream(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, body *part) {
 	ctx := context.WithValue(r.Context(), streamingKey{}, true)
 	doc := p.finish(w, r, p.pageDoc(ctx, page, req, body), req.shell)
 	started := startedAt(r)

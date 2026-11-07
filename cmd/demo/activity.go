@@ -16,7 +16,7 @@ const ActivityPath webui.PageID[webui.NoArgs] = "/activity"
 // happened, with a headline, a line of small facts and, where it has one, a picture. It is three of one idea. A List is a column of items; Cards are the same items as
 // a grid, or a row that scrolls; and each shows a few and a Show more link that shows more, in the address, so a copied link shows the same.
 //
-// The source of each is a plain list: it is asked for one more than is shown, which is how the leaf knows there are more without counting them.
+// The source of each is a plain list: it is asked for one more than is shown, which is how the panel knows there are more without counting them.
 var Activity = webui.Page[webui.NoArgs]{
 	Path: ActivityPath,
 	Nav:  webui.Nav{Label: "Activity", Icon: "bolt", Section: "Platform"},

@@ -344,11 +344,11 @@ func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
 	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		// A panel that is replaced says what it holds now, and takes the focus that was in it to its title.
-		"function announce(text)", "describeLeaf(next, 'updated')", "if (hadFocus) refocus(next);", "title.tabIndex = -1;",
+		"function announce(text)", "describeView(next, 'updated')", "if (hadFocus) refocus(next);", "title.tabIndex = -1;",
 		// Panels that are replaced in the background are not from under someone who is typing in them.
 		"if (current && !current.contains(document.activeElement)) current.replaceWith(next); // not from under",
 		// A panel that is asked for again can be stopped, and says when it is done.
-		"[data-refresh-pause]", "if (el.hasAttribute('data-paused')) return;", "describeLeaf(next, 'is up to date')",
+		"[data-refresh-pause]", "if (el.hasAttribute('data-paused')) return;", "describeView(next, 'is up to date')",
 		// Toasts: put in again to be announced, an error stays, a message that went well stays long enough to read.
 		"var TOAST_MS = 8000;", "if (el.classList.contains('tone-bad') || el.classList.contains('tone-warn')) return;", "[data-toast-dismiss]", "var again = toast.cloneNode(true);",
 		// A choice that is required says so, and says what is missing; the page opens with the focus on the field that was refused.

@@ -57,9 +57,9 @@ type Window struct {
 	Options map[string][]string
 }
 
-// Table is a leaf listing rows.
+// Table is a panel listing rows.
 type Table struct {
-	At Addr
+	At Pos
 
 	Title string
 	Desc  string
@@ -96,8 +96,8 @@ type Table struct {
 	Bulk    []*Action  // over the selection: the checkbox column and action bar
 }
 
-// Addr reports the node's position in the body tree.
-func (t *Table) Addr() Addr { return t.At }
+// Pos reports the node's position in the view tree.
+func (t *Table) Pos() Pos { return t.At }
 
 func (t *Table) Children() []Node { return nil }
 

@@ -16,18 +16,18 @@ import (
 // A source of options that fails fails the toolbar, which says so, and not the page; a form whose Load fails is its place in the row saying so, and the
 // rest of the toolbar stands.
 func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *ir.Toolbar) templ.Component {
-	view := render.ToolbarView{Node: n, Page: page}
+	view := render.LoadedToolbar{Node: n, Page: page}
 	view.Path, view.Query = req.encode(page)
 	resolved, err := resolve(p, page, n, func() (*ir.Toolbar, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a toolbar could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a toolbar could not be read", "page", page.PathTemplate, "view", render.ViewID(n.At), "err", err)
 		}
 		view.Failed = true
 		return p.render.Toolbar(view)
 	}
 	view.Node = resolved
-	view.Gates = make([]render.Gate, len(resolved.Items))
+	view.Access = make([]render.Access, len(resolved.Items))
 	view.Hrefs = make([]string, len(resolved.Items))
 	view.Forms = make([]render.ToolbarForm, len(resolved.Items))
 	for i, it := range resolved.Items {
@@ -37,16 +37,16 @@ func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *i
 			view.Forms[i] = render.ToolbarForm{Model: model, Failed: !ok, Refusal: refusal}
 		case it.Action != nil && it.Action.Guard != nil:
 			// The same Guard that will refuse the POST decides the button. It has no subject: what it needs of the page it reads from the request.
-			view.Gates[i] = p.gateOf(page, "the action "+strconv.Quote(it.Label), func() error { return it.Action.Guard(ctx, nil) })
+			view.Access[i] = p.accessOf(page, "the action "+strconv.Quote(it.Label), func() error { return it.Action.Guard(ctx, nil) })
 		case it.Link != nil:
 			href, err := p.open(it.Link.Dest, it.Link.Args(ctx, nil), req.Address)
 			if err != nil {
 				p.log.Error("webui: a toolbar link failed", "page", page.PathTemplate, "dest", it.Link.Dest, "err", err)
-				view.Gates[i] = render.Gate{Hidden: true}
+				view.Access[i] = render.Access{Hidden: true}
 				continue
 			}
 			if !p.mayFollow(ctx, page, it.Link, href) {
-				view.Gates[i] = render.Gate{Hidden: true}
+				view.Access[i] = render.Access{Hidden: true}
 				continue
 			}
 			view.Hrefs[i] = href

@@ -75,7 +75,7 @@ func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing
 	js := assetSource(t, "enhance.js")
 	for _, want := range []string{
 		"a[href][data-in-place]", "function syncPanels(href, moved)", "function settle(href, moved)", "syncPanels(href, moved)", "el.setAttribute('aria-busy', 'true')",
-		"a[data-in-place]", "form[method=\"post\"]", "setAttribute('action', fresh[i].getAttribute('action') || '')", "fetchLeaf(id, href, undefined, 'data-tabs')",
+		"a[data-in-place]", "form[method=\"post\"]", "setAttribute('action', fresh[i].getAttribute('action') || '')", "fetchView(id, href, undefined, 'data-tabs')",
 		"template[data-palette-pending]", "template[data-palette-down]", "[VIEW_HEADER]: 'search'", "settle(href, next)",
 	} {
 		assert.Contains(t, js, want)

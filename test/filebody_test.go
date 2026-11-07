@@ -107,8 +107,8 @@ func TestAFileOverTheLimitIsRefusedAndTheRestOfTheFormIsStillRead(t *testing.T) 
 	assert.Equal(t, s.stores, 0)
 }
 
-// A field that a browser sends after the file is read as any other, and the leaf says whose the file is, so it comes first.
-func TestAFieldAfterTheFileIsKeptAndTheLeafAfterItIsNotUnderstood(t *testing.T) {
+// A field that a browser sends after the file is read as any other, and the panel says whose the file is, so it comes first.
+func TestAFieldAfterTheFileIsKeptAndTheViewIDAfterItIsNotUnderstood(t *testing.T) {
 	t.Parallel()
 
 	s := newFileShop(plainFile(webui.FilePNG))

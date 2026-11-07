@@ -6,9 +6,9 @@ import (
 	"github.com/Olian04/webui/internal/editorctx"
 )
 
-// Form is a leaf holding one model.
+// Form is a panel holding one model.
 type Form struct {
-	At Addr
+	At Pos
 
 	Title string
 	Desc  string
@@ -52,8 +52,8 @@ type Editor struct {
 	Context *editorctx.Context
 }
 
-// Addr reports the node's position in the body tree.
-func (f *Form) Addr() Addr { return f.At }
+// Pos reports the node's position in the view tree.
+func (f *Form) Pos() Pos { return f.At }
 
 func (f *Form) Children() []Node { return nil }
 

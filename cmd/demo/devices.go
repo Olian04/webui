@@ -173,7 +173,7 @@ var DevicesToolbar = webui.Toolbar{
 // DevicesTable is the list.
 var DevicesTable = webui.Table[Device]{
 	Title: "Devices",
-	Desc:  "One Table leaf. Sort, page and row links are all URLs.",
+	Desc:  "One Table panel. Sort, page and row links are all URLs.",
 	// The table's state is kept in the address under its title: ?devices.offset,
 	// ?devices.sort, ?devices.desc, a ?devices.filter.<column> per filtered
 	// column, and ?devices.min.<column> and ?devices.max.<column> for the
@@ -269,7 +269,7 @@ var Details = webui.Page[DeviceArgs]{
 
 var DeviceForm = webui.Form[Device]{
 	Title: "Configuration",
-	Desc:  "A Form leaf. Fields whose accessor declares no Store render read-only.",
+	Desc:  "A Form panel. Fields whose accessor declares no Store render read-only.",
 	Load: func(ctx context.Context) (Device, webui.Loaded) {
 		args := webui.ArgsOf[DeviceArgs](ctx)
 		d, _ := service.Device(args.ID)

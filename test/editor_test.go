@@ -33,7 +33,7 @@ func loadSnippet(context.Context) (snippet, webui.Loaded) {
 	return snippet{Text: "{\"a\": 1,\n\"b\": 2}\n", Before: "{\"a\": 1}\n"}, webui.Ready()
 }
 
-// editorApp has one page, with the leaf as its body, and records what was saved.
+// editorApp has one page, with the panel as its body, and records what was saved.
 func editorApp(body webui.View) http.Handler {
 	return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: body}}}.MustCompile("/admin")
 }

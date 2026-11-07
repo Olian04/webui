@@ -375,7 +375,7 @@ type NavItemProps struct {
 }
 
 // NavItem is one entry of the sidebar. It is Go and not a templ component, for the same reason as Icon: it is on every page, once for each page of the app, and a component costs a closure, a
-// context and the processing of its class for each. The markup is what the component made (leaf_test.go has it, to the byte): the address is made safe as templ makes it, and what a person
+// context and the processing of its class for each. The markup is what the component made (icon_nav_test.go has it, to the byte): the address is made safe as templ makes it, and what a person
 // wrote is escaped.
 func NavItem(p NavItemProps) templ.Component {
 	var b strings.Builder

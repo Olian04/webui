@@ -36,10 +36,10 @@ type Request struct {
 	// Argument names cannot contain the separator, so the two never collide.
 	Raw map[string]string
 
-	// sub is a rejected submission being rendered back, and subLeaf the leaf
+	// sub is a rejected submission being rendered back, and subView the panel
 	// it belongs to. Both are set only while answering a POST.
 	sub     *submission
-	subLeaf string
+	subView string
 
 	// code is what the editors and diffs built for this response need the page to
 	// load, set as the body is built.
@@ -49,11 +49,11 @@ type Request struct {
 	// being drawn.
 	shell *shellInputs
 
-	// panels is every panel of the page that is being drawn, so that drawing it can wait for them all. It is nil for
-	// a request that draws one panel, or none.
-	panels *panelSet
+	// parts is every part of the page that is being drawn, so that drawing it can wait for them all. It is nil for
+	// a request that draws one view, or none.
+	parts *partSet
 
-	// conditions is what each conditional node decided in this request. It is nil for a request that draws one leaf, or none.
+	// conditions is what each conditional node decided in this request. It is nil for a request that draws one panel, or none.
 	conditions *conditionCache
 
 	// verdicts is what the Guard of each address said in this request, so that each is asked once however many parts of the page ask. It is shared by the copies of the
@@ -124,14 +124,14 @@ func resolve[T any](p *Program, page *ir.Page, node *T, read func() (*T, error))
 // loaded is timed for a panel that is being drawn: a failure is logged, unless the visitor had gone, and
 // ok is false, so that the panel says it could not load and the page stays. what names the panel in the log. A load
 // that returns a [ir.Refusal] is not a failure to log: the visitor is told what it says, and it is returned for the panel to say.
-func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Addr, load func() (T, error)) (v T, ok bool, refused *ir.Refusal) {
+func loaded[T any](p *Program, ctx context.Context, page *ir.Page, kind, what string, at ir.Pos, load func() (T, error)) (v T, ok bool, refused *ir.Refusal) {
 	v, err := timed(p, page, kind, load)
 	if err != nil {
 		if errors.As(err, &refused) {
 			return v, false, refused
 		}
 		if ctx.Err() == nil {
-			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "view", render.LeafID(at), "err", err)
+			p.log.Error("webui: "+what+" load failed", "page", page.PathTemplate, "view", render.ViewID(at), "err", err)
 		}
 		return v, false, nil
 	}

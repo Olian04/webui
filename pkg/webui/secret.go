@@ -78,7 +78,7 @@ func lowerSecret[M any](a Secret[M], name string) ir.Field {
 }
 
 func (a Secret[M]) validateAccessor(v *viewValidator, at string, site accessorSite, seen map[string]bool) {
-	validateLeaf(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool, saying whether a value is stored")
+	validateValue(v, at, site, seen, a.Label, a.Load == nil, "func(M) bool, saying whether a value is stored")
 	validateSecret(v, at, a, site.where)
 }
 

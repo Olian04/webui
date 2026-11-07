@@ -66,7 +66,7 @@ func refreshIn(ctx context.Context) int {
 	return int((d + time.Second - 1) / time.Second)
 }
 
-// RefreshAttrs are the attributes of a leaf's root that say it is not final, for script to obey: data-refresh-after, the delay in whole seconds. A leaf
+// RefreshAttrs are the attributes of a panel's root that say it is not final, for script to obey: data-refresh-after, the delay in whole seconds. A panel
 // that is final has none.
 func RefreshAttrs(ctx context.Context) templ.Attributes {
 	if n := refreshIn(ctx); n > 0 {
@@ -75,7 +75,7 @@ func RefreshAttrs(ctx context.Context) templ.Attributes {
 	return nil
 }
 
-// RefreshNote says to the reader that the leaf drawn with ctx is not final: that it is updating, with script, and when to reload, without. A leaf
+// RefreshNote says to the reader that the panel drawn with ctx is not final: that it is updating, with script, and when to reload, without. A panel
 // that is final says nothing.
 func RefreshNote(ctx context.Context) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

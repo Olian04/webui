@@ -29,35 +29,35 @@ const maxBody = 1 << 20
 // further.
 const maxEditorBody = 16 << 20
 
-// leavesOf maps each leaf's id to its node, so a POST can name one and nothing
+// panelsOf maps each panel's id to its node, so a POST can name one and nothing
 // else: the id comes from position, never from anything the user typed.
-func leavesOf(root ir.Node) map[string]ir.Node {
+func panelsOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
 	ir.Walk(root, func(n ir.Node) {
 		switch n.(type) {
 		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Items, *ir.Calendar, *ir.Toolbar, *ir.FileUpload:
-			out[render.LeafID(n.Addr())] = n
+			out[render.ViewID(n.Pos())] = n
 		}
 	})
 	return out
 }
 
 // tabsOf maps the id of each Tabs to its node, so that a request can ask for one alone, the strip and the tab that is
-// selected, which is how a tab is followed with script. The id is in the form of a leaf's, from position and nothing the
+// selected, which is how a tab is followed with script. The id is in the form of a panel's, from position and nothing the
 // user typed.
 func tabsOf(root ir.Node) map[string]*ir.Tabs {
 	out := map[string]*ir.Tabs{}
 	ir.Walk(root, func(n ir.Node) {
 		if t, ok := n.(*ir.Tabs); ok {
-			out[render.LeafID(t.Addr())] = t
+			out[render.ViewID(t.Pos())] = t
 		}
 	})
 	return out
 }
 
-// actionable reports whether any leaf under root posts.
-func actionable(leaves map[string]ir.Node) bool {
-	for _, n := range leaves {
+// actionable reports whether any panel under root posts.
+func actionable(panels map[string]ir.Node) bool {
+	for _, n := range panels {
 		switch n := n.(type) {
 		case *ir.Form:
 			if n.Submit != nil {
@@ -90,9 +90,9 @@ func actionable(leaves map[string]ir.Node) bool {
 // it is the README's: parse → rules → Bind → Guard → Run. The page Guard runs
 // first, as it does on every request, so a POST cannot reach an action on a
 // page the viewer may not open.
-func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates map[string][]*ir.When) http.HandlerFunc {
+func (p *Program) postHandler(page *ir.Page, panels map[string]ir.Node, conditions map[string][]*ir.When) http.HandlerFunc {
 	parser := argParser(page)
-	budget := fileBudget(leaves)
+	budget := fileBudget(panels)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := p.cross.Check(r); err != nil {
 			if wantsFragment(r) {
@@ -106,7 +106,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates ma
 		}
 		w.Header().Set("Cache-Control", "no-store")
 		limit := int64(maxBody)
-		if hasEditor(leaves) {
+		if hasEditor(panels) {
 			limit = maxEditorBody
 		}
 		valueLimit := limit // what the values of a multipart body may come to, which is what a body that is not multipart may
@@ -130,7 +130,7 @@ func (p *Program) postHandler(page *ir.Page, leaves map[string]ir.Node, gates ma
 		// refuses has nothing of theirs received.
 		rec := &received{}
 		// What is under a When that does not hold is not there, to the one who posts to it, as to the one who asks for it.
-		reachable := p.reachable(r.Context(), page, leaves, gates)
+		reachable := p.reachable(r.Context(), page, panels, conditions)
 		if multipart && !p.receive(w, r, page, req, reachable, rec, valueLimit) {
 			return
 		}
@@ -164,12 +164,12 @@ func unreadable(err error) string {
 }
 
 // fileBudget is the most that the files of a page may be, together, which is 0 for a page that has none.
-func fileBudget(leaves map[string]ir.Node) int64 {
+func fileBudget(panels map[string]ir.Node) int64 {
 	var total int64
-	for _, n := range leaves {
+	for _, n := range panels {
 		switch n := n.(type) {
 		case *ir.Form:
-			for f := range ir.Leaves(n.Fields) {
+			for f := range ir.Flatten(n.Fields) {
 				if f.File != nil && f.File.Store != nil {
 					total = addCapped(total, f.File.Max)
 				}
@@ -190,7 +190,7 @@ func addCapped(a, b int64) int64 {
 	return a + b
 }
 
-// notUnderstood is what a POST that names no leaf, or no action, that the page has is answered with.
+// notUnderstood is what a POST that names no panel, or no action, that the page has is answered with.
 const notUnderstood = "That request was not understood."
 
 // submit binds and runs a form's Submit.
@@ -258,7 +258,7 @@ func formValues(post url.Values, fields []ir.Field) map[string]string {
 			values[k] = v[0]
 		}
 	}
-	for f := range ir.Leaves(fields) {
+	for f := range ir.Flatten(fields) {
 		if f.Rules.Format == ir.FormatTel && f.Writable() {
 			// The number and the country of its selector are the one number, which is what is held to the rules and stored.
 			if national, ok := values[f.Name]; ok {
@@ -316,7 +316,7 @@ func fieldsToast(n int) render.Toast {
 // sent more than once.
 func selectNames(fields []ir.Field) map[string]bool {
 	out := map[string]bool{}
-	for f := range ir.Leaves(fields) {
+	for f := range ir.Flatten(fields) {
 		if f.Display == ir.DisplaySelect {
 			out[f.Name] = true
 		}
@@ -340,11 +340,11 @@ func (p *Program) returnTarget(r *http.Request, req *Request, page *ir.Page) str
 func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Form,
 	model any, values map[string]string, errs []ir.FieldError, toast render.Toast) {
 	ctx := r.Context()
-	req.sub, req.subLeaf = &submission{model: model, values: values, errs: errs}, render.LeafID(n.At)
+	req.sub, req.subView = &submission{model: model, values: values, errs: errs}, render.ViewID(n.At)
 	path, query := p.address(page, req)
 	if wantsFragment(r) {
 		// A script that sent the form is given the form, drawn again with what was typed and what was refused, and nothing round it: the HTML of the
-		// leaf, as a request for it is, to put where the form was.
+		// panel, as a request for it is, to put where the form was.
 		body, err := p.body(ctx, req, page, n)
 		if err != nil {
 			p.fail(w, r, page, req, err)
@@ -356,9 +356,9 @@ func (p *Program) returnToForm(w http.ResponseWriter, r *http.Request, page *ir.
 		return
 	}
 	req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
-	req.panels = &panelSet{}
-	body := p.panel(ctx, req, page, page.Root)
-	if err := req.panels.wait(&req.code); err != nil {
+	req.parts = &partSet{}
+	body := p.part(ctx, req, page, page.Root)
+	if err := req.parts.wait(&req.code); err != nil {
 		p.fail(w, r, page, req, err)
 		return
 	}
@@ -509,7 +509,7 @@ func (p *Program) tableAct(w http.ResponseWriter, r *http.Request, page *ir.Page
 	p.actOn(w, r, page, req, action, subject, fmt.Sprintf("action %q", action.Label))
 }
 
-// actOn runs an action on a subject that a request named, and ends the request as an action of a leaf with no fields ends: a failure is refused with its message, which is the reason
+// actOn runs an action on a subject that a request named, and ends the request as an action of a panel with no fields ends: a failure is refused with its message, which is the reason
 // since there is no field to point at, and a success leaves for the address the request was made at, with the message as a toast.
 func (p *Program) actOn(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, action *ir.Action, subject any, what string) {
 	outcome, ok := p.perform(w, r, page, req, action, subject, what)
@@ -622,9 +622,9 @@ func parseAct(s string) (kind string, index int, key string, ok bool) {
 	return "", 0, "", false
 }
 
-// hasEditor reports whether any leaf is a code editor.
-func hasEditor(leaves map[string]ir.Node) bool {
-	for _, n := range leaves {
+// hasEditor reports whether any panel is a code editor.
+func hasEditor(panels map[string]ir.Node) bool {
+	for _, n := range panels {
 		if f, ok := n.(*ir.Form); ok && f.Editor != nil {
 			return true
 		}

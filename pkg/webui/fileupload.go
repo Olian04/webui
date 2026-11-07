@@ -157,7 +157,7 @@ func (f FileUpload[M]) validateView(v *viewValidator) {
 	}
 }
 
-func (f FileUpload[M]) lowerView(at ir.Addr) ir.Node {
+func (f FileUpload[M]) lowerView(at ir.Pos) ir.Node {
 	spec := &ir.FileSpec{Max: f.MaxSize}
 	for _, k := range f.Accept {
 		spec.Kinds = append(spec.Kinds, k.ir())

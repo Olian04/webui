@@ -179,7 +179,7 @@ func TestAListIsNamedInTheAddressByItsTitleAndTwoWithNoTitleAreTold(t *testing.T
 	assert.DeepEqual(t, got, []int{2, 2, 4}) // the first list and the cards at one past what they show, and the second list at three, which is four
 }
 
-func TestAListRefreshesAsALeafOfItsOwn(t *testing.T) {
+func TestAListRefreshesAsAPanelOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	src := &listLoader{}

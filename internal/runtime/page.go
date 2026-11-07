@@ -23,7 +23,7 @@ func (p *Program) pagePattern(template string) string {
 	return p.Prefix + template
 }
 
-// pictureOrigins are the origins the page's Markdown leaves and lists of items trust to serve pictures, once
+// pictureOrigins are the origins the page's Markdown panels and lists of items trust to serve pictures, once
 // each, in the order they are first named. They come from the declaration, so they are the
 // same for every request and every tab, selected or not.
 func pictureOrigins(body ir.Node) []string {
@@ -46,21 +46,21 @@ func pictureOrigins(body ir.Node) []string {
 
 // addPage registers a page's routes.
 func (p *Program) addPage(page *ir.Page) {
-	leaves := leavesOf(page.Root)
-	gates := gatesOf(page.Root)
-	h := http.HandlerFunc(p.pageHandler(page, leaves, tabsOf(page.Root), gates))
+	panels := panelsOf(page.Root)
+	conditions := conditionsOf(page.Root)
+	h := http.HandlerFunc(p.pageHandler(page, panels, tabsOf(page.Root), conditions))
 	patterns := []string{p.pagePattern(page.PathTemplate)}
 	if page.PathTemplate == "/" && p.Prefix != "" {
 		patterns = append(patterns, p.Prefix) // mounted at "/admin" exactly
 	}
-	posts := actionable(leaves)
+	posts := actionable(panels)
 	policy := policy(p.pageCSP, pictureOrigins(page.Root))
 	for _, pattern := range patterns {
 		p.handle(p.mux, http.MethodGet, pattern, page.PathTemplate, policy, h)
 		p.gate.Handle(pattern, p.gateHandler(page))
 		p.allow[pattern] = "GET, HEAD"
 		if posts {
-			p.handle(p.mux, http.MethodPost, pattern, page.PathTemplate, policy, p.postHandler(page, leaves, gates))
+			p.handle(p.mux, http.MethodPost, pattern, page.PathTemplate, policy, p.postHandler(page, panels, conditions))
 			p.allow[pattern] = "GET, HEAD, POST"
 		}
 	}
@@ -81,7 +81,7 @@ func (p *Program) gateHandler(page *ir.Page) http.HandlerFunc {
 // pageHandler is the request pipeline of one page. The order is the contract:
 // decode the arguments, run the page Guard, and only then load anything, so an
 // unauthorised page is never read.
-func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map[string]*ir.Tabs, gates map[string][]*ir.When) func(http.ResponseWriter, *http.Request) {
+func (p *Program) pageHandler(page *ir.Page, panels map[string]ir.Node, tabs map[string]*ir.Tabs, conditions map[string][]*ir.When) func(http.ResponseWriter, *http.Request) {
 	parser := argParser(page)
 	mayStream := streamable(page.Root)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -94,31 +94,31 @@ func (p *Program) pageHandler(page *ir.Page, leaves map[string]ir.Node, tabs map
 			return
 		}
 		ctx := r.Context()
-		if table, format, bad := exportOf(r, leaves); bad {
+		if table, format, bad := exportOf(r, panels); bad {
 			p.state(w, r, http.StatusBadRequest, page, req.Raw, render.BadRequest(bareAddress(r)))
 			return
-		} else if table != nil && p.shown(ctx, page, gates[render.LeafID(table.At)]) {
+		} else if table != nil && p.shown(ctx, page, conditions[render.ViewID(table.At)]) {
 			p.export(w, r, page, req, table, format) // a table that is hidden by a When is asked for no export, as one that does not declare it is not
 			return
 		}
 		if id := r.Header.Get(ViewHeader); id != "" {
 			// A panel, or a Tabs: a request for one of them loads that and nothing else of the page.
-			// What is under a When that does not hold is not there: a Tabs or a leaf named for it is answered as one that is not.
-			if t, ok := tabs[id]; ok && p.shown(ctx, page, gates[id]) {
-				p.leaf(w, r, page, req, t)
+			// What is under a When that does not hold is not there: a Tabs or a panel named for it is answered as one that is not.
+			if t, ok := tabs[id]; ok && p.shown(ctx, page, conditions[id]) {
+				p.panel(w, r, page, req, t)
 				return
 			}
 			var node ir.Node
-			if p.shown(ctx, page, gates[id]) {
-				node = leaves[id]
+			if p.shown(ctx, page, conditions[id]) {
+				node = panels[id]
 			}
-			p.leaf(w, r, page, req, node)
+			p.panel(w, r, page, req, node)
 			return
 		}
 		path, query := p.address(page, req)
 		req.shell = p.startShell(ctx, render.Here{Page: page.PathTemplate, Path: path, Query: query}, p.render.Active(page))
-		req.panels = &panelSet{}
-		p.writeBuilt(w, r, page, req, p.panel(ctx, req, page, page.Root), mayStream)
+		req.parts = &partSet{}
+		p.writeBuilt(w, r, page, req, p.part(ctx, req, page, page.Root), mayStream)
 	}
 }
 
@@ -188,7 +188,7 @@ func (p *Program) begin(w http.ResponseWriter, r *http.Request, page *ir.Page, p
 
 // argParser reads the page's arguments, and the view state its tables and tabs
 // keep in the address. Any other parameter is ignored, so an address cannot
-// smuggle state into a leaf the page does not have.
+// smuggle state into a panel the page does not have.
 func argParser(page *ir.Page) args.ArgParser {
 	var parser args.ArgParser
 	var lists []string
@@ -210,7 +210,7 @@ func argParser(page *ir.Page) args.ArgParser {
 	return parser
 }
 
-// viewKeys lists the address parameters the body's leaves keep state in, and
+// viewKeys lists the address parameters the view's panels keep state in, and
 // which of them may repeat: a multi-select filter is one parameter per chosen
 // option. They are the tables that page or sort, and every Tabs.
 func viewKeys(n ir.Node) (keys, lists []string) {
@@ -256,7 +256,7 @@ func viewKeys(n ir.Node) (keys, lists []string) {
 	return keys, lists
 }
 
-// body loads and builds the page's content. Layouts only arrange; leaves are
+// body loads and builds the page's content. Layouts only arrange; panels are
 // built where they load.
 func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.Node) (templ.Component, error) {
 	switch n := n.(type) {
@@ -293,7 +293,7 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) }), nil
 	case *ir.Form:
 		var sub *submission
-		if req.sub != nil && req.subLeaf == render.LeafID(n.At) {
+		if req.sub != nil && req.subView == render.ViewID(n.At) {
 			sub = req.sub
 		}
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.form(ctx, req, page, n, sub) }), nil
@@ -302,21 +302,21 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	}
 }
 
-// children builds the panels of a layout all at once, and not one after the other: a page is then as slow
-// as its slowest panel, and not as the sum of them. Each is a [panel], drawn by waiting for it. When the page
-// keeps every panel it starts (req.panels), whoever draws the page waits for them; otherwise they are waited for here,
+// children builds the parts of a layout all at once, and not one after the other: a page is then as slow
+// as its slowest part, and not as the sum of them. Each is a [part], drawn by waiting for it. When the page
+// keeps every part it starts (req.parts), whoever draws the page waits for them; otherwise they are waited for here,
 // before the layout is drawn.
 func (p *Program) children(ctx context.Context, req *Request, page *ir.Page, nodes []ir.Node) ([]templ.Component, error) {
 	out := make([]templ.Component, len(nodes))
-	var mine panelSet
+	var mine partSet
 	for i, n := range nodes {
-		pn := p.panel(ctx, req, page, n)
-		out[i] = pn
-		if req.panels == nil {
-			mine.add(pn)
+		pt := p.part(ctx, req, page, n)
+		out[i] = pt
+		if req.parts == nil {
+			mine.add(pt)
 		}
 	}
-	if req.panels != nil {
+	if req.parts != nil {
 		return out, nil
 	}
 	return out, mine.wait(&req.code)

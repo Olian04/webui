@@ -50,7 +50,7 @@ func whenTable(title string) webui.Table[flags] {
 	}
 }
 
-func askLeaf(h http.Handler, target, id string) *httptest.ResponseRecorder {
+func askView(h http.Handler, target, id string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, target, nil)
 	req.Header.Set("X-Webui-View", id)
 	rec := httptest.NewRecorder()
@@ -80,8 +80,8 @@ func TestAWhenShowsItsBodyOnlyWhileTheConditionHolds(t *testing.T) {
 	assert.Contains(t, body, `data-view="p.2"`)
 }
 
-// A body is where it was declared whether it is shown or not, so its leaf is named the same.
-func TestTheLeafUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
+// A body is where it was declared whether it is shown or not, so its panel is named the same.
+func TestThePanelUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 	t.Parallel()
 
 	var g gate
@@ -89,9 +89,9 @@ func TestTheLeafUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 	h := editorApp(webui.Stack{columnPanel("Before"), g.when(columnPanel("Inside"))})
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-view="p.1.0"`)
 
-	// And it is the one that is asked for, as any leaf is.
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.1.0").Code, http.StatusOK)
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.1").Code, http.StatusNotFound) // the When is a layout, and not a leaf
+	// And it is the one that is asked for, as any panel is.
+	assert.Equal(t, askView(h, "/admin/e", "p.1.0").Code, http.StatusOK)
+	assert.Equal(t, askView(h, "/admin/e", "p.1").Code, http.StatusNotFound) // the When is a layout, and not a panel
 }
 
 func TestTheConditionIsAskedAgainOnEveryRequest(t *testing.T) {
@@ -130,7 +130,7 @@ func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">When closed<")
 }
 
-// What a When hides is out of reach: a refresh, a post and an export are answered as they are for a leaf that is not there.
+// What a When hides is out of reach: a refresh, a post and an export are answered as they are for a panel that is not there.
 func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 	t.Parallel()
 
@@ -148,7 +148,7 @@ func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 	table, formID := "p.0.0.0", "p.0.0.1"
 
 	g.open.Store(true)
-	assert.Equal(t, askLeaf(h, "/admin/e", table).Code, http.StatusOK)
+	assert.Equal(t, askView(h, "/admin/e", table).Code, http.StatusOK)
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/e?table.export=csv").Body.String(), "Name,Compress")
 	rec := post(h, "/admin/e", url.Values{"_view": {formID}, "f0": {"x"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -156,17 +156,17 @@ func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 
 	g.open.Store(false)
 	saved.Store(nil)
-	assert.Equal(t, askLeaf(h, "/admin/e", table).Code, http.StatusNotFound)
-	assert.Equal(t, askLeaf(h, "/admin/e", formID).Code, http.StatusNotFound)
+	assert.Equal(t, askView(h, "/admin/e", table).Code, http.StatusNotFound)
+	assert.Equal(t, askView(h, "/admin/e", formID).Code, http.StatusNotFound)
 	// An export of a table that is not there is a parameter for one that is not, which is ignored: the page, and not the file.
 	exp := serve(h, http.MethodGet, "/admin/e?table.export=csv")
 	assert.Equal(t, exp.Code, http.StatusOK)
 	assert.False(t, strings.Contains(exp.Body.String(), "Name,Compress"))
-	// A post is refused as one to a leaf that does not exist is, and nothing is saved.
+	// A post is refused as one to a panel that does not exist is, and nothing is saved.
 	hidden := post(h, "/admin/e", url.Values{"_view": {formID}, "f0": {"x"}})
 	unknown := post(h, "/admin/e", url.Values{"_view": {"p.9"}, "f0": {"x"}})
 	assert.Equal(t, hidden.Code, unknown.Code)
-	assert.Equal(t, hidden.Code, http.StatusSeeOther) // back to the page with the message that it was not understood, as for any leaf the page does not have
+	assert.Equal(t, hidden.Code, http.StatusSeeOther) // back to the page with the message that it was not understood, as for any panel the page does not have
 	assert.Equal(t, hidden.Header().Get("Location"), unknown.Header().Get("Location"))
 	assert.True(t, saved.Load() == nil)
 }
@@ -182,12 +182,12 @@ func TestAWhenInAWhenIsAnd(t *testing.T) {
 		assert.Equal(t, strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Both<"), tc.shown)
 	}
 
-	// The inner leaf is out of reach while either is closed.
+	// The inner panel is out of reach while either is closed.
 	outer.open.Store(true)
 	inner.open.Store(false)
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.0.0").Code, http.StatusNotFound)
+	assert.Equal(t, askView(h, "/admin/e", "p.0.0").Code, http.StatusNotFound)
 	inner.open.Store(true)
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.0.0").Code, http.StatusOK)
+	assert.Equal(t, askView(h, "/admin/e", "p.0.0").Code, http.StatusOK)
 }
 
 // A condition that cannot be decided does not hold: the panel says so, the page stands, and what was under it is out of reach.
@@ -215,7 +215,7 @@ func TestAFailingLoadSaysSoAndHidesTheBody(t *testing.T) {
 	assert.Contains(t, body, ">Before<")
 	assert.Contains(t, body, ">After<")
 	assert.Equal(t, int(shownLoads.Load()), 0) // the body was never built
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.1.0").Code, http.StatusNotFound)
+	assert.Equal(t, askView(h, "/admin/e", "p.1.0").Code, http.StatusNotFound)
 }
 
 func TestAPanicInALoadOrAShowIsRecoveredLikeAnyPanels(t *testing.T) {
@@ -440,7 +440,7 @@ func TestAShowThatIsAnOptionalBoolIsShownOnlyWhenItIsYes(t *testing.T) {
 	assert.False(t, shown())
 	set(nil) // not set is no
 	assert.False(t, shown())
-	assert.Equal(t, askLeaf(h, "/admin/e", "p.0.0").Code, http.StatusNotFound) // and what is under it is out of reach, as for any condition that does not hold
+	assert.Equal(t, askView(h, "/admin/e", "p.0.0").Code, http.StatusNotFound) // and what is under it is out of reach, as for any condition that does not hold
 }
 
 // Both accessors are a BoolLike, which is what a place that takes a yes or no of either kind asks for.

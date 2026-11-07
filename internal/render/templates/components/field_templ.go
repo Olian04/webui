@@ -2069,7 +2069,7 @@ func Switch(p SwitchProps) templ.Component {
 	})
 }
 
-// FormProps wraps a leaf's controls. Method defaults to post: a form that only
+// FormProps wraps a panel's controls. Method defaults to post: a form that only
 // reads should be a link.
 type FormProps struct {
 	Action string

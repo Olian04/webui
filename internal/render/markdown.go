@@ -5,8 +5,8 @@ import (
 	"github.com/Olian04/webui/internal/markdown"
 )
 
-// MarkdownView is a markdown leaf with its model loaded. The runtime fills it.
-type MarkdownView struct {
+// LoadedMarkdown is a markdown panel with its model loaded. The runtime fills it.
+type LoadedMarkdown struct {
 	Node *ir.Markdown
 
 	// Result is the rendered text.
@@ -21,8 +21,8 @@ type MarkdownView struct {
 	Refusal *ir.Refusal
 }
 
-// MarkdownView renders the text of a markdown leaf. A link in it to a path in the app is
+// LoadedMarkdown renders the text of a markdown panel. A link in it to a path in the app is
 // given the prefix the app is mounted at.
-func (r *Renderer) MarkdownView(n *ir.Markdown, source string) MarkdownView {
-	return MarkdownView{Node: n, Result: markdown.Render(source, markdown.Options{Prefix: r.prefix, TrustedOrigins: n.TrustedOrigins})}
+func (r *Renderer) LoadedMarkdown(n *ir.Markdown, source string) LoadedMarkdown {
+	return LoadedMarkdown{Node: n, Result: markdown.Render(source, markdown.Options{Prefix: r.prefix, TrustedOrigins: n.TrustedOrigins})}
 }

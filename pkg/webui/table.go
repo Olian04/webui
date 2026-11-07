@@ -174,7 +174,7 @@ func pageSizeOf(size int) int {
 	return size
 }
 
-func (t Table[M]) lowerView(at ir.Addr) ir.Node {
+func (t Table[M]) lowerView(at ir.Pos) ir.Node {
 	columns := lowerAccessors(t.Columns, "c")
 	labels := make(map[string]string, len(columns)) // the address's name for a column → its label
 	for _, c := range columns {

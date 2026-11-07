@@ -214,7 +214,7 @@ func TestTwoTablesKeepIndependentStateUnderTheirTitles(t *testing.T) {
 	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.sort=id" data-in-place>ID`)
 }
 
-func TestViewStateForALeafThePageDoesNotHaveIsIgnored(t *testing.T) {
+func TestViewStateForAPanelThePageDoesNotHaveIsIgnored(t *testing.T) {
 	t.Parallel()
 
 	h, seen := twoTables()

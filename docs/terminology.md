@@ -2,9 +2,7 @@
 
 The words of the library, and the words of its insides, kept apart. A **library term** is one that a person using the library reads or writes: an exported identifier, a field, godoc, `doc.go`, the README, `skills/webui/SKILL.md`, a compile error, a name on the wire (a form field, a header, a data attribute, an address parameter). An **internal term** is one that only the code behind it needs: `internal/`, unexported names, and the comments there.
 
-> The code is being brought to this file in steps (the `View` type, the names on the wire, the prose, the internals). Until the last lands, a name in the "was" notes below may still be in the code.
-
-Two rules follow, and a test holds the first once the last step lands (in `pkg/webui`: the public docs say no internal word):
+Two rules follow, and a test holds the first (`TestThePublicDocsSayNoInternalWord` in `pkg/webui`):
 
 1. A library term never carries an internal word. Text a user can read does not say IR, node, lower, walk, gate, verdict, leaf, chrome or navbar.
 2. One word means one thing in one layer, and one thing has one word in a layer. When a new word is needed, it goes in this file first, in the right half.
@@ -61,7 +59,7 @@ These do not appear in anything a user reads. Each is one thing in one layer.
 | **lower** | Turn a declared View, accessor, control or loader into its IR. `Compile` is the public word for the whole of it. | `lowerView`, `lowerAccessor`, `lowerControl`, `lowerLoader` |
 | **walk** | Visit every node, a parent before its children. | `ir.Walk` |
 | **part** | What the runtime builds for one View: concurrently, and sent in order. A part is made for a layout too. | `internal/runtime` (was `panel`) |
-| **props** | A node with its loaded data, which a template draws. | `render.TableProps` and the others (were `TableView`...) |
+| **loaded** | A node with its loaded data, which a template draws. | `render.LoadedTable` and the others (were `TableView`...) |
 | **frame** | The bordered region with a header that a panel is drawn in. | `components.PanelProps` |
 | **gate** | The in-process handler that says whether an address may be opened, by running its page's Guard. It is asked through `mayOpen`, `mayFollow` and `mayLead`. | `Program.gate` |
 | **verdict** | One Guard's answer for one address, kept for the length of a request. | `verdictCache` |
@@ -76,7 +74,7 @@ These do not appear in anything a user reads. Each is one thing in one layer.
 | In the declaration (library) | In the IR | In the runtime | In the renderer |
 | --- | --- | --- | --- |
 | a View | a node | a part | a component |
-| a panel | a node that loads | a part that loads | a frame, and `TableProps` |
+| a panel | a node that loads | a part that loads | a frame, and `LoadedTable` |
 | an accessor | `ir.Field` | | a cell or an input |
 | `Split` | `ir.Columns` of equal weight | | |
 | `List`, `Cards` | `ir.Items` | | |

@@ -179,23 +179,23 @@ func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 	assert.False(t, strings.Contains(silent, "panel-note"))
 }
 
-// The contract for a post that script makes, for any panel: it carries the header of the leaf, and is answered in HTML with a status that says how it went. An accepted
+// The contract for a post that script makes, for any panel: it carries the header of the panel, and is answered in HTML with a status that says how it went. An accepted
 // action is the item with a 200, a refused one the item with a 422, a Guard's refusal the item with a 403 and an error the item with a 500; a form that was refused is
 // the form itself, drawn again, with the 422. None of it is a redirect, a cookie or data.
 func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing.T) {
 	t.Parallel()
 
-	leaf := func(r *http.Request) { r.Header.Set("X-Webui-View", "p") }
+	panel := func(r *http.Request) { r.Header.Set("X-Webui-View", "p") }
 
 	s := newShop()
-	ok := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"), leaf)
+	ok := post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"), panel)
 	assert.Equal(t, ok.Code, http.StatusOK)
 	assert.Equal(t, ok.Header().Get("Location"), "")
 	assert.Equal(t, flashOf(ok), "")
 	assert.Contains(t, ok.Body.String(), `<li class="result" data-tone="ok">`)
 
 	// Refused by a rule: the form, drawn again with what was typed and what was refused, and nothing round it.
-	refused := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"), leaf)
+	refused := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"), panel)
 	assert.Equal(t, refused.Code, http.StatusUnprocessableEntity)
 	body := refused.Body.String()
 	assert.Contains(t, body, "must be a valid IPv4 address")

@@ -47,7 +47,7 @@ func (d Diff[M]) validateView(v *viewValidator) {
 	validateLanguage(v, "Diff", d.Language)
 }
 
-func (d Diff[M]) lowerView(at ir.Addr) ir.Node {
+func (d Diff[M]) lowerView(at ir.Pos) ir.Node {
 	return &ir.Diff{
 		At: at, Title: d.Title, Desc: d.Desc, Language: d.Language.id(),
 		Load:     eraseLoad(d.Load),

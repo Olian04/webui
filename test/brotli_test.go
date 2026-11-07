@@ -112,7 +112,7 @@ func TestAPageAndASearchAreGzippedAsTheyAreBuiltEvenForAClientThatTakesBrotli(t 
 		rec := accepting(h, "/admin/device", accept)
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.Equal(t, rec.Header().Get("Content-Encoding"), "gzip")
-		assert.Contains(t, strings.Join(rec.Header().Values("Vary"), ","), "Accept-Encoding") // a page varies on the leaf header as well
+		assert.Contains(t, strings.Join(rec.Header().Values("Vary"), ","), "Accept-Encoding") // a page varies on the panel header as well
 		assert.Equal(t, builtless(unzip(t, rec.Body.Bytes())), builtless(page.Body.String()))
 	}
 

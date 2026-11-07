@@ -23,14 +23,14 @@ func limitOf(n *ir.Items, raw map[string]string) int {
 	return min(limit, max(n.PageSize, maxItems))
 }
 
-// items loads a list of items and builds its view. The source is asked for one more than is shown, which is how the leaf knows there is more without
+// items loads a list of items and builds its view. The source is asked for one more than is shown, which is how the panel knows there is more without
 // counting. A failed Load fails that panel, not the page.
 func (p *Program) items(ctx context.Context, req *Request, page *ir.Page, n *ir.Items) templ.Component {
 	kind := "list"
 	if n.Cards {
 		kind = "cards"
 	}
-	view := render.ItemsView{Node: n, Page: page}
+	view := render.LoadedItems{Node: n, Page: page}
 	view.Path, view.Query = req.encode(page)
 	limit := limitOf(n, req.Raw)
 	rows, ok, refusal := loaded(p, ctx, page, kind, kind, n.At, func() ([]any, error) { return firstItems(ctx, n, limit+1) })

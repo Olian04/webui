@@ -163,7 +163,7 @@ func bound(s string) *float64 {
 	return &x
 }
 
-// table loads a table leaf. A failed Load fails that panel, not the page: the
+// table loads a table panel. A failed Load fails that panel, not the page: the
 // rest of the screen is still current, and says so.
 func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.Table) templ.Component {
 	// A select column that reads its options has them as they are for this request: its filter offers them, and
@@ -171,14 +171,14 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 	resolved, err := resolve(p, page, n, func() (*ir.Table, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a table could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a table could not be read", "page", page.PathTemplate, "view", render.ViewID(n.At), "err", err)
 		}
-		view := render.TableView{Node: n, Page: page, Failed: true}
+		view := render.LoadedTable{Node: n, Page: page, Failed: true}
 		view.Path, view.Query = req.encode(page)
 		return p.render.Table(view)
 	}
 	n = resolved
-	view := render.TableView{Node: n, Page: page, Q: queryOf(n, req.Raw)}
+	view := render.LoadedTable{Node: n, Page: page, Q: queryOf(n, req.Raw)}
 	view.Path, view.Query = req.encode(page)
 
 	window, ok, refusal := loaded(p, ctx, page, "table", "table", n.At, func() (ir.Window, error) { return n.Load(ctx, view.Q) })
@@ -194,9 +194,9 @@ func (p *Program) table(ctx context.Context, req *Request, page *ir.Page, n *ir.
 		view.Next = window.Next
 	}
 	view.Hrefs = p.rowHrefs(ctx, req, page, n, rows)
-	view.Keys, view.Gates, view.ActionHrefs = p.rowControls(ctx, req, page, n, rows)
+	view.Keys, view.Access, view.ActionHrefs = p.rowControls(ctx, req, page, n, rows)
 	view.ClickRefused = p.clickRefused(ctx, page, n.Click, "a table", rows)
-	view.BulkGates = p.bulkGates(ctx, page, n, rows)
+	view.BulkAccess = p.bulkGates(ctx, page, n, rows)
 	return p.render.Table(view)
 }
 
@@ -252,16 +252,16 @@ func (p *Program) clickRefused(ctx context.Context, page *ir.Page, click *ir.Con
 	}
 	refused := make([]bool, len(subjects))
 	for i, subject := range subjects {
-		refused[i] = !p.gateOf(page, "the click on "+what, func() error { return click.Action.Guard(ctx, subject) }).Open()
+		refused[i] = !p.accessOf(page, "the click on "+what, func() error { return click.Action.Guard(ctx, subject) }).Open()
 	}
 	return refused
 }
 
 // rowControls names each row, and says what each of its controls is for this viewer, and where each one that leads somewhere leads. The same Guard that
 // decides an action's button authorises the POST, so there is no second authorisation rule to keep in sync. A link is drawn when the visitor may open its page,
-// as for a click on a row; an address has no Guard. The gates are by the position that a control was declared at, whether it is drawn or not, since that is
+// as for a click on a row; an address has no Guard. The access are by the position that a control was declared at, whether it is drawn or not, since that is
 // what its button posts. A row has a key when the table has a Key, which a table that posts must.
-func (p *Program) rowControls(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) ([]string, [][]render.Gate, [][]string) {
+func (p *Program) rowControls(ctx context.Context, req *Request, page *ir.Page, n *ir.Table, rows []any) ([]string, [][]render.Access, [][]string) {
 	var keys []string
 	if n.Key != nil {
 		keys = make([]string, len(rows))
@@ -272,53 +272,53 @@ func (p *Program) rowControls(ctx context.Context, req *Request, page *ir.Page, 
 	if len(n.Actions) == 0 {
 		return keys, nil, nil
 	}
-	gates := make([][]render.Gate, len(rows))
+	access := make([][]render.Access, len(rows))
 	hrefs := make([][]string, len(rows))
 	for i := range rows {
-		gates[i] = make([]render.Gate, len(n.Actions))
+		access[i] = make([]render.Access, len(n.Actions))
 		hrefs[i] = make([]string, len(n.Actions))
 	}
 	for a, control := range n.Actions {
 		if act := control.Action; act != nil {
 			for i, row := range rows {
 				if act.Guard != nil {
-					gates[i][a] = p.gateOf(page, "the action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, row) })
+					access[i][a] = p.accessOf(page, "the action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, row) })
 				}
 			}
 			continue
 		}
 		for i, href := range p.controlHrefs(ctx, req, page, control, rows) {
 			hrefs[i][a] = href
-			gates[i][a] = render.Gate{Hidden: href == ""} // a link that cannot be followed, or an address that is none, is not drawn
+			access[i][a] = render.Access{Hidden: href == ""} // a link that cannot be followed, or an address that is none, is not drawn
 		}
 	}
-	return keys, gates, hrefs
+	return keys, access, hrefs
 }
 
 // bulkGates says what each bulk action is for this viewer. Its Guard takes a selection, which does not exist
 // until the visitor has made one, so it is asked of each row of the window as a selection of that one row, and
 // the action is drawn if any of them is accepted. If every one is refused it is disabled, with the message of the
 // first that said so, when one did, and is otherwise not drawn. A table with no rows has nothing to select, and none is drawn.
-func (p *Program) bulkGates(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []render.Gate {
+func (p *Program) bulkGates(ctx context.Context, page *ir.Page, n *ir.Table, rows []any) []render.Access {
 	if len(n.Bulk) == 0 {
 		return nil
 	}
-	gates := make([]render.Gate, len(n.Bulk))
+	access := make([]render.Access, len(n.Bulk))
 	for b, act := range n.Bulk {
-		gates[b] = render.Gate{Hidden: true}
+		access[b] = render.Access{Hidden: true}
 		for _, row := range rows {
-			var g render.Gate
+			var g render.Access
 			if act.Guard != nil {
-				g = p.gateOf(page, "the bulk action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, []any{row}) })
+				g = p.accessOf(page, "the bulk action "+strconv.Quote(act.Label), func() error { return act.Guard(ctx, []any{row}) })
 			}
 			if g.Open() {
-				gates[b] = g
+				access[b] = g
 				break
 			}
-			if gates[b].Hidden && g.Drawn() {
-				gates[b] = g // the first that is disabled, if no row is accepted
+			if access[b].Hidden && g.Drawn() {
+				access[b] = g // the first that is disabled, if no row is accepted
 			}
 		}
 	}
-	return gates
+	return access
 }

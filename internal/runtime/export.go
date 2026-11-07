@@ -45,12 +45,12 @@ var exportFormats = map[string]struct {
 }
 
 // exportOf is the table a request asks to download, and as what, if it does. A table that
-// does not declare Export ignores the parameter, as any parameter for a leaf the page does
+// does not declare Export ignores the parameter, as any parameter for a panel the page does
 // not have is. A format that is not one is the request's mistake.
-func exportOf(r *http.Request, leaves map[string]ir.Node) (n *ir.Table, format string, bad bool) {
+func exportOf(r *http.Request, panels map[string]ir.Node) (n *ir.Table, format string, bad bool) {
 	var tables []*ir.Table
-	for _, leaf := range leaves {
-		if t, ok := leaf.(*ir.Table); ok && t.Export && t.ID != "" {
+	for _, panel := range panels {
+		if t, ok := panel.(*ir.Table); ok && t.Export && t.ID != "" {
 			tables = append(tables, t)
 		}
 	}

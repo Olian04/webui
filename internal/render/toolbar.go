@@ -4,19 +4,19 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// ToolbarView is a toolbar with what it needs of this request: what each button is for this visitor, where each link goes, and the
+// LoadedToolbar is a toolbar with what it needs of this request: what each button is for this visitor, where each link goes, and the
 // model that each of its forms loaded. The runtime fills it.
-type ToolbarView struct {
+type LoadedToolbar struct {
 	Node *ir.Toolbar
 	Page *ir.Page
 
 	// Path and Query are the page's current address, as its arguments and view state encode.
 	Path, Query map[string]string
 
-	// Gates is what each item is for this visitor, by the position it was declared at: a button whose Guard refuses them, or a link
+	// Access is what each item is for this visitor, by the position it was declared at: a button whose Guard refuses them, or a link
 	// to a page that does, is not drawn, or is drawn disabled. Hrefs is where each link goes.
-	Gates []Gate
-	Hrefs []string
+	Access []Access
+	Hrefs  []string
 
 	// Forms is what each form of the toolbar loaded, by the position it was declared at: the model that its values show, or that it could not
 	// be loaded, which its place in the row says without taking the rest of the toolbar down.
@@ -33,7 +33,7 @@ type ToolbarForm struct {
 }
 
 // form is what the form at item i loaded.
-func (v ToolbarView) form(i int) ToolbarForm {
+func (v LoadedToolbar) form(i int) ToolbarForm {
 	if i < len(v.Forms) {
 		return v.Forms[i]
 	}
@@ -42,9 +42,9 @@ func (v ToolbarView) form(i int) ToolbarForm {
 
 // hasActions is whether the toolbar has a button that posts, and so a form to post it with. A toolbar of links and values has none:
 // there is nothing in it to submit.
-func (v ToolbarView) hasActions() bool {
+func (v LoadedToolbar) hasActions() bool {
 	for i, it := range v.Node.Items {
-		if it.Action != nil && v.gate(i).Drawn() {
+		if it.Action != nil && v.access(i).Drawn() {
 			return true
 		}
 	}
@@ -52,19 +52,19 @@ func (v ToolbarView) hasActions() bool {
 }
 
 // drawn is whether any item is drawn for this visitor. A toolbar whose items are all refused to them is not there at all.
-func (v ToolbarView) drawn() bool {
+func (v LoadedToolbar) drawn() bool {
 	for i := range v.Node.Items {
-		if v.gate(i).Drawn() {
+		if v.access(i).Drawn() {
 			return true
 		}
 	}
 	return false
 }
 
-// gate is what item i is for this visitor.
-func (v ToolbarView) gate(i int) Gate {
-	if i < len(v.Gates) {
-		return v.Gates[i]
+// access is what item i is for this visitor.
+func (v LoadedToolbar) access(i int) Access {
+	if i < len(v.Access) {
+		return v.Access[i]
 	}
-	return Gate{}
+	return Access{}
 }

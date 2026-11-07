@@ -258,7 +258,7 @@ func TestCrossOriginPostsAreRefused(t *testing.T) {
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 }
 
-func TestUnknownLeafAndOversizedBody(t *testing.T) {
+func TestUnknownPanelAndOversizedBody(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()

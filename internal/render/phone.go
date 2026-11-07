@@ -11,7 +11,7 @@ func editsPhone(body ir.Node) bool {
 		switch n := n.(type) {
 		case *ir.Form:
 			if n.Submit != nil {
-				for f := range ir.Leaves(n.Fields) {
+				for f := range ir.Flatten(n.Fields) {
 					found = found || (f.Writable() && f.Rules.Format == ir.FormatTel)
 				}
 			}

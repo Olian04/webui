@@ -22,22 +22,22 @@
 // lowering, and re-proving it downstream is duplicated work.
 package ir
 
-// Node is a leaf or a layout. Leaves load and refresh independently; layouts
+// Node is a panel or a layout. Leaves load and refresh independently; layouts
 // only arrange, and never load, guard, or refresh. The one exception is a When, which
 // loads for the condition that shows its child, and is neither refreshed nor posted to.
 type Node interface {
-	// Addr is the node's position in the body tree, assigned while lowering.
+	// Pos is the node's position in the view tree, assigned while lowering.
 	// A section-refresh request names this, and it is stable for the life of
 	// one compiled app.
-	Addr() Addr
+	Pos() Pos
 
-	// Children is the nodes directly under this one, in the order a page shows them: a layout's, and a tab's body for each tab, whether it is selected or not. A leaf has none.
+	// Children is the nodes directly under this one, in the order a page shows them: a layout's, and a tab's body for each tab, whether it is selected or not. A panel has none.
 	// A pass that only needs to reach every node asks this, so a new layout is one method here and no edit in each pass; what a pass does with a node of one kind stays its own.
 	Children() []Node
 }
 
-// Addr is a path of child indices from the page body, such as [0 1].
-type Addr []int
+// Pos is a path of child indices from the page's root, such as [0 1].
+type Pos []int
 
 // OutcomeKind says how an action ended, as the action meant it.
 type OutcomeKind uint8

@@ -2,10 +2,10 @@ package ir
 
 import "context"
 
-// Diff is a leaf that shows two texts of one model side by side, and what changed
+// Diff is a panel that shows two texts of one model side by side, and what changed
 // between them. It only reads.
 type Diff struct {
-	At Addr
+	At Pos
 
 	Title string
 	Desc  string
@@ -20,7 +20,7 @@ type Diff struct {
 	Language string // Monaco's id for it
 }
 
-// Addr reports the node's position in the body tree.
-func (d *Diff) Addr() Addr { return d.At }
+// Pos reports the node's position in the view tree.
+func (d *Diff) Pos() Pos { return d.At }
 
 func (d *Diff) Children() []Node { return nil }

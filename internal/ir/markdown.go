@@ -2,9 +2,9 @@ package ir
 
 import "context"
 
-// Markdown is a leaf that shows one text of a model, set as markdown. It only reads.
+// Markdown is a panel that shows one text of a model, set as markdown. It only reads.
 type Markdown struct {
-	At Addr
+	At Pos
 
 	Title string
 	Desc  string
@@ -20,7 +20,7 @@ type Markdown struct {
 	TrustedOrigins []string
 }
 
-// Addr reports the node's position in the body tree.
-func (m *Markdown) Addr() Addr { return m.At }
+// Pos reports the node's position in the view tree.
+func (m *Markdown) Pos() Pos { return m.At }
 
 func (m *Markdown) Children() []Node { return nil }

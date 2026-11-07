@@ -14,10 +14,10 @@ import (
 // instant.
 const minRefresh = time.Second
 
-// refreshKey is in the context that a leaf is built with, which holds what its Load says of whether it is final.
+// refreshKey is in the context that a panel is built with, which holds what its Load says of whether it is final.
 type refreshKey struct{}
 
-// refreshHint is what one leaf's Load says: that it is to be asked for again after d. Loads of one leaf may run on goroutines of their own.
+// refreshHint is what one panel's Load says: that it is to be asked for again after d. Loads of one panel may run on goroutines of their own.
 type refreshHint struct {
 	mu    sync.Mutex
 	after time.Duration
@@ -39,7 +39,7 @@ func RefreshAfter(ctx context.Context, d time.Duration) {
 	}
 }
 
-// refreshing builds a leaf with its own hint in the context, and draws it as one that is not final when its Load said so. Every leaf is built with
+// refreshing builds a panel with its own hint in the context, and draws it as one that is not final when its Load said so. Every panel is built with
 // its own, because the panels of a page are built at once, and one says nothing of another.
 func refreshing(ctx context.Context, build func(context.Context) templ.Component) templ.Component {
 	h := &refreshHint{}

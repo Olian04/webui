@@ -141,8 +141,8 @@ func (c Cards[M]) spec() itemsSpec[M] {
 func (f List[M]) validateView(v *viewValidator)  { f.spec().validate(v) }
 func (c Cards[M]) validateView(v *viewValidator) { c.spec().validate(v) }
 
-func (f List[M]) lowerView(at ir.Addr) ir.Node  { return f.spec().lower(at) }
-func (c Cards[M]) lowerView(at ir.Addr) ir.Node { return c.spec().lower(at) }
+func (f List[M]) lowerView(at ir.Pos) ir.Node  { return f.spec().lower(at) }
+func (c Cards[M]) lowerView(at ir.Pos) ir.Node { return c.spec().lower(at) }
 
 func (s itemsSpec[M]) validate(v *viewValidator) {
 	if s.loader == nil {
@@ -192,7 +192,7 @@ func (s itemsSpec[M]) validate(v *viewValidator) {
 // defaultItems is how many items a list shows when it does not say.
 const defaultItems = 5
 
-func (s itemsSpec[M]) lower(at ir.Addr) ir.Node {
+func (s itemsSpec[M]) lower(at ir.Pos) ir.Node {
 	n := &ir.Items{
 		At: at, Cards: s.cards, Scroll: s.scroll, Title: s.title, Desc: s.desc, PageSize: defaultItems,
 		Headline: fieldOf[M](s.headline, "h"),

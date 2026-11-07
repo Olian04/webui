@@ -208,22 +208,22 @@ templ Columns(children []templ.Component, weights []int) {
 	}
 }
 
-// Table renders a loaded table leaf as one panel: header, rows, and a pager
+// Table renders a loaded table panel as one panel: header, rows, and a pager
 // footer when the table has an offset argument. A table with actions is one
 // form, so a button anywhere in it posts the selection with it.
-templ (r *Renderer) Table(v TableView) {
+templ (r *Renderer) Table(v LoadedTable) {
 	{{ cols := r.columns(v) }}
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   LeafID(v.Node.At),
+		ViewID:   ViewID(v.Node.At),
 		Grows:  true,
 		Footer: r.tableFooter(v),
 	}) {
 		if v.interactive() {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-				<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+				<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 				@r.tableContent(v, cols)
 			}
 		} else {
@@ -237,13 +237,13 @@ templ (r *Renderer) Table(v TableView) {
 	}
 }
 
-templ (r *Renderer) tableContent(v TableView, cols []columnView) {
+templ (r *Renderer) tableContent(v LoadedTable, cols []columnView) {
 	{{ actions := v.hasRowActions() }}
 	if v.selectable() {
 		@c.ActionBar() {
 			for i, a := range v.Node.Bulk {
-				if v.bulkGate(i).Drawn() {
-					@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i), Guard: v.bulkGate(i).Reason, Confirm: a.Confirm, ConfirmID: confirmID(v.Node.At, "b", i)}) {
+				if v.bulkAccess(i).Drawn() {
+					@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Name: "_act", Value: BulkActionValue(i), Guard: v.bulkAccess(i).Reason, Confirm: a.Confirm, ConfirmID: confirmID(v.Node.At, "b", i)}) {
 						{ a.Label }
 					}
 				}
@@ -304,14 +304,14 @@ templ (r *Renderer) tableContent(v TableView, cols []columnView) {
 	}
 }
 
-func emptyHint(v TableView) string {
+func emptyHint(v LoadedTable) string {
 	if v.Q.Offset > 0 {
 		return "This page is past the end."
 	}
 	return "No rows were returned for the current arguments."
 }
 
-func (r *Renderer) tableFooter(v TableView) templ.Component {
+func (r *Renderer) tableFooter(v LoadedTable) templ.Component {
 	if v.Failed {
 		return nil
 	}
@@ -324,7 +324,7 @@ func (r *Renderer) tableFooter(v TableView) templ.Component {
 
 // tableRow is a row of a table. It is written directly, as the Row component would have written it, since a table has a row for each of its rows and the component is a closure and
 // a context for each; its cells are what cell makes, and the cell of its buttons, when it has any, is rowActions.
-func (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, actions bool) templ.Component {
+func (r *Renderer) tableRow(v LoadedTable, cols []columnView, i int, row any, actions bool) templ.Component {
 	open := c.RowProps{Href: v.Hrefs[i], Clickable: v.clicks(i)}.Open()
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) error {
 		if err := ctx.Err(); err != nil {
@@ -356,19 +356,19 @@ func (r *Renderer) tableRow(v TableView, cols []columnView, i int, row any, acti
 	})
 }
 
-templ (r *Renderer) rowActions(v TableView, cols []columnView, i int, row any) {
+templ (r *Renderer) rowActions(v LoadedTable, cols []columnView, i int, row any) {
 	<td class="actions">
 		for a, act := range v.Node.Actions {
-			if v.gate(i, a).Drawn() && act.Action != nil {
+			if v.access(i, a).Drawn() && act.Action != nil {
 				@c.Button(c.ButtonProps{
 					Variant: variant(act.Role), Size: c.SizeSmall,
-					Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.gate(i, a).Reason,
+					Name: "_act", Value: RowActionValue(a, v.Keys[i]), Guard: v.access(i, a).Reason,
 					Confirm: act.Action.Confirm, ConfirmID: confirmID(v.Node.At, "r"+strconv.Itoa(i)+"a", a),
 				}) {
 					{ act.Label }
 					<span class="sr-only">{ rowName(ctx, cols, row, v.Keys[i]) }</span>
 				}
-			} else if v.gate(i, a).Drawn() {
+			} else if v.access(i, a).Drawn() {
 				@c.Button(c.ButtonProps{Variant: variant(act.Role), Size: c.SizeSmall, Href: v.actionHref(i, a), Attrs: linkAttrs(act)}) {
 					{ act.Label }
 					<span class="sr-only">{ rowNameOf(ctx, cols, row, v.Keys, i) }</span>
@@ -495,21 +495,21 @@ templ present(f ir.Field, text string, model any) {
 	}
 }
 
-// Form renders a loaded form leaf as one panel. The submit button and its
+// Form renders a loaded form panel as one panel. The submit button and its
 // Cancel sit in the footer, inside the <form>, so they submit it. When the
 // submit is refused (SubmitRefused) they are replaced by a Back button.
-templ (r *Renderer) Form(v FormView) {
+templ (r *Renderer) Form(v LoadedForm) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   LeafID(v.Node.At),
+		ViewID:   ViewID(v.Node.At),
 	}) {
 		@c.Form(c.FormProps{
 			Action: r.PageHref(v.Page, v.Path, v.Query),
 			Attrs:  v.formAttrs(),
 		}) {
-			<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+			<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 			if v.Node.Editor != nil {
 				@r.editorBody(v)
 			} else {
@@ -561,7 +561,7 @@ templ (r *Renderer) Form(v FormView) {
 
 // formField is a field, or a group of them side by side. A group is layout and
 // nothing else: it has no frame, because a panel never nests another container.
-templ (r *Renderer) formField(v FormView, f ir.Field) {
+templ (r *Renderer) formField(v LoadedForm, f ir.Field) {
 	if len(f.Group) > 0 {
 		@c.FieldRow() {
 			for _, child := range f.Group {
@@ -715,15 +715,15 @@ templ Refused(ref *ir.Refusal) {
 // is its label and what the accessor reads from the page's arguments, as a read-only form field shows it. The controls for the
 // left and the right are one row, with a gap between the two groups that takes what is left over; the right ones are a group that wraps
 // as one, so it is at the right edge of the row that it is in.
-templ (r *Renderer) Toolbar(v ToolbarView) {
+templ (r *Renderer) Toolbar(v LoadedToolbar) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: ViewID(v.Node.At)}) {
 		}
 	} else if v.drawn() {
-		<div class="toolbar" data-toolbar data-view={ LeafID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
+		<div class="toolbar" data-toolbar data-view={ ViewID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
 			if v.hasActions() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+					<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 					@r.toolbarItems(v)
 				}
 			} else {
@@ -735,9 +735,9 @@ templ (r *Renderer) Toolbar(v ToolbarView) {
 
 // toolbarItems are the controls of a toolbar, in order. The group with fewer controls is one item of the row, which is in it whole or in the next
 // row whole; the group with more flows in rows from its own edge, the left one from the left, the right one from the right, and is one
-// item of the row that takes what the other leaves, when it has the room for the widest of its controls. An item that is not drawn for this
+// item of the row that takes what the other panels, when it has the room for the widest of its controls. An item that is not drawn for this
 // visitor leaves no gap, but the declared position of the others stays, which is what their buttons post.
-templ (r *Renderer) toolbarItems(v ToolbarView) {
+templ (r *Renderer) toolbarItems(v LoadedToolbar) {
 	if rightFlows(v.Node) {
 		<span class="toolbar-start">
 			for i := 0; i < v.Node.RightFrom; i++ {
@@ -774,7 +774,7 @@ func rightFlows(n *ir.Toolbar) bool {
 				total++
 				continue
 			}
-			for range ir.Leaves(it.Form.Fields) {
+			for range ir.Flatten(it.Form.Fields) {
 				total++
 			}
 		}
@@ -784,11 +784,11 @@ func rightFlows(n *ir.Toolbar) bool {
 }
 
 // toolbarItem is one control of a toolbar, by its declared position.
-templ (r *Renderer) toolbarItem(v ToolbarView, i int, it ir.ToolbarItem) {
+templ (r *Renderer) toolbarItem(v LoadedToolbar, i int, it ir.ToolbarItem) {
 	switch {
-		case !v.gate(i).Drawn():
+		case !v.access(i).Drawn():
 		case it.Action != nil:
-			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.gate(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.access(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
 				{ it.Label }
 			}
 		case it.Link != nil:
@@ -817,7 +817,7 @@ templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
 				</span>
 			</span>
 		} else {
-			for field := range ir.Leaves(f.Fields) {
+			for field := range ir.Flatten(f.Fields) {
 				{{ shown := field.Shown(ctx, loaded.Model) }}
 				<span class="toolbar-value">
 					<span class="toolbar-lbl">{ field.Label }</span>
@@ -837,31 +837,31 @@ templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
 	</span>
 }
 
-// FileUpload is a panel for sending one file, of any size, to the app. It is a form of its own, which posts to the page: the leaf comes first, so that
+// FileUpload is a panel for sending one file, of any size, to the app. It is a form of its own, which posts to the page: the panel comes first, so that
 // the body says whose file it is before the file begins, then the options that the visitor chooses beside it, a form's fields, which come first so that they can be
 // checked before any of the file is read, and then the one file, which is not held anywhere on the way. A visitor whom its Guard refuses with Disabled has the chooser and the button disabled, with the reason, and one whom it refuses
 // with any other error has no panel.
-templ (r *Renderer) FileUpload(v FileUploadView) {
+templ (r *Renderer) FileUpload(v LoadedFileUpload) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: LeafID(v.Node.At)}) {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: ViewID(v.Node.At)}) {
 		}
-	} else if v.Gate.Drawn() {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, ViewID: LeafID(v.Node.At)}) {
+	} else if v.Access.Drawn() {
+		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, ViewID: ViewID(v.Node.At)}) {
 			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: v.formAttrs()}) {
-				<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+				<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 				<div class="panel-body pad">
 					for _, f := range v.Form.Node.Fields {
 						@r.formField(v.Form, f)
 					}
 					@c.Field(c.FieldProps{For: v.inputID(), Label: "File", Required: true, Rules: v.ruleLines(), Help: v.Node.Help}) {
 						@c.FileInput(c.FileInputProps{
-							ID: v.inputID(), Name: uploadField, Accept: rules.FileAccept(v.Node.Spec), Required: v.Gate.Reason == "", Attrs: v.attrs(),
+							ID: v.inputID(), Name: uploadField, Accept: rules.FileAccept(v.Node.Spec), Required: v.Access.Reason == "", Attrs: v.attrs(),
 						})
 					}
 				</div>
 				<div class="panel-foot end">
 					@c.Button(c.ButtonProps{
-						Variant: variant(v.Node.Receive.Role), Size: c.SizeSmall, Guard: v.Gate.Reason,
+						Variant: variant(v.Node.Receive.Role), Size: c.SizeSmall, Guard: v.Access.Reason,
 						Confirm: v.Node.Receive.Confirm, ConfirmID: confirmID(v.Node.At, "upload", 0),
 					}) {
 						{ v.Node.Receive.Label }
@@ -905,7 +905,7 @@ templ Tabs(label string, strip []c.Tab, content templ.Component, id string) {
 // <details> holding a GET form, so it opens, submits and clears without script.
 // A column with a fixed set of options offers a multi-select of exactly those, a
 // numeric column a minimum and a maximum, and any other takes text.
-templ (r *Renderer) filterMenu(v TableView, fv filterView) {
+templ (r *Renderer) filterMenu(v LoadedTable, fv filterView) {
 	<details class={ "filter", templ.KV("on", fv.On) }>
 		<summary class="filter-btn" title={ fv.summary() } aria-label={ fv.summary() }>
 			@c.Icon(c.IconProps{Name: c.IconFilter})
@@ -986,7 +986,7 @@ templ (r *Renderer) filterForm(fv filterView) {
 // over them and keeps the textarea in step, so the form posts as it always did. The
 // newline ahead of the text is dropped by the browser, and is there so that a text that
 // begins with one keeps it.
-templ (r *Renderer) editorBody(v FormView) {
+templ (r *Renderer) editorBody(v LoadedForm) {
 	{{ f := v.Node.Fields[0] }}
 	{{ fv := r.fieldView(ctx, v, f) }}
 	<div class="panel-body code-body">
@@ -1032,15 +1032,15 @@ templ (r *Renderer) editorBody(v FormView) {
 	</div>
 }
 
-// Diff renders a diff leaf as one panel: the two texts and what changed. The page holds
+// Diff renders a diff panel as one panel: the two texts and what changed. The page holds
 // the changes as a unified diff, which the server made, and the two texts apart for
 // Monaco, which replaces the diff with its own when script runs.
-templ (r *Renderer) Diff(v DiffView) {
+templ (r *Renderer) Diff(v LoadedDiff) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		ViewID:   LeafID(v.Node.At),
+		ViewID:   ViewID(v.Node.At),
 	}) {
 		<div class="panel-body code-body">
 			<div class="code-sides" aria-hidden="true">
@@ -1056,15 +1056,15 @@ templ (r *Renderer) Diff(v DiffView) {
 	}
 }
 
-// Markdown renders a markdown leaf as one panel: the text, set as markup. The text was
+// Markdown renders a markdown panel as one panel: the text, set as markup. The text was
 // rendered by internal/markdown, which leaves nothing in it that could run, so it is
 // put in the page as it is.
-templ (r *Renderer) Markdown(v MarkdownView) {
+templ (r *Renderer) Markdown(v LoadedMarkdown) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		ViewID:   LeafID(v.Node.At),
+		ViewID:   ViewID(v.Node.At),
 	}) {
 		<div class="panel-body pad">
 			<article class="md" aria-label={ v.Node.Content.Label }>
@@ -1076,12 +1076,12 @@ templ (r *Renderer) Markdown(v MarkdownView) {
 
 // Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
 // one, then Show more when the source had more. Each part is shown as its field says to show it, as it is in a cell of a table.
-templ (r *Renderer) Items(v ItemsView) {
+templ (r *Renderer) Items(v LoadedItems) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   LeafID(v.Node.At),
+		ViewID:   ViewID(v.Node.At),
 		Footer: r.itemsFoot(v),
 	}) {
 		<div class="panel-body items-body">
@@ -1090,7 +1090,7 @@ templ (r *Renderer) Items(v ItemsView) {
 			} else {
 				if v.posts() {
 					@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-						<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+						<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 						@r.itemList(v)
 					}
 				} else {
@@ -1102,7 +1102,7 @@ templ (r *Renderer) Items(v ItemsView) {
 }
 
 // itemList is the items, one after the other.
-templ (r *Renderer) itemList(v ItemsView) {
+templ (r *Renderer) itemList(v LoadedItems) {
 	@c.ItemList(c.ItemListProps{Cards: v.Node.Cards, Scroll: v.Node.Scroll, Label: v.label()}) {
 		for i, row := range v.Rows {
 			@c.Item(r.item(v, i, row))
@@ -1112,7 +1112,7 @@ templ (r *Renderer) itemList(v ItemsView) {
 
 // itemsFoot is how many items are shown and, when the source had more, the link that shows more: a real link to the same page with a larger limit, so that it works without script, which
 // replaces the list in place. A list with nothing more to show has no foot.
-templ (r *Renderer) itemsFoot(v ItemsView) {
+templ (r *Renderer) itemsFoot(v LoadedItems) {
 	if v.More {
 		<div class="pager-info">{ strconv.Itoa(len(v.Rows)) } shown</div>
 		@c.Button(c.ButtonProps{Href: r.moreHref(v), Variant: c.VariantSecondary, Size: c.SizeSmall, Attrs: inPlace}) {
@@ -1124,7 +1124,7 @@ templ (r *Renderer) itemsFoot(v ItemsView) {
 
 // itemHeadline is an item's headline: a link to where it leads in the app when it leads somewhere, or a link to another site, which opens a tab of its own and says so,
 // else as its field shows it.
-templ itemHeadline(v ItemsView, i int, row any) {
+templ itemHeadline(v LoadedItems, i int, row any) {
 	if href := v.href(i); href != "" && v.isExternal() {
 		<a class="item-link ext" href={ href } target="_blank" rel="noopener noreferrer">
 			{ v.Node.Headline.Shown(ctx, row) }
@@ -1151,7 +1151,7 @@ templ itemBadge(f ir.Field, row any) {
 }
 
 // item is one item as the component takes it. A fact with no value is left out, so that a line is not a row of dashes.
-func (r *Renderer) item(v ItemsView, i int, row any) c.ItemProps {
+func (r *Renderer) item(v LoadedItems, i int, row any) c.ItemProps {
 	p := c.ItemProps{Card: v.Node.Cards, Image: picture(v.Node, row), Headline: itemHeadline(v, i, row)}
 	if v.Node.Badge != nil {
 		p.Badge = itemBadge(*v.Node.Badge, row)
@@ -1167,17 +1167,17 @@ func (r *Renderer) item(v ItemsView, i int, row any) c.ItemProps {
 
 // Calendar renders a month as one panel: a grid of days, each marked when it has items and a link when it leads somewhere, with links to the months either side. It is a table,
 // so that a reader who goes by the grid is told each day's weekday and date and how many items there are.
-templ (r *Renderer) Calendar(v CalendarView) {
+templ (r *Renderer) Calendar(v LoadedCalendar) {
 	@c.Panel(c.PanelProps{
 		Title:  v.Node.Title,
 		Desc:   v.Node.Desc,
 		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID: LeafID(v.Node.At),
+		ViewID: ViewID(v.Node.At),
 	}) {
 		<div class="panel-body cal-body">
 			if v.Node.Click.Posts() {
 				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_view" value={ LeafID(v.Node.At) }/>
+					<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
 					@c.Calendar(r.calendarProps(v))
 				}
 			} else {
@@ -1188,7 +1188,7 @@ templ (r *Renderer) Calendar(v CalendarView) {
 }
 
 // unified is the changes as a unified diff, the way to read them without script.
-templ (r *Renderer) unified(v DiffView) {
+templ (r *Renderer) unified(v LoadedDiff) {
 	<div class="udiff" role="region" tabindex="0" aria-label={ v.Node.Original.Label + " and " + v.Node.Modified.Label + ", compared" }>
 		switch {
 			case !v.Compared:

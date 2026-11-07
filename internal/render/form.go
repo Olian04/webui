@@ -19,8 +19,8 @@ import (
 	"github.com/a-h/templ"
 )
 
-// FormView is a form with its model loaded. The runtime fills it.
-type FormView struct {
+// LoadedForm is a form with its model loaded. The runtime fills it.
+type LoadedForm struct {
 	Node *ir.Form
 	Page *ir.Page
 
@@ -60,7 +60,7 @@ type FormView struct {
 
 // Editable is whether the visitor can change the text of a code editor: it has a Store,
 // and they may submit. A viewer, or an editor whose guard refuses them, is read.
-func (v FormView) Editable() bool {
+func (v LoadedForm) Editable() bool {
 	return len(v.Node.Fields) > 0 && v.editable(v.Node.Fields[0])
 }
 
@@ -110,11 +110,11 @@ type fieldView struct {
 // form can be submitted by them. A form with no Submit, or whose Submit is refused
 // to the visitor, is only read.
 // firstInvalid is the label of the first field, in the order they are drawn, that was refused, "" when none was.
-func (v FormView) firstInvalid() string {
+func (v LoadedForm) firstInvalid() string {
 	if len(v.Errors) == 0 {
 		return ""
 	}
-	for f := range ir.Leaves(v.Node.Fields) {
+	for f := range ir.Flatten(v.Node.Fields) {
 		if v.Errors[f.Label] != "" {
 			return f.Label
 		}
@@ -122,11 +122,11 @@ func (v FormView) firstInvalid() string {
 	return ""
 }
 
-func (v FormView) editable(f ir.Field) bool {
+func (v LoadedForm) editable(f ir.Field) bool {
 	return f.Writable() && v.Node.Submit != nil && !v.SubmitRefused
 }
 
-func (r *Renderer) fieldView(ctx context.Context, v FormView, f ir.Field) fieldView {
+func (r *Renderer) fieldView(ctx context.Context, v LoadedForm, f ir.Field) fieldView {
 	editable := v.editable(f)
 	fv := fieldView{
 		ID:        fieldID(v.Node.At, f.Name),
@@ -215,7 +215,7 @@ var phoneCountries = sync.OnceValue(func() []phone.Country {
 // was typed after a rejection, and shows as the national number in the country it is of: the country that was chosen, which a
 // rejected number keeps when it is not one that has its own, else the field's DefaultCountry, else the country of the visitor's
 // language. The server does what script used to: script only spaces the digits as they are typed.
-func phoneInput(v FormView, f ir.Field, fv fieldView) *c.PhoneInputProps {
+func phoneInput(v LoadedForm, f ir.Field, fv fieldView) *c.PhoneInputProps {
 	national, iso := fv.Value, ""
 	if country, rest, ok := phone.Split(fv.Value); ok {
 		national, iso = phone.Spaced(country, rest), country.ISO
@@ -279,8 +279,8 @@ func momentInput(f ir.Field, model any) string {
 }
 
 // fieldID is unique in the document: a page may hold several forms.
-func fieldID(at ir.Addr, name string) string {
-	return strings.ReplaceAll(LeafID(at), ".", "-") + "-" + name
+func fieldID(at ir.Pos, name string) string {
+	return strings.ReplaceAll(ViewID(at), ".", "-") + "-" + name
 }
 
 // validity is the words that a field is refused in, for the browser to say, and what a matching value looks like: the
@@ -434,9 +434,9 @@ func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 
 // formAttrs are the attributes of the form's element: the mark that script finds it by, and the encoding of a form that has a file
 // chooser, which is what carries a file. A form without one is posted as it always was.
-func (v FormView) formAttrs() templ.Attributes {
-	attrs := templ.Attributes{"data-view-form": LeafID(v.Node.At)}
-	for f := range ir.Leaves(v.Node.Fields) {
+func (v LoadedForm) formAttrs() templ.Attributes {
+	attrs := templ.Attributes{"data-view-form": ViewID(v.Node.At)}
+	for f := range ir.Flatten(v.Node.Fields) {
 		if f.File != nil && v.editable(f) {
 			attrs["enctype"] = "multipart/form-data"
 			break

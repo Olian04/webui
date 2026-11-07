@@ -17,15 +17,15 @@ type submission struct {
 	errs   []ir.FieldError
 }
 
-// form loads a form leaf and builds its view. sub is nil on a plain GET.
+// form loads a form panel and builds its view. sub is nil on a plain GET.
 // A failed Load fails that panel, not the page.
 func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.Form, sub *submission) templ.Component {
-	view := render.FormView{Node: n, Page: page, Languages: req.Languages}
+	view := render.LoadedForm{Node: n, Page: page, Languages: req.Languages}
 	// A select that reads its options has them as they are for this request. A source that fails fails the panel.
 	resolved, err := resolve(p, page, n, func() (*ir.Form, error) { return n.Resolved(ctx) })
 	if err != nil {
 		if ctx.Err() == nil {
-			p.log.Error("webui: the options of a form could not be read", "page", page.PathTemplate, "view", render.LeafID(n.At), "err", err)
+			p.log.Error("webui: the options of a form could not be read", "page", page.PathTemplate, "view", render.ViewID(n.At), "err", err)
 		}
 		view.Failed = true
 		return p.render.Form(view)
@@ -54,8 +54,8 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	// is no second authorisation rule to keep in sync. A form that may not be saved is read, whichever
 	// error says so: there is no disabled form to draw that is any use to the visitor.
 	if n.Submit != nil && n.Submit.Guard != nil {
-		gate := p.gateOf(page, "the Submit of a form", func() error { return n.Submit.Guard(ctx, view.Model) })
-		view.SubmitRefused, view.SubmitReason = !gate.Open(), gate.Reason
+		access := p.accessOf(page, "the Submit of a form", func() error { return n.Submit.Guard(ctx, view.Model) })
+		view.SubmitRefused, view.SubmitReason = !access.Open(), access.Reason
 	}
 	if n.Editor != nil {
 		// A language service goes only to an editor that can be edited by this visitor:
