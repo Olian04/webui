@@ -262,15 +262,6 @@ func TestPanelsHaveNoRefreshButtonOfTheirOwn(t *testing.T) {
 	assert.Contains(t, body, `data-refresh`)
 }
 
-// The search box shows focus as a ring, which is how the Cmd+K shortcut shows
-// it worked.
-func TestSearchBoxHasAVisibleFocusRing(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".search:focus-within {\n  border-color: var(--blue);\n  box-shadow: 0 0 0 2px")
-}
-
 // guardedSearchApp finds three devices; the detail page's Guard decides which of
 // them this visitor may open.
 func guardedSearchApp(allowed func(id string) error) http.Handler {

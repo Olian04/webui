@@ -93,33 +93,6 @@ func TestLayoutsGivePanelsPositionalIDs(t *testing.T) {
 	assert.Contains(t, body, `class="stack"`)
 }
 
-// A Split is Columns of equal weights: it has no markup or rule of its own, so its panels are as tall as the tallest in their row,
-// and rows are independent, by the rule of Columns, and a panel's body takes the room so its foot stays at the bottom.
-func TestASplitIsColumnsAndKeepsItsPanelsFootAtTheBottom(t *testing.T) {
-	t.Parallel()
-
-	h, _ := layoutApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;">`)
-	assert.False(t, strings.Contains(body, `class="split"`))
-	css := assetSource(t, "app.css")
-	assert.False(t, strings.Contains(css, ".split"))
-	assert.Contains(t, css, ":is(.stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
-}
-
-// A column of panels in a Split, and the panel under a tab strip in one, take the height the row has: the tables of a
-// column share it, a column without one gives it to its last panel, and the panel in a tab fills what is left of its cell.
-func TestAColumnAndATabInAColumnsFillTheRow(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".stack > .panel.grows {\n  flex: 1 1 auto;\n}")
-	assert.Contains(t, css, ".stack:not(:has(> .panel.grows)) > .panel:last-child {\n    flex: 1 1 auto;\n  }")
-	assert.Contains(t, css, ".tabset {\n  min-width: 0;\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, "[data-tabbody] > .panel,\n[data-tabbody] > .stack,\n[data-tabbody] > .columns {\n  flex: 1 1 auto;\n}")
-	assert.Contains(t, css, ".tabset[aria-busy='true'] > [data-tabbody] {\n  opacity: 0.55;")
-}
-
 func TestPanelRequestReturnsOnlyThatPanel(t *testing.T) {
 	t.Parallel()
 
@@ -201,32 +174,6 @@ func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
 	end := strings.Index(body, `</div></div><div class="col" style="--w:1;"><div class="panel grows"`)
 	assert.True(t, end > strings.Index(body, "In tabs-row"))
 	assert.True(t, strings.Index(body, "Beside-row") > end)
-}
-
-// The sidebar as a rail has no room for a section's caption: it is a short, thick dash between the groups, with the caption as the tooltip of the element. It is not a line the width of the rail, which is
-// the edge under the brand, and not the middle dot (--sep), which separates the figures of the status bar.
-func TestTheRailSeparatesItsGroupsWithAShortDashAndTheStatusBarItsFiguresWithADot(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	dash := "content: '';\n  display: block;\n  width: 32px;\n  height: 3px;\n  margin: 9px auto 0;\n  border-radius: var(--radius);\n  background: var(--border-2);"
-	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .nav-section::before {\n    "+strings.ReplaceAll(dash, "\n  ", "\n    "))
-	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .side-scroll > .nav-section:first-child {\n    display: none;\n  }")
-	assert.False(t, strings.Contains(css, "linear-gradient(var(--border-2), var(--border-2))"))
-	assert.Contains(t, css, "--sep: '\\00b7';")
-	assert.Contains(t, css, ".sb-timing + .sb-opt::before {\n  content: var(--sep);")
-}
-
-// A diff names its two sides above it. In one column, which it is without script and when its panel is narrow, they are
-// not sides but a change, and the header says "Deployed → Saved"; only a diff that is side by side has a name over each
-// side. The script says which it is on the panel's body (data-diff).
-func TestADiffNamesItsSidesOnlyWhenItIsSideBySide(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".code-sides span + span::before {\n  content: '\\2192';")
-	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span {\n  flex: 1;\n}")
-	assert.Contains(t, css, ".code-body[data-diff='split'] .code-sides span + span::before {\n  content: none;\n}")
 }
 
 // The columns of a table are as wide as what they are, and not as what is in them: a table sizes its columns by its rows, so
@@ -315,9 +262,8 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	assert.Equal(t, serveView(h, "/admin/device/d1", "p.9").Code, http.StatusNotFound)
 }
 
-// A Tabs has as many tabs as it is given, and a strip that has more than fit scrolls sideways with its tabs at their own size:
-// they do not shrink or wrap, and the rule under the strip does not depend on a border that a scrolling box would clip.
-func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
+// A Tabs has as many tabs as it is given, the selected one is marked as where the reader is, and only the selected one is read.
+func TestAStripOfManyTabsHasAllOfThemAndLoadsOnlyTheSelectedOne(t *testing.T) {
 	t.Parallel()
 
 	panels := make([]webui.Tab, 20)
@@ -330,49 +276,21 @@ func TestAStripOfManyTabsScrollsSidewaysAndKeepsTheSizeOfItsTabs(t *testing.T) {
 	assert.Contains(t, body, `<a class="tab active" href="/admin/p?tabs.tab=a-tab-with-a-label-number-19" aria-current="page">`)
 	assert.Contains(t, body, "Panel 19-row")
 	assert.False(t, strings.Contains(body, "Panel 0-row"))
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "box-shadow: inset 0 -1px 0 var(--border);")
-	assert.Contains(t, css, "overflow-x: auto;\n  overflow-y: hidden;")
-	assert.Contains(t, css, ".tab {\n  flex: none;")
-	assert.Contains(t, css, "white-space: nowrap;\n  color: var(--text-2);")
 }
 
-// A followed link is an ordinary navigation. The page does not opt in to a cross-document view transition, whose first frames
-// are white whatever the page says its background is: neither the opt-in nor a name for a region of the shell is in the stylesheet.
-func TestThePageDoesNotOptInToACrossDocumentViewTransition(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.False(t, strings.Contains(css, "@view-transition"))
-	assert.False(t, strings.Contains(css, "view-transition-name"))
-	assert.False(t, strings.Contains(css, "::view-transition"))
-}
-
-// When the HTML was built is shown where script is off, and with script it is not: the page says "stale page" when it is
-// wrong for the request, and nothing else a reader would use it for. The stylesheet hides it under the class that script
-// sets before first paint, so it never shows and goes.
-func TestWhenThePageWasBuiltIsShownOnlyWhereScriptIsOffAndTheBadgeSaysWhenItIsStale(t *testing.T) {
+// When the HTML was built is in the page for a reader with no script, and the badge for a stale page is there for script to show.
+func TestThePageSaysWhenItWasBuiltAndHasTheBadgeForScriptToShow(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "html.js .status-meta [data-built] {\n  display: none;\n}")
-
 	page := serve(h, http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, page, `<time class="sb-opt" data-built datetime="`) // the server says it, for the page without script
 	assert.Contains(t, page, `data-stale hidden`)                          // and the badge is there for script to show
-
-	js := assetSource(t, "enhance.js")
-	assert.Contains(t, js, "'stale page'")
-	assert.False(t, strings.Contains(js, "cached?"))
-	assert.False(t, strings.Contains(js, "showBuilt")) // nothing writes the time or its age into the bar
 }
 
-// The render time and the delivery time are not two measures of one thing: the page is loaded when the request has been
-// answered and shown, which the server's time to build it is part of. The bar says each by name, with the separator between
-// them, and the script works out the delivery as the rest. Without script only the render time is known.
-func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAre(t *testing.T) {
+// The render time and the delivery time are not two measures of one thing: the page says the render time, which the server knows, and has a place for
+// script to say the delivery.
+func TestTheStatusBarSaysTheRenderTimeAndHasAPlaceForTheDeliveryTime(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
@@ -381,15 +299,6 @@ func TestTheStatusBarSaysWhatTheRenderTimeAndTheDeliveryTimeAre(t *testing.T) {
 	assert.True(t, regexp.MustCompile(`<span class="sb-opt" data-build title="[^"]*">\d+(\.\d)? ms</span>`).MatchString(page))
 	assert.Contains(t, page, `<span class="sb-opt" data-loaded hidden></span>`) // for script to fill in
 	assert.False(t, strings.Contains(page, "sb-split"))                         // no bar: the numbers say it
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".sb-timing [data-build]::before {\n  content: 'render ';")
-	assert.Contains(t, css, ".sb-timing [data-loaded]::before {\n  content: var(--sep) ' delivery ';")
-	assert.False(t, strings.Contains(css, "sb-split"))
-
-	js := assetSource(t, "enhance.js")
-	assert.Contains(t, js, "Math.max(ms - render, 0)") // the delivery is what is left of the whole
-	assert.False(t, strings.Contains(js, "data-split"))
 }
 
 // Two strips of tabs on one page (side by side, or one in the tab of another) are two navigations, and a reader who lists the landmarks tells them

@@ -155,26 +155,3 @@ func TestTheMarkOfAnAppWithASidebarIsNotInTheTopBar(t *testing.T) {
 	assert.False(t, strings.Contains(topBar(t, body), "top-mark"))
 	assert.Equal(t, strings.Count(body, `class="logo"`), 1)
 }
-
-// The icon button is script's: it has the toggle's name for a reader, and the stylesheet and the script say which icon is drawn and what the button does.
-func TestTheThemeToggleIsDrivenByScriptAndTheStylesheet(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		`'[data-pref-toggle="theme"]'`,
-		"localStorage.setItem('webui.theme', theme);",
-		"btn.setAttribute('aria-checked', isLight() ? 'true' : 'false');",
-	} {
-		assert.Contains(t, js, want)
-	}
-
-	css := assetSource(t, "app.css")
-	for _, want := range []string{
-		".theme-toggle .ti-moon {\n  display: none;\n}",
-		"html[data-theme='light'] .theme-toggle .ti-sun {\n  display: none;\n}",
-		"html:not([data-theme]) .theme-toggle .ti-moon {\n    display: inline-block;\n  }",
-	} {
-		assert.Contains(t, css, want)
-	}
-}

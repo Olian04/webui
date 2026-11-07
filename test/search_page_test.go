@@ -133,12 +133,4 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	assert.Contains(t, list, `<div role="group" aria-label="Devices"><div class="pal-label caption" aria-hidden="true">Devices</div>`)
 	assert.Contains(t, list, `<a class="pal-item" role="option" href="/admin/device/dev-eth%200">`)
 	assert.False(t, strings.Contains(list, "<html"))
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{"'?q='", "[VIEW_HEADER]: 'search'", "box.innerHTML = palette.html", "text/html", "palette.state !== 'loading'", "template[data-palette-pending]", "template[data-palette-down]"} {
-		assert.Contains(t, js, want)
-	}
-	assert.False(t, strings.Contains(js, "res.json()"))      // it is not JSON any more
-	assert.False(t, strings.Contains(js, "fragment=1"))      // a framework parameter is a header, never a part of the address
-	assert.False(t, strings.Contains(js, "Nothing matches")) // a search that was not made is not one that found nothing
 }

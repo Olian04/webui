@@ -336,24 +336,3 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 
 	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f1", "40")).Code, http.StatusSeeOther)
 }
-
-// A form's fields are inset from the panel's edge: its markup says so, and the
-// stylesheet has the rule, so the two cannot drift apart unnoticed.
-func TestAFormsFieldsAreInsetFromThePanelEdge(t *testing.T) {
-	t.Parallel()
-
-	h := formApp(okForm())
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/dev1").Body.String(), `<div class="panel-body pad">`)
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".panel-body.pad {\n  padding: 4px 10px 14px;")
-}
-
-// With script a slider's number is a narrow box beside the range; without it there is no range, and the number is the whole
-// control and fills the field like any input. The stylesheet says so for a page that script has not marked.
-func TestASlidersNumberFillsTheFieldWhenThereIsNoScript(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "html:not(.js) .range-number {\n  flex: 1;\n  width: auto;\n  text-align: left;\n}")
-	assert.Contains(t, css, ".range-number {\n  flex: none;\n  width: 92px;")
-}

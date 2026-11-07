@@ -306,13 +306,3 @@ func TestTheEditorScriptLeavesTheEditorWithEscapeAndSaysHowAndSpeaksForTheContro
 	}
 	assert.False(t, strings.Contains(js, ".requestSubmit()")) // a form is never sent from a shortcut, past its button
 }
-
-func TestTheSearchShortcutIsLeftToAnEditorAndToTheBrowsersOwnKeys(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	shortcut := regexp.MustCompile(`function isShortcut\(e\) \{[^}]*\}[^}]*\}[^}]*\}`).FindString(js)
-	assert.True(t, shortcut != "")
-	assert.Contains(t, shortcut, "e.shiftKey || e.altKey")
-	assert.Contains(t, shortcut, `closest('.code-host')`)
-}

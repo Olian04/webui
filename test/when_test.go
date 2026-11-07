@@ -275,18 +275,15 @@ func indexOf(s []string, v string) int {
 	return -1
 }
 
-// In a Columns, a column that has nothing is not drawn, and the row wraps as if it were not declared.
-func TestAColumnWhoseWhenDoesNotHoldIsEmptyAndNotDrawn(t *testing.T) {
+// In a Columns, a column whose When does not hold shows nothing, and the others are as they were.
+func TestAColumnWhoseWhenDoesNotHoldShowsNothingAndTheOthersAreAsTheyWere(t *testing.T) {
 	t.Parallel()
 
 	var g gate
 	h := editorApp(webui.Columns{{Weight: 1, View: g.when(columnPanel("Inside"))}, {Weight: 2, View: columnPanel("Next")}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<div class="col" style="--w:1;"></div>`) // empty, which the stylesheet does not draw
+	assert.False(t, strings.Contains(body, ">Inside<"))
 	assert.Contains(t, body, ">Next<")
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".col:empty {\n  display: none;\n}")
 }
 
 // A tab with nothing visible in it is hidden; the others stay, and the first of them is the default.

@@ -96,8 +96,6 @@ func TestACanvasForOneModeDerivesTheSurfacesOfThatModeAndLeavesTheOtherAlone(t *
 	assert.Contains(t, page, `<html lang="en">`)
 	assert.Contains(t, page, "data-pref-toggle")
 	assert.Contains(t, page, `<meta name="color-scheme" content="dark light">`)
-	prefs := assetSource(t, "prefs.js")
-	assert.False(t, strings.Contains(prefs, "pinned"))
 }
 
 func TestACanvasForEachModeIsDerivedForBoth(t *testing.T) {

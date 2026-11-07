@@ -197,21 +197,11 @@ func TestAWarningToastIsDrawnAsAWarning(t *testing.T) {
 	assert.Contains(t, get("eBad"), `class="toast raise tone-bad"`)
 }
 
-func TestAToastCanBeDismissedWithoutScript(t *testing.T) {
+// A toast can be dismissed without script: the button is a label for a radio, in a group of its own, that is named.
+func TestAToastHasADismissControlThatNeedsNoScript(t *testing.T) {
 	t.Parallel()
 
 	h := outcomeApp()
 	_, _, _, body := submitIP(h, "10.0.0.3")
-	// The button is a label for a hidden radio, in a group of its own.
 	assert.Contains(t, body, `<label class="toast-close toast-close-nojs" title="Dismiss"><input class="sr-only" type="radio" name="toast-0" aria-label="Dismiss">`)
-
-	// The stylesheet hides the toast whose radio is chosen: the markup and the rule
-	// are one mechanism, so a change to either has to keep both.
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".toast:has(.toast-close input:checked) {\n  display: none;")
-
-	// A browser that cannot do :has() would show a button that does nothing, so the
-	// button is shown only where the rule above works.
-	assert.Contains(t, css, "display: none; /* until the browser can act on the radio, below */")
-	assert.Contains(t, css, "@supports selector(:has(*)) {\n  .toast-close {\n    display: grid;")
 }

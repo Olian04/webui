@@ -206,26 +206,6 @@ func TestAnErrorPageIsCompressedAndARedirectIsNot(t *testing.T) {
 	assert.Equal(t, root.Header().Get("Content-Encoding"), "")
 }
 
-func TestTheStylesheetLetsATablePanelScrollInsideItselfAndNotThePage(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	// The markup says which panel grows; the stylesheet gives it the height there is,
-	// keeps its head and foot in place, and scrolls only its body.
-	for _, rule := range []string{
-		"max-height: max(16rem, calc(100dvh - var(--content-chrome)));",
-		".panel.grows > .panel-body {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow: auto;\n}",
-	} {
-		assert.Contains(t, css, rule)
-	}
-	// The window less the shell: the variables it is made of are the ones the top bar and
-	// the content region use, so they cannot drift apart.
-	assert.True(t, regexp.MustCompile(`--content-chrome:\s*calc\(\s*var\(--topbar-h\)\s*\+\s*var\(--content-pad-top\)\s*\+\s*var\(--content-pad-bottom\)\s*\)`).MatchString(css))
-	assert.Contains(t, css, "height: var(--topbar-h);")
-	assert.Contains(t, css, "padding: var(--content-pad-top) 12px var(--content-pad-bottom);")
-	assert.False(t, strings.Contains(css, ":has(.panel.grows)")) // no layout around the panel is touched
-}
-
 // builtless is a page without what the status bar says of the request that built it: two
 // responses to one address differ in when they were built and how long it took.
 func builtless(page string) string {

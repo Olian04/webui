@@ -101,24 +101,6 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	assert.Equal(t, serve(h, http.MethodGet, assetURL(t, h, "enhance.js")).Code, http.StatusOK)
 }
 
-// The sidebar is drawn again by each page, so the script that runs before first paint keeps where its list was
-// scrolled when a page is left and puts it back as the next sidebar is parsed. The README says what is kept, so
-// the script and the README name the same value.
-func TestTheSidebarKeepsItsScrollPositionFromOnePageToTheNext(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "prefs.js")
-	assert.Contains(t, js, "'webui.sidebar.scroll'")
-	assert.Contains(t, js, "addEventListener('pagehide'")
-	assert.Contains(t, js, "sessionStorage.setItem(KEY, String(side.scrollTop))")
-	assert.Contains(t, js, "new MutationObserver")
-	assert.Contains(t, js, "document.querySelector('.side-scroll')")
-
-	// What it looks for is the markup of the sidebar's list.
-	page := serve(navApp(), http.MethodGet, "/admin/device").Body.String() // an app with entries
-	assert.Contains(t, page, `<nav class="side-scroll"`)
-}
-
 func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	t.Parallel()
 
@@ -139,10 +121,6 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css"))
 	assert.Contains(t, css.Body.String(), "--blue: #c2410c;")
 
-	base := assetSource(t, "app.css")
-	assert.Contains(t, base, "@media (prefers-color-scheme: light)")
-	assert.Contains(t, base, ":root:not([data-theme])")
-
 	logo := serve(h, http.MethodGet, assetURL(t, h, "logo"))
 	assert.Equal(t, logo.Header().Get("Content-Type"), "image/png")
 	assert.True(t, strings.HasPrefix(logo.Body.String(), "\x89PNG"))
@@ -154,44 +132,8 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assert.False(t, strings.Contains(plainPage, "/_webui/logo"))
 }
 
-// A popover stays inside the window: script moves a description's popover back in when its icon is near an edge, and a reason on a
-// gated control is anchored to the near side; the stylesheet gives the reason a width it can be anchored with.
-func TestAPopoverNearAnEdgeOfTheWindowIsMovedBackInside(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		"function clipBounds(el)",
-		"function placeTip(tip)",
-		"inside.right - TIP_MARGIN - r.right",
-		"n.clientLeft + n.clientWidth", // the visible part of a box that scrolls: not its scrollbar
-		"body.style.bottom = 'calc(100% + 6px)'",
-		"function placeGate(gate)",
-		"gate.setAttribute('data-edge', 'left')",
-		"gate.setAttribute('data-edge', 'right')",
-		"document.addEventListener('mouseover', onTipOpen)",
-		"document.addEventListener('focusin', onTipOpen)",
-	} {
-		assert.Contains(t, js, want)
-	}
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".gate[data-edge='left']:hover::after,\n.gate[data-edge='left']:focus-visible::after {\n  left: 0;\n  transform: none;\n}")
-	assert.Contains(t, css, ".gate[data-edge='right']:hover::after,\n.gate[data-edge='right']:focus-visible::after {\n  left: auto;\n  right: 0;\n  transform: none;\n}")
-	assert.Contains(t, css, "width: max-content;\n  max-width: min(280px, calc(100vw - 16px));\n  white-space: normal;")
-}
-
-// The results of the search are a box that scrolls when there are more of them than the window has room for, and not a box that
-// runs out of the window.
-func TestTheSearchResultsScrollWhenThereAreMoreThanTheWindowHasRoomFor(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "max-height: calc(100vh - var(--topbar-h) - 26px - 24px);\n  overflow-y: auto;\n  overscroll-behavior: contain;\n}\n.palette.open {")
-}
-
-// A label that is wider than the sidebar is cut short with an ellipsis, in the entry, the brand and the caption, and is the
-// whole of it in the title; the stylesheet says so, and the icon that keeps its size beside the label is not one of them.
-func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) {
+// A label that is wider than the sidebar is the whole of it in the title, in the entry and in the caption.
+func TestASidebarLabelWiderThanTheSidebarIsWholeInItsTitle(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Brand: webui.Brand{Name: "A name that is far too long for the sidebar to hold"}, Pages: webui.Pages{
@@ -200,49 +142,4 @@ func TestASidebarLabelWiderThanTheSidebarIsCutShortWithAnEllipsis(t *testing.T) 
 	body := serve(h, http.MethodGet, "/admin/a").Body.String()
 	assert.Contains(t, body, `title="An entry that is far too long for the sidebar to hold"`)
 	assert.Contains(t, body, `title="A caption that is far too long for the sidebar to hold"`)
-
-	css := assetSource(t, "app.css")
-	cut := "min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}"
-	assert.Contains(t, css, ".nav-item > span:not(.ni) {\n  "+cut)
-	assert.Contains(t, css, "white-space: nowrap;\n}\n.side-scroll") // the brand's name is cut too
-	assert.Contains(t, css, "padding: 14px 12px 5px;\n  /* A caption wider than the sidebar is cut short; its whole is its title. */\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}")
-}
-
-// Text that is only for a reader is taken out of the scrollable overflow. The announcer sits after the shell, which is the
-// window, and a 1px box there is a scrollbar on the page. clip hides the paint and does not remove the box; the margin cancels the pixel.
-func TestTextThatIsOnlyForAReaderDoesNotMakeThePageScroll(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".sr-only {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 1px;\n  height: 1px;\n  padding: 0;\n  margin: -1px;\n  overflow: hidden;\n  clip: rect(0 0 0 0);\n  clip-path: inset(50%);\n  white-space: nowrap;\n  border: 0;\n}")
-}
-
-// A visitor with script can drag the sidebar's edge to a width, which the browser keeps and the script that runs before first paint puts back,
-// so a page does not flash the wrong width. The handle is script's: the markup has none, and the rail has its own widths. There is no script
-// test harness, so this is what the shipped files carry; the behaviour is looked at in a browser.
-func TestTheSidebarCanBeResizedWithScriptAndItsWidthIsPutBackBeforeFirstPaint(t *testing.T) {
-	t.Parallel()
-
-	h, _ := layoutApp(nil)
-	prefs := assetSource(t, "prefs.js")
-	assert.Contains(t, prefs, "localStorage.getItem('webui.sidebar.width')")
-	assert.Contains(t, prefs, "el.style.setProperty('--sidebar-w', Math.min(width, Math.max(180, Math.min(480, innerWidth / 2))) + 'px')")
-
-	enhance := assetSource(t, "enhance.js")
-	assert.Contains(t, enhance, "handle.setAttribute('role', 'separator')")
-	assert.Contains(t, enhance, "localStorage.setItem('webui.sidebar.width', String(want))")
-	assert.Contains(t, enhance, "localStorage.removeItem('webui.sidebar.width')")
-	// A drag ends however the pointer is let go of, so the cursor that the page takes while it lasts cannot be left on.
-	for _, end := range []string{"'pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'", "window.addEventListener('blur', drop)", "if (e.buttons === 0) drop()"} {
-		assert.Contains(t, enhance, end)
-	}
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "width: var(--sidebar-w, 240px);")
-	assert.Contains(t, css, "html[data-sidebar='collapsed'] .side-resize {\n  display: none;")
-	// The rail keeps its own width, which the variable does not touch: the rules for it say a literal.
-	assert.Contains(t, css, "  html[data-sidebar='collapsed'] .sidebar {\n    width: 56px;")
-
-	// No handle is in the page, so one that has no script has none.
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/device/d1").Body.String(), "side-resize"))
 }

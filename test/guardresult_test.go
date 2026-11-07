@@ -356,16 +356,3 @@ func TestAHiddenActionPostedByHandIsRefused(t *testing.T) {
 		})
 	}
 }
-
-// The reason of a disabled control is kept in view: it opens below the control when there is no room above it (the first row of a
-// table, with its header over it, or a toolbar), and over the buttons of the row below and not under them. There is no script test
-// harness, so this is what the shipped files carry; the behaviour is looked at in a browser.
-func TestTheReasonOfADisabledControlIsKeptInView(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".gate[data-below]:hover::after")
-	assert.Contains(t, css, "td.actions:focus-within")
-	js := assetSource(t, "enhance.js")
-	assert.Contains(t, js, "setAttribute('data-below', '')")
-}

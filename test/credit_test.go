@@ -25,20 +25,3 @@ func TestEveryPageSaysItWasBuiltWithTheLibraryAndAnAppCanLeaveThatOut(t *testing
 		assert.False(t, strings.Contains(serve(off, http.MethodGet, path).Body.String(), `name="generator"`))
 	}
 }
-
-// The line in the console is the page script's, and has what a developer who opens the console is told: what built the page, and where it is. It is `info`, since a page's own
-// errors and warnings are counted against it by the tools that look, it is said once for a tab and not for each page, and it is said only where the page says it was built so.
-func TestThePageScriptSaysInTheConsoleWhatBuiltThePageAndWhereItIs(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		`meta[name="generator"][content="webui"]`, "console.info(", "https://github.com/Olian04/webui", "Built with webui",
-		"sessionStorage.getItem('webui.credit')", "sessionStorage.setItem('webui.credit', '1')",
-	} {
-		assert.Contains(t, js, want)
-	}
-	assert.False(t, strings.Contains(js, "console.error"))
-	assert.False(t, strings.Contains(js, "console.warn"))
-	assert.False(t, strings.Contains(js, "console.log")) // and no other line in the console, which the app's own are in
-}

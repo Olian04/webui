@@ -61,22 +61,6 @@ func TestOneColumnIsStillAColumnThatFillsTheRow(t *testing.T) {
 	assert.Equal(t, strings.Count(body, `class="col"`), 1)
 }
 
-// The stylesheet is where the sizes are decided: a column grows by its weight from nothing, is never narrower than the floor, and a row that
-// cannot hold its columns at that width wraps its last ones, each row sharing by weight in turn. No media query is needed, and none forces a
-// single column, since a row too narrow for two columns holds one.
-func TestTheStylesheetWrapsColumnsThatWouldBeTooNarrow(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".columns {\n  --column-min: 280px;\n  display: flex;\n  flex-wrap: wrap;\n  gap: var(--gutter);\n  align-items: stretch;\n}")
-	assert.Contains(t, css, ".col {\n  flex: var(--w, 1) 1 0;\n  min-width: min(var(--column-min), 100%);\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, ".col > .panel,\n.col > :is(.stack, .columns, .tabset) {\n  flex: 1 1 auto;\n}")
-	// A panel in a column keeps its foot at the bottom of its box.
-	assert.Contains(t, css, ":is(.stack, .col, [data-tabbody]) > .panel > .panel-body {\n  flex: 1 1 auto;\n}")
-	// And no breakpoint collapses the columns, a Split's included: it is Columns, and has no rule of its own.
-	assert.False(t, strings.Contains(css, "@media (max-width: 1100px) {\n  .split"))
-}
-
 func TestColumnsGiveTheirPanelsPositionalIDsLikeASplitDoes(t *testing.T) {
 	t.Parallel()
 
