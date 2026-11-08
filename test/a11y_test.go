@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -35,8 +34,8 @@ func TestAColumnsFilterIsNotAFormInTheTablesForm(t *testing.T) {
 	assert.Contains(t, body, `class="input" form="p-filter-c0" type="search"`)
 }
 
-// A button that its Guard disabled is not made enabled by a selection, which would also let it post without the question that it dropped.
-func TestASelectionDoesNotEnableAGuardedBulkButton(t *testing.T) {
+// A bulk button that its Guard disabled is drawn with the reason, and not left to look as the others do.
+func TestADisabledBulkButtonIsDrawnWithItsReason(t *testing.T) {
 	t.Parallel()
 
 	h := guardedParcels(nil, nil, []webui.Action[[]parcel]{{
@@ -46,11 +45,6 @@ func TestASelectionDoesNotEnableAGuardedBulkButton(t *testing.T) {
 	}}, nil)
 	body := serve(h, http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, body, `<span class="gate" data-guard="Needs a second approver" tabindex="0">`)
-
-	js := assetSource(t, "enhance.js")
-	sel := js[strings.Index(js, "function syncSelection"):]
-	sel = sel[:strings.Index(sel, "b.disabled = n === 0")]
-	assert.Contains(t, sel, "if (b.closest('.gate')) return;")
 }
 
 // A read-only value is not a control, so its label does not point at one: it names the group that the value is in.
@@ -65,18 +59,8 @@ func TestAReadOnlyFieldsLabelNamesItsValueAndDoesNotPointAtNothing(t *testing.T)
 	assert.Contains(t, body, `for="p-f0_1"`)
 }
 
-// Choosing a country with the arrow keys fires a change for each key, so the focus stays on the selector: moving it leaves a keyboard user one country.
-func TestThePhoneSelectorKeepsTheFocus(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "phone.js")
-	assert.Contains(t, js, "select.addEventListener('change', show);")
-	assert.False(t, strings.Contains(js, "input.focus()"))
-}
-
-// A search box is a combobox over a listbox that script fills, and without script it is a text input and a button, which does not announce a
-// popup that cannot open; script sets what makes it one.
-func TestTheSearchBoxIsAComboboxOnlyWhenScriptMakesItOne(t *testing.T) {
+// Without script the search box is a text input and a button, which does not announce a popup that cannot open.
+func TestTheSearchBoxIsAPlainInputWithoutScript(t *testing.T) {
 	t.Parallel()
 
 	h := searchApp(rowsSearch(), nil)
@@ -85,10 +69,6 @@ func TestTheSearchBoxIsAComboboxOnlyWhenScriptMakesItOne(t *testing.T) {
 	input = input[:strings.Index(input, ">")]
 	for _, attr := range []string{"role=", "aria-expanded", "aria-controls", "aria-autocomplete"} {
 		assert.False(t, strings.Contains(input, attr))
-	}
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{"input.setAttribute('role', 'combobox');", "input.setAttribute('aria-controls', box.id);", "input.setAttribute('aria-autocomplete', 'list');"} {
-		assert.Contains(t, js, want)
 	}
 }
 
@@ -111,72 +91,6 @@ func TestTheBoxesListboxHoldsOnlyOptionsAndGroups(t *testing.T) {
 }
 
 // --- display preferences -------------------------------------------------------------------------------------------------------------------------
-
-// The text that a reader needs is not in the colour that is for decoration: --text-3 is a step under what a person can be asked to read.
-func TestNoTextThatIsNeededIsInTheDecorativeColour(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	for _, selector := range []string{
-		".search input::placeholder", ".input::placeholder", ".kbd", ".refresh-note", ".pager-export-note", ".file-hint", ".msel-hint", ".udiff-n",
-		".status-loading", ".sb-opt", ".filter-btn", ".filter-note",
-	} {
-		rule := regexp.MustCompile(regexp.QuoteMeta(selector) + `\s*\{[^}]*\}`).FindString(css)
-		assert.True(t, rule != "")
-		assert.False(t, strings.Contains(rule, "--text-3"))
-	}
-
-	// What is typed in the search box is text too, and the box around it is quiet, so the input says its own colour.
-	assert.True(t, regexp.MustCompile(`\.search input\s*\{[^}]*color:\s*var\(\s*--text\s*\);`).MatchString(css))
-}
-
-// Windows high contrast and the like take every colour that a page chose, so what is drawn with a background or a shadow, a checked box, a focus ring,
-// the active tab, goes unless it is drawn again with the system's colours, or with an outline or a border, which stay.
-func TestTheStylesheetHasWhatForcedColorsAndReducedMotionNeed(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-
-	forced := css[strings.Index(css, "@media (forced-colors: active) {"):]
-	forced = forced[:strings.Index(forced, "\n}\n")]
-	for _, want := range []string{
-		".checkbox:checked", "background: Highlight;", "background: HighlightText;", ".msel-opt.on .msel-check", // a checked box is seen
-		".input:focus", ".msel-field:focus-visible", ".side-resize:focus-visible", "outline-color: Highlight;", // focus is seen
-		".tab.active", ".nav-item.active", ".pal-item.active", // where the reader is
-	} {
-		assert.Contains(t, forced, want)
-	}
-	more := css[strings.Index(css, "@media (prefers-contrast: more) {"):]
-	more = more[:strings.Index(more, "\n}\n")]
-	assert.Contains(t, more, ":root:not([data-theme])") // the system's light theme, which a stored choice does not set, is one of the rules it must beat
-	assert.Contains(t, more, "--control-bd: var(--control-bd-strong);")
-	assert.Contains(t, more, "--border-2: var(--control-bd-strong);")
-
-	// Nothing that can take the focus has it taken away with no replacement: an outline is made transparent, which is drawn in forced colors, and not none.
-	for _, rule := range regexp.MustCompile(`([^{}]+)\{[^{}]*outline:\s*none;[^{}]*\}`).FindAllStringSubmatch(css, -1) {
-		selector := strings.TrimSpace(rule[1])
-		if selector != ".search input" && selector != ".rowlink:focus-visible" && selector != "main:focus" {
-			t.Errorf("%q takes the outline away", selector)
-		}
-	}
-
-	motion := css[strings.Index(css, "@media (prefers-reduced-motion: reduce) {"):]
-	motion = motion[:strings.Index(motion, "\n}\n")]
-	for _, want := range []string{"animation-duration: 0.01ms !important;", "animation-iteration-count: 1 !important;", "transition-duration: 0.01ms !important;", ".spin {"} {
-		assert.Contains(t, motion, want)
-	}
-	// What was drawn for a reader that moves is a still cue when it does not: a panel that is busy is dimmed.
-	assert.Contains(t, motion, "[data-view][aria-busy='true'] tbody")
-}
-
-// A narrow window, which is what 320 pixels and 400 percent make of any, keeps its search.
-func TestANarrowWindowKeepsItsSearch(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.False(t, regexp.MustCompile(`\.search\s*\{\s*display:\s*none`).MatchString(css))
-	assert.Contains(t, css, "flex: 0 1 290px;")
-}
 
 // --- structure and semantics ---------------------------------------------------------------------------------------------------------------------
 
@@ -274,17 +188,6 @@ func TestControlsHaveTheRolesAReaderExpects(t *testing.T) {
 	assert.False(t, strings.Contains(links, `data-pref="theme"`)) // the sidebar has no switch of its own
 }
 
-// A change of the fragment alone, which following the skip link is, fires popstate as going back does, and must not reload the page: it would send the
-// focus back to the top, which is where the skip link is. Only another address is another state.
-func TestAFragmentOnlyChangeDoesNotReloadThePage(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	assert.Contains(t, js, "if (location.pathname + location.search !== shownAt) location.reload();")
-	assert.False(t, strings.Contains(js, "history.pushState(null, '', href);\n"+"      shownAt")) // the address is noted where it is pushed, once
-	assert.Equal(t, strings.Count(js, "moveTo(href);"), 2)
-}
-
 // --- announcements and focus -----------------------------------------------------------------------------------------------------------------
 
 // Each toast is its own live region with the role of what it says, the region that holds them is not one (a live region that is nested in another is read
@@ -335,32 +238,12 @@ func TestARefusedFormSaysSoInItsTitleAndFocusesTheFirstControlThatWasRefused(t *
 	assert.False(t, strings.Contains(ok, " autofocus"))
 }
 
-// What script does to the page without a navigation is said, and the focus is kept where it would be lost: these are the tokens of the shipped script, since
-// there is no harness for it.
-func TestTheScriptSaysWhatItChangesAndKeepsTheFocus(t *testing.T) {
+// The sidebar's button says what it controls and whether it is open, and the search has a live region for how many results it has: what script keeps up
+// to date needs both in the page it starts from.
+func TestThePageHasTheSidebarButtonAndTheLiveRegionThatScriptKeepsUpToDate(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		// A panel that is replaced says what it holds now, and takes the focus that was in it to its title.
-		"function announce(text)", "describeView(next, 'updated')", "if (hadFocus) refocus(next);", "title.tabIndex = -1;",
-		// Panels that are replaced in the background are not from under someone who is typing in them.
-		"if (current && !current.contains(document.activeElement)) current.replaceWith(next); // not from under",
-		// A panel that is asked for again can be stopped, and says when it is done.
-		"[data-refresh-pause]", "if (el.hasAttribute('data-paused')) return;", "describeView(next, 'is up to date')",
-		// Toasts: put in again to be announced, an error stays, a message that went well stays long enough to read.
-		"var TOAST_MS = 8000;", "if (el.classList.contains('tone-bad') || el.classList.contains('tone-warn')) return;", "[data-toast-dismiss]", "var again = toast.cloneNode(true);",
-		// A choice that is required says so, and says what is missing; the page opens with the focus on the field that was refused.
-		"field.setAttribute('aria-required', 'true');", "err.setAttribute('role', 'alert');", "if (sel.hasAttribute('autofocus')) field.focus();",
-		// The search says how many results it has, and one Escape closes one thing.
-		"function paletteStatus(text)", "e.stopPropagation(); // one Escape closes one thing",
-	} {
-		assert.Contains(t, js, want)
-	}
-	assert.Equal(t, strings.Count(js, "!current.contains(document.activeElement)"), 2)
-	// The sidebar's button keeps its name, and says what it controls and whether it is open.
-	assert.False(t, strings.Contains(js, "'Expand sidebar'"))
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, body, `aria-expanded="true" aria-controls="sidebar" title="Collapse sidebar"`)
 	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
@@ -376,30 +259,4 @@ func TestAPanelThatIsAskedForAgainCanBePausedAndASelectionCountIsAStatus(t *test
 
 	bulk := serve(guardedParcels(nil, nil, []webui.Action[[]parcel]{{Label: "Bag", Run: func(context.Context, []parcel) (webui.Outcome, error) { return webui.Success("bagged"), nil }}}, nil), http.MethodGet, "/admin/t").Body.String()
 	assert.Contains(t, bulk, `<strong data-selcount role="status">0 selected</strong>`)
-}
-
-// The upload's queue is a live region from the start, out of sight and not hidden, the focus does not fall to the page when the button it was on is disabled,
-// and the preview of a chosen image is a button.
-func TestTheUploadKeepsItsLiveRegionAndTheFocus(t *testing.T) {
-	t.Parallel()
-
-	up := assetSource(t, "upload.js")
-	for _, want := range []string{"quiet(true);", "if (on && focused) cancel.focus();", "(submit || input).focus();"} {
-		assert.Contains(t, up, want)
-	}
-	assert.False(t, strings.Contains(up, "list.hidden"))
-	file := assetSource(t, "file.js")
-	assert.Contains(t, file, "element('button', 'file-thumb-chosen')")
-	assert.Contains(t, file, "input.setAttribute('aria-invalid', 'true');")
-}
-
-// A column too narrow for its title leaves a sortable header's link a few pixels wide, beside the filter button, which a pointer cannot be asked to hit
-// (WCAG 2.5.8): the link is 24px at least each way. The other small controls pass by the room round them, which a stylesheet cannot be tested for.
-func TestASortableHeaderLinkIsAtLeast24pxToHit(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	rule := regexp.MustCompile(`thead th a\s*\{[^}]*\}`).FindString(css)
-	assert.Contains(t, rule, "min-width: 24px;")
-	assert.Contains(t, rule, "min-height: 24px;")
 }

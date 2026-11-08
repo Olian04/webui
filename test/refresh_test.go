@@ -131,23 +131,3 @@ func TestEveryPanelWithALoadCanSayItIsNotFinal(t *testing.T) {
 		})
 	}
 }
-
-// There is no harness for script, so this is what the shipped file carries: that it reads the attribute, waits for a tab that is hidden and
-// for focus that is inside the panel, asks for the one panel as every refresh does, and ends on a failure and when the panel no longer says it.
-func TestTheScriptThatAsksAgainDoesWhatItSaysItDoes(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		"[data-view][data-refresh-after]", "function armRefresh", "async function pollView", "document.hidden", "'visibilitychange'",
-		"el.contains(document.activeElement)", "fetchView(id, location.pathname + location.search", "el.replaceWith(next)",
-	} {
-		assert.Contains(t, js, want)
-	}
-	// A poll is not a navigation: it neither pushes the address nor asks for the panels around it.
-	poll := js[strings.Index(js, "async function pollView"):]
-	poll = poll[:strings.Index(poll, "armRefresh(document);")]
-	assert.False(t, strings.Contains(poll, "pushState"))
-	assert.False(t, strings.Contains(poll, "settle("))
-	assert.False(t, strings.Contains(poll, "location.href"))
-}

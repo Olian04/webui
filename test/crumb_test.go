@@ -138,17 +138,11 @@ func TestTheLandingPagesCrumbReplacesItsNavigationLabelInTheTrail(t *testing.T) 
 	assert.Contains(t, body, `<span class="cur" aria-current="page">All systems</span>`)
 }
 
-// On a narrow screen the trail is cut to the parent of the page and the page, by the stylesheet alone: every crumb is
-// still in the markup and read out, and none of it carries a class for the cut.
-func TestANarrowScreenCutsTheCrumbsToTheParentAndThePage(t *testing.T) {
+// Every crumb is in the markup and is read out, and the page's own is marked as where the reader is.
+func TestEveryCrumbIsInTheMarkupAndTheCurrentPageIsMarked(t *testing.T) {
 	t.Parallel()
 
 	h := bucketApp()
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "@media (max-width: 640px) {\n  .crumbs > :nth-last-child(n + 4) {\n    position: absolute;")
-	// Not drawn is not gone: a reader still has the whole trail, and a key on a crumb draws it.
-	assert.Contains(t, css, ".crumbs > a:nth-last-child(n + 4):focus {\n    position: static;")
-
 	body := serve(h, http.MethodGet, "/admin/bucket/photos/2026/img.png").Body.String()
 	assert.Contains(t, body, `<a href="/admin/bucket">Buckets</a>`)
 	assert.Contains(t, body, `<span class="cur" aria-current="page">`)

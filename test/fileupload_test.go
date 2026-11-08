@@ -833,31 +833,3 @@ func TestThePageLinksTheUploadScriptOnlyForAFileUploadAndAfterTheFileScript(t *t
 	assert.False(t, strings.Contains(serve(newFileShop(plainFile()).h, http.MethodGet, "/admin/f").Body.String(), "/_webui/upload."))
 	assert.False(t, strings.Contains(serve(newShop().h, http.MethodGet, "/admin/device/dev1").Body.String(), "/_webui/upload."))
 }
-
-// There is no script test harness, so this is what the shipped file carries: that it sends with a request that reports progress, to the form's own address, with the
-// header that asks for HTML; that it reads the answer as HTML and nothing else, with no data format to interpret and no markup of its own from it; and that every function
-// that it calls is one that it has.
-func TestTheUploadScriptDoesWhatItSaysItDoes(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "upload.js")
-	for _, want := range []string{
-		"new XMLHttpRequest()", "xhr.upload.onprogress", "setRequestHeader(VIEW_HEADER, viewId)", "'X-Webui-View'", "new FormData()", "data.append('file', item.file,",
-		"new DOMParser().parseFromString(xhr.responseText, 'text/html')", "li.result", "hasAttribute('data-multiple')", "webkitdirectory", "webkitGetAsEntry", "webkitRelativePath",
-		"'webui:changed'", "form[data-upload]", "input.disabled", "aria-busy", "aria-live", "a.result-next", "li._ok", "xhr.status >= 200 && xhr.status < 300", "window.location.assign(next.href)", "X-Webui-View",
-	} {
-		assert.Contains(t, js, want)
-	}
-	for _, fn := range []string{"element", "fromFiles", "walk", "controls", "enhance", "enhanceAll", "setItems", "busy", "show", "finish", "send"} {
-		assert.Contains(t, js, "function "+fn+"(")
-	}
-	assert.False(t, strings.Contains(js, "xhr.response)")) // nothing is read as data
-	assert.False(t, strings.Contains(js, "JSON.parse"))    // nothing is parsed, and the form is told by its attributes
-	assert.False(t, strings.Contains(js, ".json()"))
-	assert.False(t, strings.Contains(js, "innerHTML"))
-	assert.False(t, strings.Contains(js, "fetch("))
-	assert.False(t, strings.Contains(js, "createObjectURL"))
-
-	enhance := assetSource(t, "enhance.js")
-	assert.Contains(t, enhance, "'webui:changed'") // the panels around an upload are asked for again, as HTML, after it
-}

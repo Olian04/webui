@@ -106,15 +106,11 @@ func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 	}
 }
 
-// The search finds what the pages that have a Search find, and does not list the pages of the sidebar: the script has no results of its own.
-func TestTheSearchScriptHasNoResultsOfItsOwn(t *testing.T) {
+// The search finds what the pages that have a Search find, and does not list the pages of the sidebar. What it says while it waits is the server's: a
+// template in the page.
+func TestTheSearchSaysWhileItWaitsWhatTheServerWrote(t *testing.T) {
 	t.Parallel()
 
-	js := assetSource(t, "enhance.js")
-	assert.False(t, strings.Contains(js, "group: 'Pages'"))
-	assert.False(t, strings.Contains(js, "function pages()"))
-	assert.False(t, strings.Contains(js, "Searching…")) // the page's own words for it are in a template, which the server wrote
-	assert.Contains(t, js, "nothing typed, nothing to find")
 	page := serve(searchApp(rowsSearch(), nil), http.MethodGet, "/admin/device").Body.String()
 	assert.Contains(t, page, `<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>`)
 }

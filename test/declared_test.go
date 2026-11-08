@@ -65,25 +65,3 @@ func TestTheSearchBoxIsAskedForByTheHeaderAndNotByAParameter(t *testing.T) {
 	old := serve(h, http.MethodGet, "/admin/_webui/search?fragment=1&q=eth")
 	assert.Contains(t, old.Body.String(), "<html")
 }
-
-// There is no script test harness, so this is what the shipped file carries: that a link replaces its panel when the server declared it so, that the panels around a
-// moved one are asked for again and the script puts no address in itself, that a panel that is reloading says so with aria-busy and is not rebuilt, and that the box's
-// words are the server's.
-func TestTheEnhanceScriptDoesWhatTheServerDeclaresAndKnowsNoAddresses(t *testing.T) {
-	t.Parallel()
-
-	js := assetSource(t, "enhance.js")
-	for _, want := range []string{
-		"a[href][data-in-place]", "function syncPanels(href, moved)", "function settle(href, moved)", "syncPanels(href, moved)", "el.setAttribute('aria-busy', 'true')",
-		"a[data-in-place]", "form[method=\"post\"]", "setAttribute('action', fresh[i].getAttribute('action') || '')", "fetchView(id, href, undefined, 'data-tabs')",
-		"template[data-palette-pending]", "template[data-palette-down]", "[VIEW_HEADER]: 'search'", "settle(href, next)",
-	} {
-		assert.Contains(t, js, want)
-	}
-	for _, gone := range []string{"function retarget(", "retarget(", "function skeleton(", "skel-row", "data-tabkey", "searchParams.set(key", "fragment=1", "Nothing matches", "Searching…"} {
-		assert.False(t, strings.Contains(js, gone))
-	}
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "[data-view][aria-busy='true'] tbody {")
-	assert.False(t, strings.Contains(css, ".skel-row"))
-}

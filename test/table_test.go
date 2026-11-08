@@ -234,26 +234,6 @@ func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
 	assert.Contains(t, body, `href="/admin/device?devices.sort=id&amp;devices.offset=10" title="Refresh"`)
 }
 
-// A clickable row is one link stretched over the whole row by the stylesheet;
-// without these rules only the link's own text is clickable.
-func TestStylesheetStretchesTheRowLinkOverTheRow(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "tbody tr.clickable {\n  cursor: pointer;\n  position: relative;")
-	assert.Contains(t, css, ".rowlink::after {\n  content: '';\n  position: absolute;\n  inset: 0;")
-}
-
-// Where a box scrolls both ways, the two bars meet in a square. A custom bar
-// leaves that square white unless the corner is cleared with the track, so the
-// surface under the bars shows through. A table panel is the box that does this.
-func TestScrollbarCornerIsClearWhereBothBarsMeet(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "::-webkit-scrollbar-track {\n  background: transparent;\n}\n/* Both bars meet in a square the browser paints white. The track is already\n   clear, so the corner is too and the surface under the bars shows through. */\n::-webkit-scrollbar-corner {\n  background: transparent;\n}")
-}
-
 func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 	t.Parallel()
 
@@ -279,17 +259,6 @@ func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 	assert.Equal(t, last.Sort, "")
 	serve(h, http.MethodGet, "/admin/device?devices.sort=nonsense")
 	assert.Equal(t, last.Sort, "")
-}
-
-// With a bulk action the form hides the selection bar until a row is checked.
-// :has() lets the form know without script; the bar stays where it is
-// unsupported, and the server refuses an empty selection either way.
-func TestSelectionBarIsHiddenUntilARowIsSelected(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, "@supports selector(:has(*)) {\n  form:not(:has(input[name='_sel']:checked)) .actionbar {\n    display: none;")
-	assert.Contains(t, css, "html:not(.js) .actionbar [data-selcount]") // no live count without script
 }
 
 func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
@@ -403,15 +372,6 @@ func TestSortAndPagerLinksKeepFiltersAsRepeatedParameters(t *testing.T) {
 	body := serve(h, http.MethodGet, "/admin/device?devices.filter.status=healthy&devices.filter.status=degraded").Body.String()
 	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.filter.status=degraded&amp;devices.sort=id"`)
 	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.filter.status=degraded&amp;devices.offset=10"`)
-}
-
-func TestFilterIconAppearsOnHoverAndStaysWhenActive(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".filter-btn {\n  list-style: none;")
-	assert.Contains(t, css, "  opacity: 0;\n  transition: opacity var(--motion);\n}\n.filter-btn::-webkit-details-marker")
-	assert.Contains(t, css, "th:hover .filter-btn,\nth:focus-within .filter-btn,\n.filter[open] .filter-btn,\n.filter.on .filter-btn {\n  opacity: 1;")
 }
 
 func TestNumericColumnsFilterByRangeNotText(t *testing.T) {

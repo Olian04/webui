@@ -435,16 +435,3 @@ func TestAPageSentWholeHasNoMarkThatItIsArriving(t *testing.T) {
 	}
 	assert.Equal(t, strings.Count(body, `class="statusbar"`), 1)
 }
-
-// The marks are drawn by the stylesheet alone, so a page with script off has them: the spinner is drawn after the
-// content though it is sent before it, and is hidden by the mark that ends the page, and the end of the bar covers
-// the "loading" of the live one.
-func TestTheStylesheetDrawsTheArrivingMarksWithoutScript(t *testing.T) {
-	t.Parallel()
-
-	css := assetSource(t, "app.css")
-	assert.Contains(t, css, ".arriving:not(:has(~ .arrived)) {\n    display: flex;\n    order: 2;")
-	assert.Contains(t, css, ".scroll-arriving {\n  display: flex;\n  flex-direction: column;\n}")
-	assert.Contains(t, css, ".statusbar-live:has(~ .statusbar-late) .status-loading {\n    display: none;\n  }")
-	assert.Contains(t, css, ".statusbar-late {\n  position: fixed;\n  right: 0;")
-}

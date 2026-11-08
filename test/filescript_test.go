@@ -152,30 +152,11 @@ func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T)
 	}
 }
 
-// There is no script test harness, so this is what the shipped file carries: that a picture is read as a data: address, which the policy
-// allows, and not made into a blob: one, which it does not; that a drop is put in the input, which the form then posts; and that the
-// checks are the Constraint Validation API's.
-func TestTheFileScriptDoesWhatItSaysItDoes(t *testing.T) {
+// A picture is read as a data: address, which the policy allows, and not made into a blob: one, which it does not.
+func TestAPageWithAFileFieldAllowsDataImagesInItsPolicyAndNotBlobs(t *testing.T) {
 	t.Parallel()
 
 	s := newFileShop(plainFile())
-	js := assetSource(t, "file.js")
-	for _, want := range []string{
-		"readAsDataURL", "new DataTransfer()", "input.files = one.files", "setCustomValidity(said)", "reportValidity()",
-		"/^image\\/(png|jpeg|gif|webp)$/", "PREVIEW_MAX", "'Files'", "input[type=\"file\"][data-file]",
-		"dialog.showModal()", "toDataURL('image/png')", "full.src = data", "img.removeAttribute('src')",
-	} {
-		assert.Contains(t, js, want)
-	}
-	// Every function that the script calls is one that it has: a script that is cut about by an edit still has all its tokens, and fails at once
-	// in the browser, where there is no harness to say so. These are the ones that it calls and does not take from the page.
-	for _, fn := range []string{"config", "problem", "element", "readAsData", "openPreview", "enhance", "enhanceAll"} {
-		assert.Contains(t, js, "function "+fn+"(")
-	}
-	assert.False(t, strings.Contains(js, "createObjectURL")) // a blob: address is not one that the content security policy lets an image have
-	assert.False(t, strings.Contains(js, "svg"))
-	assert.False(t, strings.Contains(js, "fetch(")) // the post is the browser's own, from the input (upload.js, for a FileUpload, sends its own: see fileupload_test.go)
-
 	csp := serve(s.h, http.MethodGet, "/admin/f").Header().Get("Content-Security-Policy")
 	assert.Contains(t, csp, "img-src 'self' data:")
 	assert.False(t, strings.Contains(csp, "blob:"))

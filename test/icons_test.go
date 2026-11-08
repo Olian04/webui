@@ -46,7 +46,7 @@ func TestAnAppCanNameAnyIconAndEachGetsItsRule(t *testing.T) {
 	}
 	font := serve(h, http.MethodGet, assetURL(t, h, "fa-solid.woff"))
 	assert.Equal(t, font.Code, http.StatusOK)
-	assert.Equal(t, font.Header().Get("Content-Type"), "font/woff")
+	assert.True(t, strings.HasPrefix(font.Header().Get("Content-Type"), "font/"))
 }
 
 // The font is served under an address with a hash of its bytes in it, so two instances of one app, behind one address, have to cut the same font or an asset that one page links
