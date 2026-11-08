@@ -15,6 +15,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // toolArgs are the arguments of the page that the toolbars are on, which a toolbar's buttons read with ArgsOf and its forms load their models from.
@@ -91,7 +92,7 @@ func newToolShop(items ...webui.ToolbarItem) *toolShop {
 			settings(minutesInput, siteInput, tagsInput),
 		}
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Stack{
+	tools := webui.Page[toolArgs]{Path: "/tools", View: webui.Stack{
 		webui.Toolbar{Left: items[:2], Right: items[2:]},
 		webui.Table[Device]{
 			Title: "Devices",
@@ -105,7 +106,7 @@ func newToolShop(items ...webui.ToolbarItem) *toolShop {
 			Columns: []webui.Accessor[Device]{webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}},
 		},
 	}}
-	s.h = webui.App{Pages: webui.Pages{page, newDevice}}.MustCompile("/admin")
+	s.h = webui.App{Pages: webui.Pages{tools, newDevice}}.MustCompile("/admin")
 	return s
 }
 
@@ -119,37 +120,65 @@ func flashOf(rec *httptest.ResponseRecorder) string {
 	return ""
 }
 
-// toolbarOf is the toolbar of a page, from its root to the first panel after it.
-func toolbarOf(body string) string {
-	return body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `<div class="panel grows"`)]
+// toolbarOf is the toolbar of a page: the first panel of the pages here, which put it before everything else.
+func toolbarOf(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+	views := p.Views()
+	if len(views) == 0 {
+		t.Fatal("no panel in the page")
+	}
+	return views[0]
+}
+
+// valuesOf is what the values of a toolbar's form say, by the label of each: the first thing in a value is its label and the last is what it reads.
+func valuesOf(g page.El) map[string]string {
+	got := map[string]string{}
+	for _, value := range g.Children() {
+		kids := value.Children()
+		if len(kids) >= 2 {
+			got[kids[0].Text()] = kids[len(kids)-1].Text()
+		}
+	}
+	return got
+}
+
+// inputs are the controls below the element that a visitor could type in or choose with: the fields that are not what a button posts.
+func inputs(e page.El) []string {
+	var got []string
+	for _, f := range e.Fields() {
+		if f.Type != "hidden" && f.Type != "button" {
+			got = append(got, f.Name)
+		}
+	}
+	return got
 }
 
 func TestAToolbarIsARowOfButtonsAndTheValuesOfItsForms(t *testing.T) {
 	t.Parallel()
 
 	s := newToolShop()
-	bar := toolbarOf(serve(s.h, http.MethodGet, "/admin/tools?minutes=15&site=north&tags=edge&tags=gpu").Body.String())
+	bar := toolbarOf(t, pageOf(t, s.h, "/admin/tools?minutes=15&site=north&tags=edge&tags=gpu"))
 
 	// A link is a real anchor, to the page its Args build, from the request: the page's arguments are read with ArgsOf.
-	assert.Contains(t, bar, `<a class="btn btn-primary btn-sm" href="/admin/device/new?from=north">Create device</a>`)
+	assert.DeepEqual(t, bar.Links(), []page.Link{{Name: "Create device", Href: "/admin/device/new?from=north"}})
 	// An action is a button that posts, by its position.
-	assert.Contains(t, bar, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1">Sync now</button>`)
+	assert.DeepEqual(t, controls(bar), []control{{"Sync now", "1", false}})
 	// A form is a group that its Title names, of its fields' labels and values as they are read: a number, and a select as its badges.
-	assert.Contains(t, bar, `<span class="toolbar-form" role="group" aria-label="Settings">`)
-	assert.Contains(t, bar, `<span class="toolbar-value"><span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span></span>`)
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Site</span> <span class="toolbar-val"><span class="badges"><span class="badge tone-mute"><span class="dot" aria-hidden="true"></span>North</span></span></span>`)
-	assert.Contains(t, bar, `>edge</span><span class="badge tone-mute"><span class="dot" aria-hidden="true"></span>gpu</span>`)
-	for _, input := range []string{"<input type=\"number\"", "<select", "<textarea", "toolbar-apply", "data-toolbar-form", "_toolbar", `method="get"`, `<label`} {
-		assert.False(t, strings.Contains(bar, input))
-	}
+	group := page.One(t, "the Settings", bar.ByRole("group", "Settings"))
+	got := valuesOf(group)
+	assert.Equal(t, got["Minutes"], "15")
+	assert.Equal(t, got["Site"], "North")
+	assert.True(t, strings.HasPrefix(got["Tags"], "edge"))
+	assert.Equal(t, len(group.ByText("gpu")), 1)
+	assert.Equal(t, len(inputs(bar)), 0) // values to read, and nothing to type in
 	// The one form is the buttons': it posts the panel and the action's position, and nothing else.
-	assert.Equal(t, strings.Count(bar, "<form"), 1)
-	assert.Contains(t, bar, `method="post"`)
-	// The right controls are the many, so they are the group that flows, and the left one is whole, before it.
-	assert.Contains(t, bar, `<span class="toolbar-start">`)
-	assert.Contains(t, bar, `<span class="toolbar-end toolbar-flows">`)
-	assert.True(t, strings.Index(bar, ">Sync now</button>") < strings.Index(bar, `class="toolbar-end toolbar-flows"`))
-	assert.True(t, strings.Index(bar, `class="toolbar-end toolbar-flows"`) < strings.Index(bar, `class="toolbar-lbl">Minutes`))
+	names := []string{}
+	for _, f := range bar.Fields() {
+		names = append(names, f.Name)
+	}
+	assert.DeepEqual(t, names, []string{"_view", "_act"})
+	// The buttons come first, and the values after them.
+	assert.True(t, bar.ByRole("button", "Sync now")[0].Before(group))
 }
 
 // A toolbar with no button has nothing in it to submit, so it has no form.
@@ -161,11 +190,10 @@ func TestAToolbarOfLinksAndFormsHasNoForm(t *testing.T) {
 		webui.Link[webui.NoArgs, newArgs]{Label: "Create another", Page: newDevice, Args: func(context.Context, webui.NoArgs) newArgs { return newArgs{} }},
 		settings(minutesInput, siteInput),
 	)
-	bar := toolbarOf(serve(s.h, http.MethodGet, "/admin/tools?minutes=15").Body.String())
-	assert.False(t, strings.Contains(bar, "<form"))
-	assert.False(t, strings.Contains(bar, "_view"))
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
-	assert.Contains(t, bar, `<a class="btn btn-secondary btn-sm" href="/admin/device/new">Create device</a>`)
+	bar := toolbarOf(t, pageOf(t, s.h, "/admin/tools?minutes=15"))
+	assert.Equal(t, len(bar.Fields()), 0)
+	assert.Equal(t, valuesOf(page.One(t, "the Settings", bar.ByRole("group", "Settings")))["Minutes"], "15")
+	assert.DeepEqual(t, bar.Links(), []page.Link{{Name: "Create device", Href: "/admin/device/new"}, {Name: "Create another", Href: "/admin/device/new"}})
 }
 
 // The accessor is the one a form uses: its Store is ignored, as a table ignores it.
@@ -174,16 +202,14 @@ func TestAToolbarShowsAnAccessorReadOnlyWhateverItsStore(t *testing.T) {
 
 	withStore := webui.Int[toolState]{Label: "Minutes", Load: func(a toolState) int { return a.Minutes }, Store: func(a *toolState, v int) { a.Minutes = v }}
 	without := webui.Int[toolState]{Label: "Minutes", Load: func(a toolState) int { return a.Minutes }}
-	page := func(field webui.Accessor[toolState]) http.Handler {
+	app := func(field webui.Accessor[toolState]) http.Handler {
 		return webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(field)}}}}}.MustCompile("/admin")
 	}
-	a := serve(page(withStore), http.MethodGet, "/admin/tools?minutes=15").Body.String()
-	b := serve(page(without), http.MethodGet, "/admin/tools?minutes=15").Body.String()
-	pick := func(s string) string {
-		i := strings.Index(s, `<div class="toolbar"`)
-		return s[i : i+strings.Index(s[i:], `</div>`)]
-	}
-	assert.Equal(t, pick(a), pick(b))
+	a := toolbarOf(t, pageOf(t, app(withStore), "/admin/tools?minutes=15"))
+	b := toolbarOf(t, pageOf(t, app(without), "/admin/tools?minutes=15"))
+	assert.Equal(t, a.Text(), b.Text())
+	assert.Equal(t, len(a.Fields()), len(b.Fields()))
+	assert.Equal(t, len(inputs(a)), 0)
 }
 
 func TestAToolbarValueIsAsAReadOnlyFieldShowsItAndMayHaveHelp(t *testing.T) {
@@ -209,16 +235,15 @@ func TestAToolbarValueIsAsAReadOnlyFieldShowsItAndMayHaveHelp(t *testing.T) {
 		},
 	}}}}}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	empty := body[strings.Index(body, `<div class="toolbar"`):strings.Index(body, `</main>`)]
-	// Absent is a dash, and a value is as a read-only form field shows it: a Format, a link.
-	assert.Contains(t, empty, `<span class="toolbar-lbl">Paused</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
-	assert.Contains(t, empty, `<span class="toolbar-lbl">Name</span> <span class="toolbar-val"><span class="dim" aria-hidden="true">—</span>`)
-	assert.Contains(t, empty, `<span class="toolbar-val">0 KiB</span>`)
-	assert.Contains(t, empty, `href="https://example.com/docs"`)
+	bar := toolbarOf(t, pageOf(t, h, "/admin/t"))
+	// Absent is empty, and a value is as a read-only form field shows it: a Format, a link.
+	assert.DeepEqual(t, valuesOf(page.One(t, "the State", bar.ByRole("group", "State"))), map[string]string{
+		"Paused": "empty", "Size": "0 KiB", "Name": "empty", "Docs": "Read(opens in a new tab)",
+	})
+	assert.DeepEqual(t, bar.Links(), []page.Link{{Name: "Read(opens in a new tab)", Href: "https://example.com/docs", NewTab: true}})
 	// What the help says is in the popover beside the label.
-	assert.Contains(t, empty, `<span class="tip" tabindex="0" role="note" aria-label="Help: How much is kept.">`)
-	assert.False(t, strings.Contains(empty, "<form"))
+	assert.Equal(t, len(bar.ByRole("note", "Help: How much is kept.")), 1)
+	assert.Equal(t, len(bar.Fields()), 0)
 }
 
 // A toolbar may have several forms, each its own model, side by side in the row.
@@ -230,12 +255,10 @@ func TestAToolbarMayHaveFormsOfDifferentModels(t *testing.T) {
 		Title: "Queue", Load: func(context.Context) (queue, webui.Loaded) { return queue{Depth: 128}, webui.Ready() },
 		Fields: []webui.Accessor[queue]{webui.Int[queue]{Label: "Depth", Load: func(q queue) int { return q.Depth }}},
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput), depth}}}
-	body := serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/tools?minutes=15").Body.String()
-	assert.Contains(t, body, `<span class="toolbar-form" role="group" aria-label="Settings">`)
-	assert.Contains(t, body, `<span class="toolbar-form" role="group" aria-label="Queue">`)
-	assert.Contains(t, body, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
-	assert.Contains(t, body, `<span class="toolbar-lbl">Depth</span> <span class="toolbar-val">128</span>`)
+	tools := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput), depth}}}
+	bar := toolbarOf(t, pageOf(t, webui.App{Pages: webui.Pages{tools}}.MustCompile("/admin"), "/admin/tools?minutes=15"))
+	assert.DeepEqual(t, valuesOf(page.One(t, "the Settings", bar.ByRole("group", "Settings"))), map[string]string{"Minutes": "15"})
+	assert.DeepEqual(t, valuesOf(page.One(t, "the Queue", bar.ByRole("group", "Queue"))), map[string]string{"Depth": "128"})
 }
 
 // A form that cannot be loaded says so in its place in the row, and the rest of the toolbar, its buttons and the other forms, stands.
@@ -254,12 +277,12 @@ func TestAFormThatCannotBeLoadedDoesNotTakeTheToolbarDown(t *testing.T) {
 		webui.Action[webui.NoArgs]{Label: "Again", Run: run},
 		broken, refused, settings(minutesInput),
 	)
-	bar := toolbarOf(serve(s.h, http.MethodGet, "/admin/tools?minutes=15").Body.String())
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Broken</span> <span class="toolbar-val tone-bad">Could not load</span>`)
-	assert.False(t, strings.Contains(bar, "the backend is down")) // the cause is logged, never shown
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Refused</span> <span class="toolbar-val tone-bad">Not for you.</span>`)
-	assert.Contains(t, bar, ">Go</button>")
-	assert.Contains(t, bar, `<span class="toolbar-lbl">Minutes</span> <span class="toolbar-val">15</span>`)
+	bar := toolbarOf(t, pageOf(t, s.h, "/admin/tools?minutes=15"))
+	assert.Equal(t, page.One(t, "the Broken", bar.ByRole("group", "Broken")).Text(), "Broken Could not load")
+	assert.False(t, strings.Contains(bar.AllText(), "the backend is down")) // the cause is logged, never shown
+	assert.Equal(t, page.One(t, "the Refused", bar.ByRole("group", "Refused")).Text(), "Refused Not for you.")
+	assert.DeepEqual(t, controls(bar), []control{{"Go", "0", false}, {"Again", "1", false}})
+	assert.Equal(t, valuesOf(page.One(t, "the Settings", bar.ByRole("group", "Settings")))["Minutes"], "15")
 }
 
 // A toolbar is a panel of its own, and its forms are not: a form that says it is not final has the whole toolbar asked for again, by the shortest of them.
@@ -277,27 +300,29 @@ func TestAToolbarWhoseFormIsNotFinalIsAskedForAgain(t *testing.T) {
 	other := going(9 * time.Second)
 	other.Title = "Other"
 	other.Fields = []webui.Accessor[toolState]{siteInput}
-	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{going(4 * time.Second), other}}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	tools := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{going(4 * time.Second), other}}}
+	h := webui.App{Pages: webui.Pages{tools}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/tools?minutes=15").Body.String()
-	root := body[strings.Index(body, `<div class="toolbar"`):]
-	root = root[:strings.Index(root, ">")]
-	assert.Contains(t, root, `data-view="p"`)
-	assert.Contains(t, root, `data-refresh-after="4"`)
+	p := pageOf(t, h, "/admin/tools?minutes=15")
+	bar := toolbarOf(t, p)
+	assert.Equal(t, bar.Attr("data-view"), "p")
+	assert.Equal(t, bar.Attr("data-refresh-after"), "4")
 	// A toolbar has little room, and a note in the row would move what is in it: it says nothing that is seen.
-	assert.False(t, strings.Contains(body, "refresh-note"))
-	assert.Equal(t, strings.Count(body, "data-refresh-after="), 1)
+	assert.False(t, strings.Contains(strings.ToLower(bar.AllText()), "refresh"))
+	assert.Equal(t, len(p.ByAttr("data-refresh-after", "")), 1)
 
 	// Asked for alone, as script does, the toolbar answers with its own root first, which carries it.
 	rec := serveView(h, "/admin/tools?minutes=15", "p")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(rec.Body.String(), `<div class="toolbar" data-toolbar data-view="p" data-refresh-after="4">`))
+	alone := page.Parse(t, rec.Body.String())
+	assert.True(t, page.IsFragment(rec.Body.String()))
+	assert.Equal(t, toolbarOf(t, alone).Attr("data-view"), "p")
+	assert.Equal(t, toolbarOf(t, alone).Attr("data-refresh-after"), "4")
 
 	// A toolbar of forms that are final says nothing of it.
-	final := serve(webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput)}}}}}.MustCompile("/admin"), http.MethodGet, "/admin/tools").Body.String()
-	assert.False(t, strings.Contains(final, "data-refresh-after"))
-	assert.Contains(t, final, `<div class="toolbar" data-toolbar data-view="p">`)
+	final := pageOf(t, webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(minutesInput)}}}}}.MustCompile("/admin"), "/admin/tools")
+	assert.Equal(t, len(final.ByAttr("data-refresh-after", "")), 0)
+	assert.Equal(t, toolbarOf(t, final).Attr("data-view"), "p")
 }
 
 func TestAnActionOfAToolbarReadsThePagesArgumentsFromTheRequest(t *testing.T) {
@@ -319,34 +344,17 @@ func TestAnActionOfAToolbarReadsThePagesArgumentsFromTheRequest(t *testing.T) {
 	assert.Equal(t, len(s.ran), 1)
 }
 
-func TestAToolbarWithControlsAtOneEdgeHasTheGapOnTheOtherSide(t *testing.T) {
-	t.Parallel()
-
-	item := webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}
-	gap := `<span class="toolbar-gap" aria-hidden="true"></span>`
-	pageOf := func(tb webui.Toolbar) string {
-		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: tb}}}.MustCompile("/admin")
-		return serve(h, http.MethodGet, "/admin/tools").Body.String()
-	}
-	both := pageOf(webui.Toolbar{Left: []webui.ToolbarItem{item}, Right: []webui.ToolbarItem{item}})
-	assert.Equal(t, strings.Count(both, gap), 1)
-	onlyRight := pageOf(webui.Toolbar{Right: []webui.ToolbarItem{item}})
-	assert.True(t, strings.Index(onlyRight, gap) < strings.Index(onlyRight, ">Go</button>")) // the right ones start with it
-	onlyLeft := pageOf(webui.Toolbar{Left: []webui.ToolbarItem{item}})
-	assert.Equal(t, strings.Count(onlyLeft, gap), 0)
-}
-
 // The Guard that leaves a button out is the one that refuses the request, and so is the one that disables it.
 func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) {
 	t.Parallel()
 
 	s := newToolShop()
 	s.deny = errors.New("requires the editor role")
-	body := serve(s.h, http.MethodGet, "/admin/tools").Body.String()
-	assert.False(t, strings.Contains(body, "Sync now"))
-	assert.False(t, strings.Contains(body, "requires the editor role")) // nothing says that there was a button
-	assert.Contains(t, body, `href="/admin/device/new">Create device</a>`)
-	assert.False(t, strings.Contains(body, `<form action="/admin/tools" method="post"`)) // and with no button there is nothing to post
+	p := pageOf(t, s.h, "/admin/tools")
+	assert.False(t, strings.Contains(p.Root().AllText(), "Sync now"))
+	assert.False(t, strings.Contains(p.Root().AllText(), "requires the editor role")) // nothing says that there was a button
+	assert.True(t, hasLink(p, "Create device", "/admin/device/new"))
+	assert.Equal(t, len(controls(toolbarOf(t, p))), 0) // and with no button there is nothing to post
 
 	rec := post(s.h, "/admin/tools", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -354,8 +362,9 @@ func TestAToolbarButtonThatIsGuardedIsLeftOutOrDisabledAndRefused(t *testing.T) 
 	assert.Equal(t, len(s.ran), 0)
 
 	s.deny = webui.Disabled("requires the editor role")
-	body = serve(s.h, http.MethodGet, "/admin/tools").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="requires the editor role" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="1" disabled>Sync now</button><span class="sr-only">Not available: requires the editor role</span></span>`)
+	bar := toolbarOf(t, pageOf(t, s.h, "/admin/tools"))
+	assert.DeepEqual(t, controls(bar), []control{{"Sync now", "1", true}})
+	assert.True(t, strings.Contains(bar.Text(), "Sync now Not available: requires the editor role"))
 
 	rec = post(s.h, "/admin/tools", url.Values{"_view": {"p.0"}, "_act": {"1"}})
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
@@ -371,14 +380,14 @@ func TestASelectInAToolbarMayReadItsOptions(t *testing.T) {
 	team := webui.Select[toolState]{
 		Label: "Team", Load: func(a toolState) []string { return []string{a.Site} }, LoadOptions: s.load,
 	}
-	page := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(team)}}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	tools := webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{settings(team)}}}
+	h := webui.App{Pages: webui.Pages{tools}}.MustCompile("/admin")
 
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/tools?site=blue").Body.String(), `</span>Blue team</span>`)
+	team1 := toolbarOf(t, pageOf(t, h, "/admin/tools?site=blue"))
+	assert.Equal(t, valuesOf(page.One(t, "the Settings", team1.ByRole("group", "Settings")))["Team"], "Blue team")
 
 	s.err = errors.New("the database is down")
-	body := serve(h, http.MethodGet, "/admin/tools").Body.String()
-	assert.Contains(t, body, "Could not load")
+	assert.Equal(t, len(pageOf(t, h, "/admin/tools").ByText("Could not load")) > 0, true)
 }
 
 func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
@@ -447,29 +456,4 @@ func TestAFormInAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(settings(webui.Secret[toolState]{Label: "Key", Load: func(a toolState) bool { return a.Minutes != 0 }, Store: store})), "is a Secret in a toolbar")
 	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Body", Multiline: true, Load: load, Store: store})), "is Multiline in a toolbar")
 	assert.Contains(t, problems(settings(webui.File[toolState]{Label: "Logo", MaxSize: 1 << 20, Load: func(toolState) *webui.FileInfo { return nil }, Store: func(*toolState, *webui.Upload) {}})), "is a File in a toolbar")
-}
-
-// The group with fewer values is whole and the group with more flows, whichever side it is at: a form counts as the values it shows, so a
-// button and a form of several values are not two against two.
-func TestTheGroupWithMoreValuesIsTheOneThatFlows(t *testing.T) {
-	t.Parallel()
-
-	one := webui.Action[webui.NoArgs]{Label: "Go", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }}
-	many := webui.Form[toolArgs]{Title: "Many", Load: func(context.Context) (toolArgs, webui.Loaded) { return toolArgs{}, webui.Ready() }, Fields: []webui.Accessor[toolArgs]{
-		webui.String[toolArgs]{Label: "A", Load: func(toolArgs) string { return "a" }},
-		webui.String[toolArgs]{Label: "B", Load: func(toolArgs) string { return "b" }},
-	}}
-	bar := func(tb webui.Toolbar) string {
-		h := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: tb}}}.MustCompile("/admin")
-		return serve(h, http.MethodGet, "/admin/tools").Body.String()
-	}
-
-	right := bar(webui.Toolbar{Left: []webui.ToolbarItem{one}, Right: []webui.ToolbarItem{many}})
-	assert.Contains(t, right, `<span class="toolbar-start">`)
-	assert.Contains(t, right, `class="toolbar-end toolbar-flows"`)
-
-	left := bar(webui.Toolbar{Left: []webui.ToolbarItem{many}, Right: []webui.ToolbarItem{one}})
-	assert.False(t, strings.Contains(left, "toolbar-start"))
-	assert.Contains(t, left, `<span class="toolbar-gap" aria-hidden="true"></span>`)
-	assert.Contains(t, left, `<span class="toolbar-end">`)
 }

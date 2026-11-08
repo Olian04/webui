@@ -5,11 +5,12 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strings"
+	"slices"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type parcel struct{ Name string }
@@ -66,27 +67,56 @@ func viewValues(panel string, kv ...string) url.Values {
 	return v
 }
 
+// dialogs are the confirmations of a page, by the button in each that does the action: the name of that button, and what it posts as _act.
+func dialogs(t *testing.T, p *page.Page) map[string]string {
+	t.Helper()
+	got := map[string]string{}
+	for _, d := range p.ByRole("alertdialog", "") {
+		var submits []page.El
+		for _, b := range d.ByRole("button", "") {
+			if b.Attr("type") == "submit" {
+				submits = append(submits, b)
+			}
+		}
+		submit := page.One(t, "the button that does it", submits)
+		got[submit.Name()] = submit.Attr("value")
+	}
+	return got
+}
+
+// opener is the button of a page that opens a dialog, and does not submit: the one that the dialog is the invoker target of.
+func opener(t *testing.T, p *page.Page, d page.El) page.El {
+	t.Helper()
+	var found []page.El
+	for _, b := range p.ByAttr("commandfor", d.Attr("id")) {
+		if b.Attr("command") == "show-modal" {
+			found = append(found, b)
+		}
+	}
+	return page.One(t, "the opener of "+d.Name(), found)
+}
+
 func TestAnActionThatConfirmsOpensADialogThatHoldsTheButtonThatSubmits(t *testing.T) {
 	t.Parallel()
 
 	h, _ := confirmApp("Are you sure?", nil)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
+	p := pageOf(t, h, "/admin/t")
 
-	// The row's button, the bulk action's and the toolbar's each open a dialog of their own, by an invoker command.
-	for _, id := range []string{"confirm-p.1-r0a0", "confirm-p.1-r1a0", "confirm-p.1-b0", "confirm-p.0-t0"} {
-		assert.Contains(t, body, `commandfor="`+id+`" command="show-modal"`)
-		assert.Contains(t, body, `<dialog id="`+id+`" class="confirm raise" role="alertdialog" closedby="any" aria-labelledby="`+id+`-text">`)
-		assert.Contains(t, body, `<p class="confirm-text" id="`+id+`-text">Are you sure?</p>`)
-	}
+	// The row's button, the bulk action's and the toolbar's each open a dialog of their own, by an invoker command, which asks what was set.
 	// What the dialog submits is what the button would have: the same name and value, which the server reads as it did.
-	assert.Contains(t, body, `<button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:a">Drop <span class="sr-only">a</span></button>`)
-	assert.Contains(t, body, `type="submit" name="_act" value="bulk:0">Drop all</button>`)
-	assert.Contains(t, body, `type="submit" name="_act" value="0">Sync</button>`)
-	assert.Contains(t, body, `command="close"`)
-	// An id is a place and never a key.
-	assert.False(t, strings.Contains(body, `id="confirm-p.1-r0a0-a"`))
-	// The opener does not submit.
-	assert.Contains(t, body, `type="button" commandfor="confirm-p.1-r0a0"`)
+	assert.DeepEqual(t, dialogs(t, p), map[string]string{"Drop a": "row:0:a", "Drop b": "row:0:b", "Drop all": "bulk:0", "Sync": "0"})
+	for _, d := range p.ByRole("alertdialog", "Are you sure?") {
+		var names []string
+		var closes bool
+		for _, b := range d.ByRole("button", "") {
+			names = append(names, b.Name())
+			closes = closes || b.Attr("command") == "close"
+		}
+		assert.True(t, closes) // and says no
+		open := opener(t, p, d)
+		assert.Equal(t, open.Attr("type"), "button") // the opener does not submit
+		assert.True(t, slices.Contains(names, open.Name()))
+	}
 }
 
 func TestSubmittingFromTheDialogDoesTheActionAsTheButtonDoes(t *testing.T) {
@@ -108,18 +138,20 @@ func TestAFormWhoseSaveAsksIsNotSubmittedByEnterInAField(t *testing.T) {
 	t.Parallel()
 
 	h, _ := confirmApp("Save it?", nil)
-	body := serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `commandfor="confirm-p-submit0" command="show-modal"`)
-	disabled := strings.Index(body, `<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>`)
-	dialog := strings.Index(body, `<dialog id="confirm-p-submit0"`)
-	assert.True(t, disabled >= 0 && disabled < dialog)
+	p := pageOf(t, h, "/admin/f")
+	dialog := page.One(t, "the dialog", p.ByRole("alertdialog", "Save it?"))
+	assert.Equal(t, opener(t, p, dialog).Name(), "Save")
+	first := p.ByAttr("type", "submit")[0]
+	assert.True(t, first.Has("disabled") && first.Hidden() && first.Before(dialog))
 
 	// One that does not ask is as it was.
 	plain, _ := confirmApp("", nil)
-	body = serve(plain, http.MethodGet, "/admin/f").Body.String()
-	assert.False(t, strings.Contains(body, "<dialog"))
-	assert.False(t, strings.Contains(body, "disabled hidden"))
-	assert.Contains(t, body, `<button class="btn btn-primary btn-sm" type="submit">Save</button>`)
+	p = pageOf(t, plain, "/admin/f")
+	assert.Equal(t, len(p.ByRole("alertdialog", "")), 0)
+	for _, b := range p.ByAttr("type", "submit") {
+		assert.False(t, b.Has("disabled"))
+	}
+	assert.Equal(t, len(p.ByRole("button", "Save")), 1)
 }
 
 // A button that its Guard refuses has no dialog to open, whether it is left out or drawn disabled, and the dialogs of the others
@@ -128,25 +160,23 @@ func TestARefusedButtonHasNoDialog(t *testing.T) {
 	t.Parallel()
 
 	h, _ := confirmApp("Sure?", func(context.Context, parcel) error { return errors.New("read only") })
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, `id="confirm-p.1-r0a0"`))
-	assert.False(t, strings.Contains(body, `data-guard`))
-	assert.True(t, strings.Contains(body, `id="confirm-p.1-b0"`)) // the bulk action has no Guard
+	p := pageOf(t, h, "/admin/t")
+	assert.DeepEqual(t, dialogs(t, p), map[string]string{"Drop all": "bulk:0", "Sync": "0"}) // the bulk action has no Guard
+	assert.Equal(t, len(p.ByAttr("data-guard", "")), 0)
 
 	h, _ = confirmApp("Sure?", func(context.Context, parcel) error { return webui.Disabled("read only") })
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `data-guard="read only"`)
-	assert.False(t, strings.Contains(body, `id="confirm-p.1-r0a0"`))
-	assert.True(t, strings.Contains(body, `id="confirm-p.1-b0"`))
+	p = pageOf(t, h, "/admin/t")
+	assert.Equal(t, len(p.ByAttr("data-guard", "read only")), 2) // a button for each row, drawn disabled
+	assert.DeepEqual(t, dialogs(t, p), map[string]string{"Drop all": "bulk:0", "Sync": "0"})
 }
 
 func TestAnActionWithNoConfirmHasNoDialog(t *testing.T) {
 	t.Parallel()
 
 	h, _ := confirmApp("", nil)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, "<dialog"))
-	assert.False(t, strings.Contains(body, "command="))
+	p := pageOf(t, h, "/admin/t")
+	assert.Equal(t, len(p.ByRole("alertdialog", "")), 0)
+	assert.Equal(t, len(p.ByAttr("command", "")), 0)
 }
 
 func TestAConfirmOnARowClickIsACompileError(t *testing.T) {

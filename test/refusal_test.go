@@ -13,6 +13,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type recordArgs struct{ ID string }
@@ -74,17 +75,16 @@ func TestAGuardThatRefusesWithAStatusAnswersWithIt(t *testing.T) {
 	} {
 		rec := serve(h, http.MethodGet, "/admin/records/"+id)
 		assert.Equal(t, rec.Code, want.status)
-		body := rec.Body.String()
-		assert.Contains(t, body, `<h2 class="state-title">`+want.title+`</h2>`)
-		assert.Contains(t, body, want.text)
-		assert.False(t, strings.Contains(body, "ran before anything was loaded"))
-		assert.False(t, strings.Contains(body, `class="panel`)) // and nothing was read
+		refused := page.Parse(t, rec.Body.String())
+		assert.Equal(t, len(refused.ByRole("heading", want.title)), 1)
+		assert.Equal(t, len(refused.ByText(want.text)), 1)
+		assert.False(t, strings.Contains(refused.Root().AllText(), "ran before anything was loaded"))
+		assert.Equal(t, len(refused.Views()), 0) // and nothing was read
 	}
 
 	// The link on is a real link to a page of the app.
-	body := serve(h, http.MethodGet, "/admin/records/missing").Body.String()
-	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm" href="/admin/records">Back to the records</a>`)
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/records/closed").Body.String(), `class="btn btn-ghost btn-sm"`))
+	assert.True(t, hasLink(pageOf(t, h, "/admin/records/missing"), "Back to the records", "/admin/records"))
+	assert.Equal(t, len(page.One(t, "main", pageOf(t, h, "/admin/records/closed").ByRole("main", "")).Links()), 0)
 }
 
 // Any other error is as it was: a 403 with its text, and not how the check was made.
@@ -93,14 +93,15 @@ func TestAGuardThatReturnsAnyOtherErrorStillAnswers403(t *testing.T) {
 
 	rec := serve(refusalApp(nil), http.MethodGet, "/admin/records/plain")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `<p class="state-desc">only for editors</p>`)
-	assert.False(t, strings.Contains(rec.Body.String(), "ran before anything was loaded"))
+	refused := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(refused.ByText("only for editors")), 1)
+	assert.False(t, strings.Contains(refused.Root().AllText(), "ran before anything was loaded"))
 
 	// An error with no words of its own says that there is no access, and nothing else.
-	page := webui.Page[webui.NoArgs]{Path: "/quiet", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("") }}
-	rec = serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/quiet")
+	quiet := webui.Page[webui.NoArgs]{Path: "/quiet", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("") }}
+	rec = serve(webui.App{Pages: webui.Pages{quiet}}.MustCompile("/admin"), http.MethodGet, "/admin/quiet")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `<p class="state-desc">You do not have access to this page.</p>`)
+	assert.Equal(t, len(page.Parse(t, rec.Body.String()).ByText("You do not have access to this page.")), 1)
 }
 
 // A POST to a page that refuses is answered, as any is, with a redirect to the page, which says it.
@@ -130,7 +131,7 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	page := webui.Page[webui.NoArgs]{Path: "/stuff", View: webui.Stack{
+	stuff := webui.Page[webui.NoArgs]{Path: "/stuff", View: webui.Stack{
 		webui.Table[Device]{
 			Title: "Gone",
 			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -154,18 +155,18 @@ func TestAPanelWhoseLoadRefusesSaysSoAndThePageStays(t *testing.T) {
 		},
 	}}
 	list := webui.Page[webui.NoArgs]{Path: recordsPath, View: webui.Stack{}}
-	h := webui.App{Logger: slog.New(slog.NewTextHandler(&buf, nil)), Pages: webui.Pages{page, list}}.MustCompile("/admin")
+	h := webui.App{Logger: slog.New(slog.NewTextHandler(&buf, nil)), Pages: webui.Pages{stuff, list}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/stuff")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
-	assert.Contains(t, body, `<div class="empty-title">Not found</div>`)
-	assert.Contains(t, body, "This device was deleted.")
-	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm" href="/admin/records">See the others</a>`)
-	assert.Contains(t, body, "Not for you.")
+	shown := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(shown.ByText("Not found")), 1)
+	assert.Equal(t, len(shown.ByText("This device was deleted.")), 1)
+	assert.True(t, hasLink(shown, "See the others", "/admin/records"))
+	assert.Equal(t, len(shown.ByText("Not for you.")), 1)
 	// What fails is as it was: "Could not load", once, and the cause in the log and not in the page.
-	assert.Equal(t, strings.Count(body, "Could not load"), 1)
-	assert.False(t, strings.Contains(body, "the database is down"))
+	assert.Equal(t, len(shown.ByText("Could not load")), 1)
+	assert.False(t, strings.Contains(shown.Root().AllText(), "the database is down"))
 	assert.Equal(t, strings.Count(buf.String(), "level=ERROR"), 1)
 	assert.Contains(t, buf.String(), "the database is down")
 }

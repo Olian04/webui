@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 var (
@@ -52,43 +53,54 @@ func okForm() webui.Form[Device] {
 func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 	t.Parallel()
 
-	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
+	p := pageOf(t, formApp(okForm()), "/admin/device/dev1")
+	main := page.One(t, "main", p.ByRole("main", ""))
 
-	assert.Contains(t, body, `<h2 class="panel-title">Configuration</h2>`)
-	assert.Contains(t, body, `<form action="/admin/device/dev1" method="post"`)
-	assert.Contains(t, body, `name="_view" value="p"`)
+	assert.Equal(t, len(p.ByRole("heading", "Configuration")), 1)
+	post := page.One(t, "the form", p.ByAttr("action", "/admin/device/dev1"))
+	assert.Equal(t, post.Attr("method"), "post")
+	view, _ := p.Field("_view")
+	assert.Equal(t, view.Value, "p")
 
-	// ID has no Store: shown as output, not as an input that is refused, and never
-	// submitted (no name).
-	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_0-label">dev1</div>`)
-	assert.False(t, strings.Contains(body, `value="dev1"`))
-	assert.False(t, strings.Contains(body, `name="f0_0"`))
+	// ID has no Store: shown as output, not as an input that is refused, and never submitted (no name).
+	assert.Equal(t, page.One(t, "the ID", main.ByRole("group", "ID")).Text(), "dev1")
+	assert.Equal(t, len(p.ByAttr("value", "dev1")), 0)
+	_, isInput := p.Field("f0_0")
+	assert.False(t, isInput)
 
 	// IP carries its rules as HTML constraint attributes, and states them.
-	assert.Contains(t, body, `name="f0_1" type="text" value="10.0.0.1"`)
-	assert.Contains(t, body, `required minlength="7" maxlength="15" pattern="\d{1,3}(\.\d{1,3}){3}"`)
-	assert.Contains(t, body, `<span class="req" aria-hidden="true">*</span>`)
-	// Nothing is printed beneath the input while its value is good: the rules, the
-	// pattern's message among them, are in the popover beside the label.
-	assert.False(t, strings.Contains(body, `class="hint"`))
+	ip, _ := p.Field("f0_1")
+	assert.Equal(t, ip.Type, "text")
+	assert.Equal(t, ip.Value, "10.0.0.1")
+	assert.True(t, ip.Required)
+	ipBox := page.One(t, "the IP input", p.ByAttr("name", "f0_1"))
+	assert.Equal(t, ipBox.Attr("minlength"), "7")
+	assert.Equal(t, ipBox.Attr("maxlength"), "15")
+	assert.Equal(t, ipBox.Attr("pattern"), `\d{1,3}(\.\d{1,3}){3}`)
+	// The rules, the pattern's message among them, are in the popover beside the label, and not printed beneath the input while its value is good.
 	for _, rule := range []string{"7–15 characters", "must be a valid IPv4 address"} {
-		assert.Contains(t, body, `<span class="tip-item">`+rule+`</span>`)
+		assert.True(t, len(p.ByAllText(rule)) > 0)
+		assert.False(t, strings.Contains(main.Text(), rule))
 	}
-	assert.Equal(t, strings.Count(body, "must be a valid IPv4 address"), 4)           // the popover, its accessible name, the title, and what the browser says
-	assert.False(t, strings.Contains(body, `<span class="tip-item">Required</span>`)) // the asterisk says it
+	assert.Equal(t, ipBox.Attr("title"), "must be a valid IPv4 address") // what a browser says after its own words when there is no script
+	assert.False(t, strings.Contains(main.AllText(), "Required"))        // the asterisk says it
 
 	// A number is a number input with its bounds, and required, since it always has a value; zero is a real bound.
-	assert.Contains(t, body, `name="f1" type="number" value="7" required min="0" max="100" step="1"`)
-	assert.Contains(t, body, `<span class="tip-item">0–100</span>`) // its bounds, in the popover
+	count, _ := p.Field("f1")
+	assert.Equal(t, count.Type, "number")
+	assert.Equal(t, count.Value, "7")
+	assert.True(t, count.Required)
+	box := page.One(t, "the number input", p.ByAttr("name", "f1"))
+	assert.DeepEqual(t, []string{box.Attr("min"), box.Attr("max"), box.Attr("step")}, []string{"0", "100", "1"})
+	assert.True(t, len(p.ByAllText("0–100")) > 0) // its bounds, in the popover
 
-	// A group is layout: its fields side by side, with no frame of its own.
-	assert.Contains(t, body, `class="field-row"`)
-	assert.False(t, strings.Contains(body, `class="group"`))
-	assert.False(t, strings.Contains(body, "group-legend"))
+	// A group is layout: the fields of the group are all there.
+	assert.Equal(t, len(main.ByRole("group", "ID")), 1)
+	assert.Equal(t, len(p.ByLabel("IP")), 1)
 
-	// Submit is the primary button; Cancel goes to the parent in the breadcrumb.
-	assert.Contains(t, body, `class="btn btn-primary btn-sm" type="submit">Save</button>`)
-	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Cancel</a>`)
+	// Submit is the button; Cancel goes to the parent in the breadcrumb.
+	assert.Equal(t, len(main.ByRole("button", "Save")), 1)
+	assert.True(t, hasLink(p, "Cancel", "/admin/device"))
 }
 
 // A field tells the browser what to say when it refuses a value, in the words the server uses beneath the field, by the
@@ -97,28 +109,33 @@ func TestFormRendersFieldsRulesAndReadOnly(t *testing.T) {
 func TestAFieldTellsTheBrowserWhatToSayWhenItRefusesAValue(t *testing.T) {
 	t.Parallel()
 
-	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
+	p := pageOf(t, formApp(okForm()), "/admin/device/dev1")
+	ip := page.One(t, "the IP input", p.ByAttr("name", "f0_1"))
+	count := page.One(t, "the number input", p.ByAttr("name", "f1"))
 
 	// One attribute for each message, named for the ValidityState property in kebab case.
-	for _, want := range []string{
-		`data-msg-pattern-mismatch="must be a valid IPv4 address"`, `data-msg-too-long="Must be at most 15 characters."`,
-		`data-msg-too-short="Must be at least 7 characters."`, `data-msg-value-missing="This field is required."`,
-		`data-msg-bad-input="Must be a whole number."`, `data-msg-range-overflow="Must be at most 100."`,
-		`data-msg-range-underflow="Must be at least 0."`, `data-msg-step-mismatch="Must be a whole number."`,
+	for _, want := range []struct {
+		control page.El
+		attr    string
+		message string
+	}{
+		{ip, "data-msg-pattern-mismatch", "must be a valid IPv4 address"}, {ip, "data-msg-too-long", "Must be at most 15 characters."},
+		{ip, "data-msg-too-short", "Must be at least 7 characters."}, {ip, "data-msg-value-missing", "This field is required."},
+		{count, "data-msg-bad-input", "Must be a whole number."}, {count, "data-msg-range-overflow", "Must be at most 100."},
+		{count, "data-msg-range-underflow", "Must be at least 0."}, {count, "data-msg-step-mismatch", "Must be a whole number."},
+		{count, "data-msg-value-missing", "This field is required."},
 	} {
-		assert.Contains(t, body, want)
+		assert.Equal(t, want.control.Attr(want.attr), want.message)
 	}
-	assert.Contains(t, body, `title="must be a valid IPv4 address"`)
-	assert.False(t, strings.Contains(body, "data-validity")) // there is no JSON of them
+	assert.False(t, ip.Has("data-msg-range-overflow")) // a message is only for a rule the control has
 
 	// The ID has no Store: it is not a control, and has nothing to say.
-	assert.Equal(t, strings.Count(body, "data-msg-value-missing="), 2) // the required text, and the number, which is required by its type
-	assert.Equal(t, strings.Count(body, "data-msg-range-overflow="), 1)
+	assert.Equal(t, len(p.ByAttr("data-msg-value-missing", "")), 2) // the required text, and the number, which is required by its type
 
 	// A form that cannot be submitted has no controls to refuse anything.
 	f := okForm()
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
-	assert.False(t, strings.Contains(serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String(), "data-msg-"))
+	assert.Equal(t, len(pageOf(t, formApp(f), "/admin/device/dev1").ByAttr("data-msg-value-missing", "")), 0)
 }
 
 func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.T) {
@@ -126,28 +143,33 @@ func TestAFormTheVisitorMayNotSubmitOffersBackInPlaceOfSaveAndCancel(t *testing.
 
 	f := okForm()
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
-	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+	p := pageOf(t, formApp(f), "/admin/device/dev1")
+	main := page.One(t, "main", p.ByRole("main", ""))
 
-	assert.False(t, strings.Contains(body, ">Save</button>"))
-	assert.False(t, strings.Contains(body, ">Cancel</a>"))
-	assert.Contains(t, body, `class="btn btn-ghost btn-sm" href="/admin/device">Back</a>`)
+	assert.Equal(t, len(main.ByRole("button", "Save")), 0)
+	assert.False(t, hasLink(p, "Cancel", "/admin/device"))
+	assert.True(t, hasLink(p, "Back", "/admin/device"))
 
 	// And nothing in it can be changed: every field is read-only, and none is submitted.
-	assert.False(t, strings.Contains(body, `name="f`))
-	assert.False(t, strings.Contains(body, "<input class=\"input"))
-	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_1-label">10.0.0.1</div>`)
-	assert.False(t, strings.Contains(body, "must be a valid"))
+	for _, f := range p.Fields() {
+		assert.Equal(t, f.Type, "hidden")
+	}
+	assert.Equal(t, page.One(t, "the IP", main.ByRole("group", "IP")).Text(), "10.0.0.1")
+	assert.False(t, strings.Contains(main.AllText(), "must be a valid"))
 }
 
 func TestAFormTheVisitorMayNotSubmitAndCannotLeaveHasNoFooter(t *testing.T) {
 	t.Parallel()
 
 	f := okForm()
+	f.Load = func(context.Context) (Device, webui.Loaded) { return Device{Id: "dev1", Ip: "10.0.0.1"}, webui.Ready() } // a page of no arguments has none to read
 	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
 	app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/solo", View: f}}} // no parent, no origin
-	body := serve(app.MustCompile("/admin"), http.MethodGet, "/admin/solo").Body.String()
-	assert.False(t, strings.Contains(body, "panel-foot"))
-	assert.False(t, strings.Contains(body, ">Save</button>"))
+	p := pageOf(t, app.MustCompile("/admin"), "/admin/solo")
+	main := page.One(t, "main", p.ByRole("main", ""))
+	assert.Equal(t, page.One(t, "the IP", main.ByRole("group", "IP")).Text(), "10.0.0.1") // the form is there
+	assert.Equal(t, len(main.ByRole("button", "")), 0)
+	assert.Equal(t, len(main.Links()), 0)
 }
 
 func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testing.T) {
@@ -155,14 +177,14 @@ func TestAReadOnlyFieldReadsAsALabelAndItsValueAndAnEmptyOneShowsADash(t *testin
 
 	f := okForm()
 	f.Load = func(context.Context) (Device, webui.Loaded) { return Device{Ip: "10.0.0.1"}, webui.Ready() } // an empty ID
-	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+	p := pageOf(t, formApp(f), "/admin/device/dev1")
 
 	// The ID has no Store: its field is the quiet kind, and says it is empty.
-	assert.Contains(t, body, `<div class="field field-static">`)
-	assert.Contains(t, body, `role="group" aria-labelledby="p-f0_0-label"><span class="dim" aria-hidden="true">—</span> <span class="sr-only">empty</span></div>`)
+	assert.Equal(t, page.One(t, "the ID", p.ByRole("group", "ID")).Text(), "empty")
 	// The IP, which can be edited, is an input in an ordinary field.
-	assert.Contains(t, body, `name="f0_1"`)
-	assert.Equal(t, strings.Count(body, `field-static`), 1)
+	_, isInput := p.Field("f0_1")
+	assert.True(t, isInput)
+	assert.Equal(t, len(p.ByRole("group", "IP")), 0)
 }
 
 func TestAPlaceholderIsShownInAnEmptyInputOfAnyKind(t *testing.T) {
@@ -177,9 +199,9 @@ func TestAPlaceholderIsShownInAnEmptyInputOfAnyKind(t *testing.T) {
 		},
 		Submit: webui.Action[Device]{Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }},
 	}
-	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
-	for _, p := range []string{"10.0.0.1", "how many", "per second"} {
-		assert.Contains(t, body, `placeholder="`+p+`"`)
+	p := pageOf(t, formApp(f), "/admin/device/dev1")
+	for name, want := range map[string]string{"f0": "10.0.0.1", "f1": "how many", "f2": "per second"} {
+		assert.Equal(t, page.One(t, name, p.ByAttr("name", name)).Attr("placeholder"), want)
 	}
 }
 
@@ -188,10 +210,11 @@ func TestFormWithoutSubmitIsReadOnly(t *testing.T) {
 
 	f := okForm()
 	f.Submit = webui.Action[Device]{}
-	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
-	assert.False(t, strings.Contains(body, `type="submit"`))
-	assert.False(t, strings.Contains(body, "panel-foot"))
-	assert.False(t, strings.Contains(body, `name="f`)) // nothing to submit, so nothing to edit
+	p := pageOf(t, formApp(f), "/admin/device/dev1")
+	assert.Equal(t, len(p.ByRole("main", "")[0].ByRole("button", "")), 0)
+	for _, f := range p.Fields() {
+		assert.Equal(t, f.Type, "hidden") // nothing to submit, so nothing to edit
+	}
 }
 
 func TestFormLoadFailureFailsThePanel(t *testing.T) {
@@ -203,8 +226,9 @@ func TestFormLoadFailureFailsThePanel(t *testing.T) {
 	}
 	rec := serve(formApp(f), http.MethodGet, "/admin/device/dev1")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, rec.Body.String(), "Could not load")
-	assert.False(t, strings.Contains(rec.Body.String(), "hunter2"))
+	failed := page.Parse(t, rec.Body.String())
+	assert.True(t, strings.Contains(failed.Root().Text(), "Could not load"))
+	assert.False(t, strings.Contains(failed.Root().AllText(), "hunter2"))
 }
 
 var (
@@ -232,19 +256,27 @@ func sliderForm() webui.Form[Device] {
 func TestFormShowsBadgesAndSlidersByWhetherTheyCanBeChanged(t *testing.T) {
 	t.Parallel()
 
-	body := serve(formApp(sliderForm()), http.MethodGet, "/admin/device/dev1").Body.String()
+	p := pageOf(t, formApp(sliderForm()), "/admin/device/dev1")
 
-	// A badge is shown, never typed into: its word, its tone, and no input.
-	assert.Contains(t, body, `<span class="badge tone-ok"><span class="dot" aria-hidden="true"></span>healthy</span>`)
-	assert.False(t, strings.Contains(body, `name="f0"`))
+	// A badge is shown, never typed into: its word, and no input.
+	assert.Equal(t, page.One(t, "the status", p.ByRole("group", "Status")).Text(), "healthy")
+	_, isInput := p.Field("f0")
+	assert.False(t, isInput)
 
 	// A slider with a Store is a number input over its range, submitting its value, with a range beside it to drag.
-	assert.Contains(t, body, `name="f1" type="number" value="70.0" min="0" max="100" step="0.1"`)
-	assert.Contains(t, body, `<input class="range-input" type="range" value="70.0" min="0" max="100" step="0.1" tabindex="-1" aria-hidden="true">`)
+	load, _ := p.Field("f1")
+	assert.Equal(t, load.Type, "number")
+	assert.Equal(t, load.Value, "70.0")
+	number := page.One(t, "the number", p.ByAttr("name", "f1"))
+	assert.DeepEqual(t, []string{number.Attr("min"), number.Attr("max"), number.Attr("step")}, []string{"0", "100", "0.1"})
+	drag := page.One(t, "the range", p.ByAttr("type", "range"))
+	assert.DeepEqual(t, []string{drag.Attr("value"), drag.Attr("min"), drag.Attr("max"), drag.Attr("step")}, []string{"70.0", "0", "100", "0.1"})
+	assert.False(t, drag.Has("name")) // for script to drag, and never submitted
 
-	// One without is a bar, and submits nothing.
-	assert.Contains(t, body, `class="gauge-fill" style="width:88%;"`)
-	assert.False(t, strings.Contains(body, `name="f2"`))
+	// One without is a bar, which reads as its value, and submits nothing.
+	assert.Equal(t, page.One(t, "the cap", p.ByRole("group", "Cap")).Text(), "7")
+	_, isInput = p.Field("f2")
+	assert.False(t, isInput)
 }
 
 // A range input with no step submits whatever the pointer was over, 81.6719540426991, and a slider showed that as it was. A
@@ -272,13 +304,14 @@ func TestAWritableSliderMovesInStepsAndShowsNoMoreDecimalsThanThat(t *testing.T)
 		s.Store = func(*Device, float64) {}
 		f := okForm()
 		f.Fields = []webui.Accessor[Device]{s}
-		body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
+		p := pageOf(t, formApp(f), "/admin/device/dev1")
 		lowest := strconv.FormatFloat(s.Min, 'f', -1, 64)
 		highest := strconv.FormatFloat(s.Max, 'f', -1, 64)
 		// The number is the control, with the rules and the step; the range beside it is for script, and is not submitted.
-		assert.Contains(t, body, `name="f0" type="number" value="`+tc.value+`" min="`+lowest+`" max="`+highest+`" step="`+tc.step+`"`)
-		assert.Contains(t, body, `<input class="range-input" type="range" value="`+tc.value+`" min="`+lowest+`" max="`+highest+`" step="`+tc.step+`" tabindex="-1" aria-hidden="true">`)
-		assert.Equal(t, strings.Count(body, `name="f0"`), 1)
+		number := page.One(t, "the number", p.ByAttr("name", "f0"))
+		assert.DeepEqual(t, []string{number.Attr("type"), number.Attr("value"), number.Attr("min"), number.Attr("max"), number.Attr("step")}, []string{"number", tc.value, lowest, highest, tc.step})
+		drag := page.One(t, "the range", p.ByAttr("type", "range"))
+		assert.DeepEqual(t, []string{drag.Attr("value"), drag.Attr("min"), drag.Attr("max"), drag.Attr("step")}, []string{tc.value, lowest, highest, tc.step})
 		if name == "" {
 			t.Fatal("unnamed")
 		}
@@ -294,9 +327,9 @@ func TestAWritableSliderHoldsOnlyTheValuesAStepApart(t *testing.T) {
 	f.Fields = []webui.Accessor[Device]{s}
 	h := formApp(f)
 
-	body := serve(h, http.MethodGet, "/admin/device/dev1").Body.String()
-	assert.Contains(t, body, `data-msg-step-mismatch="Must be 2 plus a multiple of 5."`)
-	assert.Contains(t, body, `<span class="tip-item">In steps of 5</span>`)
+	p := pageOf(t, h, "/admin/device/dev1")
+	assert.Equal(t, page.One(t, "the slider", p.ByAttr("name", "f0")).Attr("data-msg-step-mismatch"), "Must be 2 plus a multiple of 5.")
+	assert.Equal(t, len(p.ByAllText("In steps of 5")), 1)
 
 	for value, want := range map[string]int{"7": http.StatusSeeOther, "102": http.StatusSeeOther, "2": http.StatusSeeOther, "8": http.StatusUnprocessableEntity, "7.5": http.StatusUnprocessableEntity, "0": http.StatusUnprocessableEntity} {
 		rec := post(h, "/admin/device/dev1", formValues("f0", value))
@@ -329,10 +362,10 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 
 	rec := post(h, "/admin/device/dev1", formValues("f1", "250"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	page := rec
-	assert.Contains(t, page.Body.String(), "Must be at most 100.")
-	assert.Contains(t, page.Body.String(), `value="250"`)
-	assert.Contains(t, page.Body.String(), `class="range-input invalid"`)
+	refused := page.Parse(t, rec.Body.String())
+	assert.True(t, strings.Contains(refused.Root().Text(), "Must be at most 100."))
+	typed, _ := refused.Field("f1")
+	assert.Equal(t, typed.Value, "250") // what was typed stays
 
 	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f1", "40")).Code, http.StatusSeeOther)
 }

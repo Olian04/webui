@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func addressForm(rules webui.StringRules) webui.Form[Device] {
@@ -37,30 +38,46 @@ func submitAddress(h http.Handler, v string) (code int, body string) {
 func TestTextRulesAreThePatternOfTheInputAndAreListedWithItsRules(t *testing.T) {
 	t.Parallel()
 
-	one := serve(addressApp(webui.StringRules{StartsWith: "https://"}), http.MethodGet, "/admin/a").Body.String()
-	assert.Contains(t, one, `pattern="https:\/\/[\s\S]*"`)
-	assert.Contains(t, one, `title="Must start with &#34;https://&#34;."`)
-	assert.Contains(t, one, `<span class="tip-item">Starts with &#34;https://&#34;</span>`)
-	assert.False(t, strings.Contains(one, "data-part-")) // one condition: the browser's words are the only ones to say
+	box := func(rules webui.StringRules) (page.El, *page.Page) {
+		p := pageOf(t, addressApp(rules), "/admin/a")
+		return page.One(t, "the address input", p.ByAttr("name", "f0")), p
+	}
+	parts := func(e page.El) []string { // the attributes of the conditions, which script reads
+		var got []string
+		for _, a := range []string{"data-part-0", "data-part-0-msg", "data-part-1", "data-part-2", "data-part-3", "data-part-3-msg", "data-parts"} {
+			if e.Has(a) {
+				got = append(got, a)
+			}
+		}
+		return got
+	}
+
+	one, p := box(webui.StringRules{StartsWith: "https://"})
+	assert.Equal(t, one.Attr("pattern"), `https:\/\/[\s\S]*`)
+	assert.Equal(t, one.Attr("title"), `Must start with "https://".`)
+	assert.Equal(t, len(p.ByAllText(`Starts with "https://"`)), 1)
+	assert.Equal(t, len(parts(one)), 0) // one condition: the browser's words are the only ones to say
 
 	rules := webui.StringRules{
 		StartsWith: "https://", EndsWith: ".org", NotContains: " ",
 		Pattern: &webui.PatternRule{Expr: `[a-z0-9.\/:\-]+`, Message: "must be a lowercase address"},
 	}
-	many := serve(addressApp(rules), http.MethodGet, "/admin/a").Body.String()
-	assert.Contains(t, many, `pattern="(?=(?:https:\/\/[\s\S]*)$)(?=(?:[\s\S]*\.org)$)(?=(?:(?![\s\S]* )[\s\S]*)$)(?=(?:[a-z0-9.\/:\-]+)$)[\s\S]*"`)
+	many, p := box(rules)
+	assert.Equal(t, many.Attr("pattern"), `(?=(?:https:\/\/[\s\S]*)$)(?=(?:[\s\S]*\.org)$)(?=(?:(?![\s\S]* )[\s\S]*)$)(?=(?:[a-z0-9.\/:\-]+)$)[\s\S]*`)
 	// Each condition is an attribute, with the words for it in another, in the order the server tests them.
-	assert.Contains(t, many, `data-part-0="https:\/\/[\s\S]*" data-part-0-msg="Must start with &#34;https://&#34;."`)
-	assert.Contains(t, many, `data-part-3="[a-z0-9.\/:\-]+" data-part-3-msg="must be a lowercase address"`)
-	assert.False(t, strings.Contains(many, "data-parts"))
-	for _, line := range []string{`Starts with &#34;https://&#34;`, `Ends with &#34;.org&#34;`, `Does not contain &#34; &#34;`, "must be a lowercase address"} {
-		assert.Contains(t, many, `<span class="tip-item">`+line+`</span>`)
+	assert.Equal(t, many.Attr("data-part-0"), `https:\/\/[\s\S]*`)
+	assert.Equal(t, many.Attr("data-part-0-msg"), `Must start with "https://".`)
+	assert.Equal(t, many.Attr("data-part-3"), `[a-z0-9.\/:\-]+`)
+	assert.Equal(t, many.Attr("data-part-3-msg"), "must be a lowercase address")
+	assert.False(t, many.Has("data-parts"))
+	for _, line := range []string{`Starts with "https://"`, `Ends with ".org"`, `Does not contain " "`, "must be a lowercase address"} {
+		assert.Equal(t, len(p.ByAllText(line)), 1)
 	}
 
 	// Without a rule of the kind there is nothing of it in the page: the pattern is what it was written as.
-	plain := serve(addressApp(webui.StringRules{Pattern: &webui.PatternRule{Expr: `[a-z]+`, Message: "letters"}}), http.MethodGet, "/admin/a").Body.String()
-	assert.Contains(t, plain, `pattern="[a-z]+"`)
-	assert.False(t, strings.Contains(plain, "data-part-"))
+	plain, _ := box(webui.StringRules{Pattern: &webui.PatternRule{Expr: `[a-z]+`, Message: "letters"}})
+	assert.Equal(t, plain.Attr("pattern"), "[a-z]+")
+	assert.Equal(t, len(parts(plain)), 0)
 }
 
 func TestARefusedTextIsSaidInTheWordsOfTheRule(t *testing.T) {
@@ -72,11 +89,11 @@ func TestARefusedTextIsSaidInTheWordsOfTheRule(t *testing.T) {
 	})
 	for value, want := range map[string]string{
 		"https://a":                "Must be at least 12 characters.",
-		"http://example.org":       `Must start with &#34;https://&#34;.`,
-		"https://example.com":      `Must end with &#34;.org&#34;.`,
-		"https://exam ple.org":     `Must not contain &#34; &#34;.`,
+		"http://example.org":       `Must start with "https://".`,
+		"https://example.com":      `Must end with ".org".`,
+		"https://exam ple.org":     `Must not contain " ".`,
 		"https://Example.org":      "must be a lowercase address",
-		"HTTPS://example.org":      `Must start with &#34;https://&#34;.`,
+		"HTTPS://example.org":      `Must start with "https://".`,
 		"https://example.org\r\nx": "",
 	} {
 		code, body := submitAddress(h, value)
@@ -84,7 +101,10 @@ func TestARefusedTextIsSaidInTheWordsOfTheRule(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, code, http.StatusUnprocessableEntity)
-		assert.Contains(t, body, `<div class="err" id="p-f0-error"><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i> `+want)
+		refused := page.Parse(t, body)
+		assert.True(t, strings.Contains(refused.Root().Text(), want))
+		typed, _ := refused.Field("f0")
+		assert.Equal(t, typed.Value, value) // what was typed stays
 	}
 	code, _ := submitAddress(h, "https://example.org")
 	assert.Equal(t, code, http.StatusSeeOther)

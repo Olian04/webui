@@ -152,6 +152,15 @@ func TestTextIsWhatIsShownAndAllTextKeepsWhatOnlyAReaderAsksFor(t *testing.T) {
 	assert.Equal(t, One(t, "the toast", p.Live()).Text(), "Saved dev_1")
 }
 
+func TestLinesKeepTheBreaksThatTextMakesOneLine(t *testing.T) {
+	t.Parallel()
+
+	p := Parse(t, "<td><span>one\ntwo\n  three</span></td>")
+	cell := One(t, "the cell", p.ByText("one two three"))
+	assert.Equal(t, cell.Text(), "one two three")
+	assert.Equal(t, cell.Lines(), "one\ntwo\n  three")
+}
+
 func TestAnElementIsFoundByTextAndByTheAttributesThatScriptsNeed(t *testing.T) {
 	t.Parallel()
 
