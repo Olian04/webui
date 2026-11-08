@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 var (
@@ -54,19 +55,22 @@ func saveIngest(h http.Handler, extra map[string]string, files ...upload) *httpt
 
 func TestTheIngestFormTakesAnImageAndAPDFAndServesThemAsDownloads(t *testing.T) {
 	h := handler(t)
-	form := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, form, `enctype="multipart/form-data"`)
-	assert.Contains(t, form, `name="f9_0" accept="image/png,.png,image/jpeg,.jpg,.jpeg,image/gif,.gif,image/webp,.webp"`)
-	assert.Contains(t, form, `name="f9_1" accept="application/pdf,.pdf"`)
-	assert.Contains(t, form, "Up to 1 MiB")
+	form := pageAt(t, h, "/admin/settings")
+	assert.Equal(t, len(form.ByAttr("enctype", "multipart/form-data")), 1)
+	assert.Equal(t, page.One(t, "the logo", form.ByAttr("name", "f9_0")).Attr("accept"), "image/png,.png,image/jpeg,.jpg,.jpeg,image/gif,.gif,image/webp,.webp")
+	assert.Equal(t, page.One(t, "the certificate", form.ByAttr("name", "f9_1")).Attr("accept"), "application/pdf,.pdf")
+	assert.True(t, len(form.ByAllText("Up to 1 MiB")) > 0)
 
 	rec := saveIngest(h, nil, upload{"f9_0", "../../logo.png", demoPNG}, upload{"f9_1", "cert.pdf", demoPDF})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	after := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, after, `<a href="/uploads/logo">logo.png</a>`)
-	assert.Contains(t, after, `<a href="/uploads/certificate">cert.pdf</a>`)
-	assert.Contains(t, after, `name="_rm" value="f9_1"`) // the certificate can be removed, the logo only replaced
-	assert.False(t, strings.Contains(after, `name="_rm" value="f9_0"`))
+	after := pageAt(t, h, "/admin/settings")
+	assert.True(t, hasLink(after, "logo.png", "/uploads/logo"))
+	assert.True(t, hasLink(after, "cert.pdf", "/uploads/certificate"))
+	removable := []string{}
+	for _, f := range after.ByAttr("name", "_rm") {
+		removable = append(removable, f.Attr("value"))
+	}
+	assert.DeepEqual(t, removable, []string{"f9_1"}) // the certificate can be removed, the logo only replaced
 
 	// What is served is a download, of the type that the file holds, which a browser is told not to second-guess.
 	file := get(h, "/uploads/logo")
@@ -108,9 +112,9 @@ func TestAViewerCannotUploadAndHasNoChooser(t *testing.T) {
 	assert.Equal(t, flashOf(rec), "erequires the editor role")
 
 	// The form of a viewer shows the file and has no chooser.
-	body := get(viewer, "/admin/settings").Body.String()
-	assert.False(t, strings.Contains(body, `type="file"`))
-	assert.False(t, strings.Contains(body, "enctype"))
+	read := pageAt(t, viewer, "/admin/settings")
+	assert.Equal(t, len(read.ByAttr("type", "file")), 0)
+	assert.Equal(t, len(read.ByAttr("enctype", "")), 0)
 }
 
 // With script the chooser is a drop zone, and the page tells the script what each field takes.
@@ -118,12 +122,11 @@ func TestTheIngestFormLinksTheFileScriptAndTellsItWhatEachFieldTakes(t *testing.
 	h := handler(t)
 	body := get(h, "/admin/settings").Body.String()
 	assert.Contains(t, body, `/_webui/file.`)
-	assert.Contains(t, body, `data-max-message="Must be at most 1 MiB."`)
+	assert.Equal(t, page.Parse(t, body).ByAttr("data-max-message", "Must be at most 1 MiB.")[0].Attr("type"), "file")
 
 	// A viewer has no chooser. The page still links the script, which is the page's and not the visitor's (the Guard that refuses them is
 	// asked per request), and it has nothing to do there.
-	viewer := get(handlerAs(t, Viewer), "/admin/settings").Body.String()
-	assert.False(t, strings.Contains(viewer, `data-file=`))
+	assert.Equal(t, len(pageAt(t, handlerAs(t, Viewer), "/admin/settings").ByAttr("data-file", "")), 0)
 }
 
 // bigPicture is a PNG of 2000 by 1000, which is a few kilobytes as a file and a lot as a picture.
@@ -146,10 +149,16 @@ func TestAStoredImageIsShownAsAThumbnailTheAppMadeAndLinksToTheFullImage(t *test
 	big := bigPicture(t)
 	assert.Equal(t, saveIngest(h, nil, upload{"f9_0", "photo.png", big}, upload{"f9_1", "cert.pdf", demoPDF}).Code, http.StatusSeeOther)
 
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `command="show-modal" aria-haspopup="dialog" aria-label="Preview photo.png" title="Preview photo.png"><img class="file-thumb" src="/uploads/logo/thumb" alt=""></button>`)
-	assert.Contains(t, body, `<img class="preview-full" src="/uploads/logo" alt="photo.png" loading="lazy" decoding="async">`) // fetched only when the dialog opens
-	assert.False(t, strings.Contains(body, "/uploads/certificate/thumb"))                                                      // a PDF has no picture
+	p := pageAt(t, h, "/admin/settings")
+	assert.Equal(t, len(p.ByAttr("src", "/uploads/logo/thumb")), 1)
+	open := page.One(t, "the button that opens the preview", p.ByRole("button", "Preview photo.png"))
+	assert.Equal(t, open.Attr("command"), "show-modal")
+	dialog := page.One(t, "the preview", p.ByRole("dialog", "Preview of photo.png"))
+	assert.Equal(t, open.Attr("commandfor"), dialog.Attr("id"))
+	shown := page.One(t, "the full image", dialog.ByAttr("src", "/uploads/logo"))
+	assert.Equal(t, shown.Attr("alt"), "photo.png")
+	assert.Equal(t, shown.Attr("loading"), "lazy")                         // fetched only when the dialog opens
+	assert.Equal(t, len(p.ByAttr("src", "/uploads/certificate/thumb")), 0) // a PDF has no picture
 
 	small := get(h, "/uploads/logo/thumb")
 	assert.Equal(t, small.Code, http.StatusOK)
@@ -262,9 +271,14 @@ func TestTheFirmwarePanelTakesWhatIsChosenBesideTheFile(t *testing.T) {
 
 	// The panel draws its choices with their defaults, before the file.
 	body = get(h, "/admin/firmware").Body.String()
-	choices, file := strings.Index(body, "If an image has the same name"), strings.Index(body, `type="file"`)
-	assert.True(t, choices >= 0 && file > choices)
-	assert.Contains(t, body, "Release channel")
+	p := page.Parse(t, body)
+	var names []string
+	for _, f := range panel(t, p, "Upload firmware").Fields() {
+		names = append(names, f.Name)
+	}
+	assert.Equal(t, names[len(names)-1], "file") // the file last, so that what is chosen beside it arrives first
+	assert.True(t, len(p.ByAllText("If an image has the same name")) > 0)
+	assert.True(t, len(p.ByAllText("Release channel")) > 0)
 }
 
 // The same name in another folder is another image.

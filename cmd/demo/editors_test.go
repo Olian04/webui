@@ -8,29 +8,34 @@ import (
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func TestTheConfigPageEditsATextAndShowsWhatChangedSinceTheDeploy(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/config").Body.String()
-	assert.Contains(t, body, `<textarea class="code-text"`)
-	assert.Contains(t, body, `data-language="json"`)
-	assert.Contains(t, body, "No differences")
+	p := pageAt(t, h, "/admin/config")
+	box, _ := p.Field("f0")
+	assert.Equal(t, box.Type, "textarea")
+	assert.True(t, len(p.ByAttr("data-language", "json")) > 0)
+	assert.True(t, shown(p, "No differences"))
 
 	rec := post(h, "/admin/config", url.Values{"_view": {"p.0"}, "f0": {"{\n  \"collector\": \"eu-west-2\"\n}\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	body = get(h, "/admin/config").Body.String()
-	assert.False(t, strings.Contains(body, "No differences"))
-	assert.Contains(t, body, "eu-west-2")
+	changed := pageAt(t, h, "/admin/config")
+	assert.False(t, shown(changed, "No differences"))
+	assert.True(t, strings.Contains(changed.Root().AllText(), "eu-west-2"))
 
 	// A viewer is shown the text and is not let save it.
 	v := handlerAs(t, Viewer)
-	body = get(v, "/admin/config").Body.String()
-	assert.Contains(t, body, `<pre class="code-view"`)
-	assert.False(t, strings.Contains(body, "<textarea"))
+	read := pageAt(t, v, "/admin/config")
+	_, editable := read.Field("f0")
+	assert.False(t, editable)
+	assert.True(t, strings.Contains(read.Root().AllText(), "collector"))
 	refused := post(v, "/admin/config", url.Values{"_view": {"p.0"}, "f0": {"{}"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(v, refused).Body.String(), `class="toast raise tone-bad"`)
+	told := toasts(t, follow(v, refused).Body.String())
+	assert.Equal(t, len(told), 1)
+	assert.Equal(t, told[0].Role, "alert")
 }
 
 func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAViewer(t *testing.T) {
@@ -42,23 +47,29 @@ func TestThePagingRuleIsTypeScriptWithItsLanguageServiceForAnEditorAndNotForAVie
 	}
 	editor := handler(t)
 	body := get(editor, "/admin/rule").Body.String()
-	assert.Contains(t, body, `data-language="typescript"`)
-	assert.Contains(t, body, `<textarea class="code-text"`)
+	rule := page.Parse(t, body)
+	assert.Equal(t, len(rule.ByAttr("data-language", "typescript")), 1)
+	box, _ := rule.Field("f0")
+	assert.Equal(t, box.Type, "textarea")
 	assert.Contains(t, workers(editor), `"ts":"/admin/_webui/monaco/workers/ts.worker-`) // the service the program imported
 
 	// The same text is read by a viewer, who is sent no service: nothing there can be changed.
 	viewer := handlerAs(t, Viewer)
-	assert.Contains(t, get(viewer, "/admin/rule").Body.String(), `<pre class="code-view"`)
+	_, editable := pageAt(t, viewer, "/admin/rule").Field("f0")
+	assert.False(t, editable)
 	assert.False(t, strings.Contains(workers(viewer), `"ts"`))
 
 	// The text has type errors on purpose, and saving it is the editor's.
 	assert.Contains(t, body, "pageOnCall(signal, ")
 	rec := post(editor, "/admin/rule", url.Values{"_view": {"p"}, "f0": {"export const ok: number = 1;\n"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.Contains(t, get(editor, "/admin/rule").Body.String(), "export const ok: number = 1;")
+	saved, _ := pageAt(t, editor, "/admin/rule").Field("f0")
+	assert.Equal(t, saved.Value, "export const ok: number = 1;\n")
 	refused := post(viewer, "/admin/rule", url.Values{"_view": {"p"}, "f0": {"x"}})
 	assert.Equal(t, refused.Code, http.StatusSeeOther)
-	assert.Contains(t, follow(viewer, refused).Body.String(), `class="toast raise tone-bad"`)
+	told := toasts(t, follow(viewer, refused).Body.String())
+	assert.Equal(t, len(told), 1)
+	assert.Equal(t, told[0].Role, "alert")
 }
 
 func TestTheEditorsAreGivenTheFolderOfContextTheProgramEmbeds(t *testing.T) {

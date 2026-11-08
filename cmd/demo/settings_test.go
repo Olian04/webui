@@ -8,24 +8,29 @@ import (
 	"time"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `placeholder="eu-north-1"`)  // Placeholder
-	assert.Contains(t, body, `name="f1_0" type="number"`) // Float
-	assert.Contains(t, body, `step="any"`)                //
-	assert.Contains(t, body, `name="f1_1" type="number"`) // a Slider with a Store: a number, with a range to drag
-	assert.Contains(t, body, `class="range-input"`)       //
-	assert.Contains(t, body, `minlength="3" maxlength="32"`)
+	p := pageAt(t, h, "/admin/settings")
+	box := func(name string) page.El { return page.One(t, name, p.ByAttr("name", name)) }
+	assert.Equal(t, box("f0_0").Attr("placeholder"), "eu-north-1") // Placeholder
+	sample, _ := p.Field("f1_0")
+	assert.Equal(t, sample.Type, "number") // Float
+	assert.Equal(t, box("f1_0").Attr("step"), "any")
+	load, _ := p.Field("f1_1")
+	assert.Equal(t, load.Type, "number") // a Slider with a Store: a number, with a range to drag
+	assert.True(t, len(p.ByAttr("type", "range")) > 0)
+	assert.Equal(t, box("f0_0").Attr("minlength"), "3")
+	assert.Equal(t, box("f0_0").Attr("maxlength"), "32")
 
 	// Rules run on the server too, and every failure is reported at once.
 	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"ab"}, "f0_1": {"70000"}, "f1_0": {"2"}, "f1_1": {"150"}})
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	page := rec
+	refused := page.Parse(t, rec.Body.String())
 	for _, want := range []string{"Must be at least 3 characters.", "Must be at most 65535.", "Must be at most 1.", "Must be at most 100."} {
-		assert.Contains(t, page.Body.String(), want)
+		assert.True(t, shown(refused, want))
 	}
 	rec = post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -34,20 +39,20 @@ func TestFormsDemonstrateRulesFloatSliderAndPlaceholder(t *testing.T) {
 // The collector name has text rules and a pattern, which the browser holds as one pattern and the page tells apart.
 func TestTheCollectorNameHasTextRulesAndAPattern(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `data-part-0="`)
-	for _, line := range []string{`Does not start with &#34;-&#34;`, `Does not end with &#34;-&#34;`, `Does not contain &#34;--&#34;`, "must be lowercase letters, digits and dashes"} {
-		assert.Contains(t, body, `<span class="tip-item">`+line+`</span>`)
+	p := pageAt(t, h, "/admin/settings")
+	assert.True(t, page.One(t, "the name", p.ByAttr("name", "f0_0")).Has("data-part-0"))
+	for _, line := range []string{`Does not start with "-"`, `Does not end with "-"`, `Does not contain "--"`, "must be lowercase letters, digits and dashes"} {
+		assert.True(t, len(p.ByAllText(line)) > 0)
 	}
 	for value, want := range map[string]string{
-		"-eu-north":  `Must not start with &#34;-&#34;.`,
-		"eu-north-":  `Must not end with &#34;-&#34;.`,
-		"eu--north":  `Must not contain &#34;--&#34;.`,
+		"-eu-north":  `Must not start with "-".`,
+		"eu-north-":  `Must not end with "-".`,
+		"eu--north":  `Must not contain "--".`,
 		"EU-north-1": "must be lowercase letters, digits and dashes",
 	} {
 		rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {value}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}})
 		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-		assert.Contains(t, rec.Body.String(), want)
+		assert.True(t, shown(page.Parse(t, rec.Body.String()), want))
 	}
 }
 
@@ -63,10 +68,12 @@ func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
 		service.mu.Unlock()
 	})
 
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `type="password"`)
-	assert.Contains(t, body, `placeholder="••••••••"`) // there is one, and that is all that is said
-	assert.False(t, strings.Contains(body, "sk-live-0123456789"))
+	p := pageAt(t, h, "/admin/settings")
+	key, _ := p.Field("f3")
+	assert.Equal(t, key.Type, "password")
+	assert.Equal(t, key.Value, "")
+	assert.Equal(t, page.One(t, "the key", p.ByAttr("name", "f3")).Attr("placeholder"), "••••••••") // there is one, and that is all that is said
+	assert.False(t, strings.Contains(p.Root().AllText(), "sk-live-0123456789"))
 
 	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f3": {""}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -77,10 +84,12 @@ func TestTheApiKeyIsASecretThatIsOnlyReplaced(t *testing.T) {
 }
 
 func TestAReadOnlyFormHasNoSubmitAndShowsABadgeAndABar(t *testing.T) {
-	body := get(handler(t), "/admin/system").Body.String()
-	assert.False(t, strings.Contains(body, `class="panel-foot`)) // nothing to save: no Save, and no Cancel
-	assert.Contains(t, body, `class="badge tone-ok"`)
-	assert.Contains(t, body, `class="gauge-fill"`) // a Slider with no Store is a bar
+	p := pageAt(t, handler(t), "/admin/system")
+	assert.Equal(t, len(mainOf(t, p).ByRole("button", "")), 0) // nothing to save: no Save, and no Cancel
+	for _, f := range mainOf(t, p).Fields() {
+		assert.Equal(t, f.Type, "hidden")
+	}
+	assert.True(t, len(mainOf(t, p).ByRole("group", "")) > 0) // what it shows, a badge and a bar, are values to read and not inputs
 }
 
 func ingest(sample, load string) url.Values {
@@ -124,9 +133,10 @@ func TestTheOptionalSettingsAreStoredAsNothingWhenEmptied(t *testing.T) {
 		service.mu.Unlock()
 	})
 
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `placeholder="No limit"`)
-	assert.Contains(t, body, `<option value="">—</option>`)
+	p := pageAt(t, h, "/admin/settings")
+	assert.True(t, len(p.ByAttr("placeholder", "No limit")) > 0)
+	paused, _ := p.Field("f5_0")
+	assert.Equal(t, paused.Options[0], page.Option{Value: "", Text: "—", Selected: false})
 
 	rec := post(h, "/admin/settings", url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f4_0": {"0"}, "f4_1": {"25"}, "f5_0": {"true"}, "f5_1": {"true"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -152,12 +162,21 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 		service.mu.Unlock()
 	})
 
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `type="email" value="oncall@example.com"`)
-	assert.Contains(t, body, `type="tel"`)
-	assert.Contains(t, body, `type="url"`)
-	assert.Contains(t, body, `type="color" value="#2f9e8f"`)
-	assert.Contains(t, body, `type="date" value="2027-01-15"`)
+	p := pageAt(t, h, "/admin/settings")
+	for name, want := range map[string]page.Field{
+		"f6_0": {Name: "f6_0", Type: "email", Value: "oncall@example.com"},
+		"f7_1": {Name: "f7_1", Type: "color", Value: "#2f9e8f"},
+		"f8":   {Name: "f8", Type: "date", Value: "2027-01-15"},
+	} {
+		got, _ := p.Field(name)
+		assert.Equal(t, got.Type, want.Type)
+		assert.Equal(t, got.Value, want.Value)
+	}
+	types := map[string]bool{}
+	for _, f := range p.Fields() {
+		types[f.Type] = true
+	}
+	assert.True(t, types["tel"] && types["url"])
 
 	form := func(contact, webhook string) url.Values {
 		v := ingest("0.5", "60")
@@ -169,8 +188,9 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 	}
 	rec := post(h, "/admin/settings", form("not an email", "javascript:alert(1)"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "Enter an email address.")
-	assert.Contains(t, rec.Body.String(), "Enter a web address that starts with http:// or https://.")
+	refused := page.Parse(t, rec.Body.String())
+	assert.True(t, shown(refused, "Enter an email address."))
+	assert.True(t, shown(refused, "Enter a web address that starts with http:// or https://."))
 
 	rec = post(h, "/admin/settings", form("ops@example.com", "https://hooks.example.com/x"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
@@ -183,8 +203,7 @@ func TestTheContactFieldsHaveTheInputsOfTheirKindAndTheCertificateIsADate(t *tes
 // Help is a section of the popover beside a label that says what the field is for.
 func TestAFieldsHelpIsInThePopoverBesideItsLabel(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/settings").Body.String()
-	assert.Contains(t, body, `aria-label="Help: The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.`)
-	assert.Contains(t, body, `<span class="tip-title">Help:</span>`)
-	assert.Contains(t, body, `aria-label="Help: Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.`)
+	p := pageAt(t, h, "/admin/settings")
+	assert.Equal(t, len(p.ByRoleContaining("note", "Help: The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.")), 1)
+	assert.Equal(t, len(p.ByRoleContaining("note", "Help: Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.")), 1)
 }
