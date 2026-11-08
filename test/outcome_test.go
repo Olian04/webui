@@ -11,6 +11,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 const elsewhere webui.PageID[webui.NoArgs] = "/elsewhere"
@@ -91,11 +92,13 @@ func TestFailureShowsTheFormAgainWithWhatWasTypedAndAnErrorToast(t *testing.T) {
 	assert.Equal(t, code, http.StatusUnprocessableEntity) // the page, with the form drawn again: not a redirect
 	assert.Equal(t, location, "")
 	assert.Equal(t, flash, "") // and no cookie: nothing is kept anywhere but the page
-	assert.Contains(t, body, `value="10.0.0.3"`)
-	assert.Contains(t, body, `value="5"`)
-	assert.Contains(t, body, "Could not reach the device")
-	assert.Contains(t, body, `class="toast raise tone-bad"`)
-	assert.False(t, strings.Contains(body, `class="err"`)) // it is not about a field: no field message
+	p := page.Parse(t, body)
+	ip, _ := p.Field("f1")
+	count, _ := p.Field("f2")
+	assert.DeepEqual(t, []string{ip.Value, count.Value}, []string{"10.0.0.3", "5"})
+	assert.DeepEqual(t, toasts(t, body), []toast{{"alert", "Could not reach the device"}})
+	assert.False(t, strings.Contains(p.Root().Text(), "This field")) // it is not about a field: no field message
+	assert.Equal(t, len(p.ByAttr("aria-invalid", "true")), 0)
 }
 
 func TestFailureWithNoMessageStillSaysNothingWasSaved(t *testing.T) {
@@ -192,9 +195,10 @@ func TestAWarningToastIsDrawnAsAWarning(t *testing.T) {
 		h.ServeHTTP(w, r)
 		return w.Body.String()
 	}
-	assert.Contains(t, get("wCareful"), `class="toast raise tone-warn"`)
-	assert.Contains(t, get("oFine"), `class="toast raise"`)
-	assert.Contains(t, get("eBad"), `class="toast raise tone-bad"`)
+	// A failure is an alert, which a screen reader says at once; the others wait their turn.
+	assert.DeepEqual(t, toasts(t, get("wCareful")), []toast{{"status", "Careful"}})
+	assert.DeepEqual(t, toasts(t, get("oFine")), []toast{{"status", "Fine"}})
+	assert.DeepEqual(t, toasts(t, get("eBad")), []toast{{"alert", "Bad"}})
 }
 
 // A toast can be dismissed without script: the button is a label for a radio, in a group of its own, that is named.
@@ -203,5 +207,6 @@ func TestAToastHasADismissControlThatNeedsNoScript(t *testing.T) {
 
 	h := outcomeApp()
 	_, _, _, body := submitIP(h, "10.0.0.3")
-	assert.Contains(t, body, `<label class="toast-close toast-close-nojs" title="Dismiss"><input class="sr-only" type="radio" name="toast-0" aria-label="Dismiss">`)
+	dismiss := page.One(t, "the dismiss control", page.Parse(t, body).ByRole("radio", "Dismiss"))
+	assert.True(t, dismiss.Attr("name") != "") // in a group of its own
 }

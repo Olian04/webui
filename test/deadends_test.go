@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // Every response that leaves a visitor somewhere has a way on, written by the server, in the page that they were sent to: the states that were a line of plain text or a
@@ -21,11 +22,12 @@ func TestAMethodThatAnAddressDoesNotTakeIsAnswered405InThePageWithALink(t *testi
 	rec := serve(h, http.MethodDelete, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusMethodNotAllowed)
 	assert.True(t, rec.Header().Get("Allow") != "")
-	body := rec.Body.String()
-	assert.Contains(t, body, "That is not how this address is used")
-	assert.Contains(t, body, "It answers "+rec.Header().Get("Allow"))
-	assert.Contains(t, body, `href="/admin/device"`)               // opened as a visit, which it answers
-	assert.Contains(t, body, `class="sidebar drawer drawer-left"`) // in the shell, so that the way back is on screen
+	p := page.Parse(t, rec.Body.String())
+	text := p.Root().Text()
+	assert.True(t, strings.Contains(text, "That is not how this address is used"))
+	assert.True(t, strings.Contains(text, "It answers "+rec.Header().Get("Allow")))
+	assert.True(t, len(linksTo(p, "/admin/device")) > 0) // opened as a visit, which it answers
+	sidebarNav(t, p)                                     // in the shell, so that the way back is on screen
 }
 
 func TestACrossOriginPostIsRefusedInThePageAndAsAFragmentForScript(t *testing.T) {
@@ -35,15 +37,17 @@ func TestACrossOriginPostIsRefusedInThePageAndAsAFragmentForScript(t *testing.T)
 	form := formValues("f1", "10.0.0.9", "f2", "5")
 	cross := func(r *http.Request) { r.Header.Set("Origin", "https://evil.example") }
 
-	page := post(s.h, "/admin/device/dev1", form, cross)
-	assert.Equal(t, page.Code, http.StatusForbidden)
-	assert.Contains(t, page.Body.String(), "That request came from another site, and was refused.")
-	assert.Contains(t, page.Body.String(), `href="/admin/device/dev1"`)
+	whole := post(s.h, "/admin/device/dev1", form, cross)
+	assert.Equal(t, whole.Code, http.StatusForbidden)
+	refused := page.Parse(t, whole.Body.String())
+	assert.True(t, strings.Contains(refused.Root().Text(), "That request came from another site, and was refused."))
+	assert.True(t, len(linksTo(refused, "/admin/device/dev1")) > 0)
 
 	fragment := post(s.h, "/admin/device/dev1", form, cross, func(r *http.Request) { r.Header.Set("X-Webui-View", "p") })
 	assert.Equal(t, fragment.Code, http.StatusForbidden)
-	assert.Contains(t, fragment.Body.String(), `<li class="result" data-tone="bad">`)
-	assert.Contains(t, fragment.Body.String(), "came from another site")
+	told := items(page.Parse(t, fragment.Body.String()))
+	assert.Equal(t, len(told), 1)
+	assert.True(t, strings.HasPrefix(told[0], "Failed: ") && strings.Contains(told[0], "came from another site"))
 	assert.Equal(t, len(s.saved), 0)
 }
 
@@ -54,15 +58,14 @@ func TestTheAddressIsNotValidPageLeadsOnToThePageWithoutItsArguments(t *testing.
 	h := a.MustCompile("/admin")
 	rec := serve(h, http.MethodGet, "/admin/device/abc?n=lots")
 	assert.Equal(t, rec.Code, http.StatusBadRequest)
-	body := rec.Body.String()
-	assert.Contains(t, body, "One of the arguments in it could not be read.")
-	assert.False(t, strings.Contains(body, "Remove the arguments")) // a visitor is not told to edit the address
-	assert.Contains(t, body, `href="/admin/device/abc">`)
-	assert.Contains(t, body, "Open the page without them")
+	p := page.Parse(t, rec.Body.String())
+	assert.True(t, strings.Contains(p.Root().Text(), "One of the arguments in it could not be read."))
+	assert.False(t, strings.Contains(p.Root().AllText(), "Remove the arguments")) // a visitor is not told to edit the address
+	assert.True(t, hasLink(p, "Open the page without them", "/admin/device/abc"))
 
 	// With no query there is nothing to drop, and no link that leads to the same refusal.
 	none := serve(h, http.MethodGet, "/admin/device/abc/x")
-	assert.False(t, strings.Contains(none.Body.String(), "Open the page without them"))
+	assert.False(t, strings.Contains(page.Parse(t, none.Body.String()).Root().AllText(), "Open the page without them"))
 }
 
 func TestAFailedPanelLeadsOnToTryAgain(t *testing.T) {
@@ -71,11 +74,10 @@ func TestAFailedPanelLeadsOnToTryAgain(t *testing.T) {
 	h, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		return webui.PagedWindow[Device]{}, webui.Failed(errors.New("down"))
 	})
-	body := serve(h, http.MethodGet, "/admin/device?q=x").Body.String()
-	assert.Contains(t, body, "Could not load")
-	assert.Contains(t, body, `href="/admin/device?q=x"`)
-	assert.Contains(t, body, "Try again")
-	assert.False(t, strings.Contains(body, "Refresh to try again"))
+	p := pageOf(t, h, "/admin/device?q=x")
+	assert.Equal(t, len(p.ByText("Could not load")), 1)
+	assert.True(t, hasLink(p, "Try again", "/admin/device?q=x"))
+	assert.False(t, strings.Contains(p.Root().AllText(), "Refresh to try again"))
 }
 
 func TestATableThatShowsNothingLeadsOnToItsFirstPageAndToItselfWithoutFilters(t *testing.T) {
@@ -85,25 +87,23 @@ func TestATableThatShowsNothingLeadsOnToItsFirstPageAndToItselfWithoutFilters(t 
 	h, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		return webui.PagedWindow[Device]{Total: 25}, webui.Ready()
 	})
-	past := serve(h, http.MethodGet, "/admin/device?devices.offset=100").Body.String()
-	assert.Contains(t, past, "This page is past the end.")
-	assert.Contains(t, past, "Go to the first page")
-	assert.Contains(t, past, `href="/admin/device"`)
-	assert.False(t, strings.Contains(past, "Clear the filters"))
+	past := pageOf(t, h, "/admin/device?devices.offset=100")
+	assert.Equal(t, len(past.ByText("This page is past the end.")), 1)
+	assert.True(t, hasLink(past, "Go to the first page", "/admin/device"))
+	assert.Equal(t, named(past.Links(), "Clear the filters"), 0)
 
 	// Filtered to nothing: the way on is the table without its filters, and the page that it was on is dropped with them.
 	empty, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		return webui.PagedWindow[Device]{}, webui.Ready()
 	})
-	filtered := serve(empty, http.MethodGet, "/admin/device?devices.filter.id=zzz").Body.String()
-	assert.Contains(t, filtered, "Clear the filters")
-	assert.Contains(t, filtered, `href="/admin/device"`)
+	filtered := pageOf(t, empty, "/admin/device?devices.filter.id=zzz")
+	assert.True(t, hasLink(filtered, "Clear the filters", "/admin/device"))
 
 	// Nothing and nothing set: nothing to offer.
-	bare := serve(empty, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, bare, "Nothing to show")
-	assert.False(t, strings.Contains(bare, "Clear the filters"))
-	assert.False(t, strings.Contains(bare, "Go to the first page"))
+	bare := pageOf(t, empty, "/admin/device")
+	assert.Equal(t, len(bare.ByText("Nothing to show")), 1)
+	assert.Equal(t, named(bare.Links(), "Clear the filters"), 0)
+	assert.Equal(t, named(bare.Links(), "Go to the first page"), 0)
 }
 
 // The refusal of a page, with its link on, is what a script's post to it is answered with, whatever the status of it is.
@@ -126,8 +126,9 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 	h := webui.App{Pages: webui.Pages{list, one}}.MustCompile("/admin")
 	rec := post(h, "/admin/records/x", nil, func(r *http.Request) { r.Header.Set("X-Webui-View", "p") })
 	assert.Equal(t, rec.Code, http.StatusNotFound)
-	assert.Contains(t, rec.Body.String(), "There is no record x.")
-	assert.Contains(t, rec.Body.String(), `<a class="btn btn-ghost btn-sm result-next" href="/admin/records">Continue</a>`)
+	told := page.Parse(t, rec.Body.String())
+	assert.DeepEqual(t, items(told), []string{"Failed: There is no record x. Continue"})
+	assert.True(t, hasLink(told, "Continue", "/admin/records"))
 }
 
 // A parent in the breadcrumb that the visitor may not open is its words and no link, and Cancel is not drawn to lead to it: neither leads them to a 403 that nothing on
@@ -135,7 +136,7 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 func TestABreadcrumbParentAndACancelThatLeadToARefusedPageAreLeftOut(t *testing.T) {
 	t.Parallel()
 
-	build := func(allowed bool) string {
+	build := func(allowed bool) *page.Page {
 		parent := webui.Page[webui.NoArgs]{
 			Path: "/a", View: webui.Stack{},
 			Guard: func(context.Context, webui.NoArgs) error {
@@ -150,33 +151,34 @@ func TestABreadcrumbParentAndACancelThatLeadToARefusedPageAreLeftOut(t *testing.
 			Submit: webui.Action[struct{}]{Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}
 		h := webui.App{Pages: webui.Pages{parent, child}}.MustCompile("/admin")
-		return serve(h, http.MethodGet, "/admin/a/b").Body.String()
+		return pageOf(t, h, "/admin/a/b")
 	}
 	open := build(true)
-	assert.Contains(t, open, `href="/admin/a"`)
-	assert.Contains(t, open, "Cancel")
+	assert.True(t, len(linksTo(open, "/admin/a")) > 0)
+	assert.True(t, hasLink(open, "Cancel", "/admin/a"))
 
 	shut := build(false)
-	assert.False(t, strings.Contains(shut, `href="/admin/a"`))
-	assert.False(t, strings.Contains(shut, ">Cancel<") || strings.Contains(shut, "Cancel\n"))
-	assert.Contains(t, shut, `aria-current="page"`) // the page itself is still named in the crumbs
+	assert.Equal(t, len(linksTo(shut, "/admin/a")), 0)
+	assert.Equal(t, named(shut.Links(), "Cancel"), 0)
+	assert.True(t, len(shut.ByAttr("aria-current", "page")) > 0) // the page itself is still named in the crumbs
 }
 
 // A form that is only read, because its Guard said Disabled, says why in words in its footer.
 func TestAFormThatIsOnlyReadSaysWhyInWords(t *testing.T) {
 	t.Parallel()
 
-	page := func(guard func(context.Context, struct{}) error) string {
+	read := func(guard func(context.Context, struct{}) error) string {
 		h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/f", View: webui.Form[struct{}]{
 			Load:   func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, webui.Ready() },
 			Submit: webui.Action[struct{}]{Guard: guard, Run: func(context.Context, struct{}) (webui.Outcome, error) { return webui.Success("ok"), nil }},
 		}}}}.MustCompile("/admin")
-		return serve(h, http.MethodGet, "/admin/f").Body.String()
+		return mainOf(t, pageOf(t, h, "/admin/f")).Text()
 	}
-	said := page(func(context.Context, struct{}) error { return webui.Disabled("Locked by the release") })
-	assert.Contains(t, said, `<span class="panel-note dim">Locked by the release</span>`)
-	silent := page(func(context.Context, struct{}) error { return errors.New("no") })
-	assert.False(t, strings.Contains(silent, "panel-note"))
+	said := read(func(context.Context, struct{}) error { return webui.Disabled("Locked by the release") })
+	assert.True(t, strings.Contains(said, "Locked by the release"))
+	silent := read(func(context.Context, struct{}) error { return errors.New("no") })
+	assert.False(t, strings.Contains(silent, "Locked by the release"))
+	assert.False(t, strings.Contains(silent, "no"))
 }
 
 // The contract for a post that script makes, for any panel: it carries the header of the panel, and is answered in HTML with a status that says how it went. An accepted
@@ -192,21 +194,23 @@ func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing
 	assert.Equal(t, ok.Code, http.StatusOK)
 	assert.Equal(t, ok.Header().Get("Location"), "")
 	assert.Equal(t, flashOf(ok), "")
-	assert.Contains(t, ok.Body.String(), `<li class="result" data-tone="ok">`)
+	assert.DeepEqual(t, items(page.Parse(t, ok.Body.String())), []string{"Done: Device saved!"})
 
 	// Refused by a rule: the form, drawn again with what was typed and what was refused, and nothing round it.
 	refused := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"), panel)
 	assert.Equal(t, refused.Code, http.StatusUnprocessableEntity)
-	body := refused.Body.String()
-	assert.Contains(t, body, "must be a valid IPv4 address")
-	assert.Contains(t, body, `value="nope"`)
-	assert.False(t, strings.Contains(body, "<!doctype") || strings.Contains(body, `class="sidebar`))
-	assert.Contains(t, body, `data-view="p"`)
+	fragment := page.Parse(t, refused.Body.String())
+	assert.True(t, page.IsFragment(refused.Body.String())) // nothing round it
+	assert.True(t, strings.Contains(fragment.Root().Text(), "Must be at least 7 characters."))
+	typed, _ := fragment.Field("f1")
+	assert.Equal(t, typed.Value, "nope")
+	assert.Equal(t, fragment.Views()[0].Attr("data-view"), "p")
 
 	// The same post without the header is as it always was: a page, with the 422.
-	page := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"))
-	assert.Equal(t, page.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, page.Body.String(), `class="sidebar drawer drawer-left"`)
+	whole := post(s.h, "/admin/device/dev1", formValues("f1", "nope", "f2", "5"))
+	assert.Equal(t, whole.Code, http.StatusUnprocessableEntity)
+	assert.False(t, page.IsFragment(whole.Body.String()))
+	sidebarNav(t, page.Parse(t, whole.Body.String()))
 
 	// A Guard that refuses the visitor is a 403, which is not the answer to what was sent being refused.
 	guarded := newUploadShop(func(f *webui.FileUpload[struct{}]) {
@@ -214,5 +218,5 @@ func TestAPostThatScriptMakesIsAnsweredInHTMLWithTheStatusOfHowItWent(t *testing
 	})
 	denied := postFragment(guarded.h, "a.bin", "data")
 	assert.Equal(t, denied.Code, http.StatusForbidden)
-	assert.Contains(t, denied.Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">requires the editor role</span>`)
+	assert.DeepEqual(t, items(page.Parse(t, denied.Body.String())), []string{"Failed: requires the editor role"})
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // wants is a model with a field of each kind that an input can hold: the ones that cannot be nil, and the ones that can.
@@ -83,9 +84,8 @@ func TestANumberIsRequiredByItsTypeAndAnOptionalOneIsNot(t *testing.T) {
 		webui.Float[wants]{Label: "F", Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }},
 	} {
 		h, saved := wantsApp(start, field)
-		body := serve(h, http.MethodGet, "/admin/w").Body.String()
-		assert.Contains(t, body, `required`)
-		assert.Contains(t, body, `class="req"`)
+		f, _ := pageOf(t, h, "/admin/w").Field("f0")
+		assert.True(t, f.Required) // the browser asks for it, and the asterisk beside the label says so
 		rec := post(h, "/admin/w", formValues("f0", ""))
 		assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 		assert.Contains(t, rec.Body.String(), "This field is required.")
@@ -100,7 +100,8 @@ func TestANumberIsRequiredByItsTypeAndAnOptionalOneIsNot(t *testing.T) {
 		{webui.OptionalSlider[wants]{Label: "F", Min: 0, Max: 10, StepSize: 1, Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}, func(w wants) bool { return w.Level == nil }},
 	} {
 		h, saved := wantsApp(start, c.field)
-		assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/w").Body.String(), `class="req"`))
+		f, _ := pageOf(t, h, "/admin/w").Field("f0")
+		assert.False(t, f.Required)
 		assert.Equal(t, post(h, "/admin/w", formValues("f0", "")).Code, http.StatusSeeOther)
 		assert.True(t, c.absent(saved()))
 	}
@@ -112,16 +113,17 @@ func TestAnAccessorFillsItsFieldWithItsDefault(t *testing.T) {
 	t.Parallel()
 
 	zero := wants{}
-	body := func(field webui.Accessor[wants]) string {
+	filled := func(field webui.Accessor[wants]) page.Field {
 		h, _ := wantsApp(zero, field)
-		return serve(h, http.MethodGet, "/admin/w").Body.String()
+		f, _ := pageOf(t, h, "/admin/w").Field("f0")
+		return f
 	}
 	// Not nil: the zero value is what is shown, and is what a visitor can see they are about to store.
-	assert.Contains(t, body(webui.Int[wants]{Label: "F", Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }}), `type="number" value="0"`)
-	assert.Contains(t, body(webui.Float[wants]{Label: "F", Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }}), `type="number" value="0"`)
+	assert.DeepEqual(t, [2]string{filled(webui.Int[wants]{Label: "F", Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }}).Type, filled(webui.Int[wants]{Label: "F", Load: func(w wants) int { return w.Num }, Store: func(w *wants, v int) { w.Num = v }}).Value}, [2]string{"number", "0"})
+	assert.DeepEqual(t, [2]string{filled(webui.Float[wants]{Label: "F", Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }}).Type, filled(webui.Float[wants]{Label: "F", Load: func(w wants) float64 { return w.Ratio }, Store: func(w *wants, v float64) { w.Ratio = v }}).Value}, [2]string{"number", "0"})
 	// Nil: nothing is shown, which is not zero.
-	assert.Contains(t, body(webui.OptionalInt[wants]{Label: "F", Load: func(w wants) *int { return w.Rate }, Store: func(w *wants, v *int) { w.Rate = v }}), `type="number" value=""`)
-	assert.Contains(t, body(webui.OptionalFloat[wants]{Label: "F", Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}), `type="number" value=""`)
+	assert.DeepEqual(t, [2]string{filled(webui.OptionalInt[wants]{Label: "F", Load: func(w wants) *int { return w.Rate }, Store: func(w *wants, v *int) { w.Rate = v }}).Type, filled(webui.OptionalInt[wants]{Label: "F", Load: func(w wants) *int { return w.Rate }, Store: func(w *wants, v *int) { w.Rate = v }}).Value}, [2]string{"number", ""})
+	assert.DeepEqual(t, [2]string{filled(webui.OptionalFloat[wants]{Label: "F", Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}).Type, filled(webui.OptionalFloat[wants]{Label: "F", Load: func(w wants) *float64 { return w.Level }, Store: func(w *wants, v *float64) { w.Level = v }}).Value}, [2]string{"number", ""})
 }
 
 // The rules of a text are about its shape, and an empty one is not checked against them: whether empty is refused is Required.

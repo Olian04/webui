@@ -261,6 +261,10 @@ func (e El) Tag() string { return e.n.Data }
 // script and style) and without what a <details> that is shut keeps from view but for its summary.
 func (e El) Text() string { return collapse(visibleText(e.n, false)) }
 
+// Lines is Text with its line breaks kept, and only the white space around the whole of it taken off: what an element that keeps its lines (a text
+// with line breaks in it) shows, which Text makes one line.
+func (e El) Lines() string { return strings.TrimSpace(visibleText(e.n, false)) }
+
 // AllText is Text with what is aria-hidden kept: the popover that says the rules of a field is there for a reader that asks, and a screen reader's
 // virtual cursor does not stop at it.
 func (e El) AllText() string { return collapse(visibleText(e.n, true)) }

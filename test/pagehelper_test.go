@@ -279,3 +279,42 @@ func moments(t *testing.T, p *page.Page) []moment {
 	}
 	return out
 }
+
+// toast is a message that a page gives the visitor about what they did: an alert when it is a failure, a status otherwise, and what it says.
+type toast struct{ Role, Text string }
+
+// toasts are the messages of a page, in order. The region that holds them is always there, and says nothing until one is put in it.
+func toasts(t *testing.T, body string) []toast {
+	t.Helper()
+	var out []toast
+	for _, e := range page.Parse(t, body).Live() {
+		if e.Text() != "" {
+			out = append(out, toast{e.Role(), e.Text()})
+		}
+	}
+	return out
+}
+
+// control is a button of a page that does an action: what it is called, what it posts as _act (the position its action was declared at, and for a row,
+// the row), and whether it is drawn disabled.
+type control struct {
+	Name, Posts string
+	Disabled    bool
+}
+
+// controls are the buttons below the element that do an action, in the order they are met.
+func controls(e page.El) []control {
+	var out []control
+	for _, b := range e.ByAttr("name", "_act") {
+		if b.Tag() == "button" {
+			out = append(out, control{b.Name(), b.Attr("value"), b.Has("disabled")})
+		}
+	}
+	return out
+}
+
+// mainOf is the main part of a page.
+func mainOf(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+	return page.One(t, "main", p.ByRole("main", ""))
+}

@@ -2,14 +2,13 @@ package webui_test
 
 import (
 	"context"
-	"html"
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type cancelArgs struct {
@@ -63,31 +62,28 @@ func cancelApp(redirectToPlain bool) http.Handler {
 	return webui.App{Pages: webui.Pages{list, other, plain, details, notes, solo}}.MustCompile("/admin")
 }
 
-// firstRowHref is where the first row of a page goes, as the page's HTML says it.
+// firstRowHref is where the first row of a page goes, as the page says it.
 func firstRowHref(t *testing.T, h http.Handler, target string) string {
 	t.Helper()
 
-	body := serve(h, http.MethodGet, target).Body.String()
-	const marker = `<a class="rowlink" href="`
-	i := strings.Index(body, marker)
-	if i < 0 {
+	rows := pageOf(t, h, target).ByRole("row", "")
+	if len(rows) < 2 || len(rows[1].Links()) == 0 {
 		t.Fatalf("no row link in %s", target)
 	}
-	body = body[i+len(marker):]
-	return html.UnescapeString(body[:strings.Index(body, `"`)])
+	return rows[1].Links()[0].Href
 }
 
+// cancelHref is where the Cancel of a form goes: "" when it has none.
 func cancelHref(t *testing.T, h http.Handler, target string) string {
 	t.Helper()
 
-	body := serve(h, http.MethodGet, target).Body.String()
-	const marker = `<a class="btn btn-ghost btn-sm" href="`
-	i := strings.Index(body, marker)
-	if i < 0 {
-		return "" // no Cancel button
+	main := page.One(t, "main", pageOf(t, h, target).ByRole("main", ""))
+	for _, l := range main.Links() {
+		if l.Name == "Cancel" {
+			return l.Href
+		}
 	}
-	body = body[i+len(marker):]
-	return html.UnescapeString(body[:strings.Index(body, `"`)])
+	return ""
 }
 
 func TestCancelGoesBackToThePageTheFormWasOpenedFrom(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // post sends a form straight through the handler.
@@ -173,12 +174,11 @@ func TestSubmitBindsFromLoadedModelThenRedirectsWithAFlash(t *testing.T) {
 	req.AddCookie(cookie)
 	got := httptest.NewRecorder()
 	s.h.ServeHTTP(got, req)
-	assert.Contains(t, got.Body.String(), `<div class="toast`)
-	assert.Contains(t, got.Body.String(), "Device saved!")
+	assert.DeepEqual(t, toasts(t, got.Body.String()), []toast{{"status", "Device saved!"}})
 	assert.Equal(t, got.Result().Cookies()[0].MaxAge, -1)
 
 	again := serve(s.h, http.MethodGet, "/admin/device/dev1")
-	assert.False(t, strings.Contains(again.Body.String(), "Device saved!"))
+	assert.Equal(t, len(toasts(t, again.Body.String())), 0)
 }
 
 func TestRuleFailuresAreCollectedAndTheInputIsEchoed(t *testing.T) {
@@ -189,13 +189,15 @@ func TestRuleFailuresAreCollectedAndTheInputIsEchoed(t *testing.T) {
 
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the page, with the form drawn again: not a redirect
 	assert.Equal(t, len(s.saved), 0)                          // Run never ran
-	body := rec.Body.String()
-	assert.Contains(t, body, `value="not-an-ip"`) // raw input, not the model
-	assert.Contains(t, body, `value="500"`)
-	assert.Contains(t, body, "must be a valid IPv4 address")
-	assert.Contains(t, body, "Must be at most 100.")
-	assert.Contains(t, body, `class="input invalid"`)
-	assert.Contains(t, body, "2 fields need attention.")
+	refused := page.Parse(t, rec.Body.String())
+	ip, _ := refused.Field("f1")
+	count, _ := refused.Field("f2")
+	assert.DeepEqual(t, []string{ip.Value, count.Value}, []string{"not-an-ip", "500"}) // raw input, not the model
+	text := refused.Root().Text()
+	assert.True(t, strings.Contains(text, "must be a valid IPv4 address"))
+	assert.True(t, strings.Contains(text, "Must be at most 100."))
+	assert.Equal(t, len(refused.ByAttr("aria-invalid", "true")), 2) // each says which it is
+	assert.True(t, strings.Contains(text, "2 fields need attention."))
 }
 
 func TestServerSideRejectionLooksLikeARuleFailure(t *testing.T) {
@@ -301,38 +303,34 @@ func TestRedirectGoesWhereOpenSays(t *testing.T) {
 	s.redirect = func(ctx context.Context) webui.Target { return webui.Open(ctx, gone, webui.NoArgs{}) }
 	rec = post(s.h, "/admin/device/dev1", formValues("f1", "10.0.0.9", "f2", "5"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther) // the cause is logged, and the page says something went wrong
-	assert.Contains(t, follow(s.h, rec).Body.String(), "Something went wrong")
+	assert.True(t, strings.Contains(page.Parse(t, follow(s.h, rec).Body.String()).Root().Text(), "Something went wrong"))
 }
 
 func TestTableRendersSelectionBarAndOmitsTheRowActionsItsGuardRefuses(t *testing.T) {
 	t.Parallel()
 
 	s := newShop()
-	body := serve(s.h, http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, s.h, "/admin/device")
+	table := page.One(t, "the table", p.ByRole("table", ""))
 
-	assert.Contains(t, body, `<th scope="col" class="pick">`) // the checkbox column exists because bulk is declared
-	assert.Equal(t, strings.Count(body, `name="_sel"`), 3)
-	assert.Contains(t, body, `<div class="actionbar"`)
-	assert.Contains(t, body, `name="_act" value="bulk:0">Acknowledge</button>`)
-	assert.Contains(t, body, `name="_act" value="row:0:a:1"`) // keys may contain colons
-	assert.Contains(t, body, `class="btn btn-danger btn-sm"`)
+	assert.DeepEqual(t, table.Headers(), []string{"Select", "ID", "Actions"}) // the checkbox column exists because bulk is declared
+	assert.Equal(t, len(fieldsNamed(p, "_sel")), 3)
+	// Keys may contain colons.
+	assert.DeepEqual(t, controls(mainOf(t, p)), []control{{"Acknowledge", "bulk:0", false}, {"Delete a:1", "row:0:a:1", false}, {"Delete b", "row:0:b", false}})
 
 	// The locked row's Guard returns an error that says nothing of how to draw it: the action is not there, and its row
 	// has an empty cell in the column that the other rows' actions are in.
-	assert.Equal(t, strings.Count(body, `>Delete <span class="sr-only">`), 2)
-	assert.False(t, strings.Contains(body, `value="row:0:locked"`))
-	assert.Contains(t, body, `<td class="actions"></td>`)
-	assert.False(t, strings.Contains(body, `class="gate"`))
+	assert.DeepEqual(t, table.Rows(), [][]string{{"", "a:1", "Delete a:1"}, {"", "b", "Delete b"}, {"", "locked", ""}})
 }
 
 func TestTableWithoutActionsHasNoFormNoCheckboxesNoBar(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	for _, absent := range []string{`class="pick"`, `actionbar`, `_sel`, `<form action="/admin/device"`} {
-		assert.False(t, strings.Contains(body, absent))
-	}
+	p := pageOf(t, h, "/admin/device")
+	assert.Equal(t, len(fieldsNamed(p, "_sel")), 0)
+	assert.Equal(t, len(controls(mainOf(t, p))), 0)
+	assert.DeepEqual(t, page.One(t, "the table", p.ByRole("table", "")).Headers(), []string{"ID", "Status", "Occurrences", "Rate"})
 }
 
 func TestBulkActionRunsOnTheSelectionInTableOrder(t *testing.T) {

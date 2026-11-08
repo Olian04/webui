@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type note struct {
@@ -53,14 +54,16 @@ func TestAMultilineStringIsATextAreaWithItsRules(t *testing.T) {
 	t.Parallel()
 
 	h, _ := noteApp(note{Title: "t", Body: "one\ntwo"})
-	body := serve(h, http.MethodGet, "/admin/n").Body.String()
+	p := pageOf(t, h, "/admin/n")
 
 	// The text begins after a newline, which the parser drops, so that a text that begins with one keeps it.
-	assert.Contains(t, body, `<textarea id="p-f1" class="input" name="f1" rows="5" placeholder="Say more" minlength="2" maxlength="12"`)
-	assert.Contains(t, body, ">\none\ntwo</textarea>")
-	assert.False(t, strings.Contains(body, `name="f1" type=`)) // not an input
-	assert.False(t, strings.Contains(body, "pattern="))
-	assert.Contains(t, body, `data-msg-too-long="Must be at most 12 characters."`) // the browser's words
+	body, _ := p.Field("f1")
+	assert.Equal(t, body.Type, "textarea") // not an input
+	assert.Equal(t, body.Value, "one\ntwo")
+	area := page.One(t, "the text area", p.ByAttr("name", "f1"))
+	assert.DeepEqual(t, []string{area.Attr("rows"), area.Attr("placeholder"), area.Attr("minlength"), area.Attr("maxlength")}, []string{"5", "Say more", "2", "12"})
+	assert.False(t, area.Has("pattern"))
+	assert.Equal(t, area.Attr("data-msg-too-long"), "Must be at most 12 characters.") // the browser's words
 }
 
 func TestALineBreakIsOneCharacterWhateverTheBrowserSent(t *testing.T) {
@@ -74,8 +77,10 @@ func TestALineBreakIsOneCharacterWhateverTheBrowserSent(t *testing.T) {
 
 	rec = post(h, "/admin/n", formValues("f0", "t", "f1", "aaaa\r\nbbbb\r\nccc"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
-	assert.Contains(t, rec.Body.String(), "Must be at most 12 characters.")
-	assert.Contains(t, rec.Body.String(), ">\naaaa\r\nbbbb\r\nccc</textarea>") // what was typed comes back as it was
+	refused := page.Parse(t, rec.Body.String())
+	assert.True(t, strings.Contains(refused.Root().Text(), "Must be at most 12 characters."))
+	typed, _ := refused.Field("f1")
+	assert.Equal(t, typed.Value, "aaaa\nbbbb\nccc") // what was typed comes back, as the three lines a browser shows
 }
 
 func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
@@ -96,13 +101,15 @@ func TestAMultilineTextReadOnlyAndInATableKeepsItsLines(t *testing.T) {
 		}},
 	}}.MustCompile("/admin")
 
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), "<span class=\"multiline\">one\ntwo\nthree\nfour</span>")
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/f").Body.String(), `aria-labelledby="p-f0-label"><span class="multiline">one`+"\n"+`two</span></div>`)
+	table := page.One(t, "the table", pageOf(t, h, "/admin/t").ByRole("table", "Notes"))
+	assert.Equal(t, page.One(t, "the cell", table.ByText("one two three four")).Lines(), "one\ntwo\nthree\nfour")
+	assert.Equal(t, page.One(t, "the field", pageOf(t, h, "/admin/f").ByRole("group", "Body")).Lines(), "one\ntwo")
 	// The file holds every line, quoted, in one cell.
 	csv := serve(h, http.MethodGet, "/admin/t?notes.export=csv").Body.String()
 	assert.Contains(t, csv, "\"one\ntwo\nthree\nfour\"")
 	// A filter finds it by any of them.
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/t?notes.filter.body=three").Body.String(), `<td class="">a</td>`)
+	found := page.One(t, "the table", pageOf(t, h, "/admin/t?notes.filter.body=three").ByRole("table", "Notes"))
+	assert.DeepEqual(t, found.Rows(), [][]string{{"a", "one two three four"}})
 }
 
 func TestAMultilineStringIsCheckedWhenTheAppCompiles(t *testing.T) {

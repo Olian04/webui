@@ -63,7 +63,7 @@ func TestAnAcceptedActionAndAnErrorAreAnsweredWithARedirectAndLoadingWhatItLeads
 
 		// The browser has cleared the cookie, so a reload is the page as it is.
 		reload := serve(h, http.MethodGet, "/admin/device/a")
-		assert.False(t, hasToast(reload.Body.String()))
+		assert.False(t, hasToast(t, reload.Body.String()))
 		assert.Equal(t, runs.Load(), c.runs)
 		_ = name
 	}
@@ -94,21 +94,22 @@ func TestARefusedSubmissionIsAnsweredWithTheFormAgainAndKeepsNothing(t *testing.
 		assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 		assert.Contains(t, rec.Body.String(), c.seen)
 		assert.Contains(t, rec.Body.String(), `value="`+c.ip+`"`) // what was typed, as it was typed
-		assert.True(t, hasToast(rec.Body.String()))
+		assert.True(t, hasToast(t, rec.Body.String()))
 		assert.Equal(t, runs.Load(), c.runs)
 
 		// A load of the page afterwards is the page as it is, with none of it: there is nothing to give.
 		reload := serve(h, http.MethodGet, "/admin/device/a")
 		assert.Equal(t, reload.Code, http.StatusOK)
 		assert.False(t, strings.Contains(reload.Body.String(), c.ip))
-		assert.False(t, hasToast(reload.Body.String()))
+		assert.False(t, hasToast(t, reload.Body.String()))
 		_ = name
 	}
 }
 
 // hasToast is whether a page shows a toast: the region that holds them is always there.
-func hasToast(body string) bool {
-	return strings.Contains(body, `class="toast"`) || strings.Contains(body, `class="toast `)
+func hasToast(t *testing.T, body string) bool {
+	t.Helper()
+	return len(toasts(t, body)) > 0
 }
 
 // What was typed comes back whole, up to what a POST may carry, since it is the answer and not kept.

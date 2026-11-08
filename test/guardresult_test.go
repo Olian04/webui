@@ -15,6 +15,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // What a Guard returns decides how its control is drawn, and the same Guard refuses the request: an error leaves the control out,
@@ -50,9 +51,9 @@ func TestADisabledRowActionIsDrawnDisabledWithItsMessageAndStillRefused(t *testi
 		return nil
 	})}, nil, nil)
 
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `name="_act" value="row:0:a">Drop`)
-	assert.Contains(t, body, `<span class="gate" data-guard="Already dropped" tabindex="0"><button class="btn btn-secondary btn-sm" type="submit" name="_act" value="row:0:b" disabled>Drop <span class="sr-only">b</span></button><span class="sr-only">Not available: Already dropped</span></span>`)
+	p := pageOf(t, h, "/admin/t")
+	assert.DeepEqual(t, controls(mainOf(t, p)), []control{{"Drop a", "row:0:a", false}, {"Drop b", "row:0:b", true}})
+	assert.DeepEqual(t, page.One(t, "the table", p.ByRole("table", "")).Rows(), [][]string{{"a", "Drop a"}, {"b", "Drop b Not available: Already dropped"}})
 
 	rec := post(h, "/admin/t", formValues("_act", "row:0:b"))
 	assert.Equal(t, flashOf(rec), "eAlready dropped") // the message is what is told to the one who asks by hand
@@ -65,11 +66,12 @@ func TestADisabledThatIsWrappedOrEmptyIsStillDisabled(t *testing.T) {
 	guard := func(err error) func(context.Context, parcel) error {
 		return func(context.Context, parcel) error { return err }
 	}
-	wrapped := serve(guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", guard(fmt.Errorf("not now: %w", webui.Disabled("Busy"))))}, nil, nil), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, wrapped, `data-guard="Busy"`)
+	wrapped := pageOf(t, guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", guard(fmt.Errorf("not now: %w", webui.Disabled("Busy"))))}, nil, nil), "/admin/t")
+	assert.Equal(t, len(wrapped.ByText("Drop a Not available: Busy")), 1)
+	assert.True(t, controls(mainOf(t, wrapped))[0].Disabled)
 
-	empty := serve(guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", guard(webui.Disabled("")))}, nil, nil), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, empty, `data-guard="Not allowed."`)
+	empty := pageOf(t, guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", guard(webui.Disabled("")))}, nil, nil), "/admin/t")
+	assert.Equal(t, len(empty.ByText("Drop a Not available: Not allowed.")), 1)
 }
 
 // An error with no text is still a refusal: the control is not there, as for any other error, and the request is refused.
@@ -77,9 +79,9 @@ func TestAnErrorWithNoTextHidesTheControlAndRefusesTheRequest(t *testing.T) {
 	t.Parallel()
 
 	h := guardedParcels(nil, []webui.Action[parcel]{rowAction("Drop", func(context.Context, parcel) error { return errors.New("") })}, nil, nil)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, "Drop"))
-	assert.False(t, strings.Contains(body, `class="actions"`))
+	p := pageOf(t, h, "/admin/t")
+	assert.False(t, strings.Contains(p.Root().AllText(), "Drop"))
+	assert.DeepEqual(t, page.One(t, "the table", p.ByRole("table", "")).Headers(), []string{"Name"}) // and no column for actions
 
 	rec := post(h, "/admin/t", formValues("_act", "row:0:a"))
 	assert.Equal(t, flashOf(rec), "eNot allowed.")
@@ -95,9 +97,10 @@ func TestAFormWhoseSubmitIsRefusedIsReadOnlyWhateverTheErrorSays(t *testing.T) {
 
 			s := newShop()
 			s.subGate = err
-			body := serve(s.h, http.MethodGet, "/admin/device/dev1").Body.String()
-			assert.False(t, strings.Contains(body, ">Save</button>"))
-			assert.False(t, strings.Contains(body, `name="f1"`)) // the IP is shown and not offered
+			p := pageOf(t, s.h, "/admin/device/dev1")
+			assert.Equal(t, len(p.ByRole("button", "Save")), 0)
+			_, offered := p.Field("f1")
+			assert.False(t, offered) // the IP is shown and not offered
 		})
 	}
 }
@@ -121,10 +124,9 @@ func TestAnActionThatIsNotDrawnLeavesTheOthersTheirPositions(t *testing.T) {
 		{Label: "Second", Confirm: "Sure?", Run: do("second")},
 	}
 	h := guardedParcels(nil, actions, nil, nil)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, ">First<"))
-	assert.Contains(t, body, `value="row:1:a">Second`)
-	assert.Contains(t, body, `id="confirm-p-r0a1"`) // the dialog's id has the position too
+	p := pageOf(t, h, "/admin/t")
+	assert.False(t, strings.Contains(p.Root().AllText(), "First"))
+	assert.DeepEqual(t, dialogs(t, p), map[string]string{"Second a": "row:1:a", "Second b": "row:1:b"}) // the position it was declared at
 
 	post(h, "/admin/t", formValues("_act", "row:1:a"))
 	post(h, "/admin/t", formValues("_act", "row:0:a")) // refused, though hidden
@@ -157,21 +159,20 @@ func TestABulkActionIsDrawnIfItsGuardAcceptsAnyOneRow(t *testing.T) {
 		}
 		return errors.New("no")
 	}), nil)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `value="bulk:0">Bag</button>`)
-	assert.Contains(t, body, `class="pick"`)
-	assert.False(t, strings.Contains(body, `class="gate"`))
+	p := pageOf(t, h, "/admin/t")
+	assert.DeepEqual(t, controls(mainOf(t, p)), []control{{"Bag", "bulk:0", false}})
+	assert.Equal(t, len(fieldsNamed(p, "_sel")), 2) // a box to pick each row with
 	for _, n := range asked {
 		assert.Equal(t, n, 1)
 	}
 
 	// None, and an error that says nothing of how to draw it: there is no button, and so nothing to select the rows for.
 	h = guardedParcels(nil, nil, bulk(func(parcel) error { return errors.New("no") }), nil)
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	for _, absent := range []string{"Bag", `class="pick"`, `class="actionbar"`, `name="_sel"`, `data-pickall`, `<form action="/admin/t"`} {
-		assert.False(t, strings.Contains(body, absent))
-	}
-	assert.Contains(t, body, `<table aria-label="Table"><colgroup><col style="width:100.00%;"> </colgroup>`)
+	p = pageOf(t, h, "/admin/t")
+	assert.False(t, strings.Contains(p.Root().AllText(), "Bag"))
+	assert.Equal(t, len(fieldsNamed(p, "_sel")), 0)
+	assert.Equal(t, len(controls(mainOf(t, p))), 0)
+	assert.DeepEqual(t, page.One(t, "the table", p.ByRole("table", "Table")).Headers(), []string{"Name"}) // and no column to pick with
 
 	// None, and the first of them that says Disabled: the button is disabled, with that.
 	h = guardedParcels(nil, nil, bulk(func(p parcel) error {
@@ -180,9 +181,10 @@ func TestABulkActionIsDrawnIfItsGuardAcceptsAnyOneRow(t *testing.T) {
 		}
 		return webui.Disabled("Nothing here can be bagged")
 	}), nil)
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<span class="gate" data-guard="Nothing here can be bagged" tabindex="0">`)
-	assert.Contains(t, body, `class="pick"`)
+	p = pageOf(t, h, "/admin/t")
+	assert.DeepEqual(t, controls(mainOf(t, p)), []control{{"Bag", "bulk:0", true}})
+	assert.Equal(t, len(p.ByText("Bag Not available: Nothing here can be bagged")), 1)
+	assert.Equal(t, len(fieldsNamed(p, "_sel")), 2)
 
 	// And the Guard that decided the button also refuses the request, which names its own selection.
 	rec := post(h, "/admin/t", formValues("_act", "bulk:0", "_sel", "a"))
@@ -202,9 +204,9 @@ func TestATableWithNoRowsDrawsNoBulkAction(t *testing.T) {
 		}},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, "Bag"))
-	assert.Contains(t, body, "Nothing to show")
+	p := pageOf(t, h, "/admin/t")
+	assert.False(t, strings.Contains(p.Root().AllText(), "Bag"))
+	assert.Equal(t, len(p.ByText("Nothing to show")), 1)
 }
 
 // The column of actions is there when a row of the window has an action drawn, and an empty cell is what a row without one has.
@@ -219,14 +221,14 @@ func TestTheColumnOfActionsComesAndGoesWithTheRowsThatHaveOne(t *testing.T) {
 		return errors.New("no")
 	})}, nil, nil)
 
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, `class="actions"`))
-	assert.False(t, strings.Contains(body, `<form action="/admin/t"`)) // nothing in the table posts
+	p := pageOf(t, h, "/admin/t")
+	assert.DeepEqual(t, page.One(t, "the table", p.ByRole("table", "")).Headers(), []string{"Name"})
+	assert.Equal(t, len(controls(mainOf(t, p))), 0) // nothing in the table posts
 
 	open.Store(true)
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Equal(t, strings.Count(body, `<td class="actions">`), 2)
-	assert.Contains(t, body, `<td class="actions"></td>`) // b has none
+	table := page.One(t, "the table", pageOf(t, h, "/admin/t").ByRole("table", ""))
+	assert.DeepEqual(t, table.Headers(), []string{"Name", "Actions"})
+	assert.DeepEqual(t, table.Rows(), [][]string{{"a", "Drop a"}, {"b", ""}}) // b has none
 }
 
 // A Guard that panics is the application's bug: it leaves the control out, and the panic is logged, where it would otherwise end
@@ -245,9 +247,9 @@ func TestAGuardThatPanicsLeavesItsControlOutAndIsLogged(t *testing.T) {
 		webui.Action[parcel]{Guard: boom, Run: noop("click")})
 	rec := serve(h, http.MethodGet, "/admin/t")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
-	assert.False(t, strings.Contains(body, "Drop"))
-	assert.False(t, strings.Contains(body, "Bag"))
+	text := page.Parse(t, rec.Body.String()).Root().AllText()
+	assert.False(t, strings.Contains(text, "Drop"))
+	assert.False(t, strings.Contains(text, "Bag"))
 	assert.Contains(t, logs.String(), "a Guard panicked")
 	assert.Contains(t, logs.String(), "the guard fell over")
 	assert.Contains(t, logs.String(), "the bulk guard fell over")
@@ -271,18 +273,18 @@ func TestAToolbarOfRefusedButtonsIsNotThereAndTheOthersKeepTheirPlaces(t *testin
 		Right: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Two", Run: run}},
 	}}}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/tools").Body.String()
-	assert.False(t, strings.Contains(body, ">One<"))
-	assert.Contains(t, body, `<span class="toolbar-gap" aria-hidden="true"></span>`) // Two is still at the right
-	assert.Contains(t, body, `name="_act" value="1">Two</button>`)                   // and is still the second
+	p := pageOf(t, h, "/admin/tools")
+	assert.DeepEqual(t, controls(mainOf(t, p)), []control{{"Two", "1", false}}) // and Two is still the second
 
 	// With every button refused, no toolbar is drawn: not an empty row, and not a form.
 	h = webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{
 		Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "One", Guard: refused, Run: run}},
 	}}}}.MustCompile("/admin")
-	body = serve(h, http.MethodGet, "/admin/tools").Body.String()
-	assert.False(t, strings.Contains(body, "data-toolbar"))
-	assert.False(t, strings.Contains(body, `name="_view"`))
+	p = pageOf(t, h, "/admin/tools")
+	assert.Equal(t, len(controls(mainOf(t, p))), 0)
+	assert.Equal(t, len(mainOf(t, p).ByRole("button", "")), 0)
+	_, posts := p.Field("_view")
+	assert.False(t, posts)
 }
 
 // A link is drawn when the page it leads to would open for the visitor, and is not when that page's Guard refuses them.
@@ -307,17 +309,15 @@ func TestALinkToAPageThatRefusesTheVisitorIsNotDrawn(t *testing.T) {
 	}}}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Stack{bar, table}}, dest}}.MustCompile("/admin")
 
-	visitor := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(visitor, `href="/admin/dest"`))
-	assert.False(t, strings.Contains(visitor, "Open it"))
-	assert.False(t, strings.Contains(visitor, "data-toolbar"))
-	assert.Contains(t, visitor, `<tr class="">`) // the rows are plain rows
-	assert.False(t, strings.Contains(visitor, "rowlink"))
+	visitor := pageOf(t, h, "/admin/t")
+	assert.Equal(t, len(linksTo(visitor, "/admin/dest")), 0)
+	assert.False(t, strings.Contains(visitor.Root().AllText(), "Open it"))
+	assert.DeepEqual(t, page.One(t, "the table", visitor.ByRole("table", "")).Rows(), [][]string{{"a"}, {"b"}}) // the rows are plain rows
 
 	open.Store(true)
-	editor := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Equal(t, strings.Count(editor, `href="/admin/dest"`), 3) // the button, and a link in each row
-	assert.Contains(t, editor, "Open it")
+	editor := pageOf(t, h, "/admin/t")
+	assert.Equal(t, len(linksTo(editor, "/admin/dest")), 3) // the button, and a link in each row
+	assert.True(t, hasLink(editor, "Open it", "/admin/dest"))
 }
 
 // A Guard of a page that panics, asked on the way to a link, answers no for it, and is logged.
@@ -333,7 +333,7 @@ func TestAPageGuardThatPanicsOnTheWayToALinkHidesTheLink(t *testing.T) {
 
 	rec := serve(h, http.MethodGet, "/admin/t")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.False(t, strings.Contains(rec.Body.String(), "Open it"))
+	assert.False(t, strings.Contains(page.Parse(t, rec.Body.String()).Root().AllText(), "Open it"))
 	assert.Contains(t, logs.String(), "the page guard fell over")
 }
 
