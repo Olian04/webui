@@ -13,6 +13,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // story is one thing of a list: a headline, where it came from, how it did, and a picture.
@@ -96,26 +97,23 @@ func TestAListIsAColumnOfItemsEachWithAHeadlineAndALineOfFacts(t *testing.T) {
 	})
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
+	p := page.Parse(t, rec.Body.String())
 
-	assert.Contains(t, body, `<h2 class="panel-title">Latest</h2>`)
-	assert.Contains(t, body, `<ul class="list">`)
-	assert.Equal(t, strings.Count(body, `<li class="item">`), 3) // PageSize, and not the one more that was asked for to know there is more
-	assert.Contains(t, body, `<span class="item-title">`)
-	assert.Contains(t, body, "Show HN: Wealthfolio")
-	assert.True(t, strings.Index(body, "Wealthfolio") < strings.Index(body, "Nginx") && strings.Index(body, "Nginx") < strings.Index(body, "Infinity")) // in the order given
-	assert.False(t, strings.Contains(body, "thermonuclear"))
+	assert.Equal(t, len(p.ByRole("heading", "Latest")), 1)
+	// PageSize items, and not the one more that was asked for to know there is more, in the order given, each a headline and its facts in order.
+	assert.DeepEqual(t, items(p), []string{
+		"Show HN: Wealthfolio 6h 389 points wealthfolio.app",
+		"Nginx has moved to GitHub 3h 100 points mailman.nginx.org",
+		"Infinity, realistic AI characters 2h 71 points", // a fact with no value (this one has no source) is left out
+	})
+	assert.False(t, strings.Contains(rec.Body.String(), "thermonuclear"))
 
-	// The facts are in order, with a dot between them and not after the last; a fact with no value (the third item has no source) is left out.
-	first := body[strings.Index(body, `<div class="item-meta">`):]
-	first = first[:strings.Index(first, "</div></div></li>")]
-	assert.True(t, strings.Index(first, "<span>6h</span>") < strings.Index(first, "<span>389 points</span>") && strings.Index(first, "<span>389 points</span>") < strings.Index(first, "<span>wealthfolio.app</span>"))
-	assert.Equal(t, strings.Count(first, `class="item-sep"`), 2) // between three facts
-	third := body[strings.Index(body, "Infinity"):]
-	third = third[:strings.Index(third, "</li>")]
-	assert.Equal(t, strings.Count(third, `class="item-sep"`), 1)
-	assert.False(t, strings.Contains(third, "dash"))
-	assert.Equal(t, strings.Count(body, "<script>"), 1) // the one that sets the theme, and none that the data brought
+	// A dot between the facts, and not after the last.
+	li := p.ByRole("listitem", "")
+	assert.Equal(t, strings.Count(li[0].AllText(), "·"), 2) // between three facts
+	assert.Equal(t, strings.Count(li[2].AllText(), "·"), 1)
+	assert.Equal(t, len(p.ByRole("script", "")), 0)                  // and nothing that the data brought runs
+	assert.Equal(t, strings.Count(rec.Body.String(), "<script>"), 1) // the one that sets the theme
 }
 
 func TestASourceIsAskedForOneMoreThanIsShownAndShowMoreIsARealLinkThatAsksForMore(t *testing.T) {
@@ -124,25 +122,25 @@ func TestASourceIsAskedForOneMoreThanIsShownAndShowMoreIsARealLinkThatAsksForMor
 	src := &listLoader{}
 	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 2, Headline: pTitle})
 
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 	assert.DeepEqual(t, src.asked(), []int{3})
-	assert.Equal(t, strings.Count(body, `<li class="item">`), 2)
-	assert.Contains(t, body, `<div class="pager-info">2 shown</div>`)
-	assert.Contains(t, body, `href="/admin/e?latest.limit=4"`) // the same page with more, in the address, so a copied link shows the same
-	assert.Contains(t, body, `data-in-place`)                  // with script it replaces the list, and without it is a navigation
-	assert.Contains(t, body, `Show more`)
+	assert.Equal(t, len(items(p)), 2)
+	assert.Contains(t, p.Root().Text(), "2 shown")
+	more := page.One(t, "the Show more link", p.ByRoleContaining("link", "Show more"))
+	assert.Equal(t, more.Attr("href"), "/admin/e?latest.limit=4") // the same page with more, in the address, so a copied link shows the same
+	assert.True(t, more.Has("data-in-place"))                     // with script it replaces the list, and without it is a navigation
 
 	// Following it shows four, and asks for five.
-	body = serve(h, http.MethodGet, "/admin/e?latest.limit=4").Body.String()
+	p = pageOf(t, h, "/admin/e?latest.limit=4")
 	assert.DeepEqual(t, src.asked(), []int{3, 5})
-	assert.Equal(t, strings.Count(body, `<li class="item">`), 4)
-	assert.Contains(t, body, `href="/admin/e?latest.limit=6"`)
+	assert.Equal(t, len(items(p)), 4)
+	assert.Equal(t, page.One(t, "the Show more link", p.ByRoleContaining("link", "Show more")).Attr("href"), "/admin/e?latest.limit=6")
 
 	// The fifth is the last there is: the source gave no more than was asked for, so there is nothing more and no link.
-	body = serve(h, http.MethodGet, "/admin/e?latest.limit=5").Body.String()
-	assert.Equal(t, strings.Count(body, `<li class="item">`), 5)
-	assert.False(t, strings.Contains(body, "Show more"))
-	assert.False(t, strings.Contains(body, "pager-info"))
+	p = pageOf(t, h, "/admin/e?latest.limit=5")
+	assert.Equal(t, len(items(p)), 5)
+	assert.Equal(t, len(p.ByRoleContaining("link", "Show more")), 0)
+	assert.False(t, strings.Contains(p.Root().Text(), "shown"))
 }
 
 // The address says how many, and a hand-edited one cannot ask a source for more than a list may show, or for fewer than it shows at first.
@@ -193,10 +191,11 @@ func TestAListRefreshesAsAPanelOfItsOwn(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
-	assert.Equal(t, strings.Count(body, `<li class="item">`), 3)
-	assert.False(t, strings.Contains(body, "<html"))
-	assert.False(t, strings.Contains(body, ">First<"))
-	assert.Contains(t, body, `data-view="p.1"`)
+	assert.True(t, page.IsFragment(body))
+	p := page.Parse(t, body)
+	assert.Equal(t, len(items(p)), 3)
+	assert.Equal(t, len(p.ByRole("heading", "First")), 0)
+	assert.Equal(t, page.One(t, "the panel", p.Views()).Attr("data-view"), "p.1")
 }
 
 func TestAFailingListLoadFailsThePanelAndNotThePage(t *testing.T) {
@@ -210,9 +209,10 @@ func TestAFailingListLoadFailsThePanelAndNotThePage(t *testing.T) {
 	})
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, rec.Body.String(), "Could not load")
+	p := page.Parse(t, rec.Body.String())
+	assert.Contains(t, p.Root().Text(), "Could not load")
 	assert.False(t, strings.Contains(rec.Body.String(), "secret-bucket"))
-	assert.False(t, strings.Contains(rec.Body.String(), `class="list"`))
+	assert.Equal(t, len(p.ByRole("list", "")), 0)
 }
 
 func TestAListWithNoItemsSaysSoAndHasNoFoot(t *testing.T) {
@@ -222,10 +222,10 @@ func TestAListWithNoItemsSaysSoAndHasNoFoot(t *testing.T) {
 		Title: "Latest", Headline: pTitle,
 		Loader: webui.RowsLoader[story]{Load: func(context.Context) ([]story, webui.Loaded) { return nil, webui.Ready() }},
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, "Nothing here yet")
-	assert.False(t, strings.Contains(body, `<ul class="list">`))
-	assert.False(t, strings.Contains(body, "Show more"))
+	p := pageOf(t, h, "/admin/e")
+	assert.Contains(t, p.Root().Text(), "Nothing here yet")
+	assert.Equal(t, len(p.ByRole("list", "")), 0)
+	assert.Equal(t, len(p.ByRoleContaining("link", "Show more")), 0)
 }
 
 // A list of something that is still going asks to be asked again, as any panel does.
@@ -238,7 +238,7 @@ func TestAListThatIsNotFinalIsAskedForAgain(t *testing.T) {
 			return stories[:1], webui.Ready().RefreshAfter(5 * 1e9)
 		}},
 	})
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-refresh-after="5"`)
+	assert.Equal(t, page.One(t, "the panel that is not final", pageOf(t, h, "/admin/e").ByAttr("data-refresh-after", "")).Attr("data-refresh-after"), "5")
 }
 
 // ----------------------------------------------------------- headline and links
@@ -250,14 +250,14 @@ func TestAnHrefLeadsToAnotherSiteAndALinkLeadsInTheApp(t *testing.T) {
 	_, detail := listPages(webui.Stack{}, nil)
 
 	external, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 1, Headline: pTitle, Open: webui.Href[story]{URL: pLink}}, nil)
-	body := serve(external, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<a class="item-link ext" href="https://wealthfolio.app/" target="_blank" rel="noopener noreferrer">Show HN: Wealthfolio`)
-	assert.Contains(t, body, "(opens in a new tab)") // the mark that says so, for a reader
+	out := itemLinks(pageOf(t, external, "/admin/e"))
+	assert.Equal(t, len(out), 1)
+	assert.Equal(t, out[0].Href, "https://wealthfolio.app/")
+	assert.True(t, out[0].NewTab)
+	assert.True(t, strings.HasPrefix(out[0].Name, "Show HN: Wealthfolio") && strings.HasSuffix(out[0].Name, "(opens in a new tab)")) // and a reader is told so
 
 	inApp, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 1, Headline: pTitle, Open: openStory(detail)}, nil)
-	body = serve(inApp, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<a class="item-link" href="/admin/story/a">Show HN: Wealthfolio</a>`)
-	assert.False(t, strings.Contains(body, `target="_blank"`))
+	assert.DeepEqual(t, itemLinks(pageOf(t, inApp, "/admin/e")), []page.Link{{Name: "Show HN: Wealthfolio", Href: "/admin/story/a"}})
 }
 
 // An item that leads to a page that refuses the visitor is its headline and nothing more: a link they cannot follow is not offered.
@@ -273,10 +273,9 @@ func TestAnItemWhosePageRefusesTheVisitorIsNotALink(t *testing.T) {
 		return nil
 	}
 	h, _ := listPages(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 2, Headline: pTitle, Open: openStory(detail)}, refuses)
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `href="/admin/story/a`)
-	assert.False(t, strings.Contains(body, `href="/admin/story/b`))
-	assert.Contains(t, body, "Nginx has moved to GitHub") // still there, as text
+	p := pageOf(t, h, "/admin/e")
+	assert.DeepEqual(t, itemLinks(p), []page.Link{{Name: "Show HN: Wealthfolio", Href: "/admin/story/a"}})
+	assert.Contains(t, p.Root().Text(), "Nginx has moved to GitHub") // still there, as text
 }
 
 func TestABadgeIsDrawnBesideTheHeadlineAsItIsInACell(t *testing.T) {
@@ -284,10 +283,15 @@ func TestABadgeIsDrawnBesideTheHeadlineAsItIsInACell(t *testing.T) {
 
 	src := &listLoader{}
 	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 3, Headline: pTitle, Badge: pKind})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `class="badge tone-bad"`), 1) // the live one, which says Live in words and not only in red
-	assert.Contains(t, body, "Live")
-	assert.Equal(t, strings.Count(body, `class="item-head"`), 3)
+	got := items(pageOf(t, h, "/admin/e"))
+	assert.Equal(t, len(got), 3)
+	live := 0 // the live one says Live in words, and not only in red
+	for _, text := range got {
+		if strings.Contains(text, "Live") {
+			live++
+		}
+	}
+	assert.Equal(t, live, 1)
 }
 
 // ------------------------------------------------------------------- pictures
@@ -324,13 +328,18 @@ func TestAPictureIsDrawnFromThisSiteOrATrustedOriginAndFromNowhereElse(t *testin
 				Image: func(story) string { return image },
 			})
 			body := serve(h, http.MethodGet, "/admin/e").Body.String()
+			p := page.Parse(t, body)
+			pictures := p.ByRole("presentation", "") // a picture that is decoration: the headline beside it says what the item is
 			if tc.drawn == "" {
-				assert.False(t, strings.Contains(body, "<img"))
+				assert.Equal(t, len(pictures), 0)
 				assert.False(t, strings.Contains(body, "evil.example"))
-				assert.Contains(t, body, ">X<") // the item is still there, with no picture, as one that has none
+				assert.DeepEqual(t, items(p), []string{"X"}) // the item is still there, with no picture, as one that has none
 				return
 			}
-			assert.Contains(t, body, `<img class="item-img" src="`+tc.drawn+`" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`)
+			assert.Equal(t, len(pictures), 1)
+			assert.Equal(t, pictures[0].Attr("src"), tc.drawn)
+			assert.Equal(t, pictures[0].Attr("loading"), "lazy") // a card that is not in view is not fetched
+			assert.Equal(t, pictures[0].Attr("referrerpolicy"), "no-referrer")
 		})
 	}
 }
@@ -361,12 +370,15 @@ func TestCardsAreAGridThatWrapsAndEachHasItsPictureOverItsHeadline(t *testing.T)
 		Title: "Videos", Loader: src.loader(), PageSize: 2, Headline: pTitle, Meta: []webui.Accessor[story]{pAge, pSource},
 		Image: func(p story) string { return "/img/" + p.ID + ".png" },
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<ul class="cards">`)
-	assert.Equal(t, strings.Count(body, `<li class="item item-card">`), 2)
-	assert.True(t, strings.Index(body, `src="/img/a.png"`) < strings.Index(body, "Wealthfolio")) // the picture first
-	assert.Contains(t, body, `href="/admin/e?videos.limit=4"`)                                   // and the same Show more
-	assert.False(t, strings.Contains(body, "cards-scroller"))
+	p := pageOf(t, h, "/admin/e")
+	assert.Equal(t, len(items(p)), 2)
+	card := p.ByRole("listitem", "")[0]
+	picture := page.One(t, "the first card's picture", card.ByRole("presentation", ""))
+	assert.Equal(t, picture.Attr("src"), "/img/a.png")
+	assert.True(t, picture.Before(page.One(t, "its headline", card.ByText("Wealthfolio")))) // the picture first
+	assert.True(t, len(p.ByRoleContaining("link", "Show more")) == 1)                       // and the same Show more
+	assert.Equal(t, p.ByRoleContaining("link", "Show more")[0].Attr("href"), "/admin/e?videos.limit=4")
+	assert.Equal(t, len(p.ByRole("region", "Videos, scrolls sideways")), 0) // a grid that wraps does not scroll
 }
 
 func TestCardsInARowScrollSidewaysAndTheRowCanBeReachedByTheKeyboard(t *testing.T) {
@@ -374,10 +386,10 @@ func TestCardsInARowScrollSidewaysAndTheRowCanBeReachedByTheKeyboard(t *testing.
 
 	src := &listLoader{}
 	h := editorApp(webui.Cards[story]{Title: "Videos", Loader: src.loader(), PageSize: 3, Headline: pTitle, Layout: webui.CardsScroll})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<div class="cards-scroller" tabindex="0" role="region" aria-label="Videos, scrolls sideways">`)
-	assert.Contains(t, body, `<ul class="cards cards-row">`)
-	assert.Equal(t, strings.Count(body, `<li class="item item-card">`), 3)
+	p := pageOf(t, h, "/admin/e")
+	row := page.One(t, "the row that scrolls", p.ByRole("region", "Videos, scrolls sideways"))
+	assert.Equal(t, row.Attr("tabindex"), "0") // a stop of the keys, so that a keyboard can scroll it
+	assert.Equal(t, len(items(p)), 3)
 }
 
 // A List and a Tabs make the widget with two views of what is new: only the selected tab is read.
@@ -478,12 +490,16 @@ func TestAnActionOnAnItemRunsWithTheItemThatTheKeyNames(t *testing.T) {
 	}
 	src := &listLoader{}
 	h := editorApp(webui.List[story]{Title: "Latest", Loader: src.loader(), PageSize: 5, Headline: pTitle, Open: open, Key: func(s story) string { return s.ID }})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
-	assert.Contains(t, body, `<input type="hidden" name="_view" value="p">`)
-	assert.Contains(t, body, `<button class="item-link item-button" type="submit" name="_act" value="click:0:a">Show HN: Wealthfolio</button>`)
-	assert.False(t, strings.Contains(body, `value="click:0:b"`)) // refused: plain text
-	assert.Contains(t, body, "Nginx has moved to GitHub")
+	view, _ := p.Field("_view")
+	assert.Equal(t, view.Value, "p")
+	assert.Equal(t, len(p.ByRole("button", "Show HN: Wealthfolio")), 1)
+	assert.True(t, page.One(t, "the headline's button", p.ByRole("button", "Show HN: Wealthfolio")).Attr("value") == "click:0:a")
+	for _, f := range fieldsNamed(p, "_act") {
+		assert.False(t, f.Value == "click:0:b") // refused: plain text
+	}
+	assert.Contains(t, p.Root().Text(), "Nginx has moved to GitHub")
 
 	assert.Equal(t, post(h, "/admin/e", formValues("_view", "p", "_act", "click:0:a")).Code, http.StatusSeeOther)
 	assert.DeepEqual(t, ran, []string{"a"})
@@ -510,7 +526,7 @@ func TestAnActionOnAnItemIsCheckedWhenTheAppCompiles(t *testing.T) {
 func TestAListTakesAnyKindOfLoaderAndAsksForTheFirstItems(t *testing.T) {
 	t.Parallel()
 
-	shown := func(body string) int { return strings.Count(body, `<li class="item">`) }
+	shown := func(body string) int { return len(items(page.Parse(t, body))) }
 	more := `Show more`
 
 	// Every item at hand: the library shows the first of them.
@@ -544,4 +560,13 @@ func TestAListTakesAnyKindOfLoaderAndAsksForTheFirstItems(t *testing.T) {
 	assert.Equal(t, shown(body), 2)
 	assert.Equal(t, after, "")
 	assert.Equal(t, limit, 3)
+}
+
+// itemLinks are the links to where an item leads: the links of the items of a page, which are not the pager's.
+func itemLinks(p *page.Page) []page.Link {
+	var out []page.Link
+	for _, li := range p.ByRole("listitem", "") {
+		out = append(out, li.Links()...)
+	}
+	return out
 }

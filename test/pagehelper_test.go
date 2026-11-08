@@ -257,3 +257,12 @@ func fieldsNamed(p *page.Page, name string) []page.Field {
 	}
 	return out
 }
+
+// items are the texts of the items of the lists of a page, in order, as a reader meets them.
+func items(p *page.Page) []string {
+	var out []string
+	for _, li := range p.ByRole("listitem", "") {
+		out = append(out, li.Text())
+	}
+	return out
+}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // release is one thing on a calendar: a name, and when.
@@ -63,18 +64,29 @@ func (s *calendarSource) asked() []webui.Span {
 
 func releaseWhen(r release) time.Time { return r.When }
 
-// calendarCell is the cell of a day in the page: from its opening td to its closing one, or "" if the day is not in the page.
-func calendarCell(body string, day int, out bool) string {
-	for _, part := range strings.Split(body, "<td")[1:] {
-		cell := part[:strings.Index(part, "</td>")]
-		if out != strings.Contains(cell, "cal-out") {
-			continue
-		}
-		if strings.Contains(cell, `<span aria-hidden="true">`+strconv.Itoa(day)+`</span>`) {
-			return cell
+// calendarDay is the cell of a day in the page, found by its date as it is told to a reader ("3 September 2026"); the test stops if the day is not in the page.
+func calendarDay(t *testing.T, p *page.Page, date string) page.El {
+	t.Helper()
+
+	re := regexp.MustCompile(`^\w+ ` + regexp.QuoteMeta(date) + `(,|$)`)
+	var found []page.El
+	for _, c := range p.ByRole("cell", "") {
+		if re.MatchString(c.Text()) {
+			found = append(found, c)
 		}
 	}
-	return ""
+	return page.One(t, "the cell of "+date, found)
+}
+
+// marked counts the days of a calendar that say that there are items on them.
+func marked(p *page.Page) int {
+	n := 0
+	for _, c := range p.ByRole("cell", "") {
+		if strings.Contains(c.Text(), " item") {
+			n++
+		}
+	}
+	return n
 }
 
 // dayPages is the page a calendar is on, and the page its days open.
@@ -95,20 +107,28 @@ func TestACalendarIsAMonthOfWholeWeeksAsATableOfDays(t *testing.T) {
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
+	p := page.Parse(t, rec.Body.String())
 
-	assert.Contains(t, body, `<h2 class="panel-title">Releases</h2>`)
-	assert.Contains(t, body, `<h3 class="cal-title"`)
-	assert.Contains(t, body, ">September 2026</h3>")
-	assert.Contains(t, body, "<table class=\"cal\" aria-labelledby=")
-	assert.Equal(t, strings.Count(body, `<th scope="col" abbr=`), 7)
-	assert.True(t, strings.Index(body, `abbr="Monday"`) < strings.Index(body, `abbr="Tuesday"`)) // a week begins on Monday
-	assert.True(t, strings.Index(body, `abbr="Saturday"`) < strings.Index(body, `abbr="Sunday"`))
+	assert.Equal(t, len(p.ByRole("heading", "Releases")), 1)
+	assert.Equal(t, len(p.ByRole("heading", "September 2026")), 1)
+	grid := page.One(t, "the grid, which is named by the month", p.ByRole("table", "September 2026"))
+	// A week begins on Monday.
+	assert.DeepEqual(t, grid.Headers(), []string{"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"})
 
 	// September 2026 begins on a Tuesday and ends on a Wednesday: the grid is 31 August to 4 October, five weeks.
-	assert.Equal(t, strings.Count(body, `<td class="cal-cell`), 35)
-	assert.Equal(t, strings.Count(body, "cal-out"), 5)  // 31 August, and 1 to 4 October
-	assert.Equal(t, strings.Count(body, "<script>"), 1) // the one that sets the theme, and none that the data brought
+	rows := grid.Rows()
+	assert.Equal(t, len(rows), 5)
+	outside := 0
+	for _, week := range rows {
+		assert.Equal(t, len(week), 7)
+		for _, day := range week {
+			if !strings.Contains(day, "September 2026") {
+				outside++ // 31 August, and 1 to 4 October
+			}
+		}
+	}
+	assert.Equal(t, outside, 5)
+	assert.Equal(t, strings.Count(rec.Body.String(), "<script>"), 1) // the one that sets the theme, and none that the data brought
 }
 
 func TestTheSourceIsAskedForTheDaysTheGridShowsAndNotForTheMonth(t *testing.T) {
@@ -116,7 +136,7 @@ func TestTheSourceIsAskedForTheDaysTheGridShowsAndNotForTheMonth(t *testing.T) {
 
 	src := &calendarSource{}
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
 	spans := src.asked()
 	assert.Equal(t, len(spans), 1)
@@ -124,8 +144,7 @@ func TestTheSourceIsAskedForTheDaysTheGridShowsAndNotForTheMonth(t *testing.T) {
 	assert.True(t, spans[0].To.Equal(time.Date(2026, time.October, 5, 0, 0, 0, 0, time.UTC))) // exclusive: the day after the last the grid shows
 
 	// A day of the week at the edge shows what is on it: 2 October is of the next month.
-	assert.Contains(t, calendarCell(body, 2, true), "cal-marked")
-	assert.Contains(t, calendarCell(body, 2, true), "Friday 2 October 2026, 1 item")
+	assert.Equal(t, calendarDay(t, p, "2 October 2026").Text(), "Friday 2 October 2026, 1 item")
 }
 
 func TestTheMonthInTheAddressIsTheMonthThatIsShown(t *testing.T) {
@@ -133,19 +152,19 @@ func TestTheMonthInTheAddressIsTheMonthThatIsShown(t *testing.T) {
 
 	src := &calendarSource{}
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
-	body := serve(h, http.MethodGet, "/admin/e?releases.month=2026-11").Body.String()
-	assert.Contains(t, body, ">November 2026</h3>")
+	p := pageOf(t, h, "/admin/e?releases.month=2026-11")
+	assert.Equal(t, len(p.ByRole("heading", "November 2026")), 1)
 	spans := src.asked()
 	assert.True(t, spans[0].From.Equal(time.Date(2026, time.October, 26, 0, 0, 0, 0, time.UTC))) // a Monday
 	assert.True(t, spans[0].To.Equal(time.Date(2026, time.December, 7, 0, 0, 0, 0, time.UTC)))   // 30 November is a Monday, so the grid has a sixth week
-	assert.Contains(t, calendarCell(body, 9, false), "cal-marked")
-	assert.False(t, strings.Contains(body, `aria-current="date"`)) // today is not in this grid
+	assert.Contains(t, calendarDay(t, p, "9 November 2026").Text(), "1 item")
+	assert.Equal(t, len(p.ByAttr("aria-current", "date")), 0) // today is not in this grid
 
 	// A month that is not one, or is not one that the calendar goes to, is the current month, and not an error.
 	for _, bad := range []string{"soon", "2026-13", "2026-00", "0001-01", "9999-12", "2026-9", ""} {
 		got := serve(h, http.MethodGet, "/admin/e?releases.month="+bad)
 		assert.Equal(t, got.Code, http.StatusOK)
-		assert.Contains(t, got.Body.String(), ">September 2026</h3>")
+		assert.Equal(t, len(page.Parse(t, got.Body.String()).ByRole("heading", "September 2026")), 1)
 	}
 }
 
@@ -156,19 +175,18 @@ func TestTheLinksToOtherMonthsAreRealLinksThatKeepTheRestOfTheAddress(t *testing
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
 
 	// On the current month there is no link back to it.
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `href="/admin/e?releases.month=2026-08"`)
-	assert.Contains(t, body, `href="/admin/e?releases.month=2026-10"`)
-	assert.Contains(t, body, "Previous month, August 2026")
-	assert.Contains(t, body, "Next month, October 2026")
-	assert.Contains(t, body, "data-in-place")
-	assert.False(t, strings.Contains(body, ">Today</a>"))
+	p := pageOf(t, h, "/admin/e")
+	assert.True(t, hasLink(p, "Previous month, August 2026", "/admin/e?releases.month=2026-08"))
+	assert.True(t, hasLink(p, "Next month, October 2026", "/admin/e?releases.month=2026-10"))
+	assert.True(t, page.One(t, "the link to the next month", p.ByRole("link", "Next month, October 2026")).Has("data-in-place"))
+	assert.Equal(t, len(p.ByRole("link", "Today")), 0)
 
 	// On another it is there, and its address has no month, since that is the one a page opens at.
-	body = serve(h, http.MethodGet, "/admin/e?releases.month=2026-12").Body.String()
-	assert.Contains(t, body, `href="/admin/e?releases.month=2027-01"`) // the year changes
-	assert.Contains(t, body, `href="/admin/e?releases.month=2026-11"`)
-	assert.Contains(t, body, `href="/admin/e" data-in-place>Today</a>`)
+	p = pageOf(t, h, "/admin/e?releases.month=2026-12")
+	assert.True(t, hasLink(p, "Next month, January 2027", "/admin/e?releases.month=2027-01")) // the year changes
+	assert.True(t, hasLink(p, "Previous month, November 2026", "/admin/e?releases.month=2026-11"))
+	assert.True(t, hasLink(p, "Today", "/admin/e"))
+	assert.True(t, page.One(t, "the Today link", p.ByRole("link", "Today")).Has("data-in-place"))
 }
 
 func TestAnotherPartOfTheAddressIsKeptByTheLinks(t *testing.T) {
@@ -179,8 +197,8 @@ func TestAnotherPartOfTheAddressIsKeptByTheLinks(t *testing.T) {
 		webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember},
 		webui.List[story]{Title: "Latest", Loader: (&listLoader{}).loader(), PageSize: 2, Headline: pTitle},
 	})
-	body := serve(h, http.MethodGet, "/admin/e?latest.limit=4").Body.String()
-	assert.Contains(t, body, `href="/admin/e?latest.limit=4&amp;releases.month=2026-10"`)
+	p := pageOf(t, h, "/admin/e?latest.limit=4")
+	assert.True(t, hasLink(p, "Next month, October 2026", "/admin/e?latest.limit=4&releases.month=2026-10"))
 }
 
 func TestTheDayThatIsNowIsMarkedByMoreThanColour(t *testing.T) {
@@ -188,15 +206,13 @@ func TestTheDayThatIsNowIsMarkedByMoreThanColour(t *testing.T) {
 
 	src := &calendarSource{}
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `aria-current="date"`), 1)
-	cell := calendarCell(body, 15, false)
-	assert.Contains(t, cell, "cal-today")
-	assert.Contains(t, cell, `aria-current="date"`)
+	p := pageOf(t, h, "/admin/e")
+	assert.Equal(t, len(p.ByAttr("aria-current", "date")), 1)
+	assert.Equal(t, calendarDay(t, p, "15 September 2026").Attr("aria-current"), "date") // the day that is now says so, to a reader
 
 	// With the clock left alone, the day is the one that the clock says, and some day of the month it shows has the mark.
 	clock := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen})
-	assert.Equal(t, strings.Count(serve(clock, http.MethodGet, "/admin/e").Body.String(), `aria-current="date"`), 1)
+	assert.Equal(t, len(pageOf(t, clock, "/admin/e").ByAttr("aria-current", "date")), 1)
 }
 
 func TestADayIsToldInFullWithHowManyItemsAreOnIt(t *testing.T) {
@@ -204,20 +220,18 @@ func TestADayIsToldInFullWithHowManyItemsAreOnIt(t *testing.T) {
 
 	src := &calendarSource{}
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
-	assert.Contains(t, calendarCell(body, 3, false), "Thursday 3 September 2026, 2 items")
-	assert.Contains(t, calendarCell(body, 3, false), "cal-marked")
-	assert.Contains(t, calendarCell(body, 15, false), "Tuesday 15 September 2026, 1 item")
-	assert.Contains(t, calendarCell(body, 4, false), "Friday 4 September 2026</span>") // none: the date and nothing more
-	assert.False(t, strings.Contains(calendarCell(body, 4, false), "cal-marked"))
+	assert.Equal(t, calendarDay(t, p, "3 September 2026").Text(), "Thursday 3 September 2026, 2 items")
+	assert.Equal(t, calendarDay(t, p, "15 September 2026").Text(), "Tuesday 15 September 2026, 1 item")
+	assert.Equal(t, calendarDay(t, p, "4 September 2026").Text(), "Friday 4 September 2026") // none: the date and nothing more
 
 	// A moment is of the day it is on in UTC: 23:30 at UTC-5 on the 20th is the 21st.
-	assert.Contains(t, calendarCell(body, 21, false), "Monday 21 September 2026, 1 item")
-	assert.False(t, strings.Contains(calendarCell(body, 20, false), "cal-marked"))
+	assert.Equal(t, calendarDay(t, p, "21 September 2026").Text(), "Monday 21 September 2026, 1 item")
+	assert.Equal(t, calendarDay(t, p, "20 September 2026").Text(), "Sunday 20 September 2026")
 
 	// A day of another month that is not in the grid is nowhere in it, whatever the source returned.
-	assert.Equal(t, strings.Count(body, "cal-marked"), 4) // the 3rd, 15th, 21st, and 2 October; the source's November is not of this grid
+	assert.Equal(t, marked(p), 4) // the 3rd, 15th, 21st, and 2 October; the source's November is not of this grid
 }
 
 func TestADayWithItemsLeadsWhereOpenSaysAndADayWithNoneLeadsNowhere(t *testing.T) {
@@ -226,12 +240,15 @@ func TestADayWithItemsLeadsWhereOpenSaysAndADayWithNoneLeadsNowhere(t *testing.T
 	src := &calendarSource{}
 	_, detail := dayPages(webui.Stack{}, nil)
 	h, _ := dayPages(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: openDay(detail)}, nil)
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
-	assert.Contains(t, calendarCell(body, 3, false), `<a class="cal-day" href="/admin/day/2026-09-03" data-in-place>`)
-	assert.Contains(t, calendarCell(body, 15, false), `href="/admin/day/2026-09-15"`)
-	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<a "))
-	assert.Contains(t, calendarCell(body, 2, true), `href="/admin/day/2026-10-02"`)
+	third := calendarDay(t, p, "3 September 2026").Links()
+	assert.Equal(t, len(third), 1)
+	assert.Equal(t, third[0].Href, "/admin/day/2026-09-03")
+	assert.True(t, page.One(t, "the day's link", calendarDay(t, p, "3 September 2026").ByRole("link", "")).Has("data-in-place"))
+	assert.Equal(t, calendarDay(t, p, "15 September 2026").Links()[0].Href, "/admin/day/2026-09-15")
+	assert.Equal(t, len(calendarDay(t, p, "4 September 2026").Links()), 0)
+	assert.Equal(t, calendarDay(t, p, "2 October 2026").Links()[0].Href, "/admin/day/2026-10-02")
 }
 
 // A day that leads to a page that refuses the visitor is a day and nothing more: a link they cannot follow is not offered.
@@ -247,10 +264,10 @@ func TestADayWhosePageRefusesTheVisitorIsNotALink(t *testing.T) {
 		return nil
 	}
 	h, _ := dayPages(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: openDay(detail)}, refuses)
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(body, `href="/admin/day/2026-09-03"`))
-	assert.Contains(t, calendarCell(body, 3, false), "Thursday 3 September 2026, 2 items") // still marked, and still told
-	assert.Contains(t, body, `href="/admin/day/2026-09-15"`)
+	p := pageOf(t, h, "/admin/e")
+	assert.Equal(t, len(calendarDay(t, p, "3 September 2026").Links()), 0)
+	assert.Equal(t, calendarDay(t, p, "3 September 2026").Text(), "Thursday 3 September 2026, 2 items") // still marked, and still told
+	assert.True(t, len(calendarDay(t, p, "15 September 2026").Links()) == 1)
 }
 
 func TestAWeekBeginsOnSundayOrHasItsNumberShown(t *testing.T) {
@@ -258,17 +275,19 @@ func TestAWeekBeginsOnSundayOrHasItsNumberShown(t *testing.T) {
 
 	src := &calendarSource{}
 	sunday := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, SundayFirst: true})
-	body := serve(sunday, http.MethodGet, "/admin/e").Body.String()
-	assert.True(t, strings.Index(body, `abbr="Sunday"`) < strings.Index(body, `abbr="Monday"`))
+	p := pageOf(t, sunday, "/admin/e")
+	assert.Equal(t, page.One(t, "the grid", p.ByRole("table", "September 2026")).Headers()[0], "Sunday")
 	spans := src.asked()
 	assert.True(t, spans[0].From.Equal(time.Date(2026, time.August, 30, 0, 0, 0, 0, time.UTC))) // the Sunday before the 1st
-	assert.False(t, strings.Contains(body, `class="cal-wk"`))
+	assert.Equal(t, len(p.ByRole("rowheader", "")), 0)
 
 	numbered := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, WeekNumbers: true})
-	body = serve(numbered, http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `<th scope="row" class="cal-wk">`), 5)
-	assert.Contains(t, body, `<th scope="row" class="cal-wk"><span class="sr-only">Week </span>36</th>`) // the week of 31 August
-	assert.Contains(t, body, `<span class="sr-only">Week </span>40</th>`)                                // and of 28 September
+	weeks := pageOf(t, numbered, "/admin/e").ByRole("rowheader", "")
+	var got []string
+	for _, w := range weeks {
+		got = append(got, w.Text())
+	}
+	assert.DeepEqual(t, got, []string{"Week 36", "Week 37", "Week 38", "Week 39", "Week 40"}) // the week of 31 August to the week of 28 September
 }
 
 func TestACalendarRefreshesAsAPanelOfItsOwn(t *testing.T) {
@@ -285,10 +304,11 @@ func TestACalendarRefreshesAsAPanelOfItsOwn(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body := rec.Body.String()
-	assert.Contains(t, body, ">October 2026</h3>")
-	assert.Contains(t, body, `data-view="p.0"`)
-	assert.False(t, strings.Contains(body, "<html"))
-	assert.False(t, strings.Contains(body, "Latest"))
+	assert.True(t, page.IsFragment(body))
+	p := page.Parse(t, body)
+	assert.Equal(t, len(p.ByRole("heading", "October 2026")), 1)
+	assert.Equal(t, page.One(t, "the panel", p.Views()).Attr("data-view"), "p.0")
+	assert.Equal(t, len(p.ByRole("heading", "Latest")), 0)
 }
 
 func TestAFailingCalendarLoadFailsThePanelAndNotThePage(t *testing.T) {
@@ -302,9 +322,10 @@ func TestAFailingCalendarLoadFailsThePanelAndNotThePage(t *testing.T) {
 	})
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, rec.Body.String(), "Could not load")
+	p := page.Parse(t, rec.Body.String())
+	assert.Contains(t, p.Root().Text(), "Could not load")
 	assert.False(t, strings.Contains(rec.Body.String(), "secret-bucket"))
-	assert.False(t, strings.Contains(rec.Body.String(), `class="cal"`))
+	assert.Equal(t, len(p.ByRole("table", "")), 0)
 }
 
 func TestAMonthWithNothingOnItIsStillAMonth(t *testing.T) {
@@ -314,9 +335,9 @@ func TestAMonthWithNothingOnItIsStillAMonth(t *testing.T) {
 		Title: "Releases", Date: releaseWhen, Today: midSeptember,
 		Load: func(context.Context, webui.Span) ([]release, webui.Loaded) { return nil, webui.Ready() },
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `class="cal"`)
-	assert.False(t, strings.Contains(body, "cal-marked"))
+	p := pageOf(t, h, "/admin/e")
+	assert.Equal(t, len(p.ByRole("table", "September 2026")), 1)
+	assert.Equal(t, marked(p), 0)
 }
 
 func TestTwoCalendarsOfAPageKeepTheirMonthsApart(t *testing.T) {
@@ -328,11 +349,11 @@ func TestTwoCalendarsOfAPageKeepTheirMonthsApart(t *testing.T) {
 		webui.Calendar[release]{Load: src.load, Date: releaseWhen, Today: midSeptember},
 		webui.Calendar[release]{Title: "Deadlines", Load: src.load, Date: releaseWhen, Today: midSeptember},
 	})
-	body := serve(h, http.MethodGet, "/admin/e?calendar-2.month=2026-11").Body.String()
-	assert.Contains(t, body, "September 2026")
-	assert.Contains(t, body, "November 2026")
-	assert.Contains(t, body, `href="/admin/e?calendar-2.month=2026-11&amp;calendar.month=2026-10"`)
-	assert.Contains(t, body, "deadlines.month=2026-10")
+	p := pageOf(t, h, "/admin/e?calendar-2.month=2026-11")
+	assert.Equal(t, len(p.ByRole("table", "September 2026")), 2) // the two that are not told apart by a title are told apart by their numbers in the address
+	assert.Equal(t, len(p.ByRole("table", "November 2026")), 1)
+	assert.True(t, hasLink(p, "Next month, October 2026", "/admin/e?calendar-2.month=2026-11&calendar.month=2026-10"))
+	assert.True(t, len(p.ByAttr("href", "/admin/e?calendar-2.month=2026-11&deadlines.month=2026-10")) > 0)
 }
 
 func TestACalendarThatCannotBeDrawnIsACompileError(t *testing.T) {
@@ -367,12 +388,15 @@ func TestADayThatHasItemsCanLeadToAnotherSite(t *testing.T) {
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: webui.Href[webui.Day]{URL: func(d webui.Day) string {
 		return "https://example.com/releases/" + d.Date.Format("2006-01-02")
 	}}})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
-	marked := calendarCell(body, 3, false)
-	assert.Contains(t, marked, `href="https://example.com/releases/2026-09-03" target="_blank" rel="noopener noreferrer"`)
-	assert.Contains(t, marked, ", opens in a new tab")
-	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<a ")) // nothing on it: not a link
+	day := calendarDay(t, p, "3 September 2026")
+	link := page.One(t, "the day's link", day.ByRole("link", ""))
+	assert.Equal(t, link.Attr("href"), "https://example.com/releases/2026-09-03")
+	assert.Equal(t, link.Attr("target"), "_blank")
+	assert.Equal(t, link.Attr("rel"), "noopener noreferrer")
+	assert.Contains(t, day.Text(), ", opens in a new tab")                 // and a reader is told so
+	assert.Equal(t, len(calendarDay(t, p, "4 September 2026").Links()), 0) // nothing on it: not a link
 }
 
 // A click on a day can be an Action: a day with items is a button that posts its date, and the action is run with the Day, which is found again in the grid with the items
@@ -395,12 +419,16 @@ func TestAnActionOnADayRunsWithTheDayAndItsItems(t *testing.T) {
 	}
 	src := &calendarSource{}
 	h := editorApp(webui.Calendar[release]{Title: "Releases", Load: src.load, Date: releaseWhen, Today: midSeptember, Open: open})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
+	p := pageOf(t, h, "/admin/e")
 
-	assert.Contains(t, body, `<input type="hidden" name="_view" value="p">`)
-	assert.Contains(t, calendarCell(body, 3, false), `<button class="cal-day cal-button" type="submit" name="_act" value="click:0:2026-09-03">`)
-	assert.False(t, strings.Contains(calendarCell(body, 4, false), "<button"))  // nothing on it
-	assert.False(t, strings.Contains(calendarCell(body, 15, false), "<button")) // its Guard refuses it
+	view, _ := p.Field("_view")
+	assert.Equal(t, view.Value, "p")
+	buttons := calendarDay(t, p, "3 September 2026").ByRole("button", "")
+	assert.Equal(t, len(buttons), 1)
+	assert.Equal(t, buttons[0].Attr("name"), "_act")
+	assert.Equal(t, buttons[0].Attr("value"), "click:0:2026-09-03")
+	assert.Equal(t, len(calendarDay(t, p, "4 September 2026").ByRole("button", "")), 0)  // nothing on it
+	assert.Equal(t, len(calendarDay(t, p, "15 September 2026").ByRole("button", "")), 0) // its Guard refuses it
 
 	assert.Equal(t, post(h, "/admin/e", formValues("_view", "p", "_act", "click:0:2026-09-03")).Code, http.StatusSeeOther)
 	assert.Equal(t, len(ran), 1)
