@@ -43,3 +43,39 @@ jobs:
 
       - name: Test
         run: make test
+
+  # What the scripts and the stylesheet do, in a browser, against the demo: go test has none to run them in.
+  browser:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            tools/go.sum
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/e2e/package-lock.json
+
+      - name: Build the demo
+        run: go build -o tools/e2e/demo ./cmd/demo
+
+      - name: Install the browser
+        working-directory: tools/e2e
+        run: npm ci && npx playwright install --with-deps chromium
+
+      - name: Browser suite
+        working-directory: tools/e2e
+        run: npx playwright test --trace off

@@ -1,4 +1,4 @@
-.PHONY: format lint test help generate assets monaco build run
+.PHONY: format lint test e2e help generate assets monaco build run
 
 # Trees this library owns. A missing path fails the whole target.
 SOURCE_CODE ?= ./cmd/... ./internal/... ./pkg/... ./test/...
@@ -23,6 +23,12 @@ lint: generate ## Run go vet, module verify, vuln scan, golangci
 
 test: generate ## Run tests
 	go test -race -shuffle=on -timeout 180s $(SOURCE_CODE)
+
+# The browser suite: what the scripts and the stylesheet do, in headless Chromium against the demo (tools/e2e). It is not part of test: it needs Node and a browser,
+# which go test does not, and it is a CI job of its own. The first time on a machine, `npx playwright install chromium` in tools/e2e fetches the browser.
+e2e: generate ## Run the browser suite against the demo (needs node and Chromium; see tools/e2e)
+	go build -o tools/e2e/demo ./cmd/demo
+	cd tools/e2e && npm ci && npx playwright test --trace off
 
 ASSETS := internal/render/assets
 
