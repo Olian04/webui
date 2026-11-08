@@ -266,3 +266,16 @@ func items(p *page.Page) []string {
 	}
 	return out
 }
+
+// moment is a time that a page shows: the instant it holds, and the text a visitor reads for it.
+type moment struct{ At, Text string }
+
+// moments are the times in the main part of the page, in the order they are met.
+func moments(t *testing.T, p *page.Page) []moment {
+	t.Helper()
+	var out []moment
+	for _, e := range page.One(t, "main", p.ByRole("main", "")).ByAttr("datetime", "") {
+		out = append(out, moment{At: e.Attr("datetime"), Text: e.Text()})
+	}
+	return out
+}

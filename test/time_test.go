@@ -3,12 +3,14 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // object has a moment that is always a time.Time, and one that may be absent: the zero time is not set for the first, and nil is for the second.
@@ -59,14 +61,17 @@ func objectsApp(seen *webui.PagedQuery) http.Handler {
 func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 	t.Parallel()
 
-	body := serve(objectsApp(&webui.PagedQuery{}), http.MethodGet, "/rows").Body.String()
+	p := pageOf(t, objectsApp(&webui.PagedQuery{}), "/rows")
+	got := moments(t, p)
 
-	assert.Contains(t, body, `<time datetime="2026-10-09T07:00:00Z">2026-10-09 07:00</time>`) // a zone is converted
-	assert.Contains(t, body, `<time datetime="2026-10-10T00:00:00Z">2026-10-10 00:00</time>`) // midnight is a moment like any other
-	assert.Contains(t, body, `<time datetime="2026-10-09T10:00:00Z">2026-10-09 10:00</time>`) // 1791540000
+	assert.True(t, slices.Contains(got, moment{"2026-10-09T07:00:00Z", "2026-10-09 07:00"})) // a zone is converted
+	assert.True(t, slices.Contains(got, moment{"2026-10-10T00:00:00Z", "2026-10-10 00:00"})) // midnight is a moment like any other
+	assert.True(t, slices.Contains(got, moment{"2026-10-09T10:00:00Z", "2026-10-09 10:00"})) // 1791540000
 	// The zero time and nil are not set: they show as nothing, and are no moment in 0001 or 1970.
-	assert.False(t, strings.Contains(body, "0001-01-01"))
-	assert.False(t, strings.Contains(body, "1970-01-01"))
+	for _, m := range got {
+		assert.False(t, strings.HasPrefix(m.At, "0001") || strings.HasPrefix(m.At, "1970"))
+	}
+	assert.Equal(t, len(got), 6)
 }
 
 func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
@@ -111,10 +116,12 @@ func TestALoadTableIsHandedAMomentsBoundsAsUnixSeconds(t *testing.T) {
 func TestAMomentInAFormIsReadOnlyOutputAndAnEmptyOneIsADash(t *testing.T) {
 	t.Parallel()
 
-	body := serve(objectsApp(&webui.PagedQuery{}), http.MethodGet, "/one").Body.String()
-	assert.Contains(t, body, `<time datetime="2026-10-09T11:27:00Z">2026-10-09 11:27</time>`)
-	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // Created is nil: not set
-	assert.False(t, strings.Contains(body, "<input class=\"input\""))
+	p := pageOf(t, objectsApp(&webui.PagedQuery{}), "/one")
+	assert.DeepEqual(t, moments(t, p), []moment{{"2026-10-09T11:27:00Z", "2026-10-09 11:27"}})
+	assert.Equal(t, len(p.ByText("empty")), 1) // Created is nil: not set
+	for _, f := range p.Fields() {
+		assert.Equal(t, f.Type, "hidden") // nothing to edit
+	}
 }
 
 // editMoments is a form whose two moments can be changed. stored is what the last
@@ -139,14 +146,19 @@ func editMoments(stored *object) http.Handler {
 func TestAMomentWithAStoreIsADateAndTimePickerInUTC(t *testing.T) {
 	t.Parallel()
 
-	body := serve(editMoments(&object{}), http.MethodGet, "/edit").Body.String()
+	p := pageOf(t, editMoments(&object{}), "/edit")
 
 	// The native picker, holding the moment in UTC to the second: not the text a table shows.
-	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T11:27:00" step="1"`)
-	assert.Contains(t, body, `type="datetime-local" value="2026-10-09T10:00:00" step="1"`) // 1791540000
-	assert.Equal(t, strings.Count(body, "<time"), 1)                                       // the status bar's build time, and no moment of the form
+	for name, want := range map[string]string{"f0": "2026-10-09T11:27:00", "f1": "2026-10-09T10:00:00"} { // 1791540000
+		f, ok := p.Field(name)
+		assert.True(t, ok)
+		assert.Equal(t, f.Type, "datetime-local")
+		assert.Equal(t, f.Value, want)
+		assert.Equal(t, page.One(t, name, p.ByAttr("name", name)).Attr("step"), "1")
+	}
+	assert.Equal(t, len(moments(t, p)), 0) // no moment is shown as text beside a picker
 	// What the picker means is said once, beside the label.
-	assert.Contains(t, body, `<span class="tip-item">Date and time in UTC</span>`)
+	assert.Equal(t, len(p.ByAllText("Date and time in UTC")), 2)
 }
 
 func TestAMomentIsStoredInUTCAndAClearedPickerIsNotSet(t *testing.T) {
@@ -217,9 +229,11 @@ func TestATimeThatIsRequiredRefusesAClearedPicker(t *testing.T) {
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/edit", View: form}}}.MustCompile("")
 
-	body := serve(h, http.MethodGet, "/edit").Body.String()
-	assert.Contains(t, body, `type="datetime-local" value=""`)
-	assert.Contains(t, body, `class="req"`)
+	p := pageOf(t, h, "/edit")
+	f, _ := p.Field("f0")
+	assert.Equal(t, f.Type, "datetime-local")
+	assert.Equal(t, f.Value, "")
+	assert.True(t, f.Required)
 	rec := post(h, "/edit", formValues("f0", ""))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Contains(t, rec.Body.String(), "This field is required.")
