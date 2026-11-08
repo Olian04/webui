@@ -3,12 +3,12 @@ package webui_test
 import (
 	"context"
 	"net/http"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // flags holds a yes or no that is always one of them: a bool, where an OptionalBool's is a *bool.
@@ -40,19 +40,18 @@ func TestABoolIsASwitchThatIsOnForYes(t *testing.T) {
 	t.Parallel()
 
 	h, _ := flagsApp(flags{Compress: true}, flagCompress)
-	body := serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `<label class="switch">`)
-	assert.Contains(t, body, `type="checkbox"`) // a checkbox to the browser, so it needs no script
-	assert.Contains(t, body, `role="switch"`)
-	assert.Contains(t, body, `value="true"`)
-	assert.Contains(t, body, "checked")
-	assert.False(t, strings.Contains(body, "<select")) // not the Yes/No drop-down that an OptionalBool is
-	assert.Contains(t, body, "Compress")
+	p := pageOf(t, h, "/admin/f")
+	sw := page.One(t, "the Compress switch", p.ByRole("switch", "Compress"))
+	assert.Equal(t, sw.Attr("type"), "checkbox") // a checkbox to the browser, so it needs no script
+	f, _ := p.Field("f0")
+	assert.Equal(t, f.Value, "true")
+	assert.True(t, f.Checked)
+	assert.Equal(t, len(p.ByRole("combobox", "")), 0) // not the Yes/No drop-down that an OptionalBool is
 
 	h, _ = flagsApp(flags{Compress: false}, flagCompress)
-	body = serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `type="checkbox"`)
-	assert.False(t, strings.Contains(body[strings.Index(body, `type="checkbox"`):strings.Index(body, `type="checkbox"`)+120], "checked"))
+	f, _ = pageOf(t, h, "/admin/f").Field("f0")
+	assert.Equal(t, f.Type, "checkbox")
+	assert.False(t, f.Checked)
 }
 
 // An off switch is not sent at all, so a field that is absent is no, and one that says "true" is yes.
@@ -88,14 +87,16 @@ func TestAReadOnlyBoolIsAYesOrANo(t *testing.T) {
 
 	readOnly := webui.Bool[flags]{Label: "Compress", Load: func(f flags) bool { return f.Compress }}
 	h, _ := flagsApp(flags{Compress: true}, readOnly)
-	body := serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, "Yes")
-	// The only boxes in the page are the shell's own (the drawer and the top bar's menu), and not a field's.
-	body = regexp.MustCompile(`<input type="checkbox" id="(nav-toggle|top-more)"[^>]*>`).ReplaceAllString(body, "")
-	assert.False(t, strings.Contains(body, `type="checkbox"`))
+	p := pageOf(t, h, "/admin/f")
+	assert.Equal(t, len(p.ByText("Yes")), 1)
+	// Not a field's input: the page posts nothing but the view it is.
+	for _, f := range p.Fields() {
+		assert.True(t, f.Type == "hidden" || f.Name == "")
+	}
+	assert.Equal(t, len(p.ByRole("switch", "Compress")), 0)
 
 	h, _ = flagsApp(flags{Compress: false}, readOnly)
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/f").Body.String(), "No")
+	assert.Equal(t, len(pageOf(t, h, "/admin/f").ByText("No")), 1)
 }
 
 // The one accessor is written once and used where a table shows it too: Yes and No in the cells, a filter that is a choice of the two, and a file

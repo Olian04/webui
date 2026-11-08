@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // limits is what the nullable fields hold: each may be absent, and absent is not zero.
@@ -63,20 +63,24 @@ func TestAnAbsentValueIsAnEmptyInputAndAPresentOneIsFilledIn(t *testing.T) {
 	t.Parallel()
 
 	none, _ := limitsApp(limits{})
-	body := serve(none, http.MethodGet, "/admin/l").Body.String()
-	assert.Contains(t, body, `name="f0" type="number" value=""`)
-	assert.Contains(t, body, `name="f1" type="number" value=""`)
-	assert.Contains(t, body, `name="f2" type="number" value=""`)
+	p := pageOf(t, none, "/admin/l")
+	for _, name := range []string{"f0", "f1", "f2"} {
+		f, ok := p.Field(name)
+		assert.True(t, ok)
+		assert.Equal(t, f.Type, "number")
+		assert.Equal(t, f.Value, "")
+	}
 	// A choice among Yes and No, with the empty one first and neither of them chosen.
-	assert.Contains(t, body, `<option value="">—</option> <option value="true" data-badge="tone-mute">Yes</option><option value="false" data-badge="tone-mute">No</option>`)
-	assert.False(t, strings.Contains(body, "selected"))
+	paused, _ := p.Field("f3")
+	assert.DeepEqual(t, paused.Options, []page.Option{{Value: "", Text: "—"}, {Value: "true", Text: "Yes"}, {Value: "false", Text: "No"}})
+	assert.Equal(t, paused.Value, "")
 
 	some, _ := limitsApp(limits{Rate: new(0), Ratio: new(1.5), Level: new(7.0), Paused: new(false)})
-	body = serve(some, http.MethodGet, "/admin/l").Body.String()
-	assert.Contains(t, body, `name="f0" type="number" value="0"`) // zero is a value
-	assert.Contains(t, body, `name="f1" type="number" value="1.50"`)
-	assert.Contains(t, body, `name="f2" type="number" value="7"`)
-	assert.Contains(t, body, `<option value="false" data-badge="tone-mute" selected>No</option>`)
+	p = pageOf(t, some, "/admin/l")
+	for name, want := range map[string]string{"f0": "0", "f1": "1.50", "f2": "7", "f3": "false"} { // zero is a value
+		f, _ := p.Field(name)
+		assert.Equal(t, f.Value, want)
+	}
 }
 
 func TestAnEmptiedInputStoresNothingAndATypedOneStoresIt(t *testing.T) {
@@ -144,14 +148,16 @@ func TestAReadOnlyNullableFieldShowsADashForNothingAndTheValueOtherwise(t *testi
 		webui.OptionalBool[limits]{Label: "Paused", Load: func(l limits) *bool { return l.Paused }},
 	}
 	none, _ := limitsApp(limits{}, readOnly...)
-	body := serve(none, http.MethodGet, "/admin/l").Body.String()
-	assert.Equal(t, strings.Count(body, `<span class="dim" aria-hidden="true">—</span>`), 3)
-	assert.False(t, strings.Contains(body, `name="f0"`)) // none of them is an input
+	p := pageOf(t, none, "/admin/l")
+	// Each reads as empty, and none of them is an input.
+	assert.Equal(t, len(p.ByText("empty")), 3)
+	_, isInput := p.Field("f0")
+	assert.False(t, isInput)
 
 	some, _ := limitsApp(limits{Rate: new(0), Level: new(0.0), Paused: new(false)}, readOnly...)
-	body = serve(some, http.MethodGet, "/admin/l").Body.String()
-	assert.False(t, strings.Contains(body, `aria-hidden="true">—</span>`))
-	assert.Contains(t, body, ">No<")
+	p = pageOf(t, some, "/admin/l")
+	assert.Equal(t, len(p.ByText("empty")), 0)
+	assert.Equal(t, len(p.ByText("No")), 1)
 }
 
 func limitsTable(rows ...limits) http.Handler {
@@ -174,13 +180,13 @@ var someLimits = []limits{
 func TestATableShowsADashWhereThereIsNoValueAndAZeroWhereThereIsOne(t *testing.T) {
 	t.Parallel()
 
-	body := serve(limitsTable(someLimits...), http.MethodGet, "/admin/s").Body.String()
-	// The row that has nothing has a dash for each of the four, and the others have none.
-	assert.Equal(t, strings.Count(body, `<span class="dim" aria-hidden="true">—</span>`), 4+1) // and one for the ratio of c
-	assert.Contains(t, body, ">30<")
-	assert.Contains(t, body, ">0<")
-	assert.Contains(t, body, ">Yes<")
-	assert.Contains(t, body, ">No<")
+	table := page.One(t, "the table", pageOf(t, limitsTable(someLimits...), "/admin/s").ByRole("table", ""))
+	// The row that has nothing is empty in each of the four, and c is empty in its ratio only.
+	assert.DeepEqual(t, table.Rows(), [][]string{
+		{"a", "30", "0.50", "5", "Yes"},
+		{"b", "empty", "empty", "empty", "empty"},
+		{"c", "0", "empty", "0", "No"},
+	})
 }
 
 func TestAnAbsentNumberSortsBeforeEveryNumberAndIsInNoRange(t *testing.T) {

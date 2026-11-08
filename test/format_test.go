@@ -144,15 +144,27 @@ func TestAMomentReadsAsItsFormatAndStillHoldsAndSortsByTheMoment(t *testing.T) {
 	t.Parallel()
 
 	h := blobApp()
-	body := serve(h, http.MethodGet, "/admin/b").Body.String()
-	assert.Contains(t, body, `<time datetime="2026-10-09T10:00:00Z">Oct 9</time>`) // read as the format, held as the moment
-	assert.Contains(t, body, `<time datetime="2026-10-09T11:27:00Z">11h27</time>`)
+	// Read as the format, held as the moment.
+	want := []moment{{"2026-10-09T10:00:00Z", "Oct 9"}, {"2026-10-09T11:27:00Z", "11h27"}, {"2026-10-09T11:00:00Z", "Oct 9"}}
+	got := moments(t, pageOf(t, h, "/admin/b"))
+	assert.DeepEqual(t, got, want) // two Made and one Seen: the zero time is not set, so it is not handed to Format and shows as nothing
+	for _, m := range got {
+		assert.False(t, strings.HasPrefix(m.At, "0001"))
+	}
+	assert.Equal(t, len(pageOf(t, h, "/admin/b").ByText("Jan 1")), 0)
 
-	asc := serve(h, http.MethodGet, "/admin/b?blobs.sort=made").Body.String()
-	assert.True(t, strings.Index(asc, `datetime="2026-10-09T10:00:00Z"`) < strings.Index(asc, `datetime="2026-10-09T11:00:00Z"`))
-	// The zero time is not set: it is not handed to Format and shows as nothing.
-	assert.False(t, strings.Contains(body, "Jan 1"))
-	assert.Equal(t, strings.Count(body, "<time "), 4) // two Made, one Seen, and the status bar's
+	// A sort is by the moment, not by what it reads as: the two Made both read "Oct 9".
+	made := func(target string) []string {
+		var at []string
+		for _, m := range moments(t, pageOf(t, h, target)) {
+			if m.Text == "Oct 9" {
+				at = append(at, m.At)
+			}
+		}
+		return at
+	}
+	assert.DeepEqual(t, made("/admin/b?blobs.sort=made"), []string{"2026-10-09T10:00:00Z", "2026-10-09T11:00:00Z"})
+	assert.DeepEqual(t, made("/admin/b?blobs.sort=made&blobs.desc=true"), []string{"2026-10-09T11:00:00Z", "2026-10-09T10:00:00Z"})
 }
 
 type sized struct{ Size int }

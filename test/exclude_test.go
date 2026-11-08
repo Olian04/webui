@@ -3,12 +3,12 @@ package webui_test
 import (
 	"context"
 	"net/http"
-	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // columnsLeftOut is a table of devices whose columns leave themselves out of what a table does with all of them: the
@@ -49,24 +49,31 @@ func TestAColumnThatLeavesItselfOutHasNoSortLinkAndNoFilter(t *testing.T) {
 	t.Parallel()
 
 	h, _ := leftOutApp("load")
-	body := serve(h, http.MethodGet, "/admin/d").Body.String()
+	p := pageOf(t, h, "/admin/d")
+	table := page.One(t, "the table", p.ByRole("table", "Devices"))
 
 	// Sort links: ID and Occurrences. Filters: ID and IP. The status has neither.
-	assert.Equal(t, strings.Count(body, `aria-sort="none"`), 2)
-	assert.Contains(t, body, `href="/admin/d?devices.sort=id"`)
-	assert.Contains(t, body, `href="/admin/d?devices.sort=occurrences"`)
-	assert.False(t, strings.Contains(body, `devices.sort=ip`))
-	assert.False(t, strings.Contains(body, `devices.sort=status`))
+	var sorts []string
+	for _, l := range table.Links() {
+		sorts = append(sorts, l.Name+" "+l.Href)
+	}
+	assert.DeepEqual(t, sorts, []string{"ID /admin/d?devices.sort=id", "Occurrences /admin/d?devices.sort=occurrences"})
 
-	assert.Equal(t, strings.Count(body, `<details class="filter">`), 2)
-	assert.Contains(t, body, `aria-label="Filter ID"`)
-	assert.Contains(t, body, `aria-label="Filter IP"`)
-	assert.False(t, strings.Contains(body, `aria-label="Filter Occurrences"`))
-	assert.False(t, strings.Contains(body, `aria-label="Filter Status"`))
-	assert.False(t, strings.Contains(body, `devices.min.occurrences`))
+	var filters []string
+	for _, b := range table.ByRoleContaining("button", "Filter") {
+		filters = append(filters, b.Name())
+	}
+	assert.DeepEqual(t, filters, []string{"Filter ID", "Filter IP"})
+	var asked []string
+	for _, f := range p.Fields() {
+		if f.Type != "hidden" {
+			asked = append(asked, f.Name)
+		}
+	}
+	assert.DeepEqual(t, asked, []string{"devices.filter.id", "devices.filter.ip"})
 
 	// Its header is only its name.
-	assert.Contains(t, body, `<th scope="col" class=""><span class="th-in">Status </span></th>`)
+	assert.DeepEqual(t, table.Headers(), []string{"ID", "IP", "Occurrences", "Status"})
 }
 
 // The address is the visitor's to edit, so a column that is left out is not a way in: what it asks for never reaches
@@ -97,11 +104,9 @@ func TestATableThatHoldsItsRowsLeavesOutWhatAColumnLeftOut(t *testing.T) {
 
 	h, _ := leftOutApp("rows")
 	rows := func(target string) []string {
-		body := serve(h, http.MethodGet, target).Body.String()
 		var ids []string
-		for _, part := range strings.Split(body, `<tr class=""><td class="">`)[1:] {
-			id, _, _ := strings.Cut(part, `</td>`)
-			ids = append(ids, id)
+		for _, row := range page.One(t, "the table", pageOf(t, h, target).ByRole("table", "Devices")).Rows() {
+			ids = append(ids, row[0])
 		}
 		return ids
 	}
@@ -120,6 +125,7 @@ func TestLeavingAColumnOutHasNoEffectInAForm(t *testing.T) {
 
 	f := okForm()
 	f.Fields = []webui.Accessor[Device]{webui.String[Device]{Label: "IP", NoSort: true, NoFilter: true, Load: func(d Device) string { return d.Ip }, Store: func(d *Device, v string) { d.Ip = v }}}
-	body := serve(formApp(f), http.MethodGet, "/admin/device/dev1").Body.String()
-	assert.Contains(t, body, `name="f0" type="text" value="10.0.0.1"`)
+	ip, _ := pageOf(t, formApp(f), "/admin/device/dev1").Field("f0")
+	assert.Equal(t, ip.Type, "text")
+	assert.Equal(t, ip.Value, "10.0.0.1")
 }

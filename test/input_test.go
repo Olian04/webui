@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type contact struct {
@@ -45,18 +46,29 @@ func TestAStringInputIsTheInputOfItsKindAndAnEmptyColorIsBlack(t *testing.T) {
 	t.Parallel()
 
 	h, _ := contactApp(contact{Email: "a@example.com", Site: "https://example.com", Phone: "+46 8 123"})
-	body := serve(h, http.MethodGet, "/admin/c").Body.String()
-	assert.Contains(t, body, `name="f0" type="email" value="a@example.com"`)
-	assert.Contains(t, body, `name="f1" type="url" value="https://example.com"`)
-	assert.Contains(t, body, `name="f2" type="tel" value="+46 8 123"`)
-	assert.Contains(t, body, `name="f3" type="color" value="#000000"`) // a picker cannot be empty
+	p := pageOf(t, h, "/admin/c")
+	for _, want := range []page.Field{
+		{Name: "f0", Type: "email", Value: "a@example.com"},
+		{Name: "f1", Type: "url", Value: "https://example.com"},
+		{Name: "f2", Type: "tel", Value: "+46 8 123"},
+		{Name: "f3", Type: "color", Value: "#000000"}, // a picker cannot be empty
+	} {
+		got, ok := p.Field(want.Name)
+		assert.True(t, ok)
+		assert.DeepEqual(t, got, want)
+	}
 	// The browser says what the server would say, for the two it checks.
-	assert.Contains(t, body, `data-msg-type-mismatch="Enter an email address."`)
-	assert.Contains(t, body, `data-msg-type-mismatch="Enter a web address that starts with http:// or https://."`)
-	assert.Contains(t, body, `<span class="tip-item">A web address, http or https</span>`)
+	for _, name := range []string{"f0", "f1"} {
+		said := page.One(t, name, p.ByAttr("name", name)).Attr("data-msg-type-mismatch")
+		assert.True(t, said != "")
+		refused := page.Parse(t, post(h, "/admin/c", formValues(name, "not valid")).Body.String())
+		assert.True(t, strings.Contains(refused.Root().AllText(), said))
+	}
+	assert.Equal(t, len(p.ByAllText("A web address, http or https")), 1)
 
 	set, _ := contactApp(contact{Color: "#2f9e8f"}, contactColor)
-	assert.Contains(t, serve(set, http.MethodGet, "/admin/c").Body.String(), `name="f0" type="color" value="#2f9e8f"`)
+	color, _ := pageOf(t, set, "/admin/c").Field("f0")
+	assert.DeepEqual(t, color, page.Field{Name: "f0", Type: "color", Value: "#2f9e8f"})
 }
 
 func TestTheServerHoldsAValueToTheKindOfItsInput(t *testing.T) {
@@ -96,9 +108,10 @@ func TestAnInputKindIsHeldToTheOtherRulesToo(t *testing.T) {
 	email := webui.Email[contact]{Label: "Email", Required: true, Rules: webui.StringRules{MaxLen: 20, EndsWith: ".com"},
 		Load: func(c contact) string { return c.Email }, Store: func(c *contact, v string) { c.Email = v }}
 	h, saved := contactApp(contact{}, email)
-	body := serve(h, http.MethodGet, "/admin/c").Body.String()
-	assert.Contains(t, body, `type="email"`)
-	assert.Contains(t, body, `maxlength="20"`)
+	p := pageOf(t, h, "/admin/c")
+	f, _ := p.Field("f0")
+	assert.Equal(t, f.Type, "email")
+	assert.Equal(t, page.One(t, "the email", p.ByAttr("name", "f0")).Attr("maxlength"), "20")
 
 	assert.Contains(t, post(h, "/admin/c", formValues("f0", "")).Body.String(), "This field is required.")
 	assert.Contains(t, post(h, "/admin/c", formValues("f0", "someone@example.org")).Body.String(), "Must end with")
@@ -167,12 +180,15 @@ func TestADateOnlyFieldIsADateInputWithADayInIt(t *testing.T) {
 	ends := time.Date(2027, 1, 15, 0, 0, 0, 0, time.UTC)
 	day := time.Date(2026, 10, 9, 11, 27, 0, 0, time.UTC) // a time of day is shown as the day it is on
 	h, _ := dayApp(contact{Ends: ends, Day: &day})
-	body := serve(h, http.MethodGet, "/admin/d").Body.String()
-	assert.Contains(t, body, `name="f0" type="date" value="2027-01-15"`)
-	assert.Contains(t, body, `name="f1" type="date" value="2026-10-09"`)
-	assert.False(t, strings.Contains(body, `step="1"`))
-	assert.Contains(t, body, `<span class="tip-item">Date in UTC</span>`)
-	assert.False(t, strings.Contains(body, "Date and time in UTC"))
+	p := pageOf(t, h, "/admin/d")
+	for name, want := range map[string]string{"f0": "2027-01-15", "f1": "2026-10-09"} {
+		f, _ := p.Field(name)
+		assert.Equal(t, f.Type, "date")
+		assert.Equal(t, f.Value, want)
+		assert.False(t, page.One(t, name, p.ByAttr("name", name)).Has("step")) // no seconds to pick
+	}
+	assert.Equal(t, len(p.ByAllText("Date in UTC")), 2)
+	assert.Equal(t, len(p.ByAllText("Date and time in UTC")), 0)
 }
 
 func TestADateOnlyFieldStoresMidnightUTC(t *testing.T) {
