@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type task struct {
@@ -60,23 +61,30 @@ func TestASelectThatIsEditedIsAListToChooseFrom(t *testing.T) {
 	t.Parallel()
 
 	var saved task
-	body := serve(taskApp(task{Name: "a", Status: []string{"done"}, Labels: []string{"bug", "docs"}}, &saved), http.MethodGet, "/admin/t").Body.String()
+	p := pageOf(t, taskApp(task{Name: "a", Status: []string{"done"}, Labels: []string{"bug", "docs"}}, &saved), "/admin/t")
 
 	// One value: a drop-down list, with the choice that is held selected. It is required, so the
 	// empty option asks for a choice.
-	assert.Contains(t, body, `<select data-select id="p-f1" class="input" name="f1" required data-msg-value-missing="This field is required.">`)
-	assert.Contains(t, body, `<option value="">Choose…</option>`)
-	assert.Contains(t, body, `<option value="done" data-badge="tone-ok" selected>Done</option>`)
-	assert.Contains(t, body, `<option value="open" data-badge="tone-warn">Open</option>`) // an option says its label
-	assert.False(t, strings.Contains(body, `<option value="open" selected>`))
+	status, _ := p.Field("f1")
+	assert.Equal(t, status.Type, "select")
+	assert.True(t, status.Required)
+	assert.Equal(t, page.One(t, "the status control", p.ByAttr("name", "f1")).Attr("data-msg-value-missing"), "This field is required.")
+	assert.DeepEqual(t, option(status, ""), page.Option{Value: "", Text: "Choose…"})
+	assert.True(t, option(status, "done").Selected)
+	assert.Equal(t, option(status, "open").Text, "Open") // an option says its label
+	assert.False(t, option(status, "open").Selected)
 
 	// Any number: a list, with each that is held selected, and a hint on how to choose several.
-	assert.Contains(t, body, `name="f2" multiple size="3"`)
-	assert.Contains(t, body, `<option value="bug" data-badge="tone-mute" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui" data-badge="tone-mute">UI</option>`)
-	assert.Contains(t, body, `<option value="docs" data-badge="tone-mute" selected>docs</option>`)
-	assert.Contains(t, body, "Hold Ctrl or ⌘ to choose more than one")
-	assert.False(t, strings.Contains(body, `<option value="">`+"—")) // a list of several has no empty option
+	labels := page.One(t, "the labels control", p.ByAttr("name", "f2"))
+	assert.True(t, labels.Has("multiple"))
+	assert.Equal(t, labels.Attr("size"), "3")
+	choice, _ := p.Field("f2")
+	assert.True(t, option(choice, "bug").Selected)
+	assert.False(t, option(choice, "ui").Selected)
+	assert.Equal(t, option(choice, "ui").Text, "UI")
+	assert.True(t, option(choice, "docs").Selected)
+	assert.Contains(t, p.Root().AllText(), "Hold Ctrl or ⌘ to choose more than one")
+	assert.False(t, hasOption(choice, "")) // a list of several has no empty option
 }
 
 func TestASelectThatIsNotRequiredCanBeLeftEmpty(t *testing.T) {
@@ -84,14 +92,15 @@ func TestASelectThatIsNotRequiredCanBeLeftEmpty(t *testing.T) {
 
 	optional := taskStatus
 	optional.Required = false
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
 		Load:   func(context.Context) (task, webui.Loaded) { return task{Name: "a"}, webui.Ready() },
 		Fields: []webui.Accessor[task]{optional},
 		Submit: webui.Action[task]{Run: func(context.Context, task) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	}}
-	body := serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="">—</option>`)
-	assert.False(t, strings.Contains(body, " required"))
+	p := pageOf(t, webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin"), "/admin/t")
+	status, _ := p.Field("f0")
+	assert.Equal(t, option(status, "").Text, "—")
+	assert.False(t, status.Required)
 }
 
 func TestWhatWasChosenIsStoredAsAListOfTheValues(t *testing.T) {
@@ -154,26 +163,34 @@ func TestARejectedSubmissionKeepsWhatWasChosen(t *testing.T) {
 	var saved task
 	// Status is missing, so it is refused; what was chosen in the labels is shown again.
 	_, body := submitTask(taskApp(task{Name: "a", Labels: []string{"docs"}}, &saved), url.Values{"f1": {""}, "f2": {"bug", "ui"}})
-	assert.Contains(t, body, `<option value="bug" data-badge="tone-mute" selected>bug</option>`)
-	assert.Contains(t, body, `<option value="ui" data-badge="tone-mute" selected>UI</option>`)
-	assert.False(t, strings.Contains(body, `<option value="docs" selected>`))
-	assert.Contains(t, body, `aria-invalid="true"`)
+	p := page.Parse(t, body)
+	labels, _ := p.Field("f2")
+	assert.True(t, option(labels, "bug").Selected)
+	assert.True(t, option(labels, "ui").Selected)
+	assert.False(t, option(labels, "docs").Selected)
+	assert.True(t, len(p.ByAttr("aria-invalid", "true")) > 0)
 }
 
 func TestASelectIsMarkedForTheScriptThatTurnsItIntoADropDown(t *testing.T) {
 	t.Parallel()
 
 	var saved task
-	body := serve(taskApp(task{Name: "a", Status: []string{"done"}, Labels: []string{"bug"}}, &saved), http.MethodGet, "/admin/t").Body.String()
+	p := pageOf(t, taskApp(task{Name: "a", Status: []string{"done"}, Labels: []string{"bug"}}, &saved), "/admin/t")
 
 	// The script replaces the native control with a drop-down that shows the choices as badges,
-	// so it needs the select marked, each option's tone, and the label's id to name the popup.
-	// Without the script the same markup is the native control.
-	assert.Equal(t, 2, strings.Count(body, "<select data-select "))
-	assert.Contains(t, body, `<option value="open" data-badge="tone-warn">Open</option>`)
-	assert.Contains(t, body, `<option value="done" data-badge="tone-ok" selected>Done</option>`)
-	assert.Contains(t, body, `<option value="later" data-badge="tone-mute">later</option>`) // no tone: muted
-	assert.Contains(t, body, `<label class="lbl" id="p-f1-label" for="p-f1">`)
+	// so it needs the select marked, and each option's tone.
+	// Without the script the same markup is the native control, named by its label.
+	assert.Equal(t, len(p.ByAttr("data-select", "")), 2)
+	tones := map[string]string{}
+	for _, o := range p.ByRole("option", "") {
+		if tone := o.Attr("data-badge"); tone != "" {
+			tones[o.Attr("value")] = tone
+		}
+	}
+	assert.Equal(t, tones["open"], "tone-warn")
+	assert.Equal(t, tones["done"], "tone-ok")
+	assert.Equal(t, tones["later"], "tone-mute") // no tone: muted
+	assert.Equal(t, page.One(t, "the status control", p.ByLabel("Status")).Tag(), "select")
 }
 
 func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T) {
@@ -190,13 +207,24 @@ func TestASelectThatIsReadIsABadgeForEachValueInTheToneOfItsOption(t *testing.T)
 		}},
 		Columns: []webui.Accessor[task]{taskName, taskStatus, taskLabels},
 	}}
-	body := serve(webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
+	p := pageOf(t, webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), "/admin/t")
 
-	assert.Contains(t, body, `<span class="badge tone-warn"><span class="dot" aria-hidden="true"></span>Open</span>`) // its label, its tone
-	assert.Contains(t, body, `<span class="badges">`)
-	assert.Equal(t, strings.Count(body, `class="badge tone-mute"`), 3) // bug and UI, and the value that is no option
-	assert.Contains(t, body, `>UI</span>`)
-	assert.Contains(t, body, `>unlisted</span>`) // a value the select does not know is drawn as it is, neutral
+	// A badge for each value, by its label; a value the select does not know is drawn as it is. The tone is the colour, and the dot that carries it is not read.
+	cells := page.One(t, "the table", p.ByRole("table", "Tasks")).ByRole("cell", "")
+	badges := func(c page.El) []string { // each value is a badge of its own
+		var out []string
+		for _, group := range c.Children() {
+			for _, b := range group.Children() {
+				out = append(out, b.Text())
+			}
+		}
+		return out
+	}
+	assert.DeepEqual(t, badges(cells[1]), []string{"Open"})
+	assert.DeepEqual(t, badges(cells[2]), []string{"bug", "UI"})
+	assert.DeepEqual(t, badges(cells[4]), []string{"unlisted"}) // a value the select does not know is drawn as it is
+	assert.Equal(t, cells[5].Text(), "")                        // and none is nothing, with a dash to the eye
+	assert.Equal(t, cells[7].Text(), "")
 }
 
 func TestASelectInAFormThatCannotBeEditedIsReadAndAnEmptyOneIsADash(t *testing.T) {
@@ -208,19 +236,19 @@ func TestASelectInAFormThatCannotBeEditedIsReadAndAnEmptyOneIsADash(t *testing.T
 		},
 		Fields: []webui.Accessor[task]{taskName, taskStatus, taskLabels}, // no Submit: read-only
 	}}
-	body := serve(webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), http.MethodGet, "/admin/t").Body.String()
-	assert.False(t, strings.Contains(body, "<select"))
-	assert.Contains(t, body, `tone-ok"><span class="dot" aria-hidden="true"></span>Done</span>`)
-	assert.Contains(t, body, `<span class="dim" aria-hidden="true">—</span>`) // no labels
+	p := pageOf(t, webui.App{Pages: webui.Pages{read}}.MustCompile("/admin"), "/admin/t")
+	assert.Equal(t, len(p.ByRole("combobox", ""))+len(p.ByRole("listbox", "")), 0)
+	assert.Contains(t, p.Root().Text(), "Done")
+	assert.Contains(t, p.Root().AllText(), "—") // no labels: a dash
 }
 
 func TestASingleSelectHandedSeveralValuesShowsTheFirstWhenItIsEdited(t *testing.T) {
 	t.Parallel()
 
 	var saved task
-	body := serve(taskApp(task{Name: "a", Status: []string{"later", "done"}}, &saved), http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="later" data-badge="tone-mute" selected>later</option>`)
-	assert.False(t, strings.Contains(body, `<option value="done" selected>`))
+	status, _ := pageOf(t, taskApp(task{Name: "a", Status: []string{"later", "done"}}, &saved), "/admin/t").Field("f1")
+	assert.True(t, option(status, "later").Selected)
+	assert.False(t, option(status, "done").Selected)
 }
 
 func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
@@ -230,18 +258,18 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 		{Name: "one", Labels: []string{"bug"}}, {Name: "two", Labels: []string{"bug", "ui"}}, {Name: "three", Labels: []string{"docs"}},
 		{Name: "four"}, {Name: "five", Labels: []string{"ui"}},
 	}
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 		Title:   "Tasks",
 		Loader:  webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return tasks, webui.Ready() }},
 		Columns: []webui.Accessor[task]{taskName, webui.Select[task]{Label: "Labels", Load: func(t task) []string { return t.Labels }}}, // no options: the rows have them
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
 
 	names := func(target string) []string {
 		var out []string
-		for _, n := range []string{"one", "two", "three", "four", "five"} {
-			if strings.Contains(serve(h, http.MethodGet, target).Body.String(), `>`+n+`</`) {
-				out = append(out, n)
+		for _, row := range page.One(t, "the table", pageOf(t, h, target).ByRole("table", "Tasks")).Rows() {
+			if len(row) > 1 { // the row that says there is nothing to show is one cell wide
+				out = append(out, row[0])
 			}
 		}
 		return out
@@ -250,26 +278,26 @@ func TestATableFiltersAMultiValuedColumnByAnyOfTheOptionsChosen(t *testing.T) {
 	assert.DeepEqual(t, names("/admin/t?tasks.filter.labels=bug&tasks.filter.labels=docs"), []string{"one", "two", "three"})
 
 	// The filter offers each value the rows hold once, whatever rows hold several.
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title caption">Labels</div>`):]
-	filter = filter[:strings.Index(filter, `</form>`)]
-	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 3)
-	for _, v := range []string{"bug", "docs", "ui"} {
-		assert.Contains(t, filter, `value="`+v+`"`)
+	var offered []string
+	for _, f := range fieldsNamed(pageOf(t, h, "/admin/t"), "tasks.filter.labels") {
+		if f.Type == "checkbox" {
+			offered = append(offered, f.Value)
+		}
 	}
+	assert.DeepEqual(t, offered, []string{"bug", "docs", "ui"})
 }
 
 func TestTheSearchAndTheSortOfASelectColumnUseWhatItShows(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 		Title: "Tasks",
 		Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) {
 			return []task{{Name: "a", Labels: []string{"ui"}}, {Name: "b", Labels: []string{"docs"}}}, webui.Ready()
 		}},
 		Columns: []webui.Accessor[task]{taskName, taskLabels},
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
 	// Sorted by the labels, as text.
 	asc := serve(h, http.MethodGet, "/admin/t?tasks.sort=labels").Body.String()
 	assert.True(t, strings.Index(asc, ">b<") < strings.Index(asc, ">a<")) // docs before ui
@@ -279,11 +307,11 @@ func TestASelectIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
 	problems := func(a webui.Select[task]) string {
-		page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
+		declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[task]{
 			Loader: webui.RowsLoader[task]{Load: func(context.Context) ([]task, webui.Loaded) { return nil, webui.Ready() }}, Columns: []webui.Accessor[task]{a},
 		}}
 		var all string
-		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{page}}) {
+		for _, e := range compileErrors(t, webui.App{Pages: webui.Pages{declared}}) {
 			all += e.Error() + "\n"
 		}
 		return all
@@ -296,4 +324,24 @@ func TestASelectIsCheckedWhenTheAppCompiles(t *testing.T) {
 	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a\x1fb"}}}), "control character")
 	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Store: store}), "has a Store but no Options")
 	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Required: true}), "is Required but has no Store")
+}
+
+// option is the option of a select that has the value, as a reader meets it; the zero Option if there is none.
+func option(f page.Field, value string) page.Option {
+	for _, o := range f.Options {
+		if o.Value == value {
+			return o
+		}
+	}
+	return page.Option{}
+}
+
+// hasOption is whether a select has an option with the value.
+func hasOption(f page.Field, value string) bool {
+	for _, o := range f.Options {
+		if o.Value == value {
+			return true
+		}
+	}
+	return false
 }
