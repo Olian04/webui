@@ -318,3 +318,22 @@ func mainOf(t *testing.T, p *page.Page) page.El {
 	t.Helper()
 	return page.One(t, "main", p.ByRole("main", ""))
 }
+
+// panels are the panels of a page by the address of each (data-view) and the title it carries, in the order they are met.
+func panels(p *page.Page) [][2]string {
+	var out [][2]string
+	for _, v := range p.Views() {
+		title := ""
+		if hs := v.ByRole("heading", ""); len(hs) > 0 {
+			title = hs[0].Name()
+		}
+		out = append(out, [2]string{v.Attr("data-view"), title})
+	}
+	return out
+}
+
+// shown is whether a visitor reads text in the body of a response.
+func shown(t *testing.T, body, text string) bool {
+	t.Helper()
+	return len(page.Parse(t, body).ByText(text)) > 0
+}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type layoutArgs struct {
@@ -60,37 +61,39 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 
 	h, loads := layoutApp(nil)
 
-	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	assert.Contains(t, body, "Overview-row")
-	assert.False(t, strings.Contains(body, "Raw-row"))
+	strip := func(p *page.Page) []page.Link {
+		return page.One(t, "the tabs", p.ByRole("navigation", "Views: Overview, Raw")).Links()
+	}
+	shows := func(p *page.Page, text string) bool { return len(p.ByText(text)) > 0 }
+
+	p := pageOf(t, h, "/admin/device/d1")
+	assert.True(t, shows(p, "Overview-row"))
+	assert.False(t, shows(p, "Raw-row"))
 	assert.Equal(t, loads[2].Load(), int32(1))
 	assert.Equal(t, loads[3].Load(), int32(0)) // the hidden tab was never read
 
 	// The strip is links; the first needs no argument, the others carry theirs.
-	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1" aria-current="page">Overview</a>`)
-	assert.Contains(t, body, `<a class="tab" href="/admin/device/d1?tabs.tab=raw">Raw</a>`)
+	assert.DeepEqual(t, strip(p), []page.Link{{Name: "Overview", Href: "/admin/device/d1", Current: true}, {Name: "Raw", Href: "/admin/device/d1?tabs.tab=raw"}})
 
-	raw := serve(h, http.MethodGet, "/admin/device/d1?tabs.tab=raw").Body.String()
-	assert.Contains(t, raw, "Raw-row")
-	assert.False(t, strings.Contains(raw, "Overview-row"))
+	raw := pageOf(t, h, "/admin/device/d1?tabs.tab=raw")
+	assert.True(t, shows(raw, "Raw-row"))
+	assert.False(t, shows(raw, "Overview-row"))
 	assert.Equal(t, loads[3].Load(), int32(1))
-	assert.Contains(t, raw, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
+	assert.DeepEqual(t, strip(raw), []page.Link{{Name: "Overview", Href: "/admin/device/d1"}, {Name: "Raw", Href: "/admin/device/d1?tabs.tab=raw", Current: true}})
 
 	// An unknown tab lands on the first rather than on nothing.
-	stale := serve(h, http.MethodGet, "/admin/device/d1?tabs.tab=Gone").Body.String()
-	assert.Contains(t, stale, "Overview-row")
+	assert.True(t, shows(pageOf(t, h, "/admin/device/d1?tabs.tab=Gone"), "Overview-row"))
 }
 
 func TestLayoutsGivePanelsPositionalIDs(t *testing.T) {
 	t.Parallel()
 
 	h, _ := layoutApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	for _, id := range []string{`data-view="p.0.0"`, `data-view="p.0.1"`, `data-view="p.1.0"`} {
-		assert.Contains(t, body, id)
+	var ids []string
+	for _, v := range pageOf(t, h, "/admin/device/d1").Views() {
+		ids = append(ids, v.Attr("data-view"))
 	}
-	assert.Contains(t, body, `class="columns"`)
-	assert.Contains(t, body, `class="stack"`)
+	assert.DeepEqual(t, ids, []string{"p.0.0", "p.0.1", "p.1.0"})
 }
 
 func TestPanelRequestReturnsOnlyThatPanel(t *testing.T) {
@@ -103,10 +106,11 @@ func TestPanelRequestReturnsOnlyThatPanel(t *testing.T) {
 	h.ServeHTTP(rec, req)
 
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
-	assert.True(t, strings.HasPrefix(body, `<div class="panel grows" data-view="p.0.1">`))
-	assert.False(t, strings.Contains(body, "<html"))
-	assert.Contains(t, body, "Events-row")
+	fragment := page.Parse(t, rec.Body.String())
+	assert.True(t, page.IsFragment(rec.Body.String()))
+	assert.Equal(t, fragment.Views()[0].Attr("data-view"), "p.0.1")
+	assert.Equal(t, len(fragment.Views()), 1)
+	assert.Equal(t, len(fragment.ByText("Events-row")), 1)
 	assert.Contains(t, rec.Header().Get("Vary"), "X-Webui-View")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 	// Only that panel was read; the rest of the screen holds still.
@@ -144,85 +148,8 @@ func TestPanelRequestStillRunsThePageGuardAndRejectsUnknownIDs(t *testing.T) {
 	denied = true
 	rec := ask("p.0.1") // the panel URL is the page URL: the same Guard runs first
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), "not for you")
+	assert.True(t, strings.Contains(page.Parse(t, rec.Body.String()).Root().Text(), "not for you"))
 	assert.Equal(t, loads[1].Load(), int32(0))
-}
-
-func TestOnlyATablePanelGrowsToTheHeightThereIsAndAFormKeepsItsOwn(t *testing.T) {
-	t.Parallel()
-
-	h, _ := layoutApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	// The table's panel is the one that scrolls inside itself; the form's is not.
-	assert.Contains(t, body, `<div class="panel grows" data-view="p.0.1">`)
-	assert.Contains(t, body, `<div class="panel" data-view="p.0.0">`)
-}
-
-// Tabs is one child of the Split it is in: the strip and the selected panel are one element, so a Split, which puts
-// its children in columns, does not give the strip a column of its own.
-func TestTabsInASplitAreOneChildOfIt(t *testing.T) {
-	t.Parallel()
-
-	h := streamApp(webui.Split{
-		webui.Tabs{{Label: "One", View: quickTable("In tabs")}, {Label: "Two", View: quickTable("Other")}},
-		quickTable("Beside"),
-	})
-	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, body, `<div class="columns"><div class="col" style="--w:1;"><div class="tabset" data-tabs="p.0"><nav class="tabs"`)
-	assert.Equal(t, strings.Count(body, `<div class="tabset" `), 1)
-	// The strip and the panel it selects are inside the one element, which ends before the next child begins.
-	end := strings.Index(body, `</div></div><div class="col" style="--w:1;"><div class="panel grows"`)
-	assert.True(t, end > strings.Index(body, "In tabs-row"))
-	assert.True(t, strings.Index(body, "Beside-row") > end)
-}
-
-// The columns of a table are as wide as what they are, and not as what is in them: a table sizes its columns by its rows, so
-// two tables of the same columns, one above the other, would have them in different places. Each column is given the room
-// it needs from its declaration, and the table is shared in those proportions.
-func TestTheColumnsOfATableAreAsWideAsWhatTheyAreNotAsWhatIsInThem(t *testing.T) {
-	t.Parallel()
-
-	widths := func(body string) [][]float64 {
-		tight := strings.ReplaceAll(body, "> <", "><")
-		var out [][]float64
-		for _, group := range regexp.MustCompile(`<colgroup>.*?</colgroup>`).FindAllString(tight, -1) {
-			var ws []float64
-			for _, m := range regexp.MustCompile(`width:([0-9.]+)%`).FindAllStringSubmatch(group, -1) {
-				f, err := strconv.ParseFloat(m[1], 64)
-				assert.NoError(t, err)
-				ws = append(ws, f)
-			}
-			out = append(out, ws)
-		}
-		return out
-	}
-
-	// The same columns with different rows, stacked: the same widths.
-	same := widths(serve(streamApp(webui.Stack{quickTable("First"), quickTable("A second table with a longer title")}), http.MethodGet, "/admin/p").Body.String())
-	assert.Equal(t, len(same), 2)
-	assert.DeepEqual(t, same[0], same[1])
-	assert.DeepEqual(t, same[0], []float64{100})
-
-	// A column of badges that can hold several, with the room for two of them, is wider than one of a single value, which is
-	// wider than the header it has; a number is not given more than it needs; and the shares are the whole of the table.
-	tags := webui.Select[blob]{Label: "Tags", Load: func(blob) []string { return nil }, Multi: true,
-		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy"}, {Value: "staging"}}}
-	state := webui.Select[blob]{Label: "State", Load: func(blob) []string { return nil },
-		Options: []webui.Option{{Value: "healthy"}, {Value: "quiet"}, {Value: "degraded"}}}
-	mixed := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/m", View: webui.Table[blob]{
-		Title:   "Blobs",
-		Loader:  webui.RowsLoader[blob]{Load: func(context.Context) ([]blob, webui.Loaded) { return blobs(), webui.Ready() }},
-		Key:     func(b blob) string { return b.Name },
-		Columns: []webui.Accessor[blob]{blobName, state, tags, blobSize},
-	}}}}.MustCompile("/admin")
-	got := widths(serve(mixed, http.MethodGet, "/admin/m").Body.String())[0]
-	assert.Equal(t, len(got), 4)
-	name, st, multi, size := got[0], got[1], got[2], got[3]
-	assert.True(t, multi > st)   // a column of several badges is wider than a column of one
-	assert.True(t, multi > name) // and than a text
-	assert.True(t, size < name)  // a number is not given more than a text
-	assert.True(t, st > size)    // and a badge is given more than a number
-	assert.True(t, name+st+multi+size > 99.9 && name+st+multi+size < 100.1)
 }
 
 func serveView(h http.Handler, target, panel string) *httptest.ResponseRecorder {

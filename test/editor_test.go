@@ -13,6 +13,7 @@ import (
 	_ "github.com/Olian04/webui/pkg/monaco" // the editor that an Editor and a Diff are drawn with, which a program imports to have
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type snippet struct{ Text, Before string }
@@ -61,12 +62,15 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 	})
 
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<textarea class="code-text"`)
-	assert.Contains(t, body, `data-language="json"`)
-	assert.Contains(t, body, `maxlength="40"`)
-	assert.Contains(t, body, ">Save<")
+	p := page.Parse(t, body)
+	box, _ := p.Field("f0")
+	assert.Equal(t, box.Type, "textarea")
+	assert.True(t, strings.Contains(box.Value, `"a": 1,`)) // the text is in the box
+	area := page.One(t, "the text area", p.ByAttr("name", "f0"))
+	assert.Equal(t, len(p.ByAttr("data-language", "json")), 1)
+	assert.Equal(t, area.Attr("maxlength"), "40")
+	assert.Equal(t, len(p.ByRole("button", "Save")), 1)
 	assert.Contains(t, body, `<script type="module" src="/admin/_webui/monaco/code-`) // the editor is linked
-	assert.Contains(t, body, "&#34;a&#34;: 1,")                                       // the text, escaped, is in the box
 
 	assert.Equal(t, post(h, "/admin/e", formValues("f0", "{}")).Code, http.StatusSeeOther)
 	assert.Equal(t, saved, "{}")
@@ -74,9 +78,11 @@ func TestAnEditorWithAStoreIsATextBoxThatSavesLikeAForm(t *testing.T) {
 	// What is refused is shown back as it was typed, with the reason on the editor.
 	rec := post(h, "/admin/e", formValues("f0", strings.Repeat("x", 41)))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity) // the page, with the text as it was typed
-	page := rec
-	assert.Contains(t, page.Body.String(), strings.Repeat("x", 41))
-	assert.Contains(t, page.Body.String(), `class="err code-error"`)
+	refused := page.Parse(t, rec.Body.String())
+	typed, _ := refused.Field("f0")
+	assert.Equal(t, typed.Value, strings.Repeat("x", 41))
+	assert.True(t, strings.Contains(refused.Root().Text(), "Must be at most 40 characters."))
+	assert.True(t, len(refused.ByAttr("aria-invalid", "true")) > 0)
 	assert.Equal(t, saved, "{}")
 }
 
@@ -84,10 +90,11 @@ func TestAnEditorWithNoStoreIsAViewerAndHasNoSaveButton(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: lang.JSON})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<pre class="code-view"`)
-	assert.False(t, strings.Contains(body, "<textarea"))
-	assert.False(t, strings.Contains(body, ">Save<"))
+	p := pageOf(t, h, "/admin/e")
+	assert.True(t, len(p.ByAllText(`"a": 1,`)) > 0) // the text is shown
+	_, editable := p.Field("f0")
+	assert.False(t, editable)
+	assert.Equal(t, len(p.ByRole("button", "Save")), 0)
 }
 
 func TestAnEditorWhoseGuardRefusesTheVisitorIsAViewerForThem(t *testing.T) {
@@ -100,9 +107,10 @@ func TestAnEditorWhoseGuardRefusesTheVisitorIsAViewerForThem(t *testing.T) {
 			Run:   func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil },
 		},
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<pre class="code-view"`)
-	assert.False(t, strings.Contains(body, "<textarea"))
+	p := pageOf(t, h, "/admin/e")
+	assert.True(t, len(p.ByAllText(`"a": 1,`)) > 0) // the text is shown
+	_, editable := p.Field("f0")
+	assert.False(t, editable)
 	rec := post(h, "/admin/e", formValues("f0", "{}"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, follow(h, rec).Body.String(), "read only for you")
@@ -181,16 +189,16 @@ func TestADiffShowsWhatChangedAsAUnifiedDiffWithoutScript(t *testing.T) {
 
 	h := editorApp(webui.Diff[snippet]{Title: "Changes", Load: loadSnippet, Original: snippetOld, Modified: snippetView, Language: lang.JSON})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, "data-code-diff")
-	assert.Contains(t, body, `class="udiff"`)
-	assert.Contains(t, body, `data-side="original"`)
-	assert.Contains(t, body, `data-side="modified"`)
+	p := page.Parse(t, body)
+	assert.Equal(t, len(p.ByAttr("data-code-diff", "")), 1) // what script colours
+	assert.Equal(t, len(p.ByAttr("data-side", "original")), 1)
+	assert.Equal(t, len(p.ByAttr("data-side", "modified")), 1)
 	assert.Contains(t, body, "monaco/code-")           // a diff is highlighted by the editor
 	assert.False(t, strings.Contains(body, `"json":`)) // and never given a language service
 
 	still := webui.String[snippet]{Label: "Same", Load: func(s snippet) string { return s.Text }}
 	same := editorApp(webui.Diff[snippet]{Title: "Changes", Load: loadSnippet, Original: still, Modified: snippetView})
-	assert.Contains(t, serve(same, http.MethodGet, "/admin/e").Body.String(), "No differences")
+	assert.Equal(t, len(pageOf(t, same, "/admin/e").ByText("No differences")), 1)
 }
 
 func TestADiffIsOnlyEverRead(t *testing.T) {
@@ -280,9 +288,10 @@ func TestARequiredEditorSaysWhatItNeedsInTheWordsOfTheServer(t *testing.T) {
 		Title: "Config", Load: loadSnippet, Content: snippetText, Language: lang.JSON,
 		Submit: webui.Action[snippet]{Run: func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }},
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `required`)
-	assert.Contains(t, body, `data-msg-value-missing="`) // for script to say when the textarea is hidden and cannot
+	p := pageOf(t, h, "/admin/e")
+	box, _ := p.Field("f0")
+	assert.True(t, box.Required)
+	assert.True(t, page.One(t, "the text area", p.ByAttr("name", "f0")).Has("data-msg-value-missing")) // for script to say when the textarea is hidden and cannot
 }
 
 func TestTheEditorScriptLeavesTheEditorWithEscapeAndSaysHowAndSpeaksForTheControlItMakes(t *testing.T) {

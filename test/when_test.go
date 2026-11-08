@@ -16,6 +16,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // condition is the model a When decides from.
@@ -66,18 +67,17 @@ func TestAWhenShowsItsBodyOnlyWhileTheConditionHolds(t *testing.T) {
 
 	g.open.Store(true)
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, ">Inside<")
+	assert.True(t, shown(t, body, "Inside"))
 
 	g.open.Store(false)
 	rec := serve(h, http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
 	body = rec.Body.String()
-	assert.False(t, strings.Contains(body, ">Inside<"))
-	assert.Contains(t, body, ">Before<")
-	assert.Contains(t, body, ">After<")
+	assert.False(t, shown(t, body, "Inside"))
+	assert.True(t, shown(t, body, "Before"))
+	assert.True(t, shown(t, body, "After"))
 	// It leaves nothing of its own in the page: the panels either side are as they are, at the positions they were declared at.
-	assert.Contains(t, body, `data-view="p.0"`)
-	assert.Contains(t, body, `data-view="p.2"`)
+	assert.DeepEqual(t, panels(page.Parse(t, body)), [][2]string{{"p.0", "Before"}, {"p.2", "After"}})
 }
 
 // A body is where it was declared whether it is shown or not, so its panel is named the same.
@@ -87,7 +87,7 @@ func TestThePanelUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 	var g gate
 	g.open.Store(true)
 	h := editorApp(webui.Stack{columnPanel("Before"), g.when(columnPanel("Inside"))})
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), `data-view="p.1.0"`)
+	assert.DeepEqual(t, panels(pageOf(t, h, "/admin/e")), [][2]string{{"p.0", "Before"}, {"p.1.0", "Inside"}})
 
 	// And it is the one that is asked for, as any panel is.
 	assert.Equal(t, askView(h, "/admin/e", "p.1.0").Code, http.StatusOK)
@@ -105,9 +105,9 @@ func TestTheConditionIsAskedAgainOnEveryRequest(t *testing.T) {
 
 	// Each time it is what Load read then.
 	g.open.Store(true)
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<")
+	assert.True(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Inside"))
 	g.open.Store(false)
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<"))
+	assert.False(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Inside"))
 }
 
 // Show is a Bool like any other, and an accessor is written once: what a form or a table uses it with does not change what a When reads.
@@ -119,15 +119,15 @@ func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 	full := webui.Bool[condition]{Label: "Open", Help: "Whether it is open.", NoSort: true, NoFilter: true,
 		Load: func(c condition) bool { return c.Open }, Store: func(c *condition, v bool) { c.Open = v }}
 	h := editorApp(webui.When[condition]{Load: g.load, Show: full, View: columnPanel("Inside")})
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<")
+	assert.True(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Inside"))
 	g.open.Store(false)
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<"))
+	assert.False(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Inside"))
 
 	// "Show when false" is a Bool that says the opposite.
 	g.open.Store(false)
 	not := webui.Bool[condition]{Load: func(c condition) bool { return !c.Open }}
 	h = editorApp(webui.When[condition]{Load: g.load, Show: not, View: columnPanel("When closed")})
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/e").Body.String(), ">When closed<")
+	assert.True(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "When closed"))
 }
 
 // What a When hides is out of reach: a refresh, a post and an export are answered as they are for a panel that is not there.
@@ -179,7 +179,7 @@ func TestAWhenInAWhenIsAnd(t *testing.T) {
 	for _, tc := range []struct{ outer, inner, shown bool }{{false, false, false}, {true, false, false}, {false, true, false}, {true, true, true}} {
 		outer.open.Store(tc.outer)
 		inner.open.Store(tc.inner)
-		assert.Equal(t, strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Both<"), tc.shown)
+		assert.Equal(t, shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Both"), tc.shown)
 	}
 
 	// The inner panel is out of reach while either is closed.
@@ -212,8 +212,8 @@ func TestAFailingLoadSaysSoAndHidesTheBody(t *testing.T) {
 	body := rec.Body.String()
 	assert.Contains(t, body, "Could not load")
 	assert.False(t, strings.Contains(body, "secret-bucket")) // the cause is logged, and not shown
-	assert.Contains(t, body, ">Before<")
-	assert.Contains(t, body, ">After<")
+	assert.True(t, shown(t, body, "Before"))
+	assert.True(t, shown(t, body, "After"))
 	assert.Equal(t, int(shownLoads.Load()), 0) // the body was never built
 	assert.Equal(t, askView(h, "/admin/e", "p.1.0").Code, http.StatusNotFound)
 }
@@ -282,8 +282,8 @@ func TestAColumnWhoseWhenDoesNotHoldShowsNothingAndTheOthersAreAsTheyWere(t *tes
 	var g gate
 	h := editorApp(webui.Columns{{Weight: 1, View: g.when(columnPanel("Inside"))}, {Weight: 2, View: columnPanel("Next")}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(body, ">Inside<"))
-	assert.Contains(t, body, ">Next<")
+	assert.False(t, shown(t, body, "Inside"))
+	assert.True(t, shown(t, body, "Next"))
 }
 
 // A tab with nothing visible in it is hidden; the others stay, and the first of them is the default.
@@ -296,15 +296,15 @@ func TestATabWithNoVisiblePanelIsHidden(t *testing.T) {
 		{Label: "Always", View: columnPanel("Outside")},
 	})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(body, ">Maybe<"))
-	assert.False(t, strings.Contains(body, ">Inside<"))
-	assert.Contains(t, body, ">Always<")
-	assert.Contains(t, body, ">Outside<")
+	assert.False(t, shown(t, body, "Maybe"))
+	assert.False(t, shown(t, body, "Inside"))
+	assert.True(t, shown(t, body, "Always"))
+	assert.True(t, shown(t, body, "Outside"))
 
 	g.open.Store(true)
 	body = serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, ">Maybe<")
-	assert.Contains(t, body, ">Inside<")
+	assert.True(t, shown(t, body, "Maybe"))
+	assert.True(t, shown(t, body, "Inside"))
 }
 
 // Only the first declared tab goes without a parameter, so a link to another tab keeps meaning it when the first appears.
@@ -316,13 +316,14 @@ func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
 		{Label: "Maybe", View: g.when(columnPanel("Inside"))},
 		{Label: "Always", View: columnPanel("Outside")},
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `class="tab active" href="/admin/e?tabs.tab=always"`)
+	strip := page.One(t, "the tabs", pageOf(t, h, "/admin/e").ByRoleContaining("navigation", "Views:"))
+	assert.DeepEqual(t, strip.Links(), []page.Link{{Name: "Always", Href: "/admin/e?tabs.tab=always", Current: true}})
+	var body string
 
 	g.open.Store(true)
 	body = serve(h, http.MethodGet, "/admin/e?tabs.tab=always").Body.String()
-	assert.Contains(t, body, ">Outside<")
-	assert.False(t, strings.Contains(body, ">Inside<"))
+	assert.True(t, shown(t, body, "Outside"))
+	assert.False(t, shown(t, body, "Inside"))
 }
 
 // The condition of a When in a tab is asked once per request, for whether the tab is shown and for drawing it.
@@ -333,7 +334,7 @@ func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
 	g.open.Store(true)
 	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, ">Inside<")
+	assert.True(t, shown(t, body, "Inside"))
 	assert.Equal(t, int(g.loads.Load()), 1)
 }
 
@@ -343,8 +344,8 @@ func TestTabsWithNoVisibleTabDrawNothing(t *testing.T) {
 	var g gate
 	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(body, ">Maybe<"))
-	assert.False(t, strings.Contains(body, ">Inside<"))
+	assert.False(t, shown(t, body, "Maybe"))
+	assert.False(t, shown(t, body, "Inside"))
 }
 
 // A layout has nowhere to be refreshed from, so a refresh hint of the Load is accepted and draws nothing.
@@ -359,8 +360,8 @@ func TestARefreshHintFromTheLoadIsAcceptedAndDrawsNothing(t *testing.T) {
 	}
 	rec := serve(editorApp(webui.Stack{when}), http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, rec.Body.String(), ">Inside<")
-	assert.False(t, strings.Contains(rec.Body.String(), "data-refresh-after"))
+	assert.True(t, shown(t, rec.Body.String(), "Inside"))
+	assert.Equal(t, len(page.Parse(t, rec.Body.String()).ByAttr("data-refresh-after", "")), 0) // a When that is shown asks for nothing itself
 }
 
 func TestAWhenThatCannotBeDrawnIsACompileError(t *testing.T) {
@@ -428,7 +429,7 @@ func TestAShowThatIsAnOptionalBoolIsShownOnlyWhenItIsYes(t *testing.T) {
 		View: columnPanel("Inside"),
 	}
 	h := editorApp(webui.Stack{when})
-	shown := func() bool { return strings.Contains(serve(h, http.MethodGet, "/admin/e").Body.String(), ">Inside<") }
+	shown := func() bool { return shown(t, serve(h, http.MethodGet, "/admin/e").Body.String(), "Inside") }
 
 	yes, no := true, false
 	set(&yes)

@@ -2,7 +2,6 @@ package webui_test
 
 import (
 	"context"
-	"html"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // fileData is what the page tells the script of a file chooser, as the input carries it.
@@ -26,22 +26,18 @@ type fileData struct {
 func dataOf(t *testing.T, body string) fileData {
 	t.Helper()
 
-	input := regexp.MustCompile(`<input[^>]* data-file[ =>][^>]*>`).FindString(body)
-	if input == "" {
-		t.Fatal("the page has no file input that carries data-file")
-	}
-	attr := func(name string) string {
-		m := regexp.MustCompile(`[ ]` + name + `="([^"]*)"`).FindStringSubmatch(input)
-		if m == nil {
-			return ""
+	var input []page.El
+	for _, e := range page.Parse(t, body).ByAttr("type", "file") {
+		if e.Has("data-file") {
+			input = append(input, e)
 		}
-		return html.UnescapeString(m[1])
 	}
-	d := fileData{MaxMessage: attr("data-max-message"), KindMessage: attr("data-kind-message"), Image: strings.Contains(input, " data-image")}
-	size, err := strconv.ParseInt(attr("data-max-size"), 10, 64)
+	chooser := page.One(t, "the file input that carries data-file", input)
+	d := fileData{MaxMessage: chooser.Attr("data-max-message"), KindMessage: chooser.Attr("data-kind-message"), Image: chooser.Has("data-image")}
+	size, err := strconv.ParseInt(chooser.Attr("data-max-size"), 10, 64)
 	assert.NoError(t, err)
 	d.Max = size
-	if accept := attr("accept"); accept != "" {
+	if accept := chooser.Attr("accept"); accept != "" {
 		d.Accept = strings.Split(accept, ",")
 	}
 	return d
@@ -73,7 +69,7 @@ func TestAPageLinksTheFileScriptOnlyWhenItHasAFileToChoose(t *testing.T) {
 		}},
 	}}}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/f").Body.String()
-	assert.False(t, strings.Contains(body, "data-file"))
+	assert.Equal(t, len(page.Parse(t, body).ByAttr("data-file", "")), 0)
 	assert.False(t, strings.Contains(body, "/_webui/file."))
 }
 
@@ -131,23 +127,39 @@ func TestTheStoredFilesPictureIsTheThumbnailTheAppMadeFromThisSite(t *testing.T)
 
 			s := newFileShop(plainFile(webui.FileImage))
 			s.held = c.info
-			body := serve(s.h, http.MethodGet, "/admin/f").Body.String()
+			p := pageOf(t, s.h, "/admin/f")
+			preview := p.ByRole("button", "Preview a.png")
+			dialog := p.ByRole("dialog", "Preview of a.png")
 			if c.img == "" {
-				assert.False(t, strings.Contains(body, `class="file-thumb"`))
-				assert.False(t, strings.Contains(body, "file-thumb-link"))
+				for _, shown := range []string{c.info.Thumbnail, c.info.URL} {
+					if shown != "" {
+						assert.Equal(t, len(p.ByAttr("src", shown)), 0) // neither the thumbnail that is refused nor the file itself is shown as a picture
+					}
+				}
+				assert.Equal(t, len(preview)+len(dialog), 0)
 				return
 			}
-			assert.Contains(t, body, `<img class="file-thumb" src="`+c.img+`" alt="">`)
+			assert.Equal(t, len(p.ByAttr("src", c.img)), 1) // the thumbnail
 			if c.link == "" {
-				assert.False(t, strings.Contains(body, "file-thumb-link"))
-				assert.False(t, strings.Contains(body, "preview-dialog"))
+				assert.Equal(t, len(preview)+len(dialog), 0)
 				return
 			}
-			assert.Contains(t, body, `<button class="file-thumb-link" type="button" commandfor="p-f1-preview" command="show-modal" aria-haspopup="dialog" aria-label="Preview a.png" title="Preview a.png"><img class="file-thumb" src="`+c.img+`" alt=""></button>`)
-			assert.Contains(t, body, `<dialog id="p-f1-preview" class="preview-dialog raise" closedby="any" aria-label="Preview of a.png">`)
+			// The button opens the dialog by an invoker command, so that it works without script; the dialog holds the file at full size, and a button that closes it.
+			open := page.One(t, "the button that opens the preview", preview)
+			shut := page.One(t, "the preview", dialog)
+			assert.Equal(t, open.Attr("command"), "show-modal")
+			assert.Equal(t, open.Attr("commandfor"), shut.Attr("id"))
+			full := page.One(t, "the full image", shut.ByAttr("src", c.link))
+			assert.Equal(t, full.Attr("alt"), "a.png")
 			// The full image is lazy: in a dialog that is closed it has no box, so it is fetched when the dialog is opened and not before.
-			assert.Contains(t, body, `<img class="preview-full" src="`+c.link+`" alt="a.png" loading="lazy" decoding="async">`)
-			assert.Contains(t, body, `commandfor="p-f1-preview" command="close"`)
+			assert.Equal(t, full.Attr("loading"), "lazy")
+			closes := 0
+			for _, b := range p.ByAttr("commandfor", shut.Attr("id")) {
+				if b.Attr("command") == "close" {
+					closes++
+				}
+			}
+			assert.True(t, closes > 0)
 		})
 	}
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type handbook struct{ Text string }
@@ -34,7 +35,7 @@ func TestAMarkdownIsShownAsMarkupInAPanelAndNeedsNoScript(t *testing.T) {
 	t.Parallel()
 
 	body := serve(markdownApp("# Runbook\n\nSome **strong** text and `code`.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n"), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<article class="md" aria-label="Handbook">`)
+	assert.Equal(t, len(page.Parse(t, body).ByRole("article", "Handbook")), 1)
 	assert.Contains(t, body, "<h1>Runbook</h1>")
 	assert.Contains(t, body, "<strong>strong</strong>")
 	assert.Contains(t, body, "<table>")
@@ -79,26 +80,28 @@ func TestEachCodeBlockHasACopyButtonThatOnlyScriptShows(t *testing.T) {
 	t.Parallel()
 
 	body := serve(markdownApp("```\none\n```\n\ntext with `inline`\n\n```json\n{\"a\": 1}\n```\n"), http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `<div class="md-code"><pre tabindex="0">`), 2) // one wrapper for each block, none for inline code
-	assert.Equal(t, strings.Count(body, `data-copy-code=`), 2)
-	assert.Contains(t, body, `<span class="js-only"><button class="md-copy" type="button" data-copy-code="one" aria-label="Copy code"`)
-	assert.Contains(t, body, `role="status" aria-live="polite"`)
+	p := page.Parse(t, body)
+	assert.Equal(t, len(p.ByAttr("data-copy-code", "")), 2) // one for each block, none for inline code
+	buttons := p.ByRole("button", "Copy code")
+	assert.Equal(t, len(buttons), 2)
+	assert.Equal(t, buttons[0].Attr("data-copy-code"), "one")
+	assert.True(t, len(p.Live()) > 0) // and a place that says it was copied
 
 	// The text cannot bring a button of its own: raw markup is not drawn.
-	forged := serve(markdownApp("<button data-copy-code>x</button>\n"), http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(forged, `<button data-copy-code>`))
+	forged := page.Parse(t, serve(markdownApp("<button data-copy-code>x</button>\n"), http.MethodGet, "/admin/e").Body.String())
+	assert.Equal(t, len(forged.ByAttr("data-copy-code", "")), 0)
 
 	// Text without a block has none.
-	assert.False(t, strings.Contains(serve(markdownApp("just text"), http.MethodGet, "/admin/e").Body.String(), "data-copy-code"))
+	assert.Equal(t, len(pageOf(t, markdownApp("just text"), "/admin/e").ByAttr("data-copy-code", "")), 0)
 }
 
 func TestTheCopyButtonCarriesTheBlockAsItWasWritten(t *testing.T) {
 	t.Parallel()
 
 	// Tabs, runs of spaces, blank lines, and characters that markup would change.
-	body := serve(markdownApp("```go\nfunc a() {\n\tif x < 1 && y > 2 {\n\n\t\treturn \"a\"  // two  spaces\n\t}\n}\n```\n"), http.MethodGet, "/admin/e").Body.String()
-	want := "func a() {\n\tif x &lt; 1 &amp;&amp; y &gt; 2 {\n\n\t\treturn &#34;a&#34;  // two  spaces\n\t}\n}"
-	assert.Contains(t, body, `data-copy-code="`+want+`"`)
+	p := pageOf(t, markdownApp("```go\nfunc a() {\n\tif x < 1 && y > 2 {\n\n\t\treturn \"a\"  // two  spaces\n\t}\n}\n```\n"), "/admin/e")
+	want := "func a() {\n\tif x < 1 && y > 2 {\n\n\t\treturn \"a\"  // two  spaces\n\t}\n}"
+	assert.Equal(t, page.One(t, "the copy button", p.ByAttr("data-copy-code", "")).Attr("data-copy-code"), want)
 }
 
 func TestAMarkdownRefreshesAsAPanelOfItsOwn(t *testing.T) {
@@ -148,17 +151,16 @@ func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) 
 	t.Parallel()
 
 	text := handbook{Text: "[here](/e) and [there](/device/d1?minutes=5) and [out](//evil.example/x) and [odd](/\\evil.example)"}
-	page := webui.Page[webui.NoArgs]{Path: "/e", View: webui.Markdown[handbook]{
+	handbookPage := webui.Page[webui.NoArgs]{Path: "/e", View: webui.Markdown[handbook]{
 		Title: "Handbook", Content: handbookText,
 		Load: func(context.Context) (handbook, webui.Loaded) { return text, webui.Ready() },
 	}}
 	for prefix, want := range map[string]string{"/admin": "/admin", "/a/b": "/a/b", "": ""} {
-		h := webui.App{Pages: webui.Pages{page}}.MustCompile(prefix)
-		body := serve(h, http.MethodGet, prefix+"/e").Body.String()
-		assert.Contains(t, body, `<a href="`+want+`/e">here</a>`) // the same tab: no target
-		assert.Contains(t, body, `<a href="`+want+`/device/d1?minutes=5">there</a>`)
-		assert.False(t, strings.Contains(body, "evil.example\"")) // another host is never a link
-		assert.False(t, strings.Contains(body, `href="//`))
+		h := webui.App{Pages: webui.Pages{handbookPage}}.MustCompile(prefix)
+		p := pageOf(t, h, prefix+"/e")
+		article := page.One(t, "the handbook", p.ByRole("article", "Handbook"))
+		// The same tab: no target. And another host is never a link.
+		assert.DeepEqual(t, article.Links(), []page.Link{{Name: "here", Href: want + "/e"}, {Name: "there", Href: want + "/device/d1?minutes=5"}})
 	}
 }
 
@@ -200,10 +202,10 @@ func TestAPictureFromATrustedOriginIsDrawnAndTheBrowserIsAllowedToFetchIt(t *tes
 	t.Parallel()
 
 	h := editorApp(markdownWithOrigins("![The logo](https://cdn.example.com/l.png) ![Other](https://evil.example/o.png)", "https://cdn.example.com"))
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<img src="https://cdn.example.com/l.png" alt="The logo"`)
-	assert.False(t, strings.Contains(body, `src="https://evil.example`)) // not trusted: a link
-	assert.Contains(t, body, `<a href="https://evil.example/o.png"`)
+	p := pageOf(t, h, "/admin/e")
+	assert.Equal(t, len(p.ByRole("img", "The logo")), 1)
+	assert.Equal(t, len(p.ByAttr("src", "https://evil.example/o.png")), 0) // not trusted: a link
+	assert.True(t, len(linksTo(p, "https://evil.example/o.png")) > 0)
 
 	// The page's policy, and only this page's, allows that origin to serve pictures.
 	assert.Equal(t, policyOf(h, "/admin/e"), strings.Replace(basePolicy, "img-src 'self' data:", "img-src 'self' data: https://cdn.example.com", 1))

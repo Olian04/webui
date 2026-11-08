@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // refreshApp is a page of two tables, the first of which returns what it is told to of whether it is final, and the second never does.
@@ -30,22 +31,18 @@ func TestAPanelWhoseLoadIsNotFinalSaysSoAndOnlyThatPanelDoes(t *testing.T) {
 	t.Parallel()
 
 	h := refreshApp(webui.Ready().RefreshAfter(5 * time.Second))
-	body := serve(h, http.MethodGet, "/admin/s").Body.String()
-	assert.Equal(t, strings.Count(body, "data-refresh-after="), 1)
-	assert.Contains(t, body, `data-refresh-after="5"`)
-	assert.Contains(t, body, `<span class="refresh-js" data-refresh-state>Updating…</span>`)
-	assert.Contains(t, body, `<span class="refresh-nojs">Updating, reload in 5 s</span>`)
+	p := pageOf(t, h, "/admin/s")
+	assert.Equal(t, len(p.ByAttr("data-refresh-after", "")), 1)
 	// It is the first table's panel that carries it, and the second has no say.
-	first := body[strings.Index(body, `data-view="p.0"`):]
-	second := first[strings.Index(first, `data-view="p.1"`):]
-	assert.True(t, strings.Contains(first[:len(first)-len(second)], "data-refresh-after"))
-	assert.False(t, strings.Contains(second, "data-refresh-after"))
+	assert.DeepEqual(t, askedAgain(p), map[string]string{"p.0": "5"})
+	assert.Equal(t, len(p.ByAllText("Updating…")), 1)
+	assert.Equal(t, len(p.ByAllText("Updating, reload in 5 s")), 1)
 
 	// The same request for that panel alone, as script makes it, says it too: the answer that asks again is the one that carries it.
 	panel := serveView(h, "/admin/s", "p.0")
 	assert.Equal(t, panel.Code, http.StatusOK)
-	assert.Contains(t, panel.Body.String(), `data-refresh-after="5"`)
-	assert.False(t, strings.Contains(serveView(h, "/admin/s", "p.1").Body.String(), "data-refresh-after"))
+	assert.DeepEqual(t, askedAgain(page.Parse(t, panel.Body.String())), map[string]string{"p.0": "5"})
+	assert.DeepEqual(t, askedAgain(page.Parse(t, serveView(h, "/admin/s", "p.1").Body.String())), map[string]string{})
 }
 
 // A panel that is ready and says nothing more is final: the answer that does not say it is what ends the loop.
@@ -55,9 +52,9 @@ func TestAPanelThatIsReadyIsFinal(t *testing.T) {
 	for name, loaded := range map[string]webui.Loaded{"ready": webui.Ready(), "the zero value": {}, "failed with nothing": webui.Failed(nil)} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			body := serve(refreshApp(loaded), http.MethodGet, "/admin/s").Body.String()
-			assert.False(t, strings.Contains(body, "data-refresh-after"))
-			assert.False(t, strings.Contains(body, "refresh-note"))
+			p := pageOf(t, refreshApp(loaded), "/admin/s")
+			assert.Equal(t, len(p.ByAttr("data-refresh-after", "")), 0)
+			assert.False(t, strings.Contains(p.Root().AllText(), "Updating"))
 		})
 	}
 }
@@ -67,15 +64,15 @@ func TestAFailedLoadDoesNotRefresh(t *testing.T) {
 	t.Parallel()
 
 	rec := serve(refreshApp(webui.Failed(errors.New("the backend is down")).RefreshAfter(3*time.Second)), http.MethodGet, "/admin/s")
-	body := rec.Body.String()
-	assert.Contains(t, body, "Could not load")
-	assert.False(t, strings.Contains(body, "data-refresh-after"))
-	assert.False(t, strings.Contains(body, "the backend is down")) // the cause is logged, never shown
+	failed := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(failed.ByText("Could not load")), 1)
+	assert.Equal(t, len(failed.ByAttr("data-refresh-after", "")), 0)
+	assert.False(t, strings.Contains(failed.Root().AllText(), "the backend is down")) // the cause is logged, never shown
 
 	// A refusal is still a refusal, with its words.
-	refused := serve(refreshApp(webui.Failed(webui.Forbidden("Not for you.")).RefreshAfter(3*time.Second)), http.MethodGet, "/admin/s").Body.String()
-	assert.Contains(t, refused, "Not for you.")
-	assert.False(t, strings.Contains(refused, "data-refresh-after"))
+	refused := pageOf(t, refreshApp(webui.Failed(webui.Forbidden("Not for you.")).RefreshAfter(3*time.Second)), "/admin/s")
+	assert.Equal(t, len(refused.ByText("Not for you.")), 1)
+	assert.Equal(t, len(refused.ByAttr("data-refresh-after", "")), 0)
 }
 
 // A delay of less than a second is asked in a second, and is in whole seconds, up.
@@ -86,14 +83,14 @@ func TestTheDelayIsAtLeastASecondInWholeSeconds(t *testing.T) {
 		d    time.Duration
 		want string
 	}{
-		"zero":          {0, `data-refresh-after="1"`},
-		"negative":      {-time.Minute, `data-refresh-after="1"`},
-		"a part of one": {1500 * time.Millisecond, `data-refresh-after="2"`},
-		"a minute":      {time.Minute, `data-refresh-after="60"`},
+		"zero":          {0, "1"},
+		"negative":      {-time.Minute, "1"},
+		"a part of one": {1500 * time.Millisecond, "2"},
+		"a minute":      {time.Minute, "60"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			assert.Contains(t, serve(refreshApp(webui.Ready().RefreshAfter(c.d)), http.MethodGet, "/admin/s").Body.String(), c.want)
+			assert.DeepEqual(t, askedAgain(pageOf(t, refreshApp(webui.Ready().RefreshAfter(c.d)), "/admin/s")), map[string]string{"p.0": c.want})
 		})
 	}
 }
@@ -103,20 +100,20 @@ func TestEveryPanelWithALoadCanSayItIsNotFinal(t *testing.T) {
 	t.Parallel()
 
 	not := webui.Ready().RefreshAfter(4 * time.Second)
-	page := func(body webui.View) http.Handler {
+	app := func(body webui.View) http.Handler {
 		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/s", View: body}}}.MustCompile("/admin")
 	}
 	for name, h := range map[string]http.Handler{
-		"Rows": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, not }}}),
-		"Feed": page(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) { return nil, "", not }}}),
-		"Form": page(webui.Form[stock]{Title: "Item", Fields: []webui.Accessor[stock]{stockCols[0]}, Load: func(context.Context) (stock, webui.Loaded) { return stock{}, not }}),
-		"Markdown": page(webui.Markdown[handbook]{
+		"Rows": app(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, not }}}),
+		"Feed": app(webui.Table[stock]{Title: "Items", Columns: stockCols, Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) { return nil, "", not }}}),
+		"Form": app(webui.Form[stock]{Title: "Item", Fields: []webui.Accessor[stock]{stockCols[0]}, Load: func(context.Context) (stock, webui.Loaded) { return stock{}, not }}),
+		"Markdown": app(webui.Markdown[handbook]{
 			Title: "Handbook", Content: handbookText, Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: "# Hi"}, not },
 		}),
-		"Diff": page(webui.Diff[snippet]{
+		"Diff": app(webui.Diff[snippet]{
 			Title: "Changes", Original: snippetOld, Modified: snippetView, Load: func(context.Context) (snippet, webui.Loaded) { return snippet{}, not },
 		}),
-		"FileUpload": page(webui.FileUpload[struct{}]{
+		"FileUpload": app(webui.FileUpload[struct{}]{
 			Title: "Upload", MaxSize: 1 << 20, Load: func(context.Context) (struct{}, webui.Loaded) { return struct{}{}, not },
 			Receive: webui.Action[webui.FileHandle[struct{}]]{Run: func(context.Context, webui.FileHandle[struct{}]) (webui.Outcome, error) {
 				return webui.Success(""), nil
@@ -125,9 +122,20 @@ func TestEveryPanelWithALoadCanSayItIsNotFinal(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			body := serve(h, http.MethodGet, "/admin/s").Body.String()
-			assert.Contains(t, body, `data-refresh-after="4"`)
-			assert.Contains(t, body, "Updating, reload in 4 s")
+			p := pageOf(t, h, "/admin/s")
+			assert.DeepEqual(t, askedAgain(p), map[string]string{"p": "4"})
+			assert.Equal(t, len(p.ByAllText("Updating, reload in 4 s")), 1)
 		})
 	}
+}
+
+// askedAgain are the panels of a page that ask for themselves again, by address and the seconds they wait.
+func askedAgain(p *page.Page) map[string]string {
+	got := map[string]string{}
+	for _, v := range p.Views() {
+		if v.Has("data-refresh-after") {
+			got[v.Attr("data-view")] = v.Attr("data-refresh-after")
+		}
+	}
+	return got
 }
