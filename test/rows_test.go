@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // rowsApp is a table that only says what its rows are: 25 devices, and nothing
@@ -51,11 +51,15 @@ func rowsApp(load func(context.Context) ([]Device, webui.Loaded)) http.Handler {
 	return webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
 }
 
-// ids are the device ids on a page, in the order shown.
-func ids(body string) []string {
+// ids are the device ids on a page, in the order shown: the first cell of each row of its table.
+func ids(t *testing.T, body string) []string {
+	t.Helper()
+
 	var out []string
-	for _, m := range regexp.MustCompile(`<td class="">(dev\d\d)</td>`).FindAllStringSubmatch(body, -1) {
-		out = append(out, m[1])
+	for _, row := range page.One(t, "table", page.Parse(t, body).ByRole("table", "")).Rows() {
+		if len(row) > 1 { // the row that says there is nothing to show is one cell wide
+			out = append(out, row[0])
+		}
 	}
 	return out
 }
@@ -65,11 +69,11 @@ func TestRowsAreSortedFilteredAndPagedByTheLibrary(t *testing.T) {
 
 	h := rowsApp(nil)
 	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Equal(t, len(ids(body)), 10) // paged: a Rows source never has to know
+	assert.Equal(t, len(ids(t, body)), 10) // paged: a Rows source never has to know
 	assert.Contains(t, body, "1–10 of 25")
 
 	second := serve(h, http.MethodGet, "/admin/device?devices.offset=20").Body.String()
-	assert.Equal(t, len(ids(second)), 5)
+	assert.Equal(t, len(ids(t, second)), 5)
 	assert.Contains(t, second, "21–25 of 25")
 }
 
@@ -79,13 +83,13 @@ func TestRowsAreSortedByTheColumnsOwnValueATextAsTextANumberAsANumber(t *testing
 	h := rowsApp(nil)
 
 	// The occurrences are (i*7) % 25: each of 0 to 24 once, in a scrambled order.
-	asc := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences").Body.String())
+	asc := ids(t, serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences").Body.String())
 	assert.Equal(t, asc[0], "dev00") // 0
 	assert.Equal(t, asc[1], "dev18") // 1 (18*7 = 126)
-	desc := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences&devices.desc=true").Body.String())
+	desc := ids(t, serve(h, http.MethodGet, "/admin/device?devices.sort=occurrences&devices.desc=true").Body.String())
 	assert.Equal(t, desc[0], "dev07") // 24, which as text would sort before 3
 
-	byID := ids(serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.desc=true").Body.String())
+	byID := ids(t, serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.desc=true").Body.String())
 	assert.Equal(t, byID[0], "dev24")
 }
 
@@ -95,12 +99,12 @@ func TestRowsAreFilteredByEachKindOfFilter(t *testing.T) {
 	h := rowsApp(nil)
 
 	// Text: contains, ignoring case.
-	text := ids(serve(h, http.MethodGet, "/admin/device?devices.filter.id=V1").Body.String())
+	text := ids(t, serve(h, http.MethodGet, "/admin/device?devices.filter.id=V1").Body.String())
 	assert.Equal(t, len(text), 10) // dev10 to dev19
 
 	// An option: a Badge's chosen values.
 	odd := serve(h, http.MethodGet, "/admin/device?devices.filter.status=degraded").Body.String()
-	for _, id := range ids(odd) {
+	for _, id := range ids(t, odd) {
 		n, err := strconv.Atoi(strings.TrimPrefix(id, "dev"))
 		assert.NoError(t, err)
 		assert.Equal(t, ((n*7)%25)%2, 1)
@@ -206,7 +210,17 @@ func storageTable(rows bool) http.Handler {
 }
 
 // classBoxes is the checkbox of each choice in the Class filter.
-var classBoxes = regexp.MustCompile(`class="checkbox" type="checkbox" form="[^"]*" name="objects\.filter\.class" value="([^"]*)"`)
+func classBoxes(t *testing.T, body string) []page.Field {
+	t.Helper()
+
+	var out []page.Field
+	for _, f := range fieldsNamed(page.Parse(t, body), "objects.filter.class") {
+		if f.Type == "checkbox" {
+			out = append(out, f)
+		}
+	}
+	return out
+}
 
 func TestABadgeOfARowsTableFiltersByTheValuesItsRowsHold(t *testing.T) {
 	t.Parallel()
@@ -215,39 +229,40 @@ func TestABadgeOfARowsTableFiltersByTheValuesItsRowsHold(t *testing.T) {
 	body := serve(h, http.MethodGet, "/o").Body.String()
 
 	// A choice for each value present, in order without regard to case, each once.
-	opts := classBoxes.FindAllStringSubmatch(body, -1)
 	var got []string
-	for _, m := range opts {
-		got = append(got, m[1])
+	for _, f := range classBoxes(t, body) {
+		got = append(got, f.Value)
 	}
 	assert.DeepEqual(t, got, []string{"GLACIER", "glacier", "STANDARD"})
 
 	// Choosing one keeps its rows; the choices do not shrink for it.
 	chosen := serve(h, http.MethodGet, "/o?objects.filter.class=STANDARD").Body.String()
-	assert.Contains(t, chosen, ">a<")
-	assert.Contains(t, chosen, ">c<")
-	assert.False(t, strings.Contains(chosen, ">b<"))
-	assert.Equal(t, len(classBoxes.FindAllString(chosen, -1)), 3)
+	assert.DeepEqual(t, ids(t, chosen), []string{"a", "c"})
+	assert.Equal(t, len(classBoxes(t, chosen)), 3)
 
 	// A value no row has is no hazard, and matches nothing.
 	none := serve(h, http.MethodGet, "/o?objects.filter.class=NOPE").Body.String()
-	assert.False(t, strings.Contains(none, ">a<"))
+	assert.Equal(t, len(ids(t, none)), 0)
 }
 
 func TestABadgeOfALoadTableWithNoKindsStaysATextFilter(t *testing.T) {
 	t.Parallel()
 
 	body := serve(storageTable(false), http.MethodGet, "/o").Body.String()
-	assert.Contains(t, body, `placeholder="Contains…"`)
-	assert.Equal(t, len(classBoxes.FindAllString(body, -1)), 0) // no checkboxes
+	assert.Equal(t, len(page.Parse(t, body).ByAttr("placeholder", "Contains…")), 2) // the ID and the Class: both ask for text
+	assert.Equal(t, len(classBoxes(t, body)), 0)                                    // no checkboxes
 }
 
 func TestSeveralValuesOfAnOpenBadgeCanBeChosenTogether(t *testing.T) {
 	t.Parallel()
 
 	body := serve(storageTable(true), http.MethodGet, "/o?objects.filter.class=STANDARD&objects.filter.class=GLACIER").Body.String()
-	assert.Contains(t, body, ">a<")                // STANDARD
-	assert.Contains(t, body, ">d<")                // GLACIER
-	assert.False(t, strings.Contains(body, ">b<")) // glacier, which is a different value
-	assert.Equal(t, strings.Count(body, " checked"), 2)
+	assert.DeepEqual(t, ids(t, body), []string{"a", "c", "d"}) // STANDARD and GLACIER, and not glacier, which is a different value
+	chosen := 0
+	for _, f := range classBoxes(t, body) {
+		if f.Checked {
+			chosen++
+		}
+	}
+	assert.Equal(t, chosen, 2)
 }

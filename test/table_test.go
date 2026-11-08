@@ -11,6 +11,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type tableArgs struct {
@@ -76,18 +77,29 @@ func TestTableRendersRowsLinksAndCells(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, h, "/admin/device")
+	table := page.One(t, "the Devices table", p.ByRole("table", "Devices"))
 
-	assert.Equal(t, strings.Count(body, `<tr class="clickable"`), 10)
-	assert.Contains(t, body, `<a class="rowlink" href="/admin/device/dev00">dev00</a>`)
-	assert.Equal(t, strings.Count(body, `class="rowlink"`), 10) // one anchor per row
-	assert.Contains(t, body, `<td class="num">3</td>`)          // numbers align to the end
-	assert.Contains(t, body, `class="badge tone-ok"`)
-	assert.Contains(t, body, `class="badge tone-warn"`)
-	assert.Contains(t, body, `<span>1.33</span>`) // Precision
-	assert.Contains(t, body, `class="gauge-fill"`)
-	assert.Contains(t, body, `<h2 class="panel-title">Devices</h2>`)
-	assert.Contains(t, body, `data-view="p"`)
+	rows := table.Rows()
+	assert.Equal(t, len(rows), 10)
+	assert.DeepEqual(t, rows[4], []string{"dev04", "healthy", "4", "1.33"}) // an Int as it is, a Select as its value, a Slider to its Precision
+	assert.Equal(t, rows[3][1], "degraded")
+	assert.True(t, hasLink(p, "dev00", "/admin/device/dev00"))
+	leading := 0 // one link to a page for each row
+	for _, l := range table.Links() {
+		if strings.HasPrefix(l.Href, "/admin/device/dev") {
+			leading++
+		}
+	}
+	assert.Equal(t, leading, 10)
+	panels := 0 // the panel's own heading, under the page's
+	for _, h := range p.ByRole("heading", "Devices") {
+		if h.Tag() == "h2" {
+			panels++
+		}
+	}
+	assert.Equal(t, panels, 1)
+	assert.Equal(t, page.One(t, "the panel", p.Views()).Attr("data-view"), "p")
 }
 
 func TestTablePagerLinksAndRange(t *testing.T) {
@@ -95,19 +107,20 @@ func TestTablePagerLinksAndRange(t *testing.T) {
 
 	h, last := tableApp(nil)
 
-	first := serve(h, http.MethodGet, "/admin/device?q=x").Body.String()
-	assert.Contains(t, first, "1–10 of 25")
-	assert.Contains(t, first, `href="/admin/device?devices.offset=10&amp;q=x"`) // keeps the filter
+	first := pageOf(t, h, "/admin/device?q=x")
+	assert.Contains(t, first.Root().Text(), "1–10 of 25")
+	assert.True(t, hasLink(first, "Next", "/admin/device?devices.offset=10&q=x")) // keeps the filter
 	assert.DeepEqual(t, *last, webui.PagedQuery{Offset: 0, Limit: 10})
+	assert.True(t, page.One(t, "the Next link", first.ByRole("link", "Next")).Has("data-in-place")) // script puts the panel in place
 
-	mid := serve(h, http.MethodGet, "/admin/device?devices.offset=10").Body.String()
-	assert.Contains(t, mid, "11–20 of 25")
-	assert.Contains(t, mid, `href="/admin/device" data-in-place>Previous</a>`) // the first page carries no offset
+	mid := pageOf(t, h, "/admin/device?devices.offset=10")
+	assert.Contains(t, mid.Root().Text(), "11–20 of 25")
+	assert.True(t, hasLink(mid, "Previous", "/admin/device")) // the first page carries no offset
 
-	lastPage := serve(h, http.MethodGet, "/admin/device?devices.offset=20").Body.String()
-	assert.Contains(t, lastPage, "21–25 of 25")
-	assert.Contains(t, lastPage, `disabled data-in-place>Next</button>`)
-	assert.Contains(t, lastPage, `href="/admin/device?devices.offset=10" data-in-place>Previous</a>`)
+	lastPage := pageOf(t, h, "/admin/device?devices.offset=20")
+	assert.Contains(t, lastPage.Root().Text(), "21–25 of 25")
+	assert.True(t, page.One(t, "the Next button", lastPage.ByRole("button", "Next")).Has("disabled"))
+	assert.True(t, hasLink(lastPage, "Previous", "/admin/device?devices.offset=10"))
 	assert.Equal(t, last.Offset, 20)
 }
 
@@ -116,18 +129,18 @@ func TestTableSortLinksCycleAndKeepWindowOut(t *testing.T) {
 
 	h, last := tableApp(nil)
 
-	unsorted := serve(h, http.MethodGet, "/admin/device?devices.offset=10").Body.String()
-	assert.Contains(t, unsorted, `href="/admin/device?devices.sort=id"`) // sorting resets to the first page
+	unsorted := pageOf(t, h, "/admin/device?devices.offset=10")
+	assert.True(t, hasLink(unsorted, "ID", "/admin/device?devices.sort=id")) // sorting resets to the first page
 
-	asc := serve(h, http.MethodGet, "/admin/device?devices.sort=id").Body.String()
+	asc := pageOf(t, h, "/admin/device?devices.sort=id")
 	assert.DeepEqual(t, *last, webui.PagedQuery{Limit: 10, Sort: "ID"}) // Load knows the column by its Label
-	assert.Contains(t, asc, `aria-sort="ascending"`)
-	assert.Contains(t, asc, `href="/admin/device?devices.desc=true&amp;devices.sort=id"`)
+	assert.Equal(t, column(t, asc, "Devices", "ID").Attr("aria-sort"), "ascending")
+	assert.True(t, hasLink(asc, "ID", "/admin/device?devices.desc=true&devices.sort=id"))
 
-	desc := serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.desc=true").Body.String()
+	desc := pageOf(t, h, "/admin/device?devices.sort=id&devices.desc=true")
 	assert.Equal(t, last.Desc, true)
-	assert.Contains(t, desc, `aria-sort="descending"`)
-	assert.Contains(t, desc, `href="/admin/device?devices.sort=id"`)
+	assert.Equal(t, column(t, desc, "Devices", "ID").Attr("aria-sort"), "descending")
+	assert.True(t, hasLink(desc, "ID", "/admin/device?devices.sort=id"))
 }
 
 func TestTableDropsUndeclaredSortKeys(t *testing.T) {
@@ -148,10 +161,10 @@ func TestTableWithUnknownTotalPagesByFullPage(t *testing.T) {
 		}
 		return webui.PagedWindow[Device]{Items: items}, webui.Ready() // Total left zero: unknown
 	})
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, "1–10")
-	assert.False(t, strings.Contains(body, "of 25"))
-	assert.Contains(t, body, `href="/admin/device?devices.offset=10"`) // a full page may have a successor
+	p := pageOf(t, h, "/admin/device")
+	assert.Contains(t, p.Root().Text(), "1–10")
+	assert.False(t, strings.Contains(p.Root().Text(), "of 25"))
+	assert.True(t, hasLink(p, "Next", "/admin/device?devices.offset=10")) // a full page may have a successor
 }
 
 func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
@@ -162,8 +175,7 @@ func TestTableLoadFailureFailsThePanelNotThePage(t *testing.T) {
 	})
 	rec := serve(h, http.MethodGet, "/admin/device")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, rec.Body.String(), "Could not load")
-	assert.Contains(t, rec.Body.String(), `panel-status tone-bad"`)
+	assert.Contains(t, page.Parse(t, rec.Body.String()).Root().Text(), "Could not load")
 	assert.False(t, strings.Contains(rec.Body.String(), "hunter2")) // the cause is logged, never shown
 }
 
@@ -173,10 +185,9 @@ func TestTableEmpty(t *testing.T) {
 	h, _ := tableApp(func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 		return webui.PagedWindow[Device]{}, webui.Ready()
 	})
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, "Nothing to show")
-	assert.Contains(t, body, "No results")
-	assert.Contains(t, body, `colspan="4"`)
+	text := pageOf(t, h, "/admin/device").Root().Text()
+	assert.Contains(t, text, "Nothing to show")
+	assert.Contains(t, text, "No results")
 }
 
 // twoTables is a page with two paging tables, named by their titles T0 and T1.
@@ -200,52 +211,65 @@ func TestTwoTablesKeepIndependentStateUnderTheirTitles(t *testing.T) {
 	t.Parallel()
 
 	h, seen := twoTables()
-	body := serve(h, http.MethodGet, "/p?t0.offset=10&t1.offset=15&t1.sort=id&t1.desc=true&q=x").Body.String()
+	p := pageOf(t, h, "/p?t0.offset=10&t1.offset=15&t1.sort=id&t1.desc=true&q=x")
 
 	assert.DeepEqual(t, seen[0], webui.PagedQuery{Offset: 10, Limit: 5})
 	assert.DeepEqual(t, seen[1], webui.PagedQuery{Offset: 15, Limit: 5, Sort: "ID", Desc: true})
 
 	// Each table's links change only its own state and carry the other's along.
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=15&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id" data-in-place>Next`)
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.desc=true&amp;t1.offset=20&amp;t1.sort=id" data-in-place>Next`)
+	assert.True(t, hasLink(p, "Next", "/p?q=x&t0.offset=15&t1.desc=true&t1.offset=15&t1.sort=id"))
+	assert.True(t, hasLink(p, "Next", "/p?q=x&t0.offset=10&t1.desc=true&t1.offset=20&t1.sort=id"))
 	// Sorting one table returns only that table to its first page, and a column
 	// already sorted descending sorts ascending again.
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.sort=id&amp;t1.desc=true&amp;t1.offset=15&amp;t1.sort=id" data-in-place>ID`)
-	assert.Contains(t, body, `href="/p?q=x&amp;t0.offset=10&amp;t1.sort=id" data-in-place>ID`)
+	assert.True(t, hasLink(p, "ID", "/p?q=x&t0.sort=id&t1.desc=true&t1.offset=15&t1.sort=id"))
+	assert.True(t, hasLink(p, "ID", "/p?q=x&t0.offset=10&t1.sort=id"))
 }
 
 func TestViewStateForAPanelThePageDoesNotHaveIsIgnored(t *testing.T) {
 	t.Parallel()
 
 	h, seen := twoTables()
-	body := serve(h, http.MethodGet, "/p?ghost.offset=5&left.offset=abc&table.offset=-4").Body.String()
-	assert.DeepEqual(t, seen[0], webui.PagedQuery{Limit: 5})         // unreadable: the first page
-	assert.DeepEqual(t, seen[1], webui.PagedQuery{Limit: 5})         // negative: the first page
-	assert.False(t, strings.Contains(body, `ghost`+"."+`offset=5"`)) // never carried into a link or form
+	p := pageOf(t, h, "/p?ghost.offset=5&left.offset=abc&table.offset=-4")
+	assert.DeepEqual(t, seen[0], webui.PagedQuery{Limit: 5}) // unreadable: the first page
+	assert.DeepEqual(t, seen[1], webui.PagedQuery{Limit: 5}) // negative: the first page
+	for _, l := range p.Links() {
+		if l.Name != "Refresh" { // which reloads the address as it is
+			assert.False(t, strings.Contains(l.Href, "ghost")) // never carried into a link
+		}
+	}
+	for _, f := range p.Fields() {
+		assert.False(t, strings.Contains(f.Name+f.Value, "ghost")) // or a form
+	}
 }
 
 func TestRefreshHoldsTheWholeAddressIncludingViewState(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device?devices.sort=id&devices.offset=10").Body.String()
+	p := pageOf(t, h, "/admin/device?devices.sort=id&devices.offset=10")
 	// The page's own address, view state included, is what a refresh link holds.
 	// Refresh reloads the address the browser is on, exactly as it has it.
-	assert.Contains(t, body, `href="/admin/device?devices.sort=id&amp;devices.offset=10" title="Refresh"`)
+	assert.True(t, hasLink(p, "Refresh", "/admin/device?devices.sort=id&devices.offset=10"))
 }
 
 func TestEveryColumnIsSortableAndLoadReceivesItsLabel(t *testing.T) {
 	t.Parallel()
 
 	h, last := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, h, "/admin/device")
 
 	// Four columns, four sort links: nothing is declared to make a column sortable.
-	assert.Equal(t, strings.Count(body, `aria-sort="none"`), 4)
-	assert.Contains(t, body, `href="/admin/device?devices.sort=id"`)          // ID declares Key "id"
-	assert.Contains(t, body, `href="/admin/device?devices.sort=status"`)      // no Key: the Label
-	assert.Contains(t, body, `href="/admin/device?devices.sort=occurrences"`) // numbers too
-	assert.Contains(t, body, `href="/admin/device?devices.sort=rate"`)        // and a slider
+	unsorted := 0
+	for _, c := range page.One(t, "the table", p.ByRole("table", "Devices")).ByRole("columnheader", "") {
+		if c.Attr("aria-sort") == "none" {
+			unsorted++
+		}
+	}
+	assert.Equal(t, unsorted, 4)
+	assert.True(t, hasLink(p, "ID", "/admin/device?devices.sort=id"))                   // ID declares Key "id"
+	assert.True(t, hasLink(p, "Status", "/admin/device?devices.sort=status"))           // no Key: the Label
+	assert.True(t, hasLink(p, "Occurrences", "/admin/device?devices.sort=occurrences")) // numbers too
+	assert.True(t, hasLink(p, "Rate", "/admin/device?devices.sort=rate"))               // and a slider
 
 	serve(h, http.MethodGet, "/admin/device?devices.sort=status&devices.desc=true")
 	assert.DeepEqual(t, *last, webui.PagedQuery{Limit: 10, Sort: "Status", Desc: true})
@@ -265,37 +289,54 @@ func TestEveryColumnHasAFilterAFixedSetOfOptionsIsAMultiSelect(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, h, "/admin/device")
 
-	// One filter per column, in the header, none active.
-	assert.Equal(t, strings.Count(body, `<details class="filter">`), 4)
-	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 0)
-	assert.Contains(t, body, `aria-label="Filter Status"`)
+	// One filter per column, in the header.
+	for _, name := range []string{"ID", "Status", "Occurrences", "Rate"} {
+		assert.Equal(t, len(p.ByRole("button", "Filter "+name)), 1)
+	}
 
 	// The Select's options are the filter's: a multi-select of exactly those, in the order they were declared.
-	status := body[strings.Index(body, `<div class="filter-title caption">Status</div>`):]
-	status = status[:strings.Index(status, `</form>`)]
-	assert.Equal(t, strings.Count(status, `type="checkbox"`), 2)
-	assert.True(t, strings.Index(status, `value="healthy"`) < strings.Index(status, `value="degraded"`))
-	assert.False(t, strings.Contains(status, `type="search"`))
+	var options []string
+	for _, f := range fieldsNamed(p, "devices.filter.status") {
+		assert.Equal(t, f.Type, "checkbox")
+		options = append(options, f.Value)
+	}
+	assert.DeepEqual(t, options, []string{"healthy", "degraded"})
 
 	// A text column takes text; the two numeric ones, Occurrences and Rate, take a
 	// minimum and a maximum instead, never text.
-	assert.Equal(t, strings.Count(body, `type="search"`), 1)
-	assert.Contains(t, body, `placeholder="Contains…"`)
-	assert.Equal(t, strings.Count(body, `type="number" step="any"`), 4)
-	assert.Contains(t, body, `name="devices.min.occurrences"`)
-	assert.Contains(t, body, `name="devices.max.occurrences"`)
-	assert.Contains(t, body, `name="devices.min.rate"`)
-	assert.False(t, strings.Contains(body, `name="devices.filter.occurrences"`))
-	assert.False(t, strings.Contains(body, `name="devices.filter.rate"`))
+	types := map[string]int{}
+	for _, f := range p.Fields() {
+		types[f.Type]++
+	}
+	assert.Equal(t, types["search"], 1)
+	assert.Equal(t, len(p.ByAttr("placeholder", "Contains…")), 1)
+	assert.Equal(t, types["number"], 4)
+	for _, name := range []string{"devices.min.occurrences", "devices.max.occurrences", "devices.min.rate", "devices.max.rate"} {
+		assert.Equal(t, len(fieldsNamed(p, name)), 1)
+	}
+	for _, name := range []string{"devices.filter.occurrences", "devices.filter.rate"} {
+		assert.Equal(t, len(fieldsNamed(p, name)), 0)
+	}
 
 	// The form is a plain GET back to the page, so it works without script. It stands beside the table, not in it (the table may be a form of
-	// its own, and a form cannot be in a form), and the controls of the popover say that it is theirs.
-	assert.Contains(t, body, `<form id="p-filter-c0" method="get" action="/admin/device" data-filter-form>`)
-	assert.Contains(t, body, `<div class="filter-pop raise pop">`)
-	assert.Contains(t, body, `form="p-filter-c2" type="number" step="any" name="devices.min.occurrences"`)
-	assert.Contains(t, body, `<button class="btn btn-primary btn-sm" type="submit" form="p-filter-c2">Apply</button>`)
+	// its own, and a form cannot be in a form), and the controls of the filter say that it is theirs, by the form they name.
+	forms := p.ByAttr("data-filter-form", "")
+	assert.Equal(t, len(forms), 4)
+	ids := map[string]bool{}
+	for _, f := range forms {
+		assert.Equal(t, f.Attr("method"), "get")
+		assert.Equal(t, f.Attr("action"), "/admin/device")
+		ids[f.Attr("id")] = true
+	}
+	lowest, _ := p.Field("devices.min.occurrences")
+	assert.True(t, ids[lowest.Form])
+	applying := map[string]bool{}
+	for _, b := range p.ByRole("button", "Apply") {
+		applying[b.Attr("form")] = true
+	}
+	assert.DeepEqual(t, applying, ids) // each filter has its own button, and it applies that filter
 }
 
 func TestFiltersAreNamedByLabelInTheAddressAndInQuery(t *testing.T) {
@@ -305,11 +346,11 @@ func TestFiltersAreNamedByLabelInTheAddressAndInQuery(t *testing.T) {
 
 	// A column is named in the address by its label in lower case, and in Query by
 	// the label as written.
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `name="devices.filter.id"`)
-	assert.Contains(t, body, `name="devices.filter.status"`)
-	assert.Contains(t, body, `name="devices.min.occurrences"`) // numeric: bounds
-	assert.False(t, strings.Contains(body, `name="devices.filter.ID"`))
+	p := pageOf(t, h, "/admin/device")
+	assert.Equal(t, len(fieldsNamed(p, "devices.filter.id")), 1)
+	assert.True(t, len(fieldsNamed(p, "devices.filter.status")) > 0)
+	assert.Equal(t, len(fieldsNamed(p, "devices.min.occurrences")), 1) // numeric: bounds
+	assert.Equal(t, len(fieldsNamed(p, "devices.filter.ID")), 0)
 
 	serve(h, http.MethodGet, "/admin/device?devices.filter.id=dev01&devices.filter.status=healthy")
 	assert.DeepEqual(t, last.Filters, map[string][]string{"ID": {"dev01"}, "Status": {"healthy"}})
@@ -346,32 +387,34 @@ func TestAnActiveFilterShowsAndCanBeCleared(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device?devices.offset=10&devices.sort=id&devices.filter.id=dev0&devices.filter.status=healthy").Body.String()
+	p := pageOf(t, h, "/admin/device?devices.offset=10&devices.sort=id&devices.filter.id=dev0&devices.filter.status=healthy")
 
-	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 2)
-	assert.Contains(t, body, `value="dev0"`) // the text, as typed
-	assert.Contains(t, body, `type="checkbox" form="p-filter-c1" name="devices.filter.status" value="healthy" checked>`)
-	assert.False(t, strings.Contains(body, `value="degraded" checked`))
+	typed, _ := p.Field("devices.filter.id")
+	assert.Equal(t, typed.Value, "dev0") // the text, as typed
+	for _, f := range fieldsNamed(p, "devices.filter.status") {
+		if f.Type == "checkbox" { // the options; the others are what the other columns' filters carry
+			assert.Equal(t, f.Checked, f.Value == "healthy") // the option that is chosen, and no other
+		}
+	}
 
 	// Applying one column's filter carries everything else and drops every offset;
 	// the filter being replaced is not carried.
-	id := formOf(body, "p-filter-c0")
-	assert.Contains(t, id, `name="devices.sort" value="id"`)
-	assert.Contains(t, id, `name="devices.filter.status" value="healthy"`)
-	assert.False(t, strings.Contains(id, `devices.offset`))
-	assert.False(t, strings.Contains(id, `name="devices.filter.id"`))
+	assert.DeepEqual(t, carried(t, p, "devices.filter.id"), map[string][]string{
+		"devices.sort":          {"id"},
+		"devices.filter.status": {"healthy"},
+	})
 
 	// Clear removes that filter, and the offset, and keeps the rest.
-	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.sort=id"`)
+	assert.True(t, hasLink(p, "Clear", "/admin/device?devices.filter.status=healthy&devices.sort=id"))
 }
 
 func TestSortAndPagerLinksKeepFiltersAsRepeatedParameters(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device?devices.filter.status=healthy&devices.filter.status=degraded").Body.String()
-	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.filter.status=degraded&amp;devices.sort=id"`)
-	assert.Contains(t, body, `href="/admin/device?devices.filter.status=healthy&amp;devices.filter.status=degraded&amp;devices.offset=10"`)
+	p := pageOf(t, h, "/admin/device?devices.filter.status=healthy&devices.filter.status=degraded")
+	assert.True(t, hasLink(p, "ID", "/admin/device?devices.filter.status=healthy&devices.filter.status=degraded&devices.sort=id"))
+	assert.True(t, hasLink(p, "Next", "/admin/device?devices.filter.status=healthy&devices.filter.status=degraded&devices.offset=10"))
 }
 
 func TestNumericColumnsFilterByRangeNotText(t *testing.T) {
@@ -405,25 +448,23 @@ func TestAnActiveRangeShowsItsBoundsAndClearsBoth(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device?devices.min.occurrences=5&devices.max.occurrences=9.5&devices.sort=id&devices.offset=10").Body.String()
+	p := pageOf(t, h, "/admin/device?devices.min.occurrences=5&devices.max.occurrences=9.5&devices.sort=id&devices.offset=10")
 
-	assert.Equal(t, strings.Count(body, `<details class="filter on">`), 1)
-	assert.Contains(t, body, `name="devices.min.occurrences" value="5"`)
-	assert.Contains(t, body, `name="devices.max.occurrences" value="9.5"`)
+	lowest, _ := p.Field("devices.min.occurrences")
+	highest, _ := p.Field("devices.max.occurrences")
+	assert.Equal(t, lowest.Value, "5")
+	assert.Equal(t, highest.Value, "9.5")
 
-	// Applying another column keeps these bounds; applying this one replaces them.
-	idForm := formOf(body, "p-filter-c0")
-	assert.Contains(t, idForm, `name="devices.min.occurrences" value="5"`)
-	assert.Contains(t, idForm, `name="devices.max.occurrences" value="9.5"`)
-
-	own := formOf(body, "p-filter-c2")
-	assert.False(t, strings.Contains(own, `devices.min.occurrences`))
-	assert.False(t, strings.Contains(own, `devices.max.occurrences`))
-	assert.False(t, strings.Contains(own, `devices.offset`))
-	assert.Contains(t, own, `name="devices.sort" value="id"`)
+	// Applying another column keeps these bounds; applying this one replaces them, and drops the offset.
+	assert.DeepEqual(t, carried(t, p, "devices.filter.id"), map[string][]string{
+		"devices.sort":            {"id"},
+		"devices.min.occurrences": {"5"},
+		"devices.max.occurrences": {"9.5"},
+	})
+	assert.DeepEqual(t, carried(t, p, "devices.min.occurrences"), map[string][]string{"devices.sort": {"id"}})
 
 	// Clear drops both bounds and the offset, and keeps the sort.
-	assert.Contains(t, body, `href="/admin/device?devices.sort=id" data-in-place>Clear`)
+	assert.True(t, hasLink(p, "Clear", "/admin/device?devices.sort=id"))
 }
 
 func TestATableWithNoPageSizePagesBy25(t *testing.T) {
@@ -513,16 +554,8 @@ func TestTheTablesOfOneTabsShareANameAndAnotherTabsIsNumbered(t *testing.T) {
 	assert.Equal(t, inB.Offset, 7)
 
 	// The second Tabs keeps its selection under "tabs-2".
-	body := serve(h, http.MethodGet, "/p?tabs-2.tab=more").Body.String()
-	assert.Contains(t, body, `<a class="tab active" href="/p?tabs-2.tab=more" aria-current="page">More</a>`)
-}
-
-// formOf is the filter form with an id, from its start tag to its end: the controls that it carries from the address, which the form of a
-// column's filter holds beside the table.
-func formOf(body, id string) string {
-	i := strings.Index(body, `<form id="`+id+`"`)
-	if i < 0 {
-		return ""
-	}
-	return body[i : i+strings.Index(body[i:], "</form>")]
+	more := pageOf(t, h, "/p?tabs-2.tab=more").ByRole("link", "More")
+	assert.Equal(t, len(more), 1)
+	assert.Equal(t, more[0].Attr("href"), "/p?tabs-2.tab=more")
+	assert.Equal(t, more[0].Attr("aria-current"), "page") // the tab that is selected
 }

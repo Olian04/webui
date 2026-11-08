@@ -212,3 +212,48 @@ func menuOutline(e page.El) []string {
 	}
 	return out
 }
+
+// hasLink is whether a page has a link called name that leads to href.
+func hasLink(p *page.Page, name, href string) bool {
+	for _, l := range p.Links() {
+		if l.Name == name && l.Href == href {
+			return true
+		}
+	}
+	return false
+}
+
+// column is the header of a column of a table, by what it is called.
+func column(t *testing.T, p *page.Page, table, name string) page.El {
+	t.Helper()
+
+	return page.One(t, "column "+name, page.One(t, "table "+table, p.ByRole("table", table)).ByRole("columnheader", name))
+}
+
+// carried are the values, by name, that the form of a control posts besides the control itself: what applying a filter carries along.
+func carried(t *testing.T, p *page.Page, control string) map[string][]string {
+	t.Helper()
+
+	f, ok := p.Field(control)
+	if !ok {
+		t.Fatalf("no control named %s", control)
+	}
+	out := map[string][]string{}
+	for _, g := range p.Fields() {
+		if g.Form == f.Form && g.Type == "hidden" {
+			out[g.Name] = append(out[g.Name], g.Value)
+		}
+	}
+	return out
+}
+
+// fieldsNamed are the controls of a page that post name, in order.
+func fieldsNamed(p *page.Page, name string) []page.Field {
+	var out []page.Field
+	for _, f := range p.Fields() {
+		if f.Name == name {
+			out = append(out, f)
+		}
+	}
+	return out
+}
