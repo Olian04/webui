@@ -258,6 +258,15 @@ func fieldsNamed(p *page.Page, name string) []page.Field {
 	return out
 }
 
+// items are the texts of the items of the lists of a page, in order, as a reader meets them.
+func items(p *page.Page) []string {
+	var out []string
+	for _, li := range p.ByRole("listitem", "") {
+		out = append(out, li.Text())
+	}
+	return out
+}
+
 // moment is a time that a page shows: the instant it holds, and the text a visitor reads for it.
 type moment struct{ At, Text string }
 

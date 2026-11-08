@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // reading is a figure with a change, as a percent, and the points it was made from.
@@ -30,6 +31,17 @@ var (
 	rTrend   = webui.Trend[reading]{Label: "Devices over a day", Load: func(r reading) ([]float64, *float64) { return r.Points, nil }}
 )
 
+// figure is the cell of a trend in the one row that readingApp makes, as a reader reads it: the second, after the figure of Devices.
+func figure(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+
+	cells := p.ByRole("cell", "")
+	if len(cells) < 2 {
+		t.Fatalf("the row has %d cells", len(cells))
+	}
+	return cells[1]
+}
+
 func loadReading(r reading) func(context.Context) (reading, webui.Loaded) {
 	return func(context.Context) (reading, webui.Loaded) { return r, webui.Ready() }
 }
@@ -45,22 +57,17 @@ func readingApp(r reading, columns ...webui.Accessor[reading]) http.Handler {
 func TestAChangeIsItsSignAnArrowAndAColourForWhetherThatWayIsGood(t *testing.T) {
 	t.Parallel()
 
-	tile := func(r reading) string {
-		return serve(readingApp(r, rDevices, rChange), http.MethodGet, "/admin/e").Body.String()
+	tile := func(r reading) *page.Page {
+		return pageOf(t, readingApp(r, rDevices, rChange), "/admin/e")
 	}
 
+	// The sign says which way it moved, and the words say what the colour means, for a reader who does not see it.
 	up := tile(reading{Change: 4.35})
-	assert.Contains(t, up, `<span class="delta tone-ok">`)
-	assert.Contains(t, up, `fa-arrow-up`)
-	assert.Contains(t, up, `<span>+4.35%</span>`)
-	assert.Contains(t, up, `<span class="sr-only"> (better)</span>`) // what the colour means, for a reader who does not see it
-	assert.False(t, strings.Contains(up, "<svg"))                    // no points, no chart
+	assert.Equal(t, figure(t, up).Text(), "+4.35% (better)")
+	assert.Equal(t, len(up.ByRole("img", "")), 0) // no points, no chart
 
 	down := tile(reading{Change: -4.8})
-	assert.Contains(t, down, `<span class="delta tone-bad">`)
-	assert.Contains(t, down, `fa-arrow-down`)
-	assert.Contains(t, down, `<span>−4.80%</span>`) // the minus sign, which is as wide as the plus
-	assert.Contains(t, down, `<span class="sr-only"> (worse)</span>`)
+	assert.Equal(t, figure(t, down).Text(), "−4.80% (worse)") // the minus sign, which is as wide as the plus
 }
 
 // A change is written in three digits whatever its size, so that a column of them has one width.
@@ -68,26 +75,20 @@ func TestAChangeIsAlwaysWrittenInThreeDigits(t *testing.T) {
 	t.Parallel()
 
 	for change, want := range map[float64]string{100: "+100%", 35.4: "+35.4%", 0.35: "+0.35%", 99.96: "+100%", 9.996: "+10.0%", -35.44: "−35.4%", 1234: "+1234%"} {
-		body := serve(readingApp(reading{Change: change}, rDevices, rChange), http.MethodGet, "/admin/e").Body.String()
-		assert.Contains(t, body, `<span>`+want+`</span>`)
+		got := figure(t, pageOf(t, readingApp(reading{Change: change}, rDevices, rChange), "/admin/e")).Text()
+		assert.True(t, strings.HasPrefix(got, want+" ")) // and then what the colour means, in words
 	}
 }
 
-// A response time that falls is good news, and the field says so: the arrow still points the way it moved.
+// A response time that falls is good news, and the field says so: the sign still says the way it moved.
 func TestALowerIsBetterChangeIsGoodWhenItFalls(t *testing.T) {
 	t.Parallel()
 
-	tile := func(r reading) string {
-		return serve(readingApp(r, rDevices, rLatency), http.MethodGet, "/admin/e").Body.String()
+	tile := func(r reading) *page.Page {
+		return pageOf(t, readingApp(r, rDevices, rLatency), "/admin/e")
 	}
-	fell := tile(reading{Latency: -12})
-	assert.Contains(t, fell, `<span class="delta tone-ok">`)
-	assert.Contains(t, fell, `fa-arrow-down`)
-	assert.Contains(t, fell, `<span>−12.0%</span>`)
-
-	rose := tile(reading{Latency: 30})
-	assert.Contains(t, rose, `<span class="delta tone-bad">`)
-	assert.Contains(t, rose, `fa-arrow-up`)
+	assert.Equal(t, figure(t, tile(reading{Latency: -12})).Text(), "−12.0% (better)")
+	assert.Equal(t, figure(t, tile(reading{Latency: 30})).Text(), "+30.0% (worse)")
 }
 
 // Each trend has its own direction, so one row can hold a figure that is better up and one that is better down: the same rise is good in one and bad in the other.
@@ -96,9 +97,9 @@ func TestEachTrendOfARowHasItsOwnDirection(t *testing.T) {
 
 	both := webui.Trend[reading]{Label: "Both", Load: func(r reading) ([]float64, *float64) { return nil, &r.Change }}
 	slower := webui.Trend[reading]{Label: "Slower", LowerIsBetter: true, Load: func(r reading) ([]float64, *float64) { return nil, &r.Change }}
-	body := serve(readingApp(reading{Change: 5}, both, slower), http.MethodGet, "/admin/e").Body.String()
-	assert.Equal(t, strings.Count(body, `<span class="delta tone-ok">`), 1)
-	assert.Equal(t, strings.Count(body, `<span class="delta tone-bad">`), 1)
+	cells := pageOf(t, readingApp(reading{Change: 5}, both, slower), "/admin/e").ByRole("cell", "")
+	assert.Equal(t, cells[0].Text(), "+5.00% (better)")
+	assert.Equal(t, cells[1].Text(), "+5.00% (worse)") // the same rise
 }
 
 // What the text says and what the colour says are one thing: a change that reads zero as it is shown has no sign, no arrow and no colour,
@@ -107,10 +108,7 @@ func TestAChangeThatReadsZeroHasNoDirection(t *testing.T) {
 	t.Parallel()
 
 	for _, v := range []float64{0, 0.001, -0.004} {
-		body := serve(readingApp(reading{Change: v}, rDevices, rChange), http.MethodGet, "/admin/e").Body.String()
-		assert.Contains(t, body, `<span class="delta"><span>0%</span>`)
-		assert.False(t, strings.Contains(body, "fa-arrow"))
-		assert.False(t, strings.Contains(body, "tone-ok") || strings.Contains(body, "tone-bad"))
+		assert.Equal(t, figure(t, pageOf(t, readingApp(reading{Change: v}, rDevices, rChange), "/admin/e")).Text(), "0%") // and not better, or worse
 	}
 }
 
@@ -119,45 +117,40 @@ func TestAChangeThatIsNotANumberIsADash(t *testing.T) {
 	t.Parallel()
 
 	nan := math.NaN()
-	body := serve(readingApp(reading{Change: nan}, rDevices, rChange), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<span class="delta"><span>—</span>`)
-	assert.False(t, strings.Contains(body, "fa-arrow"))
+	assert.Equal(t, figure(t, pageOf(t, readingApp(reading{Change: nan}, rDevices, rChange), "/admin/e")).Text(), "—")
 }
 
 func TestATrendIsAChartWithItsValuesInWords(t *testing.T) {
 	t.Parallel()
 
 	r := reading{Devices: 9, Points: []float64{3, 5, 4, 9}}
-	body := serve(readingApp(r, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<svg class="spark" viewBox="0 0 96 20" role="img" aria-label="Devices over a day: 4 values, from 3.00 to 9.00, lowest 3.00, highest 9.00" focusable="false">`)
-	assert.Contains(t, body, `<polyline class="spark-line" points="3.0,`)
-	assert.Contains(t, body, `<circle class="spark-dot"`) // a line marks its last point when nothing else is
-	assert.False(t, strings.Contains(body, "<rect"))
+	p := pageOf(t, readingApp(r, rDevices, rTrend), "/admin/e")
+	chart := page.One(t, "the chart", p.ByRole("img", "Devices over a day: 4 values, from 3.00 to 9.00, lowest 3.00, highest 9.00"))
+	assert.Equal(t, chart.Attr("focusable"), "false") // it is not a stop of the keys: the words are the whole of it
 }
 
 // A point that is not a number is left out of the line and of its words.
 func TestAPointThatIsNotANumberIsLeftOut(t *testing.T) {
 	t.Parallel()
 
-	body := serve(readingApp(reading{Devices: 1, Points: []float64{1, math.NaN(), 3, math.Inf(1)}}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `aria-label="Devices over a day: 2 values, from 1.00 to 3.00, lowest 1.00, highest 3.00"`)
-	assert.Equal(t, strings.Count(body, `<circle class="spark-dot"`), 1)
+	p := pageOf(t, readingApp(reading{Devices: 1, Points: []float64{1, math.NaN(), 3, math.Inf(1)}}, rDevices, rTrend), "/admin/e")
+	assert.Equal(t, len(p.ByRole("img", "Devices over a day: 2 values, from 1.00 to 3.00, lowest 1.00, highest 3.00")), 1)
 }
 
 func TestAnEmptyAndAOnePointTrendAreDrawnWithoutFailing(t *testing.T) {
 	t.Parallel()
 
 	// No points draw no chart, and with no change either there is nothing to say: a dash.
-	empty := serve(readingApp(reading{Devices: 1}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.False(t, strings.Contains(empty, "<svg"))
-	assert.Contains(t, empty, `<span class="dim" aria-hidden="true">—</span>`)
+	empty := pageOf(t, readingApp(reading{Devices: 1}, rDevices, rTrend), "/admin/e")
+	assert.Equal(t, len(empty.ByRole("img", "")), 0)
+	assert.Equal(t, figure(t, empty).Text(), "empty")   // what a reader is told
+	assert.Contains(t, figure(t, empty).AllText(), "—") // and a dash to the eye
 
-	one := serve(readingApp(reading{Devices: 1, Points: []float64{7}}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, one, `aria-label="Devices over a day: 1 value, 7.00"`)
-	assert.Contains(t, one, "<polyline")
+	one := pageOf(t, readingApp(reading{Devices: 1, Points: []float64{7}}, rDevices, rTrend), "/admin/e")
+	assert.Equal(t, len(one.ByRole("img", "Devices over a day: 1 value, 7.00")), 1)
 
-	flat := serve(readingApp(reading{Devices: 1, Points: []float64{4, 4, 4}}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, flat, `points="3.0,10.0 48.0,10.0 93.0,10.0"`) // level, in the middle of the box
+	flat := pageOf(t, readingApp(reading{Devices: 1, Points: []float64{4, 4, 4}}, rDevices, rTrend), "/admin/e")
+	assert.Equal(t, len(flat.ByRole("img", "Devices over a day: 3 values, from 4.00 to 4.00, lowest 4.00, highest 4.00")), 1) // level
 }
 
 // A change and a chart are two parts of one trend, side by side, and either may be left out for a model.
@@ -165,13 +158,15 @@ func TestATrendHasAChangeAndAChartSideBySideAndEitherMayBeAbsent(t *testing.T) {
 	t.Parallel()
 
 	both := webui.Trend[reading]{Label: "Devices trend", Load: func(r reading) ([]float64, *float64) { return r.Points, &r.Change }}
-	body := serve(readingApp(reading{Points: []float64{1, 2}, Change: 5}, rDevices, both), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<span class="trend"><svg class="spark"`)
-	assert.True(t, strings.Index(body, `<svg class="spark"`) < strings.Index(body, `<span>+5.00%</span>`)) // the chart, then the change at its right
+	p := pageOf(t, readingApp(reading{Points: []float64{1, 2}, Change: 5}, rDevices, both), "/admin/e")
+	cell := figure(t, p)
+	chart := page.One(t, "the chart", cell.ByRole("img", ""))
+	assert.Equal(t, cell.Text(), "+5.00% (better)")
+	assert.True(t, chart.Before(page.One(t, "the change", cell.ByText("+5.00%")))) // the chart, then the change at its right
 
-	only := serve(readingApp(reading{Points: []float64{1, 2}}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, only, `<svg class="spark"`)
-	assert.False(t, strings.Contains(only, `class="delta`))
+	only := figure(t, pageOf(t, readingApp(reading{Points: []float64{1, 2}}, rDevices, rTrend), "/admin/e"))
+	assert.Equal(t, len(only.ByRole("img", "")), 1)
+	assert.False(t, strings.Contains(only.Text(), "%"))
 }
 
 type listed struct {
@@ -213,10 +208,11 @@ func TestATrendIsAColumnThatSortsAndFiltersByItsChange(t *testing.T) {
 	t.Parallel()
 
 	h := listedApp()
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<span>−4.27%</span>`)
-	assert.Contains(t, body, `<span>+4.80%</span>`)
-	assert.Equal(t, strings.Count(body, `<svg class="spark"`), 4)
+	p := pageOf(t, h, "/admin/e")
+	text := page.One(t, "the table", p.ByRole("table", "Markets")).Text()
+	assert.Contains(t, text, "−4.27%")
+	assert.Contains(t, text, "+4.80%")
+	assert.Equal(t, len(p.ByRole("img", "")), 4)
 
 	order := func(target string) []string {
 		body := serve(h, http.MethodGet, target).Body.String()
@@ -252,10 +248,10 @@ func TestATrendColumnCanBeLeftOutOfSortAndFilter(t *testing.T) {
 
 	chart := webui.Trend[listed]{Label: "Chart", NoSort: true, NoFilter: true, Load: func(l listed) ([]float64, *float64) { return l.Points, nil }}
 	h := listedApp(lName, chart)
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `?markets.sort=name`)
-	assert.False(t, strings.Contains(body, "markets.sort=chart"))
-	assert.False(t, strings.Contains(body, "markets.min.chart"))
+	p := pageOf(t, h, "/admin/e")
+	assert.True(t, hasLink(p, "Name", "/admin/e?markets.sort=name"))
+	assert.Equal(t, len(p.ByRole("link", "Chart")), 0)
+	assert.Equal(t, len(fieldsNamed(p, "markets.min.chart")), 0)
 	asked := serve(h, http.MethodGet, "/admin/e?markets.sort=chart")
 	assert.Equal(t, asked.Code, http.StatusOK)
 }
@@ -283,10 +279,10 @@ func TestATrendIsAReadOnlyFieldOfAForm(t *testing.T) {
 		Title: "Reading", Load: loadReading(reading{Change: 2, Points: []float64{1, 2}}),
 		Fields: []webui.Accessor[reading]{rChange, rTrend},
 	})
-	body := serve(h, http.MethodGet, "/admin/e").Body.String()
-	assert.Contains(t, body, `<span>+2.00%</span>`)
-	assert.Contains(t, body, `<svg class="spark"`)
-	assert.False(t, strings.Contains(body, `name="f0"`)) // nothing to type into
+	p := pageOf(t, h, "/admin/e")
+	assert.Contains(t, p.Root().Text(), "+2.00%")
+	assert.Equal(t, len(p.ByRole("img", "")), 1)
+	assert.Equal(t, len(fieldsNamed(p, "f0")), 0) // nothing to type into
 }
 
 func TestATrendColumnIsCheckedLikeAnyColumn(t *testing.T) {
