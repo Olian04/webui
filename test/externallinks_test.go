@@ -2,11 +2,11 @@ package webui_test
 
 import (
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func item(label, url string) webui.ExternalLink {
@@ -23,7 +23,7 @@ func linksApp(items ...webui.ExternalLink) http.Handler {
 func TestThereIsNoExternalLinksButtonWithoutExternalLinks(t *testing.T) {
 	t.Parallel()
 
-	assert.False(t, strings.Contains(serve(linksApp(), http.MethodGet, "/admin/device").Body.String(), `aria-label="External links"`))
+	assert.Equal(t, len(pageOf(t, linksApp(), "/admin/device").ByRole("button", "External links")), 0)
 }
 
 func TestTheExternalLinksButtonOpensTheAppsLinksAsWritten(t *testing.T) {
@@ -32,18 +32,23 @@ func TestTheExternalLinksButtonOpensTheAppsLinksAsWritten(t *testing.T) {
 	logout := item("Log out", "/logout")
 	logout.Icon = "right-from-bracket"
 	h := linksApp(logout, item("Docs", "https://example.com/help"), item("Mail", "mailto:ops@example.com"))
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, h, "/admin/device")
 
-	assert.Contains(t, body, `<summary class="iconbtn" title="External links" aria-label="External links">`)
-	// Used as written: the mount prefix is not added to a path, and a web or mail
-	// address is left alone.
-	assert.Contains(t, body, `<a class="menu-item" href="/logout"><i class="fa-solid fa-right-from-bracket menu-icon" aria-hidden="true"></i><span>Log out</span> </a>`)
-	assert.Contains(t, body, `<a class="menu-item" href="mailto:ops@example.com">`)
-	// A web address opens in a tab of its own, which cannot reach back into this one.
-	assert.Contains(t, body, `href="https://example.com/help" target="_blank" rel="noopener noreferrer"`)
+	// The button is in the top bar, beside the page's Refresh, and opens the links.
+	top := page.One(t, "top bar", p.ByRole("banner", ""))
+	assert.Equal(t, len(top.ByRole("button", "External links")), 1)
+	assert.Equal(t, len(top.ByRole("link", "Refresh")), 1)
 
-	// It sits after the page's Refresh, at the right of the top bar.
-	assert.True(t, strings.Index(body, "data-refresh") < strings.Index(body, `aria-label="External links"`))
+	// Used as written: the mount prefix is not added to a path, and a web or mail address is left alone.
+	menu := externalLinks(t, p)
+	assert.DeepEqual(t, menu.Links(), []page.Link{
+		{Name: "Log out", Href: "/logout"},
+		{Name: "Docs (opens in a new tab)", Href: "https://example.com/help", NewTab: true}, // a web address opens in a tab of its own, and a reader is told
+		{Name: "Mail", Href: "mailto:ops@example.com"},
+	})
+	assert.Contains(t, iconOf(page.One(t, "the Log out link", menu.ByRole("link", "Log out"))), "fa-right-from-bracket")
+	// A tab of its own cannot reach back into this one.
+	assert.Equal(t, page.One(t, "the Docs link", menu.ByRole("link", "Docs (opens in a new tab)")).Attr("rel"), "noopener noreferrer")
 }
 
 func TestTheExternalLinksAreGroupedBySectionAndNotByPosition(t *testing.T) {
@@ -54,18 +59,11 @@ func TestTheExternalLinksAreGroupedBySectionAndNotByPosition(t *testing.T) {
 	docs.Section, bug.Section, out.Section = "Help", "Help", "Account"
 	// Given out of order: an entry with no Section between sections, and a section
 	// that is named again after another.
-	body := serve(linksApp(docs, about, out, bug, status), http.MethodGet, "/admin/device").Body.String()
+	p := pageOf(t, linksApp(docs, about, out, bug, status), "/admin/device")
 
-	assert.Equal(t, strings.Count(body, `class="menu-section caption"`), 2) // one caption for each section
-	at := func(s string) int { return strings.Index(body, s) }
-	// No Section: first, in the order given, and with no caption above them.
-	assert.True(t, at("<span>About</span>") < at("<span>Status</span>"))
-	assert.True(t, at("<span>Status</span>") < at(">Help<"))
-	// Sections in the order first named, each with its entries in the order given.
-	assert.True(t, at(">Help<") < at("<span>Docs</span>"))
-	assert.True(t, at("<span>Docs</span>") < at("<span>Report</span>"))
-	assert.True(t, at("<span>Report</span>") < at(">Account<"))
-	assert.True(t, at(">Account<") < at("<span>Log out</span>"))
+	// No Section: first, in the order given, and with no caption above them. Sections in the order first named, each with its entries in the order given, and
+	// one caption for each section.
+	assert.DeepEqual(t, menuOutline(externalLinks(t, p)), []string{"About (opens in a new tab)", "Status (opens in a new tab)", "# Help", "Docs (opens in a new tab)", "Report (opens in a new tab)", "# Account", "Log out"})
 }
 
 func TestAnExternalLinkMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) {
@@ -95,17 +93,9 @@ func TestOnlyAWebAddressOpensInATabOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	h := linksApp(item("Out", "/logout"), item("Mail", "mailto:ops@example.com"), item("Plain", "http://example.com"), item("Secure", "HTTPS://example.com"))
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Equal(t, strings.Count(body, `target="_blank"`), 2)
-	assert.Equal(t, strings.Count(body, `rel="noopener noreferrer"`), 2)
-	assert.False(t, strings.Contains(body, `href="/logout" target`))
-	assert.False(t, strings.Contains(body, `href="mailto:ops@example.com" target`))
-}
-
-func TestTheExternalLinksButtonHasItsOwnIconAndName(t *testing.T) {
-	t.Parallel()
-
-	body := serve(linksApp(item("Docs", "https://example.com/help")), http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `<summary class="iconbtn" title="External links" aria-label="External links"><i class="fa-solid fa-arrow-up-right-from-square"`)
-	assert.False(t, strings.Contains(body, `fa-gear`)) // not the gear of a settings button
+	opens := map[string]bool{}
+	for _, l := range externalLinks(t, pageOf(t, h, "/admin/device")).Links() {
+		opens[l.Name] = l.NewTab
+	}
+	assert.DeepEqual(t, opens, map[string]bool{"Out": false, "Mail": false, "Plain (opens in a new tab)": true, "Secure (opens in a new tab)": true})
 }

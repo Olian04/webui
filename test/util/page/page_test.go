@@ -174,6 +174,16 @@ func TestASearchBelowAnElementDoesNotFindTheElementItself(t *testing.T) {
 	assert.Equal(t, len(nav.Links()), 3) // the <a> with no href is not a link
 }
 
+func TestAnElementIsBeforeAnotherInTheOrderAReaderMeetsThem(t *testing.T) {
+	t.Parallel()
+
+	p := Parse(t, sample)
+	nav := One(t, "the navigation", p.ByRole("navigation", "Main"))
+	table := One(t, "the table", p.ByRole("table", "Devices"))
+	assert.True(t, nav.Before(table))
+	assert.False(t, table.Before(nav))
+}
+
 func TestAFragmentIsWhatAPanelIsAnsweredWith(t *testing.T) {
 	t.Parallel()
 

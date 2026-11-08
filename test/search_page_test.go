@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // timedPages are list pages of things, each with a detail page whose Search takes the given time to answer, with the one result it is
@@ -79,10 +80,10 @@ func TestAPageThatDoesNotAnswerInTimeIsLeftOutAndTheOthersAnswer(t *testing.T) {
 func TestSearchResultsAreEscaped(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[detailsArgs]{Path: "/thing/{id}", View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
+	declared := webui.Page[detailsArgs]{Path: "/thing/{id}", View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
 		return []webui.Hit[detailsArgs]{{Args: detailsArgs{Id: "a"}, Title: `<img src=x onerror=alert(1)>`, Desc: `<b>bold</b>`}}, nil
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
 	for i, asked := range []http.Handler{searchBox(h), h} { // the box's list, which is a fragment, and the page of results, which has the one script that sets the theme
 		body := serve(asked, http.MethodGet, "/admin/_webui/search?q=%3Cscript%3E").Body.String()
 		assert.False(t, strings.Contains(body, "<img src=x"))
@@ -97,26 +98,32 @@ func TestWithoutScriptTheSearchIsAFormWithAButtonAndAnswersWithAPage(t *testing.
 	t.Parallel()
 
 	h := searchApp(rowsSearch(), nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `<form class="search" method="get" action="/admin/_webui/search" role="search">`)
-	assert.Contains(t, body, `name="q" value=""`)
-	assert.Contains(t, body, `<button class="btn btn-secondary btn-sm search-submit" type="submit">Search</button>`)
+	box := page.One(t, "the search form", pageOf(t, h, "/admin/device").ByRole("search", ""))
+	q, _ := box.Field("q")
+	assert.Equal(t, q.Value, "")
+	assert.Equal(t, len(box.ByRole("button", "Search")), 1)
+	assert.Equal(t, box.Attr("method"), "get")
+	assert.Equal(t, box.Attr("action"), "/admin/_webui/search")
 
-	page := serve(h, http.MethodGet, "/admin/_webui/search?q=eth")
-	assert.Equal(t, page.Code, http.StatusOK)
-	assert.Equal(t, page.Header().Get("Content-Type"), "text/html; charset=utf-8")
-	assert.Equal(t, page.Header().Get("Cache-Control"), "no-store")
-	text := page.Body.String()
-	assert.Contains(t, text, "<title>Search — ") // a page: the shell, its sidebar and its breadcrumb
-	assert.Contains(t, text, `<nav class="side-scroll"`)
-	assert.Contains(t, text, `<span class="cur" aria-current="page">Search</span>`)
-	assert.Contains(t, text, `<h2 class="panel-title">Results for “eth”</h2>`)
-	assert.Contains(t, text, `name="q" value="eth"`) // the box holds what was searched for
-	got := parseResults(text)
-	assert.Equal(t, len(got.Results), 2)
-	assert.Equal(t, got.Results[0].Group, "Devices")
-	assert.Equal(t, got.Results[0].Href, "/admin/device/dev-eth%200")
-	assert.False(t, strings.Contains(text, `role="option"`)) // links on a page, not the options of a list
+	answer := serve(h, http.MethodGet, "/admin/_webui/search?q=eth")
+	assert.Equal(t, answer.Code, http.StatusOK)
+	assert.Equal(t, answer.Header().Get("Content-Type"), "text/html; charset=utf-8")
+	assert.Equal(t, answer.Header().Get("Cache-Control"), "no-store")
+	text := answer.Body.String()
+	assert.False(t, page.IsFragment(text)) // a page: the shell, its sidebar and its breadcrumb
+	p := page.Parse(t, text)
+	assert.True(t, strings.HasPrefix(p.Title(), "Search — "))
+	assert.Equal(t, named(sidebarNav(t, p).Links(), "Devices"), 1) // the sidebar of the app is there
+	got := trail(t, p)
+	assert.Equal(t, got[len(got)-1], "Search")
+	assert.Equal(t, len(p.ByRole("heading", "Results for “eth”")), 1)
+	typed, _ := p.Field("q")
+	assert.Equal(t, typed.Value, "eth") // the box holds what was searched for
+	main := page.One(t, "main", p.ByRole("main", ""))
+	assert.Equal(t, len(main.Links()), 2)
+	assert.Equal(t, main.Links()[0].Href, "/admin/device/dev-eth%200")
+	assert.Contains(t, main.Text(), "Devices")      // under the name of the page that found them
+	assert.Equal(t, len(p.ByRole("option", "")), 0) // links on a page, not the options of a list
 
 	// Nothing typed, and nothing found, say so.
 	assert.Contains(t, serve(h, http.MethodGet, "/admin/_webui/search?q=").Body.String(), "Type what to search for.")
@@ -130,7 +137,10 @@ func TestTheBoxIsGivenTheResultsAsHTMLToPutInIt(t *testing.T) {
 	h := searchApp(rowsSearch(), nil)
 	list := serve(searchBox(h), http.MethodGet, "/admin/_webui/search?q=eth").Body.String()
 	// A listbox holds options, or groups of them: the label names its group and is not read again.
-	assert.Contains(t, list, `<div role="group" aria-label="Devices"><div class="pal-label caption" aria-hidden="true">Devices</div>`)
-	assert.Contains(t, list, `<a class="pal-item" role="option" href="/admin/device/dev-eth%200">`)
-	assert.False(t, strings.Contains(list, "<html"))
+	p := page.Parse(t, list)
+	group := page.One(t, "the Devices group", p.ByRole("group", "Devices"))
+	assert.False(t, strings.HasPrefix(group.Text(), "Devices")) // the label is aria-hidden: the group is named, and the name is not part of what it says
+	assert.True(t, strings.HasPrefix(group.AllText(), "Devices"))
+	assert.Equal(t, group.ByRole("option", "")[0].Attr("href"), "/admin/device/dev-eth%200")
+	assert.True(t, page.IsFragment(list))
 }

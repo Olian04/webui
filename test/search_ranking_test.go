@@ -2,12 +2,11 @@ package webui_test
 
 import (
 	"context"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // titles are what the results of a search are called, in the order they are given.
@@ -94,16 +93,16 @@ func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 	t.Parallel()
 
 	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}}.MustCompile("/admin")
-	body := serve(without, http.MethodGet, "/admin/a").Body.String()
-	for _, absent := range []string{"data-palette-input", "data-palette", `class="search"`, "data-search-url", `id="palette"`} {
-		assert.False(t, strings.Contains(body, absent))
+	none := pageOf(t, without, "/admin/a")
+	assert.Equal(t, len(none.ByRole("search", "")), 0)
+	for _, absent := range []string{"data-palette-input", "data-palette", "data-search-url"} {
+		assert.Equal(t, len(none.ByAttr(absent, "")), 0)
 	}
 
-	with := searchApp(rowsSearch(), nil)
-	body = serve(with, http.MethodGet, "/admin/device").Body.String()
-	for _, present := range []string{"data-palette-input", `id="palette"`, `data-search-url="/admin/_webui/search`} {
-		assert.Contains(t, body, present)
-	}
+	with := pageOf(t, searchApp(rowsSearch(), nil), "/admin/device")
+	assert.Equal(t, len(with.ByRole("search", "")), 1)
+	assert.Equal(t, len(with.ByAttr("data-palette-input", "")), 1)
+	assert.Equal(t, with.ByAttr("data-search-url", "")[0].Attr("data-search-url"), "/admin/_webui/search")
 }
 
 // The search finds what the pages that have a Search find, and does not list the pages of the sidebar. What it says while it waits is the server's: a
@@ -111,6 +110,6 @@ func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 func TestTheSearchSaysWhileItWaitsWhatTheServerWrote(t *testing.T) {
 	t.Parallel()
 
-	page := serve(searchApp(rowsSearch(), nil), http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, page, `<template data-palette-pending><div class="pal-empty" role="presentation">Searching…</div></template>`)
+	pending := page.One(t, "the words for waiting", pageOf(t, searchApp(rowsSearch(), nil), "/admin/device").ByAttr("data-palette-pending", ""))
+	assert.Equal(t, pending.Children()[0].Text(), "Searching…")
 }

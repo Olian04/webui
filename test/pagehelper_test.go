@@ -83,3 +83,132 @@ func TestThePageHelperReadsAFormItsFieldsAndItsNotices(t *testing.T) {
 	assert.Equal(t, typed.Value, "10.0.0.4")
 	assert.True(t, len(again.ByText("taken")) > 0)
 }
+
+// pageOf reads the page that a GET of target is answered with.
+func pageOf(t *testing.T, h http.Handler, target string) *page.Page {
+	t.Helper()
+
+	return page.Parse(t, serve(h, http.MethodGet, target).Body.String())
+}
+
+// sidebarNav is the main navigation of a page: the entries as a reader meets them, with the captions of the sections between them.
+func sidebarNav(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+
+	return page.One(t, "main navigation", p.ByRole("navigation", "Main"))
+}
+
+// outline lists what a reader of the sidebar is told, in order: the name of each entry, and the caption of each section after a "#".
+func outline(t *testing.T, p *page.Page) []string {
+	t.Helper()
+
+	var out []string
+	for _, c := range sidebarNav(t, p).Children() {
+		if c.Role() == "link" {
+			out = append(out, c.Name())
+		} else if text := c.Text(); text != "" {
+			out = append(out, "# "+text)
+		}
+	}
+	return out
+}
+
+// activeEntries are the addresses of the sidebar's entries that say they are where the reader is.
+func activeEntries(t *testing.T, h http.Handler, target string) []string {
+	t.Helper()
+
+	var out []string
+	for _, l := range sidebarNav(t, pageOf(t, h, target)).Links() {
+		if l.Current {
+			out = append(out, l.Href)
+		}
+	}
+	return out
+}
+
+// linksTo are the links of a page that lead to href.
+func linksTo(p *page.Page, href string) []page.Link {
+	var out []page.Link
+	for _, l := range p.Links() {
+		if l.Href == href {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// crumbs is the breadcrumb of a page.
+func crumbs(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+
+	return page.One(t, "breadcrumb", p.ByRole("navigation", "Breadcrumb"))
+}
+
+// named counts the links of a list that are called name.
+func named(links []page.Link, name string) int {
+	n := 0
+	for _, l := range links {
+		if l.Name == name {
+			n++
+		}
+	}
+	return n
+}
+
+// iconOf is the class of the icon that an entry draws, which names a Font Awesome icon; "" for an entry with none.
+func iconOf(e page.El) string {
+	for _, c := range e.Children() {
+		if c.Attr("aria-hidden") == "true" {
+			return c.Attr("class")
+		}
+	}
+	return ""
+}
+
+// trail is the breadcrumb as a reader meets it, in order: each crumb that is a link as "name>href", and the one that is where the reader is by its name.
+func trail(t *testing.T, p *page.Page) []string {
+	t.Helper()
+
+	var out []string
+	for _, c := range crumbs(t, p).Children() {
+		if c.Role() == "link" {
+			out = append(out, c.Name()+">"+c.Attr("href"))
+		} else if text := c.Text(); text != "" {
+			out = append(out, text)
+		}
+	}
+	return out
+}
+
+// externalLinks is the menu of the app's links to places outside it, behind the button that is called External links.
+func externalLinks(t *testing.T, p *page.Page) page.El {
+	t.Helper()
+
+	for _, g := range p.ByRole("group", "") {
+		for _, c := range g.Children() {
+			if c.Tag() == "summary" && c.Name() == "External links" {
+				return g
+			}
+		}
+	}
+	t.Fatalf("no menu of external links")
+	return page.El{}
+}
+
+// menuOutline lists what a reader of a menu is told, in order: the name of each link, and the caption of each section after a "#". A caption is text with
+// nothing inside it.
+func menuOutline(e page.El) []string {
+	var out []string
+	for _, c := range e.Children() {
+		switch {
+		case c.Role() == "link":
+			out = append(out, c.Name())
+		case c.Tag() == "summary":
+		case len(c.Children()) == 0 && c.Text() != "":
+			out = append(out, "# "+c.Text())
+		default:
+			out = append(out, menuOutline(c)...)
+		}
+	}
+	return out
+}

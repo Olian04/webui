@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type pageArgs struct {
@@ -32,19 +33,16 @@ func TestPageRendersNavBreadcrumbAndTheAncestorsEntry(t *testing.T) {
 	a, _, _ := app(nil)
 	rec := serve(a.MustCompile("/admin"), http.MethodGet, "/admin/device/abc")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
+	p := page.Parse(t, rec.Body.String())
 
 	// The detail page has no entry; the list's lights up, as its ancestor.
-	assert.Contains(t, body, `<div class="nav-section caption" title="Platform">Platform</div>`)
-	assert.Contains(t, body, `<a class="nav-item active" href="/admin/device"`)
-	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)
+	assert.DeepEqual(t, outline(t, p), []string{"# Platform", "Devices"})
+	assert.DeepEqual(t, sidebarNav(t, p).Links(), []page.Link{{Name: "Devices", Href: "/admin/device", Current: true}})
 
 	// Breadcrumbs: brand › the list page's label (a link) › the path value.
-	assert.Contains(t, body, `<a href="/admin/device">Demo</a>`)
-	assert.Contains(t, body, `<a href="/admin/device">Devices</a>`)
-	assert.Contains(t, body, `<span class="cur" aria-current="page">abc</span>`)
-	assert.Contains(t, body, "<title>abc — Demo</title>")
-	assert.Contains(t, body, `<span class="url" data-url>/admin/device/abc</span>`)
+	assert.DeepEqual(t, trail(t, p), []string{"Demo>/admin/device", "Devices>/admin/device", "abc"})
+	assert.Equal(t, p.Title(), "abc — Demo")
+	assert.Equal(t, page.One(t, "the address in the status bar", p.ByAttr("data-url", "")).Text(), "/admin/device/abc")
 }
 
 func TestThereIsNoArgumentsRowAndRefreshLivesInTheTopBar(t *testing.T) {
@@ -52,18 +50,21 @@ func TestThereIsNoArgumentsRowAndRefreshLivesInTheTopBar(t *testing.T) {
 
 	a, _, _ := app(nil)
 	h := a.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/device/abc?debug=true&q=x&n=5").Body.String()
+	p := pageOf(t, h, "/admin/device/abc?debug=true&q=x&n=5")
 
 	// Page arguments are read from the address and have no controls of their own.
-	for _, absent := range []string{`data-toolbar`, `class="toolbar"`, `class="var"`, "Clear all", "declares no arguments"} {
-		assert.False(t, strings.Contains(body, absent))
+	assert.Equal(t, len(p.ByAttr("data-toolbar", "")), 0)
+	for _, absent := range []string{"Clear all", "declares no arguments"} {
+		assert.False(t, strings.Contains(p.Root().AllText(), absent))
 	}
 
 	// Refresh sits in the top bar, a link to the address the browser is on.
-	top := body[strings.Index(body, `<header class="topbar">`):strings.Index(body, "</header>")]
-	assert.Contains(t, top, `class="iconbtn" href="/admin/device/abc?debug=true&amp;q=x&amp;n=5" title="Refresh" aria-label="Refresh" data-refresh`)
-	assert.False(t, strings.Contains(top, `data-palette-input`)) // no page has a Search, so there is no search box
-	assert.Equal(t, strings.Count(body, "data-refresh"), 1)
+	top := page.One(t, "top bar", p.ByRole("banner", ""))
+	refresh := page.One(t, "the Refresh link", top.ByRole("link", "Refresh"))
+	assert.Equal(t, refresh.Attr("href"), "/admin/device/abc?debug=true&q=x&n=5")
+	assert.True(t, refresh.Has("data-refresh"))
+	assert.Equal(t, len(top.ByAttr("data-palette-input", "")), 0) // no page has a Search, so there is no search box
+	assert.Equal(t, len(p.ByAttr("data-refresh", "")), 1)
 }
 
 func TestGuardRunsBeforeAnythingAndRejectsWith403(t *testing.T) {
@@ -112,7 +113,8 @@ func TestRootRedirectsToFirstNavEntryOrServesRootPage(t *testing.T) {
 	for _, target := range []string{"/admin", "/admin/"} {
 		rec := serve(h, http.MethodGet, target)
 		assert.Equal(t, rec.Code, http.StatusOK)
-		assert.Contains(t, rec.Body.String(), `<span class="cur" aria-current="page">Home</span>`)
+		got := trail(t, page.Parse(t, rec.Body.String()))
+		assert.Equal(t, got[len(got)-1], "Home") // the landing page is where the reader is
 	}
 }
 

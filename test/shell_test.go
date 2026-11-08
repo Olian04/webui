@@ -10,6 +10,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // get serves one request straight through the handler.
@@ -37,12 +38,13 @@ func TestCompileFailureServesEveryPathAndMethod(t *testing.T) {
 	} {
 		rec := serve(h, tt.method, tt.target)
 		assert.Equal(t, rec.Code, http.StatusInternalServerError)
-		body := rec.Body.String()
-		assert.Contains(t, body, "Failed to compile")
-		assert.Contains(t, body, `page &#34;/event/{id}&#34; (bad)`)
-		assert.Contains(t, body, "field When has unsupported type map[string]int")
-		assert.Contains(t, body, "the path declares {id} but bad has no field for it")
-		assert.Contains(t, body, "<style>") // self-contained: no asset route to depend on
+		answer := page.Parse(t, rec.Body.String())
+		text := answer.Root().Text()
+		assert.Contains(t, text, "Failed to compile")
+		assert.Contains(t, text, `page "/event/{id}" (bad)`)
+		assert.Contains(t, text, "field When has unsupported type map[string]int")
+		assert.Contains(t, text, "the path declares {id} but bad has no field for it")
+		assert.Equal(t, len(answer.ByAttr("rel", "stylesheet")), 0) // self-contained: no asset route to depend on
 		assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 	}
 }
@@ -111,10 +113,11 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 		Theme: webui.Theme{Accent: "#c2410c"},
 	}.MustCompile("/admin")
 
-	page := serve(h, http.MethodGet, "/admin/").Body.String()
+	home := pageOf(t, h, "/admin/")
 	// The app does not choose light or dark: the document carries no data-theme
 	// attribute, and the stylesheet follows the viewer's system until they pick one.
-	assert.Contains(t, page, `<html lang="en">`)
+	assert.Equal(t, page.One(t, "the document", home.ByAttr("lang", "en")).Tag(), "html")
+	assert.Equal(t, len(home.ByAttr("data-theme", "")), 0)
 	assetURL(t, h, "theme.css") // linked, with its hash
 	assetURL(t, h, "logo")
 
