@@ -125,6 +125,9 @@ type Field struct {
 	Checked  bool
 	Disabled bool
 	Required bool
+	// Form is the id of the form that the control belongs to: the one that its form attribute names, or else the one that it is in. It is "" for a control
+	// that is in none, or in a form with no id.
+	Form string
 	// Options are the options of a select, each by its value and its text.
 	Options []Option
 }
@@ -387,7 +390,7 @@ func (e El) Fields() []Field {
 		if name == "" {
 			continue
 		}
-		f := Field{Name: name, Type: controlType(d), Disabled: d.Has("disabled"), Required: d.Has("required"), Checked: d.Has("checked")}
+		f := Field{Name: name, Type: controlType(d), Disabled: d.Has("disabled"), Required: d.Has("required"), Checked: d.Has("checked"), Form: d.formID()}
 		switch d.n.Data {
 		case "textarea":
 			f.Value = strings.TrimPrefix(rawText(d.n), "\n")
@@ -407,8 +410,8 @@ func (e El) Fields() []Field {
 		default:
 			f.Value = d.Attr("value")
 		}
-		if i, ok := seen[name]; ok && (f.Type == "radio" || f.Type == "checkbox") {
-			// A group of radios or checkboxes posts the one that is checked; the first of them stands for the group unless another is checked.
+		if i, ok := seen[name]; ok && f.Type == "radio" {
+			// A group of radios posts the one that is checked; the first of them stands for the group unless another is checked.
 			if f.Checked {
 				out[i] = f
 			}
@@ -418,6 +421,19 @@ func (e El) Fields() []Field {
 		out = append(out, f)
 	}
 	return out
+}
+
+// formID is the id of the form that a control belongs to.
+func (e El) formID() string {
+	if id := e.Attr("form"); id != "" {
+		return id
+	}
+	for p := e.n.Parent; p != nil; p = p.Parent {
+		if p.Type == html.ElementNode && p.Data == "form" {
+			return El{p}.Attr("id")
+		}
+	}
+	return ""
 }
 
 func (e El) attr(name string) (string, bool) {

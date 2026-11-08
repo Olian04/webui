@@ -117,6 +117,18 @@ func TestAFieldPostsWhatABrowserWouldPost(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestAControlBelongsToTheFormItNamesOrIsIn(t *testing.T) {
+	t.Parallel()
+
+	p := Parse(t, `<form id="own"><input name="inside" value="a"></form><form action="/x"><input name="unnamed"></form>
+<input name="beside" form="own" value="b"><input name="loose">`)
+	forms := map[string]string{}
+	for _, f := range p.Fields() {
+		forms[f.Name] = f.Form
+	}
+	assert.DeepEqual(t, forms, map[string]string{"inside": "own", "unnamed": "", "beside": "own", "loose": ""})
+}
+
 func TestAControlIsFoundByItsLabel(t *testing.T) {
 	t.Parallel()
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 const (
@@ -48,13 +49,11 @@ func TestARowClickCanBeAnActionThatChoosesTheDestinationFromTheRow(t *testing.T)
 	t.Parallel()
 
 	h := browserApp(nil)
-	body := serve(h, http.MethodGet, "/admin/entry").Body.String()
+	p := pageOf(t, h, "/admin/entry")
 
 	// The first cell holds one button that covers the row, and no anchor.
-	assert.Contains(t, body, `<button class="rowlink rowbutton" type="submit" name="_act" value="click:0:photos/">`)
-	assert.Equal(t, strings.Count(body, `class="rowlink rowbutton"`), 3)
-	assert.False(t, strings.Contains(body, `<a class="rowlink"`))
-	assert.Contains(t, body, `<tr class="clickable">`)
+	assert.DeepEqual(t, rowClicks(p), []string{"click:0:photos/", "click:0:cat.png", "click:0:locked.txt"})
+	assert.Equal(t, len(p.ByRole("table", "")[0].ByRole("button", "photos/")), 1) // it is called by the row's own text
 
 	// A click is a POST, which goes where the row says.
 	folder := post(h, "/admin/entry", formValues("_act", "click:0:photos/"))
@@ -73,11 +72,13 @@ func TestARowClickActionIsGatedPerRowByItsGuard(t *testing.T) {
 		}
 		return nil
 	})
-	body := serve(h, http.MethodGet, "/admin/entry").Body.String()
+	p := pageOf(t, h, "/admin/entry")
 
 	// The refused row is shown and does nothing; the same Guard refuses a POST for it.
-	assert.Equal(t, strings.Count(body, `class="rowlink rowbutton"`), 2)
-	assert.False(t, strings.Contains(body, `value="click:0:locked.txt"`))
+	assert.Equal(t, len(rowClicks(p)), 2)
+	for _, v := range rowClicks(p) {
+		assert.False(t, v == "click:0:locked.txt")
+	}
 	rec := post(h, "/admin/entry", formValues("_act", "click:0:locked.txt"))
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Contains(t, follow(h, rec).Body.String(), "locked")
@@ -109,4 +110,15 @@ func TestARowClickActionNeedsARunAndAKey(t *testing.T) {
 
 	assert.Contains(t, problems(webui.Table[Device]{RowClick: webui.Action[Device]{Run: run}}), "declares actions but no Key")
 	assert.Contains(t, problems(webui.Table[Device]{Key: key, RowClick: webui.Action[Device]{}}), "Table.RowClick has no Run")
+}
+
+// rowClicks are the values of the buttons that a row of a table is clicked with, in order.
+func rowClicks(p *page.Page) []string {
+	var out []string
+	for _, f := range fieldsNamed(p, "_act") {
+		if strings.HasPrefix(f.Value, "click:") {
+			out = append(out, f.Value)
+		}
+	}
+	return out
 }
