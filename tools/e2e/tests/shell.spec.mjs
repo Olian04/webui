@@ -12,6 +12,22 @@ test('the theme is chosen with a button and is kept for the next page', async ({
   await expect(html).toHaveAttribute('data-theme', chosen);
 });
 
+// The choice is the opposite of what the system says, so that it is one that was made: and the sign-in page is in it, and drawn in it (the light theme's
+// page is lighter than the dark one's).
+for (const system of ['light', 'dark']) {
+  test(`the sign-in page follows the theme that was chosen in the app, against a ${system} system`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: system });
+    await page.goto('/admin/');
+    await page.getByRole('switch', { name: /theme/i }).click();
+    const chosen = await page.locator('html').getAttribute('data-theme');
+    expect(chosen).not.toBe(system);
+    await page.goto('/login');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', chosen);
+    const red = await page.evaluate(() => Number(getComputedStyle(document.body).backgroundColor.match(/\d+/)[0]));
+    expect(chosen === 'light' ? red > 200 : red < 80).toBe(true);
+  });
+}
+
 test('the console says once for a tab what built the page, and nothing else', async ({ page }) => {
   const said = [];
   page.on('console', (m) => said.push(`${m.type()}: ${m.text()}`));
