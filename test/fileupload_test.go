@@ -18,6 +18,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // arrived is what a file upload's Run was handed, and read from it.
@@ -115,18 +116,22 @@ func TestAFileUploadIsAFormOfItsOwnWithTheViewIDBeforeTheFile(t *testing.T) {
 		f.Receive.Label = "Send it"
 	})
 	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, body, "Upload firmware")
-	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	panel, file := strings.Index(body, `name="_view"`), strings.Index(body, `type="file"`)
-	assert.True(t, panel >= 0 && file > panel)
-	assert.Contains(t, body, `name="file" accept="image/png,.png,image/jpeg,.jpg,.jpeg" required`)
-	assert.Contains(t, body, "A PNG or JPEG file")
-	assert.Contains(t, body, "Up to 2 GiB")
-	assert.Contains(t, body, "The image that the device shows.")
-	assert.Contains(t, body, "Send it")
-	assert.Contains(t, body, `data-file=`)
+	p := page.Parse(t, body)
+	assert.Equal(t, len(p.ByRole("heading", "Upload firmware")), 1)
+	assert.Equal(t, len(p.ByAttr("enctype", "multipart/form-data")), 1)
+	assert.DeepEqual(t, fieldNames(p), []string{"_view", "file"}) // the panel before the one file
+	chooser := page.One(t, "the chooser", p.ByAttr("type", "file"))
+	assert.Equal(t, chooser.Attr("name"), "file")
+	assert.Equal(t, chooser.Attr("accept"), "image/png,.png,image/jpeg,.jpg,.jpeg")
+	assert.True(t, chooser.Has("required"))
+	for _, said := range []string{"A PNG or JPEG file", "Up to 2 GiB", "The image that the device shows."} {
+		assert.True(t, len(p.ByAllText(said)) > 0)
+	}
+	assert.Equal(t, len(p.ByRole("button", "Send it")), 1)
+	assert.True(t, chooser.Has("data-file"))
 	assert.Contains(t, body, `/_webui/file.`) // the script that makes the chooser a drop zone
-	assert.False(t, strings.Contains(body, `name="_rm"`))
+	_, removes := p.Field("_rm")
+	assert.False(t, removes)
 }
 
 func TestAFileUploadHandsTheFileToRunAsItArrives(t *testing.T) {
@@ -330,9 +335,9 @@ func TestAFileUploadGuardDecidesHowThePanelIsDrawn(t *testing.T) {
 	hidden := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Receive.Guard = func(context.Context, webui.FileHandle[struct{}]) error { return errors.New("no") }
 	})
-	body := serve(hidden.h, http.MethodGet, "/admin/up").Body.String()
-	assert.False(t, strings.Contains(body, `type="file"`))
-	assert.False(t, strings.Contains(body, "Upload firmware"))
+	gone := pageOf(t, hidden.h, "/admin/up")
+	assert.Equal(t, len(gone.ByAttr("type", "file")), 0)
+	assert.Equal(t, len(gone.ByRole("heading", "Upload firmware")), 0)
 
 	disabled := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Receive.Guard = func(_ context.Context, h webui.FileHandle[struct{}]) error {
@@ -340,12 +345,12 @@ func TestAFileUploadGuardDecidesHowThePanelIsDrawn(t *testing.T) {
 			return webui.Disabled("An upload is already running")
 		}
 	})
-	body = serve(disabled.h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, body, "Upload firmware")
-	assert.Contains(t, body, `type="file"`)
-	assert.Contains(t, body, "disabled")
-	assert.Contains(t, body, "An upload is already running")
-	assert.False(t, strings.Contains(body, `data-file=`)) // script leaves a chooser that is disabled alone
+	off := pageOf(t, disabled.h, "/admin/up")
+	assert.Equal(t, len(off.ByRole("heading", "Upload firmware")), 1)
+	chooser, _ := off.Field("file")
+	assert.True(t, chooser.Disabled)
+	assert.Equal(t, len(off.ByText("Upload Not available: An upload is already running")), 1)
+	assert.False(t, page.One(t, "the chooser", off.ByAttr("type", "file")).Has("data-file")) // script leaves a chooser that is disabled alone
 }
 
 // The Guard refuses the POST too, with its message, after the first bytes and before any more: Run is not called and the rest of the file is not read.
@@ -433,7 +438,8 @@ func TestAFileUploadWithNoFileSaysToChooseOneAndAnEmptyFileIsAFile(t *testing.T)
 
 	// The same as a fragment for script, which sends a folder's empty files as it sends the others.
 	fragment := postFragment(s.h, "dir/empty.txt", "")
-	assert.Contains(t, fragment.Body.String(), `data-tone="ok"`)
+	assert.Equal(t, len(items(page.Parse(t, fragment.Body.String()))), 1)
+	assert.True(t, strings.HasPrefix(items(page.Parse(t, fragment.Body.String()))[0], "Done: "))
 	assert.False(t, strings.Contains(fragment.Body.String(), "Choose a file."))
 
 	// The file before the panel is not anybody's.
@@ -587,13 +593,12 @@ func TestAFileUploadHasInputsBesideTheFileWithTheirDefaultsAndTheirRules(t *test
 	t.Parallel()
 
 	s := newChoiceShop(nil)
-	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
-	note, channel, file := strings.Index(body, `name="f0"`), strings.Index(body, `name="f1"`), strings.Index(body, `type="file"`)
-	assert.True(t, note >= 0 && channel > note && file > channel) // in the order of the form, the file last, so that they arrive first
-	assert.Contains(t, body, `value="a note"`)                    // the defaults that Load gave
-	assert.Contains(t, body, `minlength="3"`)                     // the rules, as a form's inputs have them
-	assert.Contains(t, body, `enctype="multipart/form-data"`)
-	assert.Equal(t, strings.Count(body, `name="_view"`), 1)
+	p := pageOf(t, s.h, "/admin/up")
+	assert.DeepEqual(t, fieldNames(p), []string{"_view", "f0", "f1", "file"}) // in the order of the form, the file last, so that they arrive first
+	note, _ := p.Field("f0")
+	assert.Equal(t, note.Value, "a note")                                                   // the defaults that Load gave
+	assert.Equal(t, page.One(t, "the note", p.ByAttr("name", "f0")).Attr("minlength"), "3") // the rules, as a form's inputs have them
+	assert.Equal(t, len(p.ByAttr("enctype", "multipart/form-data")), 1)
 }
 
 func TestAFileUploadHandsRunWhatWasChosenBesideTheFile(t *testing.T) {
@@ -661,8 +666,8 @@ func TestAFileUploadOptionsAreOptional(t *testing.T) {
 	t.Parallel()
 
 	s := newChoiceShop(func(f *webui.FileUpload[choice]) { f.Load, f.Fields = nil, nil })
-	body := serve(s.h, http.MethodGet, "/admin/up").Body.String()
-	assert.False(t, strings.Contains(body, `name="f0"`))
+	_, offered := pageOf(t, s.h, "/admin/up").Field("f0")
+	assert.False(t, offered)
 	rec := orderedPost(s.h, "/admin/up", nil, rawPart{"_view", "", "p"}, rawPart{"file", "a.bin", "data"})
 	assert.Equal(t, flashOf(rec), "oUploaded a.bin")
 	assert.Equal(t, s.runs[0].Options, choice{})
@@ -723,10 +728,10 @@ func TestAFileUploadThatScriptSendsIsAnsweredWithAnHTMLFragment(t *testing.T) {
 		tone    string
 		text    string
 	}{
-		"success": {outcome: webui.Success("Stored it"), status: 200, tone: "ok", text: "Stored it"},
-		"warning": {outcome: webui.Warning("Stored it slowly"), status: 200, tone: "warn", text: "Stored it slowly"},
-		"failure": {outcome: webui.Failure("The bucket is full"), status: 422, tone: "bad", text: "The bucket is full"},
-		"error":   {err: errors.New("boom"), status: 500, tone: "bad", text: "Something went wrong. The cause was logged on the server."},
+		"success": {outcome: webui.Success("Stored it"), status: 200, tone: "Done: ", text: "Stored it"},
+		"warning": {outcome: webui.Warning("Stored it slowly"), status: 200, tone: "Warning: ", text: "Stored it slowly"},
+		"failure": {outcome: webui.Failure("The bucket is full"), status: 422, tone: "Failed: ", text: "The bucket is full"},
+		"error":   {err: errors.New("boom"), status: 500, tone: "Failed: ", text: "Something went wrong. The cause was logged on the server."},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -742,10 +747,9 @@ func TestAFileUploadThatScriptSendsIsAnsweredWithAnHTMLFragment(t *testing.T) {
 			assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
 			assert.Equal(t, rec.Header().Get("Location"), "")
 			assert.Equal(t, flashOf(rec), "") // no flash: the HTML is the answer
-			body := strings.TrimSpace(rec.Body.String())
-			assert.True(t, strings.HasPrefix(body, `<li class="result" data-tone="`+c.tone+`">`) && strings.HasSuffix(body, `</li>`))
-			assert.Contains(t, body, `<span class="result-text">`+c.text+`</span>`)
-			assert.False(t, strings.Contains(body, "<a ")) // it goes nowhere else
+			told := page.Parse(t, rec.Body.String())
+			assert.DeepEqual(t, items(told), []string{c.tone + c.text})
+			assert.Equal(t, len(told.Links()), 0) // it goes nowhere else
 		})
 	}
 }
@@ -755,7 +759,7 @@ func TestAnUploadFragmentEscapesTheTextAndSaysWhatWasRefused(t *testing.T) {
 	t.Parallel()
 
 	s := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Accept = []webui.FileKind{webui.FilePNG} })
-	assert.Contains(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">Choose a PNG file.</span>`)
+	assert.DeepEqual(t, items(page.Parse(t, postFragment(s.h, "a.png", string(pdfBytes)).Body.String())), []string{"Failed: Choose a PNG file."})
 
 	named := newUploadShop(func(f *webui.FileUpload[struct{}]) {
 		f.Receive.Run = func(_ context.Context, h webui.FileHandle[struct{}]) (webui.Outcome, error) {
@@ -784,9 +788,9 @@ func TestAnUploadFragmentOffersALinkToWhereTheOutcomeGoes(t *testing.T) {
 		}},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: up}, done}}.MustCompile("/admin")
-	body := postFragment(h, "a.bin", "data").Body.String()
-	assert.Contains(t, body, `<a class="btn btn-ghost btn-sm result-next" href="/admin/done">Continue</a>`)
-	assert.Contains(t, body, `data-tone="ok"`)
+	told := page.Parse(t, postFragment(h, "a.bin", "data").Body.String())
+	assert.True(t, hasLink(told, "Continue", "/admin/done"))
+	assert.DeepEqual(t, items(told), []string{"Done: Uploaded Continue"})
 }
 
 // A page that refuses the visitor refuses a post of script's as it does any: with the status, and the words as the HTML of the item.
@@ -798,7 +802,7 @@ func TestAFileUploadPostOnAPageTheVisitorMayNotOpenIsRefusedAsAFragment(t *testi
 	})
 	rec := postFragment(s.h, "a.bin", "data")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	assert.Contains(t, rec.Body.String(), `data-tone="bad"><span class="sr-only">Failed: </span> <span class="result-text">requires the editor role</span>`)
+	assert.DeepEqual(t, items(page.Parse(t, rec.Body.String())), []string{"Failed: requires the editor role"})
 	assert.Equal(t, s.count(), 0)
 }
 
@@ -807,18 +811,18 @@ func TestAFileUploadPostOnAPageTheVisitorMayNotOpenIsRefusedAsAFragment(t *testi
 func TestAFileUploadTellsTheScriptWhetherItTakesSeveralAndTakesOneWithout(t *testing.T) {
 	t.Parallel()
 
-	one := serve(newUploadShop(nil).h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, one, ` data-upload`)
-	assert.False(t, strings.Contains(one, "data-multiple")) // one file
+	chooserOf := func(h http.Handler) page.El {
+		return page.One(t, "the chooser", pageOf(t, h, "/admin/up").ByAttr("type", "file"))
+	}
+	one := chooserOf(newUploadShop(nil).h)
+	assert.True(t, len(pageOf(t, newUploadShop(nil).h, "/admin/up").ByAttr("data-upload", "")) > 0)
+	assert.Equal(t, len(pageOf(t, newUploadShop(nil).h, "/admin/up").ByAttr("data-multiple", "")), 0) // one file
 	several := newUploadShop(func(f *webui.FileUpload[struct{}]) { f.Multiple = true })
-	body := serve(several.h, http.MethodGet, "/admin/up").Body.String()
-	assert.Contains(t, body, ` data-multiple`)
-	assert.False(t, strings.Contains(body, "{&#34;multiple")) // plain attributes, and no data that script has to parse
-	input := body[strings.Index(body, `<input`+""):]
-	input = input[strings.Index(input, `type="file"`)-10:]
-	input = input[:strings.Index(input, ">")]
-	assert.False(t, strings.Contains(input, "multiple")) // not in the markup: script adds it
-	assert.False(t, strings.Contains(input, "webkitdirectory"))
+	assert.Equal(t, len(pageOf(t, several.h, "/admin/up").ByAttr("data-multiple", "")), 1)
+	for _, c := range []page.El{one, chooserOf(several.h)} {
+		assert.False(t, c.Has("multiple")) // not in the markup: script adds it
+		assert.False(t, c.Has("webkitdirectory"))
+	}
 }
 
 // The scripts are linked where they are used, and the upload's after the file's, which has made the chooser a drop zone when it runs.
@@ -832,4 +836,13 @@ func TestThePageLinksTheUploadScriptOnlyForAFileUploadAndAfterTheFileScript(t *t
 	assert.Contains(t, body, `<script src="`+assetURL(t, s.h, "upload.js")+`" defer></script>`)
 	assert.False(t, strings.Contains(serve(newFileShop(plainFile()).h, http.MethodGet, "/admin/f").Body.String(), "/_webui/upload."))
 	assert.False(t, strings.Contains(serve(newShop().h, http.MethodGet, "/admin/device/dev1").Body.String(), "/_webui/upload."))
+}
+
+// fieldNames are the names of what a page posts, in the order that a browser would send them.
+func fieldNames(p *page.Page) []string {
+	var out []string
+	for _, f := range p.Fields() {
+		out = append(out, f.Name)
+	}
+	return out
 }
