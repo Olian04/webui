@@ -11,6 +11,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // noNav is an app with pages and not one entry in the navigation: the pages are reached by link, and by the address.
@@ -45,32 +46,31 @@ func TestAnAppWhosePagesDeclareNoEntryHasNoSidebar(t *testing.T) {
 
 	rec := serve(noNav(), http.MethodGet, "/admin/devices")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
+	p := page.Parse(t, rec.Body.String())
 
-	for _, absent := range []string{`class="sidebar`, "<aside", `class="side-brand"`, `class="side-scroll"`, `class="nav-item`, "data-sidebar-toggle"} {
-		assert.False(t, strings.Contains(body, absent))
-	}
-	assert.Contains(t, body, `<main id="main"`)
+	assert.Equal(t, len(p.ByRole("complementary", "")), 0)
+	assert.Equal(t, len(p.ByRole("navigation", "Main")), 0)
+	assert.Equal(t, len(p.ByAttr("data-sidebar-toggle", "")), 0)
+	assert.Equal(t, len(p.ByRole("main", "")), 1)
 
 	// The first crumb is the brand, which is where it leads back to.
-	top := topBar(t, body)
-	assert.Contains(t, top, `Demo`)
+	assert.True(t, strings.HasPrefix(trail(t, p)[0], "Demo"))
 
-	// The theme is one icon button in the top bar, once. It is a switch, named by the theme it turns on, and carries both icons: the stylesheet shows the one
-	// that a press brings.
-	assert.Equal(t, strings.Count(body, `data-pref-toggle="theme"`), 1)
-	assert.Contains(t, top, `<button class="iconbtn theme-toggle" type="button" role="switch" aria-checked="false" aria-label="Light theme" title="Light theme" data-pref-toggle="theme">`)
-	assert.Contains(t, top, `fa-sun`)
-	assert.Contains(t, top, `fa-moon`)
+	// The theme is one icon button in the top bar, once. It is a switch, named by the theme it turns on.
+	assert.Equal(t, len(p.ByAttr("data-pref-toggle", "theme")), 1)
+	top := page.One(t, "top bar", p.ByRole("banner", ""))
+	toggle := page.One(t, "the theme switch", top.ByRole("switch", "Light theme"))
+	assert.Equal(t, toggle.Attr("aria-checked"), "false")
+	assert.Equal(t, toggle.Attr("data-pref-toggle"), "theme")
 }
 
 // An app with no page at all has no entry to list either.
 func TestAnAppWithNoPageHasNoSidebar(t *testing.T) {
 	t.Parallel()
 
-	body := serve(webui.App{}.MustCompile("/admin"), http.MethodGet, "/admin/").Body.String()
-	assert.False(t, strings.Contains(body, `class="sidebar`))
-	assert.Equal(t, strings.Count(body, `data-pref-toggle="theme"`), 1)
+	p := pageOf(t, webui.App{}.MustCompile("/admin"), "/admin/")
+	assert.Equal(t, len(p.ByRole("complementary", "")), 0)
+	assert.Equal(t, len(p.ByAttr("data-pref-toggle", "theme")), 1)
 }
 
 // The states that the library answers with, a missing page and a method that the page does not take, are drawn in the same shell as a page is.
@@ -78,8 +78,8 @@ func TestTheStatesOfAnAppWithNoEntryHaveNoSidebar(t *testing.T) {
 	t.Parallel()
 
 	h := noNav()
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/nowhere").Body.String(), `class="sidebar`))
-	assert.False(t, strings.Contains(serve(h, http.MethodPost, "/admin/devices").Body.String(), `class="sidebar`))
+	assert.Equal(t, len(pageOf(t, h, "/admin/nowhere").ByRole("complementary", "")), 0)
+	assert.Equal(t, len(page.Parse(t, serve(h, http.MethodPost, "/admin/devices").Body.String()).ByRole("complementary", "")), 0)
 }
 
 // One page is enough, if it has an entry: the app says it wants a sidebar by giving a page one, and the first example of the README is that.
@@ -87,13 +87,12 @@ func TestTheStatesOfAnAppWithNoEntryHaveNoSidebar(t *testing.T) {
 func TestAnAppWithOnePageAndAnEntryHasASidebar(t *testing.T) {
 	t.Parallel()
 
-	body := serve(onePage(nil), http.MethodGet, "/admin/devices").Body.String()
-	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
-	assert.Equal(t, strings.Count(body, `class="nav-item`), 1)
-	assert.Equal(t, strings.Count(body, `data-pref-toggle="theme"`), 1)
-	assert.Contains(t, topBar(t, body), `data-pref-toggle="theme"`)
-	assert.False(t, strings.Contains(body, `data-pref="theme"`))
-	assert.False(t, strings.Contains(body, `id="pref-theme"`))
+	p := pageOf(t, onePage(nil), "/admin/devices")
+	assert.Equal(t, len(p.ByRole("complementary", "")), 1)
+	assert.Equal(t, len(sidebarNav(t, p).Links()), 1)
+	assert.Equal(t, len(p.ByAttr("data-pref-toggle", "theme")), 1)
+	assert.Equal(t, len(page.One(t, "top bar", p.ByRole("banner", "")).ByAttr("data-pref-toggle", "theme")), 1) // the top bar's, and not the sidebar's
+	assert.Equal(t, len(p.ByAttr("data-pref", "theme")), 0)
 }
 
 // A page that lists its entries from the app's data has an entry too, though it may list none or one: the sidebar is not for the number.
@@ -109,9 +108,9 @@ func TestAPageThatListsEntriesGivesTheAppASidebar(t *testing.T) {
 				NavEntries: siteEntries(names...), View: webui.Stack{},
 			}
 			h := webui.App{Pages: webui.Pages{site}}.MustCompile("/admin")
-			body := serve(h, http.MethodGet, "/admin/site/Stockholm").Body.String()
-			assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
-			assert.Equal(t, strings.Count(body, `class="nav-item`), len(names))
+			p := pageOf(t, h, "/admin/site/Stockholm")
+			assert.Equal(t, len(p.ByRole("complementary", "")), 1)
+			assert.Equal(t, len(sidebarNav(t, p).Links()), len(names))
 		})
 	}
 }
@@ -124,10 +123,10 @@ func TestTheSidebarDoesNotDependOnWhatTheVisitorMayOpen(t *testing.T) {
 	refused := func(context.Context, webui.NoArgs) error { return errors.New("not for you") }
 	rec := serve(onePage(refused), http.MethodGet, "/admin/devices")
 	assert.Equal(t, rec.Code, http.StatusForbidden)
-	body := rec.Body.String()
-	assert.Contains(t, body, `<aside class="sidebar drawer drawer-left" id="sidebar">`)
-	assert.False(t, strings.Contains(body, `class="nav-item`))
-	assert.Contains(t, topBar(t, body), `data-pref-toggle="theme"`)
+	p := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(p.ByRole("complementary", "")), 1)
+	assert.Equal(t, len(sidebarNav(t, p).Links()), 0)
+	assert.Equal(t, len(page.One(t, "top bar", p.ByRole("banner", "")).ByAttr("data-pref-toggle", "theme")), 1)
 }
 
 // The mark of the app, which is in the sidebar's brand, is at the head of the top bar when there is no sidebar, so that the app still has its logo on
@@ -143,8 +142,10 @@ func TestTheMarkOfAnAppWithNoSidebarLeadsTheTopBar(t *testing.T) {
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})
 	only := webui.Page[webui.NoArgs]{Path: "/devices", View: webui.Stack{}}
 	h := webui.App{Brand: webui.Brand{Name: "Demo", Logo: img}, Pages: webui.Pages{only}}.MustCompile("/admin")
-	top = topBar(t, serve(h, http.MethodGet, "/admin/devices").Body.String())
-	assert.Contains(t, top, `<img class="logo-img" src="`+assetURL(t, h, "logo")+`" alt="">`)
+	own := page.One(t, "top bar", pageOf(t, h, "/admin/devices").ByRole("banner", ""))
+	logo := own.ByRole("presentation", "") // a picture that is decoration: the app's name is the text beside it
+	assert.Equal(t, len(logo), 1)
+	assert.Equal(t, logo[0].Attr("src"), assetURL(t, h, "logo"))
 }
 
 // With a sidebar the mark is in the sidebar's brand, and is not drawn twice.

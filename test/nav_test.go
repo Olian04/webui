@@ -11,6 +11,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func navApp() http.Handler {
@@ -29,17 +30,20 @@ func navApp() http.Handler {
 func TestANavEntryWithAnIconDrawsIt(t *testing.T) {
 	t.Parallel()
 
-	body := serve(navApp(), http.MethodGet, "/admin/device").Body.String()
-	// The icon is its Font Awesome class, and there is no initial beside it.
-	assert.Contains(t, body, `<i class="fa-solid fa-display ni" aria-hidden="true"></i><span>Devices</span>`)
-	assert.False(t, strings.Contains(body, `ni-letter" aria-hidden="true">D<`))
+	entry := page.One(t, "the Devices entry", pageOf(t, navApp(), "/admin/device").ByRole("link", "Devices"))
+	icon := entry.Children()[0]
+	assert.Contains(t, icon.Attr("class"), "fa-display") // Nav.Icon is the name of a Font Awesome icon
+	assert.Equal(t, icon.Attr("aria-hidden"), "true")    // decoration: the entry is called by its label
+	assert.Equal(t, entry.AllText(), "Devices")          // and there is no initial beside it
 }
 
 func TestANavEntryWithoutAnIconCarriesItsCapitalisedInitialForTheRail(t *testing.T) {
 	t.Parallel()
 
-	body := serve(navApp(), http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>retention</span>`)
+	entry := page.One(t, "the retention entry", pageOf(t, navApp(), "/admin/device").ByRole("link", "retention"))
+	letter := entry.Children()[0]
+	assert.Equal(t, letter.AllText(), "R")              // for the rail, which has no room for the label
+	assert.Equal(t, letter.Attr("aria-hidden"), "true") // a reader has the label, and not the letter as well
 }
 
 func TestTheBrandLinksToTheLandingPage(t *testing.T) {
@@ -49,19 +53,19 @@ func TestTheBrandLinksToTheLandingPage(t *testing.T) {
 		webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}},
 		webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}},
 	}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `<a class="side-brand" href="/admin/"`)
-	// And so does the first breadcrumb.
-	assert.Contains(t, body, `<a href="/admin/">Acme</a>`)
+	p := pageOf(t, h, "/admin/device")
+	home := linksTo(p, "/admin/")
+	assert.Equal(t, len(home), 2) // the brand, and the first breadcrumb
+	assert.Equal(t, named(home, "Acme"), 2)
+	assert.Equal(t, crumbs(t, p).Links()[0].Href, "/admin/")
 }
 
 func TestTheBrandOfAnAppWithNoLandingPageLinksToThePageTheRootWouldSendYouTo(t *testing.T) {
 	t.Parallel()
 
-	body := serve(navApp(), http.MethodGet, "/admin/retention").Body.String()
-	assert.Contains(t, body, `<a class="side-brand" href="/admin/device"`) // the first entry, not the root
-	assert.Contains(t, body, `<a href="/admin/device">Acme</a>`)
-	assert.False(t, strings.Contains(body, `href="/admin/"`))
+	p := pageOf(t, navApp(), "/admin/retention")
+	assert.Equal(t, named(linksTo(p, "/admin/device"), "Acme"), 2) // the brand and the first breadcrumb lead to the first entry, not the root
+	assert.Equal(t, len(linksTo(p, "/admin/")), 0)
 }
 
 func TestTheBrandLinksToTheFirstPageThatNeedsNoArgumentsWhenNothingIsInTheNavigation(t *testing.T) {
@@ -74,7 +78,7 @@ func TestTheBrandLinksToTheFirstPageThatNeedsNoArgumentsWhenNothingIsInTheNaviga
 	h := webui.App{Pages: webui.Pages{byID, locked, open}}.MustCompile("/admin")
 
 	// No page declares an entry, so there is no sidebar: the brand is the first crumb, which leads where the sidebar's would.
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/device/x").Body.String(), `<a href="/admin/overview">Home</a>`)
+	assert.DeepEqual(t, crumbs(t, pageOf(t, h, "/admin/device/x")).Links(), []page.Link{{Name: "Home", Href: "/admin/overview"}})
 }
 
 func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
@@ -83,10 +87,9 @@ func TestTheBrandIsNotALinkWhenThereIsNowhereToGo(t *testing.T) {
 	type one struct{ ID string }
 	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}}}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/device/x").Body.String()
-	assert.False(t, strings.Contains(body, `<a href="/admin/">Acme</a>`))
-	assert.Contains(t, body, `<span class="cur" aria-current="page">Acme</span>`) // plain text, as the first breadcrumb
-	assert.False(t, strings.Contains(body, `href="/admin/"`))
+	p := pageOf(t, h, "/admin/device/x")
+	assert.Equal(t, len(linksTo(p, "/admin/")), 0)
+	assert.True(t, strings.HasPrefix(crumbs(t, p).Text(), "Acme")) // plain text, as the first breadcrumb
 }
 
 func TestWithoutALandingPageTheRootGoesToTheFirstEntry(t *testing.T) {
@@ -111,7 +114,9 @@ func TestAPageAtTheRootIsTheLandingPage(t *testing.T) {
 	for _, target := range []string{"/admin", "/admin/"} {
 		rec := serve(h, http.MethodGet, target)
 		assert.Equal(t, rec.Code, http.StatusOK) // served, not redirected
-		assert.Contains(t, rec.Body.String(), `<span class="cur" aria-current="page">Acme</span>`)
+		c := crumbs(t, page.Parse(t, rec.Body.String()))
+		assert.Equal(t, c.Text(), "Acme") // the landing page is the brand, and it is where the reader is
+		assert.Equal(t, len(c.Links()), 0)
 	}
 }
 
@@ -137,8 +142,8 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 	t.Parallel()
 
 	h := navApp()
-	page := serve(h, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, page, `<link rel="stylesheet" href="`+assetURL(t, h, "fontawesome.css")+`">`)
+	sheets := pageOf(t, h, "/admin/device").ByAttr("href", assetURL(t, h, "fontawesome.css"))
+	assert.Equal(t, page.One(t, "link to the icon stylesheet", sheets).Attr("rel"), "stylesheet")
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css"))
 	assert.Equal(t, css.Code, http.StatusOK)
@@ -156,10 +161,8 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
 	t.Parallel()
 
-	body := serve(navApp(), http.MethodGet, "/admin/device").Body.String()
-	// It sits in the js-only footer, so without script it is not there to be inert.
-	assert.Contains(t, body, `<div class="js-only"><div class="side-foot"><button class="side-row side-collapse"`)
-	assert.Contains(t, body, `data-sidebar-toggle`)
+	// That it is not there without script is a scenario of the browser suite.
+	assert.Equal(t, len(pageOf(t, navApp(), "/admin/device").ByAttr("data-sidebar-toggle", "")), 1)
 }
 
 // ancestryApp has pages at several depths, to see which entry a page lights.
@@ -176,17 +179,6 @@ func ancestryApp() http.Handler {
 		page("/site", "Sites"),
 		page("/site/alerts", "Site alerts"), // below Sites, but with an entry of its own
 	}}.MustCompile("/admin")
-}
-
-func activeEntries(t *testing.T, h http.Handler, target string) []string {
-	t.Helper()
-
-	body := serve(h, http.MethodGet, target).Body.String()
-	var out []string
-	for _, part := range strings.Split(body, `<a class="nav-item active" href="`)[1:] {
-		out = append(out, part[:strings.Index(part, `"`)])
-	}
-	return out
 }
 
 func TestAPageWithNoEntryLightsItsNearestAncestorsEntry(t *testing.T) {
@@ -234,27 +226,18 @@ func TestASidebarEntryTheVisitorMayNotOpenIsLeftOut(t *testing.T) {
 	t.Parallel()
 
 	refuse := guardedNavApp(func(context.Context) error { return errors.New("requires the editor role") })
-	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
-	assert.False(t, strings.Contains(body, "Audit log"))
-	assert.False(t, strings.Contains(body, "Secret"))
-	assert.Contains(t, body, "Devices")
-	assert.Contains(t, body, "System")
+	assert.DeepEqual(t, outline(t, pageOf(t, refuse, "/admin/device")), []string{"# Operations", "System", "# Platform", "Devices"})
 
 	allow := guardedNavApp(func(context.Context) error { return nil })
-	body = serve(allow, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, "Audit log")
-	assert.Contains(t, body, "Secret")
+	assert.DeepEqual(t, outline(t, pageOf(t, allow, "/admin/device")), []string{"# Operations", "Audit log", "System", "# Platform", "Devices", "# Hidden section", "Secret"})
 }
 
 func TestASectionCaptionStaysAboveWhatIsStillShownAndGoesWithAnEmptySection(t *testing.T) {
 	t.Parallel()
 
 	refuse := guardedNavApp(func(context.Context) error { return errors.New("no") })
-	body := serve(refuse, http.MethodGet, "/admin/device").Body.String()
-	// Audit log, first in Operations, is hidden; the caption goes to System, the first one shown.
-	assert.Contains(t, body, `<div class="nav-section caption" title="Operations">Operations</div> <a class="nav-item" href="/admin/system"`)
-	// A section with every entry hidden has no caption.
-	assert.False(t, strings.Contains(body, "Hidden section"))
+	// Audit log, first in Operations, is hidden; the caption goes to System, the first one shown. A section with every entry hidden has no caption.
+	assert.DeepEqual(t, outline(t, pageOf(t, refuse, "/admin/device")), []string{"# Operations", "System", "# Platform", "Devices"})
 }
 
 func TestAHiddenEntryStillAnswers403ToItsAddressAndTheRootSkipsIt(t *testing.T) {
@@ -274,30 +257,22 @@ func TestAHiddenEntryStillAnswers403ToItsAddressAndTheRootSkipsIt(t *testing.T) 
 func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
 	t.Parallel()
 
-	page := func(path, label, section string) webui.Page[webui.NoArgs] {
+	entry := func(path, label, section string) webui.Page[webui.NoArgs] {
 		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, View: webui.Stack{}}
 	}
 	// Given out of order: sections interleaved, and entries with no Section among them.
 	h := webui.App{Pages: webui.Pages{
-		page("/device", "Devices", "Platform"),
-		page("/retention", "Retention", "Configuration"),
-		page("/home", "Home", ""),
-		page("/site", "Sites", "Platform"),
-		page("/ingest", "Ingest", "Configuration"),
-		page("/about", "About", ""),
+		entry("/device", "Devices", "Platform"),
+		entry("/retention", "Retention", "Configuration"),
+		entry("/home", "Home", ""),
+		entry("/site", "Sites", "Platform"),
+		entry("/ingest", "Ingest", "Configuration"),
+		entry("/about", "About", ""),
 	}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-
-	assert.Equal(t, strings.Count(body, `class="nav-section caption" title=`), 2) // one caption for each section
-	at := func(s string) int { return strings.Index(body, s) }
-	// No Section: first, in the order given, under no caption.
-	assert.True(t, at(">Home</span>") < at(">About</span>"))
-	assert.True(t, at(">About</span>") < at(">Platform<"))
-	// Sections in the order first named, entries in the order given.
-	assert.True(t, at(">Platform<") < at(">Devices</span>"))
-	assert.True(t, at(">Devices</span>") < at(">Sites</span>"))
-	assert.True(t, at(">Sites</span>") < at(">Configuration<"))
-	assert.True(t, at(">Retention</span>") < at(">Ingest</span>"))
+	// No Section: first, in the order given, under no caption. Sections in the order first named, entries in the order given, one caption for each section.
+	assert.DeepEqual(t, outline(t, pageOf(t, h, "/admin/device")), []string{
+		"Home", "About", "# Platform", "Devices", "Sites", "# Configuration", "Retention", "Ingest",
+	})
 
 	// And the root goes to the first entry the sidebar lists.
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/").Header().Get("Location"), "/admin/home")
@@ -307,8 +282,8 @@ func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testi
 	t.Parallel()
 
 	type one struct{ ID string }
-	page := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
-	errs := compileErrors(t, webui.App{Pages: webui.Pages{page}})
+	declared := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
+	errs := compileErrors(t, webui.App{Pages: webui.Pages{declared}})
 	assert.Contains(t, errs[0].Detail, `sidebar entry "Device" but its path has arguments`)
 }
 
@@ -316,8 +291,8 @@ func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T)
 	t.Parallel()
 
 	type one struct{ ID string }
-	page := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // no Nav, and none at "/"
-	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{page}}.MustCompile("/admin")
+	declared := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // no Nav, and none at "/"
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{declared}}.MustCompile("/admin")
 
 	for _, at := range []string{"/admin", "/admin/"} {
 		rec := serve(h, http.MethodGet, at)

@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type searchResponse struct {
@@ -22,33 +21,24 @@ type searchResponse struct {
 	}
 }
 
-var (
-	searchLabel = regexp.MustCompile(`<div class="pal-label[^"]*"[^>]*>(.*?)</div>`)
-	searchItem  = regexp.MustCompile(`<a class="pal-item"[^>]*? href="([^"]*)"[^>]*>\s*<span>(.*?)</span>(?:\s*<span class="mono">(.*?)</span>)?\s*</a>`)
-)
+// parseResults reads the results out of the HTML that the search answers with: the groups that are named, and the options under each, in order.
+func parseResults(t *testing.T, body string) searchResponse {
+	t.Helper()
 
-// parseResults reads the results out of the HTML that the search answers with: the labels of the groups and the links under them, in order.
-func parseResults(body string) searchResponse {
 	var out searchResponse
-	group := ""
-	rest := body
-	for {
-		l, it := searchLabel.FindStringSubmatchIndex(rest), searchItem.FindStringSubmatchIndex(rest)
-		switch {
-		case l == nil && it == nil:
-			return out
-		case it == nil || (l != nil && l[0] < it[0]):
-			group = html.UnescapeString(rest[l[2]:l[3]])
-			rest = rest[l[1]:]
-		default:
-			r := struct{ Group, Title, Desc, Href string }{Group: group, Href: html.UnescapeString(rest[it[2]:it[3]]), Title: html.UnescapeString(rest[it[4]:it[5]])}
-			if it[6] >= 0 {
-				r.Desc = html.UnescapeString(rest[it[6]:it[7]])
+	for _, g := range page.Parse(t, body).ByRole("group", "") {
+		for _, o := range g.ByRole("option", "") {
+			r := struct{ Group, Title, Desc, Href string }{Group: g.Name(), Href: o.Attr("href")}
+			if kids := o.Children(); len(kids) > 0 {
+				r.Title = kids[0].Text()
+				if len(kids) > 1 {
+					r.Desc = kids[1].Text()
+				}
 			}
 			out.Results = append(out.Results, r)
-			rest = rest[it[1]:]
 		}
 	}
+	return out
 }
 
 // searchBox is the handler as script asks it for the box's list: with the header that a request for one panel carries, named for the box, and not with a parameter of the address.
@@ -68,7 +58,7 @@ func search(t *testing.T, h http.Handler, query string) searchResponse {
 	assert.Equal(t, rec.Header().Get("Content-Type"), "text/html; charset=utf-8")
 	assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 	assert.False(t, strings.Contains(rec.Body.String(), "<html")) // a list to put in the box, not a page
-	return parseResults(rec.Body.String())
+	return parseResults(t, rec.Body.String())
 }
 
 var (
@@ -230,36 +220,34 @@ func TestSearchBoxKnowsWhereToAskOnlyWhenAPageOffersSearch(t *testing.T) {
 	t.Parallel()
 
 	with := searchApp(rowsSearch(), nil)
-	body := serve(with, http.MethodGet, "/admin/device").Body.String()
-	assert.Contains(t, body, `data-search-url="/admin/_webui/search"`)
-	assert.Contains(t, body, `role="listbox"`)
+	p := pageOf(t, with, "/admin/device")
+	assert.Equal(t, page.One(t, "the search box's address", p.ByAttr("data-search-url", "")).Attr("data-search-url"), "/admin/_webui/search")
+	assert.Equal(t, len(p.ByRole("listbox", "")), 1)
 	// The box says it is a combobox only when script fills the listbox: without script it is a text input and a button.
-	assert.False(t, strings.Contains(body, `role="combobox"`))
-	assert.False(t, strings.Contains(body, `aria-expanded="false" aria-controls="palette"`))
+	assert.Equal(t, len(p.ByRole("combobox", "")), 0)
 
 	without := searchApp(nil, nil)
-	assert.False(t, strings.Contains(serve(without, http.MethodGet, "/admin/device").Body.String(), "data-search-url"))
+	assert.Equal(t, len(pageOf(t, without, "/admin/device").ByAttr("data-search-url", "")), 0)
 }
 
 func TestInfoIconCarriesItsDescriptionInAPopover(t *testing.T) {
 	t.Parallel()
 
-	body := serve(formApp(okForm()), http.MethodGet, "/admin/device/dev1").Body.String()
-	assert.Contains(t, body, `<span class="tip" tabindex="0" role="note" aria-label="One device.">`)
-	assert.Contains(t, body, `<span class="tip-body raise" aria-hidden="true">One device.</span>`)
+	p := pageOf(t, formApp(okForm()), "/admin/device/dev1")
+	note := page.One(t, "the note", p.ByRole("note", "One device.")) // the icon is a stop of the keys, and says it to a reader
+	assert.Equal(t, note.Attr("tabindex"), "0")
+	assert.True(t, page.One(t, "the popover", p.ByAllText("One device.")).Hidden()) // the words are in the popover, which a reader is not read twice
 }
 
 func TestPanelsHaveNoRefreshButtonOfTheirOwn(t *testing.T) {
 	t.Parallel()
 
 	h, _ := tableApp(nil)
-	body := serve(h, http.MethodGet, "/admin/device").Body.String()
-	for _, absent := range []string{"refresh-leaf", "Refresh this panel", `class="panel-menu"`} {
-		assert.False(t, strings.Contains(body, absent))
-	}
+	p := pageOf(t, h, "/admin/device")
+	assert.Equal(t, len(p.ByRole("link", "Refresh this panel"))+len(p.ByRole("button", "Refresh this panel")), 0)
 	// The page's own Refresh is the one reload.
-	assert.Equal(t, strings.Count(body, `fa-rotate-right`), 1)
-	assert.Contains(t, body, `data-refresh`)
+	assert.Equal(t, len(p.ByRole("link", "Refresh")), 1)
+	assert.Equal(t, len(p.ByAttr("data-refresh", "")), 1)
 }
 
 // guardedSearchApp finds three devices; the detail page's Guard decides which of

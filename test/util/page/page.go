@@ -308,6 +308,19 @@ func (e El) Name() string {
 	return strings.TrimSpace(e.Attr("title"))
 }
 
+// Before is whether the element comes before other in the page, in the order that a reader meets them.
+func (e El) Before(other El) bool {
+	for _, d := range (El{e.root()}).descendants() {
+		switch d.n {
+		case e.n:
+			return true
+		case other.n:
+			return false
+		}
+	}
+	return false
+}
+
 // Children are the elements directly below the element.
 func (e El) Children() []El {
 	var out []El

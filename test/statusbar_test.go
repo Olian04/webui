@@ -11,6 +11,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func statusApp() http.Handler {
@@ -32,20 +33,17 @@ func TestTheStatusBarSaysHowThePageCameToBe(t *testing.T) {
 
 	before := time.Now().UTC().Add(-time.Second)
 	rec := serve(statusApp(), http.MethodGet, "/admin/s")
-	body := rec.Body.String()
+	p := page.Parse(t, rec.Body.String())
 
-	// With script off, the bar says so, in markup that only a browser with script off shows.
-	assert.Contains(t, body, `<noscript><span class="sb-badge tone-warn"`)
-	assert.Contains(t, body, ">JS off</span>")
+	// With script off, the bar says so: a reader of the page as a client with no script gets it, and one with script does not (the browser suite).
+	assert.Equal(t, len(p.ByText("JS off")), 1)
 	// The server's time, and when the HTML was built, in a form the script can read.
-	assert.True(t, regexp.MustCompile(`data-build[^>]*>\d+(\.\d)? ms<`).MatchString(body))
-	m := regexp.MustCompile(`<time class="sb-opt" data-built datetime="([^"]+)"`).FindStringSubmatch(body)
-	assert.NotNil(t, m)
-	built, err := time.Parse(time.RFC3339Nano, m[1])
+	assert.True(t, regexp.MustCompile(`^\d+(\.\d)? ms$`).MatchString(page.One(t, "the render time", p.ByAttr("data-build", "")).Text()))
+	built, err := time.Parse(time.RFC3339Nano, page.One(t, "the build time", p.ByAttr("data-built", "")).Attr("datetime"))
 	assert.NoError(t, err)
 	assert.True(t, built.After(before) && !built.After(time.Now().UTC().Add(time.Second)))
 	// The badge for a page that was not built for the request is there for the script to show.
-	assert.Contains(t, body, `data-stale hidden`)
+	assert.True(t, page.One(t, "the stale badge", p.ByAttr("data-stale", "")).Hidden())
 
 	// The browser's own tools get the time too, in the standard header, and there is no header of the framework's for it.
 	assert.True(t, regexp.MustCompile(`^build;dur=\d+(\.\d)?$`).MatchString(rec.Header().Get("Server-Timing")))
@@ -63,13 +61,17 @@ func TestAPanelFetchedAgainCarriesItsOwnBuildTimeInElementsThatFollowIt(t *testi
 	body := rec.Body.String()
 	assert.Equal(t, rec.Header().Get("X-Webui-Built"), "")
 	assert.True(t, strings.HasPrefix(rec.Header().Get("Server-Timing"), "build;dur="))
-	assert.False(t, strings.Contains(body, "statusbar")) // a panel is not the page
+	assert.True(t, page.IsFragment(body)) // a panel is not the page
+	p := page.Parse(t, body)
+	assert.Equal(t, len(p.ByRole("banner", "")), 0)
 	// It is followed by the two elements of the bar that it says, each with what it replaces.
-	oob := body[strings.Index(body, "<div hidden data-oob>"):]
-	assert.True(t, regexp.MustCompile(`data-build data-replaces="\[data-build\]"[^>]*>\d+(\.\d)? ms<`).MatchString(oob))
-	m := regexp.MustCompile(`data-built data-replaces="\[data-built\]" datetime="([^"]+)"`).FindStringSubmatch(oob)
-	assert.NotNil(t, m)
-	_, err := time.Parse(time.RFC3339Nano, m[1])
+	oob := page.One(t, "the elements that replace the bar's", p.ByAttr("data-oob", ""))
+	render := page.One(t, "the render time", oob.ByAttr("data-build", ""))
+	assert.Equal(t, render.Attr("data-replaces"), "[data-build]")
+	assert.True(t, regexp.MustCompile(`^\d+(\.\d)? ms$`).MatchString(render.Text()))
+	built := page.One(t, "the build time", oob.ByAttr("data-built", ""))
+	assert.Equal(t, built.Attr("data-replaces"), "[data-built]")
+	_, err := time.Parse(time.RFC3339Nano, built.Attr("datetime"))
 	assert.NoError(t, err)
-	assert.True(t, strings.Index(body, "<div hidden data-oob>") > strings.Index(body, `data-view="p"`)) // after the panel, which is what the script puts in its place
+	assert.True(t, page.One(t, "the panel", p.Views()).Before(oob)) // after the panel, which is what the script puts in its place
 }

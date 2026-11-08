@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -52,12 +51,9 @@ func entriesApp(entries func(context.Context) ([]webui.NavEntry[siteArgs], error
 func sidebar(t *testing.T, h http.Handler, target string) []string {
 	t.Helper()
 
-	body := serve(h, http.MethodGet, target).Body.String()
-	nav := body[strings.Index(body, `<nav class="side-scroll"`):]
-	nav = nav[:strings.Index(nav, `</nav>`)]
 	var out []string
-	for _, m := range regexp.MustCompile(`<a class="nav-item( active)?" href="([^"]*)" title="([^"]*)"`).FindAllStringSubmatch(nav, -1) {
-		out = append(out, m[3]+">"+m[2]+map[bool]string{true: "*", false: ""}[m[1] != ""])
+	for _, l := range sidebarNav(t, pageOf(t, h, target)).Links() {
+		out = append(out, l.Name+">"+l.Href+map[bool]string{true: "*", false: ""}[l.Current])
 	}
 	return out
 }
@@ -75,9 +71,21 @@ func TestAPageWithNavEntriesHasAnEntryForEachOfThemInTheSidebarInOrder(t *testin
 		"Göteborg>/admin/site/G%C3%B6teborg",
 		"Alerts>/admin/alerts",
 	})
-	body := serve(h, http.MethodGet, "/admin/home").Body.String()
-	assert.Equal(t, strings.Count(body, `fa-location-dot`), 3)
-	assert.Equal(t, strings.Count(body, `class="nav-section caption" title=`), 1) // one caption: they are one group
+	p := pageOf(t, h, "/admin/home")
+	icons := 0
+	for _, e := range sidebarNav(t, p).ByRole("link", "") {
+		if strings.Contains(iconOf(e), "fa-location-dot") {
+			icons++
+		}
+	}
+	assert.Equal(t, icons, 3)
+	captions := 0
+	for _, o := range outline(t, p) {
+		if strings.HasPrefix(o, "# ") {
+			captions++
+		}
+	}
+	assert.Equal(t, captions, 1) // one caption: they are one group
 }
 
 func TestTheEntryOfThePageOnScreenIsLitAndSoIsTheEntryOfThePageThatBorrowsItsPlace(t *testing.T) {
