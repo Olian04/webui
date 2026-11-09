@@ -546,6 +546,8 @@ a.side-brand:hover {
   flex: 1 1 0;
   /* The room that it keeps when the actions want more: the root, the ellipsis and a short page. The search is what gives way. */
   min-width: 120px;
+  /* Whatever cannot give way, the trail is cut at its own edge and never runs under the actions. */
+  overflow: hidden;
   container-type: inline-size;
 }
 .crumbs > * {
