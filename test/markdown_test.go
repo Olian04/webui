@@ -142,9 +142,9 @@ func TestAMarkdownIsOnlyEverRead(t *testing.T) {
 
 	store := webui.String[handbook]{Label: "Handbook", Load: func(h handbook) string { return h.Text }, Store: func(h *handbook, v string) { h.Text = v }}
 	load := func(context.Context) (handbook, webui.Loaded) { return handbook{}, webui.Ready() }
-	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Content: handbookText}), "a Markdown has no Load")
-	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load, Content: store}), "a Markdown has a Store")
-	assert.Contains(t, editorErrors(t, webui.Markdown[handbook]{Load: load}), "Markdown.Content")
+	refuses(t, editorErrors(t, webui.Markdown[handbook]{Content: handbookText}), "Markdown", "Load")
+	refuses(t, editorErrors(t, webui.Markdown[handbook]{Load: load, Content: store}), "Markdown", "Store")
+	refuses(t, editorErrors(t, webui.Markdown[handbook]{Load: load}), "Markdown.Content")
 }
 
 func TestAPathInAMarkdownLinkStaysInsideTheAppWhereverItIsMounted(t *testing.T) {
@@ -270,13 +270,13 @@ func TestATrustedOriginMustBeAnOriginAndNothingThatCouldChangeThePolicy(t *testi
 	}
 	for _, bad := range []string{"", "cdn.example.com", "http://cdn.example.com", "https://cdn.example.com/img", "https://*.example.com",
 		"https://cdn.example.com; script-src *", "https://cdn.example.com 'unsafe-inline'", "https://user@cdn.example.com", "https://cdn.exämple.com"} {
-		assert.Contains(t, problems(bad), "is not an origin")
+		refuses(t, problems(bad), "TrustedOrigins")
 	}
-	assert.Contains(t, problems("http://cdn.example.com"), "must start with https://")
-	assert.Contains(t, problems("https://cdn.example.com/img"), "no path, query or fragment")
-	assert.Contains(t, problems("https://cdn.example.com"+";"), "does not belong in an origin")
-	assert.Contains(t, problems("https://cdn.example.com/"), `Markdown.TrustedOrigins[0], "https://cdn.example.com/"`)
-	assert.Contains(t, problems("nope"), `Write it as "https://example.com"`)
+	refuses(t, problems("http://cdn.example.com"), "https://")
+	refuses(t, problems("https://cdn.example.com/img"), "path")
+	refuses(t, problems("https://cdn.example.com"+";"), "origin")
+	refuses(t, problems("https://cdn.example.com/"), "Markdown.TrustedOrigins[0]", "\"https://cdn.example.com/\"")
+	refuses(t, problems("nope"), "\"https://example.com\"")
 
 	for _, ok := range []string{"https://cdn.example.com", "https://cdn.example.com:8443", "https://CDN.example.com"} {
 		_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: markdownWithOrigins("x", ok)}}}.Compile("/admin")

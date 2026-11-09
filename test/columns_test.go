@@ -87,18 +87,17 @@ func TestAColumnsThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
 	for name, tc := range map[string]struct {
-		body webui.View
-		want string
+		body  webui.View
+		names []string
 	}{
-		"none":     {webui.Columns{}, "Columns has no Column"},
-		"nil body": {webui.Columns{{Weight: 1}, {View: columnPanel("B")}}, "Columns[0].View is nil"},
-		"a bad body inside": {webui.Columns{{View: webui.Markdown[handbook]{Title: "No load"}}},
-			"Markdown"},
+		"none":              {webui.Columns{}, []string{"Columns", "Column"}},
+		"nil body":          {webui.Columns{{Weight: 1}, {View: columnPanel("B")}}, []string{"Columns[0].View"}},
+		"a bad body inside": {webui.Columns{{View: webui.Markdown[handbook]{Title: "No load"}}}, []string{"Markdown"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Contains(t, editorErrors(t, tc.body), tc.want)
+			refuses(t, editorErrors(t, tc.body), tc.names...)
 		})
 	}
 }

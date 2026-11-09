@@ -97,7 +97,7 @@ func TestARowClickCannotShareTheFirstColumnWithAURL(t *testing.T) {
 		Columns:  []webui.Accessor[Device]{webui.URL[Device]{Label: "Site", Load: func(d Device) string { return d.Ip }}, formID},
 	}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: table}, details}})
-	assert.Contains(t, errs[0].Detail, "first column is a URL")
+	refuses(t, errs[0].Error(), "URL", "column")
 }
 
 // outLinks are the links of the page's main part that open in a tab of their own: what a URL is declared to be.

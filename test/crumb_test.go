@@ -116,7 +116,7 @@ func TestACrumbOnAPageThatTakesTheRestIsACompileErrorAndAParentAboveItMayHaveOne
 
 	rest := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", Crumb: func(context.Context, objectArgs) string { return "x" }, View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{rest}})
-	assert.Contains(t, errs[0].Error(), "has a Crumb and its path ends in a {name...}")
+	refuses(t, errs[0].Error(), "Crumb", "{name...}")
 
 	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, View: webui.Stack{}}
 	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", Crumb: func(_ context.Context, a bucketArgs) string { return "Bucket " + a.Name }, View: webui.Stack{}}

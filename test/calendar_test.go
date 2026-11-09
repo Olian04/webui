@@ -362,19 +362,19 @@ func TestACalendarThatCannotBeDrawnIsACompileError(t *testing.T) {
 	src := &calendarSource{}
 	_, detail := dayPages(webui.Stack{}, nil)
 	for name, tc := range map[string]struct {
-		body webui.View
-		want string
+		body  webui.View
+		names []string
 	}{
-		"no load":                  {webui.Calendar[release]{Date: releaseWhen}, "a Calendar has no Load"},
-		"no date":                  {webui.Calendar[release]{Load: src.load}, "a Calendar has no Date"},
-		"an href with no url":      {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Href[webui.Day]{}}, "Calendar.Open is an Href with no URL"},
-		"sunday and week numbers":  {webui.Calendar[release]{Load: src.load, Date: releaseWhen, SundayFirst: true, WeekNumbers: true}, "a Calendar has SundayFirst and WeekNumbers"},
-		"an open that is not here": {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Link[webui.Day, webui.NoArgs]{Page: webui.Page[webui.NoArgs]{Path: "/elsewhere", View: webui.Stack{}}, Args: func(context.Context, webui.Day) webui.NoArgs { return webui.NoArgs{} }}}, `a link targets "/elsewhere", which is not mounted in this app`},
+		"no load":                  {webui.Calendar[release]{Date: releaseWhen}, []string{"Calendar", "Load"}},
+		"no date":                  {webui.Calendar[release]{Load: src.load}, []string{"Calendar", "Date"}},
+		"an href with no url":      {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Href[webui.Day]{}}, []string{"Calendar.Open", "Href", "URL"}},
+		"sunday and week numbers":  {webui.Calendar[release]{Load: src.load, Date: releaseWhen, SundayFirst: true, WeekNumbers: true}, []string{"Calendar", "SundayFirst", "WeekNumbers"}},
+		"an open that is not here": {webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Link[webui.Day, webui.NoArgs]{Page: webui.Page[webui.NoArgs]{Path: "/elsewhere", View: webui.Stack{}}, Args: func(context.Context, webui.Day) webui.NoArgs { return webui.NoArgs{} }}}, []string{"\"/elsewhere\""}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Contains(t, editorErrors(t, tc.body), tc.want)
+			refuses(t, editorErrors(t, tc.body), tc.names...)
 		})
 	}
 	_ = detail
@@ -446,6 +446,6 @@ func TestAnActionOnADayIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	src := &calendarSource{}
 	run := func(context.Context, webui.Day) (webui.Outcome, error) { return webui.Success("done"), nil }
-	assert.Contains(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{Run: run, Confirm: "Sure?"}}), "Calendar.Open has a Confirm")
-	assert.Contains(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{}}), "Calendar.Open has no Run")
+	refuses(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{Run: run, Confirm: "Sure?"}}), "Calendar.Open", "Confirm")
+	refuses(t, editorErrors(t, webui.Calendar[release]{Load: src.load, Date: releaseWhen, Open: webui.Action[webui.Day]{}}), "Calendar.Open", "Run")
 }

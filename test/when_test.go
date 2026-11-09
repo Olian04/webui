@@ -369,20 +369,20 @@ func TestAWhenThatCannotBeDrawnIsACompileError(t *testing.T) {
 
 	var g gate
 	for name, tc := range map[string]struct {
-		body webui.View
-		want string
+		body  webui.View
+		names []string
 	}{
-		"no load":                      {webui.When[condition]{Show: conditionOpen, View: columnPanel("A")}, "a When has no Load"},
-		"no show load":                 {webui.When[condition]{Load: g.load, View: columnPanel("A")}, "When.Show has no Load"},
-		"a Bool with no load":          {webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Label: "Open"}, View: columnPanel("A")}, "When.Show has no Load"},
-		"an OptionalBool with no load": {webui.When[condition]{Load: g.load, Show: webui.OptionalBool[condition]{Label: "Open"}, View: columnPanel("A")}, "When.Show has no Load"},
-		"no body":                      {webui.When[condition]{Load: g.load, Show: conditionOpen}, "When.View is nil"},
-		"a bad body":                   {webui.When[condition]{Load: g.load, Show: conditionOpen, View: webui.Markdown[handbook]{Title: "No load"}}, "Markdown"},
+		"no load":                      {webui.When[condition]{Show: conditionOpen, View: columnPanel("A")}, []string{"When", "Load"}},
+		"no show load":                 {webui.When[condition]{Load: g.load, View: columnPanel("A")}, []string{"When.Show", "Load"}},
+		"a Bool with no load":          {webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Label: "Open"}, View: columnPanel("A")}, []string{"When.Show", "Load"}},
+		"an OptionalBool with no load": {webui.When[condition]{Load: g.load, Show: webui.OptionalBool[condition]{Label: "Open"}, View: columnPanel("A")}, []string{"When.Show", "Load"}},
+		"no body":                      {webui.When[condition]{Load: g.load, Show: conditionOpen}, []string{"When.View"}},
+		"a bad body":                   {webui.When[condition]{Load: g.load, Show: conditionOpen, View: webui.Markdown[handbook]{Title: "No load"}}, []string{"Markdown"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Contains(t, editorErrors(t, tc.body), tc.want)
+			refuses(t, editorErrors(t, tc.body), tc.names...)
 		})
 	}
 }

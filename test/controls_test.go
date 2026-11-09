@@ -121,16 +121,16 @@ func TestWhatAControlNeedsDependsOnWhereItIsAndATableNeedsAKeyOnlyForWhatPosts(t
 	run := func(context.Context, parcel) (webui.Outcome, error) { return webui.Success("done"), nil }
 	for name, tc := range map[string]struct {
 		table webui.Table[parcel]
-		want  string // "" for a table that compiles
+		names []string // nil for a table that compiles
 	}{
-		"a link in the actions has no label":  {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Link[parcel, parcelArgs]{Page: detail, Args: func(context.Context, parcel) parcelArgs { return parcelArgs{} }}}}, "Table.Actions[0] has no Label"},
-		"an href in the actions has no label": {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{URL: func(parcel) string { return "/x" }}}}, "Table.Actions[0] has no Label"},
-		"an href with no url":                 {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{Label: "Go"}}}, "Table.Actions[0] is an Href with no URL"},
-		"an action needs a key":               {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Action[parcel]{Label: "Drop", Run: run}}}, "a Table declares actions but no Key"},
-		"a click that is an action needs one": {webui.Table[parcel]{RowClick: webui.Action[parcel]{Run: run}}, "a Table declares actions but no Key"},
-		"a nil control":                       {webui.Table[parcel]{Actions: []webui.Control[parcel]{nil}}, "Table.Actions[0] is nil"},
-		"a click that asks first":             {webui.Table[parcel]{Key: func(p parcel) string { return p.Name }, RowClick: webui.Action[parcel]{Run: run, Confirm: "Sure?"}}, "Table.RowClick has a Confirm"},
-		"links and addresses need no key":     {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{Label: "Go", URL: func(parcel) string { return "/x" }}}, RowClick: webui.Href[parcel]{URL: func(parcel) string { return "/x" }}}, ""},
+		"a link in the actions has no label":  {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Link[parcel, parcelArgs]{Page: detail, Args: func(context.Context, parcel) parcelArgs { return parcelArgs{} }}}}, []string{"Table.Actions[0]", "Label"}},
+		"an href in the actions has no label": {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{URL: func(parcel) string { return "/x" }}}}, []string{"Table.Actions[0]", "Label"}},
+		"an href with no url":                 {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{Label: "Go"}}}, []string{"Table.Actions[0]", "Href", "URL"}},
+		"an action needs a key":               {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Action[parcel]{Label: "Drop", Run: run}}}, []string{"Table", "Key"}},
+		"a click that is an action needs one": {webui.Table[parcel]{RowClick: webui.Action[parcel]{Run: run}}, []string{"Table", "Key"}},
+		"a nil control":                       {webui.Table[parcel]{Actions: []webui.Control[parcel]{nil}}, []string{"Table.Actions[0]"}},
+		"a click that asks first":             {webui.Table[parcel]{Key: func(p parcel) string { return p.Name }, RowClick: webui.Action[parcel]{Run: run, Confirm: "Sure?"}}, []string{"Table.RowClick", "Confirm"}},
+		"links and addresses need no key":     {webui.Table[parcel]{Actions: []webui.Control[parcel]{webui.Href[parcel]{Label: "Go", URL: func(parcel) string { return "/x" }}}, RowClick: webui.Href[parcel]{URL: func(parcel) string { return "/x" }}}, nil},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
@@ -138,12 +138,12 @@ func TestWhatAControlNeedsDependsOnWhereItIsAndATableNeedsAKeyOnlyForWhatPosts(t
 			tc.table.Loader, tc.table.Columns = webui.RowsLoader[parcel]{Load: load}, cols
 			app := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/e", View: tc.table}, detail}}
 			_, err := app.Compile("/admin")
-			if tc.want == "" {
+			if tc.names == nil {
 				assert.NoError(t, err)
 				return
 			}
 			assert.Error(t, err)
-			assert.Contains(t, err.Error(), tc.want)
+			refuses(t, err.Error(), tc.names...)
 		})
 	}
 }

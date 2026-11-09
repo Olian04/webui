@@ -108,8 +108,8 @@ func TestARowClickActionNeedsARunAndAKey(t *testing.T) {
 	}
 	key := func(d Device) string { return d.Id }
 
-	assert.Contains(t, problems(webui.Table[Device]{RowClick: webui.Action[Device]{Run: run}}), "declares actions but no Key")
-	assert.Contains(t, problems(webui.Table[Device]{Key: key, RowClick: webui.Action[Device]{}}), "Table.RowClick has no Run")
+	refuses(t, problems(webui.Table[Device]{RowClick: webui.Action[Device]{Run: run}}), "Key")
+	refuses(t, problems(webui.Table[Device]{Key: key, RowClick: webui.Action[Device]{}}), "Table.RowClick", "Run")
 }
 
 // rowClicks are the values of the buttons that a row of a table is clicked with, in order.

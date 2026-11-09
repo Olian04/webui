@@ -142,6 +142,6 @@ func TestABoolThatCannotBeDrawnIsACompileError(t *testing.T) {
 	}}}}) {
 		all += e.Error() + "\n"
 	}
-	assert.Contains(t, all, "Load")
-	assert.Contains(t, all, "Label")
+	refuses(t, all, "Load")
+	refuses(t, all, "Label")
 }

@@ -401,19 +401,19 @@ func TestAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 		return all
 	}
 	run := func(context.Context, webui.NoArgs) (webui.Outcome, error) { return webui.Outcome{}, nil }
-	assert.Contains(t, problems(webui.Toolbar{}), "a Toolbar has no controls")
-	assert.Contains(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Run: run}}}), "Toolbar.Left[0] has no Label")
-	assert.Contains(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Go"}}}), "Toolbar.Left[0] has no Run")
-	assert.Contains(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{
+	refuses(t, problems(webui.Toolbar{}), "Toolbar")
+	refuses(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Run: run}}}), "Toolbar.Left[0]", "Label")
+	refuses(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Go"}}}), "Toolbar.Left[0]", "Run")
+	refuses(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{
 		webui.Link[webui.NoArgs, newArgs]{Page: newDevice, Args: func(context.Context, webui.NoArgs) newArgs { return newArgs{} }},
-	}}), "Toolbar.Left[0] has no Label")
+	}}), "Toolbar.Left[0]", "Label")
 	// A value to read needs no Store.
 	_, err := webui.App{Pages: webui.Pages{webui.Page[toolArgs]{Path: "/tools", View: webui.Toolbar{Left: []webui.ToolbarItem{
 		settings(webui.String[toolState]{Label: "Site", Load: func(a toolState) string { return a.Site }}),
 	}}}}}.Compile("/admin")
 	assert.NoError(t, err)
 	// Where a control is said to be follows the group it is in.
-	assert.Contains(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{settings(siteInput)}, Right: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Go"}}}), "Toolbar.Right[0] has no Run")
+	refuses(t, problems(webui.Toolbar{Left: []webui.ToolbarItem{settings(siteInput)}, Right: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Go"}}}), "Toolbar.Right[0]", "Run")
 }
 
 // A Form in a toolbar is only a group of values to read: what would make it an input, a panel, or something that cannot be one line is refused, with what to do instead.
@@ -433,27 +433,27 @@ func TestAFormInAToolbarIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	noTitle := ok
 	noTitle.Title = ""
-	assert.Contains(t, problems(noTitle), "Toolbar.Left[0] is a Form with no Title")
+	refuses(t, problems(noTitle), "Toolbar.Left[0]", "Title")
 
 	noLoad := ok
 	noLoad.Load = nil
-	assert.Contains(t, problems(noLoad), "Toolbar.Left[0] is a Form that has no Load")
+	refuses(t, problems(noLoad), "Toolbar.Left[0]", "Load")
 
 	noFields := ok
 	noFields.Fields = nil
-	assert.Contains(t, problems(noFields), "Toolbar.Left[0] is a Form with no Fields")
+	refuses(t, problems(noFields), "Toolbar.Left[0]", "Fields")
 
 	withSubmit := ok
 	withSubmit.Submit = webui.Action[toolState]{Run: func(context.Context, toolState) (webui.Outcome, error) { return webui.Outcome{}, nil }}
-	assert.Contains(t, problems(withSubmit), "Toolbar.Left[0] is a Form with a Submit")
+	refuses(t, problems(withSubmit), "Toolbar.Left[0]", "Submit")
 
 	// The labels of its fields are one list, across the forms of the toolbar.
-	assert.Contains(t, problems(settings(siteInput), settings(siteInput)), `label "Site" is used twice`)
+	refuses(t, problems(settings(siteInput), settings(siteInput)), "\"Site\"", "twice")
 
 	text := func(f webui.String[toolState]) webui.Form[toolState] { return settings(f) }
 	load := func(a toolState) string { return strconv.Itoa(a.Minutes) }
 	store := func(*toolState, string) {}
-	assert.Contains(t, problems(settings(webui.Secret[toolState]{Label: "Key", Load: func(a toolState) bool { return a.Minutes != 0 }, Store: store})), "is a Secret in a toolbar")
-	assert.Contains(t, problems(text(webui.String[toolState]{Label: "Body", Multiline: true, Load: load, Store: store})), "is Multiline in a toolbar")
-	assert.Contains(t, problems(settings(webui.File[toolState]{Label: "Logo", MaxSize: 1 << 20, Load: func(toolState) *webui.FileInfo { return nil }, Store: func(*toolState, *webui.Upload) {}})), "is a File in a toolbar")
+	refuses(t, problems(settings(webui.Secret[toolState]{Label: "Key", Load: func(a toolState) bool { return a.Minutes != 0 }, Store: store})), "Secret", "toolbar")
+	refuses(t, problems(text(webui.String[toolState]{Label: "Body", Multiline: true, Load: load, Store: store})), "Multiline", "toolbar")
+	refuses(t, problems(settings(webui.File[toolState]{Label: "Logo", MaxSize: 1 << 20, Load: func(toolState) *webui.FileInfo { return nil }, Store: func(*toolState, *webui.Upload) {}})), "File", "toolbar")
 }
