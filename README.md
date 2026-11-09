@@ -18,10 +18,7 @@ It is an `http.Handler` you mount behind your own login: webui does not authenti
   <img alt="The demo's landing page: a sidebar of pages, a search box, a toolbar of the collector's status with its latency as a small chart and how it moved since yesterday, and a Sync now button, a table of devices with status badges and rate bars, a table of open alerts with severity badges and Dismiss buttons, a table of recent events, and a form of the collector's settings with a slider, a country-code phone input, a colour picker and a date." src="docs/images/overview-light.png">
 </picture>
 
-That is the demo's landing page, `go run ./cmd/demo`, in light or dark as the viewer's
-theme is: [`cmd/demo/overview.go`](cmd/demo/overview.go), about 190 lines of Go with
-their comments, and no HTML, CSS or JavaScript. The tables page, sort and filter, the
-form checks what it is given, and the buttons are there for the people who may use them.
+That is the demo's landing page, `go run ./cmd/demo`, in light or dark as the viewer's theme is: [`cmd/demo/overview.go`](cmd/demo/overview.go), about 190 lines of Go with their comments, and no HTML, CSS or JavaScript. The tables page, sort and filter, the form checks what it is given, and the buttons are there for the people who may use them.
 
 ## Install
 
@@ -29,8 +26,7 @@ form checks what it is given, and the buttons are there for the people who may u
 go get github.com/Olian04/webui@latest
 ```
 
-webui needs Go 1.27 or later. Import the package it exports (the editor's optional
-language services are separate imports, see the package documentation):
+webui needs Go 1.27 or later. Import the package it exports (the editor's optional language services are separate imports, see the package documentation):
 
 ```go
 import "github.com/Olian04/webui/pkg/webui"
@@ -91,17 +87,13 @@ Run it and open <http://localhost:8080/admin/device>:
 
 ![The devices page (light mode): a sidebar with a Devices entry, a breadcrumb, and a table with ID and IP columns.](docs/images/first-page-light.png)
 
-That is a sidebar, a breadcrumb, and a table whose columns all sort and filter, with the
-state kept in the address so a copied link reproduces the view. Give a page a `Search`
-and the top bar gets a search box. Add a `Form` for an editable page, a `Link` to open a
-row, and a `Guard` to say who may see it.
+That is a sidebar, a breadcrumb, and a table whose columns all sort and filter, with the state kept in the address so a copied link reproduces the view. Give a page a `Search` and the top bar gets a search box. Add a `Form` for an editable page, a `Link` to open a row, and a `Guard` to say who may see it.
 
 webui does not authenticate. Mount the handler behind your own login.
 
 ## Try the full demo
 
-The repository has a larger demo, an imaginary telemetry collector, that shows the
-library end to end:
+The repository has a larger demo, an imaginary telemetry collector, that shows the library end to end:
 
 ```sh
 git clone https://github.com/Olian04/webui && cd webui
@@ -116,20 +108,13 @@ The full documentation is on pkg.go.dev, with runnable examples:
 
 **<https://pkg.go.dev/github.com/Olian04/webui/pkg/webui>**
 
-It covers pages and their arguments, layouts and toolbars, accessors and file uploads,
-tables (paging, sorting, filters, export and caching), forms, validation and text rules,
-controls that a visitor may not use, outcomes (success, warning, failure, rejection and
-where to go next), links between pages, search, code editors, diffs and Markdown,
-theming, refusals and compile errors, logging, metrics, and security.
+It covers pages and their arguments, layouts and toolbars, accessors and file uploads, tables (paging, sorting, filters, export and caching), forms, validation and text rules, controls that a visitor may not use, outcomes (success, warning, failure, rejection and where to go next), links between pages, search, code editors, diffs and Markdown, theming, refusals and compile errors, logging, metrics, and security.
 
 How it works: the server answers with HTML and nothing else, and each response carries every link, form and button that the visitor can use in that state (hypermedia as the engine of application state, as in htmx's [HATEOAS](https://htmx.org/essays/hateoas) essay). [`docs/design-decisions.md`](docs/design-decisions.md) says why the library is shaped that way, and what each decision costs.
 
 ## What the library stores in the browser
 
-webui sets one cookie, keeps three values in `localStorage` and two in `sessionStorage`.
-It uses nothing else on a visitor's device: no analytics, no tracking, no identifier,
-and the scripts, styles and fonts it ships are served by your own app and call no other
-host.
+webui sets one cookie, keeps three values in `localStorage` and two in `sessionStorage`. It uses nothing else on a visitor's device: no analytics, no tracking, no identifier, and the scripts, styles and fonts it ships are served by your own app and call no other host.
 
 | What                   | Kind                                                                            | Set when                                                                    | Holds                                                                                                                                                                                                                                                           | Lasts                                                                                  |
 | ---------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
@@ -140,49 +125,24 @@ host.
 | `webui.sidebar.scroll` | `sessionStorage`                                                                | A visitor leaves a page                                                     | How far the sidebar's list was scrolled, in pixels, so that it is where it was on the next page                                                                                                                                                                 | Until the tab is closed                                                                |
 | `webui.content.scroll` | `sessionStorage`                                                                | A visitor leaves a page                                                     | The path of the page (never its query) and how far its content was scrolled, in pixels, so that a tab, a sort or a page of a table that is followed on the same page does not take the reader back to the top. It is put back only on a page with the same path | Until the tab is closed                                                                |
 
-A form that is refused is not redirected: the POST is answered with the page, the form
-drawn again with what the visitor typed and what was refused, with the status 422. What
-was typed is in that response and nowhere else: it is not in a cookie, not in the
-address, and not kept on the server, so there is nothing to lose behind a load balancer
-and nothing to expire. The browser asks "send the form again?" if the page is reloaded,
-which is right, since a refusal did nothing. An accepted action is redirected with a 303
-so that a reload does not repeat it, and its toast rides the cookie above.
+A form that is refused is not redirected: the POST is answered with the page, the form drawn again with what the visitor typed and what was refused, with the status 422. What was typed is in that response and nowhere else: it is not in a cookie, not in the address, and not kept on the server, so there is nothing to lose behind a load balancer and nothing to expire. The browser asks "send the form again?" if the page is reloaded, which is right, since a refusal did nothing. An accepted action is redirected with a 303 so that a reload does not repeat it, and its toast rides the cookie above.
 
-The three preferences are read by a small script before the first paint, so the page
-does not flash the wrong theme or a sidebar of the wrong width. They stay in the browser
-and are never sent to the server. A visitor who has never touched the controls has no
-`localStorage` entry at all. The scroll position is for the tab, not for the browser,
-and each holds no more than a number, with the path of the page the content's is for.
+The three preferences are read by a small script before the first paint, so the page does not flash the wrong theme or a sidebar of the wrong width. They stay in the browser and are never sent to the server. A visitor who has never touched the controls has no `localStorage` entry at all. The scroll position is for the tab, not for the browser, and each holds no more than a number, with the path of the page the content's is for.
 
 Two things are yours, not webui's:
 
-- **Sign-in.** webui does not authenticate, so the session or token cookie of the login you
-  mount it behind is your own to account for.
-- **Pictures from other origins.** A page that shows Markdown with `TrustedOrigins` lets the
-  visitor's browser fetch pictures from them, which tells those hosts the visitor's address.
+- **Sign-in.** webui does not authenticate, so the session or token cookie of the login you mount it behind is your own to account for.
+- **Pictures from other origins.** A page that shows Markdown with `TrustedOrigins` lets the visitor's browser fetch pictures from them, which tells those hosts the visitor's address.
 
-Under the EU's ePrivacy rules (Article 5(3)), storing information on a visitor's device
-needs consent unless it is strictly necessary for a service the visitor asked for.
-Whether the three items above fall under that exemption is for you to decide as the
-operator, since you are the one who deploys the app; the table is there so that you can
-decide it, and name them in your privacy notice. This is not legal advice.
+Under the EU's ePrivacy rules (Article 5(3)), storing information on a visitor's device needs consent unless it is strictly necessary for a service the visitor asked for. Whether the three items above fall under that exemption is for you to decide as the operator, since you are the one who deploys the app; the table is there so that you can decide it, and name them in your privacy notice. This is not legal advice.
 
 ## Building with an AI agent
 
-The repository ships a skill that teaches a coding agent to build with webui: the
-mental model, the order to work in, how to handle authentication, and when the library
-cannot do something. It names almost none of the API. It tells the agent to read the
-documentation for the version your `go.mod` pins (`go doc` reads it from the module
-cache), so it does not go stale when the library changes.
+The repository ships a skill that teaches a coding agent to build with webui: the mental model, the order to work in, how to handle authentication, and when the library cannot do something. It names almost none of the API. It tells the agent to read the documentation for the version your `go.mod` pins (`go doc` reads it from the module cache), so it does not go stale when the library changes.
 
-A second skill, `webui-upgrade`, moves a project from one version of webui to another, in
-either direction. It reads the migration guides that the stable releases ship in
-`docs/migrations/`, and falls back to the release notes and the documented API for a
-version that has none, then changes your code, builds it and starts the app so that
-`Compile` runs. Ask your agent to "upgrade webui to the latest version".
+A second skill, `webui-upgrade`, moves a project from one version of webui to another, in either direction. It reads the migration guides that the stable releases ship in `docs/migrations/`, and falls back to the release notes and the documented API for a version that has none, then changes your code, builds it and starts the app so that `Compile` runs. Ask your agent to "upgrade webui to the latest version".
 
-Both are in the open [Agent Skills](https://agentskills.io) format, so it works in Claude
-Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
+Both are in the open [Agent Skills](https://agentskills.io) format, so it works in Claude Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
 
 **Claude Code**, as a plugin:
 
@@ -192,16 +152,13 @@ Code, Cursor, Codex, Gemini CLI and other agents. Pick the way that fits yours.
 /plugin install webui-upgrade@olian04
 ```
 
-**Any agent**, with the [`skills`](https://github.com/vercel-labs/skills) CLI, which
-installs both for the agents it finds on your machine:
+**Any agent**, with the [`skills`](https://github.com/vercel-labs/skills) CLI, which installs both for the agents it finds on your machine:
 
 ```sh
 npx skills add Olian04/webui
 ```
 
-**By hand**, copying it from the module cache so it matches your version, into the
-folder your agent reads skills from (`.claude/skills` for Claude Code,
-`.cursor/skills` for Cursor, or `.agents/skills`, which several agents read):
+**By hand**, copying it from the module cache so it matches your version, into the folder your agent reads skills from (`.claude/skills` for Claude Code, `.cursor/skills` for Cursor, or `.agents/skills`, which several agents read):
 
 ```sh
 mkdir -p .agents/skills
@@ -210,8 +167,7 @@ cp -r "$(go list -m -f '{{.Dir}}' github.com/Olian04/webui)/skills/webui-upgrade
 chmod -R u+w .agents/skills/webui .agents/skills/webui-upgrade
 ```
 
-Or read them at [`skills/webui/SKILL.md`](skills/webui/SKILL.md) and
-[`skills/webui-upgrade/SKILL.md`](skills/webui-upgrade/SKILL.md).
+Or read them at [`skills/webui/SKILL.md`](skills/webui/SKILL.md) and [`skills/webui-upgrade/SKILL.md`](skills/webui-upgrade/SKILL.md).
 
 ---
 
@@ -250,17 +206,9 @@ This half is for people changing the library.
 | `test`, `test/util/assert`         | The tests that use only the public package, and the assertions that all of the tests use.                                                                                                                          |
 | `cmd/demo`                         | The runnable demo. It is not part of the API.                                                                                                                                                                      |
 
-Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and
-`test` never imports `internal`. [`docs/AGENTS.md`](docs/AGENTS.md) is the full set of
-conventions, and is the source of truth when advice conflicts.
+Dependencies point one way: `pkg/webui` depends on `internal/*`, never the reverse, and `test` never imports `internal`. [`docs/AGENTS.md`](docs/AGENTS.md) is the full set of conventions, and is the source of truth when advice conflicts.
 
-A declaration becomes a page in four steps. `pkg/webui` validates it, collecting every
-problem, and lowers it, which is the one place type parameters are erased, into
-`internal/ir`. `internal/runtime` turns that into routes and a request pipeline
-(decode the arguments, run the page's Guard, load, render; for a POST: parse, rules,
-bind, Guard, Run). `internal/render` renders the result with
-[templ](https://templ.guide) components and serves the stylesheet, scripts and icon
-font.
+A declaration becomes a page in four steps. `pkg/webui` validates it, collecting every problem, and lowers it, which is the one place type parameters are erased, into `internal/ir`. `internal/runtime` turns that into routes and a request pipeline (decode the arguments, run the page's Guard, load, render; for a POST: parse, rules, bind, Guard, Run). `internal/render` renders the result with [templ](https://templ.guide) components and serves the stylesheet, scripts and icon font.
 
 ### Working on it
 
@@ -272,33 +220,17 @@ make lint       # generate, vet, verify modules, govulncheck, golangci-lint
 make run        # build and run the demo
 ```
 
-The linters (golangci-lint and govulncheck) are in `tools/go.mod`, a module of its own
-that is never published, so that this module's `go.mod` lists what a program that uses
-the library needs and not the two hundred modules of a linter. `make` runs them with
-`go tool -modfile=tools/go.mod`; to run one by hand, do the same
-(`go tool -modfile=tools/go.mod golangci-lint run ./...`). templ is in this module's
-`go.mod` as a `tool`, as it is a requirement of the library already (its runtime, which
-the generated files import), so the generator is that version too: `go tool templ generate ./...`.
+The linters (golangci-lint and govulncheck) are in `tools/go.mod`, a module of its own that is never published, so that this module's `go.mod` lists what a program that uses the library needs and not the two hundred modules of a linter. `make` runs them with `go tool -modfile=tools/go.mod`; to run one by hand, do the same (`go tool -modfile=tools/go.mod golangci-lint run ./...`). templ is in this module's `go.mod` as a `tool`, as it is a requirement of the library already (its runtime, which the generated files import), so the generator is that version too: `go tool templ generate ./...`.
 
-The generated `*_templ.go` files are committed, so the module builds for anyone who
-imports it. Run `make generate` after editing a `.templ` file; CI fails if they are
-out of date. The icon font and its class list are generated from a Font Awesome Free
-download by `internal/render/assets/fontawesome_gen.go`; see
-[`docs/AGENTS.md`](docs/AGENTS.md).
+The generated `*_templ.go` files are committed, so the module builds for anyone who imports it. Run `make generate` after editing a `.templ` file; CI fails if they are out of date. The icon font and its class list are generated from a Font Awesome Free download by `internal/render/assets/fontawesome_gen.go`; see [`docs/AGENTS.md`](docs/AGENTS.md).
 
 ### Tests
 
-Tests for the public API are integration tests in `test`: they compile an app and
-make requests to it, and import `pkg/webui` only. Unit tests for an internal package
-sit beside the code in the same package. The runnable examples in `pkg/webui` are
-tests too, so the documentation on pkg.go.dev cannot drift from the code.
+Tests for the public API are integration tests in `test`: they compile an app and make requests to it, and import `pkg/webui` only. Unit tests for an internal package sit beside the code in the same package. The runnable examples in `pkg/webui` are tests too, so the documentation on pkg.go.dev cannot drift from the code.
 
-Code that only a test uses does not belong in the library. If nothing reachable from
-the public API needs it, it is deleted, or moved into the tests.
+Code that only a test uses does not belong in the library. If nothing reachable from the public API needs it, it is deleted, or moved into the tests.
 
-What the scripts and the stylesheet do is tested in a browser, not by reading their text:
-`make e2e` runs the suite in `tools/e2e` (Node and headless Chromium, against the demo). It
-is not part of `make test`, and CI runs it as a job of its own.
+What the scripts and the stylesheet do is tested in a browser, not by reading their text: `make e2e` runs the suite in `tools/e2e` (Node and headless Chromium, against the demo). It is not part of `make test`, and CI runs it as a job of its own.
 
 ### Documentation authoring
 
@@ -312,9 +244,7 @@ is not part of `make test`, and CI runs it as a job of its own.
 
 ### The demo
 
-The demo is a static configuration that shows the whole library; each file has its own
-corner, and the tests beside it (`cmd/demo/*_test.go`, one file for each part of the
-demo) pin what it shows.
+The demo is a static configuration that shows the whole library; each file has its own corner, and the tests beside it (`cmd/demo/*_test.go`, one file for each part of the demo) pin what it shows.
 
 | File                                    | Shows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -343,21 +273,10 @@ demo) pin what it shows.
 
 ### Conventions
 
-- **Commits** are [Conventional Commits](https://www.conventionalcommits.org) with a
-  capital after the colon (`feat(webui): Add ...`), and `!` for a breaking change.
-  Work happens on a branch, not on `main`.
-- **Changing the public API** is a decision, not a side effect. Prefer behaviour the
-  library infers or owns over a hook the user implements, prefer what the compiler
-  can check over what `Compile` has to, and keep the surface small.
-- **Everything works without JavaScript.** The script adds speed and conveniences
-  and nothing else; a feature that needs it is not finished.
+- **Commits** are [Conventional Commits](https://www.conventionalcommits.org) with a capital after the colon (`feat(webui): Add ...`), and `!` for a breaking change. Work happens on a branch, not on `main`.
+- **Changing the public API** is a decision, not a side effect. Prefer behaviour the library infers or owns over a hook the user implements, prefer what the compiler can check over what `Compile` has to, and keep the surface small.
+- **Everything works without JavaScript.** The script adds speed and conveniences and nothing else; a feature that needs it is not finished.
 
 ### Releasing
 
-Releases are cut from the **Release** workflow (Actions, *Run workflow*), which asks
-for a version, tags the commit, and publishes the release with GoReleaser. The
-version is the tag, so it has to be one that Go accepts as a module version: `vX.Y.Z`,
-or `vX.Y.Z-N` for the Nth prerelease before it, with the `v` and no leading zeros
-(`v1.0.0-4`, not `1.0.0-4`). The workflow refuses anything else, and a major version
-of 2 or more until the module path ends in `/v2` and so on. Nothing is built: webui is a
-library, and consumers fetch the tag with `go get`.
+Releases are cut from the **Release** workflow (Actions, *Run workflow*), which asks for a version, tags the commit, and publishes the release with GoReleaser. The version is the tag, so it has to be one that Go accepts as a module version: `vX.Y.Z`, or `vX.Y.Z-N` for the Nth prerelease before it, with the `v` and no leading zeros (`v1.0.0-4`, not `1.0.0-4`). The workflow refuses anything else, and a major version of 2 or more until the module path ends in `/v2` and so on. Nothing is built: webui is a library, and consumers fetch the tag with `go get`.
