@@ -530,11 +530,50 @@ a.side-brand:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Too narrow for the whole trail: the parent of the page and the page. From the end, the children are the page, the
-   separator before it, the parent, and the separator before that; the rest stay in the markup, visually hidden and still read (and
-   drawn while a key is on one). The parent shrinks with an ellipsis before it crowds the actions. */
+/* A trail too long for its room. The trail takes what the actions leave and is cut at its edge, so it never runs under them. With script, which knows what
+   fits, the crumbs from the level below the root up are replaced by an ellipsis, one level at a time, until the trail fits: the root, the ellipsis and the
+   page, at the narrowest, and the page itself shortens with an ellipsis only after that. The crumbs that are replaced stay in the markup, visually hidden
+   and still read (and drawn while a key is on one). While it measures, the trail is as wide as it is. */
+.crumbs {
+  flex: 1 1 0;
+  /* The room that it keeps when the actions want more: the root, the ellipsis and a short page. The search is what gives way. */
+  min-width: 120px;
+  overflow: hidden;
+}
+/* A label that is longer than the room is cut with an ellipsis, as a last resort, after the levels in between are replaced. */
+.crumbs a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crumbs.measuring > * {
+  flex: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+.crumbs .crumb-hid {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
+.crumbs a.crumb-hid:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+}
+/* Without script nothing measures, and a phone is too narrow for the whole trail: the parent of the page and the page. From the end, the children are the
+   page, the separator before it, the parent, and the separator before that; the rest are hidden as above. The parent shrinks with an ellipsis before it
+   crowds the actions. */
 @media (max-width: 640px) {
-  .crumbs > :nth-last-child(n + 4) {
+  html:not(.js) .crumbs > :nth-last-child(n + 4) {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -543,19 +582,13 @@ a.side-brand:hover {
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  /* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
-  .crumbs > a:nth-last-child(n + 4):focus {
+  html:not(.js) .crumbs > a:nth-last-child(n + 4):focus {
     position: static;
     width: auto;
     height: auto;
     margin: 0;
     overflow: visible;
     clip-path: none;
-  }
-  .crumbs a {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 .top-right {
@@ -3017,7 +3050,7 @@ html.js .status-meta [data-built] {
 /* ------------------------------ phone ------------------------------------ */
 /* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
    up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
-   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
+   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which without script are cut to the parent and the page, are beside the top bar):
    the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
    checkbox and its label, the way the rest of the shell works without script, so what is below is the whole of it; script
    only adds Escape to close them (see enhance.js). None of the boxes or buttons are drawn above 640px. */
@@ -3075,10 +3108,6 @@ html.js .status-meta [data-built] {
     width: 40px;
     height: 40px;
   }
-  .crumbs {
-    flex: 1;
-  }
-
   /* The sidebar is a drawer over the page, closed until the box is ticked. Closed it is not visible, which is also what takes
      it out of the order of the keys; the delay on that keeps it from vanishing before it has slid away. */
   .drawer {
