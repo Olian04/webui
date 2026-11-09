@@ -25,32 +25,46 @@ function ellipses(page) {
   });
 }
 
+// room gives the trail exactly this much width, which is what the window and the actions beside it decide, so that the scan below is in steps of its own.
+async function room(page, px) {
+  await page.evaluate((px) => {
+    const nav = document.querySelector('nav[aria-label="Breadcrumb"]');
+    nav.style.flex = 'none';
+    nav.style.width = px + 'px';
+  }, px);
+  await page.waitForTimeout(40);
+}
+
+// the levels that are replaced when the trail has this much room: their indices, which are not drawn.
+async function replaced(page) {
+  const crumbs = await drawn(page);
+  return crumbs.map((c, i) => (c.drawn ? -1 : i)).filter((i) => i >= 0);
+}
+
 // what a trail does as the room shrinks, whatever decides which levels are replaced: whole when it fits, and then replaced from level 1 up, one more at each
 // step, with the root and the page always drawn.
 async function shrinkFromWholeToReplaced(page) {
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto('/admin/files/logs/2026/10');
-  expect((await drawn(page)).every((c) => c.drawn)).toBe(true);
+  await room(page, 900);
+  expect(await replaced(page)).toEqual([]);
   expect(await ellipses(page)).toBe(0);
 
-  let seen = 0; // how many levels are replaced: it only grows as the window narrows
-  let replacedSomething = false;
-  for (let w = 1400; w >= 680; w -= 40) { // down to a phone, at which the actions are a menu and the trail has the room again
-    await page.setViewportSize({ width: w, height: 900 });
-    await page.waitForTimeout(60);
+  let seen = 0; // how many levels are replaced: it only grows as the room narrows
+  for (let px = 900; px >= 130; px -= 10) {
+    await room(page, px);
     const crumbs = await drawn(page);
-    const hidden = crumbs.map((c, i) => (c.drawn ? -1 : i)).filter((i) => i >= 0);
+    const hidden = await replaced(page);
     // The root and the page are never replaced, and what is replaced is the levels from 1 up, without a gap.
-    expect(crumbs[0].drawn).toBe(true);
-    expect(crumbs[crumbs.length - 1].drawn).toBe(true);
-    expect(hidden).toEqual(Array.from({ length: hidden.length }, (_, i) => i + 1));
-    expect(hidden.length).toBeGreaterThanOrEqual(seen);
+    expect(crumbs[0].drawn, `${px}px`).toBe(true);
+    expect(crumbs[crumbs.length - 1].drawn, `${px}px`).toBe(true);
+    expect(hidden, `${px}px`).toEqual(Array.from({ length: hidden.length }, (_, i) => i + 1));
+    expect(hidden.length, `${px}px`).toBeGreaterThanOrEqual(seen);
     seen = hidden.length;
-    replacedSomething ||= hidden.length > 0;
-    // The ellipsis is there when something is replaced, and only then.
-    expect(await ellipses(page)).toBe(hidden.length > 0 ? 1 : 0);
+    // The ellipsis is there when something is replaced, and only then, and there is one.
+    expect(await ellipses(page), `${px}px`).toBe(hidden.length > 0 ? 1 : 0);
   }
-  expect(replacedSomething).toBe(true);
+  expect(seen).toBe(3); // at the narrowest, the root, the ellipsis and the page
 }
 
 // where the last crumb that is drawn ends, against where the actions begin.
@@ -81,6 +95,27 @@ test.describe('a trail of five levels, with script', () => {
   test('is whole when it fits, and is replaced from level 1 up as the room shrinks', ({ page }) => shrinkFromWholeToReplaced(page));
   test('never runs under the actions on its right', ({ page }) => neverUnderTheActions(page));
   test('keeps the levels that were replaced in the page for a reader', ({ page }) => replacedLevelsAreStillLinks(page));
+});
+
+test('with script, the trail keeps the levels that the guess gave up where the labels are short', async ({ page, browser, baseURL }) => {
+  // The stylesheet's guess is a width for a level; script has the real ones. The demo's labels are short, so at some room the guess replaces more than it needs.
+  const bare = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  await bare.request.post('/login', { form: { role: 'editor' } });
+  const plain = await bare.newPage();
+  let better = 0;
+  for (const p of [page, plain]) {
+    await p.setViewportSize({ width: 1400, height: 900 });
+    await p.goto('/admin/files/logs/2026/10');
+  }
+  for (let px = 600; px >= 130; px -= 10) {
+    await room(page, px);
+    await room(plain, px);
+    const [withScript, without] = [(await replaced(page)).length, (await replaced(plain)).length];
+    expect(withScript, `${px}px`).toBeLessThanOrEqual(without);
+    if (withScript < without) better++;
+  }
+  await bare.close();
+  expect(better).toBeGreaterThan(0);
 });
 
 // The stylesheet alone is the baseline: what a visitor gets before script has run, or without it.
