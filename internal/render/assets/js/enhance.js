@@ -999,35 +999,31 @@
 
   /* ------------------------------ breadcrumbs ------------------------------ */
 
-  // A trail that is too long for the room the top bar leaves it is shortened from the level below the root: that crumb is replaced by an ellipsis, then
-  // that one and the next, and so on, until the trail fits. The root and the page stay (the page shortens with an ellipsis of its own only when nothing
-  // else is left to take out). What is replaced is hidden by a class that leaves it in the page, read and reachable by a key, and not removed.
-  // Measuring starts from the whole trail each time, so the result is the same whatever the window was before.
+  // A trail that is too long for the room the top bar leaves it is shortened from the level below the root: the crumbs from level 1 up are replaced by an
+  // ellipsis, as many as it takes for the trail to fit. The stylesheet already does this from a guess at how wide a level is (see "A trail too long" in app.css,
+  // which is what a visitor without script gets); this is the same thing with the real widths. Once it has measured, it sets data-fit, which puts the guess aside,
+  // and marks the crumbs itself: crumb-hid on what is hidden, crumb-ell on level 1, which is drawn as the ellipsis. What is replaced stays in the page, read and
+  // reachable by a key. Measuring starts from the whole trail each time, so the result is the same whatever the window was before.
   (function () {
     var nav = $('.crumbs');
     if (!nav) return;
     var items = Array.prototype.slice.call(nav.children); // a crumb, then a separator and a crumb for each level below it
     var levels = (items.length + 1) / 2;
-    if (levels < 3) return; // no level between the root and the page
-    var gap = document.createElement('span');
-    gap.className = 'sep crumb-gap';
-    gap.setAttribute('aria-hidden', 'true');
-    gap.textContent = '\u2026';
+    if (levels < 3) return; // no level between the root and the page: nothing is ever replaced
 
     function fit() {
+      nav.setAttribute('data-fit', '');
       items.forEach(function (el) {
-        el.classList.remove('crumb-hid');
+        el.classList.remove('crumb-hid', 'crumb-ell');
       });
-      if (gap.parentNode) nav.removeChild(gap);
       nav.classList.add('measuring');
-      var hidden = 0;
-      // Hiding the crumbs from level 1 to level k: those, and the separators between them. The separator before the first and the one after the last stay,
-      // either side of the ellipsis.
-      while (nav.scrollWidth > nav.clientWidth && hidden < levels - 2) {
-        hidden++;
-        items[2 * hidden].classList.add('crumb-hid');
-        if (hidden > 1) items[2 * hidden - 1].classList.add('crumb-hid');
-        if (!gap.parentNode) nav.insertBefore(gap, items[2]);
+      var replaced = 0;
+      // Replacing the levels from 1 to k: level 1 becomes the ellipsis, and the rest, with the separators between them, are hidden. The separator before level 1
+      // and the one after level k stay, either side of the ellipsis.
+      while (nav.scrollWidth > nav.clientWidth && replaced < levels - 2) {
+        replaced++;
+        items[2 * replaced].classList.add(replaced === 1 ? 'crumb-ell' : 'crumb-hid');
+        if (replaced > 1) items[2 * replaced - 1].classList.add('crumb-hid');
       }
       nav.classList.remove('measuring');
     }

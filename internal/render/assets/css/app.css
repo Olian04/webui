@@ -509,8 +509,6 @@ a.side-brand:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  min-width: 0;
 }
 .crumbs a {
   color: var(--text-2);
@@ -527,69 +525,138 @@ a.side-brand:hover {
   color: var(--text);
   font-weight: 500;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
-/* A trail too long for its room. The trail takes what the actions leave and is cut at its edge, so it never runs under them. With script, which knows what
-   fits, the crumbs from the level below the root up are replaced by an ellipsis, one level at a time, until the trail fits: the root, the ellipsis and the
-   page, at the narrowest, and the page itself shortens with an ellipsis only after that. The crumbs that are replaced stay in the markup, visually hidden
-   and still read (and drawn while a key is on one). While it measures, the trail is as wide as it is. */
+/* A trail too long for its room. The trail takes what the actions leave and is cut at its edge, so it never runs under them. The crumbs from the level below the
+   root up are replaced by an ellipsis, as many as the room needs: the root, the ellipsis and the page, at the narrowest, and the page itself shortens with an
+   ellipsis of its own only after that. A crumb that is replaced stays in the markup, drawn to nobody and still read, and drawn again while a key is on it.
+
+   Two things choose which crumbs those are, and neither changes how a replaced crumb looks. The stylesheet alone approximates: it takes a level to be about 5em
+   wide and replaces the levels that the trail's width cannot hold (the crumb that is d levels from the page goes when the trail is narrower than d + 2 levels), so
+   that the page is right without script, from the first paint, with labels of an ordinary length. Script measures: when it has, it sets data-fit on the trail,
+   which puts the approximation aside, and marks the crumbs itself (crumb-hid, crumb-ell) with what it finds fits. A level is a crumb and the separator before it;
+   the trail's children are the root, then a separator and a crumb for each level below it.
+
+   A replaced state is a switch: a custom property that is empty when on and is not set when off, so that a declaration holding it, as in var(--hid) absolute, is
+   valid only while it is on, and the look is written once whoever turns it on. --hid hides a crumb. --ell is for the first crumb of the run, level 1, which is
+   drawn as the ellipsis, not a link, in place of its label. */
 .crumbs {
+  --crumb-size: 14px;
+  font-size: var(--crumb-size);
   flex: 1 1 0;
   /* The room that it keeps when the actions want more: the root, the ellipsis and a short page. The search is what gives way. */
   min-width: 120px;
+  container-type: inline-size;
+}
+.crumbs > * {
   overflow: hidden;
+}
+.crumbs .sep {
+  flex: none;
 }
 /* A label that is longer than the room is cut with an ellipsis, as a last resort, after the levels in between are replaced. */
 .crumbs a {
   min-width: 0;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
+/* While script measures, the trail is as wide as it is. */
 .crumbs.measuring > * {
   flex: none;
   overflow: visible;
   text-overflow: clip;
 }
-.crumbs .crumb-hid {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.crumbs > * {
+  position: var(--hid) absolute;
+  width: var(--hid) 1px;
+  height: var(--hid) 1px;
+  margin: var(--hid) -1px;
+  clip-path: var(--hid) inset(50%);
+  font-size: var(--ell) 0;
+  pointer-events: var(--ell) none;
 }
-/* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
-.crumbs a.crumb-hid:focus {
-  position: static;
-  width: auto;
-  height: auto;
-  margin: 0;
-  overflow: visible;
-  clip-path: none;
+.crumbs > *::after {
+  content: var(--ell) "\2026";
+  font-size: var(--crumb-size);
+  font-weight: 400;
+  color: var(--text-3);
 }
-/* Without script nothing measures, and a phone is too narrow for the whole trail: the parent of the page and the page. From the end, the children are the
-   page, the separator before it, the parent, and the separator before that; the rest are hidden as above. The parent shrinks with an ellipsis before it
-   crowds the actions. */
-@media (max-width: 640px) {
-  html:not(.js) .crumbs > :nth-last-child(n + 4) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+.crumbs .crumb-hid:not(:focus) {
+  --hid: ;
+}
+.crumbs .crumb-ell:not(:focus) {
+  --ell: ;
+}
+/* The approximation. The crumb that is d levels from the page, and every one before it but the root, is replaced when the trail is narrower than d + 2 levels
+   (5em each, a ruler that the trail's own font gives); the first of them is the ellipsis, and the rest are hidden. Nine levels are the most it keeps, at any width. */
+@container (width < 15em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 3):nth-child(n + 4):not(:focus) {
+    --hid: ;
   }
-  html:not(.js) .crumbs > a:nth-last-child(n + 4):focus {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 0;
-    overflow: visible;
-    clip-path: none;
+  .crumbs:not([data-fit]) > :nth-last-child(n + 3):nth-child(3):not(:focus) {
+    --ell: ;
   }
+}
+@container (width < 20em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 5):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 5):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 25em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 7):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 7):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 30em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 9):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 9):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 35em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 11):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 11):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 40em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 13):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 13):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 45em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 15):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 15):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+@container (width < 50em) {
+  .crumbs:not([data-fit]) > :nth-last-child(n + 17):nth-child(n + 4):not(:focus) {
+    --hid: ;
+  }
+  .crumbs:not([data-fit]) > :nth-last-child(n + 17):nth-child(3):not(:focus) {
+    --ell: ;
+  }
+}
+.crumbs:not([data-fit]) > :nth-last-child(n + 19):nth-child(n + 4):not(:focus) {
+  --hid: ;
+}
+.crumbs:not([data-fit]) > :nth-last-child(n + 19):nth-child(3):not(:focus) {
+  --ell: ;
 }
 .top-right {
   margin-left: auto;
