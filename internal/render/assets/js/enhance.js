@@ -997,6 +997,52 @@
   window.addEventListener('resize', syncDrawers);
   syncDrawers();
 
+  /* ------------------------------ breadcrumbs ------------------------------ */
+
+  // A trail that is too long for the room the top bar leaves it is shortened from the level below the root: the crumbs from level 1 up are replaced by an
+  // ellipsis, as many as it takes for the trail to fit. The stylesheet alone can only replace all of them or none, by a guess at the width (see "A trail too long" in app.css,
+  // which is what a visitor without script gets); this is the exact number, from the real widths. Once it has measured, it sets data-fit, which puts the guess aside,
+  // and marks the crumbs itself: crumb-hid on what is hidden, crumb-ell on level 1, which is drawn as the ellipsis. What is replaced stays in the page, read and
+  // reachable by a key. Measuring starts from the whole trail each time, so the result is the same whatever the window was before.
+  (function () {
+    var nav = $('.crumbs');
+    if (!nav) return;
+    var items = Array.prototype.slice.call(nav.children); // a crumb, then a separator and a crumb for each level below it
+    var levels = (items.length + 1) / 2;
+    if (levels < 3) return; // no level between the root and the page: nothing is ever replaced
+
+    function fit() {
+      nav.setAttribute('data-fit', '');
+      items.forEach(function (el) {
+        el.classList.remove('crumb-hid', 'crumb-ell');
+      });
+      nav.classList.add('measuring');
+      var replaced = 0;
+      // Replacing the levels from 1 to k: level 1 becomes the ellipsis, and the rest, with the separators between them, are hidden. The separator before level 1
+      // and the one after level k stay, either side of the ellipsis.
+      while (nav.scrollWidth > nav.clientWidth && replaced < levels - 2) {
+        replaced++;
+        items[2 * replaced].classList.add(replaced === 1 ? 'crumb-ell' : 'crumb-hid');
+        if (replaced > 1) items[2 * replaced - 1].classList.add('crumb-hid');
+      }
+      nav.classList.remove('measuring');
+    }
+
+    var queued = false;
+    function queue() {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(function () {
+        queued = false;
+        fit();
+      });
+    }
+    if (window.ResizeObserver) new ResizeObserver(queue).observe(nav);
+    else window.addEventListener('resize', queue);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(queue);
+    fit();
+  })();
+
   // The sidebar's edge is a handle that script adds, to drag or to move with the arrow keys: a window splitter. Its width is a browser
   // preference, like the collapse, kept in localStorage and put back by prefs.js before first paint. A window too small for the width
   // it was given holds it to what fits, without storing the smaller one.

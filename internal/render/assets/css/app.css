@@ -509,8 +509,6 @@ a.side-brand:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  min-width: 0;
 }
 .crumbs a {
   color: var(--text-2);
@@ -527,35 +525,84 @@ a.side-brand:hover {
   color: var(--text);
   font-weight: 500;
   white-space: nowrap;
-  overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Too narrow for the whole trail: the parent of the page and the page. From the end, the children are the page, the
-   separator before it, the parent, and the separator before that; the rest stay in the markup, visually hidden and still read (and
-   drawn while a key is on one). The parent shrinks with an ellipsis before it crowds the actions. */
-@media (max-width: 640px) {
-  .crumbs > :nth-last-child(n + 4) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+/* A trail too long for its room. The trail takes what the actions leave and is cut at its edge, so it never runs under them. The crumbs from the level below the
+   root up are replaced by an ellipsis, as many as the room needs: the root, the ellipsis and the page, at the narrowest, and the page itself shortens with an
+   ellipsis of its own only after that. A crumb that is replaced stays in the markup, drawn to nobody and still read, and drawn again while a key is on it.
+
+   Two things choose which crumbs those are, and neither changes how a replaced crumb looks. The stylesheet alone is all or nothing (see "Without script", below), so
+   that the page is safe from the first paint and without script. Script measures: when it has, it sets data-fit on the trail, which puts that aside, and marks the
+   crumbs itself (crumb-hid, crumb-ell) with what it finds fits, as many levels as the room holds. A level is a crumb and the separator before it; the trail's
+   children are the root, then a separator and a crumb for each level below it.
+
+   A replaced state is a switch: a custom property that is empty when on and is not set when off, so that a declaration holding it, as in var(--hid) absolute, is
+   valid only while it is on, and the look is written once whoever turns it on. --hid hides a crumb. --ell is for the first crumb of the run, level 1, which is
+   drawn as the ellipsis, not a link, in place of its label. */
+.crumbs {
+  --crumb-size: 14px;
+  font-size: var(--crumb-size);
+  flex: 1 1 0;
+  /* The room that it keeps when the actions want more: the root, the ellipsis and a short page. The search is what gives way. */
+  min-width: 120px;
+  /* Whatever cannot give way, the trail is cut at its own edge and never runs under the actions. */
+  overflow: hidden;
+  container-type: inline-size;
+}
+.crumbs > * {
+  overflow: hidden;
+}
+.crumbs .sep {
+  flex: none;
+}
+/* The fallback for a guess that is wrong. When the labels are longer than a level is taken to be, the levels are not replaced soon enough and the trail is too
+   wide: what gives way is the levels between the root and the page, which are cut with an ellipsis, and, when they are cut to nothing, the root and the page
+   (almost not at all until then). The trail never runs over its room, and the two ends, which say where one is and where one came from, are the last to go. */
+.crumbs a {
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.crumbs > :first-child,
+.crumbs > :last-child {
+  flex-shrink: 0.01;
+}
+/* While script measures, the trail is as wide as it is. */
+.crumbs.measuring > * {
+  flex: none;
+  overflow: visible;
+  text-overflow: clip;
+}
+.crumbs > * {
+  position: var(--hid) absolute;
+  width: var(--hid) 1px;
+  height: var(--hid) 1px;
+  margin: var(--hid) -1px;
+  clip-path: var(--hid) inset(50%);
+  font-size: var(--ell) 0;
+  pointer-events: var(--ell) none;
+}
+.crumbs > *::after {
+  content: var(--ell) "\2026";
+  font-size: var(--crumb-size);
+  font-weight: 400;
+  color: var(--text-3);
+}
+.crumbs .crumb-hid:not(:focus) {
+  --hid: ;
+}
+.crumbs .crumb-ell:not(:focus) {
+  --ell: ;
+}
+/* Without script, all or nothing: a trail narrower than this has all the levels between the root and the page replaced, which is the trail's shortest form, and a
+   wider one is whole, with the fallback above for labels that are longer than the room. The width is one guess, and neither way of being wrong breaks anything:
+   too high and the levels are replaced that would have fit, too low and the labels are cut with their own ellipsis. Which levels of the middle fit is what script
+   is for. The middle is every child from the third up but the last two (the separator before the page, and the page). */
+@container (width < 36em) {
+  .crumbs:not([data-fit]) > :nth-child(n + 4):nth-last-child(n + 3):not(:focus) {
+    --hid: ;
   }
-  /* A key that reaches a crumb that is not drawn draws it, where it is, until the key leaves. */
-  .crumbs > a:nth-last-child(n + 4):focus {
-    position: static;
-    width: auto;
-    height: auto;
-    margin: 0;
-    overflow: visible;
-    clip-path: none;
-  }
-  .crumbs a {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .crumbs:not([data-fit]) > :nth-child(3):nth-last-child(n + 3):not(:focus) {
+    --ell: ;
   }
 }
 .top-right {
@@ -3024,7 +3071,7 @@ html.js .status-meta [data-built] {
 /* ------------------------------ phone ------------------------------------ */
 /* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
    up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
-   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which are cut to the parent and the page, are beside the top bar):
+   changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which without script are cut to the parent and the page, are beside the top bar):
    the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
    checkbox and its label, the way the rest of the shell works without script, so what is below is the whole of it; script
    only adds Escape to close them (see enhance.js). None of the boxes or buttons are drawn above 640px. */
@@ -3082,10 +3129,6 @@ html.js .status-meta [data-built] {
     width: 40px;
     height: 40px;
   }
-  .crumbs {
-    flex: 1;
-  }
-
   /* The sidebar is a drawer over the page, closed until the box is ticked. Closed it is not visible, which is also what takes
      it out of the order of the keys; the delay on that keeps it from vanishing before it has slid away. */
   .drawer {
