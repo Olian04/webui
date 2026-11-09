@@ -91,10 +91,39 @@ async function replacedLevelsAreStillLinks(page) {
   for (const name of ['Files', 'logs', '2026']) await expect(nav.getByRole('link', { name })).toHaveCount(1);
 }
 
+// labels longer than the stylesheet takes a level to be: the trail is too wide for its room before the guess replaces anything, and what gives way is the levels
+// between the ends, which are cut with an ellipsis, while the root and the page are read whole, as long as anything between them is left to cut.
+async function longLabelsGiveWayInTheMiddle(page) {
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.goto('/admin/files/logs/2026/10');
+  const labels = ['Collector platform', 'Infrastructure files', 'application-logs', 'archive-2026-q3', 'rotation-ten'];
+  await page.evaluate((labels) => {
+    const nav = document.querySelector('nav[aria-label="Breadcrumb"]');
+    [...nav.children].filter((el) => !el.classList.contains('sep')).forEach((el, i) => { el.textContent = labels[i]; });
+  }, labels);
+  for (const px of [900, 600, 500, 400, 320]) {
+    await room(page, px);
+    const state = await page.evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Breadcrumb"]');
+      const crumbs = [...nav.children].filter((el) => !el.classList.contains('sep'));
+      const ends = [crumbs[0], crumbs[crumbs.length - 1]];
+      return {
+        overflows: nav.scrollWidth > nav.clientWidth + 1,
+        endsCut: ends.some((el) => el.scrollWidth > el.clientWidth + 1),
+        reach: Math.max(...[...nav.children].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 2).map((r) => r.right)) - nav.getBoundingClientRect().right,
+      };
+    });
+    expect(state.overflows, `${px}px`).toBe(false);
+    expect(state.reach, `${px}px`).toBeLessThanOrEqual(1);
+    expect(state.endsCut, `${px}px`).toBe(false);
+  }
+}
+
 test.describe('a trail of five levels, with script', () => {
   test('is whole when it fits, and is replaced from level 1 up as the room shrinks', ({ page }) => shrinkFromWholeToReplaced(page));
   test('never runs under the actions on its right', ({ page }) => neverUnderTheActions(page));
   test('keeps the levels that were replaced in the page for a reader', ({ page }) => replacedLevelsAreStillLinks(page));
+  test('with labels that are long, gives way in the middle', ({ page }) => longLabelsGiveWayInTheMiddle(page));
 });
 
 test('with script, the trail keeps the levels that the guess gave up where the labels are short', async ({ page, browser, baseURL }) => {
@@ -124,4 +153,5 @@ test.describe('a trail of five levels, without script', () => {
   test('is whole when it fits, and is replaced from level 1 up as the room shrinks', ({ page }) => shrinkFromWholeToReplaced(page));
   test('never runs under the actions on its right', ({ page }) => neverUnderTheActions(page));
   test('keeps the levels that were replaced in the page for a reader', ({ page }) => replacedLevelsAreStillLinks(page));
+  test('with labels that are long, gives way in the middle', ({ page }) => longLabelsGiveWayInTheMiddle(page));
 });

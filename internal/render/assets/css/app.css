@@ -554,10 +554,16 @@ a.side-brand:hover {
 .crumbs .sep {
   flex: none;
 }
-/* A label that is longer than the room is cut with an ellipsis, as a last resort, after the levels in between are replaced. */
+/* The fallback for a guess that is wrong. When the labels are longer than a level is taken to be, the levels are not replaced soon enough and the trail is too
+   wide: what gives way is the levels between the root and the page, which are cut with an ellipsis, and, when they are cut to nothing, the root and the page
+   (almost not at all until then). The trail never runs over its room, and the two ends, which say where one is and where one came from, are the last to go. */
 .crumbs a {
   min-width: 0;
   text-overflow: ellipsis;
+}
+.crumbs > :first-child,
+.crumbs > :last-child {
+  flex-shrink: 0.01;
 }
 /* While script measures, the trail is as wide as it is. */
 .crumbs.measuring > * {
