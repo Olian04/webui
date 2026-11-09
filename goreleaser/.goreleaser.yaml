@@ -17,7 +17,8 @@ builds:
 changelog:
   use: git
   sort: asc
-  abbrev: 7
+  # A line is the commit's title, which ends in the pull request's number, and GitHub links that. No hash.
+  format: '{{ .Message }}'
   filters:
     exclude:
       - '(?i)^merge '
@@ -26,6 +27,26 @@ changelog:
       - '^ci(\(.+\))?!?:'
       - '^docs(\(.+\))?!?:'
       - '^test(\(.+\))?!?:'
+  # Matched against the commit's title, in Conventional Commits. A breaking change of any type is the first group, and the others do not match a "!" so
+  # that it is in one group only; what no group matches (style, ops, build, chore) is in the last.
+  groups:
+    - title: Breaking changes
+      regexp: '^[a-z]+(\(.+\))?!:'
+      order: 0
+    - title: Features
+      regexp: '^feat(\(.+\))?:'
+      order: 1
+    - title: Fixes
+      regexp: '^fix(\(.+\))?:'
+      order: 2
+    - title: Performance
+      regexp: '^perf(\(.+\))?:'
+      order: 3
+    - title: Refactoring
+      regexp: '^refactor(\(.+\))?:'
+      order: 4
+    - title: Others
+      order: 999
 
 release:
   prerelease: auto
@@ -34,7 +55,9 @@ release:
     {{ .Env.RELEASE_BODY }}
 
   footer: |
-
+    {{ if .PreviousTag }}
+    **Full changelog**: https://github.com/Olian04/webui/compare/{{ .PreviousTag }}...{{ .Tag }}
+    {{ end }}
     ## Use as a Go module
 
     ```bash
