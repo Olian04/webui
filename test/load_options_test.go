@@ -5,12 +5,14 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // teams is what an app keeps its options in: it changes between requests.
@@ -77,10 +79,11 @@ func TestASelectThatReadsItsOptionsOffersAndChecksWhatThereIsNow(t *testing.T) {
 	var saved issue
 	h := issueForm(s, &saved)
 
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="red" data-badge="tone-bad" selected>Red team</option>`)
-	assert.Contains(t, body, `<option value="blue" data-badge="tone-mute">blue</option>`)
-	assert.False(t, strings.Contains(body, `value="green"`))
+	offered := func(p *page.Page) []page.Option {
+		team, _ := p.Field("f0")
+		return team.Options
+	}
+	assert.DeepEqual(t, offered(pageOf(t, h, "/admin/t")), []page.Option{{Value: "", Text: "—"}, {Value: "red", Text: "Red team", Selected: true}, {Value: "blue", Text: "blue"}})
 
 	code, _ := submitTeam(h, "green")
 	assert.Equal(t, code, http.StatusUnprocessableEntity) // not an option yet
@@ -88,18 +91,18 @@ func TestASelectThatReadsItsOptionsOffersAndChecksWhatThereIsNow(t *testing.T) {
 
 	// Someone adds a team: the next request offers it and accepts it, with no restart.
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"}, webui.Option{Value: "green", Label: "Green"})
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<option value="green" data-badge="tone-mute">Green</option>`)
+	assert.True(t, slices.Contains(offered(pageOf(t, h, "/admin/t")), page.Option{Value: "green", Text: "Green"}))
 	code, _ = submitTeam(h, "green")
 	assert.Equal(t, code, http.StatusSeeOther)
 	assert.DeepEqual(t, saved.Team, []string{"green"})
 
 	// And one that is taken away is refused, though a form that was opened before still offers it.
 	s.set(webui.Option{Value: "red"})
-	code, body = submitTeam(h, "blue")
+	code, body := submitTeam(h, "blue")
 	assert.Equal(t, code, http.StatusUnprocessableEntity)
-	assert.Contains(t, body, "Choose from the options offered.")
-	assert.False(t, strings.Contains(body, `<option value="blue"`)) // the form drawn again has the options as they are now
+	refused := page.Parse(t, body)
+	assert.True(t, strings.Contains(refused.Root().Text(), "Choose from the options offered."))
+	assert.DeepEqual(t, offered(refused), []page.Option{{Value: "", Text: "—"}, {Value: "red", Text: "red"}}) // the form drawn again has the options as they are now
 }
 
 func TestASelectThatIsReadSaysWhatTheOptionsReadNow(t *testing.T) {
@@ -114,9 +117,9 @@ func TestASelectThatIsReadSaysWhatTheOptionsReadNow(t *testing.T) {
 		Fields: []webui.Accessor[issue]{webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load}},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: form}}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<span class="badge tone-bad"><span class="dot" aria-hidden="true"></span>Red team</span>`)
-	assert.Contains(t, body, `>gone</span>`) // a value that is not an option says what it is
+	team := page.One(t, "the Team", pageOf(t, h, "/admin/t").ByRole("group", "Team"))
+	assert.True(t, strings.Contains(team.Text(), "Red team"))
+	assert.True(t, strings.Contains(team.Text(), "gone")) // a value that is not an option says what it is
 }
 
 // A table's filter is the options as they are, with Load, where the source does the filtering. An address can only ask
@@ -128,7 +131,7 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
 	var asked []map[string][]string
 	var mu sync.Mutex
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title: "Issues",
 		Loader: webui.PagedLoader[issue]{Load: func(_ context.Context, q webui.PagedQuery) (webui.PagedWindow[issue], webui.Loaded) {
 			mu.Lock()
@@ -141,19 +144,19 @@ func TestATablesFilterOffersTheOptionsThatAreReadAndKeepsOnlyThose(t *testing.T)
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
 		},
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
 
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
-	filter = filter[:strings.Index(filter, `</form>`)]
-	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 2)
+	filterValues := func() []string {
+		var out []string
+		for _, f := range fieldsNamed(pageOf(t, h, "/admin/t"), "issues.filter.team") {
+			out = append(out, f.Value)
+		}
+		return out
+	}
+	assert.DeepEqual(t, filterValues(), []string{"red", "blue"})
 
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"}, webui.Option{Value: "green"})
-	body = serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter = body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
-	filter = filter[:strings.Index(filter, `</form>`)]
-	assert.Equal(t, strings.Count(filter, `type="checkbox"`), 3)
-	assert.Contains(t, filter, `value="green"`)
+	assert.DeepEqual(t, filterValues(), []string{"red", "blue", "green"})
 
 	mu.Lock()
 	asked = nil
@@ -171,7 +174,7 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 
 	s := &teams{}
 	s.set(webui.Option{Value: "red"}, webui.Option{Value: "blue"})
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title: "Issues",
 		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {
 			return []issue{{Name: "a", Team: []string{"red"}}, {Name: "b", Team: []string{"mauve"}}}, webui.Ready()
@@ -181,16 +184,14 @@ func TestATableThatHoldsItsRowsFiltersByTheValuesItsRowsHoldAndSaysThemAsTheOpti
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
 		},
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	filter := body[strings.Index(body, `<div class="filter-title caption">Team</div>`):]
-	filter = filter[:strings.Index(filter, `</form>`)]
-	for _, v := range []string{"red", "mauve"} {
-		assert.Contains(t, filter, `value="`+v+`"`)
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
+	var held []string
+	for _, f := range fieldsNamed(pageOf(t, h, "/admin/t"), "issues.filter.team") {
+		held = append(held, f.Value)
 	}
-	assert.False(t, strings.Contains(filter, `value="blue"`)) // no row holds it
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/t?issues.filter.team=mauve").Body.String(), ">b<")
-	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/t?issues.filter.team=mauve").Body.String(), ">a<"))
+	assert.DeepEqual(t, held, []string{"mauve", "red"}) // no row holds blue
+	narrowed := page.One(t, "the issues", pageOf(t, h, "/admin/t?issues.filter.team=mauve").ByRole("table", "Issues"))
+	assert.DeepEqual(t, cellsOf(t, narrowed, "Name"), []string{"b"})
 }
 
 // A source that fails is the panel's failure, as a failed Load is, and the page stays.
@@ -269,7 +270,7 @@ func TestAnExportSaysWhatTheOptionsReadNow(t *testing.T) {
 
 	s := &teams{}
 	s.set(webui.Option{Value: "red", Label: "Red team"})
-	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
+	declared := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[issue]{
 		Title:  "Issues",
 		Export: true,
 		Loader: webui.RowsLoader[issue]{Load: func(context.Context) ([]issue, webui.Loaded) {
@@ -280,7 +281,7 @@ func TestAnExportSaysWhatTheOptionsReadNow(t *testing.T) {
 			webui.Select[issue]{Label: "Team", Load: func(t issue) []string { return t.Team }, LoadOptions: s.load},
 		},
 	}}
-	h := webui.App{Pages: webui.Pages{page}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin")
 	out := records(t, serve(h, http.MethodGet, "/admin/t?issues.export=csv").Body.String())
 	assert.DeepEqual(t, out, [][]string{{"Name", "Team"}, {"a", "Red team"}})
 }

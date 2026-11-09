@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -170,18 +171,20 @@ func TestATabsIsAskedForAloneAndOnlyTheSelectedTabIsRead(t *testing.T) {
 	body := rec.Body.String()
 
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.1">`))
-	assert.Contains(t, body, "Raw-row")
-	assert.Contains(t, body, `<a class="tab active" href="/admin/device/d1?tabs.tab=raw" aria-current="page">Raw</a>`)
-	assert.False(t, strings.Contains(body, "Overview-row"))
-	assert.False(t, strings.Contains(body, `class="sidebar`)) // not the page
-	for i, want := range []int32{0, 0, 0, 1} {                // the form, the events, and the other tab were not read
+	alone := page.Parse(t, body)
+	assert.True(t, page.IsFragment(body)) // not the page
+	assert.Equal(t, len(alone.ByAttr("data-tabs", "p.1")), 1)
+	assert.Equal(t, len(alone.ByText("Raw-row")), 1)
+	strip := page.One(t, "the strip", alone.ByRoleContaining("navigation", "Views:"))
+	assert.True(t, slices.Contains(strip.Links(), page.Link{Name: "Raw", Href: "/admin/device/d1?tabs.tab=raw", Current: true}))
+	assert.Equal(t, len(alone.ByText("Overview-row")), 0)
+	assert.Equal(t, len(alone.ByRole("complementary", "")), 0)
+	for i, want := range []int32{0, 0, 0, 1} { // the form, the events, and the other tab were not read
 		assert.Equal(t, loads[i].Load(), want)
 	}
 
 	// The page carries what script needs to ask: the id, and the argument that selects a tab.
-	page := serve(h, http.MethodGet, "/admin/device/d1").Body.String()
-	assert.Contains(t, page, `<div class="tabset" data-tabs="p.1">`)
+	assert.Equal(t, len(pageOf(t, h, "/admin/device/d1").ByAttr("data-tabs", "p.1")), 1)
 
 	// It is the page's own request: the Guard runs, and an id that is not a Tabs or a panel is a 404.
 	refused, _ := layoutApp(func(context.Context, layoutArgs) error { return errors.New("no") })
@@ -198,11 +201,18 @@ func TestAStripOfManyTabsHasAllOfThemAndLoadsOnlyTheSelectedOne(t *testing.T) {
 		panels[i] = webui.Tab{Label: "A tab with a label number " + strconv.Itoa(i), View: quickTable("Panel " + strconv.Itoa(i))}
 	}
 	h := streamApp(webui.Tabs(panels))
-	body := serve(h, http.MethodGet, "/admin/p?tabs.tab=a-tab-with-a-label-number-19").Body.String()
-	assert.Equal(t, strings.Count(body, `<a class="tab`), 20)
-	assert.Contains(t, body, `<a class="tab active" href="/admin/p?tabs.tab=a-tab-with-a-label-number-19" aria-current="page">`)
-	assert.Contains(t, body, "Panel 19-row")
-	assert.False(t, strings.Contains(body, "Panel 0-row"))
+	p := pageOf(t, h, "/admin/p?tabs.tab=a-tab-with-a-label-number-19")
+	strip := page.One(t, "the strip", p.ByRoleContaining("navigation", "Views:"))
+	assert.Equal(t, len(strip.Links()), 20)
+	var current []page.Link
+	for _, l := range strip.Links() {
+		if l.Current {
+			current = append(current, l)
+		}
+	}
+	assert.DeepEqual(t, current, []page.Link{{Name: "A tab with a label number 19", Href: "/admin/p?tabs.tab=a-tab-with-a-label-number-19", Current: true}})
+	assert.Equal(t, len(p.ByText("Panel 19-row")), 1)
+	assert.Equal(t, len(p.ByText("Panel 0-row")), 0)
 }
 
 // When the HTML was built is in the page for a reader with no script, and the badge for a stale page is there for script to show.
@@ -210,9 +220,10 @@ func TestThePageSaysWhenItWasBuiltAndHasTheBadgeForScriptToShow(t *testing.T) {
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
-	page := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, page, `<time class="sb-opt" data-built datetime="`) // the server says it, for the page without script
-	assert.Contains(t, page, `data-stale hidden`)                          // and the badge is there for script to show
+	p := pageOf(t, h, "/admin/p")
+	assert.Equal(t, len(p.ByAttr("data-built", "")), 1) // the server says it, for the page without script
+	assert.True(t, page.One(t, "when", p.ByAttr("data-built", "")).Has("datetime"))
+	assert.True(t, page.One(t, "the badge", p.ByAttr("data-stale", "")).Hidden()) // and the badge is there for script to show
 }
 
 // The render time and the delivery time are not two measures of one thing: the page says the render time, which the server knows, and has a place for
@@ -221,11 +232,13 @@ func TestTheStatusBarSaysTheRenderTimeAndHasAPlaceForTheDeliveryTime(t *testing.
 	t.Parallel()
 
 	h := streamApp(webui.Stack{quickTable("First")})
-	page := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, page, `<span class="sb-timing" data-timing>`)
-	assert.True(t, regexp.MustCompile(`<span class="sb-opt" data-build title="[^"]*">\d+(\.\d)? ms</span>`).MatchString(page))
-	assert.Contains(t, page, `<span class="sb-opt" data-loaded hidden></span>`) // for script to fill in
-	assert.False(t, strings.Contains(page, "sb-split"))                         // no bar: the numbers say it
+	p := pageOf(t, h, "/admin/p")
+	render := page.One(t, "the render time", p.ByAttr("data-build", ""))
+	assert.True(t, regexp.MustCompile(`^\d+(\.\d)? ms$`).MatchString(render.Text()))
+	assert.True(t, render.Has("title")) // which says what it is the time of
+	loaded := page.One(t, "the delivery time", p.ByAttr("data-loaded", ""))
+	assert.True(t, loaded.Hidden()) // for script to fill in
+	assert.Equal(t, loaded.Text(), "")
 }
 
 // Two strips of tabs on one page (side by side, or one in the tab of another) are two navigations, and a reader who lists the landmarks tells them
@@ -237,7 +250,7 @@ func TestEachStripOfTabsHasItsOwnName(t *testing.T) {
 		webui.Tabs{{Label: "One", View: quickTable("A")}, {Label: "Two", View: quickTable("B")}},
 		webui.Tabs{{Label: "Red", View: quickTable("C")}, {Label: "Green", View: quickTable("D")}, {Label: "Blue", View: quickTable("E")}, {Label: "Grey", View: quickTable("F")}},
 	})
-	body := serve(h, http.MethodGet, "/admin/p").Body.String()
-	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: One, Two">`)
-	assert.Contains(t, body, `<nav class="tabs" aria-label="Views: Red, Green, Blue, …">`)
+	p := pageOf(t, h, "/admin/p")
+	assert.Equal(t, len(p.ByRole("navigation", "Views: One, Two")), 1)
+	assert.Equal(t, len(p.ByRole("navigation", "Views: Red, Green, Blue, …")), 1)
 }

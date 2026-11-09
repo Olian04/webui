@@ -20,6 +20,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // What a visitor can send, as the first bytes of a file of each kind: a file is of a kind by what it holds.
@@ -162,10 +163,10 @@ func TestTheFileThatIsStoredIsShownAboveTheChooser(t *testing.T) {
 
 	s := newFileShop(plainFile())
 	s.held = &webui.FileInfo{Name: "plan.pdf", Size: 1536, URL: "/files/plan"}
-	body := serve(s.h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `<a href="/files/plan">plan.pdf</a>`)
-	assert.Contains(t, body, `<span class="dim">1.5 KiB</span>`)
-	assert.False(t, strings.Contains(body, `name="_rm"`))
+	p := pageOf(t, s.h, "/admin/f")
+	assert.True(t, hasLink(p, "plan.pdf", "/files/plan"))
+	assert.Equal(t, len(p.ByText("1.5 KiB")), 1)
+	assert.Equal(t, len(p.ByAttr("name", "_rm")), 0)
 
 	s = newFileShop(func(s *fileShop) webui.File[attachment] {
 		f := plainFile()(s)
@@ -173,10 +174,15 @@ func TestTheFileThatIsStoredIsShownAboveTheChooser(t *testing.T) {
 		return f
 	})
 	s.held = &webui.FileInfo{Name: "plan.pdf", URL: "javascript:alert(1)"} // an address that is not safe is shown as a name
-	body = serve(s.h, http.MethodGet, "/admin/f").Body.String()
-	assert.Contains(t, body, `<span>plan.pdf</span>`)
-	assert.False(t, strings.Contains(body, "javascript:"))
-	assert.Contains(t, body, `<input class="checkbox" type="checkbox" name="_rm" value="f1">`)
+	p = pageOf(t, s.h, "/admin/f")
+	assert.Equal(t, len(p.ByText("plan.pdf")), 1)
+	assert.Equal(t, named(p.Links(), "plan.pdf"), 0) // a name, and not a link
+	for _, l := range p.Links() {
+		assert.False(t, strings.HasPrefix(l.Href, "javascript:"))
+	}
+	remove := page.One(t, "the Remove box", p.ByAttr("name", "_rm"))
+	assert.Equal(t, remove.Attr("type"), "checkbox")
+	assert.Equal(t, remove.Attr("value"), "f1")
 }
 
 func TestAnUploadIsHandedToStoreWithWhatItHoldsAndTheBaseNameOnly(t *testing.T) {
@@ -432,11 +438,11 @@ func TestAFormThatIsRefusedStoresNoFileAndShowsTheStoredOneAgain(t *testing.T) {
 	rec := multipartPost(s.h, "/admin/f", map[string]string{"f0": "x"}, part{"f1", "new.png", string(pngBytes)}) // the title is too short
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	assert.Equal(t, s.stores, 0)
-	body := rec.Body.String()
-	assert.Contains(t, body, "Must be at least 3 characters.")
-	assert.Contains(t, body, `<a href="/files/old">old.png</a>`) // what is stored, and not what was chosen
-	assert.Contains(t, body, "Choose the file again")
-	assert.False(t, strings.Contains(body, "new.png"))
+	refused := page.Parse(t, rec.Body.String())
+	assert.True(t, strings.Contains(refused.Root().Text(), "Must be at least 3 characters."))
+	assert.True(t, hasLink(refused, "old.png", "/files/old")) // what is stored, and not what was chosen
+	assert.True(t, strings.Contains(refused.Root().AllText(), "Choose the file again"))
+	assert.False(t, strings.Contains(refused.Root().AllText(), "new.png"))
 }
 
 func TestARequiredFileIsOneThatIsStoredAndNotRemovedOrNewlyChosen(t *testing.T) {
@@ -545,10 +551,9 @@ func TestAFileInATableIsItsNameAndALink(t *testing.T) {
 		},
 	}
 	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `plan.pdf`)
-	assert.Contains(t, body, `href="/files/plan"`)
-	assert.Contains(t, body, `<span class="sr-only">empty</span>`)
+	shown := page.One(t, "the table", pageOf(t, h, "/admin/t").ByRole("table", ""))
+	assert.True(t, slices.Contains(hrefsOf(shown.Links()), "/files/plan"))
+	assert.True(t, slices.Contains(cellsOf(t, shown, "File"), "empty"))
 }
 
 // The size a file may be is the app's to say, as large as it likes: the library has no ceiling of its own, and the limit of a body that is the sum of

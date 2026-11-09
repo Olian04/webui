@@ -3,6 +3,8 @@ package webui_test
 import (
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
@@ -336,4 +338,28 @@ func panels(p *page.Page) [][2]string {
 func shown(t *testing.T, body, text string) bool {
 	t.Helper()
 	return len(page.Parse(t, body).ByText(text)) > 0
+}
+
+// describedBy is what a control is described by, as a reader says it: the text of each element that its aria-describedby names, drawn or not, in that order.
+func describedBy(t *testing.T, p *page.Page, control page.El) []string {
+	t.Helper()
+	var out []string
+	for _, id := range strings.Fields(control.Attr("aria-describedby")) {
+		out = append(out, page.One(t, "the element "+id, p.ByAttr("id", id)).AllText())
+	}
+	return out
+}
+
+// cellsOf are the values of one column of the table, by its header, in the order of the rows.
+func cellsOf(t *testing.T, table page.El, header string) []string {
+	t.Helper()
+	i := slices.Index(table.Headers(), header)
+	if i < 0 {
+		t.Fatalf("no column %q in %v", header, table.Headers())
+	}
+	var out []string
+	for _, row := range table.Rows() {
+		out = append(out, row[i])
+	}
+	return out
 }

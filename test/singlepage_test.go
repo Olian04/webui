@@ -27,18 +27,6 @@ func onePage(guard func(context.Context, webui.NoArgs) error) http.Handler {
 	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{only}}.MustCompile("/admin")
 }
 
-// topBar is the markup of the header, which is where the chrome of an app that has no sidebar is.
-func topBar(t *testing.T, body string) string {
-	t.Helper()
-
-	start := strings.Index(body, `<header class="topbar">`)
-	end := strings.Index(body, "</header>")
-	if start < 0 || end < start {
-		t.Fatalf("no top bar in %s", body)
-	}
-	return body[start:end]
-}
-
 // Whether an app has a sidebar is the author's to say, by the pages that have an entry: where no page declares one, there is nothing for a sidebar to
 // list, and the page has its width. What the sidebar held that is not navigation stays, in the top bar.
 func TestAnAppWhosePagesDeclareNoEntryHasNoSidebar(t *testing.T) {
@@ -134,9 +122,11 @@ func TestTheSidebarDoesNotDependOnWhatTheVisitorMayOpen(t *testing.T) {
 func TestTheMarkOfAnAppWithNoSidebarLeadsTheTopBar(t *testing.T) {
 	t.Parallel()
 
-	top := topBar(t, serve(noNav(), http.MethodGet, "/admin/devices").Body.String())
-	assert.Contains(t, top, `<span class="top-mark" aria-hidden="true"><div class="logo" aria-hidden="true">`)
-	assert.True(t, strings.Index(top, `class="top-mark"`) < strings.Index(top, `class="crumbs"`))
+	top := page.One(t, "top bar", pageOf(t, noNav(), "/admin/devices").ByRole("banner", ""))
+	mark := top.Children()[0] // what leads the bar is a picture, which is decoration: the app's name is the text beside it
+	assert.True(t, mark.Hidden())
+	assert.False(t, mark.Has("for")) // and not the button of a drawer
+	assert.True(t, mark.Before(page.One(t, "the breadcrumb", top.ByRole("navigation", "Breadcrumb"))))
 
 	img := image.NewNRGBA(image.Rect(0, 0, 8, 8))
 	img.SetNRGBA(1, 1, color.NRGBA{R: 255, A: 255})
@@ -152,7 +142,6 @@ func TestTheMarkOfAnAppWithNoSidebarLeadsTheTopBar(t *testing.T) {
 func TestTheMarkOfAnAppWithASidebarIsNotInTheTopBar(t *testing.T) {
 	t.Parallel()
 
-	body := serve(onePage(nil), http.MethodGet, "/admin/devices").Body.String()
-	assert.False(t, strings.Contains(topBar(t, body), "top-mark"))
-	assert.Equal(t, strings.Count(body, `class="logo"`), 1)
+	top := page.One(t, "top bar", pageOf(t, onePage(nil), "/admin/devices").ByRole("banner", ""))
+	assert.True(t, top.Children()[0].Has("for")) // what leads the bar is the button of the drawer, which has the mark in it, and not a mark of its own
 }

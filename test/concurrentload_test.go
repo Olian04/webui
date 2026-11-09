@@ -11,6 +11,7 @@ import (
 	"github.com/Olian04/webui/pkg/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // meet makes a panel's backend wait for the others': it counts itself in and waits until all of n are in, or a
@@ -117,7 +118,7 @@ func TestAPanicInOnePanelsLoadIsAnsweredAndTheProcessLives(t *testing.T) {
 func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 	t.Parallel()
 
-	page := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
+	declared := webui.Page[webui.NoArgs]{Path: "/p", View: webui.Stack{
 		webui.Table[Device]{
 			Title: "Table",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -127,7 +128,10 @@ func TestAnEditorBesideOtherPanelsStillLinksTheEditor(t *testing.T) {
 		},
 		webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView, Language: lang.JSON},
 	}}
-	body := serve(webui.App{Pages: webui.Pages{page}}.MustCompile("/admin"), http.MethodGet, "/admin/p").Body.String()
+	body := serve(webui.App{Pages: webui.Pages{declared}}.MustCompile("/admin"), http.MethodGet, "/admin/p").Body.String()
 	assert.Contains(t, body, `<script type="module" src="/admin/_webui/monaco/code-`)
-	assert.Contains(t, body, `<pre class="code-view"`)
+	read := page.Parse(t, body)
+	_, editable := read.Field("f0")
+	assert.False(t, editable) // the editor is a viewer, and shows what it holds
+	assert.Equal(t, len(read.ByRole("heading", "Config")), 1)
 }
