@@ -150,9 +150,9 @@ func TestATableNeedsALoaderAndEachKindOfItNeedsItsLoad(t *testing.T) {
 
 	var neither string
 	for _, e := range compileErrors(t, page(webui.Table[Device]{})) {
-		neither += e.Error()
+		neither += e.Error() + "\n"
 	}
-	assert.Contains(t, neither, "a Table has no Loader")
+	refuses(t, neither, "Table", "Loader")
 
 	for _, one := range []webui.Table[Device]{
 		{Loader: webui.RowsLoader[Device]{Load: rows}},

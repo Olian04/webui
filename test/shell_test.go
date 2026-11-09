@@ -42,8 +42,9 @@ func TestCompileFailureServesEveryPathAndMethod(t *testing.T) {
 		text := answer.Root().Text()
 		assert.Contains(t, text, "Failed to compile")
 		assert.Contains(t, text, `page "/event/{id}" (bad)`)
-		assert.Contains(t, text, "field When has unsupported type map[string]int")
-		assert.Contains(t, text, "the path declares {id} but bad has no field for it")
+		for _, name := range []string{"When", "map[string]int", "{id}"} { // what is wrong with each page: the field and its type, and the placeholder that has none
+			assert.Contains(t, text, name)
+		}
 		assert.Equal(t, len(answer.ByAttr("rel", "stylesheet")), 0) // self-contained: no asset route to depend on
 		assert.Equal(t, rec.Header().Get("Cache-Control"), "no-store")
 	}

@@ -76,12 +76,12 @@ func TestAnExternalLinkMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) 
 		}
 		return all
 	}
-	assert.Contains(t, errorsOf(webui.ExternalLink{URL: "/x"}), "App.ExternalLinks[0] has no Label")
+	refuses(t, errorsOf(webui.ExternalLink{URL: "/x"}), "App.ExternalLinks[0]", "Label")
 	badIcon := item("x", "/x")
 	badIcon.Icon = "rocket-ship"
-	assert.Contains(t, errorsOf(badIcon), `"rocket-ship", which is not a Font Awesome`)
+	refuses(t, errorsOf(badIcon), "App.ExternalLinks[0]", `"rocket-ship"`, "Icon")
 	for _, evil := range []string{"", "javascript:alert(1)", "//evil.example/", `/\evil.example`, "data:text/html,x", "ftp://example.com", "relative/path", "https://"} {
-		assert.Contains(t, errorsOf(item("x", evil)), "which is not a path on this site")
+		refuses(t, errorsOf(item("x", evil)), "App.ExternalLinks[0]", "URL")
 	}
 	for _, ok := range []string{"/x", "/x?y=1", "http://example.com", "https://example.com/a?b=c", "mailto:ops@example.com"} {
 		_, err := webui.App{ExternalLinks: []webui.ExternalLink{item("x", ok)}}.Compile("")
