@@ -91,7 +91,7 @@ async function replacedLevelsAreStillLinks(page) {
   for (const name of ['Files', 'logs', '2026']) await expect(nav.getByRole('link', { name })).toHaveCount(1);
 }
 
-// labels longer than the stylesheet takes a level to be: the trail is too wide for its room before the guess replaces anything, and what gives way is the levels
+// labels longer than the room expects: the trail is too wide for its room before anything is replaced, and what gives way is the levels
 // between the ends, which are cut with an ellipsis, while the root and the page are read whole, as long as anything between them is left to cut.
 async function longLabelsGiveWayInTheMiddle(page) {
   await page.setViewportSize({ width: 1400, height: 900 });
@@ -126,8 +126,8 @@ test.describe('a trail of five levels, with script', () => {
   test('with labels that are long, gives way in the middle', ({ page }) => longLabelsGiveWayInTheMiddle(page));
 });
 
-test('with script, the trail keeps the levels that the guess gave up where the labels are short', async ({ page, browser, baseURL }) => {
-  // The stylesheet's guess is a width for a level; script has the real ones. The demo's labels are short, so at some room the guess replaces more than it needs.
+test('with script, the trail keeps the levels that the stylesheet alone replaces, where they fit', async ({ page, browser, baseURL }) => {
+  // The stylesheet alone replaces all of the middle below one width; script has the real widths, so at some room it keeps more.
   const bare = await browser.newContext({ baseURL, javaScriptEnabled: false });
   await bare.request.post('/login', { form: { role: 'editor' } });
   const plain = await bare.newPage();
@@ -150,6 +150,16 @@ test('with script, the trail keeps the levels that the guess gave up where the l
 // The stylesheet alone is the baseline: what a visitor gets before script has run, or without it.
 test.describe('a trail of five levels, without script', () => {
   test.use({ javaScriptEnabled: false });
+  test('has all of the middle replaced or none of it', async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await page.goto('/admin/files/logs/2026/10');
+    const seen = new Set();
+    for (let px = 900; px >= 130; px -= 10) {
+      await room(page, px);
+      seen.add((await replaced(page)).length);
+    }
+    expect([...seen].sort()).toEqual([0, 3]);
+  });
   test('is whole when it fits, and is replaced from level 1 up as the room shrinks', ({ page }) => shrinkFromWholeToReplaced(page));
   test('never runs under the actions on its right', ({ page }) => neverUnderTheActions(page));
   test('keeps the levels that were replaced in the page for a reader', ({ page }) => replacedLevelsAreStillLinks(page));

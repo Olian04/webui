@@ -1000,8 +1000,8 @@
   /* ------------------------------ breadcrumbs ------------------------------ */
 
   // A trail that is too long for the room the top bar leaves it is shortened from the level below the root: the crumbs from level 1 up are replaced by an
-  // ellipsis, as many as it takes for the trail to fit. The stylesheet already does this from a guess at how wide a level is (see "A trail too long" in app.css,
-  // which is what a visitor without script gets); this is the same thing with the real widths. Once it has measured, it sets data-fit, which puts the guess aside,
+  // ellipsis, as many as it takes for the trail to fit. The stylesheet alone can only replace all of them or none, by a guess at the width (see "A trail too long" in app.css,
+  // which is what a visitor without script gets); this is the exact number, from the real widths. Once it has measured, it sets data-fit, which puts the guess aside,
   // and marks the crumbs itself: crumb-hid on what is hidden, crumb-ell on level 1, which is drawn as the ellipsis. What is replaced stays in the page, read and
   // reachable by a key. Measuring starts from the whole trail each time, so the result is the same whatever the window was before.
   (function () {
