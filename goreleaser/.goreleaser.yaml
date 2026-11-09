@@ -23,8 +23,8 @@ changelog:
       - '(?i)^merge '
       - '(?i)^merge pull request'
       - "^chore\\(release\\):"
-      - '^ci:'
-      - '^docs:'
+      - '^ci(\(.+\))?!?:'
+      - '^docs(\(.+\))?!?:'
       - '^test(\(.+\))?!?:'
 
 release:
