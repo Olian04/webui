@@ -9,6 +9,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type helped struct {
@@ -34,32 +35,28 @@ var helpedName = func(help string, rules webui.StringRules) webui.String[helped]
 func TestAFieldsHelpIsASectionOfThePopoverOfItsRulesAboveThem(t *testing.T) {
 	t.Parallel()
 
-	body := serve(helpedApp(helpedName("What the collector calls itself.", webui.StringRules{MaxLen: 8})), http.MethodGet, "/admin/h").Body.String()
-	// One tip, one icon: the help under its own heading, then the rules under theirs.
-	tip := `<span class="tip" tabindex="0" role="note" aria-label="Help: What the collector calls itself. Rules: Up to 8 characters"><i class="fa-solid fa-circle-info glyph info" aria-hidden="true"></i>` +
-		`<span class="tip-body raise" aria-hidden="true" id="p-f0-help"><span class="tip-title">Help:</span> <span class="tip-text">What the collector calls itself.</span> ` +
-		`<span class="tip-title">Rules:</span> <span class="tip-item">Up to 8 characters</span></span></span>`
-	assert.Contains(t, body, tip)
-	assert.Equal(t, strings.Count(body, `class="tip"`), 1)
-	assert.False(t, strings.Contains(body, "circle-question"))
+	p := pageOf(t, helpedApp(helpedName("What the collector calls itself.", webui.StringRules{MaxLen: 8})), "/admin/h")
+	// One tip, with the help under its own heading, then the rules under theirs: it is a note that is named by both, and its text is what the field is described by.
+	tip := page.One(t, "the tip", p.ByRole("note", ""))
+	assert.Equal(t, tip.Name(), "Help: What the collector calls itself. Rules: Up to 8 characters")
+	assert.Equal(t, tip.ByAttr("aria-hidden", "true")[len(tip.ByAttr("aria-hidden", "true"))-1].AllText(), "Help: What the collector calls itself. Rules: Up to 8 characters")
+	name := page.One(t, "the name", p.ByAttr("name", "f0"))
+	assert.DeepEqual(t, describedBy(t, p, name), []string{"Help: What the collector calls itself. Rules: Up to 8 characters"})
 }
 
 // A field with a help and no rules has the popover for the help alone, and no heading for rules that are not there.
 func TestAFieldWithAHelpAndNoRulesHasThePopoverForTheHelpAlone(t *testing.T) {
 	t.Parallel()
 
-	body := serve(helpedApp(helpedName("Just this.", webui.StringRules{})), http.MethodGet, "/admin/h").Body.String()
-	assert.Contains(t, body, `aria-label="Help: Just this."`)
-	assert.Contains(t, body, `<span class="tip-title">Help:</span> <span class="tip-text">Just this.</span> </span></span>`)
-	assert.False(t, strings.Contains(body, "Rules:"))
+	p := pageOf(t, helpedApp(helpedName("Just this.", webui.StringRules{})), "/admin/h")
+	assert.Equal(t, page.One(t, "the tip", p.ByRole("note", "")).Name(), "Help: Just this.")
+	assert.False(t, strings.Contains(p.Root().AllText(), "Rules:"))
 }
 
 func TestAFieldWithNoHelpHasNoTip(t *testing.T) {
 	t.Parallel()
 
-	body := serve(helpedApp(helpedName("", webui.StringRules{})), http.MethodGet, "/admin/h").Body.String()
-	assert.False(t, strings.Contains(body, "circle-question"))
-	assert.False(t, strings.Contains(body, `class="tip"`))
+	assert.Equal(t, len(pageOf(t, helpedApp(helpedName("", webui.StringRules{})), "/admin/h").ByRole("note", "")), 0)
 }
 
 // A read-only field has no rules to say, and still says what it is for.
@@ -90,22 +87,23 @@ func TestAReadOnlyFieldShowsItsHelpAndEveryKindOfAccessorHasOne(t *testing.T) {
 		Load:   func(context.Context) (helped, webui.Loaded) { return helped{Name: "n", Count: 2}, webui.Ready() },
 		Fields: fields,
 	}}}}.MustCompile("/admin")
-	body := serve(h, http.MethodGet, "/admin/h").Body.String()
-	assert.Equal(t, strings.Count(body, `aria-label="Help: `+help+`"`), len(fields))
-	assert.False(t, strings.Contains(body, `aria-label="Rules`))
+	p := pageOf(t, h, "/admin/h")
+	assert.Equal(t, len(p.ByRole("note", "Help: "+help)), len(fields))
+	for _, tip := range p.ByRole("note", "") {
+		assert.False(t, strings.Contains(tip.Name(), "Rules"))
+	}
 }
 
 func TestHelpIsInAGroupAndNotInATable(t *testing.T) {
 	t.Parallel()
 
-	body := serve(helpedApp(webui.Group[helped]{helpedName("In a group.", webui.StringRules{})}), http.MethodGet, "/admin/h").Body.String()
-	assert.Contains(t, body, `aria-label="Help: In a group."`)
+	assert.Equal(t, len(pageOf(t, helpedApp(webui.Group[helped]{helpedName("In a group.", webui.StringRules{})}), "/admin/h").ByRole("note", "Help: In a group.")), 1)
 
 	table := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: webui.Table[helped]{
 		Loader:  webui.RowsLoader[helped]{Load: func(context.Context) ([]helped, webui.Loaded) { return []helped{{Name: "n"}}, webui.Ready() }},
 		Columns: []webui.Accessor[helped]{helpedName("Not in a table.", webui.StringRules{})},
 	}}}}.MustCompile("/admin")
-	assert.False(t, strings.Contains(serve(table, http.MethodGet, "/admin/t").Body.String(), "Not in a table."))
+	assert.False(t, strings.Contains(pageOf(t, table, "/admin/t").Root().AllText(), "Not in a table."))
 }
 
 func TestHelpIsOnAToolbarValue(t *testing.T) {
@@ -115,5 +113,5 @@ func TestHelpIsOnAToolbarValue(t *testing.T) {
 		Title: "Search", Load: func(context.Context) (note, webui.Loaded) { return note{}, webui.Ready() },
 		Fields: []webui.Accessor[note]{webui.String[note]{Label: "Q", Help: "Search by name.", Load: func(note) string { return "" }}},
 	}}}}}}.MustCompile("/admin")
-	assert.Contains(t, serve(h, http.MethodGet, "/admin/t").Body.String(), `aria-label="Help: Search by name."`)
+	assert.Equal(t, len(pageOf(t, h, "/admin/t").ByRole("note", "Help: Search by name.")), 1)
 }

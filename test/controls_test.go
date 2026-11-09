@@ -8,6 +8,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type parcelArgs struct {
@@ -42,12 +43,12 @@ func TestALinkInARowsActionsIsAButtonThatLeadsToTheRowsPage(t *testing.T) {
 
 	detail := webui.Page[parcelArgs]{Path: "/parcel/{name}", View: webui.Stack{}}
 	h := controlPages("b", webui.Table[parcel]{Actions: []webui.Control[parcel]{openParcel("Open", detail)}})
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
+	p := pageOf(t, h, "/admin/t")
 
-	assert.Contains(t, body, `href="/admin/parcel/a"`)
-	assert.Contains(t, body, `Open <span class="sr-only">a</span>`)   // named by the row it is on, as a button is
-	assert.False(t, strings.Contains(body, `href="/admin/parcel/b"`)) // that page refuses the visitor: no button for it
-	assert.False(t, strings.Contains(body, `name="_act"`))            // nothing posts
+	assert.Equal(t, len(p.ByRole("link", "Open a")), 1) // named by the row it is on, as a button is
+	assert.Equal(t, len(linksTo(p, "/admin/parcel/a")), 1)
+	assert.Equal(t, len(linksTo(p, "/admin/parcel/b")), 0) // that page refuses the visitor: no button for it
+	assert.Equal(t, len(p.ByAttr("name", "_act")), 0)      // nothing posts
 }
 
 // An address is a control of a row too: a button that opens another site in a tab of its own.
@@ -84,9 +85,11 @@ func TestAnActionALinkAndAnHrefShareARowsActionsInTheOrderDeclared(t *testing.T)
 		},
 	}
 	h := controlPages("", table)
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	drop, open, track := strings.Index(body, "Drop <span"), strings.Index(body, "Open <span"), strings.Index(body, "Track <span")
-	assert.True(t, drop >= 0 && drop < open && open < track)
+	p := pageOf(t, h, "/admin/t")
+	drop := page.One(t, "Drop", p.ByAttr("name", "_act")[:1])
+	open := page.One(t, "Open", p.ByRole("link", "Open a"))
+	track := page.One(t, "Track", p.ByRoleContaining("link", "Track a"))
+	assert.True(t, drop.Before(open) && open.Before(track)) // in the order they were declared
 
 	// The action posts, naming the row by its key.
 	assert.Equal(t, post(h, "/admin/t", formValues("_act", "row:0:b")).Code, http.StatusSeeOther)
@@ -107,8 +110,10 @@ func TestARowThatLeadsToAnHrefOpensAnotherSiteInATabOfItsOwn(t *testing.T) {
 	t.Parallel()
 
 	h := controlPages("", webui.Table[parcel]{RowClick: webui.Href[parcel]{URL: func(p parcel) string { return "https://example.com/" + p.Name }}})
-	body := serve(h, http.MethodGet, "/admin/t").Body.String()
-	assert.Contains(t, body, `<a class="rowlink" href="https://example.com/a" target="_blank" rel="noopener noreferrer">`)
+	p := pageOf(t, h, "/admin/t")
+	first := page.One(t, "the first row's link", p.ByAttr("href", "https://example.com/a"))
+	assert.Equal(t, first.Attr("target"), "_blank")
+	assert.Equal(t, first.Attr("rel"), "noopener noreferrer")
 }
 
 // What a control needs depends on where it is, and a table needs a Key only for what posts.

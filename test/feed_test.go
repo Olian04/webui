@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"html"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type asked struct {
@@ -50,15 +49,15 @@ func feedApp(seen *[]asked, act *[]string) http.Handler {
 }
 
 // pagerHref is the address a footer button of a page leads to, "" when it is disabled.
-func pagerHref(body, label string) string {
-	if strings.Contains(body, `disabled>`+label+`</button>`) {
-		return ""
+func pagerHref(t *testing.T, body, label string) string {
+	t.Helper()
+
+	for _, l := range page.Parse(t, body).Links() {
+		if l.Name == label {
+			return l.Href
+		}
 	}
-	m := regexp.MustCompile(`href="([^"]*)"[^>]*>` + label + `</a>`).FindStringSubmatch(body)
-	if m == nil {
-		return ""
-	}
-	return html.UnescapeString(m[1])
+	return "" // a button that is disabled is no link
 }
 
 func TestAFeedIsHandedACursorAndAPageSizeAndPagesByNextPreviousAndFirstPage(t *testing.T) {
@@ -73,27 +72,27 @@ func TestAFeedIsHandedACursorAndAPageSizeAndPagesByNextPreviousAndFirstPage(t *t
 	assert.Contains(t, first, ">o0<")
 	assert.Contains(t, first, ">o3<")
 	assert.False(t, strings.Contains(first, ">o4<"))
-	assert.Contains(t, first, "Showing rows 1–4")       // which rows, not only how many
-	assert.Equal(t, pagerHref(first, "First page"), "") // on it already
-	assert.Equal(t, pagerHref(first, "Previous"), "")   // nothing before it
+	assert.Contains(t, first, "Showing rows 1–4")          // which rows, not only how many
+	assert.Equal(t, pagerHref(t, first, "First page"), "") // on it already
+	assert.Equal(t, pagerHref(t, first, "Previous"), "")   // nothing before it
 
 	// Next carries the cursor, where the next page starts, and the page it leaves.
-	toSecond := pagerHref(first, "Next")
+	toSecond := pagerHref(t, first, "Next")
 	assert.Equal(t, toSecond, "/f?objects.after=4&objects.back=1%3A&objects.row=5")
 	second := serve(h, http.MethodGet, toSecond).Body.String()
 	assert.DeepEqual(t, seen[1], asked{"4", 4}) // the source is handed the cursor and the size, and no more
 	assert.Contains(t, second, ">o4<")
 	assert.Contains(t, second, "Showing rows 5–8")
-	assert.Equal(t, pagerHref(second, "First page"), "/f")
-	assert.Equal(t, pagerHref(second, "Previous"), "/f") // back to the first page, which has no cursor
+	assert.Equal(t, pagerHref(t, second, "First page"), "/f")
+	assert.Equal(t, pagerHref(t, second, "Previous"), "/f") // back to the first page, which has no cursor
 
-	third := serve(h, http.MethodGet, pagerHref(second, "Next")).Body.String()
+	third := serve(h, http.MethodGet, pagerHref(t, second, "Next")).Body.String()
 	assert.Contains(t, third, ">o9<")
 	assert.Contains(t, third, "Showing rows 9–10")
-	assert.Equal(t, pagerHref(third, "Next"), "") // no cursor came back: the last page
+	assert.Equal(t, pagerHref(t, third, "Next"), "") // no cursor came back: the last page
 
 	// Previous goes to the page before, and from there on again, as far back as it goes.
-	backToSecond := pagerHref(third, "Previous")
+	backToSecond := pagerHref(t, third, "Previous")
 	assert.Equal(t, backToSecond, toSecond)
 	assert.Contains(t, serve(h, http.MethodGet, backToSecond).Body.String(), "Showing rows 5–8")
 }
@@ -109,13 +108,13 @@ func TestAFeedAddressWithNoRowOrTrailStillPagesAndSaysHowManyRows(t *testing.T) 
 	// the way back are not known.
 	body := serve(h, http.MethodGet, "/f?objects.after=4").Body.String()
 	assert.Contains(t, body, "4 rows")
-	assert.Equal(t, pagerHref(body, "Previous"), "")
-	assert.Equal(t, pagerHref(body, "First page"), "/f")
-	assert.Equal(t, pagerHref(body, "Next"), "/f?objects.after=8&objects.back=0%3A4")
+	assert.Equal(t, pagerHref(t, body, "Previous"), "")
+	assert.Equal(t, pagerHref(t, body, "First page"), "/f")
+	assert.Equal(t, pagerHref(t, body, "Next"), "/f?objects.after=8&objects.back=0%3A4")
 	// Garbage in the trail or the row is no trail and no row.
 	junk := serve(h, http.MethodGet, "/f?objects.after=4&objects.row=-3&objects.back=x&objects.back=NaN:y").Body.String()
 	assert.Contains(t, junk, "4 rows")
-	assert.Equal(t, pagerHref(junk, "Previous"), "")
+	assert.Equal(t, pagerHref(t, junk, "Previous"), "")
 }
 
 func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testing.T) {
@@ -139,14 +138,14 @@ func TestAFeedForgetsTheOldestPagesWhenTheWayBackIsTooLongForTheAddress(t *testi
 	at := "/f"
 	var hops int
 	for range 12 {
-		next := pagerHref(serve(h, http.MethodGet, at).Body.String(), "Next")
+		next := pagerHref(t, serve(h, http.MethodGet, at).Body.String(), "Next")
 		assert.True(t, len(next) < 8000) // an address that browsers and servers accept
 		at = next
 		hops++
 	}
 	body := serve(h, http.MethodGet, at).Body.String()
-	assert.True(t, pagerHref(body, "Previous") != "")         // it still goes back
-	assert.True(t, pagerHref(body, "First page") != "")       // and the start is always there
+	assert.True(t, pagerHref(t, body, "Previous") != "")      // it still goes back
+	assert.True(t, pagerHref(t, body, "First page") != "")    // and the start is always there
 	assert.True(t, strings.Count(at, "objects.back=") < hops) // but not all the way
 }
 
@@ -156,13 +155,13 @@ func TestAFeedHasSortLinksButNoFiltersAndIgnoresTheFilterAndOffsetParameters(t *
 	var seen []asked
 	var act []string
 	h := feedApp(&seen, &act)
-	body := serve(h, http.MethodGet, "/f?objects.filter.id=zzz&objects.offset=3").Body.String()
+	p := pageOf(t, h, "/f?objects.filter.id=zzz&objects.offset=3")
 
-	assert.Contains(t, body, `objects.sort=id`) // the column can be sorted
-	assert.False(t, strings.Contains(body, `class="filter`))
-	assert.Contains(t, body, `aria-sort="none"`) // and is not, until asked
-	assert.DeepEqual(t, seen[0], asked{"", 4})   // the first page, whatever was asked of it
-	assert.Contains(t, body, ">o0<")
+	assert.Equal(t, len(linksTo(p, "/f?objects.sort=id")), 1) // the column can be sorted
+	assert.Equal(t, len(p.ByRoleContaining("button", "Filter")), 0)
+	assert.Equal(t, len(p.ByAttr("aria-sort", "none")), 1) // and is not, until asked
+	assert.DeepEqual(t, seen[0], asked{"", 4})             // the first page, whatever was asked of it
+	assert.True(t, len(p.ByText("o0")) > 0)
 }
 
 func TestAFeedIsSortedWithinThePageInHandAndTheSourceIsNotToldOfIt(t *testing.T) {
@@ -189,7 +188,7 @@ func TestAFeedIsSortedWithinThePageInHandAndTheSourceIsNotToldOfIt(t *testing.T)
 	assert.DeepEqual(t, seen[len(seen)-1], asked{"", 4}) // the source is handed the cursor and the size
 
 	// The next page continues the sequence, and is ordered within itself, with the sort kept.
-	next := pagerHref(first, "Next")
+	next := pagerHref(t, first, "Next")
 	assert.Contains(t, next, "objects.sort=id")
 	assert.Contains(t, next, "objects.desc=true")
 	second := serve(h, http.MethodGet, next).Body.String()
@@ -197,10 +196,9 @@ func TestAFeedIsSortedWithinThePageInHandAndTheSourceIsNotToldOfIt(t *testing.T)
 	assert.DeepEqual(t, seen[len(seen)-1], asked{"4", 4})
 
 	// Sorting a page stays on it: the cursor is in the link that sorts, and the other way is a click away.
-	asc := regexp.MustCompile(`<th[^>]*><span class="th-in"><a href="([^"]*)"`).FindStringSubmatch(second)
-	assert.NotNil(t, asc)
-	assert.Contains(t, html.UnescapeString(asc[1]), "objects.after=4")
-	ascending := serve(h, http.MethodGet, html.UnescapeString(asc[1])).Body.String()
+	sortLink := page.One(t, "the sort link", page.Parse(t, second).ByRole("columnheader", "ID")).Links()[0]
+	assert.Contains(t, sortLink.Href, "objects.after=4")
+	ascending := serve(h, http.MethodGet, sortLink.Href).Body.String()
 	at(ascending, "o4", "o5", "o6", "o7")
 
 	// A column the table has not got is no sort.
@@ -302,11 +300,11 @@ func TestAFeedAddressStaysShortAfterManyPagesOfShortCursors(t *testing.T) {
 	at := "/f"
 	longest := 0
 	for range 800 {
-		at = pagerHref(serve(h, http.MethodGet, at).Body.String(), "Next")
+		at = pagerHref(t, serve(h, http.MethodGet, at).Body.String(), "Next")
 		longest = max(longest, len(at))
 	}
 	assert.True(t, longest < 3500) // far below what a browser or a server refuses
 	body := serve(h, http.MethodGet, at).Body.String()
-	assert.True(t, pagerHref(body, "Previous") != "") // and it still goes back
-	assert.Contains(t, body, "Showing row 801")       // the number does not depend on the trail
+	assert.True(t, pagerHref(t, body, "Previous") != "") // and it still goes back
+	assert.Contains(t, body, "Showing row 801")          // the number does not depend on the trail
 }

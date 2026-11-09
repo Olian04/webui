@@ -3,11 +3,13 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type bucketArgs struct{ Name string }
@@ -28,23 +30,24 @@ func bucketApp() http.Handler {
 func TestARestPlaceholderTakesTheRestOfThePathAndEachSegmentIsACrumb(t *testing.T) {
 	t.Parallel()
 
-	body := serve(bucketApp(), http.MethodGet, "/admin/bucket/photos/2026/summer/img%20one.png").Body.String()
+	p := pageOf(t, bucketApp(), "/admin/bucket/photos/2026/summer/img%20one.png")
 
-	assert.Contains(t, body, `<a href="/admin/bucket">Buckets</a>`)
-	assert.Contains(t, body, `<a href="/admin/bucket/photos">photos</a>`)
 	// Each folder on the way is a link to this page at that depth.
-	assert.Contains(t, body, `<a href="/admin/bucket/photos/2026">2026</a>`)
-	assert.Contains(t, body, `<a href="/admin/bucket/photos/2026/summer">summer</a>`)
-	assert.Contains(t, body, `<span class="cur" aria-current="page">img one.png</span>`)
-	assert.Contains(t, body, "<title>img one.png — ")
+	crumbs := page.One(t, "the breadcrumb", p.ByRole("navigation", "Breadcrumb"))
+	assert.DeepEqual(t, crumbs.Links()[1:], []page.Link{
+		{Name: "Buckets", Href: "/admin/bucket"}, {Name: "photos", Href: "/admin/bucket/photos"},
+		{Name: "2026", Href: "/admin/bucket/photos/2026"}, {Name: "summer", Href: "/admin/bucket/photos/2026/summer"},
+	})
+	assert.Equal(t, page.One(t, "where we are", crumbs.ByAttr("aria-current", "page")).Text(), "img one.png")
+	assert.True(t, strings.HasPrefix(p.Title(), "img one.png — "))
 }
 
 func TestARestPlaceholderIsEscapedSegmentBySegmentWhenALinkIsBuilt(t *testing.T) {
 	t.Parallel()
 
-	body := serve(bucketApp(), http.MethodGet, "/admin/bucket/b/a%20b/c%3Fd/e").Body.String()
-	assert.Contains(t, body, `<a href="/admin/bucket/b/a%20b">a b</a>`)
-	assert.Contains(t, body, `<a href="/admin/bucket/b/a%20b/c%3Fd">c?d</a>`)
+	crumbs := page.One(t, "the breadcrumb", pageOf(t, bucketApp(), "/admin/bucket/b/a%20b/c%3Fd/e").ByRole("navigation", "Breadcrumb"))
+	assert.True(t, slices.Contains(crumbs.Links(), page.Link{Name: "a b", Href: "/admin/bucket/b/a%20b"}))
+	assert.True(t, slices.Contains(crumbs.Links(), page.Link{Name: "c?d", Href: "/admin/bucket/b/a%20b/c%3Fd"}))
 }
 
 func TestARestPlaceholderIsRequiredLikeAnyPathArgument(t *testing.T) {

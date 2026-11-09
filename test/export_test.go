@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type stock struct {
@@ -220,9 +222,9 @@ func TestTheFooterSaysWhenAnExportMayBeCut(t *testing.T) {
 		h := stockApp(webui.Table[stock]{Loader: webui.PagedLoader[stock]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[stock], webui.Loaded) {
 			return webui.PagedWindow[stock]{Items: []stock{{Name: "bolt"}}, Total: total}, webui.Ready()
 		}}})
-		body := serve(h, http.MethodGet, "/admin/s").Body.String()
-		assert.Contains(t, body, "Download the rows as CSV")
-		return strings.Contains(body, `<span class="pager-export-note">cut at 100,000 rows</span>`)
+		p := pageOf(t, h, "/admin/s")
+		assert.Equal(t, len(p.ByAttr("aria-label", "Download the rows as CSV")), 1)
+		return len(p.ByText("cut at 100,000 rows")) > 0
 	}
 	assert.True(t, note(250_000))
 	assert.True(t, note(-1))
@@ -325,16 +327,33 @@ func TestTheFooterOffersBothFilesAsPlainLinksThatKeepTheViewAndNotThePage(t *tes
 		many = append(many, stock{Name: fmt.Sprintf("part%02d", i), Qty: i})
 	}
 	h := stockApp(rowsTable(many))
-	body := serve(h, http.MethodGet, "/admin/s?items.sort=qty&items.desc=true&items.offset=25").Body.String()
-	assert.Contains(t, body, `<div class="pager-export">`)
-	// The two files are one Export button and a menu, and not a button each.
-	assert.Contains(t, body, `<details class="menu export-menu">`)
-	assert.Equal(t, strings.Count(body, `class="menu-item" href="/admin/s?items.`), 2)
-	assert.Contains(t, body, `href="/admin/s?items.desc=true&amp;items.export=csv&amp;items.sort=qty"`)
-	assert.Contains(t, body, `href="/admin/s?items.desc=true&amp;items.export=json&amp;items.sort=qty"`)
-	assert.Contains(t, body, `download=""`) // left to the browser, not fetched into the panel
-	assert.Contains(t, body, `aria-label="Download the rows as CSV"`)
-	assert.False(t, strings.Contains(body, `items.export=csv&amp;items.offset`)) // every row, not the page
+	p := pageOf(t, h, "/admin/s?items.sort=qty&items.desc=true&items.offset=25")
+	var files []page.Link
+	for _, l := range p.Links() {
+		if strings.Contains(l.Href, "items.export=") {
+			files = append(files, l)
+		}
+	}
+	// The two files are links that keep the sort and not the page, from the first row, and are left to the browser to download and not fetched into the panel.
+	assert.Equal(t, len(files), 2)
+	assert.True(t, slices.Contains(hrefsOf(files), "/admin/s?items.desc=true&items.export=csv&items.sort=qty"))
+	assert.True(t, slices.Contains(hrefsOf(files), "/admin/s?items.desc=true&items.export=json&items.sort=qty"))
+	for _, a := range p.ByAttr("download", "") {
+		assert.True(t, strings.Contains(a.Attr("href"), "items.export="))
+	}
+	assert.Equal(t, len(p.ByAttr("download", "")), 2)
+	assert.Equal(t, len(p.ByAttr("aria-label", "Download the rows as CSV")), 1)
+	for _, l := range files {
+		assert.False(t, strings.Contains(l.Href, "items.offset")) // every row, not the page
+	}
+}
+
+func hrefsOf(links []page.Link) []string {
+	var out []string
+	for _, l := range links {
+		out = append(out, l.Href)
+	}
+	return out
 }
 
 func TestAFeedsFooterHasTheLinksToo(t *testing.T) {
@@ -343,17 +362,17 @@ func TestAFeedsFooterHasTheLinksToo(t *testing.T) {
 	h := stockApp(webui.Table[stock]{Loader: webui.FeedLoader[stock]{Load: func(context.Context, string, int) ([]stock, string, webui.Loaded) {
 		return []stock{{Name: "a"}}, "next", webui.Ready()
 	}}})
-	body := serve(h, http.MethodGet, "/admin/s?items.after=next&items.row=2").Body.String()
-	assert.Contains(t, body, `href="/admin/s?items.export=csv"`) // from its first page, with no cursor
+	files := hrefsOf(pageOf(t, h, "/admin/s?items.after=next&items.row=2").Links())
+	assert.True(t, slices.Contains(files, "/admin/s?items.export=csv")) // from its first page, with no cursor
 }
 
 func TestAFailedTableOffersNoExport(t *testing.T) {
 	t.Parallel()
 
 	h := stockApp(webui.Table[stock]{Loader: webui.RowsLoader[stock]{Load: func(context.Context) ([]stock, webui.Loaded) { return nil, webui.Failed(errors.New("down")) }}})
-	body := serve(h, http.MethodGet, "/admin/s").Body.String()
-	assert.Contains(t, body, "Could not load")
-	assert.False(t, strings.Contains(body, "pager-export"))
+	p := pageOf(t, h, "/admin/s")
+	assert.Equal(t, len(p.ByText("Could not load")), 1)
+	assert.Equal(t, len(p.ByAttr("download", "")), 0) // and no file to offer
 }
 
 func TestAnExportIsCompressedWhenTheBrowserAccepts(t *testing.T) {
