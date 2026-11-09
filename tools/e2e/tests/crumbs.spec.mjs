@@ -45,9 +45,13 @@ test.describe('a trail of five levels', () => {
       await page.setViewportSize({ width: w, height: 900 });
       await page.goto('/admin/files/logs/2026/10');
       await page.waitForTimeout(60);
-      const nav = await page.getByRole('navigation', { name: 'Breadcrumb' }).boundingBox();
-      const actions = await page.locator('.top-right').boundingBox();
-      if (actions && actions.width > 0) expect(nav.x + nav.width).toBeLessThanOrEqual(actions.x + 1);
+      // Where the last crumb that is drawn ends, and where the actions begin.
+      const { end, start } = await page.evaluate(() => {
+        const nav = document.querySelector('nav[aria-label="Breadcrumb"]');
+        const ends = [...nav.children].map((el) => el.getBoundingClientRect()).filter((r) => r.width > 2).map((r) => r.right);
+        return { end: Math.max(...ends), start: document.querySelector('.top-right').getBoundingClientRect().left };
+      });
+      expect(end).toBeLessThanOrEqual(start + 1);
     }
   });
 
