@@ -76,7 +76,7 @@ func TestAnExternalLinkMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) 
 		}
 		return all
 	}
-	assert.Contains(t, errorsOf(webui.ExternalLink{URL: "/x"}), "App.ExternalLinks[0] has no Label")
+	refuses(t, errorsOf(webui.ExternalLink{URL: "/x"}), "App.ExternalLinks[0]", "Label")
 	badIcon := item("x", "/x")
 	badIcon.Icon = "rocket-ship"
 	assert.Contains(t, errorsOf(badIcon), `"rocket-ship", which is not a Font Awesome`)

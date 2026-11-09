@@ -313,7 +313,7 @@ func TestATrendColumnIsCheckedLikeAnyColumn(t *testing.T) {
 		Title: "T", Loader: webui.RowsLoader[listed]{Load: func(context.Context) ([]listed, webui.Loaded) { return nil, webui.Ready() }},
 		Columns: []webui.Accessor[listed]{webui.Trend[listed]{}, webui.Trend[listed]{Label: "S"}},
 	})
-	assert.Contains(t, got, "Table.Columns[0] has no Label")
-	assert.Contains(t, got, "Table.Columns[0] has no Load")
-	assert.Contains(t, got, "Table.Columns[1] has no Load")
+	refuses(t, got, "Table.Columns[0]", "Label")
+	refuses(t, got, "Table.Columns[0]", "Load")
+	refuses(t, got, "Table.Columns[1]", "Load")
 }

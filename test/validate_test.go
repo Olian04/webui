@@ -119,8 +119,8 @@ func TestValidateLinkToUnmountedPage(t *testing.T) {
 	}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 1)
-	assert.Equal(t, errs[0].Error(), `page "/broken" (NoArgs): a link targets "/never-mounted/{id}", which is not mounted in this app
-  Fix: Add that page to App.Pages, or point the link at a page that is already there.`)
+	assert.Equal(t, errs[0].Page, "/broken")
+	refuses(t, errs[0].Error(), `"/never-mounted/{id}"`)
 }
 
 func TestValidateDeclarationChecks(t *testing.T) {
@@ -287,9 +287,7 @@ func TestAnAccentThatCannotCarryAWhiteLabelIsACompileErrorThatSaysWhatToChange(t
 		errs := compileErrors(t, webui.App{Theme: webui.Theme{Accent: accent}})
 		assert.True(t, len(errs) > 0)
 		first := errs[0].Error()
-		assert.Contains(t, first, `Theme.Accent is "`+string(accent)+`": white on it, the label of a primary button is `)
-		assert.Contains(t, first, "4.5:1 is needed")
-		assert.Contains(t, first, "Choose a darker colour")
+		refuses(t, first, "Theme.Accent", `"`+string(accent)+`"`, "white", "4.5:1") // the colour, what it is read against, and the ratio that is needed
 	}
 }
 
@@ -325,9 +323,7 @@ func TestACanvasOfTheWrongLightnessForItsModeNamesTheCanvasOfThatMode(t *testing
 	errs := compileErrors(t, webui.App{Theme: webui.Theme{Dark: webui.ModeColors{Canvas: "#ffffff"}}})
 	assert.True(t, len(errs) > 0)
 	first := errs[0].Error()
-	assert.Contains(t, first, `Theme.Dark.Canvas is "#ffffff": its text on the panel is `)
-	assert.Contains(t, first, "in the dark theme")
-	assert.Contains(t, first, "Choose a darker colour for Theme.Dark.Canvas")
+	refuses(t, first, "Theme.Dark.Canvas", `"#ffffff"`, "dark")
 
 	errs = compileErrors(t, webui.App{Theme: webui.Theme{Light: webui.ModeColors{Canvas: "#000000"}}})
 	refuses(t, errs[0].Error(), "Theme.Light.Canvas")

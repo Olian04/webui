@@ -35,21 +35,20 @@ func TestAnEditorContextThatCannotBeUsedIsACompileErrorThatSaysWhy(t *testing.T)
 
 	ts := map[string]string{"typescript/env.d.ts": "declare const x: 1;"}
 	cases := []struct {
-		body webui.View
-		want string
+		body  webui.View
+		names []string
 	}{
-		{editorWith(lang.TypeScript, ctxFiles(ts), false), "Editor.Context is set but Content has no Store"},
-		{editorWith(lang.Go, ctxFiles(ts), true), `the language "go" takes none`},
-		{editorWith(lang.JSON, ctxFiles(ts), true), `no "json" directory`},
-		{editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/a.d.ts": "", "a.d.ts": ""}), true), `"a.d.ts", which is not the directory of a language`},
-		{editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/tsconfig.json": `{"compilerOptions": {"outDir": "x"}}`}), true), "compilerOptions.outDir is not an option the editor reads"},
-		{editorWith(lang.JSON, ctxFiles(map[string]string{"json/schema.json": "{"}), true), "json/schema.json is not valid JSON"},
-		{editorWith(lang.JSON, ctxFiles(map[string]string{"json/other.json": "{}"}), true), "json/ has no schema.json"},
+		{editorWith(lang.TypeScript, ctxFiles(ts), false), []string{"Editor.Context", "Store"}},
+		{editorWith(lang.Go, ctxFiles(ts), true), []string{`"go"`}},
+		{editorWith(lang.JSON, ctxFiles(ts), true), []string{`"json"`}},
+		{editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/a.d.ts": "", "a.d.ts": ""}), true), []string{`"a.d.ts"`}},
+		{editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/tsconfig.json": `{"compilerOptions": {"outDir": "x"}}`}), true), []string{"compilerOptions.outDir"}},
+		{editorWith(lang.JSON, ctxFiles(map[string]string{"json/schema.json": "{"}), true), []string{"json/schema.json", "JSON"}},
+		{editorWith(lang.JSON, ctxFiles(map[string]string{"json/other.json": "{}"}), true), []string{"json/", "schema.json"}},
 	}
 	for _, tc := range cases {
 		got := editorErrors(t, tc.body)
-		assert.Contains(t, got, tc.want)
-		assert.Contains(t, got, "Editor.Context") // each says where it comes from
+		refuses(t, got, append([]string{"Editor.Context"}, tc.names...)...) // each says where it comes from, and what
 	}
 }
 

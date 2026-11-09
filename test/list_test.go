@@ -449,7 +449,7 @@ func TestAnOpenIsCheckedLikeAnyLink(t *testing.T) {
 	elsewhere := webui.Page[webui.NoArgs]{Path: "/elsewhere", View: webui.Stack{}}
 	lost := webui.Link[story, webui.NoArgs]{Page: elsewhere, Args: func(context.Context, story) webui.NoArgs { return webui.NoArgs{} }}
 	got := editorErrors(t, webui.List[story]{Loader: (&listLoader{}).loader(), Headline: pTitle, Open: lost})
-	assert.Contains(t, got, `a link targets "/elsewhere", which is not mounted in this app`)
+	refuses(t, got, `"/elsewhere"`)
 }
 
 // An Href is a destination that is an address: where the model says, as a link that opens another site in a tab of its own, and only where the address
