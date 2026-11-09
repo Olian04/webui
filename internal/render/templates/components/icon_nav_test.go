@@ -3,69 +3,119 @@ package components
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
-// Icon and NavItem are Go and not templ components, for the cost of a component that has nothing to say that a string does not. What they write is what the templ components
-// wrote, to the byte, and these are what those wrote, kept: the class of an icon is made by templ's rule (each of "fa-solid", the icon's and the extra is one item that is never split,
-// and one that is the same as an earlier one, as a whole, is left out), the title, the label and the address are escaped, and an address that is not one a browser may follow is the one
-// templ makes of it.
+// Icon and NavItem are Go and not templ components, for the cost of a component that has nothing to say that a string does not. What they say is read here as a
+// browser reads it: an icon is an element that has the classes of the font and of the caller and is hidden from a reader or says what it is, a link is where
+// its address says and is called what its label says, and nothing that is written in a title, a label or an address is anything but text.
 
-func rendered(t *testing.T, render func(context.Context, *bytes.Buffer) error) string {
+func rendered(t *testing.T, render func(context.Context, *bytes.Buffer) error) *page.Page {
 	t.Helper()
 
 	var b bytes.Buffer
 	assert.NoError(t, render(context.Background(), &b))
-	return b.String()
+	return page.Parse(t, b.String())
 }
 
-func TestAnIconIsWhatTheTemplComponentWas(t *testing.T) {
+func drawnIcon(t *testing.T, props IconProps) *page.Page {
+	t.Helper()
+	return rendered(t, func(ctx context.Context, b *bytes.Buffer) error { return Icon(props).Render(ctx, b) })
+}
+
+func classes(e page.El) []string { return strings.Fields(e.Attr("class")) }
+
+func TestAnIconHasTheClassesOfTheFontAndOfTheCaller(t *testing.T) {
 	t.Parallel()
 
-	for _, c := range []struct {
+	for name, tc := range map[string]struct {
 		props IconProps
-		want  string
+		want  []string
 	}{
-		{IconProps{Name: "house", Class: "", Title: ""}, "<i class=\"fa-solid fa-house\" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "ni", Title: ""}, "<i class=\"fa-solid fa-house ni\" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "ni menu-icon", Title: ""}, "<i class=\"fa-solid fa-house ni menu-icon\" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "  spaced   out ", Title: ""}, "<i class=\"fa-solid fa-house   spaced   out \" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "fa-solid", Title: ""}, "<i class=\"fa-solid fa-house\" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "fa-house x fa-house", Title: ""}, "<i class=\"fa-solid fa-house fa-house x fa-house\" aria-hidden=\"true\"></i>"}, //nolint:dupword // the case is a class that is repeated
-		{IconProps{Name: "house", Class: "a a b", Title: ""}, "<i class=\"fa-solid fa-house a a b\" aria-hidden=\"true\"></i>"},                             //nolint:dupword // the case is a class that is repeated
-		{IconProps{Name: "house", Class: "", Title: "Home"}, "<i class=\"fa-solid fa-house\" role=\"img\" aria-label=\"Home\" title=\"Home\"></i>"},
-		{IconProps{Name: "house", Class: "ni", Title: "A \"quoted\" <b> & 'x'"}, "<i class=\"fa-solid fa-house ni\" role=\"img\" aria-label=\"A &#34;quoted&#34; &lt;b&gt; &amp; &#39;x&#39;\" title=\"A &#34;quoted&#34; &lt;b&gt; &amp; &#39;x&#39;\"></i>"},
-		{IconProps{Name: "", Class: "", Title: ""}, ""},
-		{IconProps{Name: "", Class: "ni", Title: "t"}, ""},
-		{IconProps{Name: "a<b", Class: "", Title: ""}, "<i class=\"fa-solid fa-a&lt;b\" aria-hidden=\"true\"></i>"},
-		{IconProps{Name: "house", Class: "x\"y <z>", Title: ""}, "<i class=\"fa-solid fa-house x&#34;y &lt;z&gt;\" aria-hidden=\"true\"></i>"},
+		"the icon":          {IconProps{Name: "house"}, []string{"fa-solid", "fa-house"}},
+		"and a class":       {IconProps{Name: "house", Class: "ni"}, []string{"fa-solid", "fa-house", "ni"}},
+		"and two":           {IconProps{Name: "house", Class: "ni menu-icon"}, []string{"fa-solid", "fa-house", "ni", "menu-icon"}},
+		"spaced out":        {IconProps{Name: "house", Class: "  spaced   out "}, []string{"fa-solid", "fa-house", "spaced", "out"}},
+		"a hostile name":    {IconProps{Name: "a<b"}, []string{"fa-solid", "fa-a<b"}},
+		"a hostile class":   {IconProps{Name: "house", Class: `x"y <z>`}, []string{"fa-solid", "fa-house", `x"y`, "<z>"}},
+		"one of the font's": {IconProps{Name: "house", Class: "fa-solid"}, nil}, // the class of the font is the font's, and the caller's is not drawn twice
 	} {
-		assert.Equal(t, rendered(t, func(ctx context.Context, b *bytes.Buffer) error { return Icon(c.props).Render(ctx, b) }), c.want)
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			icon := page.One(t, "the icon", drawnIcon(t, tc.props).ByAttr("class", ""))
+			got := classes(icon)
+			if tc.want == nil {
+				assert.Equal(t, strings.Count(strings.Join(got, " "), "fa-solid"), 1)
+				return
+			}
+			assert.DeepEqual(t, got, tc.want)
+		})
 	}
 }
 
-func TestANavItemIsWhatTheTemplComponentWas(t *testing.T) {
+func TestAnIconIsHiddenFromAReaderUnlessItHasATitle(t *testing.T) {
 	t.Parallel()
 
-	for _, c := range []struct {
-		props NavItemProps
-		want  string
-	}{
-		{NavItemProps{Label: "Devices", Href: "/admin/device", Icon: "display", Letter: "", Active: false}, "<a class=\"nav-item\" href=\"/admin/device\" title=\"Devices\"><i class=\"fa-solid fa-display ni\" aria-hidden=\"true\"></i><span>Devices</span></a>"},
-		{NavItemProps{Label: "Devices", Href: "/admin/device", Icon: "display", Letter: "", Active: true}, "<a class=\"nav-item active\" href=\"/admin/device\" title=\"Devices\" aria-current=\"page\"><i class=\"fa-solid fa-display ni\" aria-hidden=\"true\"></i><span>Devices</span></a>"},
-		{NavItemProps{Label: "Sites", Href: "/admin/site", Icon: "", Letter: "S", Active: false}, "<a class=\"nav-item\" href=\"/admin/site\" title=\"Sites\"><span class=\"ni ni-letter\" aria-hidden=\"true\">S</span> <span>Sites</span></a>"},
-		{NavItemProps{Label: "Sites", Href: "/admin/site", Icon: "", Letter: "S", Active: true}, "<a class=\"nav-item active\" href=\"/admin/site\" title=\"Sites\" aria-current=\"page\"><span class=\"ni ni-letter\" aria-hidden=\"true\">S</span> <span>Sites</span></a>"},
-		{NavItemProps{Label: "Plain", Href: "/admin/plain", Icon: "", Letter: "", Active: false}, "<a class=\"nav-item\" href=\"/admin/plain\" title=\"Plain\"><span>Plain</span></a>"},
-		{NavItemProps{Label: "A \"q\" <b> & 'x'", Href: "/admin/a?x=1&y=\"2\"", Icon: "bell", Letter: "A", Active: false}, "<a class=\"nav-item\" href=\"/admin/a?x=1&amp;y=&#34;2&#34;\" title=\"A &#34;q&#34; &lt;b&gt; &amp; &#39;x&#39;\"><i class=\"fa-solid fa-bell ni\" aria-hidden=\"true\"></i><span>A &#34;q&#34; &lt;b&gt; &amp; &#39;x&#39;</span></a>"},
-		{NavItemProps{Label: "Ünï", Href: "/admin/ü", Icon: "", Letter: "Ü", Active: true}, "<a class=\"nav-item active\" href=\"/admin/ü\" title=\"Ünï\" aria-current=\"page\"><span class=\"ni ni-letter\" aria-hidden=\"true\">Ü</span> <span>Ünï</span></a>"},
-		{NavItemProps{Label: "JS", Href: "javascript:alert(1)", Icon: "bell", Letter: "", Active: false}, "<a class=\"nav-item\" href=\"about:invalid#TemplFailedSanitizationURL\" title=\"JS\"><i class=\"fa-solid fa-bell ni\" aria-hidden=\"true\"></i><span>JS</span></a>"},
-		{NavItemProps{Label: "Data", Href: "data:text/html,<b>", Icon: "", Letter: "D", Active: false}, "<a class=\"nav-item\" href=\"about:invalid#TemplFailedSanitizationURL\" title=\"Data\"><span class=\"ni ni-letter\" aria-hidden=\"true\">D</span> <span>Data</span></a>"},
-		{NavItemProps{Label: "Empty", Href: "", Icon: "bell", Letter: "", Active: true}, "<a class=\"nav-item active\" href=\"\" title=\"Empty\" aria-current=\"page\"><i class=\"fa-solid fa-bell ni\" aria-hidden=\"true\"></i><span>Empty</span></a>"},
-		{NavItemProps{Label: "", Href: "/admin/x", Icon: "bell", Letter: "", Active: false}, "<a class=\"nav-item\" href=\"/admin/x\" title=\"\"><i class=\"fa-solid fa-bell ni\" aria-hidden=\"true\"></i><span></span></a>"},
-		{NavItemProps{Label: "Space", Href: " /admin/a b", Icon: "", Letter: "S", Active: false}, "<a class=\"nav-item\" href=\" /admin/a b\" title=\"Space\"><span class=\"ni ni-letter\" aria-hidden=\"true\">S</span> <span>Space</span></a>"},
-	} {
-		assert.Equal(t, rendered(t, func(ctx context.Context, b *bytes.Buffer) error { return NavItem(c.props).Render(ctx, b) }), c.want)
+	hidden := page.One(t, "the icon", drawnIcon(t, IconProps{Name: "house"}).ByAttr("class", ""))
+	assert.True(t, hidden.Hidden())
+
+	for _, title := range []string{"Home", `A "quoted" <b> & 'x'`} {
+		named := page.One(t, "the icon", drawnIcon(t, IconProps{Name: "house", Class: "ni", Title: title}).ByRole("img", title))
+		assert.Equal(t, named.Attr("title"), title) // and whatever it holds is text
+		assert.False(t, named.Hidden())
+	}
+
+	// With no name there is no icon.
+	assert.Equal(t, len(drawnIcon(t, IconProps{Class: "ni", Title: "t"}).ByAttr("class", "")), 0)
+}
+
+func navOf(t *testing.T, props NavItemProps) page.El {
+	t.Helper()
+
+	p := rendered(t, func(ctx context.Context, b *bytes.Buffer) error { return NavItem(props).Render(ctx, b) })
+	return page.One(t, "the entry", p.ByAttr("href", ""))
+}
+
+func TestANavItemIsALinkThatIsCalledWhatItsLabelSaysAndLeadsWhereItsAddressSays(t *testing.T) {
+	t.Parallel()
+
+	for _, label := range []string{"Devices", `A "q" <b> & 'x'`, "Ünï", ""} {
+		entry := navOf(t, NavItemProps{Label: label, Href: "/admin/a?x=1&y=\"2\"", Icon: "bell", Letter: "A"})
+		assert.Equal(t, entry.Attr("href"), "/admin/a?x=1&y=\"2\"")
+		assert.Equal(t, entry.Attr("title"), label)
+		assert.Equal(t, entry.Name(), label)
+		assert.False(t, entry.Has("aria-current"))
+	}
+	assert.Equal(t, navOf(t, NavItemProps{Label: "Devices", Href: "/admin/device", Active: true}).Attr("aria-current"), "page")
+}
+
+func TestANavItemHasAnIconOrItsLetterAndNeitherIsItsName(t *testing.T) {
+	t.Parallel()
+
+	withIcon := navOf(t, NavItemProps{Label: "Devices", Href: "/x", Icon: "display", Letter: "D"})
+	assert.True(t, len(withIcon.ByAttr("class", "")) > 0) // the icon is drawn
+	assert.Equal(t, withIcon.AllText(), "Devices")        // and the letter is not
+
+	withLetter := navOf(t, NavItemProps{Label: "Sites", Href: "/x", Letter: "S"})
+	assert.Equal(t, withLetter.AllText(), "S Sites") // the letter stands where the icon would
+	assert.Equal(t, withLetter.Name(), "Sites")      // and a reader is not told it
+
+	plain := navOf(t, NavItemProps{Label: "Plain", Href: "/x"})
+	assert.Equal(t, plain.AllText(), "Plain")
+}
+
+// An address that a browser would run, and not follow, is not one that an entry leads to.
+func TestANavItemDoesNotLeadToAddressThatWouldRunSomething(t *testing.T) {
+	t.Parallel()
+
+	for _, href := range []string{"javascript:alert(1)", "data:text/html,<b>", "JaVaScRiPt:x"} {
+		entry := navOf(t, NavItemProps{Label: "x", Href: href})
+		assert.False(t, strings.HasPrefix(strings.ToLower(entry.Attr("href")), "javascript:"))
+		assert.False(t, strings.HasPrefix(strings.ToLower(entry.Attr("href")), "data:"))
 	}
 }

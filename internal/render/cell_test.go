@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/a-h/templ"
@@ -10,6 +11,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 	c "github.com/Olian04/webui/internal/render/templates/components"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func drawn(t *testing.T, comp templ.Component) string {
@@ -63,6 +65,35 @@ func TestAPlainCellIsWhatTheComponentsWrote(t *testing.T) {
 		}
 	}
 	assert.True(t, checked > 1500)
-	assert.Equal(t, drawn(t, r.cell(columnView{Field: ir.Field{Get: func(any) string { return "x<y" }}}, nil, "", false, false, "", false)), `<td class="">x&lt;y</td>`)
-	assert.Equal(t, drawn(t, r.cell(columnView{Align: c.AlignEnd, Field: ir.Field{Get: func(any) string { return "12" }}}, nil, "", false, false, "", false)), `<td class="num">12</td>`)
+	// What a cell says is the text it was given, whatever the text holds: markup in it is text.
+	for _, text := range texts {
+		cell := page.Parse(t, "<table><tbody><tr>"+drawn(t, r.cell(columnView{Field: ir.Field{Get: func(any) string { return text }}}, nil, "", false, false, "", false))+"</tr></tbody></table>")
+		row := page.One(t, "the table", cell.ByRole("table", "")).Rows()
+		assert.Equal(t, len(row), 1)
+		assert.Equal(t, len(row[0]), 1)
+		assert.Equal(t, row[0][0], strings.Join(strings.Fields(text), " ")) // as a reader reads it: white space is one space
+	}
+}
+
+// A cell that leads somewhere is a link to an address that a browser may follow and to no other.
+func TestACellThatIsALinkLeadsOnlyWhereABrowserMayFollow(t *testing.T) {
+	t.Parallel()
+
+	r, err := New(&ir.App{}, "", []byte("0123456789abcdef"))
+	assert.NoError(t, err)
+
+	link := func(href string) []page.Link {
+		field := ir.Field{Display: ir.DisplayLink, Get: func(any) string { return "go" }}
+		cell := drawn(t, r.cell(columnView{Field: field}, nil, href, true, false, "", true))
+		return page.Parse(t, "<table><tbody><tr>"+cell+"</tr></tbody></table>").Links()
+	}
+	got := link("https://example.com/a b")
+	assert.Equal(t, len(got), 1)
+	assert.Equal(t, got[0].Href, "https://example.com/a b")
+	assert.True(t, got[0].NewTab)
+	for _, href := range []string{"javascript:alert(1)", "data:text/html,<b>x</b>"} {
+		for _, l := range link(href) {
+			assert.False(t, strings.HasPrefix(l.Href, "javascript:") || strings.HasPrefix(l.Href, "data:"))
+		}
+	}
 }

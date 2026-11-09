@@ -137,6 +137,27 @@ func TestAPointThatIsNotANumberIsLeftOut(t *testing.T) {
 	assert.Equal(t, len(p.ByRole("img", "Devices over a day: 2 values, from 1.00 to 3.00, lowest 1.00, highest 3.00")), 1)
 }
 
+// A line that is laid out on a range that has no width, or that is wider than a number can hold, is a line, and not coordinates that are not numbers.
+func TestAChartIsNeverLaidOutWithCoordinatesThatAreNotNumbers(t *testing.T) {
+	t.Parallel()
+
+	for name, points := range map[string][]float64{
+		"none":          nil,
+		"one":           {4},
+		"level":         {3, 3, 3},
+		"a rising line": {1, 2, 3},
+		"a huge range":  {-math.MaxFloat64, math.MaxFloat64},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			body := serve(readingApp(reading{Devices: 1, Points: points}, rDevices, rTrend), http.MethodGet, "/admin/e").Body.String()
+			assert.False(t, strings.Contains(body, "NaN"))
+			assert.False(t, strings.Contains(body, "Inf"))
+		})
+	}
+}
+
 func TestAnEmptyAndAOnePointTrendAreDrawnWithoutFailing(t *testing.T) {
 	t.Parallel()
 
