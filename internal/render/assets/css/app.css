@@ -1750,12 +1750,18 @@ html:not(.js) .actionbar .dim {
 }
 
 /* ------------------------------ badges ----------------------------------- */
+/* A badge is always large enough for its text. It is as wide as the text is, and so a column that holds it is as wide; only when the room is narrower than that does the
+   text wrap, and then the badge is taller, never a box with its text running out of it. */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 19px;
-  padding: 0 7px;
+  min-height: 19px;
+  width: max-content;
+  max-width: 100%;
+  padding: 1px 7px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
   border-radius: var(--radius);
   font-size: 11.5px;
   font-weight: 500;
@@ -1787,6 +1793,7 @@ html:not(.js) .actionbar .dim {
   border-color: var(--border);
 }
 .dot {
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: var(--radius-pill);
