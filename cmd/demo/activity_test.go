@@ -7,52 +7,62 @@ import (
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // The Activity page is what is new: a list of alerts that lead to their own pages, releases that are on another site, the people on call with their pictures,
 // and the dashboards as cards in a row that scrolls.
 func TestTheActivityPageIsListsAndCards(t *testing.T) {
-	body := get(handler(t), "/admin/activity").Body.String()
+	p := pageAt(t, handler(t), "/admin/activity")
 
-	assert.Contains(t, body, `class="nav-item active" href="/admin/activity"`)
+	assert.DeepEqual(t, current(t, p), []page.Link{{Name: "Activity", Href: "/admin/activity", Current: true}})
 	for _, title := range []string{"Open alerts", "People", "Dashboards"} {
-		assert.Contains(t, body, `<h2 class="panel-title">`+title+`</h2>`)
+		panel(t, p, title)
 	}
 
 	// The alerts are the first tab, four of them, each a link to the alert's own page, with the severity as a badge in words.
-	assert.Equal(t, strings.Count(body[strings.Index(body, `<h2 class="panel-title">Open alerts`):strings.Index(body, `<h2 class="panel-title">People`)], `<li class="item">`), 4)
-	assert.Contains(t, body, `<a class="item-link" href="/admin/alert/`)
-	assert.Contains(t, body, `class="badge tone-bad"`)
-	assert.Contains(t, body, `href="/admin/activity?open-alerts.limit=8"`) // and there are more
+	alerts := panel(t, p, "Open alerts").ByRole("listitem", "")
+	assert.Equal(t, len(alerts), 4)
+	for _, item := range alerts {
+		link := item.Links()
+		assert.Equal(t, len(link), 1)
+		assert.True(t, strings.HasPrefix(link[0].Href, "/admin/alert/"))
+		assert.True(t, strings.Contains(item.Text(), "critical") || strings.Contains(item.Text(), "warning") || strings.Contains(item.Text(), "info"))
+	}
+	assert.Equal(t, len(linksTo(panel(t, p, "Open alerts"), "/admin/activity?open-alerts.limit=8")), 1) // and there are more
 
 	// The pictures are on this site, so no origin is trusted and the page's policy is the library's own.
-	assert.Contains(t, body, `<img class="item-img" src="/art/ada-lovelace.png"`)
-	assert.Contains(t, body, `<img class="item-img" src="/art/ingest-overview.png"`)
-	assert.Equal(t, strings.Count(body, `<li class="item item-card">`), 4)
-	assert.Contains(t, body, `<div class="cards-scroller" tabindex="0" role="region" aria-label="Dashboards, scrolls sideways">`)
+	assert.Equal(t, len(p.ByAttr("src", "/art/ada-lovelace.png")), 1)
+	assert.Equal(t, len(p.ByAttr("src", "/art/ingest-overview.png")), 1)
+	assert.Equal(t, len(panel(t, p, "Dashboards").ByRole("listitem", "")), 4)
+	assert.Equal(t, len(p.ByRole("region", "Dashboards, scrolls sideways")), 1)
 }
 
 func TestTheReleasesAreOnAnotherSiteAndOpenATabOfTheirOwn(t *testing.T) {
-	body := get(handler(t), "/admin/activity?tabs.tab=releases").Body.String()
-	assert.Contains(t, body, `<a class="item-link ext" href="https://example.com/releases/2.4.1" target="_blank" rel="noopener noreferrer">2.4.1: fixes a stall in the ingest queue`)
-	assert.Contains(t, body, "(opens in a new tab)")
-	assert.Contains(t, body, "1204 downloads")
-	assert.Contains(t, body, "3h ago")
-	assert.False(t, strings.Contains(body, "Open alerts</h2>")) // the other tab is not read
-	assert.Contains(t, body, `href="/admin/activity?releases.limit=8&amp;tabs.tab=releases"`)
+	p := pageAt(t, handler(t), "/admin/activity?tabs.tab=releases")
+	releases := panel(t, p, "Releases")
+	first := releases.Links()[0]
+	assert.DeepEqual(t, first, page.Link{Name: "2.4.1: fixes a stall in the ingest queue(opens in a new tab)", Href: "https://example.com/releases/2.4.1", NewTab: true})
+	assert.True(t, shown(p, "1204 downloads"))
+	assert.True(t, shown(p, "3h ago"))
+	assert.Equal(t, len(p.ByRole("heading", "Open alerts")), 0) // the other tab is not read
+	assert.Equal(t, len(linksTo(releases, "/admin/activity?releases.limit=8&tabs.tab=releases")), 1)
 
 	// More of them is more in the address, and the tab stays.
-	more := get(handler(t), "/admin/activity?tabs.tab=releases&releases.limit=8").Body.String()
-	releases := more[strings.Index(more, `<h2 class="panel-title">Releases`):strings.Index(more, `<h2 class="panel-title">People`)]
-	assert.Equal(t, strings.Count(releases, `<li class="item">`), 7) // all seven
-	assert.False(t, strings.Contains(releases, "releases.limit="))   // and there is no more to show
+	more := panel(t, pageAt(t, handler(t), "/admin/activity?tabs.tab=releases&releases.limit=8"), "Releases")
+	assert.Equal(t, len(more.ByRole("listitem", "")), 7) // all seven
+	for _, l := range more.Links() {
+		assert.False(t, strings.Contains(l.Href, "releases.limit=")) // and there is no more to show
+	}
 }
 
 // A viewer has the same list, and each alert is a link for them too, since the alert's own page lets a viewer in: an item whose page refuses the visitor is
 // text and not a link.
 func TestAViewerHasTheSameListAndNoMoreThanTheyMayOpen(t *testing.T) {
-	body := get(handlerAs(t, Viewer), "/admin/activity").Body.String()
-	assert.Contains(t, body, `<a class="item-link" href="/admin/alert/`)
+	p := pageAt(t, handlerAs(t, Viewer), "/admin/activity")
+	for _, item := range panel(t, p, "Open alerts").ByRole("listitem", "") {
+		assert.Equal(t, len(item.Links()), 1)
+	}
 }
 
 func TestThePicturesOfThePageAreMadeFromTheirNamesAndAreTheSameEveryTime(t *testing.T) {
@@ -78,43 +88,46 @@ func TestThePicturesOfThePageAreMadeFromTheirNamesAndAreTheSameEveryTime(t *test
 
 // The release calendar is the month of the demo's day, with a mark on each day something was published and a link to the page that lists it.
 func TestTheReleaseCalendarMarksTheDaysSomethingWasPublishedAndLinksToThem(t *testing.T) {
-	body := get(handler(t), "/admin/activity").Body.String()
-	assert.Contains(t, body, `<h2 class="panel-title">Release calendar</h2>`)
-	assert.Contains(t, body, ">October 2026</h3>")
-	assert.Contains(t, body, `aria-current="date"`)                                                      // the 9th, which is the day of the demo's data
-	assert.Contains(t, body, `<a class="cal-day" href="/admin/activity/releases/2026-10-09"`)            // today, which has a release
-	assert.Contains(t, body, "Thursday 8 October 2026, 1 item")                                          // the beta, the day before
-	assert.Contains(t, body, `href="/admin/activity?release-calendar.month=2026-09"`)                    // and the month before, which is in the address
-	assert.False(t, strings.Contains(body, `href="/admin/activity/releases/2026-10-10"`))                // a day with nothing on it leads nowhere
-	assert.Contains(t, body, `<th scope="row" class="cal-wk"><span class="sr-only">Week </span>41</th>`) // the week of the 5th
+	p := pageAt(t, handler(t), "/admin/activity")
+	calendar := panel(t, p, "Release calendar")
+	assert.Equal(t, len(calendar.ByRole("heading", "October 2026")), 1)
+	today := page.One(t, "today", calendar.ByAttr("aria-current", "date")) // the 9th, which is the day of the demo's data
+	assert.True(t, strings.HasPrefix(today.Name(), "Friday 9 October 2026"))
+	assert.True(t, hasLink(calendar, "Friday 9 October 2026, 1 item", "/admin/activity/releases/2026-10-09"))   // today, which has a release
+	assert.True(t, hasLink(calendar, "Thursday 8 October 2026, 1 item", "/admin/activity/releases/2026-10-08")) // the beta, the day before
+	assert.Equal(t, len(linksTo(calendar, "/admin/activity?release-calendar.month=2026-09")), 1)                // and the month before, which is in the address
+	assert.Equal(t, len(linksTo(calendar, "/admin/activity/releases/2026-10-10")), 0)                           // a day with nothing on it leads nowhere
+	table := page.One(t, "the month", calendar.ByRole("table", "October 2026"))
+	assert.Equal(t, table.Rows()[1][0], "Week 41") // the week of the 5th
 }
 
 func TestADayOfTheCalendarLeadsToAPageThatListsWhatWasPublishedOnIt(t *testing.T) {
 	h := handler(t)
 	rec := get(h, "/admin/activity/releases/2026-10-03")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	body := rec.Body.String()
-	assert.Contains(t, body, "2.4.0: a search that finds devices by tag")
-	assert.False(t, strings.Contains(body, "2.4.1"))
-	assert.Contains(t, body, `class="nav-item active" href="/admin/activity"`) // under the Activity page, so it lights it
+	p := page.Parse(t, rec.Body.String())
+	assert.True(t, shown(p, "2.4.0: a search that finds devices by tag"))
+	assert.False(t, strings.Contains(p.Root().Text(), "2.4.1"))
+	assert.DeepEqual(t, current(t, p), []page.Link{{Name: "Activity", Href: "/admin/activity", Current: true}}) // under the Activity page, so it lights it
 
 	assert.Equal(t, get(h, "/admin/activity/releases/not-a-day").Code, http.StatusNotFound)
 }
 
 // The month before has what was published in it, and the link back to the current month has no month in it.
 func TestTheCalendarOfAnotherMonthShowsItsOwnReleasesAndLinksBack(t *testing.T) {
-	body := get(handler(t), "/admin/activity?release-calendar.month=2026-09").Body.String()
-	assert.Contains(t, body, ">September 2026</h3>")
-	assert.Contains(t, body, `href="/admin/activity/releases/2026-09-25"`)
-	assert.Contains(t, body, `href="/admin/activity" data-in-place>Today</a>`)
+	calendar := panel(t, pageAt(t, handler(t), "/admin/activity?release-calendar.month=2026-09"), "Release calendar")
+	assert.Equal(t, len(calendar.ByRole("heading", "September 2026")), 1)
+	assert.Equal(t, len(linksTo(calendar, "/admin/activity/releases/2026-09-25")), 1)
+	today := page.One(t, "the link back", calendar.ByRole("link", "Today"))
+	assert.Equal(t, today.Attr("href"), "/admin/activity")
 }
 
 // The escalation notice is a When: it is on the page while critical alerts are open, and not once they have been acknowledged.
+// The escalation notice is a When: it is on the page while critical alerts are open, and not once they have been acknowledged.
 func TestTheEscalationNoticeIsShownOnlyWhileCriticalAlertsAreOpen(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/activity").Body.String()
-	assert.Contains(t, body, `<h2 class="panel-title">Escalation</h2>`)
-	assert.Contains(t, body, "critical alerts are open")
+	p := pageAt(t, h, "/admin/activity")
+	assert.True(t, strings.Contains(panel(t, p, "Escalation").Text(), "critical alerts are open"))
 
 	var critical []string
 	for _, a := range service.OpenAlerts() {
@@ -127,6 +140,7 @@ func TestTheEscalationNoticeIsShownOnlyWhileCriticalAlertsAreOpen(t *testing.T) 
 
 	rec := get(h, "/admin/activity")
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.False(t, strings.Contains(rec.Body.String(), "Escalation</h2>"))
-	assert.Contains(t, rec.Body.String(), `<h2 class="panel-title">Release calendar</h2>`) // the rest of the page is as it was
+	after := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(after.ByRole("heading", "Escalation")), 0)
+	panel(t, after, "Release calendar") // the rest of the page is as it was
 }

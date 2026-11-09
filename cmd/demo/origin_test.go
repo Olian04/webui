@@ -12,14 +12,12 @@ import (
 func cancelHref(t *testing.T, h http.Handler, target string) string {
 	t.Helper()
 
-	body := get(h, target).Body.String()
-	const marker = `<a class="btn btn-ghost btn-sm" href="`
-	i := strings.Index(body, marker)
-	if i < 0 {
-		return ""
+	for _, l := range mainOf(t, pageAt(t, h, target)).Links() {
+		if l.Name == "Cancel" {
+			return l.Href
+		}
 	}
-	body = body[i+len(marker):]
-	return strings.ReplaceAll(body[:strings.Index(body, `"`)], "&amp;", "&")
+	return "" // no Cancel button
 }
 
 func TestTheDeviceIsOpenedFromSeveralPagesAndEachRemembersItsOwn(t *testing.T) {

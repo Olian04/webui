@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // The Loading pages are the cases of a page that is sent as it is built, and each says what it is for.
@@ -52,20 +52,24 @@ func TestTheLayoutPagesAreTheCombinationsTheySay(t *testing.T) {
 	h := handler(t)
 
 	// A rail: a Stack in a Split, beside a table.
-	rail := get(h, "/admin/layout/rail").Body.String()
-	assert.Contains(t, rail, `<div class="columns"><div class="col" style="--w:1;"><div class="panel grows"`)
-	assert.Contains(t, rail, `</div><div class="col" style="--w:1;"><div class="stack">`)
+	assert.DeepEqual(t, panelsOf(pageAt(t, h, "/admin/layout/rail")), [][2]string{
+		{"p.0", "What this page shows"}, {"p.1.0", "Devices"}, {"p.1.1.0", "Collector"}, {"p.1.1.1", "Open alerts"}})
 
 	// Columns in columns: a Split that is the first child of a Split.
-	assert.Contains(t, get(h, "/admin/layout/columns").Body.String(), `<div class="columns"><div class="col" style="--w:1;"><div class="columns">`)
+	columns := panelsOf(pageAt(t, h, "/admin/layout/columns"))
+	assert.DeepEqual(t, columns[1:4], [][2]string{{"p.1.0.0", "Alerts"}, {"p.1.0.1", "Collector"}, {"p.1.1", "Devices"}})
 
 	// Tabs each have a name of their own in the address, and only the selected tab of each is built.
-	tabs := get(h, "/admin/layout/tabs?tabs-2.tab=status").Body.String()
+	tabs := pageAt(t, h, "/admin/layout/tabs?tabs-2.tab=status")
 	for _, name := range []string{"tabs.tab=", "tabs-2.tab=", "tabs-3.tab="} {
-		assert.Contains(t, tabs, name)
+		found := false
+		for _, l := range tabs.Links() {
+			found = found || strings.Contains(l.Href, name)
+		}
+		assert.True(t, found)
 	}
-	assert.Contains(t, tabs, "Open alerts")
-	assert.False(t, strings.Contains(tabs, "Mean rate"))
+	assert.True(t, shown(tabs, "Open alerts"))
+	assert.False(t, shown(tabs, "Mean rate"))
 
 	// Five layouts down, and the choice of an inner Tabs is in the address.
 	deep := get(h, "/admin/layout/deep?tabs-2.tab=status-and-a-form").Body.String()
@@ -75,9 +79,10 @@ func TestTheLayoutPagesAreTheCombinationsTheySay(t *testing.T) {
 	// A page with an editor, a diff and Markdown links what they need in its head.
 	review := get(h, "/admin/layout/review").Body.String()
 	assert.Contains(t, review, `<script type="module" src="/admin/_webui/monaco/code-`)
-	assert.Contains(t, review, "Collector configuration")
-	assert.Contains(t, review, "Changes since the last deploy")
-	assert.Contains(t, get(h, "/admin/layout/runbook").Body.String(), `<article class="md"`)
+	reviewed := page.Parse(t, review)
+	assert.True(t, shown(reviewed, "Collector configuration"))
+	assert.True(t, shown(reviewed, "Changes since the last deploy"))
+	assert.True(t, len(pageAt(t, h, "/admin/layout/runbook").ByRole("article", "")) > 0)
 }
 
 // The staircase has ten panels, the first after a second and each next one a second later, so a visitor who goes
@@ -91,20 +96,18 @@ func TestTheStaircaseArrivesOnePanelAtATime(t *testing.T) {
 
 	body := rec.Body.String()
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.Contains(t, body, `<div class="arriving"`)
-	assert.Contains(t, body, "Panel 1 (1 s) 1")
+	assert.True(t, shown(page.Parse(t, body), "Panel 1 (1 s) 1"))
 	assert.False(t, strings.Contains(body, "Panel 2 (2 s)"))
-	assert.False(t, strings.Contains(body, `class="arrived"`))
 }
 
 // The tabs page is read with its tab, and a request for the Tabs alone is read without the rest: the stamp of a panel outside
 // it is the moment that panel was read, and only the panels of the tab that was asked for have a new one.
 func TestTheTabsPageReadsOnlyTheTabThatIsAskedFor(t *testing.T) {
 	h := handler(t)
-	page := get(h, "/admin/loading/tabs").Body.String()
-	assert.Contains(t, page, "Above the tabs (read with the page)")
-	assert.Contains(t, page, "Below the tabs (read with the page)")
-	assert.Contains(t, page, "First, left (500 ms)")
+	whole := pageAt(t, h, "/admin/loading/tabs")
+	assert.True(t, shown(whole, "Above the tabs (read with the page)"))
+	assert.True(t, shown(whole, "Below the tabs (read with the page)"))
+	assert.True(t, shown(whole, "First, left (500 ms)"))
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/loading/tabs?tabs.tab=second", nil)
 	req.Header.Set("X-Webui-View", "p.2")
@@ -112,8 +115,10 @@ func TestTheTabsPageReadsOnlyTheTabThatIsAskedFor(t *testing.T) {
 	h.ServeHTTP(rec, req)
 	body := rec.Body.String()
 	assert.Equal(t, rec.Code, http.StatusOK)
-	assert.True(t, strings.HasPrefix(body, `<div class="tabset" data-tabs="p.2"`))
-	assert.Contains(t, body, "Second (500 ms)")
+	alone := page.Parse(t, body)
+	assert.True(t, page.IsFragment(body))
+	assert.Equal(t, len(alone.ByAttr("data-tabs", "p.2")), 1)
+	assert.True(t, shown(alone, "Second (500 ms)"))
 	assert.False(t, strings.Contains(body, "Above the tabs"))
 	assert.False(t, strings.Contains(body, "First, left"))
 }
@@ -122,12 +127,11 @@ func TestTheTabsPageReadsOnlyTheTabThatIsAskedFor(t *testing.T) {
 // is read, wherever it is in the strip.
 func TestTheManyTabsPageHasStripsOfThreeSixAndSixteenTabs(t *testing.T) {
 	h := handler(t)
-	page := get(h, "/admin/layout/many-tabs").Body.String()
-	strips := regexp.MustCompile(`<nav class="tabs".*?</nav>`).FindAllString(page, -1)
+	strips := pageAt(t, h, "/admin/layout/many-tabs").ByRoleContaining("navigation", "Views:")
 	assert.Equal(t, len(strips), 4)
 	var counts []int
 	for _, s := range strips {
-		counts = append(counts, strings.Count(s, `<a class="tab`))
+		counts = append(counts, len(s.Links()))
 	}
 	assert.DeepEqual(t, counts, []int{3, 6, 6, 16})
 

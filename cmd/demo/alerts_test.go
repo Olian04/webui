@@ -3,29 +3,29 @@ package main
 import (
 	"net/http"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func TestAnAlertHasItsOwnPageAndItsRowsOpenIt(t *testing.T) {
 	h := handler(t)
-	assert.Contains(t, get(h, "/admin/alert").Body.String(), `href="/admin/alert/alt_000?webui.from=%2Fadmin%2Falert"`)
-	assert.Contains(t, get(h, "/admin/site/Stockholm").Body.String(), `href="/admin/alert/alt_000?webui.from=%2Fadmin%2Fsite%2FStockholm"`)
+	assert.Equal(t, len(linksTo(pageAt(t, h, "/admin/alert"), "/admin/alert/alt_000?webui.from=%2Fadmin%2Falert")), 1)
+	assert.Equal(t, len(linksTo(pageAt(t, h, "/admin/site/Stockholm"), "/admin/alert/alt_000?webui.from=%2Fadmin%2Fsite%2FStockholm")), 1)
 
 	// It shows the alert, lights Alerts in the sidebar, and cancels to the list.
-	page := get(h, "/admin/alert/alt_000").Body.String()
-	assert.Contains(t, page, "Ingest lag above 5s")
-	assert.Contains(t, page, `class="nav-item active" href="/admin/alert"`)
+	alert := pageAt(t, h, "/admin/alert/alt_000")
+	assert.True(t, shown(alert, "Ingest lag above 5s"))
+	assert.DeepEqual(t, current(t, alert), []page.Link{{Name: "Alerts", Href: "/admin/alert", Current: true}})
 	assert.Equal(t, cancelHref(t, h, "/admin/alert/alt_000"), "/admin/alert")
 
 	assert.Equal(t, get(h, "/admin/alert/nope").Code, http.StatusNotFound) // the Guard: no such alert
 }
 
 func TestTheAlertPageLinksToItsDeviceWithAQueryArgument(t *testing.T) {
-	body := get(handler(t), "/admin/alert/alt_000").Body.String()
-	assert.Contains(t, body, `href="/admin/device/dev_27c38b?minutes=15&amp;webui.from=%2Fadmin%2Falert%2Falt_000"`)
+	p := pageAt(t, handler(t), "/admin/alert/alt_000")
+	assert.Equal(t, len(linksTo(p, "/admin/device/dev_27c38b?minutes=15&webui.from=%2Fadmin%2Falert%2Falt_000")), 1)
 }
 
 func TestAcknowledgingFromTheAlertPageReturnsToWhereItWasOpenedFrom(t *testing.T) {
@@ -33,20 +33,22 @@ func TestAcknowledgingFromTheAlertPageReturnsToWhereItWasOpenedFrom(t *testing.T
 	rec := post(h, "/admin/alert/alt_001?webui.from=%2Fadmin%2Falert", url.Values{"_view": {"p.0"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
 	assert.Equal(t, rec.Header().Get("Location"), "/admin/alert")
-	assert.False(t, strings.Contains(get(h, "/admin/alert").Body.String(), "alt_001"))
+	assert.False(t, shown(pageAt(t, h, "/admin/alert"), "alt_001"))
 }
 
 func TestActionsRowBulkAndDestructive(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/alert").Body.String()
-	assert.Contains(t, body, `name="_act" value="bulk:0">Acknowledge</button>`)
-	assert.Contains(t, body, `class="btn btn-danger btn-sm"`) // the destructive role
-	assert.Contains(t, body, `value="bulk:1">Delete</button>`)
-	assert.Contains(t, body, `name="_act" value="row:0:alt_000"`)
+	posts := map[string]string{}
+	for _, b := range pageAt(t, h, "/admin/alert").ByAttr("name", "_act") {
+		posts[b.Name()] = b.Attr("value")
+	}
+	assert.Equal(t, posts["Acknowledge"], "bulk:0")
+	assert.Equal(t, posts["Delete"], "bulk:1") // the destructive one, a button of its own
+	assert.True(t, posts["Dismiss alt_000"] == "row:0:alt_000")
 
 	rec := post(h, "/admin/alert", url.Values{"_view": {"p"}, "_act": {"bulk:1"}, "_sel": {"alt_010"}})
 	assert.Equal(t, rec.Code, http.StatusSeeOther)
-	assert.False(t, strings.Contains(get(h, "/admin/alert").Body.String(), "alt_010"))
+	assert.False(t, shown(pageAt(t, h, "/admin/alert"), "alt_010"))
 }
 
 func TestAcknowledgingACriticalAlertWarns(t *testing.T) {

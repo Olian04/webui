@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/Olian04/webui/pkg/prom"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func TestEveryPageServes(t *testing.T) {
@@ -36,42 +38,53 @@ func TestMustCompileAcceptsTheApp(t *testing.T) {
 
 func TestNavigationHasSectionsAndTheSitePageLightsItsOwnEntry(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/site/Stockholm").Body.String()
+	p := pageAt(t, h, "/admin/site/Stockholm")
+	sidebar := page.One(t, "the sidebar", p.ByRole("navigation", "Main"))
 	for _, caption := range []string{"Platform", "Sites", "Configuration", "Operations"} {
-		assert.Contains(t, body, `<div class="nav-section caption" title="`+caption+`">`+caption+`</div>`)
+		assert.True(t, strings.Contains(sidebar.Text(), caption))
 	}
 	// SiteDetail lists an entry for each site, loaded when the page is drawn, and lights the one
 	// that is on screen; the list of sites, which is another page, is not lit.
-	assert.Contains(t, body, `<a class="nav-item active" href="/admin/site/Stockholm"`)
-	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/Malm%C3%B6"`)
-	assert.Contains(t, body, `<a class="nav-item" href="/admin/site/G%C3%B6teborg"`)
-	assert.Contains(t, body, `<a class="nav-item" href="/admin/site"`)
-	assert.False(t, strings.Contains(body, `<a class="nav-item active" href="/admin/site"`))
+	entries := map[string]page.Link{}
+	for _, l := range sidebar.Links() {
+		entries[l.Href] = l
+	}
+	assert.True(t, entries["/admin/site/Stockholm"].Current)
+	assert.Equal(t, entries["/admin/site/Malm%C3%B6"].Name, "Malmö")
+	assert.False(t, entries["/admin/site/Malm%C3%B6"].Current)
+	assert.Equal(t, entries["/admin/site/G%C3%B6teborg"].Name, "Göteborg")
+	assert.Equal(t, entries["/admin/site"].Name, "Sites")
+	assert.False(t, entries["/admin/site"].Current)
 	// The breadcrumb's parent is the page mounted at /site.
-	assert.Contains(t, body, `<a href="/admin/site">Sites</a>`)
-	assert.Contains(t, body, `<span class="cur" aria-current="page">Stockholm</span>`)
+	crumbs := page.One(t, "the breadcrumb", p.ByRole("navigation", "Breadcrumb"))
+	assert.True(t, hasLink(crumbs, "Sites", "/admin/site"))
+	assert.Equal(t, page.One(t, "where we are", crumbs.ByAttr("aria-current", "page")).Text(), "Stockholm")
 }
 
 func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	h := handler(t)
 	rec := get(h, "/admin/")
-	assert.Equal(t, rec.Code, http.StatusOK) // not a redirect to the first entry
-	assert.Contains(t, rec.Body.String(), `<a class="side-brand" href="/admin/"`)
+	assert.Equal(t, rec.Code, http.StatusOK)                                      // not a redirect to the first entry
+	assert.True(t, len(linksTo(page.Parse(t, rec.Body.String()), "/admin/")) > 0) // the brand
 
 	// Without the slash the server's mux adds it.
 	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")
 }
 
 func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
-	body := get(handler(t), "/admin/alert").Body.String()
-	assert.Contains(t, body, `<span class="ni ni-letter" aria-hidden="true">R</span> <span>Retention and archival policy for every kind of collected event</span>`) // no icon; cut short by the stylesheet, whole in its title
-	assert.Contains(t, body, `title="Retention and archival policy for every kind of collected event"`)
-	assert.False(t, strings.Contains(body, `>A</span><span>Alerts</span>`)) // it has the bell
+	p := pageAt(t, handler(t), "/admin/alert")
+	const long = "Retention and archival policy for every kind of collected event"
+	retention := page.One(t, "the entry with no icon", p.ByRole("link", long))
+	assert.Equal(t, retention.AllText(), "R "+long) // its initial, and the name whole; the stylesheet cuts it short
+	assert.Equal(t, retention.Attr("title"), long)  // and whole in its title
+	alerts := page.One(t, "the entry with an icon", p.ByRole("link", "Alerts"))
+	assert.Equal(t, alerts.AllText(), "Alerts") // it has the bell, and no initial
 }
 
 func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {
-	body := get(handler(t), "/admin/device/dev_27c38b?tabs.tab=raw-events").Body.String()
-	assert.Contains(t, body, `<a class="tab active" href="/admin/device/dev_27c38b?tabs.tab=raw-events" aria-current="page">Raw events</a>`)
+	p := pageAt(t, handler(t), "/admin/device/dev_27c38b?tabs.tab=raw-events")
+	strip := page.One(t, "the tabs", p.ByRoleContaining("navigation", "Views:"))
+	assert.True(t, slices.Contains(strip.Links(), page.Link{Name: "Raw events", Href: "/admin/device/dev_27c38b?tabs.tab=raw-events", Current: true}))
 }
 
 func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {

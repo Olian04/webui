@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 // site is the demo as a server runs it, with no session unless a test adds one.
@@ -97,14 +98,23 @@ func TestLoginRefusesARoleThatIsNeitherAndACrossSitePost(t *testing.T) {
 }
 
 func TestTheLoginPageFollowsTheThemeTheAppStoresForTheVisitor(t *testing.T) {
+	// What the sign-in page does with the choice is in the browser suite: its text is script and style.
 	body := withCookie(site(t), http.MethodGet, "/login", "", nil).Body.String()
-	assert.Contains(t, body, `localStorage.getItem('webui.theme')`) // the key the app's prefs.js writes
-	assert.Contains(t, body, `:root[data-theme=light]{`)
-	assert.Contains(t, body, `:root:not([data-theme])`) // no choice: the system's
+	assert.True(t, len(page.Parse(t, body).ByRole("heading", "")) > 0)
 }
 
 func TestTheAppsExternalLinksLogOutByLinkingToTheChooser(t *testing.T) {
-	body := get(handler(t), "/admin/device").Body.String()
-	assert.Contains(t, body, `<a class="menu-item" href="/login">`)                            // a path on this site: the same tab
-	assert.Contains(t, body, `href="https://github.com/Olian04/webui/issues" target="_blank"`) // a web address: a tab of its own
+	p := pageAt(t, handler(t), "/admin/device")
+	var logout, issues page.Link
+	for _, l := range p.Links() {
+		switch l.Href {
+		case "/login":
+			logout = l
+		case "https://github.com/Olian04/webui/issues":
+			issues = l
+		}
+	}
+	assert.Equal(t, logout.Name, "Log out")
+	assert.False(t, logout.NewTab) // a path on this site: the same tab
+	assert.True(t, issues.NewTab)  // a web address: a tab of its own
 }

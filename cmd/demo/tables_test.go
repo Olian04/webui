@@ -8,28 +8,32 @@ import (
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 func TestAFeedPagesByACursorAndSortsOnlyThePageInHandWithNoFilters(t *testing.T) {
 	h := handler(t)
-	body := get(h, "/admin/audit").Body.String()
-	assert.Contains(t, body, "Showing rows 1–8") // no total, but which rows
-	assert.Contains(t, body, `href="/admin/audit?audit-log.after=8&amp;audit-log.back=1%3A&amp;audit-log.row=9" data-in-place>Next`)
-	assert.Contains(t, body, `disabled data-in-place>First page</button>`)
-	assert.False(t, strings.Contains(body, `aria-sort="ascending"`)) // the source's order, until a column is chosen
-	assert.False(t, strings.Contains(body, `aria-sort="descending"`))
-	assert.False(t, strings.Contains(body, `class="filter`))
-	assert.Contains(t, body, `audit-log.sort=`) // a column can be chosen: it orders the page in hand
-	assert.Contains(t, get(h, "/admin/audit?audit-log.sort=who").Body.String(), "sorted within this page")
+	p := pageAt(t, h, "/admin/audit")
+	assert.True(t, shown(p, "Showing rows 1–8")) // no total, but which rows
+	assert.True(t, hasLink(p, "Next", "/admin/audit?audit-log.after=8&audit-log.back=1%3A&audit-log.row=9"))
+	assert.True(t, page.One(t, "First page", p.ByRole("button", "First page")).Has("disabled"))
+	assert.Equal(t, len(p.ByAttr("aria-sort", "ascending"))+len(p.ByAttr("aria-sort", "descending")), 0) // the source's order, until a column is chosen
+	assert.Equal(t, len(p.ByRoleContaining("button", "Filter")), 0)
+	sortable := false
+	for _, l := range p.Links() {
+		sortable = sortable || strings.Contains(l.Href, "audit-log.sort=")
+	}
+	assert.True(t, sortable) // a column can be chosen: it orders the page in hand
+	assert.True(t, shown(pageAt(t, h, "/admin/audit?audit-log.sort=who"), "sorted within this page"))
 
 	// The cursor comes back, and the last page has no Next.
-	last := get(h, "/admin/audit?audit-log.after=40").Body.String()
-	assert.Contains(t, last, `href="/admin/audit" data-in-place>First page`)
-	assert.Contains(t, last, `disabled data-in-place>Next</button>`)
+	last := pageAt(t, h, "/admin/audit?audit-log.after=40")
+	assert.True(t, hasLink(last, "First page", "/admin/audit"))
+	assert.True(t, page.One(t, "Next", last.ByRole("button", "Next")).Has("disabled"))
 
 	// Actions are recorded: the newest entry is the one just made.
 	post(h, "/admin/retention", url.Values{"_view": {"p"}, "f0": {"45"}})
-	assert.Contains(t, get(h, "/admin/audit").Body.String(), "saved retention")
+	assert.True(t, shown(pageAt(t, h, "/admin/audit"), "saved retention"))
 }
 
 func TestTablesExportTheirRowsWhateverTheSource(t *testing.T) {
