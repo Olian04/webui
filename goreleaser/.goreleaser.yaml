@@ -25,6 +25,7 @@ changelog:
       - "^chore\\(release\\):"
       - '^ci:'
       - '^docs:'
+      - '^test(\(.+\))?!?:'
 
 release:
   prerelease: auto
