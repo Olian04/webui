@@ -2,24 +2,16 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/Olian04/webui/pkg/webui.svg)](https://pkg.go.dev/github.com/Olian04/webui/pkg/webui)
 
-Admin panels in pure Go. Declare pages, tables and forms as Go values and webui serves
-a fast, server-rendered UI: no HTML, CSS or JavaScript to write, and no frontend build.
+Admin panels in pure Go. Declare pages, tables and forms as Go values and webui serves a fast, server-rendered UI: no HTML, CSS or JavaScript to write, and no frontend build.
 
-- **A wrong declaration fails at startup, not in front of a visitor.** `Compile` checks
-  every link and argument and returns an error that names the page and says how to fix it.
-- **The address is the state.** Sort, filter, page and tab are in the URL, so Back works
-  and a copied link shows what you saw.
-- **One rule decides who sees what and who may act.** A `Guard` on a page or an action
-  leaves out what a visitor may not use, and refuses a request for it.
-- **Works without JavaScript.** Every control is a real link or form; script only makes
-  it smoother.
-- **Self-contained.** It serves its own scripts, styles and fonts, calls no other host,
-  sets one cookie, and ships a strict content security policy and CSRF protection.
-- **Batteries included.** Search, validation, uploads, dark mode, code editors, diffs
-  and Markdown.
+- **A wrong declaration fails at startup, not in front of a visitor.** `Compile` checks every link and argument and returns an error that names the page and says how to fix it.
+- **The address is the state.** Sort, filter, page and tab are in the URL, so Back works and a copied link shows what you saw.
+- **One rule decides who sees what and who may act.** A `Guard` on a page or an action leaves out what a visitor may not use, and refuses a request for it.
+- **Works without JavaScript.** Every control is a real link or form; script only makes it smoother.
+- **Self-contained.** It serves its own scripts, styles and fonts, calls no other host, sets one cookie, and ships a strict content security policy and CSRF protection.
+- **Batteries included.** Search, validation, uploads, dark mode, code editors, diffs and Markdown.
 
-It is an `http.Handler` you mount behind your own login: webui does not authenticate.
-It is for internal tools and admin panels, not public sites or a design of your own.
+It is an `http.Handler` you mount behind your own login: webui does not authenticate. It is for internal tools and admin panels, not public sites or a design of your own.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/overview-dark.png">
@@ -130,11 +122,7 @@ controls that a visitor may not use, outcomes (success, warning, failure, reject
 where to go next), links between pages, search, code editors, diffs and Markdown,
 theming, refusals and compile errors, logging, metrics, and security.
 
-How it works: the server answers with HTML and nothing else, and each response carries
-every link, form and button that the visitor can use in that state (hypermedia as the
-engine of application state, as in htmx's [HATEOAS](https://htmx.org/essays/hateoas)
-essay). [`docs/design-decisions.md`](docs/design-decisions.md) says why the library is
-shaped that way, and what each decision costs.
+How it works: the server answers with HTML and nothing else, and each response carries every link, form and button that the visitor can use in that state (hypermedia as the engine of application state, as in htmx's [HATEOAS](https://htmx.org/essays/hateoas) essay). [`docs/design-decisions.md`](docs/design-decisions.md) says why the library is shaped that way, and what each decision costs.
 
 ## What the library stores in the browser
 
