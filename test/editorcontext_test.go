@@ -59,12 +59,12 @@ func TestEditorsOnOnePageShareOneProgramSoTheyMayNotDisagreeAboutIt(t *testing.T
 	a := editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/env.d.ts": "declare const x: 1;"}), true)
 	b := editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/env.d.ts": "declare const x: 2;"}), true)
 	b.Content = webui.String[snippet]{Label: "Other", Load: snippetText.Load, Store: snippetText.Store}
-	assert.Contains(t, editorErrors(t, webui.Stack{a, b}), "give typescript/env.d.ts a different text")
+	refuses(t, editorErrors(t, webui.Stack{a, b}), "typescript/env.d.ts")
 
 	c := editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/tsconfig.json": `{"compilerOptions": {"strict": true}}`}), true)
 	d := editorWith(lang.TypeScript, ctxFiles(map[string]string{"typescript/tsconfig.json": `{"compilerOptions": {"strict": false}}`}), true)
 	d.Content = b.Content
-	assert.Contains(t, editorErrors(t, webui.Stack{c, d}), "different compiler options")
+	refuses(t, editorErrors(t, webui.Stack{c, d}), "compiler options")
 
 	// The same context twice, and a TypeScript editor beside a JavaScript one, are fine.
 	same := ctxFiles(map[string]string{"typescript/env.d.ts": "declare const x: 1;", "javascript/env.d.ts": "declare const y: 2;"})
@@ -78,7 +78,7 @@ func TestASecretThatIsTooShortToKeepAnAddressPrivateIsACompileError(t *testing.T
 	t.Parallel()
 
 	errs := compileErrors(t, webui.App{Secret: []byte("short"), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}}}})
-	assert.Contains(t, errs[0].Detail, "App.Secret is 5 bytes")
+	refuses(t, errs[0].Error(), "App.Secret")
 }
 
 func TestWithNoLanguageServiceImportedAnEditorsContextIsNotHandedOver(t *testing.T) {

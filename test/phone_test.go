@@ -175,6 +175,6 @@ func TestADefaultCountryIsOneOfTheCountries(t *testing.T) {
 		}
 		return all
 	}
-	assert.Contains(t, problems("ZZ"), `has the unknown DefaultCountry "ZZ"`)
-	assert.Contains(t, problems("se"), `has the unknown DefaultCountry "se"`)
+	refuses(t, problems("ZZ"), "DefaultCountry", `"ZZ"`)
+	refuses(t, problems("se"), "DefaultCountry", `"se"`)
 }

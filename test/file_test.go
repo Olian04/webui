@@ -522,11 +522,11 @@ func TestAFileIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	load := func(attachment) *webui.FileInfo { return nil }
 	store := func(*attachment, *webui.Upload) {}
-	assert.Contains(t, problems(webui.File[attachment]{Label: "F"}), "has no Load")
-	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Removable: true}), "is Removable but has no Store")
-	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Required: true}), "is Required but has no Store")
-	assert.Contains(t, problems(webui.File[attachment]{Label: "F", Load: load, Store: store, MaxSize: -1}), "has MaxSize -1")
-	assert.Contains(t, problems(webui.File[attachment]{Load: load, Store: store}), "has no Label")
+	refuses(t, problems(webui.File[attachment]{Label: "F"}), "Load")
+	refuses(t, problems(webui.File[attachment]{Label: "F", Load: load, Removable: true}), "Removable", "Store")
+	refuses(t, problems(webui.File[attachment]{Label: "F", Load: load, Required: true}), "Required", "Store")
+	refuses(t, problems(webui.File[attachment]{Label: "F", Load: load, Store: store, MaxSize: -1}), "MaxSize", "-1")
+	refuses(t, problems(webui.File[attachment]{Load: load, Store: store}), "Label")
 }
 
 // In a table a file is its stored name, a link when the app serves it, and a dash for none.
@@ -592,9 +592,9 @@ func TestAFileOfAnySizeCompilesAndANegativeOneDoesNot(t *testing.T) {
 		_, err := file(size).Compile("/admin")
 		assert.NoError(t, err)
 	}
-	var found bool
+	var all string
 	for _, e := range compileErrors(t, file(-1)) {
-		found = found || strings.Contains(e.Error(), "has MaxSize -1")
+		all += e.Error() + "\n"
 	}
-	assert.True(t, found)
+	refuses(t, all, "MaxSize", "-1")
 }

@@ -110,7 +110,7 @@ func TestALinkToAPageIDThatIsNotMountedIsReported(t *testing.T) {
 	}}}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 1)
-	assert.Contains(t, errs[0].Detail, `a link targets "/gone/{id}", which is not mounted in this app`)
+	refuses(t, errs[0].Error(), `"/gone/{id}"`)
 }
 
 func TestALinkWithoutAPageIsACompileError(t *testing.T) {
@@ -124,7 +124,7 @@ func TestALinkWithoutAPageIsACompileError(t *testing.T) {
 	}}}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 1)
-	assert.Equal(t, errs[0].Detail, "a Link has no Page")
+	refuses(t, errs[0].Error(), "Link", "Page")
 }
 
 func TestAPlainStringStillWorksAsAPath(t *testing.T) {

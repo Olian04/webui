@@ -22,6 +22,39 @@ func idCol() webui.Accessor[Device] {
 	return webui.String[Device]{Label: "ID", Load: func(d Device) string { return d.Id }}
 }
 
+// refuses is whether the problems that an app was refused with (each as Error() says it, one after another) include one that is about everything named: the
+// page, the field or argument, the label, as the declaration spells them, and that says what to do about it. What the problem is called in words is the
+// library's to change, and is not pinned here; where it is, in the declaration, is.
+func refuses(t *testing.T, problems string, names ...string) {
+	t.Helper()
+
+	var each []string // a problem is a line, and the line of its fix, which is indented
+	for _, line := range strings.Split(problems, "\n") {
+		switch {
+		case strings.HasPrefix(line, "  "):
+			if len(each) > 0 {
+				each[len(each)-1] += "\n" + line
+			}
+		case line != "":
+			each = append(each, line)
+		}
+	}
+	for _, one := range each {
+		_, fix, _ := strings.Cut(one, "\n")
+		ok := true
+		for _, name := range names {
+			ok = ok && strings.Contains(one, name) // in the problem, or in what to do about it
+		}
+		if ok {
+			if strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(fix), "Fix:")) == "" {
+				t.Errorf("the problem about %q says nothing to do about it:\n%s", names, one)
+			}
+			return
+		}
+	}
+	t.Errorf("no problem is about %q, in:\n%s", names, problems)
+}
+
 // compileErrors compiles and returns the structured problems: the CompileError that
 // the returned error wraps for each.
 func compileErrors(t *testing.T, app webui.App) []webui.CompileError {
@@ -59,10 +92,13 @@ func TestValidateReportsEveryProblemAtOnce(t *testing.T) {
 	}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 3)
-	assert.Equal(t, errs[0].Error(), `page "/event/{id}" (bad): field When has unsupported type map[string]int
-  Fix: Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a query parameter that repeats (?tag=a&tag=b), or a []string for the {name...} that takes the rest of a path.`)
-	assert.Contains(t, errs[1].Detail, `two fields both map to the argument "x"`)
-	assert.Equal(t, errs[2].Detail, "the path declares {id} but bad has no field for it")
+	for _, e := range errs {
+		assert.Equal(t, e.Page, "/event/{id}") // where
+		assert.Equal(t, e.Args, "bad")
+	}
+	refuses(t, errs[0].Error(), "When", "map[string]int")
+	refuses(t, errs[1].Error(), `"x"`)
+	refuses(t, errs[2].Error(), "{id}", "bad")
 }
 
 func TestValidateLinkToUnmountedPage(t *testing.T) {
@@ -98,50 +134,50 @@ func TestValidateDeclarationChecks(t *testing.T) {
 	group := webui.Group[Device]{idCol()}
 
 	tests := []struct {
-		name string
-		page webui.Page[okArgs]
-		want string
+		name  string
+		page  webui.Page[okArgs]
+		names []string
 	}{
-		{"nil body", webui.Page[okArgs]{Path: "/a"}, "View is nil"},
-		{"relative path", webui.Page[okArgs]{Path: "a", View: webui.Stack{}}, `Path must start with "/"`},
-		{"reserved path", webui.Page[okArgs]{Path: "/_webui/x", View: webui.Stack{}}, "reserved prefix"},
-		{"form without load", webui.Page[okArgs]{Path: "/a", View: webui.Form[Device]{}}, "a Form has no Load"},
+		{"nil body", webui.Page[okArgs]{Path: "/a"}, []string{"View"}},
+		{"relative path", webui.Page[okArgs]{Path: "a", View: webui.Stack{}}, []string{"Path", "\"/\""}},
+		{"reserved path", webui.Page[okArgs]{Path: "/_webui/x", View: webui.Stack{}}, []string{"_webui"}},
+		{"form without load", webui.Page[okArgs]{Path: "/a", View: webui.Form[Device]{}}, []string{"Form", "Load"}},
 		{"RE2", webui.Page[okArgs]{Path: "/a", View: webui.Form[Device]{
 			Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }, Fields: []webui.Accessor[Device]{badPattern},
-		}}, "RE2"},
+		}}, []string{"RE"}},
 		{"duplicate form labels", webui.Page[okArgs]{Path: "/a", View: webui.Form[Device]{
 			Load: func(context.Context) (Device, webui.Loaded) { return Device{}, webui.Ready() }, Fields: dupLabel,
-		}}, `label "ID" is used twice`},
+		}}, []string{"\"ID\""}},
 		{"group in columns", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{group},
-		}}, "Group in Table.Columns"},
+		}}, []string{"Group", "Table.Columns"}},
 		{"actions need key", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol()},
 			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "x", Run: func(context.Context, Device) (webui.Outcome, error) { return webui.Outcome{}, nil }}},
-		}}, "declares actions but no Key"},
+		}}, []string{"Key"}},
 		{"two columns with labels that differ only in case", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "id", Load: func(Device) string { return "" }}},
-		}}, `the labels "ID" and "id" name the same column in the address`},
+		}}, []string{"\"ID\"", "\"id\""}},
 		{"two columns with one label", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), idCol()},
-		}}, `the labels "ID" and "ID" name the same column in the address`},
+		}}, []string{"\"ID\""}},
 		{"a column label with nothing to name it by", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{idCol(), webui.String[Device]{Label: "—", Load: func(Device) string { return "" }}},
-		}}, `the label "—" has no letters or digits`},
+		}}, []string{"\"—\""}},
 		{"two tabs with labels that name one tab", webui.Page[okArgs]{Path: "/a", View: webui.Tabs{
 			{Label: "Raw events", View: webui.Stack{}}, {Label: "raw  events", View: webui.Stack{}},
-		}}, `names the same tab as another in the address`},
-		{"negative page size", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, PageSize: -1}}, "PageSize is negative"},
+		}}, []string{"Tabs[1]", `"raw  events"`}},
+		{"negative page size", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{Loader: webui.PagedLoader[Device]{Load: okRows}, PageSize: -1}}, []string{"PageSize"}},
 		{"slider needs a range", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Load: func(Device) float64 { return 0 }}},
-		}}, "has no range"},
+		}}, []string{"range"}},
 		{"slider range must be ascending", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Slider[Device]{Label: "Rate", Min: 5, Max: 5, Load: func(Device) float64 { return 0 }}},
-		}}, "has no range"},
+		}}, []string{"range"}},
 		{"select needs a load", webui.Page[okArgs]{Path: "/a", View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: okRows}, Columns: []webui.Accessor[Device]{webui.Select[Device]{Label: "Status"}},
-		}}, "has no Load"},
-		{"tabs need panels", webui.Page[okArgs]{Path: "/a", View: webui.Tabs{}}, "Tabs has no Tab"},
+		}}, []string{"Load"}},
+		{"tabs need panels", webui.Page[okArgs]{Path: "/a", View: webui.Tabs{}}, []string{"Tabs", "Tab"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,7 +188,7 @@ func TestValidateDeclarationChecks(t *testing.T) {
 			for _, e := range errs {
 				all += e.Error() + "\n"
 			}
-			assert.Contains(t, all, tt.want)
+			refuses(t, all, tt.names...)
 		})
 	}
 }
@@ -190,7 +226,7 @@ func TestArgumentNamesMayNotContainTheViewSeparator(t *testing.T) {
 	app := webui.App{Pages: webui.Pages{webui.Page[dotted]{Path: "/a", View: webui.Stack{}}}}
 	errs := compileErrors(t, app)
 	assert.Equal(t, len(errs), 1)
-	assert.Contains(t, errs[0].Detail, `contains "."`)
+	refuses(t, errs[0].Error(), `"."`)
 }
 
 func TestValidateDuplicatePaths(t *testing.T) {
@@ -204,7 +240,7 @@ func TestValidateDuplicatePaths(t *testing.T) {
 	for _, e := range compileErrors(t, app) {
 		all += e.Error() + "\n"
 	}
-	assert.Contains(t, all, "two pages declare this path")
+	refuses(t, all, "path")
 }
 
 func TestCompileRejectsBadPrefix(t *testing.T) {
@@ -233,9 +269,9 @@ func TestValidateThemeColours(t *testing.T) {
 	for _, e := range compileErrors(t, app) {
 		all += e.Error() + "\n"
 	}
-	assert.Contains(t, all, `Theme.Accent is "red; } body { display:none", which is not a hex colour`)
-	assert.Contains(t, all, `Theme.OK is "green"`)
-	assert.Contains(t, all, `Theme.Critical is "#12345"`)
+	refuses(t, all, "Theme.Accent", `"red; } body { display:none"`)
+	refuses(t, all, "Theme.OK", `"green"`)
+	refuses(t, all, "Theme.Critical", `"#12345"`)
 	assert.False(t, strings.Contains(all, "Theme.Warning"))
 
 	for _, ok := range []webui.Color{"#36c", "#36cf", "#3d71d9", "#3D71D9FF"} {
@@ -264,8 +300,7 @@ func TestAStatusColourThatCannotBeReadOnItsBadgeIsACompileError(t *testing.T) {
 	for _, e := range compileErrors(t, webui.App{Theme: webui.Theme{Warning: "#fff200"}}) {
 		all += e.Error() + "\n"
 	}
-	assert.Contains(t, all, `Theme.Warning is "#fff200": its text tint on the panel is `)
-	assert.Contains(t, all, "in the light theme") // the mode it fails in
+	refuses(t, all, "Theme.Warning", `"#fff200"`, "light") // and the mode it fails in
 }
 
 func TestAColourOfAModeThatIsNotAColourIsACompileErrorThatNamesTheField(t *testing.T) {
@@ -278,9 +313,9 @@ func TestAColourOfAModeThatIsNotAColourIsACompileErrorThatNamesTheField(t *testi
 	}}) {
 		all += e.Error() + "\n"
 	}
-	assert.Contains(t, all, `Theme.Dark.Canvas is "navy", which is not a hex colour`)
-	assert.Contains(t, all, `Theme.Dark.Accent is "#12345"`)
-	assert.Contains(t, all, `Theme.Light.Critical is "red; }"`)
+	refuses(t, all, "Theme.Dark.Canvas", `"navy"`)
+	refuses(t, all, "Theme.Dark.Accent", `"#12345"`)
+	refuses(t, all, "Theme.Light.Critical", `"red; }"`)
 	assert.False(t, strings.Contains(all, "white on it")) // what is not a colour has no contrast to check
 }
 
@@ -295,7 +330,7 @@ func TestACanvasOfTheWrongLightnessForItsModeNamesTheCanvasOfThatMode(t *testing
 	assert.Contains(t, first, "Choose a darker colour for Theme.Dark.Canvas")
 
 	errs = compileErrors(t, webui.App{Theme: webui.Theme{Light: webui.ModeColors{Canvas: "#000000"}}})
-	assert.Contains(t, errs[0].Error(), "Choose a lighter colour for Theme.Light.Canvas")
+	refuses(t, errs[0].Error(), "Theme.Light.Canvas")
 
 	// The same canvas is fine in the mode it suits, and only the mode that is given one is checked against it.
 	_, err := webui.App{Theme: webui.Theme{Dark: webui.ModeColors{Canvas: "#0e1224"}, Light: webui.ModeColors{Canvas: "#eef0f9"}}}.Compile("")
@@ -309,8 +344,7 @@ func TestAModesOwnAccentThatCannotCarryAWhiteLabelNamesThatField(t *testing.T) {
 	errs := compileErrors(t, webui.App{Theme: webui.Theme{Accent: "#1f7a6d", Light: webui.ModeColors{Accent: "#2f9e8f"}}})
 	assert.True(t, len(errs) > 0)
 	for _, e := range errs {
-		assert.Contains(t, e.Error(), `Theme.Light.Accent is "#2f9e8f"`)
-		assert.Contains(t, e.Error(), "in the light theme")
+		refuses(t, e.Error(), "Theme.Light.Accent", `"#2f9e8f"`, "light")
 	}
 }
 
@@ -320,5 +354,5 @@ func TestAThemeThatHasABadColourIsNotAlsoCheckedForContrast(t *testing.T) {
 
 	errs := compileErrors(t, webui.App{Theme: webui.Theme{Accent: "red", Dark: webui.ModeColors{Canvas: "#ffffff"}}})
 	assert.Equal(t, len(errs), 1)
-	assert.Contains(t, errs[0].Error(), `Theme.Accent is "red", which is not a hex colour`)
+	refuses(t, errs[0].Error(), "Theme.Accent", `"red"`)
 }

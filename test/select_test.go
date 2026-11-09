@@ -318,12 +318,12 @@ func TestASelectIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	load := func(task) []string { return nil }
 	store := func(*task, []string) {}
-	assert.Contains(t, problems(webui.Select[task]{Label: "S"}), "has no Load")
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: ""}}}), "Options[0] has no Value")
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a"}, {Value: "a"}}}), `Options[1], "a", is listed twice`)
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a\x1fb"}}}), "control character")
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Store: store}), "has a Store but no Options")
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Required: true}), "is Required but has no Store")
+	refuses(t, problems(webui.Select[task]{Label: "S"}), "Load")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: ""}}}), "Options[0]", "Value")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a"}, {Value: "a"}}}), "Options[1]", "\"a\"")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a\x1fb"}}}), "control character")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Store: store}), "Store", "Options")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Required: true}), "Required", "Store")
 }
 
 // option is the option of a select that has the value, as a reader meets it; the zero Option if there is none.

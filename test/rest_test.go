@@ -59,7 +59,7 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 
 	middle := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}/more", View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{middle}})
-	assert.Contains(t, errs[0].Detail, "takes the rest of the path but is not the last")
+	refuses(t, errs[0].Error(), "{key...}")
 
 	type text struct {
 		Name string
@@ -67,8 +67,7 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 	}
 	wrong := webui.Page[text]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
 	errs = compileErrors(t, webui.App{Pages: webui.Pages{wrong}})
-	assert.Contains(t, errs[0].Detail, "is not a []string")
-	assert.Contains(t, errs[0].Fix, "one element for each")
+	refuses(t, errs[0].Error(), "[]string", "Key")
 
 	type tagged struct {
 		Name string
@@ -76,7 +75,7 @@ func TestARestPlaceholderMustBeLastAndAListOfStrings(t *testing.T) {
 	}
 	list := webui.Page[tagged]{Path: "/bucket/{name}/{tags}", View: webui.Stack{}}
 	errs = compileErrors(t, webui.App{Pages: webui.Pages{list}})
-	assert.Contains(t, errs[0].Detail, "is one segment of the path")
+	refuses(t, errs[0].Error(), "{tags}", "Tags")
 }
 
 func TestARestPlaceholderArrivesAsAListOfSegments(t *testing.T) {

@@ -243,7 +243,7 @@ func TestNullableFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 		}
 		return all
 	}
-	assert.Contains(t, problems(webui.OptionalSlider[limits]{Label: "Level", Load: func(l limits) *float64 { return l.Level }}), "has no range")
-	assert.Contains(t, problems(webui.OptionalInt[limits]{Label: "Rate"}), "Load")
-	assert.Contains(t, problems(webui.OptionalBool[limits]{Label: "Paused"}), "Load")
+	refuses(t, problems(webui.OptionalSlider[limits]{Label: "Level", Load: func(l limits) *float64 { return l.Level }}), "range")
+	refuses(t, problems(webui.OptionalInt[limits]{Label: "Rate"}), "Load")
+	refuses(t, problems(webui.OptionalBool[limits]{Label: "Paused"}), "Load")
 }

@@ -415,29 +415,29 @@ func TestAListOrCardsThatCannotBeDrawnIsACompileError(t *testing.T) {
 
 	load := (&listLoader{}).loader()
 	for name, tc := range map[string]struct {
-		body webui.View
-		want string
+		body  webui.View
+		names []string
 	}{
-		"no load":               {webui.List[story]{Headline: pTitle}, "a List has no Load"},
-		"no headline":           {webui.List[story]{Loader: load}, "List.Headline is nil"},
-		"a group headline":      {webui.List[story]{Loader: load, Headline: webui.Group[story]{pTitle}}, "List.Headline is a Group"},
-		"a headline no load":    {webui.List[story]{Loader: load, Headline: webui.String[story]{Label: "T"}}, "List.Headline has no Load"},
-		"a meta no label":       {webui.List[story]{Loader: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, "List.Meta[0] has no Label"},
-		"a negative page":       {webui.List[story]{Loader: load, Headline: pTitle, PageSize: -1}, "List.PageSize is negative"},
-		"an href with no url":   {webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Href[story]{}}, "List.Open is an Href with no URL"},
-		"a url headline":        {webui.List[story]{Loader: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, "List.Headline is a URL"},
-		"a badge no load":       {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, "List.Badge has no Load"},
-		"a badge with a store":  {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, "List.Badge has a Store"},
-		"a bad origin":          {webui.List[story]{Loader: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, `List.TrustedOrigins[0], "http://x.example", is not an origin`},
-		"origins and no image":  {webui.List[story]{Loader: load, Headline: pTitle, TrustedOrigins: []string{"https://x.example"}}, "List has TrustedOrigins and no Image"},
-		"cards, no load":        {webui.Cards[story]{Headline: pTitle}, "a Cards has no Load"},
-		"an unknown layout":     {webui.Cards[story]{Loader: load, Headline: pTitle, Layout: "carousel"}, `Cards.Layout is the unknown "carousel"`},
-		"cards, a bad headline": {webui.Cards[story]{Loader: load}, "Cards.Headline is nil"},
+		"no load":               {webui.List[story]{Headline: pTitle}, []string{"List", "Load"}},
+		"no headline":           {webui.List[story]{Loader: load}, []string{"List.Headline"}},
+		"a group headline":      {webui.List[story]{Loader: load, Headline: webui.Group[story]{pTitle}}, []string{"List.Headline", "Group"}},
+		"a headline no load":    {webui.List[story]{Loader: load, Headline: webui.String[story]{Label: "T"}}, []string{"List.Headline", "Load"}},
+		"a meta no label":       {webui.List[story]{Loader: load, Headline: pTitle, Meta: []webui.Accessor[story]{webui.String[story]{Load: pTitle.Load}}}, []string{"List.Meta[0]", "Label"}},
+		"a negative page":       {webui.List[story]{Loader: load, Headline: pTitle, PageSize: -1}, []string{"List.PageSize"}},
+		"an href with no url":   {webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Href[story]{}}, []string{"List.Open", "Href", "URL"}},
+		"a url headline":        {webui.List[story]{Loader: load, Headline: webui.URL[story]{Label: "T", Load: pLink}}, []string{"List.Headline", "URL"}},
+		"a badge no load":       {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K"}}, []string{"List.Badge", "Load"}},
+		"a badge with a store":  {webui.List[story]{Loader: load, Headline: pTitle, Badge: webui.Select[story]{Label: "K", Load: pKind.Load, Store: func(*story, []string) {}, Options: pKind.Options}}, []string{"List.Badge", "Store"}},
+		"a bad origin":          {webui.List[story]{Loader: load, Headline: pTitle, Image: func(story) string { return "" }, TrustedOrigins: []string{"http://x.example"}}, []string{"\"http://x.example\"", "List.TrustedOrigins[0]"}},
+		"origins and no image":  {webui.List[story]{Loader: load, Headline: pTitle, TrustedOrigins: []string{"https://x.example"}}, []string{"List", "TrustedOrigins", "Image"}},
+		"cards, no load":        {webui.Cards[story]{Headline: pTitle}, []string{"Cards", "Load"}},
+		"an unknown layout":     {webui.Cards[story]{Loader: load, Headline: pTitle, Layout: "carousel"}, []string{"\"carousel\"", "Cards.Layout"}},
+		"cards, a bad headline": {webui.Cards[story]{Loader: load}, []string{"Cards.Headline"}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Contains(t, editorErrors(t, tc.body), tc.want)
+			refuses(t, editorErrors(t, tc.body), tc.names...)
 		})
 	}
 }
@@ -516,10 +516,10 @@ func TestAnActionOnAnItemIsCheckedWhenTheAppCompiles(t *testing.T) {
 
 	load := (&listLoader{}).loader()
 	run := func(context.Context, story) (webui.Outcome, error) { return webui.Success("done"), nil }
-	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "List.Open is an Action but there is no Key")
-	assert.Contains(t, editorErrors(t, webui.Cards[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "Cards.Open is an Action but there is no Key")
-	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{Run: run, Confirm: "Sure?"}}), "List.Open has a Confirm")
-	assert.Contains(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{}}), "List.Open has no Run")
+	refuses(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "List.Open", "Key")
+	refuses(t, editorErrors(t, webui.Cards[story]{Loader: load, Headline: pTitle, Open: webui.Action[story]{Run: run}}), "Cards.Open", "Key")
+	refuses(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{Run: run, Confirm: "Sure?"}}), "List.Open", "Confirm")
+	refuses(t, editorErrors(t, webui.List[story]{Loader: load, Headline: pTitle, Key: func(s story) string { return s.ID }, Open: webui.Action[story]{}}), "List.Open", "Run")
 }
 
 // A list takes any kind of Loader, as a table does, and asks it for the first items: one more than it shows, to know there are more, from the start, with no sort and no filter.

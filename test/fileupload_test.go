@@ -94,13 +94,13 @@ func TestAFileUploadIsCheckedWhenTheAppCompiles(t *testing.T) {
 		return webui.Success("ok"), nil
 	}
 	receive := webui.Action[webui.FileHandle[struct{}]]{Run: run}
-	assert.Contains(t, problems(webui.FileUpload[struct{}]{MaxSize: 1}), "FileUpload.Receive has no Run")
-	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive}), "FileUpload has MaxSize 0")
-	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: -5}), "FileUpload has MaxSize -5")
+	refuses(t, problems(webui.FileUpload[struct{}]{MaxSize: 1}), "FileUpload.Receive", "Run")
+	refuses(t, problems(webui.FileUpload[struct{}]{Receive: receive}), "FileUpload", "MaxSize", "0")
+	refuses(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: -5}), "FileUpload", "MaxSize", "-5")
 	for _, k := range []webui.FileKind{webui.FileJSON, webui.FileCSV, webui.FileText} {
-		assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileImage, k}}), "told by all of the file")
+		refuses(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileImage, k}}), "Accept")
 	}
-	assert.Contains(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileKind(99)}}), "is not a FileKind")
+	refuses(t, problems(webui.FileUpload[struct{}]{Receive: receive, MaxSize: 1, Accept: []webui.FileKind{webui.FileKind(99)}}), "FileKind")
 	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: webui.FileUpload[struct{}]{
 		Receive: receive, MaxSize: 1 << 40, Accept: []webui.FileKind{webui.FileImage, webui.FilePDF, webui.FileAny},
 	}}}}.Compile("/admin")
@@ -687,11 +687,11 @@ func TestAFileUploadFieldsAreCheckedWhenTheAppCompiles(t *testing.T) {
 	receive := webui.Action[webui.FileHandle[choice]]{Run: func(context.Context, webui.FileHandle[choice]) (webui.Outcome, error) {
 		return webui.Success("ok"), nil
 	}}
-	assert.Contains(t, problems(webui.FileUpload[choice]{MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note, note}}), "used twice")
-	assert.Contains(t, problems(webui.FileUpload[choice]{
+	refuses(t, problems(webui.FileUpload[choice]{MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note, note}}), "twice")
+	refuses(t, problems(webui.FileUpload[choice]{
 		MaxSize: 1, Receive: receive,
 		Fields: []webui.Accessor[choice]{webui.File[choice]{Label: "F", Load: func(choice) *webui.FileInfo { return nil }}},
-	}), "is a File")
+	}), "File")
 	_, err := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/up", View: webui.FileUpload[choice]{
 		MaxSize: 1, Receive: receive, Fields: []webui.Accessor[choice]{note},
 	}}}}.Compile("/admin")

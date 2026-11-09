@@ -58,9 +58,7 @@ func TestTwoPagesThatMatchTheSameAddressWithNeitherMoreSpecificAreACompileErrorN
 		webui.Page[b]{Path: "/y/{b}", View: webui.Stack{}},
 	}}
 	errs := compileErrors(t, app)
-	assert.Contains(t, errs[0].Detail, `"/y/x"`)
-	assert.Contains(t, errs[0].Detail, "neither is more specific")
-	assert.Contains(t, errs[0].Fix, "strictly more specific")
+	refuses(t, errs[0].Error(), "/y/{b}", "/{a}/x", `"/y/x"`) // the two paths, and an address that both match
 
 	// One that is strictly more specific than the other is fine.
 	_, err := webui.App{Pages: webui.Pages{

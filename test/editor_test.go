@@ -177,11 +177,11 @@ func TestAnEditorIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
 	run := func(context.Context, snippet) (webui.Outcome, error) { return webui.Success("Saved"), nil }
-	assert.Contains(t, editorErrors(t, webui.Editor[snippet]{Content: snippetView}), "an Editor has no Load")
-	assert.Contains(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetView, Language: "klingon"}), `"klingon" is not a language`)
-	assert.Contains(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetText}), "has no Submit.Run")
-	assert.Contains(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetView, Submit: webui.Action[snippet]{Run: run}}), "Content has no Store")
-	assert.Contains(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet}), "Content")
+	refuses(t, editorErrors(t, webui.Editor[snippet]{Content: snippetView}), "Editor", "Load")
+	refuses(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetView, Language: "klingon"}), "\"klingon\"", "language")
+	refuses(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetText}), "Submit.Run")
+	refuses(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet, Content: snippetView, Submit: webui.Action[snippet]{Run: run}}), "Content", "Store")
+	refuses(t, editorErrors(t, webui.Editor[snippet]{Load: loadSnippet}), "Content")
 }
 
 func TestADiffShowsWhatChangedAsAUnifiedDiffWithoutScript(t *testing.T) {
@@ -207,10 +207,10 @@ func TestADiffIsOnlyEverRead(t *testing.T) {
 	h := editorApp(webui.Diff[snippet]{Title: "Changes", Load: loadSnippet, Original: snippetOld, Modified: snippetView})
 	assert.Equal(t, post(h, "/admin/e", formValues("f0", "x")).Code, http.StatusMethodNotAllowed) // nothing on the page takes a post
 
-	assert.Contains(t, editorErrors(t, webui.Diff[snippet]{Original: snippetOld, Modified: snippetView}), "a Diff has no Load")
-	assert.Contains(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetText, Modified: snippetOld}), "a Diff has a Store")
-	assert.Contains(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetView, Modified: snippetView}), "Label")
-	assert.Contains(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetOld, Modified: snippetView, Language: "klingon"}), "is not a language")
+	refuses(t, editorErrors(t, webui.Diff[snippet]{Original: snippetOld, Modified: snippetView}), "Diff", "Load")
+	refuses(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetText, Modified: snippetOld}), "Diff", "Store")
+	refuses(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetView, Modified: snippetView}), "Label")
+	refuses(t, editorErrors(t, webui.Diff[snippet]{Load: loadSnippet, Original: snippetOld, Modified: snippetView, Language: "klingon"}), "language")
 }
 
 func TestAFailingDiffLoadFailsThePanelAndNotThePage(t *testing.T) {

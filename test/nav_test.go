@@ -123,9 +123,9 @@ func TestAPageAtTheRootIsTheLandingPage(t *testing.T) {
 func TestCompileRefusesAnIconThatIsNotAFontAwesomeIcon(t *testing.T) {
 	t.Parallel()
 
-	for icon, want := range map[string]string{
-		"rocket-ship": `Nav.Icon "rocket-ship" is not a Font Awesome Free solid icon`,
-		"fa-house":    `Write the icon's name without the "fa-" prefix: "house".`,
+	for icon, names := range map[string][]string{
+		"rocket-ship": {"Nav.Icon", `"rocket-ship"`},
+		"fa-house":    {"Nav.Icon", `"fa-house"`, `"house"`}, // and what to write instead
 	} {
 		app := webui.App{Pages: webui.Pages{
 			webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: icon}, View: webui.Stack{}},
@@ -134,7 +134,7 @@ func TestCompileRefusesAnIconThatIsNotAFontAwesomeIcon(t *testing.T) {
 		for _, e := range compileErrors(t, app) {
 			all += e.Error() + "\n"
 		}
-		assert.Contains(t, all, want)
+		refuses(t, all, names...)
 	}
 }
 
@@ -284,7 +284,7 @@ func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testi
 	type one struct{ ID string }
 	declared := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{declared}})
-	assert.Contains(t, errs[0].Detail, `sidebar entry "Device" but its path has arguments`)
+	refuses(t, errs[0].Error(), `"Device"`, "/device/{id}")
 }
 
 func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T) {

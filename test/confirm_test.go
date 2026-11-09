@@ -189,5 +189,5 @@ func TestAConfirmOnARowClickIsACompileError(t *testing.T) {
 		RowClick: webui.Action[parcel]{Confirm: "Sure?", Run: func(context.Context, parcel) (webui.Outcome, error) { return webui.Success("x"), nil }},
 	}
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: table}}})
-	assert.Contains(t, errs[0].Error(), "Table.RowClick has a Confirm")
+	refuses(t, errs[0].Error(), "Table.RowClick", "Confirm")
 }

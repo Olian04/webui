@@ -135,12 +135,12 @@ func TestTheRulesOfAFormattedAccessorAreCheckedWhenTheAppCompiles(t *testing.T) 
 		return all
 	}
 	load := func(c contact) string { return c.Email }
-	assert.Contains(t, problems(webui.Email[contact]{Label: "E"}), "has no Load")
-	assert.Contains(t, problems(webui.Phone[contact]{Label: "P"}), "has no Load")
-	assert.Contains(t, problems(webui.Website[contact]{Label: "W"}), "has no Load")
-	assert.Contains(t, problems(webui.ColorPicker[contact]{Label: "C"}), "has no Load")
-	assert.Contains(t, problems(webui.Email[contact]{Label: "E", Load: load, Rules: webui.StringRules{MinLen: 9, MaxLen: 3}}), "inconsistent length rules")
-	assert.Contains(t, problems(webui.Website[contact]{Label: "W", Load: load, Rules: webui.StringRules{Pattern: &webui.PatternRule{Expr: "(?=a)", Message: "x"}}}), "pattern")
+	refuses(t, problems(webui.Email[contact]{Label: "E"}), "Load")
+	refuses(t, problems(webui.Phone[contact]{Label: "P"}), "Load")
+	refuses(t, problems(webui.Website[contact]{Label: "W"}), "Load")
+	refuses(t, problems(webui.ColorPicker[contact]{Label: "C"}), "Load")
+	refuses(t, problems(webui.Email[contact]{Label: "E", Load: load, Rules: webui.StringRules{MinLen: 9, MaxLen: 3}}), "MinLen", "MaxLen")
+	refuses(t, problems(webui.Website[contact]{Label: "W", Load: load, Rules: webui.StringRules{Pattern: &webui.PatternRule{Expr: "(?=a)", Message: "x"}}}), "(?=a)")
 }
 
 func TestAnInputKindIsATableCellAsText(t *testing.T) {

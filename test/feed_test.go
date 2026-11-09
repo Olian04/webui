@@ -275,10 +275,10 @@ func TestATableTakesExactlyOneSource(t *testing.T) {
 		return all
 	}
 	// A table has one source, and a Loader is the one place to say it: two cannot be written, and none, or a loader with nothing to load with, is said.
-	assert.Contains(t, problems(webui.Table[Device]{}), "a Table has no Loader")
-	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.FeedLoader[Device]{}}), "Table.Loader is a FeedLoader with no Load")
-	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.PagedLoader[Device]{}}), "Table.Loader is a PagedLoader with no Load")
-	assert.Contains(t, problems(webui.Table[Device]{Loader: webui.RowsLoader[Device]{}}), "Table.Loader is a RowsLoader with no Load")
+	refuses(t, problems(webui.Table[Device]{}), "Table", "Loader")
+	refuses(t, problems(webui.Table[Device]{Loader: webui.FeedLoader[Device]{}}), "Table.Loader", "FeedLoader", "Load")
+	refuses(t, problems(webui.Table[Device]{Loader: webui.PagedLoader[Device]{}}), "Table.Loader", "PagedLoader", "Load")
+	refuses(t, problems(webui.Table[Device]{Loader: webui.RowsLoader[Device]{}}), "Table.Loader", "RowsLoader", "Load")
 	_ = feed
 }
 

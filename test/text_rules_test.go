@@ -117,12 +117,12 @@ func TestTextThatNoValueCanHoldIsAProblemOfTheApp(t *testing.T) {
 		StartsWith: "https://", NotContains: "//", Contains: "a\nb", MaxLen: 4,
 	})}}}
 	errs := compileErrors(t, app)
-	var got []string
+	var all string
 	for _, e := range errs {
-		got = append(got, e.Detail)
+		all += e.Error() + "\n"
 	}
 	assert.Equal(t, len(errs), 3)
-	assert.Contains(t, strings.Join(got, "\n"), "Contains has a line break in it")
-	assert.Contains(t, strings.Join(got, "\n"), `StartsWith "https://" has NotContains "//" in it`)
-	assert.Contains(t, strings.Join(got, "\n"), `StartsWith "https://" is longer than MaxLen, 4`)
+	refuses(t, all, "Contains", "line break")
+	refuses(t, all, "StartsWith", `"https://"`, "NotContains", `"//"`)
+	refuses(t, all, "StartsWith", `"https://"`, "MaxLen")
 }

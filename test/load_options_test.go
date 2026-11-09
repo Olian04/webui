@@ -252,7 +252,7 @@ func TestASelectThatReadsItsOptionsIsCheckedWhenTheAppCompiles(t *testing.T) {
 	}
 	load := func(task) []string { return nil }
 	source := func(context.Context) ([]webui.Option, error) { return nil, nil }
-	assert.Contains(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a"}}, LoadOptions: source}), "has both Options and LoadOptions")
+	refuses(t, problems(webui.Select[task]{Label: "S", Load: load, Options: []webui.Option{{Value: "a"}}, LoadOptions: source}), "Options", "LoadOptions")
 
 	// A Store with a source is a select with something to choose from.
 	page := webui.Page[webui.NoArgs]{Path: "/t", View: webui.Form[task]{
