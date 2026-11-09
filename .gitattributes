@@ -1,0 +1,11 @@
+# Generated files are committed (a library is consumed as its tagged source, so go:embed and the templates' Go must be there), and a review does not read them:
+# GitHub collapses their diffs and leaves them out of the language statistics. The sources they come from are the diff to read. See "make generate".
+*_templ.go                         linguist-generated=true
+internal/render/assets/min/**      linguist-generated=true
+pkg/monaco/editor/**               linguist-generated=true
+pkg/monaco/css/worker/**           linguist-generated=true
+pkg/monaco/html/worker/**          linguist-generated=true
+pkg/monaco/json/worker/**          linguist-generated=true
+pkg/monaco/typescript/worker/**    linguist-generated=true
+# Brotli copies are binary: a merge never tries to combine them.
+*.br                               binary
