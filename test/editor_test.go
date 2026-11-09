@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -314,4 +316,42 @@ func TestTheEditorScriptLeavesTheEditorWithEscapeAndSaysHowAndSpeaksForTheContro
 		assert.Contains(t, js, token)
 	}
 	assert.False(t, strings.Contains(js, ".requestSubmit()")) // a form is never sent from a shortcut, past its button
+}
+
+// discard is a response that keeps nothing of its body, so that what a request costs is the server's and not a recorder's.
+type discard struct {
+	header http.Header
+	sent   int
+}
+
+func (d *discard) Header() http.Header         { return d.header }
+func (d *discard) Write(b []byte) (int, error) { d.sent += len(b); return len(b), nil }
+func (d *discard) WriteHeader(int)             {}
+
+// The editor's file is the largest thing the app serves, and compressing it again for each request that accepts gzip cost over a hundred milliseconds each: it is
+// compressed once, and a request after the first costs the server little however large the file is. It is not run in parallel: what it measures is memory, which
+// anything else that runs would add to.
+func TestAnEditorFileIsCompressedOnceHoweverManyRequestsAskForIt(t *testing.T) {
+	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView})
+	worker := regexp.MustCompile(`"editor":"([^"]+)"`).FindStringSubmatch(serve(h, http.MethodGet, "/admin/e").Body.String()) // the largest of what it serves
+	assert.True(t, worker != nil)
+
+	first := gzipped(t, h, worker[1])
+	assert.Equal(t, first.Header().Get("Content-Encoding"), "gzip")
+	size := uint64(first.Body.Len()) //nolint:gosec // a length is not negative
+	assert.True(t, size > 1<<16)     // large enough for compressing it again to show
+
+	const requests = 30
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	for range requests {
+		req := httptest.NewRequest(http.MethodGet, worker[1], nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		w := &discard{header: http.Header{}}
+		h.ServeHTTP(w, req)
+		assert.Equal(t, uint64(w.sent), size) //nolint:gosec // a length is not negative: the same bytes each time
+	}
+	runtime.ReadMemStats(&after)
+	// Compressing for each request costs at least the compressed file for each; once, a small part of it.
+	assert.True(t, (after.TotalAlloc-before.TotalAlloc)/requests < size/4)
 }
