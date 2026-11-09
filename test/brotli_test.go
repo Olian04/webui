@@ -141,7 +141,7 @@ func TestAnExportIsGzippedForAClientThatTakesBrotliToo(t *testing.T) {
 func TestAStreamedPageIsGzippedForAClientThatTakesBrotliToo(t *testing.T) {
 	t.Parallel()
 
-	slow := newGated()
+	slow := newSlowPanel()
 	h := streamApp(webui.Stack{quickTable("First"), slow.table("Slow")})
 	rec := newStreamRecorder()
 	done := make(chan struct{})

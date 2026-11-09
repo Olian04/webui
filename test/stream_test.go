@@ -89,15 +89,17 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 	}
 }
 
-// gate is a panel's table whose backend answers when its channel is closed, and says so when it is asked.
-type gated struct {
+// slowPanel is a panel's table whose backend answers when its channel is closed, and says so when it is asked.
+type slowPanel struct {
 	asked   chan struct{}
 	release chan struct{}
 }
 
-func newGated() *gated { return &gated{asked: make(chan struct{}), release: make(chan struct{})} }
+func newSlowPanel() *slowPanel {
+	return &slowPanel{asked: make(chan struct{}), release: make(chan struct{})}
+}
 
-func (g *gated) table(title string) webui.Table[Device] {
+func (g *slowPanel) table(title string) webui.Table[Device] {
 	return webui.Table[Device]{
 		Title: title,
 		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -141,7 +143,7 @@ func get(h http.Handler, rec http.ResponseWriter, path string, mod ...func(*http
 func TestAPageWithASlowPanelIsSentWhileItWaitsAndThePanelsFollowInOrder(t *testing.T) {
 	t.Parallel()
 
-	slow, later := newGated(), newGated()
+	slow, later := newSlowPanel(), newSlowPanel()
 	h := streamApp(webui.Stack{quickTable("First"), slow.table("Slow"), later.table("Later")})
 	rec := newStreamRecorder()
 	done := make(chan struct{})
@@ -225,7 +227,7 @@ func TestAPageSentAsItIsBuiltIsTheSamePageAsOneSentWhole(t *testing.T) {
 func TestAStreamedPageIsCompressedSoThatItCanBeReadAsItArrives(t *testing.T) {
 	t.Parallel()
 
-	slow := newGated()
+	slow := newSlowPanel()
 	h := streamApp(webui.Stack{quickTable("First"), slow.table("Slow")})
 	rec := newStreamRecorder()
 	done := make(chan struct{})
@@ -274,7 +276,7 @@ func TestTheStatusBarOfAStreamedPageSaysHowLongAllOfItTook(t *testing.T) {
 func TestAPanelThatPanicsAfterThePageBeganToBeSentSaysSoAndThePageStands(t *testing.T) {
 	t.Parallel()
 
-	slow := newGated()
+	slow := newSlowPanel()
 	broken := webui.Form[Device]{
 		Title: "Broken", Fields: []webui.Accessor[Device]{formID},
 		Load: func(context.Context) (Device, webui.Loaded) { panic("the backend fell over") },
@@ -336,7 +338,7 @@ func TestAGuardsRefusalIsStillAnErrorStatusForASlowPage(t *testing.T) {
 func TestAVisitorWhoLeavesAPageThatIsBeingSentStopsItsPanels(t *testing.T) {
 	t.Parallel()
 
-	slow := newGated()
+	slow := newSlowPanel()
 	h := streamApp(webui.Stack{quickTable("First"), slow.table("Slow")})
 	ctx, cancel := context.WithCancel(context.Background())
 	rec := newStreamRecorder()

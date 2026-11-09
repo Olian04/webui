@@ -19,10 +19,10 @@ import (
 // and by every link that leads there, which is drawn only for a visitor who may follow it. These tests are what is asked of that: the Guard of a page is run once for an address
 // in a request, whoever asks, and whoever asks is told the same.
 
-type verdictArgs struct{ ID int }
+type linkedArgs struct{ ID int }
 
-// verdictRows is n rows, to be linked from.
-func verdictRows(n int) []parcel {
+// linkedRows is n rows, to be linked from.
+func linkedRows(n int) []parcel {
 	rows := make([]parcel, n)
 	for i := range rows {
 		rows[i] = parcel{Name: fmt.Sprintf("row-%02d", i)}
@@ -61,8 +61,8 @@ func (c *guardCount) total() int {
 	return n
 }
 
-func linkRows(n int, dest webui.PageRef[verdictArgs], idOf func(i int) int) webui.Table[parcel] {
-	rows := verdictRows(n)
+func linkRows(n int, dest webui.PageRef[linkedArgs], idOf func(i int) int) webui.Table[parcel] {
+	rows := linkedRows(n)
 	index := map[string]int{}
 	for i, r := range rows {
 		index[r.Name] = i
@@ -71,8 +71,8 @@ func linkRows(n int, dest webui.PageRef[verdictArgs], idOf func(i int) int) webu
 		Loader:  webui.RowsLoader[parcel]{Load: func(context.Context) ([]parcel, webui.Loaded) { return rows, webui.Ready() }},
 		Key:     func(p parcel) string { return p.Name },
 		Columns: []webui.Accessor[parcel]{parcelName},
-		RowClick: webui.Link[parcel, verdictArgs]{Page: dest, Args: func(_ context.Context, p parcel) verdictArgs {
-			return verdictArgs{ID: idOf(index[p.Name])}
+		RowClick: webui.Link[parcel, linkedArgs]{Page: dest, Args: func(_ context.Context, p parcel) linkedArgs {
+			return linkedArgs{ID: idOf(index[p.Name])}
 		}},
 	}
 }
@@ -82,13 +82,13 @@ func TestAGuardRunsOncePerAddressInARequestHoweverManyLinksLeadThere(t *testing.
 	t.Parallel()
 
 	var guard guardCount
-	var item webui.Page[verdictArgs]
+	var item webui.Page[linkedArgs]
 	item.Path = "/item/{id}"
 	item.View = webui.Stack{}
-	item.Guard = func(_ context.Context, a verdictArgs) error { guard.add(a.ID); return nil }
+	item.Guard = func(_ context.Context, a linkedArgs) error { guard.add(a.ID); return nil }
 
-	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, verdictArgs]{
-		Label: "First", Page: &item, Args: func(context.Context, webui.NoArgs) verdictArgs { return verdictArgs{ID: 1} },
+	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, linkedArgs]{
+		Label: "First", Page: &item, Args: func(context.Context, webui.NoArgs) linkedArgs { return linkedArgs{ID: 1} },
 	}}}
 	list := webui.Page[webui.NoArgs]{Path: "/list", Nav: webui.Nav{Label: "List"}, View: webui.Stack{bar, linkRows(12, &item, func(i int) int { return 1 + i%3 })}}
 	h := webui.App{Pages: webui.Pages{list, item}}.MustCompile("/admin")
@@ -142,7 +142,7 @@ func TestAGuardThatChangesItsMindGivesAPageThatAgreesWithItself(t *testing.T) {
 			return errors.New("not any more")
 		}
 		to := webui.Link[webui.NoArgs, webui.NoArgs]{Label: "Go", Page: &bare, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} }}
-		rows := verdictRows(6)
+		rows := linkedRows(6)
 		table := webui.Table[parcel]{
 			Loader:   webui.RowsLoader[parcel]{Load: func(context.Context) ([]parcel, webui.Loaded) { return rows, webui.Ready() }},
 			Key:      func(p parcel) string { return p.Name },
@@ -166,10 +166,10 @@ func TestAGuardThatPanicsIsAskedOnceAndEveryLinkToItsPageIsLeftOut(t *testing.T)
 	t.Parallel()
 
 	var calls atomic.Int32
-	var dest webui.Page[verdictArgs]
+	var dest webui.Page[linkedArgs]
 	dest.Path = "/d/{id}"
 	dest.View = webui.Stack{}
-	dest.Guard = func(context.Context, verdictArgs) error {
+	dest.Guard = func(context.Context, linkedArgs) error {
 		calls.Add(1)
 		panic("the guard is broken")
 	}

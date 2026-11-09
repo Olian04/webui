@@ -24,18 +24,18 @@ type condition struct{ Open bool }
 
 var conditionOpen = webui.Bool[condition]{Load: func(c condition) bool { return c.Open }}
 
-// gate is a condition that a test turns on and off, and counts how often it was asked.
-type gate struct {
+// toggle is a condition that a test turns on and off, and counts how often it was asked.
+type toggle struct {
 	open  atomic.Bool
 	loads atomic.Int32
 }
 
-func (g *gate) load(context.Context) (condition, webui.Loaded) {
+func (g *toggle) load(context.Context) (condition, webui.Loaded) {
 	g.loads.Add(1)
 	return condition{Open: g.open.Load()}, webui.Ready()
 }
 
-func (g *gate) when(body webui.View) webui.When[condition] {
+func (g *toggle) when(body webui.View) webui.When[condition] {
 	return webui.When[condition]{Load: g.load, Show: conditionOpen, View: body}
 }
 
@@ -62,7 +62,7 @@ func askView(h http.Handler, target, id string) *httptest.ResponseRecorder {
 func TestAWhenShowsItsBodyOnlyWhileTheConditionHolds(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(webui.Stack{columnPanel("Before"), g.when(columnPanel("Inside")), columnPanel("After")})
 
 	g.open.Store(true)
@@ -84,7 +84,7 @@ func TestAWhenShowsItsBodyOnlyWhileTheConditionHolds(t *testing.T) {
 func TestThePanelUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	g.open.Store(true)
 	h := editorApp(webui.Stack{columnPanel("Before"), g.when(columnPanel("Inside"))})
 	assert.DeepEqual(t, panels(pageOf(t, h, "/admin/e")), [][2]string{{"p.0", "Before"}, {"p.1.0", "Inside"}})
@@ -97,7 +97,7 @@ func TestThePanelUnderAWhenIsNamedTheSameWhetherOrNotItIsShown(t *testing.T) {
 func TestTheConditionIsAskedAgainOnEveryRequest(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(g.when(columnPanel("Inside")))
 	serve(h, http.MethodGet, "/admin/e")
 	serve(h, http.MethodGet, "/admin/e")
@@ -114,7 +114,7 @@ func TestTheConditionIsAskedAgainOnEveryRequest(t *testing.T) {
 func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	g.open.Store(true)
 	full := webui.Bool[condition]{Label: "Open", Help: "Whether it is open.", NoSort: true, NoFilter: true,
 		Load: func(c condition) bool { return c.Open }, Store: func(c *condition, v bool) { c.Open = v }}
@@ -134,7 +134,7 @@ func TestAShowThatIsAFullyDeclaredBoolReadsTheSame(t *testing.T) {
 func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	var saved atomic.Pointer[flags]
 	form := webui.Form[flags]{
 		Load:   func(context.Context) (flags, webui.Loaded) { return flags{}, webui.Ready() },
@@ -174,7 +174,7 @@ func TestWhatIsHiddenByAWhenCannotBeRefreshedPostedToOrExported(t *testing.T) {
 func TestAWhenInAWhenIsAnd(t *testing.T) {
 	t.Parallel()
 
-	var outer, inner gate
+	var outer, inner toggle
 	h := editorApp(outer.when(inner.when(columnPanel("Both"))))
 	for _, tc := range []struct{ outer, inner, shown bool }{{false, false, false}, {true, false, false}, {false, true, false}, {true, true, true}} {
 		outer.open.Store(tc.outer)
@@ -228,7 +228,7 @@ func TestAPanicInALoadOrAShowIsRecoveredLikeAnyPanels(t *testing.T) {
 	rec := serve(editorApp(webui.Stack{panicking}), http.MethodGet, "/admin/e")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)
 
-	var g gate
+	var g toggle
 	g.open.Store(true)
 	bad := webui.When[condition]{Load: g.load, Show: webui.Bool[condition]{Load: func(condition) bool { panic("show fell over") }}, View: columnPanel("Inside")}
 	assert.Equal(t, serve(editorApp(webui.Stack{bad}), http.MethodGet, "/admin/e").Code, http.StatusInternalServerError)
@@ -279,7 +279,7 @@ func indexOf(s []string, v string) int {
 func TestAColumnWhoseWhenDoesNotHoldShowsNothingAndTheOthersAreAsTheyWere(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(webui.Columns{{Weight: 1, View: g.when(columnPanel("Inside"))}, {Weight: 2, View: columnPanel("Next")}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.False(t, shown(t, body, "Inside"))
@@ -290,7 +290,7 @@ func TestAColumnWhoseWhenDoesNotHoldShowsNothingAndTheOthersAreAsTheyWere(t *tes
 func TestATabWithNoVisiblePanelIsHidden(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(webui.Tabs{
 		{Label: "Maybe", View: g.when(columnPanel("Inside"))},
 		{Label: "Always", View: columnPanel("Outside")},
@@ -311,7 +311,7 @@ func TestATabWithNoVisiblePanelIsHidden(t *testing.T) {
 func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(webui.Tabs{
 		{Label: "Maybe", View: g.when(columnPanel("Inside"))},
 		{Label: "Always", View: columnPanel("Outside")},
@@ -330,7 +330,7 @@ func TestTheLinkOfATabKeepsItsParameterWhileTheFirstIsHidden(t *testing.T) {
 func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	g.open.Store(true)
 	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
@@ -341,7 +341,7 @@ func TestAWhenInATabIsAskedOncePerRequest(t *testing.T) {
 func TestTabsWithNoVisibleTabDrawNothing(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	h := editorApp(webui.Tabs{{Label: "Maybe", View: g.when(columnPanel("Inside"))}})
 	body := serve(h, http.MethodGet, "/admin/e").Body.String()
 	assert.False(t, shown(t, body, "Maybe"))
@@ -367,7 +367,7 @@ func TestARefreshHintFromTheLoadIsAcceptedAndDrawsNothing(t *testing.T) {
 func TestAWhenThatCannotBeDrawnIsACompileError(t *testing.T) {
 	t.Parallel()
 
-	var g gate
+	var g toggle
 	for name, tc := range map[string]struct {
 		body  webui.View
 		names []string
@@ -392,7 +392,7 @@ func TestTheConditionsLoadIsCountedAsAWhen(t *testing.T) {
 	t.Parallel()
 
 	reg := prometheus.NewRegistry()
-	var g gate
+	var g toggle
 	g.open.Store(true)
 	h := webui.App{Observer: observe(reg), Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/w", View: g.when(columnPanel("Inside"))}}}.MustCompile("/admin")
 	serve(h, http.MethodGet, "/admin/w")
