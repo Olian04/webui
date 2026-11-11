@@ -91,6 +91,8 @@ test.describe('a form that can be saved', () => {
     await page.goto(DEVICE);
     await ip(page).click();
     await ip(page).fill('not an address');
+    // the browser would refuse a value that is not an address before the form was sent, and it is the server's refusal that is the case here
+    await page.locator('form[data-warn-leave]').evaluate((form) => { form.noValidate = true; });
     const refusal = page.waitForResponse((r) => r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Save' }).click();
     expect((await refusal).status()).toBe(422);
