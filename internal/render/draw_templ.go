@@ -1273,7 +1273,7 @@ func (r *Renderer) tableContent(v LoadedTable, cols []columnView) templ.Componen
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = c.Table(c.TableProps{Label: v.label()}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = c.Table(c.TableProps{Label: v.label(), SizesKey: v.Page.PathTemplate + "#" + ViewID(v.Node.At)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var41), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

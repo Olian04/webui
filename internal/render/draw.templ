@@ -250,7 +250,7 @@ templ (r *Renderer) tableContent(v LoadedTable, cols []columnView) {
 			}
 		}
 	}
-	@c.Table(c.TableProps{Label: v.label()}) {
+	@c.Table(c.TableProps{Label: v.label(), SizesKey: v.Page.PathTemplate + "#" + ViewID(v.Node.At)}) {
 		<colgroup>
 			if v.selectable() {
 				<col class="pick"/>
