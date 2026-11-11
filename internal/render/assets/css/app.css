@@ -1526,6 +1526,18 @@ tbody td.num {
 tbody td time {
   white-space: nowrap;
 }
+/* A moment: its day and its zone are said in the second tone and its clock in the first, in figures of one width, so a column of them lines up. */
+time.moment {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+time .t-date,
+time .t-zone {
+  color: var(--text-2);
+}
+time .t-zone {
+  font-size: 0.92em;
+}
 td.pick,
 th.pick {
   width: 34px;

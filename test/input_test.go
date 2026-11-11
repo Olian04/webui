@@ -226,10 +226,13 @@ func TestADateOnlyColumnShowsTheDayAndItsFilterIsDates(t *testing.T) {
 	day := table(true)
 	assert.Contains(t, day, `datetime="2027-01-15"`)
 	assert.Contains(t, day, ">2027-01-15<")
+	for _, el := range page.One(t, "main", page.Parse(t, day).ByRole("main", "")).ByAttr("datetime", "") {
+		assert.False(t, strings.HasSuffix(el.Text(), "UTC")) // a day is a day in every zone: it has no zone to say
+	}
 	assert.Contains(t, day, `type="date" name="table.min.ends" value="2027-01-01"`)
 	assert.Contains(t, day, `type="date" name="table.max.ends" value="2027-02-01"`)
 
-	moment := table(false)
-	assert.Contains(t, moment, ">2027-01-15 13:45<")
-	assert.Contains(t, moment, `type="datetime-local" name="table.min.ends" value="2027-01-01T00:00"`)
+	timed := table(false)
+	assert.DeepEqual(t, moments(t, page.Parse(t, timed)), []moment{{"2027-01-15T13:45:00Z", "2027-01-15 13:45 UTC"}}) // a moment says its zone, and a day above does not
+	assert.Contains(t, timed, `type="datetime-local" name="table.min.ends" value="2027-01-01T00:00"`)
 }
