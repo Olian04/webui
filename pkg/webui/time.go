@@ -6,7 +6,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Time projects a time.Time field of M as a date and time. It is shown in UTC as "2026-10-09 11:27" (a date alone as "2026-10-09"), and a table sorts and
+// Time projects a time.Time field of M as a date and time. It is shown in UTC as "2026-10-09 11:27 UTC" (a date alone as "2026-10-09"; with script a click on a moment shows every moment of the page in the visitor's own time zone, and again goes back), and a table sorts and
 // filters it as a moment and not as the text: the filter takes a start and an end, in UTC. The zero time is "not set": it shows as nothing, sorts
 // first and is in no range, and clearing the picker stores it. A moment that may be absent is an [OptionalTime].
 //
@@ -30,7 +30,7 @@ type Time[M any] struct {
 	Required bool
 
 	// Format says how the moment reads where it is only read, as [Int.Format] does for a number: a relative "3 h ago", or another layout than the
-	// default. It is handed the moment in UTC, and a date alone as midnight. The column still sorts and filters by the moment, and its <time>
+	// default; its text is the app's, and the moment is in its title, in UTC. It is handed the moment in UTC, and a date alone as midnight. The column still sorts and filters by the moment, and its <time>
 	// element and the export still hold it. The zero time is not handed to Format: it shows as nothing.
 	Format func(time.Time) string
 

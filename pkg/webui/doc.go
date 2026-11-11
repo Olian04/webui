@@ -190,8 +190,8 @@
 // a list to choose several from. Its Options are written out, or read when a request is
 // answered with LoadOptions, for what the app keeps in a database.
 //
-// A [Time] or an [OptionalTime] is a time.Time, and with a Store is a date and time picker,
-// in UTC; with DateOnly it is a date picker, and a day is midnight UTC. The zero time is
+// A [Time] or an [OptionalTime] is a time.Time, shown in UTC with its zone (with script, a click shows every moment of the page in the visitor's own zone),
+// and with a Store is a date and time picker, in UTC; with DateOnly it is a date picker, and a day is midnight UTC. The zero time is
 // "not set": a Time shows it as nothing and stores it when the picker is cleared (and
 // Required refuses that), and an OptionalTime, whose Go type is a pointer, stores nil. A
 // model that holds a moment as an ISO 8601 string or as Unix seconds reads and writes it
