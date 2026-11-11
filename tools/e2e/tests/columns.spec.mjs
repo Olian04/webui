@@ -132,11 +132,16 @@ test.describe('the columns of a table', () => {
 
   test('ignore widths that were kept for a table with other columns', async ({ page }) => {
     await page.goto('/admin/device');
-    const own = await widthOf(splitterOf(page, 'Stored'));
+    const own = await widthOf(splitterOf(page, 'ID'));
     const key = await table(page).getAttribute('data-sizes');
     await page.evaluate((key) => localStorage.setItem('webui.columns', JSON.stringify({ [key]: { n: 3, w: { 0: 500, 1: 500 } } })), key);
     await page.reload();
-    expect(Math.abs((await widthOf(splitterOf(page, 'Stored'))) - own)).toBeLessThan(1.5);
+    expect(Math.abs((await widthOf(splitterOf(page, 'ID'))) - own)).toBeLessThan(1.5);
+    // and widths for as many columns as it has are used
+    const n = await table(page).getByRole('separator').count();
+    await page.evaluate(([key, n]) => localStorage.setItem('webui.columns', JSON.stringify({ [key]: { n, w: { 0: 500 } } })), [key, n]);
+    await page.reload();
+    expect(Math.round(await widthOf(splitterOf(page, 'ID')))).toBe(500);
   });
 
   test('have no splitters on a phone, and keep no widths there', async ({ page }) => {
