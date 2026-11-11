@@ -380,7 +380,8 @@ func TestAFormTheVisitorCanSaveSaysThatItIsNotToBeLeftWithChangesAndOneDrawnAfte
 	assert.Equal(t, len(opened.ByAttr("data-warn-leave", "")), 1)
 	assert.Equal(t, len(opened.ByAttr("data-edited", "")), 0) // nothing has been typed yet
 
-	rec := post(h, "/admin/device/dev1", formValues("f0_1", "not an address"))
+	// every field is there and only one is refused by its rule, which is the form that the visitor sees again with what they typed in it
+	rec := post(h, "/admin/device/dev1", formValues("f0_0", "dev1", "f0_1", "not an address", "f1", "7"))
 	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
 	refused := page.Parse(t, rec.Body.String())
 	assert.Equal(t, len(refused.ByAttr("data-warn-leave", "")), 1)

@@ -36,6 +36,10 @@ type LoadedForm struct {
 	// form looks like it reset.
 	Values map[string]string
 
+	// Resubmitted is whether the form is drawn again after a submission that was refused: what the visitor typed is in it, whether Values echoes it or the
+	// model holds it, and is nowhere else.
+	Resubmitted bool
+
 	// Languages is the Accept-Language the visitor sent, which a phone number that has no country starts at the country of.
 	Languages string
 
@@ -440,7 +444,7 @@ func (v LoadedForm) formAttrs() templ.Attributes {
 		// A form that the visitor can save is one that script does not let them leave with what they changed (data-warn-leave), and one that is drawn again with what
 		// they typed, after a refusal, has changes already: they are in it, and nowhere else (data-edited).
 		attrs["data-warn-leave"] = true
-		if len(v.Values) > 0 {
+		if v.Resubmitted {
 			attrs["data-edited"] = true
 		}
 	}
