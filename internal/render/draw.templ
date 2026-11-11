@@ -482,8 +482,9 @@ templ present(f ir.Field, text string, model any) {
 			if moment := momentOf(f, model); moment != "" {
 				{{ day, clock := momentParts(f.Get(model)) }}
 				if f.Show == nil && clock != "" {
-					// A moment as the library reads it, in UTC, with its zone said. Script can show it in the visitor's own, on a click (data-tz is what it looks for).
-					<time datetime={ moment } data-tz><span class="t-date">{ day }</span> <span class="t-clock">{ clock }</span> <span class="t-zone">UTC</span></time>
+					// A moment as the library reads it, in UTC, with its zone said: a moment is in UTC everywhere in the library, and what is shown in another zone cannot be made to
+					// agree with a filter, a picker, an export or a Format that is the app's.
+					<time class="moment" datetime={ moment }><span class="t-date">{ day }</span> <span class="t-clock">{ clock }</span> <span class="t-zone">UTC</span></time>
 				} else if f.Show != nil {
 					// A moment as the app reads it, which may be "3 h ago": it is theirs to word, so it is left, with the moment it stands for in its title.
 					<time datetime={ moment } title={ momentTitle(day, clock) }>{ text }</time>

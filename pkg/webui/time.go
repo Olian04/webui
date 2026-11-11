@@ -6,7 +6,7 @@ import (
 	"github.com/Olian04/webui/internal/ir"
 )
 
-// Time projects a time.Time field of M as a date and time. It is shown in UTC as "2026-10-09 11:27 UTC" (a date alone as "2026-10-09"; with script a click on a moment shows every moment of the page in the visitor's own time zone, and again goes back), and a table sorts and
+// Time projects a time.Time field of M as a date and time. It is shown in UTC as "2026-10-09 11:27 UTC" (a date alone as "2026-10-09"), in every zone and for every visitor, and a table sorts and
 // filters it as a moment and not as the text: the filter takes a start and an end, in UTC. The zero time is "not set": it shows as nothing, sorts
 // first and is in no range, and clearing the picker stores it. A moment that may be absent is an [OptionalTime].
 //

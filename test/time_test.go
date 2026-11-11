@@ -73,9 +73,8 @@ func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 	}
 	assert.Equal(t, len(got), 6)
 
-	// A moment read as the library reads it says its zone, and is the one that script can show in the visitor's.
+	// A moment read as the library reads it says its zone, which is UTC: there is no other.
 	for _, el := range page.One(t, "main", p.ByRole("main", "")).ByAttr("datetime", "") {
-		assert.True(t, el.Has("data-tz"))
 		assert.True(t, strings.HasSuffix(el.Text(), " UTC"))
 	}
 }

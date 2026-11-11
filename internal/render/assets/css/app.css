@@ -1515,42 +1515,16 @@ tbody td time {
   white-space: nowrap;
 }
 /* A moment: its day and its zone are said in the second tone and its clock in the first, in figures of one width, so a column of them lines up. */
+time.moment {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 time .t-date,
 time .t-zone {
   color: var(--text-2);
 }
 time .t-zone {
   font-size: 0.92em;
-}
-time[data-tz] {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-/* With script a moment is a button that looks as the moment does: the click that shows it in the visitor's zone. Above the stretched link of a clickable row, as the
-   row's actions are, so that a click on it is not a click on the row. */
-.time-switch {
-  appearance: none;
-  border: 0;
-  padding: 0;
-  margin: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  position: relative;
-  z-index: 1;
-  white-space: nowrap;
-  text-align: inherit;
-  border-radius: var(--radius);
-  min-height: 24px;
-}
-.time-switch:hover {
-  text-decoration: underline dotted;
-  text-underline-offset: 3px;
-}
-.time-switch:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 2px;
 }
 td.pick,
 th.pick {
