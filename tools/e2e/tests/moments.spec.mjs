@@ -29,5 +29,14 @@ test.describe('the devices table', () => {
     const whole = await table.boundingBox();
     expect(whole.width).toBeGreaterThan(panel.width); // the table is wider than its panel: it scrolls there
     expect(panel.x + panel.width).toBeLessThanOrEqual(700); // and the panel is not pushed past the window
+    // Something around the table is what scrolls to the rest of it: the first ancestor that moves when it is asked to.
+    const scrolls = await table.evaluate((el) => {
+      for (let a = el.parentElement; a; a = a.parentElement) {
+        a.scrollLeft = 120;
+        if (a.scrollLeft > 0) return a.contains(el) && a !== document.documentElement && a !== document.body;
+      }
+      return false;
+    });
+    expect(scrolls).toBe(true);
   });
 });
