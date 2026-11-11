@@ -1364,6 +1364,59 @@
     });
   }
 
+  // A form that the visitor can save (data-warn-leave) is not left with what they changed in it without their say: a link, Back, a reload or a closed tab asks first, in the
+  // browser's own words, and a form that was drawn again with what was typed, after a refusal (data-edited), has changes from the start. A form is changed when what it would send
+  // is not what it was sent with, so changing a field back is no change, and an editor's text is read from its textarea, which it keeps in step. Saving, and the form's own Cancel and
+  // Back, are the visitor's way of leaving it, and do not ask. It is the browser that asks, so there is nothing to build and it is said to every kind of reader; what script cannot
+  // do is ask a visitor without script, who has no form to lose that was not already a page.
+  var guards = []; // the forms that are guarded, with what each was sent with
+  function formState(form) {
+    var parts = [];
+    new FormData(form).forEach(function (value, name) {
+      if (name !== '_view') parts.push(name + '=' + (typeof value === 'string' ? value : 'file:' + value.name + ':' + value.size));
+    });
+    return parts.join('&');
+  }
+  function guardForm(form) {
+    form.setAttribute('data-enhanced', '');
+    guards = guards.filter(function (g) {
+      return document.contains(g.form);
+    });
+    guards.push({ form: form, was: formState(form), edited: form.hasAttribute('data-edited'), left: false });
+  }
+  function enhanceGuards(root) {
+    $$('form[data-warn-leave]:not([data-enhanced])', root).forEach(guardForm);
+  }
+  // leaving says that the visitor is leaving a form of their own accord; the flag is for the moment that it takes to go, since a link that is opened in another tab does not leave.
+  function leaving(form) {
+    guards.forEach(function (g) {
+      if (g.form !== form) return;
+      g.left = true;
+      setTimeout(function () {
+        g.left = false;
+      }, 1000);
+    });
+  }
+  document.addEventListener(
+    'submit',
+    function (e) {
+      if (e.target.matches && e.target.matches('form[data-warn-leave]')) leaving(e.target);
+    },
+    true,
+  );
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest && e.target.closest('form[data-warn-leave] .panel-foot a[href]');
+    if (link && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)) leaving(link.closest('form'));
+  });
+  window.addEventListener('beforeunload', function (e) {
+    var changed = guards.some(function (g) {
+      return document.contains(g.form) && !g.left && (g.edited || formState(g.form) !== g.was);
+    });
+    if (!changed) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+
   function syncSidebarToggle() {
     var btn = $('[data-sidebar-toggle]');
     if (!btn) return;
@@ -1972,6 +2025,7 @@
   // A panel that is fetched again brings its selects as plain ones, and its table with the widths that the server drew.
   new MutationObserver(function () {
     enhanceSelects(document);
+    enhanceGuards(document);
     enhanceColumns(document);
   }).observe(document.body, { childList: true, subtree: true });
 
@@ -2006,6 +2060,7 @@
   syncSelection(document);
   enhanceSelects(document);
   enhanceColumns(document);
+  enhanceGuards(document);
   endArrival();
   $$('[data-tabs]').forEach(function (set) {
     showActiveTab(set);

@@ -10,7 +10,9 @@ import (
 
 // Form is a panel that loads one model M, shows it as fields, and submits it through
 // an [Action]. After a submit that was accepted the user returns to the page they came
-// from; one that was not shows the form again with what they typed.
+// from; one that was not shows the form again with what they typed. With script, a form
+// that can be saved asks before the visitor leaves it with what they changed (a link, Back,
+// a reload), in the browser's own words; saving it, and its Cancel, do not ask.
 //
 // A Form with no Submit is the library's detail view: a panel of labelled values,
 // each quiet label over its value, with no inputs and no buttons. Use it to show one
