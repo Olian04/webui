@@ -24,7 +24,8 @@ test.describe('a moment', () => {
     await expect(devices(page).getByRole('button', { name: /UTC/ })).toHaveCount(0);
     const first = devices(page).locator('time[datetime]').first();
     const text = await first.textContent();
-    await first.click({ position: { x: 3, y: 3 } }); // in a row that opens a page: the click is the row's
+    const box = await first.boundingBox();
+    await page.mouse.click(box.x + 10, box.y + box.height / 2); // in a row that opens a page: the click is the row's, which is one link over its cells
     await expect(page).toHaveURL(/\/admin\/device\/dev_/);
     await page.goBack();
     await expect(devices(page).locator('time[datetime]').first()).toHaveText(text);
