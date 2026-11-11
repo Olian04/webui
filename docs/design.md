@@ -501,7 +501,9 @@ and a select the longest of its choices in a badge, with room for two of them si
 table is shared between its columns in those proportions at whatever width it has, so a column of badges is wider
 than a column of numbers, a long header is never cut, and two tables of the same columns have them in the same
 place. The selection and the row actions are left to what is in them. A cell whose content does not fit in its share
-still makes its column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did.
+still makes its column wider, so nothing is cut, and a table that is wider than its panel scrolls as it always did. A moment is
+not broken at its space, so its column is at least as wide as it is, whatever an app's Format makes of it: the share is only where a
+column starts, and what a moment says is not something a declaration can know.
 
 **Badges** sit in status columns: 19px tall, 2px radius, lowercase 11.5/500,
 built from a semantic family's 14% background and 30% border. A status badge
