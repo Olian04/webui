@@ -16,10 +16,19 @@ type TableProps struct {
 	// Label is the accessible name, e.g. "Devices". Required: a table with no
 	// name is unusable with a screen reader.
 	Label string
+
+	// SizesKey names the table for the widths that a visitor has given its columns, which are kept per table in the browser: the page's path
+	// template and the table's place on it, so that two addresses of one page share them. Empty for a table whose columns are not resized.
+	SizesKey string
 }
 
 templ Table(p TableProps) {
-	<table aria-label={ p.Label }>
+	<table
+		aria-label={ p.Label }
+		if p.SizesKey != "" {
+			data-sizes={ p.SizesKey }
+		}
+	>
 		{ children... }
 	</table>
 }

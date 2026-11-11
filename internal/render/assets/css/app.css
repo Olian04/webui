@@ -245,9 +245,9 @@ select {
   top: 0;
   height: 100vh;
 }
-/* The edge to drag, which script adds: a hit area a little wider than the border it is on, with a line that shows on hover, focus and
-   while it is dragged. It is not there in the rail, which has one width. */
-.side-resize {
+/* The edge to drag, which script adds (a splitter: the sidebar's, and each column's of a table): a hit area a little wider than the border it is on, with
+   a line that shows on hover, focus and while it is dragged. The sidebar's is not there in the rail, which has one width. */
+.splitter {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -257,7 +257,7 @@ select {
   touch-action: none;
   z-index: 5;
 }
-.side-resize::after {
+.splitter::after {
   content: '';
   position: absolute;
   top: 0;
@@ -266,20 +266,20 @@ select {
   width: 2px;
   background: transparent;
 }
-.side-resize:hover::after,
-.side-resize:focus-visible::after,
-html.sidebar-dragging .side-resize::after {
+.splitter:hover::after,
+.splitter:focus-visible::after,
+html.splitting .splitter::after {
   background: var(--blue);
 }
-.side-resize:focus-visible {
+.splitter:focus-visible {
   outline: 2px solid transparent;
 }
-html.sidebar-dragging,
-html.sidebar-dragging * {
+html.splitting,
+html.splitting * {
   cursor: col-resize !important;
   user-select: none;
 }
-html[data-sidebar='collapsed'] .side-resize {
+html[data-sidebar='collapsed'] .sidebar .splitter {
   display: none;
 }
 .side-brand {
@@ -1437,6 +1437,18 @@ thead th {
 }
 thead th.num {
   text-align: right;
+}
+/* The splitter of a column is inside its header, at its edge: the next header is painted over anything that is beyond it. */
+thead .splitter {
+  right: 0;
+}
+/* A column that a visitor gave a width: every column is as wide as it was laid out or given, and what does not fit its cell is cut. */
+table[data-sized] {
+  table-layout: fixed;
+}
+table[data-sized] tbody td {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 thead th a {
   display: inline-flex;
@@ -3162,7 +3174,7 @@ html.js .status-meta [data-built] {
     transition: opacity 0.18s;
   }
   .side-collapse,
-  .side-resize {
+  .splitter {
     display: none;
   }
   .sidebar {
@@ -3684,12 +3696,12 @@ thead th .filter-pop a {
   .code-text:focus,
   .code-view:focus-visible,
   .udiff:focus-visible,
-  .side-resize:focus-visible {
+  .splitter:focus-visible {
     outline-color: Highlight;
   }
-  .side-resize:hover::after,
-  .side-resize:focus-visible::after,
-  html.sidebar-dragging .side-resize::after {
+  .splitter:hover::after,
+  .splitter:focus-visible::after,
+  html.splitting .splitter::after {
     forced-color-adjust: none;
     background: Highlight;
   }

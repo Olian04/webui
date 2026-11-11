@@ -1112,7 +1112,7 @@
     var side = $('.sidebar');
     if (!side) return;
     var handle = document.createElement('div');
-    handle.className = 'side-resize';
+    handle.className = 'splitter';
     handle.setAttribute('role', 'separator');
     handle.setAttribute('aria-orientation', 'vertical');
     handle.setAttribute('aria-label', 'Resize sidebar');
@@ -1157,12 +1157,211 @@
       max: sideMax,
       choose: choose,
       reset: reset,
-      dragging: 'sidebar-dragging',
+      dragging: 'splitting',
     });
     window.addEventListener('resize', function () {
       if (want) show();
     });
     show();
+  }
+
+  // The columns of a table each have a splitter at the edge of their header. What a visitor gives a column is its width: the others keep theirs, so the table is as wide as they
+  // all are, and a table wider than its panel scrolls there. Only the widths that were given are kept, per table, in localStorage (webui.columns, the most recent fifty tables, by
+  // the table's data-sizes), and the column goes back to the width that it had of its own. The widths of the other columns are what they are when the table is laid out, measured
+  // each time, so they still follow the window. A phone keeps no widths: it has no splitters, and its tables are as wide as they are.
+  var COL_MIN = 48;
+  var COL_MAX = 800;
+  var COLS_KEPT = 50;
+  var COLS_KEY = 'webui.columns';
+  var phone = window.matchMedia ? window.matchMedia('(max-width: 640px)') : { matches: false };
+  var tablesSized = []; // what to apply again when the window becomes a phone, or stops being one
+
+  function clampColumn(px) {
+    return Math.round(Math.max(COL_MIN, Math.min(COL_MAX, px)));
+  }
+  function readColumns() {
+    try {
+      var all = JSON.parse(localStorage.getItem(COLS_KEY) || '{}');
+      return all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+    } catch (err) {
+      return {};
+    }
+  }
+  // keepColumns remembers what a table's columns were given, as the latest, or forgets the table when it was given nothing.
+  function keepColumns(key, entry) {
+    var all = readColumns();
+    delete all[key];
+    if (entry) all[key] = entry;
+    var keys = Object.keys(all);
+    keys.slice(0, Math.max(0, keys.length - COLS_KEPT)).forEach(function (k) {
+      delete all[k];
+    });
+    try {
+      if (Object.keys(all).length) localStorage.setItem(COLS_KEY, JSON.stringify(all));
+      else localStorage.removeItem(COLS_KEY);
+    } catch (err) {}
+  }
+  function columnLabel(th) {
+    var link = th.querySelector('.th-in > a');
+    if (link) return link.textContent.trim();
+    var inner = th.querySelector('.th-in');
+    var text = '';
+    if (inner) {
+      Array.prototype.forEach.call(inner.childNodes, function (n) {
+        if (n.nodeType === 3) text += n.textContent;
+      });
+    }
+    return text.trim();
+  }
+
+  function enhanceColumn(table) {
+    table.setAttribute('data-enhanced', '');
+    var head = table.tHead && table.tHead.rows[0];
+    var group = table.querySelector('colgroup');
+    var key = table.getAttribute('data-sizes');
+    if (!head || !group || !key) return;
+    var ths = Array.prototype.slice.call(head.cells);
+    var cols = Array.prototype.slice.call(group.children);
+    if (ths.length !== cols.length) return;
+    var data = []; // where the columns of data are among the columns: not the selection, and not the row actions
+    ths.forEach(function (th, i) {
+      if (!th.classList.contains('pick') && !th.classList.contains('actions')) data.push(i);
+    });
+    if (!data.length) return;
+    var starts = cols.map(function (col) {
+      return col.style.width;
+    }); // as the server drew them: a share of the table
+    var chosen = {}; // by position among the columns of data, in pixels
+    var kept = readColumns()[key];
+    if (kept && kept.n === data.length && kept.w && typeof kept.w === 'object') {
+      Object.keys(kept.w).forEach(function (d) {
+        var px = Number(kept.w[d]);
+        if (data[d] !== undefined && isFinite(px)) chosen[d] = clampColumn(px);
+      });
+    }
+    var fixed = false;
+    var handles = [];
+
+    function aria() {
+      handles.forEach(function (h) {
+        h.handle.setAttribute('aria-valuemin', String(COL_MIN));
+        h.handle.setAttribute('aria-valuemax', String(COL_MAX));
+        h.handle.setAttribute('aria-valuenow', String(Math.round(ths[h.at].getBoundingClientRect().width)));
+      });
+    }
+    function total() {
+      return cols.reduce(function (sum, col) {
+        return sum + (parseFloat(col.style.width) || 0);
+      }, 0);
+    }
+    // apply lays the table out as the server drew it, and then, when a column was given a width, fixes every column at the width that it has, or was given.
+    function apply() {
+      cols.forEach(function (col, i) {
+        col.style.width = starts[i];
+      });
+      table.style.width = '';
+      table.removeAttribute('data-sized');
+      fixed = false;
+      if (Object.keys(chosen).length && !phone.matches) {
+        var widths = ths.map(function (th) {
+          return th.getBoundingClientRect().width;
+        });
+        cols.forEach(function (col, i) {
+          col.style.width = widths[i] + 'px';
+        });
+        data.forEach(function (at, d) {
+          if (chosen[d] !== undefined) cols[at].style.width = chosen[d] + 'px';
+        });
+        table.style.width = total() + 'px';
+        table.setAttribute('data-sized', '');
+        fixed = true;
+      }
+      aria();
+    }
+    function remember() {
+      keepColumns(key, Object.keys(chosen).length ? { n: data.length, w: chosen } : null);
+    }
+    function choose(d, px) {
+      chosen[d] = clampColumn(px);
+      if (fixed) {
+        cols[data[d]].style.width = chosen[d] + 'px';
+        table.style.width = total() + 'px';
+        aria();
+      } else apply();
+      remember();
+    }
+    function reset(d) {
+      delete chosen[d];
+      apply();
+      remember();
+    }
+
+    data.forEach(function (at, d) {
+      var th = ths[at];
+      var handle = document.createElement('div');
+      handle.className = 'splitter';
+      handle.setAttribute('role', 'separator');
+      handle.setAttribute('aria-orientation', 'vertical');
+      handle.setAttribute('aria-label', 'Resize ' + columnLabel(th) + ' column');
+      handle.tabIndex = 0;
+      th.appendChild(handle);
+      handles.push({ handle: handle, at: at });
+      splitter(handle, {
+        size: function () {
+          return th.getBoundingClientRect().width;
+        },
+        min: function () {
+          return COL_MIN;
+        },
+        max: function () {
+          return COL_MAX;
+        },
+        choose: function (px) {
+          choose(d, px);
+        },
+        reset: function () {
+          reset(d);
+        },
+        dragging: 'splitting',
+      });
+    });
+
+    tablesSized = tablesSized.filter(function (t) {
+      return document.contains(t.table);
+    });
+    tablesSized.push({ table: table, apply: apply });
+    // The room that the table has is its panel's: when it changes, the columns that were not given a width take what they would, and the ones that were keep it.
+    var panel = table.parentElement;
+    if (window.ResizeObserver && panel) {
+      var queued = false;
+      new ResizeObserver(function () {
+        if (queued || !Object.keys(chosen).length) return;
+        queued = true;
+        requestAnimationFrame(function () {
+          queued = false;
+          if (document.contains(table)) apply();
+        });
+      }).observe(panel);
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        if (Object.keys(chosen).length && document.contains(table)) apply();
+      });
+    }
+    apply();
+  }
+  function enhanceColumns(root) {
+    $$('table[data-sizes]:not([data-enhanced])', root).forEach(enhanceColumn);
+  }
+  if (phone.addEventListener) {
+    phone.addEventListener('change', function () {
+      tablesSized = tablesSized.filter(function (t) {
+        return document.contains(t.table);
+      });
+      tablesSized.forEach(function (t) {
+        t.apply();
+      });
+    });
   }
 
   function syncSidebarToggle() {
@@ -1770,9 +1969,10 @@
     if (!e.target.closest('.msel')) closeSelects(null);
   });
 
-  // A panel that is fetched again brings its selects as plain ones.
+  // A panel that is fetched again brings its selects as plain ones, and its table with the widths that the server drew.
   new MutationObserver(function () {
     enhanceSelects(document);
+    enhanceColumns(document);
   }).observe(document.body, { childList: true, subtree: true });
 
   /* --------------------------------- start -------------------------------- */
@@ -1805,6 +2005,7 @@
   enhanceSidebarWidth();
   syncSelection(document);
   enhanceSelects(document);
+  enhanceColumns(document);
   endArrival();
   $$('[data-tabs]').forEach(function (set) {
     showActiveTab(set);
