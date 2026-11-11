@@ -64,14 +64,20 @@ func TestATimeAndAnOptionalTimeAreShownInUTCAsAMoment(t *testing.T) {
 	p := pageOf(t, objectsApp(&webui.PagedQuery{}), "/rows")
 	got := moments(t, p)
 
-	assert.True(t, slices.Contains(got, moment{"2026-10-09T07:00:00Z", "2026-10-09 07:00"})) // a zone is converted
-	assert.True(t, slices.Contains(got, moment{"2026-10-10T00:00:00Z", "2026-10-10 00:00"})) // midnight is a moment like any other
-	assert.True(t, slices.Contains(got, moment{"2026-10-09T10:00:00Z", "2026-10-09 10:00"})) // 1791540000
+	assert.True(t, slices.Contains(got, moment{"2026-10-09T07:00:00Z", "2026-10-09 07:00 UTC"})) // a zone is converted
+	assert.True(t, slices.Contains(got, moment{"2026-10-10T00:00:00Z", "2026-10-10 00:00 UTC"})) // midnight is a moment like any other
+	assert.True(t, slices.Contains(got, moment{"2026-10-09T10:00:00Z", "2026-10-09 10:00 UTC"})) // 1791540000
 	// The zero time and nil are not set: they show as nothing, and are no moment in 0001 or 1970.
 	for _, m := range got {
 		assert.False(t, strings.HasPrefix(m.At, "0001") || strings.HasPrefix(m.At, "1970"))
 	}
 	assert.Equal(t, len(got), 6)
+
+	// A moment read as the library reads it says its zone, and is the one that script can show in the visitor's.
+	for _, el := range page.One(t, "main", p.ByRole("main", "")).ByAttr("datetime", "") {
+		assert.True(t, el.Has("data-tz"))
+		assert.True(t, strings.HasSuffix(el.Text(), " UTC"))
+	}
 }
 
 func TestAMomentColumnSortsChronologicallyNotAsText(t *testing.T) {
@@ -117,7 +123,7 @@ func TestAMomentInAFormIsReadOnlyOutputAndAnEmptyOneIsADash(t *testing.T) {
 	t.Parallel()
 
 	p := pageOf(t, objectsApp(&webui.PagedQuery{}), "/one")
-	assert.DeepEqual(t, moments(t, p), []moment{{"2026-10-09T11:27:00Z", "2026-10-09 11:27"}})
+	assert.DeepEqual(t, moments(t, p), []moment{{"2026-10-09T11:27:00Z", "2026-10-09 11:27 UTC"}})
 	assert.Equal(t, len(p.ByText("empty")), 1) // Created is nil: not set
 	for _, f := range p.Fields() {
 		assert.Equal(t, f.Type, "hidden") // nothing to edit

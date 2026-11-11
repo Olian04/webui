@@ -322,9 +322,20 @@ func linkOf(f ir.Field, row any) string {
 	return f.Link(row)
 }
 
-// momentAttr is a moment as shown, "2026-10-09 11:27" or a date alone, as the
-// datetime attribute of a <time> element reads it.
-// It is empty for text that is not a moment, which is then shown as it is.
+// momentParts is the day and the clock of a moment's text, "2026-10-09 11:27": the clock is empty for a day alone.
+func momentParts(text string) (day, clock string) {
+	day, clock, _ = strings.Cut(text, " ")
+	return day, clock
+}
+
+// momentTitle is a moment in UTC as a title says it, with its zone, for a moment that is shown as an app words it.
+func momentTitle(day, clock string) string {
+	if clock == "" {
+		return day
+	}
+	return day + " " + clock + " UTC"
+}
+
 // momentOf is the machine-readable moment of a time field in a row, for its <time> element: the
 // value's own text, which is what it holds, and not the text it is shown as, which a Format may
 // have made something other than a moment. "" for any other field.
@@ -335,6 +346,8 @@ func momentOf(f ir.Field, row any) string {
 	return momentAttr(f.Get(row))
 }
 
+// momentAttr is a moment's text, "2026-10-09 11:27" or a day alone, as the datetime attribute of a <time> element reads it: empty for text that is not a moment,
+// which is then shown as it is.
 func momentAttr(text string) string {
 	if _, err := time.Parse("2006-01-02 15:04", text); err == nil {
 		return text[:10] + "T" + text[11:] + ":00Z"
@@ -620,7 +633,7 @@ const (
 	badgeGap   = 6
 	textPx     = 120 // a text or a link: about sixteen letters
 	numberPx   = 90  // a number as it is formatted, such as "520.6 KiB"
-	momentPx   = 127 // a moment as it is read when the app does not say how: "2006-01-02 15:04", sixteen figures and marks, which are wider than letters
+	momentPx   = 150 // a moment as it is read when the app does not say how: "2006-01-02 15:04 UTC", sixteen figures and marks, which are wider than letters, and its zone
 	barPx      = 140 // the bar and the number beside it
 	sparkPx    = 120 // a small chart, and the room round it
 	deltaPx    = 64  // a change: its arrow and its sign and its digits, such as "↑ +35.4%"

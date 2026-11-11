@@ -27,7 +27,7 @@ func TestMomentsAreShownInUTCAndFilteredAsMoments(t *testing.T) {
 
 	// A Time reads the same on a device.
 	device := moments(mainOf(t, pageAt(t, h, "/admin/device/dev_27c38b")))
-	assert.True(t, slices.Contains(device, moment{"2026-10-09T11:30:00Z", "2026-10-09 11:30"}))
+	assert.True(t, slices.Contains(device, moment{"2026-10-09T11:30:00Z", "2026-10-09 11:30 UTC"}))
 }
 
 func TestATimeWithAStoreIsADateAndTimePicker(t *testing.T) {

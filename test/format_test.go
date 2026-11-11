@@ -14,6 +14,7 @@ import (
 
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
+	"github.com/Olian04/webui/test/util/page"
 )
 
 type blob struct {
@@ -152,6 +153,13 @@ func TestAMomentReadsAsItsFormatAndStillHoldsAndSortsByTheMoment(t *testing.T) {
 		assert.False(t, strings.HasPrefix(m.At, "0001"))
 	}
 	assert.Equal(t, len(pageOf(t, h, "/admin/b").ByText("Jan 1")), 0)
+
+	// What the app wrote is left as it is, and the moment is in the title in UTC, with its zone, so a reader of "Oct 9" can have the rest. It is not
+	// one that script switches to the visitor's zone: that is for a moment read as the library reads it.
+	for _, el := range page.One(t, "main", pageOf(t, h, "/admin/b").ByRole("main", "")).ByAttr("datetime", "") {
+		assert.Equal(t, el.Attr("title"), strings.Replace(strings.Replace(el.Attr("datetime"), "T", " ", 1), ":00Z", " UTC", 1))
+		assert.False(t, el.Has("data-tz"))
+	}
 
 	// A sort is by the moment, not by what it reads as: the two Made both read "Oct 9".
 	made := func(target string) []string {
