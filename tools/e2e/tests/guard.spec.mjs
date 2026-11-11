@@ -91,9 +91,11 @@ test.describe('a form that can be saved', () => {
     await page.goto(DEVICE);
     await ip(page).click();
     await ip(page).fill('not an address');
+    const refusal = page.waitForResponse((r) => r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Save' }).click();
-    // refused, and drawn again with what was typed, and the visitor was not asked on the way
-    await expect(page.getByText('not an address').or(ip(page))).toBeVisible();
+    expect((await refusal).status()).toBe(422);
+    // refused, and drawn again with what was typed, and the visitor was not asked on the way: this is the page that the refusal made, and not the one that was sent
+    await expect(page.locator('form[data-edited]')).toHaveCount(1);
     await expect(ip(page)).toHaveValue('not an address');
     expect(asked).toEqual([]);
     await sidebarLink(page).click();
