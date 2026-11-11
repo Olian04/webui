@@ -1521,6 +1521,11 @@ tbody td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* A moment is read whole: it is not broken at its space, whatever the app made of it, so its column is at least as wide as it is. A table with no room for that
+   scrolls, as a wide table does, and does not cut it. */
+tbody td time {
+  white-space: nowrap;
+}
 td.pick,
 th.pick {
   width: 34px;

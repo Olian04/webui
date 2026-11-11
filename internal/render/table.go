@@ -610,7 +610,8 @@ func columnWidths(cols []columnView) []string {
 }
 
 // The room a column needs, in pixels of a 13px table: a letter of text, the padding of a cell, the room for the sort link
-// and the filter beside a header, and what is in the cell that no row can say.
+// and the filter beside a header, and what is in the cell that no row can say. What is in a cell is without the padding of
+// the cell, which columnNeed adds once, so that every kind is given its room the same way.
 const (
 	letterPx   = 7.2
 	cellPx     = 20 // the padding of a cell
@@ -619,7 +620,7 @@ const (
 	badgeGap   = 6
 	textPx     = 120 // a text or a link: about sixteen letters
 	numberPx   = 90  // a number as it is formatted, such as "520.6 KiB"
-	momentPx   = 110
+	momentPx   = 127 // a moment as it is read when the app does not say how: "2006-01-02 15:04", sixteen figures and marks, which are wider than letters
 	barPx      = 140 // the bar and the number beside it
 	sparkPx    = 120 // a small chart, and the room round it
 	deltaPx    = 64  // a change: its arrow and its sign and its digits, such as "↑ +35.4%"
@@ -627,7 +628,9 @@ const (
 	unknownPx  = 110 // a select whose values are whatever its rows hold
 )
 
-// columnNeed is what one column needs: the more of what its header takes and what its cell takes.
+// columnNeed is what one column needs: the more of what its header takes and what its cell takes. It is where a column starts,
+// as a share of the table. A moment is not cut, whatever the app made of it (a Format may read "3 h ago" or a whole
+// date and time), because the stylesheet keeps it on one line, so the column is at least as wide as it is.
 func columnNeed(f ir.Field) float64 {
 	header := float64(utf8.RuneCountInString(f.Label))*letterPx + cellPx
 	if f.Key != "" && (!f.NoSort || !f.NoFilter) {
@@ -647,7 +650,7 @@ func columnNeed(f ir.Field) float64 {
 					second = n
 				}
 			}
-			cell = float64(longest)*letterPx + badgePx + cellPx
+			cell = float64(longest)*letterPx + badgePx
 			if f.Multi && len(f.Choices) > 1 {
 				// room for two badges side by side, which is what a value of several looks like before it wraps
 				cell += float64(second)*letterPx + badgePx + badgeGap
@@ -662,7 +665,7 @@ func columnNeed(f ir.Field) float64 {
 	case f.Kind == ir.KindInt || f.Kind == ir.KindFloat:
 		cell = numberPx
 	}
-	return max(header, cell)
+	return max(header, cell+cellPx)
 }
 
 // inPlace marks a link that replaces the panel it is in, with the panel as the server draws it at the address that the link leads to: the sort and pager links of a table,

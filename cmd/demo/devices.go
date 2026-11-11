@@ -196,7 +196,7 @@ var DevicesTable = webui.Table[Device]{
 		Page: Details,
 		Args: func(_ context.Context, d Device) DeviceArgs { return DeviceArgs{ID: d.ID} },
 	},
-	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, Occurrences, Stored, Rate, Recent},
+	Columns: []webui.Accessor[Device]{DeviceID, IP, Status, Tags, Site, LastSeen, Occurrences, Stored, Rate, Recent},
 }
 
 // NewDevicePage is the form that makes a device: a Form of a model that is new, so what it loads is a zero Device. The
