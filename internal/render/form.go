@@ -436,6 +436,14 @@ func num(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
 // chooser, which is what carries a file. A form without one is posted as it always was.
 func (v LoadedForm) formAttrs() templ.Attributes {
 	attrs := templ.Attributes{"data-view-form": ViewID(v.Node.At)}
+	if v.Node.Submit != nil && !v.SubmitRefused {
+		// A form that the visitor can save is one that script does not let them leave with what they changed (data-warn-leave), and one that is drawn again with what
+		// they typed, after a refusal, has changes already: they are in it, and nowhere else (data-edited).
+		attrs["data-warn-leave"] = true
+		if len(v.Values) > 0 {
+			attrs["data-edited"] = true
+		}
+	}
 	for f := range ir.Flatten(v.Node.Fields) {
 		if f.File != nil && v.editable(f) {
 			attrs["enctype"] = "multipart/form-data"
