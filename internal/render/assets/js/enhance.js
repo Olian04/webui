@@ -1043,9 +1043,66 @@
     fit();
   })();
 
-  // The sidebar's edge is a handle that script adds, to drag or to move with the arrow keys: a window splitter. Its width is a browser
-  // preference, like the collapse, kept in localStorage and put back by prefs.js before first paint. A window too small for the width
-  // it was given holds it to what fits, without storing the smaller one.
+  // A splitter is a handle that script adds, to drag or to move with the keys: a window splitter, a separator that says its value and its range. What it does is the same
+  // wherever it is, so it is written once: a drag moves the size by what the pointer moved, the arrows by 16px (64 with Shift), Home and End go to the ends of the range,
+  // and Enter and a double click go back to the size that it has of its own. The one that uses it says what its size is (size), what it may be (min, max), how it is chosen
+  // (choose) and forgotten (reset), and what the page takes while it is dragged (dragging, a class of the root, for the cursor).
+  function splitter(handle, how) {
+    // A drag ends however the pointer is let go of, and the cursor that the whole page takes while it lasts must not outlive it: the button
+    // can be released outside the window, over a menu, or after the window has lost focus, and then the handle gets no pointerup.
+    var root = document.documentElement;
+    var from = null;
+    function drop() {
+      from = null;
+      root.classList.remove(how.dragging);
+    }
+    handle.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      drop();
+      from = { x: e.clientX, size: how.size() };
+      handle.setPointerCapture(e.pointerId);
+      root.classList.add(how.dragging);
+      e.preventDefault();
+    });
+    handle.addEventListener('pointermove', function (e) {
+      if (!from) return;
+      if (e.buttons === 0) drop(); // let go somewhere that was not told
+      else how.choose(from.size + e.clientX - from.x);
+    });
+    ['pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'].forEach(function (name) {
+      handle.addEventListener(name, drop);
+    });
+    window.addEventListener('blur', drop);
+    window.addEventListener('pointerup', drop, true);
+    handle.addEventListener('dblclick', how.reset);
+    handle.addEventListener('keydown', function (e) {
+      var now = how.size();
+      var step = e.shiftKey ? 64 : 16;
+      switch (e.key) {
+        case 'ArrowLeft':
+          how.choose(now - step);
+          break;
+        case 'ArrowRight':
+          how.choose(now + step);
+          break;
+        case 'Home':
+          how.choose(how.min());
+          break;
+        case 'End':
+          how.choose(how.max());
+          break;
+        case 'Enter':
+          how.reset();
+          break;
+        default:
+          return;
+      }
+      e.preventDefault();
+    });
+  }
+
+  // The sidebar's edge is a splitter. Its width is a browser preference, like the collapse, kept in localStorage and put back by prefs.js before first
+  // paint. A window too small for the width it was given holds it to what fits, without storing the smaller one.
   var SIDE_DEFAULT = 240;
   var SIDE_MIN = 180;
   function sideMax() {
@@ -1090,56 +1147,17 @@
         localStorage.removeItem('webui.sidebar.width');
       } catch (err) {}
     }
-
-    // A drag ends however the pointer is let go of, and the cursor that the whole page takes while it lasts must not outlive it: the button
-    // can be released outside the window, over a menu, or after the window has lost focus, and then the handle gets no pointerup.
-    var from = null;
-    function drop() {
-      from = null;
-      root.classList.remove('sidebar-dragging');
-    }
-    handle.addEventListener('pointerdown', function (e) {
-      if (e.button !== 0) return;
-      drop();
-      from = { x: e.clientX, w: side.getBoundingClientRect().width };
-      handle.setPointerCapture(e.pointerId);
-      root.classList.add('sidebar-dragging');
-      e.preventDefault();
-    });
-    handle.addEventListener('pointermove', function (e) {
-      if (!from) return;
-      if (e.buttons === 0) drop(); // let go somewhere that was not told
-      else choose(from.w + e.clientX - from.x);
-    });
-    ['pointerup', 'pointercancel', 'lostpointercapture', 'contextmenu'].forEach(function (name) {
-      handle.addEventListener(name, drop);
-    });
-    window.addEventListener('blur', drop);
-    window.addEventListener('pointerup', drop, true);
-    handle.addEventListener('dblclick', reset);
-    handle.addEventListener('keydown', function (e) {
-      var now = side.getBoundingClientRect().width;
-      var step = e.shiftKey ? 64 : 16;
-      switch (e.key) {
-        case 'ArrowLeft':
-          choose(now - step);
-          break;
-        case 'ArrowRight':
-          choose(now + step);
-          break;
-        case 'Home':
-          choose(SIDE_MIN);
-          break;
-        case 'End':
-          choose(sideMax());
-          break;
-        case 'Enter':
-          reset();
-          break;
-        default:
-          return;
-      }
-      e.preventDefault();
+    splitter(handle, {
+      size: function () {
+        return side.getBoundingClientRect().width;
+      },
+      min: function () {
+        return SIDE_MIN;
+      },
+      max: sideMax,
+      choose: choose,
+      reset: reset,
+      dragging: 'sidebar-dragging',
     });
     window.addEventListener('resize', function () {
       if (want) show();
