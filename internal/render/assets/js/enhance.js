@@ -1147,6 +1147,98 @@
     show();
   }
 
+  // A moment is read in UTC, as the server drew it ("2026-10-09 11:27 UTC", a <time> marked data-tz), and in the visitor's own time zone when they ask: a click on one switches
+  // every moment on the page, and the choice is a browser preference like the theme's, in localStorage (webui.time, "local", and absent for UTC). Script makes the moment a
+  // button, from the nodes that are there, and says the moment in the other zone from its datetime, which is UTC and is not touched. A moment that an app worded with a
+  // Format ("3 h ago") is theirs, and is left as it is: only its title, which holds the moment in UTC, gets the moment in the visitor's zone as well. It is not in the
+  // markup before first paint, so a visitor who chose their own zone may see UTC for an instant.
+  var TIME_KEY = 'webui.time';
+  var timesLocal = false;
+  try {
+    timesLocal = localStorage.getItem(TIME_KEY) === 'local';
+  } catch (err) {}
+  var timeFormat = null; // the visitor's zone, in a form that has its parts: the day and the clock in the library's own shape, and the zone's name
+  try {
+    timeFormat = new Intl.DateTimeFormat('en-GB', {
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+  } catch (err) {}
+
+  // inZone is a moment, as its datetime says it (UTC), as it reads in the visitor's zone, or null when the browser cannot say.
+  function inZone(iso) {
+    var at = new Date(iso);
+    if (!timeFormat || isNaN(at.getTime())) return null;
+    var p = {};
+    timeFormat.formatToParts(at).forEach(function (part) {
+      p[part.type] = part.value;
+    });
+    return { date: p.year + '-' + p.month + '-' + p.day, clock: p.hour + ':' + p.minute, zone: p.timeZoneName || '' };
+  }
+
+  // showTime draws a moment in the zone that is chosen.
+  function showTime(el) {
+    var iso = el.getAttribute('datetime') || '';
+    var utc = { date: iso.slice(0, 10), clock: iso.slice(11, 16), zone: 'UTC' };
+    var own = inZone(iso);
+    if (el.hasAttribute('data-tz')) {
+      var shown = (timesLocal && own) || utc;
+      var parts = { '.t-date': shown.date, '.t-clock': shown.clock, '.t-zone': shown.zone };
+      Object.keys(parts).forEach(function (selector) {
+        var part = el.querySelector(selector);
+        if (part) part.textContent = parts[selector];
+      });
+      var button = el.querySelector('.time-switch');
+      if (button) button.title = timesLocal && own ? 'In your time zone. Click for UTC.' : 'In UTC. Click for your time zone.';
+    } else if (el.hasAttribute('data-title-utc')) {
+      var said = el.getAttribute('data-title-utc');
+      el.title = own ? said + ' · ' + own.date + ' ' + own.clock + ' ' + own.zone : said;
+    }
+  }
+
+  function enhanceTime(el) {
+    el.setAttribute('data-enhanced', '');
+    if (el.hasAttribute('data-tz') && !el.closest('a, button')) {
+      // A button, which is what a click on a moment is, in the nodes that the server drew. Not in a link, which is one control already (a row's first cell).
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'time-switch';
+      while (el.firstChild) button.appendChild(el.firstChild);
+      el.appendChild(button);
+    } else if (!el.hasAttribute('data-tz') && el.title) {
+      el.setAttribute('data-title-utc', el.title);
+    }
+    showTime(el);
+  }
+  function enhanceTimes(root) {
+    $$('time[datetime][data-tz]:not([data-enhanced]), time[datetime][title]:not([data-tz]):not([data-enhanced])', root).forEach(enhanceTime);
+  }
+  function showTimes() {
+    $$('time[data-enhanced]').forEach(showTime);
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest || !e.target.closest('.time-switch')) return;
+    e.preventDefault();
+    timesLocal = !timesLocal;
+    try {
+      if (timesLocal) localStorage.setItem(TIME_KEY, 'local');
+      else localStorage.removeItem(TIME_KEY);
+    } catch (err) {}
+    showTimes();
+    var own = inZone(new Date().toISOString());
+    announce(timesLocal ? 'Times are shown in your time zone' + (own && own.zone ? ', ' + own.zone : '') : 'Times are shown in UTC');
+  });
+  window.addEventListener('storage', function (e) {
+    if (e.key !== TIME_KEY) return;
+    timesLocal = e.newValue === 'local';
+    showTimes();
+  });
+
   function syncSidebarToggle() {
     var btn = $('[data-sidebar-toggle]');
     if (!btn) return;
@@ -1755,6 +1847,7 @@
   // A panel that is fetched again brings its selects as plain ones.
   new MutationObserver(function () {
     enhanceSelects(document);
+    enhanceTimes(document);
   }).observe(document.body, { childList: true, subtree: true });
 
   /* --------------------------------- start -------------------------------- */
@@ -1787,6 +1880,7 @@
   enhanceSidebarWidth();
   syncSelection(document);
   enhanceSelects(document);
+  enhanceTimes(document);
   endArrival();
   $$('[data-tabs]').forEach(function (set) {
     showActiveTab(set);
