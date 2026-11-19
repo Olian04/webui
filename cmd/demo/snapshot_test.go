@@ -34,7 +34,7 @@ func TestSnapshot(t *testing.T) {
 	paths := []string{
 		"/admin/", "/admin/device", "/admin/alert", "/admin/settings", "/admin/rule", "/admin/config", "/admin/handbook", "/admin/activity", "/admin/audit", "/admin/compare",
 		"/admin/site", "/admin/retention", "/admin/config", "/admin/system", "/admin/firmware", "/admin/files",
-		"/admin/loading/order", "/admin/nowhere", "/admin/device?devices.sort=id&devices.offset=10", "/admin/alert?open-alerts.sort=severity",
+		"/admin/probes", "/admin/nowhere", "/admin/device?devices.sort=id&devices.offset=10", "/admin/alert?open-alerts.sort=severity",
 	}
 	if err := os.MkdirAll(dir, 0o750); err != nil { //nolint:gosec // G703: the directory is the one that whoever runs this asked for, in the environment
 		t.Fatal(err)

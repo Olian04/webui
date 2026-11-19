@@ -5,8 +5,8 @@ import { test, expect } from './fixtures.mjs';
 // order; whether "loading" is still on screen is the stylesheet's.)
 
 test('a page that was sent as it was built is not still loading when it is whole', async ({ page }) => {
-  await page.goto('/admin/loading/order');
-  await expect(page.getByRole('heading', { name: 'Last (50 ms)' })).toBeVisible();
+  await page.goto('/admin/probes');
+  await expect(page.getByRole('heading', { name: 'Heartbeat probes (10 ms)' })).toBeVisible();
   await expect(page.getByText(/^\d+(\.\d+)? ms$/).first()).toBeVisible();
   await expect(page.getByText('loading', { exact: true })).toBeHidden();
 });
