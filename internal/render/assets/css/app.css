@@ -3093,11 +3093,31 @@ html.js .status-meta [data-built] {
 .tip:focus .tip-body {
   animation: fade-in 0.12s ease-out;
 }
+/* A dialog fades in and out: it is shown at full opacity when it is open, and from nothing when it opens (@starting-style); when it closes, display and overlay (the top layer) are held for
+   the length of the fade, which a transition of them as discrete values does, so that it is still drawn while it goes. A browser that cannot do that closes it at once. */
+dialog.confirm,
+dialog.preview-dialog,
+dialog.confirm::backdrop,
+dialog.preview-dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.16s ease-out,
+    display 0.16s allow-discrete,
+    overlay 0.16s allow-discrete;
+}
 dialog.confirm[open],
 dialog.preview-dialog[open],
 dialog.confirm[open]::backdrop,
 dialog.preview-dialog[open]::backdrop {
-  animation: fade-in 0.16s ease-out;
+  opacity: 1;
+}
+@starting-style {
+  dialog.confirm[open],
+  dialog.preview-dialog[open],
+  dialog.confirm[open]::backdrop,
+  dialog.preview-dialog[open]::backdrop {
+    opacity: 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   /* Nothing moves that does not have to: a change is a change of state, at once, and nothing loops. A busy panel is still known to be busy,
