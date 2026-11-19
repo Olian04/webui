@@ -105,19 +105,6 @@ var app = webui.App{
 			webui.NavPage{Page: HandbookGlossary, Label: "Glossary", Icon: "spell-check"},
 			webui.NavURL{Label: "The library's reference", Icon: "arrow-up-right-from-square", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 		}},
-		webui.NavGroup{Label: "Layout", Icon: "table-columns", Items: []webui.NavItem{
-			webui.NavPage{Page: LayoutSplit, Label: "Split rows", Icon: "table-columns"},
-			webui.NavPage{Page: LayoutRail, Label: "Main and rail", Icon: "table-cells-large"},
-			webui.NavPage{Page: LayoutColumns, Label: "Columns in columns", Icon: "grip"},
-			webui.NavPage{Page: LayoutWeights, Label: "Weighted columns", Icon: "table-columns"},
-			webui.NavPage{Page: LayoutTabs, Label: "Tabs side by side", Icon: "window-restore"},
-			webui.NavPage{Page: LayoutManyTabs, Label: "Many tabs", Icon: "folder-tree"},
-			webui.NavPage{Page: LayoutDeep, Label: "Nested five deep", Icon: "layer-group"},
-			webui.NavPage{Page: LayoutReview, Label: "Review a change", Icon: "code-compare"},
-			webui.NavPage{Page: LayoutRunbook, Label: "Runbook and state", Icon: "book-open"},
-			webui.NavPage{Page: LayoutToolbars, Label: "Toolbars", Icon: "grip"},
-			webui.NavPage{Page: LayoutList, Label: "A long list", Icon: "list"},
-		}},
 		webui.NavGroup{Label: "Loading", Icon: "spinner", Items: []webui.NavItem{
 			webui.NavPage{Page: LoadingOrder, Label: "In order", Icon: "list-ol"},
 			webui.NavPage{Page: LoadingStaircase, Label: "Staircase (10 s)", Icon: "stairs"},
@@ -129,7 +116,7 @@ var app = webui.App{
 			webui.NavPage{Page: LoadingFast, Label: "Answers at once", Icon: "bolt"},
 		}},
 	},
-	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutWeights, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook, LayoutToolbars, LayoutList},
+	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast},
 }
 
 var (

@@ -18,7 +18,7 @@ import (
 // table that pages.
 var benchPages = []string{
 	"/admin/", "/admin/device", "/admin/alert", "/admin/settings", "/admin/rule",
-	"/admin/layout/review", "/admin/handbook", "/admin/activity", "/admin/audit",
+	"/admin/config", "/admin/handbook", "/admin/activity", "/admin/audit",
 }
 
 // benchSite is the whole site, for an editor, who may do everything and so is drawn every control.

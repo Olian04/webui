@@ -52,13 +52,13 @@ test('no page of the sidebar says anything wrong in the console', async ({ page 
   expect(problems).toEqual([]);
 });
 
-test('a long list scrolls inside its panel and the page does not grow with it', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 600 });
-  await page.goto('/admin/layout/list');
-  const grew = await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight + 1);
-  expect(grew).toBe(false);
-  const many = page.getByRole('heading', { name: 'Many items' }).locator('xpath=ancestor::*[.//ul][1]');
-  const scrolls = await many.evaluate((el) => {
+test('a long list is held to the window and scrolls inside its panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 400 });
+  await page.goto('/admin/activity?open-alerts.limit=11'); // all eleven open alerts, which are more than 16rem holds
+  const panel = page.getByRole('heading', { name: 'Open alerts', level: 2 }).locator('xpath=ancestor::*[@data-view][1]');
+  const box = await panel.boundingBox();
+  expect(box.height).toBeLessThan(400); // held to the window, where eleven items would be taller
+  const scrolls = await panel.evaluate((el) => {
     const body = [...el.querySelectorAll('*')].find((n) => n.scrollHeight > n.clientHeight + 1 && getComputedStyle(n).overflowY !== 'visible');
     return !!body;
   });
@@ -75,10 +75,10 @@ test('the link in a column header is large enough to hit', async ({ page }) => {
 test('two panels of a row are side by side when there is room and one under the other when there is not', async ({ page }) => {
   const top = async (name) => (await page.getByRole('heading', { name }).boundingBox()).y;
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto('/admin/layout/split');
-  const wide = [await top('Row 1, left: a tall form'), await top('Row 1, right: two rows')];
+  await page.goto('/admin/activity');
+  const wide = [await top('Release calendar'), await top('Dashboards')];
   expect(Math.abs(wide[0] - wide[1])).toBeLessThan(4);
   await page.setViewportSize({ width: 420, height: 900 });
-  const narrow = [await top('Row 1, left: a tall form'), await top('Row 1, right: two rows')];
+  const narrow = [await top('Release calendar'), await top('Dashboards')];
   expect(Math.abs(narrow[0] - narrow[1])).toBeGreaterThan(40);
 });

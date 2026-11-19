@@ -96,3 +96,15 @@ func TestTheLandingPageToolbarShowsALatencyTrend(t *testing.T) {
 	assert.Equal(t, valuesOf(latency)["Latency"], "−6.10% (better)") // latency is down, which is good, whichever way the arrow points
 	assert.Equal(t, len(bar.ByRole("img", "Latency: 24 values, from 140 to 184, lowest 134, highest 210")), 1)
 }
+
+// The landing page's rows are Columns of unequal weight and a Split whose first column is Tabs: the panels are where those layouts put them, and only the selected tab is read.
+func TestTheOverviewIsWeightedColumnsAndASplitOfTabsAndAForm(t *testing.T) {
+	h := handler(t)
+	p := pageAt(t, h, "/admin/")
+	assert.DeepEqual(t, panelsOf(p), [][2]string{{"p.0", ""}, {"p.1.0", "Devices"}, {"p.1.1", "Open alerts"}, {"p.2.0.0", "Recent events"}, {"p.2.1", "Collector settings"}})
+	assert.True(t, shown(p, "Recent events"))
+	assert.Equal(t, len(p.ByRole("heading", "Collector")), 0) // the Status tab is not the selected one, so it is not read
+	status := pageAt(t, h, "/admin/?tabs.tab=status")
+	assert.Equal(t, len(status.ByRole("heading", "Collector")), 1)
+	assert.False(t, shown(status, "Recent events"))
+}
