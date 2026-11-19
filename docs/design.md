@@ -122,7 +122,7 @@ Inter, falling back to the system UI stack. One family; no display face.
 | Table header, secondary | 12.5 | 500                     | Text secondary |
 | Field label             | 12   | 400                     | Text secondary |
 | Description             | 12.5 | 400                     | Text secondary |
-| Section caption         | 11   | 500, uppercase, `.05em` | Text secondary |
+| Section (category)      | 13.5 | 400, 600 when open      | Text secondary, text when open |
 
 Addresses, payloads and code (the editor, a diff, a Markdown code block) use a monospace face at 12–12.5 in Text secondary. A table cell is not monospace, since no accessor can ask for it. Numeric columns
 use tabular figures and right alignment.
@@ -193,10 +193,12 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
-capitalised initial in the rail). Groups carry an 11px uppercase caption above
-them. In the rail the caption has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
-centred in 21px of height for each group, and the caption is its tooltip. Nothing is drawn above the first
-group. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
+capitalised initial in the rail). A group is a category: a row as tall as an item, 13.5px, with the icon that the app gave it (or none), its name, and a
+chevron at the right that points down shut and up open; it is a `<details>`, so it needs no script and is a button to a reader, and its entries are in a block
+of their own under it, in the hover colour with the corners of a control. A category is open when it holds the page on screen, in the text colour and 600; the
+others are shut, in the secondary colour, and what the visitor opens by hand is not kept. In the rail the category has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
+centred in 21px of height for each group, and the name is its tooltip. Nothing is drawn above the first
+group, and every entry of every category is drawn, whether the category is open or not. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
 whose groups were marked by the same kind of line would have two things that look alike and mean different
 things, an edge and *these belong together*. A line across the rail, a dot, a short thin rule, the caption's
 first letters (clipped, "CONFIGU") and space alone were tried. The status bar separates its figures with a

@@ -27,6 +27,7 @@ func (a App) validate() []CompileError {
 	f := a.collectFacts()
 	var errs []CompileError
 	errs = append(errs, validateTheme(a.Theme)...)
+	errs = append(errs, validateNavSections(a.Sections)...)
 	errs = append(errs, validateExternalLinks(a.ExternalLinks)...)
 	if n := len(a.Secret); n > 0 && n < 16 {
 		errs = append(errs, CompileError{
@@ -140,6 +141,28 @@ func specOf(t Theme) theme.Spec {
 		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
 		Light: mode(t.Light), Dark: mode(t.Dark),
 	}
+}
+
+// validateNavSections checks the sections the app gave an icon: each has a name that is its own, and an icon that there is.
+func validateNavSections(items []NavSection) []CompileError {
+	var errs []CompileError
+	seen := map[string]bool{}
+	for i, it := range items {
+		at := fmt.Sprintf("App.Sections[%d]", i)
+		bad := func(detail, fix string) { errs = append(errs, CompileError{Detail: at + " " + detail, Fix: fix}) }
+		switch {
+		case it.Name == "":
+			bad("has no Name", "Set Name to the section's name, as the entries that belong to it say it in Nav.Section.")
+		case seen[it.Name]:
+			bad(fmt.Sprintf("names the section %q, which an earlier one has", it.Name), "Name each section once: its icon and its place are one.")
+		}
+		seen[it.Name] = true
+		if it.Icon != "" && !assets.HasIcon(it.Icon) {
+			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
+				"Use the name of a Font Awesome Free solid icon, such as \"display\", or leave Icon empty.")
+		}
+	}
+	return errs
 }
 
 // validateExternalLinks checks the app's external links: every one has a label and an

@@ -147,11 +147,9 @@ type Nav struct {
 	// icons.
 	Icon string
 
-	// Section is the caption of the group this entry is listed in. The list is
-	// grouped by Section and not by position: the entries with no Section come
-	// first, then each section in the order it is first named, with its entries in
-	// the order the pages are given. An entry belongs to a section only by saying
-	// so.
+	// Section is the name of the group this entry is listed in, which the sidebar draws as a category that the visitor opens and shuts (see [App.Sections], which gives it
+	// an icon and a place). The list is grouped by Section and not by position: the entries with no Section come first, then each section in the order it is first named,
+	// or the order the app lists them in, with its entries in the order the pages are given. An entry belongs to a section only by saying so.
 	Section string
 }
 

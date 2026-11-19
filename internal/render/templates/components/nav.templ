@@ -72,8 +72,28 @@ templ SidebarCollapse() {
 	</button>
 }
 
-templ NavSection(label string) {
-	<div class="nav-section caption" title={ label }>{ label }</div>
+// NavGroupProps is a category of the sidebar: a name, the icon that the app gave it, and whether it is open.
+type NavGroupProps struct {
+	Label string
+	Icon  IconName
+	Open  bool // it holds the entry that is on screen
+}
+
+// NavGroup is a section of the sidebar as a category that the visitor opens and closes. It is a <details>, so that it needs no script, is a button to a reader, and works with the
+// keys that a button does: Enter and Space. The entries are inside it. A rail shows them all, whether it is open or not (see the stylesheet).
+templ NavGroup(p NavGroupProps) {
+	<details class="nav-group" open?={ p.Open }>
+		<summary class="nav-section" title={ p.Label }>
+			if p.Icon != IconNone {
+				@Icon(IconProps{Name: p.Icon, Class: "ni"})
+			}
+			<span>{ p.Label }</span>
+			@Icon(IconProps{Name: IconChevron, Class: "nav-chevron"})
+		</summary>
+		<div class="nav-group-items">
+			{ children... }
+		</div>
+	</details>
 }
 
 // NavItemProps is one entry.
