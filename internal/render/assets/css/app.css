@@ -336,7 +336,7 @@ a.side-brand:hover {
   overflow-y: auto;
   padding: 6px 0 10px;
 }
-/* A section is a category that opens and closes: a <details>, so that it needs no script, with its entries in a block of their own. It is open when it holds the page on screen. */
+/* A section is a category that opens and closes: a <details>, so that it needs no script, with its entries under it. It is open when it holds the page on screen. */
 .nav-section {
   display: flex;
   align-items: center;
@@ -386,10 +386,7 @@ a.side-brand:hover {
   transform: rotate(180deg);
 }
 .nav-group-items {
-  margin: 0 8px 6px;
-  padding: 3px 0;
-  border-radius: var(--radius);
-  background: var(--hover);
+  padding-bottom: 6px;
 }
 .nav-item {
   display: flex;
@@ -3120,9 +3117,7 @@ html.js .status-meta [data-built] {
     background: none;
   }
   html[data-sidebar='collapsed'] .nav-group-items {
-    margin: 0;
     padding: 0;
-    background: none;
   }
   html[data-sidebar='collapsed'] .nav-section::before {
     content: '';

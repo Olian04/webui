@@ -194,8 +194,8 @@ bar so the two align); grouped navigation; a footer pinned to the bottom.
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, and shows its label's
 capitalised initial in the rail). A group is a category: a row as tall as an item, 13.5px, with the icon that the app gave it (or none), its name, and a
-chevron at the right that points down shut and up open; it is a `<details>`, so it needs no script and is a button to a reader, and its entries are in a block
-of their own under it, in the hover colour with the corners of a control. A category is open when it holds the page on screen, in the text colour and 600; the
+chevron at the right that points down shut and up open; it is a `<details>`, so it needs no script and is a button to a reader, and its entries are under it, as wide
+as any entry, with no background of their own (the category is told from its entries by its icon, its weight and its chevron). A category is open when it holds the page on screen, in the text colour and 600; the
 others are shut, in the secondary colour, and what the visitor opens by hand is not kept. In the rail the category has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
 centred in 21px of height for each group, and the name is its tooltip. Nothing is drawn above the first
 group, and every entry of every category is drawn, whether the category is open or not. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
