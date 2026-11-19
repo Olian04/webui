@@ -606,16 +606,18 @@ body that says *Could not load*, or the refusal's text and link, and the page st
 
 ## 13. Motion
 
-Motion exists to say *something is happening* and nothing else.
+Motion exists to say *something is happening*, or where a thing that has opened came from, and nothing else.
 
 - Hover and border transitions: 110–130ms (`--motion` is 120ms).
 - Toast entry: 160ms rise.
 - Skeleton pulse: 1.1s, 100% → 40%.
 - Spinner: 700ms linear.
-- Phone drawers (640px only): 180ms slide. The one allowed slide; nothing else slides.
+- Phone drawers (640px only): 180ms slide.
+- A category of the sidebar slides open and shut: 160ms, the height of its content (`::details-content`, with `interpolate-size`), and its chevron turns in 120ms. A browser that cannot animate it snaps.
+- A menu, the Export menu, a column filter and a description fade in when they open: 120ms, a menu with a 4px drop (the Export menu, which opens upward, rises 4px instead); a filter and a description fade only, since script places them. A dialog and its backdrop fade in and out in 160ms, and do not scale or move: a box that is still moving when it is clicked is one that a test, and a hand, has to wait for. Out is done with `@starting-style` and discrete transitions of `display` and `overlay`, which hold the dialog in the top layer for the length of the fade; a browser that cannot do that closes it at once. Nothing else fades out: a menu, a filter and a description close at once.
 - Search palette `.pending`: a static dim, no transition.
 
-Nothing else slides, nothing bounces, nothing animates on first paint.
+Nothing else slides, nothing bounces, nothing loops (but a spinner and a skeleton), nothing animates on first paint, and `prefers-reduced-motion` takes every one of these away.
 
 ### Navigation
 

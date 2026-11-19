@@ -51,6 +51,29 @@ test('a question that is asked before an action can be answered no', async ({ pa
   await expect(page.getByText(/Syncing, \d+ of \d+ devices/)).toHaveCount(0);
 });
 
+test('a question fades in and fades out, and is still drawn while it goes', async ({ page }) => {
+  await page.goto('/admin/');
+  await page.getByRole('button', { name: 'Sync now' }).click();
+  const question = page.getByRole('alertdialog');
+  await expect(question).toBeVisible();
+  await expect(question).toHaveCSS('opacity', '1'); // it came in from nothing, and is whole now
+  // Closed, the dialog is not open any more but is still drawn, fading: in a frame or two its opacity is between none and whole, and then it is gone.
+  const seen = await question.evaluate(async (d) => {
+    d.querySelector('button[command="close"]').click();
+    const frames = [];
+    const t0 = performance.now();
+    while (performance.now() - t0 < 500) {
+      const style = getComputedStyle(d);
+      frames.push({ open: d.hasAttribute('open'), display: style.display, opacity: Number(style.opacity) });
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    return frames;
+  });
+  expect(seen.some((f) => !f.open && f.display !== 'none' && f.opacity > 0 && f.opacity < 1)).toBe(true);
+  expect(seen[seen.length - 1].display).toBe('none');
+  await expect(question).toBeHidden();
+});
+
 test('a panel that is not final asks for itself again until it is', async ({ page }) => {
   await page.goto('/admin/');
   await page.getByRole('button', { name: 'Sync now' }).click();

@@ -3045,12 +3045,88 @@ html.js .status-meta [data-built] {
   height: 18px;
   border-width: 2px;
 }
+/* Motion that says where a thing came from, and nothing that loops or plays on first paint. A menu, a popover or a dialog is drawn by the browser when it is opened, so its entry is a keyframe
+   on the state that shows it (no script, and a browser that cannot do it draws it at once); a category of the sidebar slides open and shut by animating the height of its content, which the
+   browser makes a box of its own (::details-content) and can animate to and from auto (interpolate-size). Where a browser knows neither, it snaps, as it did. */
+:root {
+  interpolate-size: allow-keywords;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.nav-group::details-content {
+  height: 0;
+  overflow: clip;
+  transition:
+    height 0.16s ease-out,
+    content-visibility 0.16s allow-discrete;
+}
+.nav-group[open]::details-content {
+  height: auto;
+}
+.nav-chevron {
+  transition: transform var(--motion);
+}
+.menu[open] .menu-pop {
+  animation: drop-in 0.12s ease-out;
+}
+.export-menu[open] .menu-pop {
+  animation-name: rise-in; /* it opens upward */
+}
+/* Opacity only for what the script places (a filter, which may be fixed to the window) or may open above or below (a description). */
+.filter[open] .filter-pop,
+.tip:hover .tip-body,
+.tip:focus .tip-body {
+  animation: fade-in 0.12s ease-out;
+}
+/* A dialog fades in and out: it is shown at full opacity when it is open, and from nothing when it opens (@starting-style); when it closes, display and overlay (the top layer) are held for
+   the length of the fade, which a transition of them as discrete values does, so that it is still drawn while it goes. A browser that cannot do that closes it at once. */
+dialog.confirm,
+dialog.preview-dialog,
+dialog.confirm::backdrop,
+dialog.preview-dialog::backdrop {
+  opacity: 0;
+  transition:
+    opacity 0.16s ease-out,
+    display 0.16s allow-discrete,
+    overlay 0.16s allow-discrete;
+}
+dialog.confirm[open],
+dialog.preview-dialog[open],
+dialog.confirm[open]::backdrop,
+dialog.preview-dialog[open]::backdrop {
+  opacity: 1;
+}
+@starting-style {
+  dialog.confirm[open],
+  dialog.preview-dialog[open],
+  dialog.confirm[open]::backdrop,
+  dialog.preview-dialog[open]::backdrop {
+    opacity: 0;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   /* Nothing moves that does not have to: a change is a change of state, at once, and nothing loops. A busy panel is still known to be busy,
      by a static cue, and a spinner is its first frame. */
   *,
   *::before,
-  *::after {
+  *::after,
+  .nav-group::details-content,
+  dialog::backdrop {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
