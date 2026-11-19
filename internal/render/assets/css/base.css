@@ -1,0 +1,55 @@
+* {
+  box-sizing: border-box;
+}
+/* Focus is a visible 2px ring, never removed. Inputs and the search box draw their
+   own, so this is for everything else that can be focused. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 1px;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  color: var(--text-color);
+  font:
+    14px/1.5 Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong-color);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* Both bars meet in a square the browser paints white. The track is already
+   clear, so the corner is too and the surface under the bars shows through. */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

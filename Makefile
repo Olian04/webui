@@ -38,9 +38,22 @@ generate: assets ## Generate the application: the templates, and the minified as
 # The stylesheets and scripts that the renderer serves are written in css/ and js/, as a person reads them, and served from min/, minified. The output is committed, as the
 # editor's is, so that building the library needs no tool, and CI fails when it is not the output of the sources. The scripts are not bundled and not rewritten for an older
 # engine: whitespace and local names only, and the names a classic script shares through the global scope are kept.
+# Two stylesheets are made of the same parts. app.css, for the app's own pages: the tokens, the base, the app's components, with the prose rules put under .md where the marker in app.css is (the place
+# matters: a rule below it wins over one of the same weight above it). classless.css, for a page the app makes itself (App.Styles): the tokens, the base, the prose rules as they are, and what a page of plain markup
+# needs (classless.css in css/). So there is one definition of prose, for a markdown text and for a page. The nesting under .md is flattened (--supported:nesting=false), so that the output is flat css as before.
+CSS := $(ASSETS)/css
+CSSBUILD := $(ASSETS)/.css-build
+
 assets: ## Minify the stylesheets and scripts the renderer serves (sources in css/ and js/, output in min/, committed)
-	rm -rf $(ASSETS)/min
-	$(TOOL) esbuild $(ASSETS)/css/app.css $(ASSETS)/css/icons.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	rm -rf $(ASSETS)/min $(CSSBUILD)
+	mkdir -p $(CSSBUILD)
+	{ echo '.md {'; cat $(CSS)/prose.css; echo '}'; } > $(CSSBUILD)/prose-in-md.css
+	{ cat $(CSS)/tokens.css $(CSS)/base.css; awk -v f=$(CSSBUILD)/prose-in-md.css '/^\/\* @prose:/ { while ((getline line < f) > 0) print line; next } { print }' $(CSS)/app.css; } > $(CSSBUILD)/app.css
+	{ grep -v '/\* app \*/' $(CSS)/tokens.css; cat $(CSS)/base.css $(CSS)/prose.css $(CSS)/classless.css; } > $(CSSBUILD)/classless.css
+	$(TOOL) esbuild $(CSSBUILD)/app.css --minify --supported:nesting=false --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	$(TOOL) esbuild $(CSSBUILD)/classless.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	$(TOOL) esbuild $(CSS)/icons.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
+	rm -rf $(CSSBUILD)
 	$(TOOL) esbuild $(ASSETS)/js/*.js --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/js
 	cd tools && go run ./precompress ../$(ASSETS)/min
 

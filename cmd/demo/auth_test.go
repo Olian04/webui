@@ -17,7 +17,7 @@ func site(t *testing.T) http.Handler {
 
 	compiled, err := app.Compile("/admin")
 	assert.NoError(t, err)
-	return routes(compiled)
+	return routes(compiled, app.Styles("/admin"))
 }
 
 func withCookie(h http.Handler, method, target, cookie string, form url.Values) *httptest.ResponseRecorder {

@@ -97,7 +97,7 @@ func TestBrandLogoIsServedAndTheThemeCanBeOverridden(t *testing.T) {
 	a.Theme = themeFor("#1f7a6d", "")
 	themed, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--blue: #1f7a6d;")
+	assert.Contains(t, get(themed, linked(t, themed, "theme.css")).Body.String(), "--accent-color: #1f7a6d;")
 	assert.Equal(t, linked(t, h, "theme.css"), "") // none by default
 
 	// A prepared theme, with colours of its own for each mode, compiles and is served as the theme's own stylesheet.
@@ -149,7 +149,7 @@ func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *t
 	a.Observer = observer
 	compiled, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	h := routes(compiled)
+	h := routes(compiled, app.Styles("/admin"))
 
 	login := post(h, "/login", url.Values{"role": {"editor"}})
 	req := httptest.NewRequest(http.MethodGet, "/admin/device", nil)

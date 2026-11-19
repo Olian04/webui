@@ -26,6 +26,7 @@ To see what the demo does not use yet, list the exported names of `pkg/webui` an
 | `Table` and its options: `Columns`, `PageSize`, `Export`, `Key`, `RowClick`, `Actions`, `BulkActions`, `HeadActions`; `NoFilter`, `NoSort` on an accessor | `devices.go`, `alerts.go`, `sites.go`, `system.go` |
 | Loaders: `RowsLoader`, `PagedLoader` (`PagedQuery`, `PagedWindow`), `FeedLoader` | `alerts.go`, `devices.go`, `system.go` |
 | `Form`, `Editor`, `Diff`, `Markdown`, `FileUpload`, `Toolbar` | `settings.go`, `config.go`, `rule.go`, `handbook.go`, `uploads.go`, `overview.go`, `devices.go` |
+| `Embed` (`Load`, fixed or built from the page's arguments) and `App.Styles` | `system.go` (the status board), `devices.go` (a device's site map), the pages it shows in `frame.go`, which link `app.Styles("/admin")` and use plain elements only, no class |
 | `List`, `Cards` (`CardsScroll`, `CardsGrid`), `Calendar` | `activity.go`, `sites.go` |
 | Layout: `Stack`, `Split`, `Columns`, `Tabs`, `When` | `overview.go`, `activity.go`, `devices.go`, `health.go` |
 | Accessors: `String`, `Int`, `Float`, `Slider`, `Bool`, `Select`, `Group`, `Secret`, `Email`, `Phone`, `Website`, `ColorPicker`, `Time`, `Trend`, `File` | `settings.go`, `uploads.go`, `devices.go`, `overview.go` |

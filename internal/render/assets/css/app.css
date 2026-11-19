@@ -1,206 +1,23 @@
-/* ===========================================================================
-   Design tokens. The app's colours (webui.Theme) override the blue, green,
-   orange and red families, emitted as theme.css after this file. The values
-   below are tuned to Grafana's dark canvas, which is a theme choice, not a
-   structural one — the markup underneath is unchanged.
-   =========================================================================== */
-:root,
-[data-theme='dark'] {
-  color-scheme: dark;
-  --canvas: #111217;
-  --panel: #181b1f;
-  --raise: #22252b;
-  --input-bg: #0e0f12;
-  --border: rgba(204, 204, 220, 0.11);
-  --border-2: rgba(204, 204, 220, 0.22);
-  /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
-  --control-bd: var(--border-2);
-  --control-bd-strong: rgba(
-    204,
-    204,
-    220,
-    0.5
-  ); /* 3:1 vs the control's surface */
-  --text: rgb(204, 204, 220);
-  --text-2: rgba(204, 204, 220, 0.65);
-  --text-3: rgba(204, 204, 220, 0.45);
-  --hover: rgba(204, 204, 220, 0.07);
-  --active: rgba(204, 204, 220, 0.11);
-  --blue: #3d71d9;
-  --blue-hover: #3a6bd3;
-  --blue-text: #6e9fff;
-  --green: #6ccf8e;
-  --green-bg: rgba(108, 207, 142, 0.14);
-  --green-bd: rgba(108, 207, 142, 0.3);
-  --orange: #ff9830;
-  --orange-bg: rgba(255, 152, 48, 0.14);
-  --orange-bd: rgba(255, 152, 48, 0.3);
-  --red: #f57a7d;
-  --red-bg: rgba(245, 122, 125, 0.14);
-  --red-bd: rgba(245, 122, 125, 0.3);
-  --red-solid: #d03a3f;
-  --red-solid-hover: #bd3237;
-  --shadow: 0 4px 12px rgb(0 0 0/0.55);
-}
-[data-theme='light'] {
-  color-scheme: light;
-  --canvas: #f4f5f5;
-  --panel: #ffffff;
-  --raise: #ffffff;
-  --input-bg: #ffffff;
-  --border: rgba(36, 41, 46, 0.12);
-  --border-2: rgba(36, 41, 46, 0.24);
-  --control-bd: var(--border-2);
-  --control-bd-strong: rgba(36, 41, 46, 0.55);
-  --text: #24292e;
-  --text-2: #5c6269;
-  --text-3: #85888e;
-  --hover: rgba(36, 41, 46, 0.06);
-  --active: rgba(36, 41, 46, 0.1);
-  --blue: #3d71d9;
-  --blue-hover: #3265d4;
-  --blue-text: #1f62e0;
-  --green: #177244;
-  --green-bg: rgba(23, 114, 68, 0.12);
-  --green-bd: rgba(23, 114, 68, 0.28);
-  --orange: #a74a0b;
-  --orange-bg: rgba(167, 74, 11, 0.12);
-  --orange-bd: rgba(167, 74, 11, 0.28);
-  --red: #c20d54;
-  --red-bg: rgba(194, 13, 84, 0.12);
-  --red-bd: rgba(194, 13, 84, 0.28);
-  --red-solid: #c20d54;
-  --red-solid-hover: #a60b49;
-  --shadow: 0 4px 12px rgb(24 26 27/0.18);
-}
-/* No explicit choice: follow the viewer's system. A stored choice (the theme
-   switch) sets data-theme and wins over this. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --canvas: #f4f5f5;
-    --panel: #ffffff;
-    --raise: #ffffff;
-    --input-bg: #ffffff;
-    --border: rgba(36, 41, 46, 0.12);
-    --border-2: rgba(36, 41, 46, 0.24);
-    --control-bd: var(--border-2);
-    --control-bd-strong: rgba(36, 41, 46, 0.55);
-    --text: #24292e;
-    --text-2: #5c6269;
-    --text-3: #85888e;
-    --hover: rgba(36, 41, 46, 0.06);
-    --active: rgba(36, 41, 46, 0.1);
-    --blue: #3d71d9;
-    --blue-hover: #3265d4;
-    --blue-text: #1f62e0;
-    --green: #177244;
-    --green-bg: rgba(23, 114, 68, 0.12);
-    --green-bd: rgba(23, 114, 68, 0.28);
-    --orange: #a74a0b;
-    --orange-bg: rgba(167, 74, 11, 0.12);
-    --orange-bd: rgba(167, 74, 11, 0.28);
-    --red: #c20d54;
-    --red-bg: rgba(194, 13, 84, 0.12);
-    --red-bd: rgba(194, 13, 84, 0.28);
-    --red-solid: #c20d54;
-    --red-solid-hover: #a60b49;
-    --shadow: 0 4px 12px rgb(24 26 27/0.18);
-  }
-}
-
-/* Rings and tints are made from the accent and the critical colour, so they follow
-   a webui.Theme and both modes instead of being the default blue and red. */
-:root {
-  /* The separator between the things of a row, such as the status bar's figures: a middle dot, in the quiet
-     text colour. */
-  --sep: '\00b7';
-  --ring: color-mix(in srgb, var(--blue) 25%, transparent);
-  --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
-  --tint: color-mix(in srgb, var(--blue) 10%, transparent);
-  --radius: 2px;
-  --radius-pill: 99px; /* switch, spinner, scrollbar thumb — design: pills only */
-  --control-h: 32px;
-  --control-h-sm: 28px;
-  --row-h: 34px;
-  --gutter: 8px;
-  --motion: 0.12s; /* mid of design §13 110–130ms */
-  --backdrop: rgb(0 0 0 / 50%);
-}
-
-* {
-  box-sizing: border-box;
-}
-/* Focus is a visible 2px ring, never removed. Inputs and the search box draw their
-   own, so this is for everything else that can be focused. */
-a:focus-visible,
-button:focus-visible,
-summary:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 1px;
-}
-html,
+/* The page behind the panels. (A page of the app's own, in a panel, has the panel's colour: see classless.css.) */
 body {
-  height: 100%;
-}
-body {
-  margin: 0;
-  background: var(--canvas);
-  color: var(--text);
-  font:
-    14px/1.5 Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-a {
-  color: inherit;
-  text-decoration: none;
-}
-button,
-input,
-select {
-  font: inherit;
-  color: inherit;
-}
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border-2);
-  border-radius: var(--radius-pill);
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-/* Both bars meet in a square the browser paints white. The track is already
-   clear, so the corner is too and the surface under the bars shows through. */
-::-webkit-scrollbar-corner {
-  background: transparent;
+  background: var(--page-color);
 }
 
 /* Shared chrome. Components add these next to their own class; placement stays local. */
 .raise,
 .gate:hover::after,
 .gate:focus-visible::after {
-  background: var(--raise);
-  border: 1px solid var(--border-2);
+  background: var(--raised-color);
+  border: 1px solid var(--border-strong-color);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
-.caption,
-.md :where(h4, h5, h6) {
+.caption {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .pop {
   position: absolute;
@@ -237,8 +54,8 @@ select {
   /* a person's choice, set before first paint */
   width: var(--sidebar-w, 240px);
   flex: 0 0 var(--sidebar-w, 240px);
-  background: var(--panel);
-  border-right: 1px solid var(--border);
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   position: sticky;
@@ -269,7 +86,7 @@ select {
 .splitter:hover::after,
 .splitter:focus-visible::after,
 html.splitting .splitter::after {
-  background: var(--blue);
+  background: var(--accent-color);
 }
 .splitter:focus-visible {
   outline: 2px solid transparent;
@@ -286,7 +103,7 @@ html.splitting * {
   height: 48px;
   padding: 0 12px;
   flex: 0 0 48px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 .logo {
   width: 22px;
@@ -301,8 +118,8 @@ html.splitting * {
   width: 9px;
   height: 9px;
   border-radius: var(--radius-pill);
-  background: var(--panel);
-  box-shadow: 0 0 0 2px var(--panel);
+  background: var(--surface-color);
+  box-shadow: 0 0 0 2px var(--surface-color);
 }
 .logo-img {
   width: 22px;
@@ -316,7 +133,7 @@ a.side-brand {
   text-decoration: none;
 }
 a.side-brand:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .side-brand b {
   font-size: 14px;
@@ -338,10 +155,10 @@ a.side-brand:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 12px;
   font-size: 13.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
   list-style: none;
   user-select: none;
@@ -350,8 +167,8 @@ a.side-brand:hover {
   display: none;
 }
 .nav-section:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 /* A name wider than the sidebar is cut short with an ellipsis; its whole is its title. */
 .nav-section > span:not(.ni) {
@@ -376,7 +193,7 @@ a.side-brand:hover {
   opacity: 0.8;
 }
 .nav-group[open] > .nav-section {
-  color: var(--text);
+  color: var(--text-color);
   font-weight: 600;
 }
 .nav-group[open] > .nav-section .nav-chevron {
@@ -393,10 +210,10 @@ a.side-brand:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 12px;
   font-size: 13.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
   position: relative;
 }
@@ -409,12 +226,12 @@ a.side-brand:hover {
   white-space: nowrap;
 }
 .nav-item:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .nav-item.active {
-  background: var(--active);
-  color: var(--text);
+  background: var(--active-color);
+  color: var(--text-color);
   font-weight: 500;
 }
 .nav-item.active::before {
@@ -424,7 +241,7 @@ a.side-brand:hover {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: var(--blue);
+  background: var(--accent-color);
 }
 .nav-item .ni {
   width: 16px;
@@ -454,10 +271,10 @@ a.side-brand:hover {
 .slider {
   position: absolute;
   inset: 0;
-  background: var(--control-bd);
+  background: var(--control-border-color);
   border-radius: var(--radius-pill);
   cursor: pointer;
-  transition: background-color var(--motion);
+  transition: background-color var(--motion-duration);
 }
 .slider::before {
   content: '';
@@ -467,8 +284,8 @@ a.side-brand:hover {
   left: 2px;
   top: 2px;
   border-radius: var(--radius-pill);
-  background: var(--panel);
-  transition: transform var(--motion);
+  background: var(--surface-color);
+  transition: transform var(--motion-duration);
 }
 [data-theme='light'] .slider::before {
   background: #fff;
@@ -481,11 +298,11 @@ a.side-brand:hover {
   }
 }
 .switch input:focus-visible + .slider {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
 .switch input:checked + .slider {
-  background: var(--blue);
+  background: var(--accent-color);
 }
 .switch input:checked + .slider::before {
   transform: translateX(14px);
@@ -507,8 +324,8 @@ a.side-brand:hover {
   align-items: center;
   gap: 10px;
   padding: 0 12px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 30;
@@ -519,18 +336,18 @@ a.side-brand:hover {
   gap: 6px;
 }
 .crumbs a {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   white-space: nowrap;
 }
 .crumbs a:hover {
-  color: var(--text);
+  color: var(--text-color);
 }
 .crumbs .sep {
-  color: var(--text-3);
+  color: var(--text-faint-color);
   font-size: 12px;
 }
 .crumbs .cur {
-  color: var(--text);
+  color: var(--text-color);
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -593,7 +410,7 @@ a.side-brand:hover {
   content: var(--ell) "\2026";
   font-size: var(--crumb-size);
   font-weight: 400;
-  color: var(--text-3);
+  color: var(--text-faint-color);
 }
 .crumbs .crumb-hid:not(:focus) {
   --hid: ;
@@ -648,21 +465,21 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 30px; /* top-bar control, not --control-h */
+  height: 30px; /* top-bar control, not --control-height */
   flex: 0 1 290px; /* the width it is given, and less when the bar has no room for it */
   min-width: 90px;
   padding: 0 9px;
-  background: var(--input-bg);
-  border: 1px solid var(--border);
+  background: var(--field-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  color: var(--text-3);
+  color: var(--text-faint-color);
   font-size: 13px;
   cursor: text;
 }
 /* Focus is a visible ring, never removed: it is how Cmd+K shows it worked. */
 .search:focus-within {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px var(--ring);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
   outline: 2px solid transparent;
 }
 .search input {
@@ -672,11 +489,11 @@ html[data-theme='light'] .theme-toggle .ti-moon {
   border: 0;
   outline: none;
   /* typed text is not quiet text, though the box around it is */
-  color: var(--text);
+  color: var(--text-color);
   font-size: 13px;
 }
 .search input::placeholder {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .search .fa-solid {
   width: 14px;
@@ -707,26 +524,26 @@ html.js .search-submit {
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-2);
-  border: 1px solid var(--border);
+  color: var(--text-muted-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   padding: 0 4px;
   line-height: 15px;
 }
 .iconbtn {
   width: 30px;
-  height: 30px; /* top-bar control, not --control-h */
+  height: 30px; /* top-bar control, not --control-height */
   display: grid;
   place-items: center;
   border: 0;
   background: none;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   border-radius: var(--radius);
   cursor: pointer;
 }
 .iconbtn:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .iconbtn .fa-solid {
   width: 16px;
@@ -740,15 +557,15 @@ html.js .search-submit {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .delta.tone-ok {
-  color: var(--green);
+  color: var(--success-color);
 }
 .delta.tone-bad {
-  color: var(--red);
+  color: var(--danger-color);
 }
 .delta .delta-arrow {
   width: 10px;
@@ -767,13 +584,13 @@ html.js .search-submit {
 }
 .spark-line {
   fill: none;
-  stroke: var(--blue-text);
+  stroke: var(--accent-text-color);
   stroke-width: 1.5;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 .spark-dot {
-  fill: var(--blue-text);
+  fill: var(--accent-text-color);
 }
 
 /* A trend: the change and, beside it, the shape that led to it. */
@@ -808,7 +625,7 @@ html.js .search-submit {
 }
 .list .item {
   padding: 10px 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 .list .item:first-child {
   border-top: 0;
@@ -819,7 +636,7 @@ html.js .search-submit {
   height: 40px;
   object-fit: cover;
   border-radius: var(--radius);
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .item-main {
   min-width: 0;
@@ -839,7 +656,7 @@ html.js .search-submit {
   overflow-wrap: anywhere;
 }
 .item-link {
-  color: var(--blue-text);
+  color: var(--accent-text-color);
   text-decoration: none;
 }
 .item-link:hover {
@@ -861,7 +678,7 @@ button.item-button {
   flex-wrap: wrap;
   gap: 0 6px;
   margin-top: 2px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12px;
 }
 /* A fact carries the dot that comes before it, so that when the line wraps the dot goes with the fact it leads and is not left at the end of the line above. */
@@ -871,7 +688,7 @@ button.item-button {
   min-width: 0;
 }
 .item-sep {
-  color: var(--text-3);
+  color: var(--text-faint-color);
 }
 .cards {
   display: grid;
@@ -883,9 +700,9 @@ button.item-button {
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--panel);
+  background: var(--surface-color);
 }
 .item-card .item-img {
   width: 100%;
@@ -929,8 +746,8 @@ button.item-button {
   display: none;
 }
 .menu[open] summary {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .menu-pop {
   top: calc(100% + 6px);
@@ -941,15 +758,15 @@ button.item-button {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 12px;
   font-size: 13.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   white-space: nowrap;
 }
 .menu-item:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .menu-section {
   padding: 8px 12px 3px;
@@ -991,17 +808,17 @@ button.item-button {
   display: flex;
   align-items: center;
   gap: 9px;
-  height: 30px; /* top-bar control, not --control-h */
+  height: 30px; /* top-bar control, not --control-height */
   padding: 0 9px;
   font-size: 13px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
   border-radius: var(--radius);
 }
 .pal-item:hover,
 .pal-item.active {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .pal-item .mono {
   margin-left: auto;
@@ -1010,11 +827,11 @@ button.item-button {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 11px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 /* The page of results, which the box's list is without script: the same items, in a panel. */
 .results .pal-item {
-  height: var(--row-h);
+  height: var(--row-height);
   text-decoration: none;
 }
 .results .pal-label {
@@ -1023,7 +840,7 @@ button.item-button {
 .pal-empty {
   padding: 12px 9px;
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 
 /* ------------------------------ content ---------------------------------- */
@@ -1150,36 +967,36 @@ form[data-filter-form] {
   display: flex;
   gap: 0;
   position: relative; /* where the offsets of its tabs are measured from, for script that brings the active one into view */
-  box-shadow: inset 0 -1px 0 var(--border);
+  box-shadow: inset 0 -1px 0 var(--border-color);
   margin: 2px 0 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
-  scrollbar-color: var(--border-2) transparent;
+  scrollbar-color: var(--border-strong-color) transparent;
 }
 .tab {
   flex: none;
   padding: 8px 13px;
   font-size: 13.5px;
   white-space: nowrap;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
   border-bottom: 2px solid transparent;
 }
 .tab:hover {
-  color: var(--text);
-  background: var(--hover);
+  color: var(--text-color);
+  background: var(--hover-color);
 }
 .tab.active {
-  color: var(--text);
+  color: var(--text-color);
   font-weight: 500;
-  border-bottom-color: var(--orange);
+  border-bottom-color: var(--warning-color);
 }
 
 /* ------------------------------ panel ------------------------------------ */
 .panel {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -1189,21 +1006,21 @@ form[data-filter-form] {
   display: flex;
   align-items: center;
   gap: 7px;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 10px;
-  flex: 0 0 var(--control-h);
+  flex: 0 0 var(--control-height);
 }
 .panel-title {
   font-size: 14px;
   font-weight: 500;
   margin: 0;
-  color: var(--text);
+  color: var(--text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .info {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 /* A description: an information icon with a popover. It opens on hover and on
    keyboard focus, so it does not need a pointer. */
@@ -1216,7 +1033,7 @@ form[data-filter-form] {
 }
 .tip:hover .info,
 .tip:focus .info {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .tip-body {
   display: none;
@@ -1227,7 +1044,7 @@ form[data-filter-form] {
   width: max-content;
   max-width: 280px;
   padding: 6px 9px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
   font-weight: 400;
   line-height: 1.45;
@@ -1238,7 +1055,7 @@ form[data-filter-form] {
 .tip-title {
   display: block;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-color);
 }
 .tip-text {
   display: block;
@@ -1254,14 +1071,14 @@ form[data-filter-form] {
 .tip-item::before {
   content: '•';
   margin-right: 6px;
-  color: var(--text-3);
+  color: var(--text-faint-color);
 }
 .tip:hover .tip-body,
 .tip:focus .tip-body {
   display: block;
 }
 .panel-status.tone-bad {
-  color: var(--red);
+  color: var(--danger-color);
 }
 /* The controls that an app declared for the panel as a whole sit at the right of its head, and the refresh note, which is last, follows them. */
 .panel-actions {
@@ -1274,7 +1091,7 @@ form[data-filter-form] {
 /* A head with controls is taller than one without, so that its buttons have room above and below them, and not the whole of the head. */
 .panel-head:has(.panel-actions) {
   height: auto;
-  min-height: calc(var(--control-h) + 12px);
+  min-height: calc(var(--control-height) + 12px);
   flex-basis: auto;
   padding-block: 6px;
 }
@@ -1285,7 +1102,7 @@ form[data-filter-form] {
 .refresh-note {
   margin-left: auto;
   font-size: 12px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   white-space: nowrap;
 }
 html.js .refresh-nojs,
@@ -1311,6 +1128,24 @@ html:not(.js) .refresh-js {
   overflow: auto;
 }
 /* A form's fields sit inside the panel body, inset from its edge. */
+/* An embedded page: a frame that fills the body, which is as tall as the code editor is (a frame has no height of its own), with no border, since the panel has one. */
+.embed-body {
+  height: max(16rem, calc(100dvh - var(--content-chrome) - 8rem));
+}
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body.embed-body {
+  flex: 0 0 auto;
+}
+.embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--surface-color);
+}
+.embed-open {
+  margin-left: auto;
+  font-size: 12.5px;
+}
 .panel-body.pad {
   padding: 4px 10px 14px;
 }
@@ -1320,7 +1155,7 @@ html:not(.js) .refresh-js {
   justify-content: space-between;
   gap: 12px;
   padding: 7px 10px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 
 /* ------------------------------ buttons ---------------------------------- */
@@ -1329,7 +1164,7 @@ html:not(.js) .refresh-js {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 12px;
   border-radius: var(--radius);
   font-size: 13.5px;
@@ -1339,8 +1174,8 @@ html:not(.js) .refresh-js {
   border: 1px solid transparent;
   background: none;
   transition:
-    background-color var(--motion),
-    border-color var(--motion);
+    background-color var(--motion-duration),
+    border-color var(--motion-duration);
 }
 .btn .fa-solid {
   width: 14px;
@@ -1348,39 +1183,39 @@ html:not(.js) .refresh-js {
   font-size: 12px;
 }
 .btn-primary {
-  background: var(--blue);
+  background: var(--accent-color);
   color: #fff;
-  border-color: var(--blue);
+  border-color: var(--accent-color);
 }
 .btn-primary:hover {
-  background: var(--blue-hover);
-  border-color: var(--blue-hover);
+  background: var(--accent-hover-color);
+  border-color: var(--accent-hover-color);
 }
 .btn-secondary {
-  border-color: var(--control-bd);
-  color: var(--text);
+  border-color: var(--control-border-color);
+  color: var(--text-color);
 }
 .btn-secondary:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .btn-ghost {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .btn-ghost:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .btn-danger {
-  background: var(--red-solid);
+  background: var(--danger-solid-color);
   color: #fff;
-  border-color: var(--red-solid);
+  border-color: var(--danger-solid-color);
 }
 .btn-danger:hover {
-  background: var(--red-solid-hover);
-  border-color: var(--red-solid-hover);
+  background: var(--danger-solid-hover-color);
+  border-color: var(--danger-solid-hover-color);
 }
 .btn-sm {
-  height: var(--control-h-sm);
+  height: var(--control-height-small);
   padding: 0 9px;
   font-size: 12.5px;
 }
@@ -1398,7 +1233,7 @@ html:not(.js) .refresh-js {
   cursor: not-allowed;
 }
 .gate:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
   border-radius: var(--radius);
 }
@@ -1426,7 +1261,7 @@ html:not(.js) .refresh-js {
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  color: var(--text);
+  color: var(--text-color);
   font-size: 12px;
   font-weight: 400;
   padding: 5px 8px;
@@ -1447,14 +1282,14 @@ thead th {
   text-align: left;
   font-weight: 500;
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   height: 30px;
   padding: 0 10px;
   /* Opaque, so rows scrolling under it do not show through: the hover tint over the panel. */
-  background-color: var(--panel);
-  background-image: linear-gradient(var(--hover), var(--hover));
+  background-color: var(--surface-color);
+  background-image: linear-gradient(var(--hover-color), var(--hover-color));
   white-space: nowrap;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   /* Above the body: the stretched row links are positioned, and a filter
@@ -1486,10 +1321,10 @@ thead th a {
   cursor: pointer;
 }
 thead th a:hover {
-  color: var(--text);
+  color: var(--text-color);
 }
 thead th.sorted a {
-  color: var(--blue-text);
+  color: var(--accent-text-color);
 }
 .caret {
   width: 11px;
@@ -1498,7 +1333,7 @@ thead th.sorted a {
   opacity: 0.9;
 }
 tbody tr {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 tbody tr:last-child {
   border-bottom: 0;
@@ -1532,15 +1367,15 @@ button.rowbutton {
   outline: none;
 }
 .rowlink:focus-visible::after {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: -2px;
 }
 tbody tr:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 tbody td {
   padding: 0 10px;
-  height: var(--row-h);
+  height: var(--row-height);
   vertical-align: middle;
 }
 tbody td.num {
@@ -1559,7 +1394,7 @@ time.moment {
 }
 time .t-date,
 time .t-zone {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 time .t-zone {
   font-size: 0.92em;
@@ -1577,24 +1412,24 @@ th.pick {
     monospace;
 }
 .dim {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .checkbox,
 .md input[type='checkbox'] {
   appearance: none;
   width: 15px;
   height: 15px;
-  border: 1px solid var(--control-bd);
+  border: 1px solid var(--control-border-color);
   border-radius: var(--radius);
-  background: var(--input-bg);
+  background: var(--field-color);
   cursor: pointer;
   display: grid;
   place-content: center;
 }
 .checkbox:checked,
 .md input[type='checkbox']:checked {
-  background: var(--blue);
-  border-color: var(--blue);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
 }
 .checkbox:checked::after,
 .md input[type='checkbox']:checked::after,
@@ -1609,10 +1444,10 @@ th.pick {
 dialog.confirm {
   max-width: min(420px, calc(100vw - 32px));
   padding: 16px 18px;
-  color: var(--text);
+  color: var(--text-color);
 }
 dialog.confirm::backdrop {
-  background: var(--backdrop);
+  background: var(--backdrop-color);
 }
 .confirm-text {
   margin: 0 0 16px;
@@ -1633,8 +1468,8 @@ dialog.confirm::backdrop {
   gap: 9px;
   padding: 6px 10px;
   font-size: 12.5px;
-  background: var(--tint);
-  border-bottom: 1px solid var(--border);
+  background: var(--accent-tint-color);
+  border-bottom: 1px solid var(--border-color);
 }
 /* The selection bar exists once something is selected. :has() lets the form
    itself know, so this needs no script; a browser without it shows the bar. */
@@ -1655,7 +1490,7 @@ html:not(.js) .actionbar .dim {
 }
 .pager-info {
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-variant-numeric: tabular-nums;
 }
 /* The download links sit beside the range, and the pager keeps the right: the auto margin takes
@@ -1684,7 +1519,7 @@ html:not(.js) .actionbar .dim {
 }
 .pager-export-note {
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .empty {
   padding: 44px 16px;
@@ -1694,7 +1529,7 @@ html:not(.js) .actionbar .dim {
   width: 28px;
   height: 28px;
   font-size: 25px;
-  color: var(--text-3);
+  color: var(--text-faint-color);
   margin-bottom: 9px;
 }
 .empty-title {
@@ -1704,7 +1539,7 @@ html:not(.js) .actionbar .dim {
 }
 .empty-desc {
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 /* A panel that is being asked for again says so with aria-busy: its rows pulse and are out of reach, and they are the rows that were there. */
 [data-view][aria-busy='true'] tbody {
@@ -1732,7 +1567,7 @@ html:not(.js) .actionbar .dim {
   width: 56px;
   height: 5px;
   border-radius: var(--radius);
-  background: var(--hover);
+  background: var(--hover-color);
   overflow: hidden;
   flex: 0 0 56px;
 }
@@ -1740,7 +1575,7 @@ html:not(.js) .actionbar .dim {
   display: block;
   height: 100%;
   border-radius: var(--radius);
-  background: var(--blue-text);
+  background: var(--accent-text-color);
 }
 
 /* ------------------------------ badges ----------------------------------- */
@@ -1764,27 +1599,27 @@ html:not(.js) .actionbar .dim {
 }
 .badge.tone-ok,
 .upload-item[data-tone='ok'] {
-  background: var(--green-bg);
-  color: var(--green);
-  border-color: var(--green-bd);
+  background: var(--success-bg-color);
+  color: var(--success-color);
+  border-color: var(--success-border-color);
 }
 .badge.tone-warn,
 .sb-badge.tone-warn,
 .upload-item[data-tone='warn'] {
-  background: var(--orange-bg);
-  color: var(--orange);
-  border-color: var(--orange-bd);
+  background: var(--warning-bg-color);
+  color: var(--warning-color);
+  border-color: var(--warning-border-color);
 }
 .badge.tone-bad,
 .upload-item[data-tone='bad'] {
-  background: var(--red-bg);
-  color: var(--red);
-  border-color: var(--red-bd);
+  background: var(--danger-bg-color);
+  color: var(--danger-color);
+  border-color: var(--danger-border-color);
 }
 .badge.tone-mute {
-  background: var(--hover);
-  color: var(--text-2);
-  border-color: var(--border);
+  background: var(--hover-color);
+  color: var(--text-muted-color);
+  border-color: var(--border-color);
 }
 .dot {
   flex: none;
@@ -1842,17 +1677,17 @@ html:not(.js) .actionbar .dim {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   font-size: 13px;
 }
 .toolbar-lbl {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .toolbar-lbl::after {
   content: ':';
 }
 .toolbar-val {
-  color: var(--text);
+  color: var(--text-color);
 }
 /* A trend in the toolbar is a value in a row of 32px: the chart is smaller than it is in a cell, in the same proportions, so that it does not make the row taller than it is. */
 .toolbar-val .trend {
@@ -1863,7 +1698,7 @@ html:not(.js) .actionbar .dim {
   height: 15px;
 }
 .toolbar-val.tone-bad {
-  color: var(--red);
+  color: var(--danger-color);
 }
 /* The left controls and the right ones are one row with a gap between them that takes what is left over, so the right ones
    are at the right edge: of the row that they are in, when the controls are in several. The gap costs no room of its own: the
@@ -1909,30 +1744,30 @@ label.lbl {
   gap: 5px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .req {
-  color: var(--red);
+  color: var(--danger-color);
 }
 .input,
 select.input {
   width: 100%;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 9px;
   font-size: 13.5px;
-  background: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--control-bd);
+  background: var(--field-color);
+  color: var(--text-color);
+  border: 1px solid var(--control-border-color);
   border-radius: var(--radius);
   outline: 2px solid transparent;
   transition:
-    border-color var(--motion),
-    box-shadow var(--motion);
+    border-color var(--motion-duration),
+    box-shadow var(--motion-duration);
 }
 /* A text area is as tall as its rows, and its text begins at the top. */
 textarea.input {
   height: auto;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   padding: 6px 9px;
   line-height: 1.45;
   font-family: inherit;
@@ -1972,15 +1807,15 @@ td .multiline {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
-  border: 1px dashed var(--border-2);
+  border: 1px dashed var(--border-strong-color);
   border-radius: var(--radius);
   transition:
-    border-color var(--motion),
-    background-color var(--motion);
+    border-color var(--motion-duration),
+    background-color var(--motion-duration);
 }
 .file-drop.dragging {
-  border-color: var(--blue);
-  background: var(--tint);
+  border-color: var(--accent-color);
+  background: var(--accent-tint-color);
 }
 .file-row {
   display: flex;
@@ -2030,7 +1865,7 @@ td .multiline {
   align-items: center;
   gap: 4px 10px;
   padding: 4px 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   font-size: 13px;
 }
@@ -2042,27 +1877,27 @@ td .multiline {
   flex: 1 1 120px;
   max-width: 240px;
   height: 6px;
-  accent-color: var(--blue);
+  accent-color: var(--accent-color);
 }
 .result-text {
   flex: 1 1 auto;
 }
 .file-hint {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12px;
 }
 .file-preview img {
   display: block;
   max-width: 100%;
   max-height: 96px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
 }
 .file-thumb {
   width: 32px;
   height: 32px;
   object-fit: cover;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
 }
 .file-thumb-link,
@@ -2076,7 +1911,7 @@ td .multiline {
 }
 .file-thumb-link:focus-visible,
 .file-thumb-chosen:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
 /* The file at its full size, over the dimmed page: as large as the window allows, whole, and never stretched. */
@@ -2088,7 +1923,7 @@ dialog.preview-dialog {
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
   padding: 12px;
-  color: var(--text);
+  color: var(--text-color);
 }
 dialog.preview-dialog:not([open]) {
   display: none;
@@ -2108,11 +1943,11 @@ dialog.preview-dialog::backdrop {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
 }
 .file-current a {
-  color: var(--blue-text);
+  color: var(--accent-text-color);
 }
 .file-current a:hover {
   text-decoration: underline;
@@ -2122,15 +1957,15 @@ dialog.preview-dialog::backdrop {
   align-items: center;
   gap: 6px;
   margin-left: auto;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
   cursor: pointer;
 }
 input[type='file'].input {
   height: auto;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   padding: 3px 4px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 input[type='file'].input::file-selector-button {
   height: 24px;
@@ -2139,21 +1974,21 @@ input[type='file'].input::file-selector-button {
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-color);
   background: none;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--border-strong-color);
   border-radius: var(--radius);
   cursor: pointer;
 }
 input[type='file'].input::file-selector-button:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .input::placeholder {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .input:focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px var(--ring);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 select.input {
   appearance: none;
@@ -2170,8 +2005,8 @@ select.input {
   background-repeat: no-repeat;
 }
 select.input option {
-  background: var(--panel);
-  color: var(--text);
+  background: var(--surface-color);
+  color: var(--text-color);
 }
 /* A list to choose several from has no drop-down arrow and as many rows as options, up to six. */
 select.input[multiple] {
@@ -2185,7 +2020,7 @@ select.input[multiple] option {
 } /* The page's own colours for an option replace the browser's mark for the ones that are chosen, so
    they are marked here, with the tint a selected row of a table has. */
 select.input[multiple] option:checked {
-  background: var(--blue);
+  background: var(--accent-color);
   color: #fff;
   font-weight: 600;
 }
@@ -2201,22 +2036,22 @@ select.input[multiple] option:checked {
   flex-wrap: wrap;
   gap: 4px;
   height: auto;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   padding: 4px 28px 4px 8px;
   cursor: text;
 }
 .msel-field:focus-within,
 .msel.open .msel-field {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px var(--ring);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
   outline: 2px solid transparent;
 }
 .msel-field.invalid {
-  border-color: var(--red);
+  border-color: var(--danger-color);
 }
 .msel-field.invalid:focus-within,
 .msel.open .msel-field.invalid {
-  box-shadow: 0 0 0 2px var(--ring-bad);
+  box-shadow: 0 0 0 2px var(--danger-ring-color);
 }
 /* What is typed into the field goes after the badges, and takes the room that they leave, with room enough to be typed into at a phone's width. */
 .msel-input {
@@ -2226,18 +2061,18 @@ select.input[multiple] option:checked {
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text);
+  color: var(--text-color);
   font: inherit;
   font-size: 13.5px;
   outline: none;
 }
 .msel-input::placeholder {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 /* What is said when nothing matches what was typed, in the place the list would be. */
 .msel-empty {
   padding: 8px 12px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 13px;
 }
 .msel-chevron {
@@ -2246,11 +2081,11 @@ select.input[multiple] option:checked {
   top: 50%;
   width: 6px;
   height: 6px;
-  border-right: 1.5px solid var(--text-2);
-  border-bottom: 1.5px solid var(--text-2);
+  border-right: 1.5px solid var(--text-muted-color);
+  border-bottom: 1.5px solid var(--text-muted-color);
   transform: translateY(-70%) rotate(45deg);
   pointer-events: none;
-  transition: transform var(--motion);
+  transition: transform var(--motion-duration);
 }
 .msel.open .msel-chevron {
   transform: translateY(-30%) rotate(-135deg);
@@ -2281,16 +2116,16 @@ select.input[multiple] option:checked {
   display: none;
 }
 .msel-opt.active {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .msel-opt.on {
-  background: var(--tint);
+  background: var(--accent-tint-color);
 }
 .msel-opt.on.active {
-  background: color-mix(in srgb, var(--blue) 16%, transparent);
+  background: color-mix(in srgb, var(--accent-color) 16%, transparent);
 }
 .msel-none-text {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 13px;
 }
 /* The mark in front of an option is the form's checkbox, or for a choice of one its round form. */
@@ -2300,16 +2135,16 @@ select.input[multiple] option:checked {
   place-content: center;
   width: 15px;
   height: 15px;
-  border: 1px solid var(--control-bd);
+  border: 1px solid var(--control-border-color);
   border-radius: var(--radius);
-  background: var(--input-bg);
+  background: var(--field-color);
 }
 .msel:not(.msel-multi) .msel-check {
   border-radius: 50%;
 }
 .msel-opt.on .msel-check {
-  background: var(--blue);
-  border-color: var(--blue);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
 }
 .msel:not(.msel-multi) .msel-opt.on .msel-check::after {
   width: 5px;
@@ -2325,17 +2160,17 @@ select.input[multiple] option:checked {
   vertical-align: middle;
 }
 .input.invalid {
-  border-color: var(--red);
+  border-color: var(--danger-color);
 }
 .input.invalid:focus {
-  box-shadow: 0 0 0 2px var(--ring-bad);
+  box-shadow: 0 0 0 2px var(--danger-ring-color);
 }
 .err {
   display: flex;
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: var(--red);
+  color: var(--danger-color);
   margin-top: 5px;
 }
 .err .fa-solid {
@@ -2359,16 +2194,16 @@ select.input[multiple] option:checked {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  border-left: 3px solid var(--green);
+  border-left: 3px solid var(--success-color);
   padding: 10px 13px;
   min-width: 290px;
   animation: pop 0.16s ease-out;
 }
 .toast.tone-warn {
-  border-left-color: var(--orange);
+  border-left-color: var(--warning-color);
 }
 .toast.tone-bad {
-  border-left-color: var(--red);
+  border-left-color: var(--danger-color);
 }
 @keyframes pop {
   from {
@@ -2400,7 +2235,7 @@ select.input[multiple] option:checked {
   height: 22px;
   margin: -3px -7px -3px 0;
   border-radius: var(--radius);
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
 }
 @supports selector(:has(*)) {
@@ -2423,11 +2258,11 @@ html.js button.toast-close-js {
   display: grid;
 }
 .toast-close:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .toast-close:has(input:focus-visible) {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: 1px;
 }
 .toast-close .fa-solid {
@@ -2438,7 +2273,7 @@ html.js button.toast-close-js {
 }
 .toast-desc {
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   margin-top: 2px;
 }
 
@@ -2464,8 +2299,8 @@ html.js button.toast-close-js {
   padding: 10px 12px;
   border: 0;
   border-radius: 0;
-  background: var(--panel);
-  color: var(--text);
+  background: var(--surface-color);
+  color: var(--text-color);
   font:
     13px/20px ui-monospace,
     SFMono-Regular,
@@ -2478,26 +2313,26 @@ html.js button.toast-close-js {
   outline: 2px solid transparent;
 }
 .code-text {
-  background: var(--input-bg);
+  background: var(--field-color);
 }
 .code-text:focus,
 .code-view:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ring);
+  box-shadow: inset 0 0 0 2px var(--focus-ring-color);
 }
 .code-text[aria-invalid='true'] {
-  box-shadow: inset 0 0 0 2px var(--ring-bad);
+  box-shadow: inset 0 0 0 2px var(--danger-ring-color);
 }
 .code-error {
   padding: 8px 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 /* How to leave an editor, which holds the Tab key: drawn by script, with the editor, since without it the textarea does not. */
 .code-hint {
   margin: 0;
   padding: 4px 12px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
   font-size: 12px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .code-host {
   position: absolute;
@@ -2514,9 +2349,9 @@ html.js button.toast-close-js {
   display: flex;
   gap: 0;
   padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
   font-size: 12px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .code-sides span + span::before {
   content: '\2192';
@@ -2542,20 +2377,20 @@ html.js button.toast-close-js {
   outline: 2px solid transparent;
 }
 .udiff:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ring);
+  box-shadow: inset 0 0 0 2px var(--focus-ring-color);
 }
 .udiff-note,
 .udiff-sum {
   margin: 0;
   padding: 4px 12px 8px;
   font-family: inherit;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .udiff-sum .ins {
-  color: var(--green);
+  color: var(--success-color);
 }
 .udiff-sum .del {
-  color: var(--red);
+  color: var(--danger-color);
 }
 .udiff-line {
   display: grid;
@@ -2569,22 +2404,22 @@ html.js button.toast-close-js {
 .udiff-n {
   padding-right: 8px;
   text-align: right;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   user-select: none;
 }
 .udiff-m {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   user-select: none;
 }
 .udiff-line.ins {
-  background: var(--green-bg);
+  background: var(--success-bg-color);
 }
 .udiff-line.del {
-  background: var(--red-bg);
+  background: var(--danger-bg-color);
 }
 .udiff-gap {
   padding: 2px 0 2px 7rem;
-  color: var(--text-3);
+  color: var(--text-faint-color);
 }
 
 /* ---------------------------- markdown ----------------------------------- */
@@ -2594,7 +2429,7 @@ html.js button.toast-close-js {
    Headings and labels are no heavier than 500, and the structure is drawn by space more than by
    lines. */
 .md {
-  color: var(--text);
+  color: var(--text-color);
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -2609,66 +2444,8 @@ html.js button.toast-close-js {
 .md > :where(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
   max-width: 84ch;
 }
-.md :where(p, ul, ol, blockquote, pre, table) {
-  margin: 0 0 12px;
-}
-.md :where(h1, h2, h3, h4, h5, h6) {
-  margin: 22px 0 8px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: var(--text);
-}
-.md h1 {
-  font-size: 18px;
-}
-.md h2 {
-  font-size: 15.5px;
-}
-.md h3 {
-  font-size: 14px;
-}
-/* The small headings are captions, as the sidebar's sections are (.caption). */
-/* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
-   600, the one place outside a full-page error that the app uses it. */
-.md strong {
-  font-weight: 600;
-}
-.md em {
-  font-style: italic;
-}
 .md th {
   font-weight: 500;
-}
-.md del {
-  color: var(--text-2);
-}
-/* A picture from an origin the author trusts: no wider than the text, and in line with it. */
-.md img {
-  max-width: 100%;
-  height: auto;
-  vertical-align: middle;
-  border-radius: var(--radius);
-}
-.md a {
-  color: var(--blue-text);
-}
-.md a:hover {
-  text-decoration: underline;
-}
-.md :where(ul, ol) {
-  padding-left: 20px;
-}
-.md li {
-  padding-left: 2px;
-}
-.md li + li {
-  margin-top: 3px;
-}
-.md li > :where(ul, ol) {
-  margin: 3px 0 0;
-}
-.md li::marker {
-  color: var(--text-3);
 }
 /* A task list has the app's checkbox in place of a bullet. */
 .md li:has(> input[type='checkbox']) {
@@ -2685,45 +2462,10 @@ html.js button.toast-close-js {
   opacity: 0.85;
   cursor: default;
 }
-.md blockquote {
-  padding: 2px 0 2px 12px;
-  border-left: 2px solid var(--border-2);
-  color: var(--text-2);
+.md :where(table) {
+  margin: 0 0 12px;
 }
-.md blockquote > :last-child {
-  margin-bottom: 0;
-}
-.md hr {
-  height: 1px;
-  margin: 20px 0;
-  border: 0;
-  background: var(--border);
-}
-/* Anything the reader might copy is monospace, small, and a step quieter than prose. */
-.md :where(code, pre) {
-  font:
-    12.5px/1.6 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-}
-.md :not(pre) > code {
-  padding: 1px 5px;
-  border-radius: var(--radius);
-  background: var(--hover);
-  color: var(--text);
-}
-.md pre {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--input-bg);
-  overflow: auto;
-  tab-size: 2;
-}
-.md pre:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ring);
-}
+/* @prose: the rules of prose.css, under .md, are put here by `make assets` (a rule below, such as .md-code pre, wins over a rule of the same weight above it, so the place matters). */
 /* A code block with its copy button at the top right, which is there only with script. The button is over the block's own corner and is shown when the block is
    pointed at or has focus in it, and always where there is no pointer to point with; the block keeps its width, and its text is not under the button for long
    (a block is padded at the right by the button's width, so that a line is not hidden by it). */
@@ -2743,13 +2485,13 @@ html.js button.toast-close-js {
   height: 26px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--panel);
-  color: var(--text-2);
+  background: var(--surface-color);
+  color: var(--text-muted-color);
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--motion);
+  transition: opacity var(--motion-duration);
 }
 .md-code:hover .md-copy,
 .md-code:focus-within .md-copy,
@@ -2763,15 +2505,15 @@ html.js button.toast-close-js {
   }
 }
 .md-copy:hover {
-  background: var(--hover);
-  color: var(--text);
+  background: var(--hover-color);
+  color: var(--text-color);
 }
 .md-copy:focus-visible {
-  outline: 2px solid var(--ring);
+  outline: 2px solid var(--focus-ring-color);
   outline-offset: 1px;
 }
 .md-copy[data-copied] {
-  color: var(--green);
+  color: var(--success-color);
 }
 .md-copy .fa-solid {
   font-size: 12px;
@@ -2784,7 +2526,7 @@ html.js button.toast-close-js {
   width: max-content;
   max-width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   border-collapse: collapse;
   font-size: 13px;
@@ -2797,15 +2539,15 @@ html.js button.toast-close-js {
 }
 .md th {
   height: 30px;
-  background: var(--hover);
-  color: var(--text-2);
+  background: var(--hover-color);
+  color: var(--text-muted-color);
   font-size: 12.5px;
   white-space: nowrap;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 .md td {
-  height: var(--row-h);
-  border-bottom: 1px solid var(--border);
+  height: var(--row-height);
+  border-bottom: 1px solid var(--border-color);
 }
 .md tbody tr:last-child td {
   border-bottom: 0;
@@ -2813,7 +2555,7 @@ html.js button.toast-close-js {
 .md td code {
   padding: 0;
   background: none;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
 }
 
@@ -2827,7 +2569,7 @@ html.js button.toast-close-js {
   width: 34px;
   height: 34px;
   font-size: 30px;
-  color: var(--text-3);
+  color: var(--text-faint-color);
   margin-bottom: 12px;
 }
 .state-title {
@@ -2837,7 +2579,7 @@ html.js button.toast-close-js {
   line-height: inherit;
 }
 .state-desc {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   margin: 0 0 16px;
   font-size: 13.5px;
 }
@@ -2846,13 +2588,13 @@ html.js button.toast-close-js {
   margin: 8px auto 0;
 }
 .compile h1 {
-  color: var(--red);
+  color: var(--danger-color);
   font-size: 22px;
   font-weight: 600;
   margin: 0 0 3px;
 }
 .compile .count {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   margin: 0 0 20px;
   font-size: 13.5px;
 }
@@ -2865,31 +2607,31 @@ html.js button.toast-close-js {
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   margin-bottom: 5px;
 }
 .compile pre {
   margin: 0;
   padding: 11px 13px;
-  background: var(--red-bg);
-  border-left: 3px solid var(--red);
+  background: var(--danger-bg-color);
+  border-left: 3px solid var(--danger-color);
   border-radius: var(--radius);
   font:
     12.5px/1.55 ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--red);
+  color: var(--danger-color);
   white-space: pre-wrap;
   overflow-x: auto;
 }
 .compile .fix {
   margin: 8px 0 0;
   font-size: 13px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .compile .fix b {
-  color: var(--text);
+  color: var(--text-color);
   font-weight: 500;
 }
 
@@ -2900,13 +2642,13 @@ html.js button.toast-close-js {
   align-items: center;
   gap: 9px;
   padding: 0 12px;
-  background: var(--panel);
+  background: var(--surface-color);
   font:
     11.5px ui-monospace,
     SFMono-Regular,
     Menlo,
     monospace;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .statusbar {
   position: fixed;
@@ -2915,7 +2657,7 @@ html.js button.toast-close-js {
   bottom: 0;
   height: 26px;
   z-index: 35;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--border-color);
 }
 /* A page that is sent as it is built has the bar in two parts. The request is in the shell, with a mark where the
    rest will be, and how the page came to be is sent when all of it has, fixed over the end of the bar, where it
@@ -2931,7 +2673,7 @@ html.js button.toast-close-js {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 @supports selector(:has(*)) {
   .statusbar-live:has(~ .statusbar-late) .status-loading {
@@ -2939,7 +2681,7 @@ html.js button.toast-close-js {
   }
 }
 .method {
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--border-strong-color);
   border-radius: var(--radius);
   padding: 0 5px;
   font-size: 10px;
@@ -2949,7 +2691,7 @@ html.js button.toast-close-js {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 /* How the page came to be: the server's time, when its HTML was built, and the badges for
    what the viewer should know: script off, and a page that a cache may have answered. */
@@ -2961,10 +2703,10 @@ html.js button.toast-close-js {
   white-space: nowrap;
 }
 .sb-opt {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .sb-timing + .sb-opt::before {
-  content: var(--sep);
+  content: var(--separator);
   margin-right: 8px;
 }
 /* Where the time went: the server's time to build the page, and what the rest took until it was loaded, which add up to the
@@ -2975,15 +2717,15 @@ html.js button.toast-close-js {
   gap: 8px;
 }
 .sb-timing .sb-opt {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .sb-timing [data-build]::before {
   content: 'render ';
-  color: var(--text-3);
+  color: var(--text-faint-color);
 }
 .sb-timing [data-loaded]::before {
-  content: var(--sep) ' delivery ';
-  color: var(--text-3);
+  content: var(--separator) ' delivery ';
+  color: var(--text-faint-color);
 }
 .sb-timing [hidden] {
   display: none;
@@ -3027,8 +2769,8 @@ html.js .status-meta [data-built] {
 .spin {
   width: 10px;
   height: 10px;
-  border: 1.5px solid var(--border-2);
-  border-top-color: var(--blue-text);
+  border: 1.5px solid var(--border-strong-color);
+  border-top-color: var(--accent-text-color);
   border-radius: var(--radius-pill);
   animation: sp 0.7s linear infinite;
 }
@@ -3099,7 +2841,7 @@ html.js .status-meta [data-built] {
   height: auto;
 }
 .nav-chevron {
-  transition: transform var(--motion);
+  transition: transform var(--motion-duration);
 }
 .menu[open] .menu-pop {
   animation: drop-in 0.12s ease-out;
@@ -3157,7 +2899,7 @@ dialog.preview-dialog[open]::backdrop {
   }
   .spin {
     animation: none;
-    border-top-color: var(--blue-text);
+    border-top-color: var(--accent-text-color);
   }
 }
 
@@ -3200,7 +2942,7 @@ dialog.preview-dialog[open]::backdrop {
   }
   .nav-toggle:focus-visible ~ .app .nav-open,
   .top-more-toggle:focus-visible + .top-more {
-    outline: 2px solid var(--blue);
+    outline: 2px solid var(--accent-color);
     outline-offset: -2px;
   }
   .nav-open,
@@ -3211,12 +2953,12 @@ dialog.preview-dialog[open]::backdrop {
      for the button that it is hovered. */
   .nav-toggle:hover ~ .app .nav-open,
   .top-more-toggle:hover + .top-more {
-    background: var(--hover);
-    color: var(--text);
+    background: var(--hover-color);
+    color: var(--text-color);
   }
   .top-more-toggle:checked + .top-more {
-    background: var(--hover);
-    color: var(--text);
+    background: var(--hover-color);
+    color: var(--text-color);
   }
   .iconbtn {
     width: 40px;
@@ -3251,7 +2993,7 @@ dialog.preview-dialog[open]::backdrop {
   .top-backdrop {
     position: fixed;
     inset: 0;
-    background: var(--backdrop);
+    background: var(--backdrop-color);
     transition: opacity 0.18s;
   }
   .splitter {
@@ -3300,8 +3042,8 @@ dialog.preview-dialog[open]::backdrop {
     margin-left: 0;
     padding: 8px 12px;
     overflow-y: auto;
-    background: var(--panel);
-    border-left: 1px solid var(--border);
+    background: var(--surface-color);
+    border-left: 1px solid var(--border-color);
   }
   /* The order they are read in is the order of the bar; the order they are drawn in puts the buttons first. */
   .top-right > *,
@@ -3413,7 +3155,7 @@ dialog.preview-dialog[open]::backdrop {
   .toolbar-lbl:has(+ .tip:focus),
   label.lbl:has(+ .tip:focus),
   .panel-title:has(+ .tip:focus) {
-    outline: 2px solid var(--blue);
+    outline: 2px solid var(--accent-color);
     outline-offset: 2px;
     border-radius: var(--radius);
   }
@@ -3485,7 +3227,7 @@ td.actions .gate:focus-visible::after,
   display: flex;
   align-items: center;
   gap: 10px;
-  height: var(--control-h);
+  height: var(--control-height);
 }
 /* A phone number with script: the country calling code is a segment joined to the input that holds the number. */
 .phone {
@@ -3509,10 +3251,10 @@ td.actions .gate:focus-visible::after,
 .range-input {
   flex: 1;
   min-width: 0;
-  accent-color: var(--blue);
+  accent-color: var(--accent-color);
 }
 .range-input.invalid {
-  accent-color: var(--red);
+  accent-color: var(--danger-color);
 }
 /* A slider with no value, whose number is empty and shows its dash, does not seem to hold one where its thumb rests. */
 .range:has(.range-number:placeholder-shown) .range-input {
@@ -3538,7 +3280,7 @@ a.ext {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: var(--blue-text);
+  color: var(--accent-text-color);
   text-decoration: none;
 }
 a.ext:hover {
@@ -3581,10 +3323,10 @@ a.ext:hover {
   width: 20px;
   height: 20px;
   border-radius: var(--radius);
-  color: var(--text-2);
+  color: var(--text-muted-color);
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--motion);
+  transition: opacity var(--motion-duration);
 }
 .filter-btn::-webkit-details-marker {
   display: none;
@@ -3601,12 +3343,12 @@ th:focus-within .filter-btn,
   opacity: 1;
 }
 .filter.on .filter-btn {
-  color: var(--blue-text);
+  color: var(--accent-text-color);
 }
 .filter-btn:hover,
 .filter[open] .filter-btn {
-  background: var(--active);
-  color: var(--text);
+  background: var(--active-color);
+  color: var(--text-color);
 }
 .filter-pop {
   top: calc(100% + 6px);
@@ -3618,7 +3360,7 @@ th:focus-within .filter-btn,
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  color: var(--text);
+  color: var(--text-color);
   font-size: 13px;
   font-weight: 400;
   text-align: left;
@@ -3653,7 +3395,7 @@ th.num .filter-pop {
   cursor: pointer;
 }
 .filter-opt:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 .filter-opt[hidden] {
   display: none;
@@ -3673,7 +3415,7 @@ th.num .filter-pop {
 }
 .filter-note {
   font-size: 11.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .filter-range label {
   display: flex;
@@ -3681,7 +3423,7 @@ th.num .filter-pop {
   gap: 4px;
   min-width: 0;
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .filter-actions {
   display: flex;
@@ -3705,7 +3447,7 @@ thead th .filter-pop a {
 /* The option that the arrow keys are on is marked by more than a fill, which is a tenth of a step from the box it is in. */
 .pal-item.active,
 .msel-opt.active {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: -2px;
 }
 
@@ -3830,11 +3572,11 @@ thead th .filter-pop a {
   :root:not([data-theme]),
   [data-theme='dark'],
   [data-theme='light'] {
-    --control-bd: var(--control-bd-strong);
-    --border: var(--control-bd-strong);
-    --border-2: var(--control-bd-strong);
-    --text-2: var(--text);
-    --text-3: var(--text-2);
+    --control-border-color: var(--control-border-strong-color);
+    --border-color: var(--control-border-strong-color);
+    --border-strong-color: var(--control-border-strong-color);
+    --text-muted-color: var(--text-color);
+    --text-faint-color: var(--text-muted-color);
   }
 }
 
@@ -3846,7 +3588,7 @@ thead th .filter-pop a {
   top: -48px;
   z-index: 100;
   padding: 8px 12px;
-  color: var(--text);
+  color: var(--text-color);
 }
 .skip:focus {
   top: 8px;
@@ -3862,7 +3604,7 @@ main:focus {
   border: 0;
   background: none;
   font: inherit;
-  color: var(--blue-text);
+  color: var(--accent-text-color);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -3908,14 +3650,14 @@ button.file-thumb-chosen {
   padding: 4px 0;
   background: transparent;
   border: 0;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 11px;
   font-weight: 500;
   text-align: center;
 }
 .cal .cal-wk {
   width: 2.5em;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 11px;
   font-weight: 400;
 }
@@ -3927,26 +3669,26 @@ button.file-thumb-chosen {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   border: 1px solid transparent;
   border-radius: var(--radius);
-  color: var(--text);
+  color: var(--text-color);
   font-size: 13px;
   text-decoration: none;
 }
 /* the days of another month are dimmed to the secondary text, and not to the tertiary, which is for decoration: they are still read */
 .cal-out .cal-day {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 .cal-today .cal-day {
-  border-color: var(--blue-text);
+  border-color: var(--accent-text-color);
   font-weight: 700;
 }
 a.cal-day {
-  color: var(--blue-text);
+  color: var(--accent-text-color);
 }
 a.cal-day:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 /* A day whose click is an action is a button that is drawn as the link is. */
 button.cal-day {
@@ -3957,11 +3699,11 @@ button.cal-day {
   font: inherit;
   font-size: 13px;
   width: 100%;
-  color: var(--blue-text);
+  color: var(--accent-text-color);
   cursor: pointer;
 }
 button.cal-day:hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 /* the mark of a day with items: a dot under the numeral, in the text colour of the day so that it is as readable as the numeral is */
 .cal-marked .cal-day::after {

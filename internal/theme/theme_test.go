@@ -73,7 +73,7 @@ func TestContrastIsTheWCAGRatio(t *testing.T) {
 func TestBaseIsTheStylesheetsPalette(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("../render/assets/css/app.css")
+	raw, err := os.ReadFile("../render/assets/css/tokens.css")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,13 +92,13 @@ func TestBaseIsTheStylesheetsPalette(t *testing.T) {
 		}
 		p := Base(mode)
 		for name, want := range map[string]Color{
-			"canvas": p.Canvas, "panel": p.Panel, "raise": p.Raise, "input-bg": p.Input,
-			"text": p.Text, "text-2": p.Text2, "text-3": p.Text3,
-			"border": p.Border, "border-2": p.Border2, "control-bd-strong": p.ControlHeavy, "hover": p.Hover, "active": p.Active,
-			"blue": p.Blue, "blue-hover": p.BlueHover, "blue-text": p.BlueText,
-			"green": p.Green.Text, "green-bg": p.Green.BG, "green-bd": p.Green.BD,
-			"orange": p.Orange.Text, "orange-bg": p.Orange.BG, "orange-bd": p.Orange.BD,
-			"red": p.Red.Text, "red-bg": p.Red.BG, "red-bd": p.Red.BD, "red-solid": p.RedSolid, "red-solid-hover": p.RedSolidHover,
+			"page-color": p.Canvas, "surface-color": p.Panel, "raised-color": p.Raise, "field-color": p.Input,
+			"text-color": p.Text, "text-muted-color": p.Text2, "text-faint-color": p.Text3,
+			"border-color": p.Border, "border-strong-color": p.Border2, "control-border-strong-color": p.ControlHeavy, "hover-color": p.Hover, "active-color": p.Active,
+			"accent-color": p.Blue, "accent-hover-color": p.BlueHover, "accent-text-color": p.BlueText,
+			"success-color": p.Green.Text, "success-bg-color": p.Green.BG, "success-border-color": p.Green.BD,
+			"warning-color": p.Orange.Text, "warning-bg-color": p.Orange.BG, "warning-border-color": p.Orange.BD,
+			"danger-color": p.Red.Text, "danger-bg-color": p.Red.BG, "danger-border-color": p.Red.BD, "danger-solid-color": p.RedSolid, "danger-solid-hover-color": p.RedSolidHover,
 		} {
 			got, ok := tok[name]
 			if !ok {
@@ -144,7 +144,7 @@ func cssBlockAfter(css, selector string) (string, bool) {
 func TestLightSystemFallbackMatchesThemeLight(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("../render/assets/css/app.css")
+	raw, err := os.ReadFile("../render/assets/css/tokens.css")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestAModesOwnColourWinsOverTheSharedOneInThatModeOnly(t *testing.T) {
 	if res[0].Mode != Dark || res[1].Mode != Light {
 		t.Fatalf("modes are dark then light: %v %v", res[0].Mode, res[1].Mode)
 	}
-	if !strings.Contains(strings.Join(res[0].Decls, "\n"), "--blue: #4361e8;") || !strings.Contains(strings.Join(res[1].Decls, "\n"), "--blue: #1f7a6d;") {
+	if !strings.Contains(strings.Join(res[0].Decls, "\n"), "--accent-color: #4361e8;") || !strings.Contains(strings.Join(res[1].Decls, "\n"), "--accent-color: #1f7a6d;") {
 		t.Errorf("the declarations do not follow: %v / %v", res[0].Decls, res[1].Decls)
 	}
 }
@@ -346,7 +346,7 @@ func TestOnlyTheModesThatSayAnythingHaveADeclaration(t *testing.T) {
 		t.Errorf("the mode that has a canvas has a stylesheet and the other has none: %d / %d", len(res[0].Decls), len(res[1].Decls))
 	}
 	decls := strings.Join(res[0].Decls, "\n")
-	for _, want := range []string{"--canvas: #0f1220;", "--panel: ", "--text: "} {
+	for _, want := range []string{"--page-color: #0f1220;", "--surface-color: ", "--text-color: "} {
 		if !strings.Contains(decls, want) {
 			t.Errorf("no %q in\n%s", want, decls)
 		}

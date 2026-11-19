@@ -46,6 +46,7 @@ into existence, and nothing is configured twice.
 | `FileUpload` | One panel containing a file chooser and a button, in a native `multipart/form-data` form of its own with the `_view` field first: one file, of any size up to its `MaxSize` (which has no default), handed to `Receive` as it arrives, with nothing held. `FileHandle` also has the folder (`Path`), the name as sent (`RawName`) and the type the browser said (`DeclaredType`). A drop zone with script (the `File` script), a Disabled Guard draws the chooser and button disabled with the reason and any other error leaves the panel out |
 | `Editor` | One panel containing a code editor (Monaco), and, when its `Content` has a `Store`, a footer with *Save*; without script a textarea, or the text in a monospace block |
 | `Diff` | One panel containing two texts and what changed between them, side by side or stacked; without script a unified diff made by the server |
+| `Embed` | One panel with a frame of a page of this site, borderless and as tall as the code editor, filling the body; below it a link that opens the page in a tab of its own. The frame is named by the panel's `Title`, is `loading="lazy"`, sends no referrer to other sites, and has no `sandbox`: the page is the app's own code. Its address is what `Load` returns for the request, which must be a path on this site |
 | `Markdown` | One panel containing a text set as markdown, as an article in the app's own type and colours |
 | `List` | One panel containing a column of items: each a headline (a link in the app, or to another site), a badge, a line of small facts and a picture, with *Show more* when the source has more |
 | `Cards` | A `List` whose items are cards, in a grid that wraps or a row that scrolls sideways |
@@ -358,6 +359,14 @@ sides to name. A `Diff` only reads, so there is no footer and an accessor with a
 Without script the server makes a unified diff, bounded: two texts too large or too different to compare
 there say so, and two that are the same say *No differences*.
 
+### `Embed` → a panel with a frame
+
+One panel. Header as above; the body is an `<iframe>` of a page of this site (the path that `Load` returns), with no border, as tall as the code editor is (`max(16rem, 100dvh - chrome - 8rem)`, since
+a frame has no height of its own) and as wide as the panel. It is named by the panel's `Title`, loads lazily and sends no referrer to another site. It has no `sandbox`: the page is the app's own code, of its
+own site (see `design-decisions.md`). The foot has "Open in a new tab", for a page that is too small for what it shows. The page is a route of the app's own, outside the pages of the app, which say that no
+page may frame them (`frame-ancestors 'none'`); it says in its own policy that only this site may (`frame-ancestors 'self'`). A frame is loaded again when its panel is replaced, and prints blank. Nothing here
+needs script, and nothing in it asks for any.
+
 ### `Markdown` → a panel with an article
 
 One panel. Header as above; the body is one text of the model, set as CommonMark with GitHub's tables,
@@ -568,7 +577,7 @@ Four things in the original design mock were not expressible. Three are now clos
 one is deferred on purpose.
 
 1. **Panel titles and descriptions — closed.** Every panel (`Form`, `Table`,
-   `Editor`, `Diff`, `Markdown`, `List`, `Cards`, `Calendar`, `FileUpload`) carries `Title`, `Desc` and `HeadActions`. A panel's title is part of what the panel *is* — the name of the
+   `Editor`, `Diff`, `Markdown`, `List`, `Cards`, `Calendar`, `FileUpload`, `Embed`) carries `Title`, `Desc` and `HeadActions`. A panel's title is part of what the panel *is* — the name of the
    thing being shown — and the alternative was that the runtime invents one.
 2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
    a `Label` without becoming a struct. A long page is scannable with `Tabs`

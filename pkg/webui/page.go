@@ -110,7 +110,7 @@ type Page[A any] struct {
 }
 
 // View is what a page shows, and what a layout holds: a panel, which loads its own data ([Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards],
-// [Calendar], [Toolbar] or [FileUpload]), or a layout, which arranges other Views ([Stack], [Split], [Columns], [When] or [Tabs]). Only this package implements it.
+// [Calendar], [Toolbar], [FileUpload] or [Embed]), or a layout, which arranges other Views ([Stack], [Split], [Columns], [When] or [Tabs]). Only this package implements it.
 type View interface {
 	validateView(v *viewValidator)
 	lowerView(at ir.Pos) ir.Node

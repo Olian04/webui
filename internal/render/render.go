@@ -478,7 +478,7 @@ func (e navEntry) lit(active string) bool {
 }
 
 // earlyCSS is the canvas colour of each theme, inline, ahead of the stylesheet. The
-// values are the stylesheet's --canvas tokens; a test keeps the two equal.
+// values are the stylesheet's --page-color tokens; a test keeps the two equal.
 const earlyCSS = `html{background:#111217;color-scheme:dark}` +
 	`html[data-theme='light']{background:#f4f5f5;color-scheme:light}` +
 	`@media (prefers-color-scheme:light){html:not([data-theme]){background:#f4f5f5;color-scheme:light}}`

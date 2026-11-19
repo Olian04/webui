@@ -89,7 +89,7 @@ func tokens(t *testing.T, css, selector string) map[string]string {
 func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 	t.Parallel()
 
-	css := assetSource(t, "app.css")
+	css := assetSource(t, "tokens.css")
 	white := rgba{255, 255, 255, 1}
 
 	for name, tok := range map[string]map[string]string{
@@ -97,7 +97,7 @@ func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 		"light": tokens(t, css, "[data-theme='light']"),
 	} {
 		colour := func(k string) rgba { return parseColour(t, tok[k]) }
-		panel, canvas := colour("panel"), colour("canvas")
+		panel, canvas := colour("surface-color"), colour("page-color")
 		check := func(what string, ratio, atLeast float64) {
 			if ratio < atLeast {
 				t.Errorf("%s: %s is %.2f:1, want at least %.1f:1", name, what, ratio, atLeast)
@@ -108,35 +108,35 @@ func TestThePalettesTextMeetsWCAGContrastInBothThemes(t *testing.T) {
 			label string
 			bg    rgba
 		}{{"panel", panel}, {"canvas", canvas}} {
-			check("--text on "+surface.label, contrast(colour("text").over(surface.bg), surface.bg), 4.5)
-			check("--text-2 on "+surface.label, contrast(colour("text-2").over(surface.bg), surface.bg), 4.5)
-			check("--text-3 on "+surface.label+" (decoration only)", contrast(colour("text-3").over(surface.bg), surface.bg), 3)
+			check("--text-color on "+surface.label, contrast(colour("text-color").over(surface.bg), surface.bg), 4.5)
+			check("--text-muted-color on "+surface.label, contrast(colour("text-muted-color").over(surface.bg), surface.bg), 4.5)
+			check("--text-faint-color on "+surface.label+" (decoration only)", contrast(colour("text-faint-color").over(surface.bg), surface.bg), 3)
 		}
 		// The quiet text is read on every surface it is drawn on, and the hover of a row is one of them.
-		input, raise := colour("input-bg"), colour("raise")
-		hovered := colour("hover").over(panel)
-		check("--text-2 on a hovered row", contrast(colour("text-2").over(hovered), hovered), 4.5)
-		check("--text-2 on the raised surface", contrast(colour("text-2").over(raise), raise), 4.5)
-		check("--text-2 on an input", contrast(colour("text-2").over(input), input), 4.5)
-		check("--blue-text on a hovered row", contrast(colour("blue-text").over(hovered), hovered), 4.5)
+		input, raise := colour("field-color"), colour("raised-color")
+		hovered := colour("hover-color").over(panel)
+		check("--text-muted-color on a hovered row", contrast(colour("text-muted-color").over(hovered), hovered), 4.5)
+		check("--text-muted-color on the raised surface", contrast(colour("text-muted-color").over(raise), raise), 4.5)
+		check("--text-muted-color on an input", contrast(colour("text-muted-color").over(input), input), 4.5)
+		check("--accent-text-color on a hovered row", contrast(colour("accent-text-color").over(hovered), hovered), 4.5)
 		// The edge of a control is what tells a person where it is: 3:1 against what it is drawn on, for a visitor who asks for more contrast.
 		// The ordinary edge is the quiet one (the same as a border's), which is the look of the app and the choice of its design.
-		check("--control-bd-strong on an input", contrast(colour("control-bd-strong").over(input), input), 3)
-		check("--control-bd-strong on the panel", contrast(colour("control-bd-strong").over(panel), panel), 3)
-		if tok["control-bd"] != "var(--border-2)" {
-			t.Errorf("%s: --control-bd is %q, want the ordinary edge, var(--border-2)", name, tok["control-bd"])
+		check("--control-border-strong-color on an input", contrast(colour("control-border-strong-color").over(input), input), 3)
+		check("--control-border-strong-color on the panel", contrast(colour("control-border-strong-color").over(panel), panel), 3)
+		if tok["control-border-color"] != "var(--border-strong-color)" {
+			t.Errorf("%s: --control-border-color is %q, want the ordinary edge, var(--border-strong-color)", name, tok["control-border-color"])
 		}
-		check("--blue-text on panel", contrast(colour("blue-text").over(panel), panel), 4.5)
-		check("white on --blue (primary button)", contrast(white, colour("blue")), 4.5)
-		check("white on --blue-hover", contrast(white, colour("blue-hover")), 4.5)
-		check("white on --red-solid (danger button)", contrast(white, colour("red-solid")), 4.5)
-		check("white on --red-solid-hover", contrast(white, colour("red-solid-hover")), 4.5)
+		check("--accent-text-color on panel", contrast(colour("accent-text-color").over(panel), panel), 4.5)
+		check("white on --accent-color (primary button)", contrast(white, colour("accent-color")), 4.5)
+		check("white on --accent-hover-color", contrast(white, colour("accent-hover-color")), 4.5)
+		check("white on --danger-solid-color (danger button)", contrast(white, colour("danger-solid-color")), 4.5)
+		check("white on --danger-solid-hover-color", contrast(white, colour("danger-solid-hover-color")), 4.5)
 
-		for _, tone := range []string{"green", "orange", "red"} {
-			fg := colour(tone).over(panel)
-			check(fmt.Sprintf("--%s text on panel", tone), contrast(fg, panel), 4.5)
-			badge := colour(tone + "-bg").over(panel)
-			check(fmt.Sprintf("--%s badge text on its tint", tone), contrast(colour(tone).over(badge), badge), 4.5)
+		for _, tone := range []string{"success", "warning", "danger"} {
+			fg := colour(tone + "-color").over(panel)
+			check(fmt.Sprintf("--%s-color text on panel", tone), contrast(fg, panel), 4.5)
+			badge := colour(tone + "-bg-color").over(panel)
+			check(fmt.Sprintf("--%s-color badge text on its tint", tone), contrast(colour(tone+"-color").over(badge), badge), 4.5)
 		}
 	}
 }
@@ -155,9 +155,9 @@ func TestThePageTellsTheBrowserItsBackgroundBeforeTheStylesheet(t *testing.T) {
 	sheet := strings.Index(page, `rel="stylesheet"`)
 	assert.True(t, early > 0 && early < sheet) // the browser reads it first
 
-	css := assetSource(t, "app.css")
-	dark := tokens(t, css, ":root,\n[data-theme='dark']")["canvas"]
-	light := tokens(t, css, "[data-theme='light']")["canvas"]
+	css := assetSource(t, "tokens.css")
+	dark := tokens(t, css, ":root,\n[data-theme='dark']")["page-color"]
+	light := tokens(t, css, "[data-theme='light']")["page-color"]
 	assert.Contains(t, page, "html{background:"+dark+";color-scheme:dark}")
 	assert.Contains(t, page, "html[data-theme='light']{background:"+light+";color-scheme:light}")
 	assert.Contains(t, page, "html:not([data-theme]){background:"+light+";color-scheme:light}")
