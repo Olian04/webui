@@ -289,6 +289,8 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.calendar(ctx, req, page, n) })), nil
 	case *ir.Toolbar:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
+	case *ir.Embed:
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.embed(ctx, req, page, n) })), nil
 	case *ir.FileUpload:
 		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) })), nil
 	case *ir.Form:

@@ -150,7 +150,7 @@
 //
 // A page shows one [View], which is a panel or a layout. A panel loads its own data and refreshes on
 // its own: [Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards], [Calendar], a [Toolbar], which is a row of
-// controls and the values of its forms and has no frame, and a [FileUpload], which is for sending one large file.
+// controls and the values of its forms and has no frame, a [FileUpload], which is for sending one large file, and an [Embed], which shows a page of the app's own.
 // A layout arranges other Views, and nests: [Stack], [Split], [Columns], [When] and [Tabs]:
 //
 //	View: webui.Stack{
@@ -443,6 +443,23 @@
 //	}
 //
 // A panel's footer is its kind's own (a table's pager, a form's Save), and is not added to. A head's button posts as a toolbar's does, and the page is drawn again with its outcome.
+//
+// # Embedding a page of your own
+//
+// An [Embed] is the way out for what the library has no view for: a map, a scene, a visualisation, anything that the app can make as a page of its own. The panel is a frame of a page of this
+// site, and nothing more: it asks nothing of script, and whether the page in the frame uses script, or has a version for a reader with none, is the app's to say. The page is the app's own code,
+// from the app's own site, so it is not sandboxed, and is as trusted as any route of the app is.
+//
+//	webui.Embed{Title: "Site map", Src: "/frame/site-map"}
+//
+// A page that depends on the request, one for each device, is the address that a Load returns, built from the page's arguments with [ArgsOf]. The page in the frame is served by a route of the
+// app's own and not by the library, outside the app's pages: those say that no page may frame them. The route should say that only this site may, and what its own page loads, a library or a
+// worker from another site, is allowed by its own policy, which is the reason for a page of its own:
+//
+//	w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
+//
+// The frame is a request like any other, and carries the visitor's cookies, so the route checks who the visitor is as any route does: the Guard of the page that holds the frame does not protect it.
+// A frame that is replaced with its panel, by a refresh or a tab, is loaded again, and a page that is printed is printed with a blank frame.
 //
 // # Tables
 //
@@ -960,7 +977,8 @@
 // search results a visitor could not open are left out. POST requests are
 // protected against cross-site request forgery (CSRF) with
 // [net/http.CrossOriginProtection], responses carry a content security policy, and
-// nothing the visitor controls is trusted as a redirect target. The compile-error
+// nothing the visitor controls is trusted as a redirect target. Every page says that no page may frame it, so a page of the app cannot be embedded; an [Embed] shows a route of the app's own,
+// which is not behind a page's Guard and checks the visitor itself. The compile-error
 // page shows type and field names, so mount an app that may fail to compile behind
 // the same authentication.
 package webui

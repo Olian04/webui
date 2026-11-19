@@ -1311,6 +1311,24 @@ html:not(.js) .refresh-js {
   overflow: auto;
 }
 /* A form's fields sit inside the panel body, inset from its edge. */
+/* An embedded page: a frame that fills the body, which is as tall as the code editor is (a frame has no height of its own), with no border, since the panel has one. */
+.embed-body {
+  height: max(16rem, calc(100dvh - var(--content-chrome) - 8rem));
+}
+:is(.stack, .col, [data-tabbody]) > .panel > .panel-body.embed-body {
+  flex: 0 0 auto;
+}
+.embed {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--panel);
+}
+.embed-open {
+  margin-left: auto;
+  font-size: 12.5px;
+}
 .panel-body.pad {
   padding: 4px 10px 14px;
 }

@@ -284,6 +284,9 @@ them the note of a panel that is not final. A panel has no menu of its own, so n
 folded away: reloading is the page's Refresh in the top bar, and what an app puts in the head
 is drawn. On a phone a head that has controls may take a second row.
 
+An `Embed` is a panel whose body is a frame of a page of the app's own: borderless, as tall as the code editor (`max(16rem, 100dvh - chrome - 8rem)`), with an "Open in a new tab" link in its footer. The page in it is
+drawn by its own route and follows the visitor's colour scheme, not the app's switch.
+
 A panel may have a footer separated by a 1px rule: pagination on the left (with the
 table's CSV and JSON download links, as quiet buttons, beside the range),
 navigation or actions on the right. The footer is the kind's own; an app adds to the head only.

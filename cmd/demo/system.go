@@ -37,7 +37,15 @@ var (
 // shown as a value. Here that is a status page, with a badge and a bar.
 var System = webui.Page[webui.NoArgs]{
 	Path: "/system",
-	View: SystemStatus,
+	View: webui.Stack{SystemStatus, StatusBoard},
+}
+
+// StatusBoard is an Embed: a panel that shows a page of this site in a frame, for what the library has no view for. The page is a route of the app's own (frame.go), drawn on the server with an SVG and no
+// script, so it is as it is with script off; the page is the app's own code, of its own site, and the frame is not sandboxed.
+var StatusBoard = webui.Embed{
+	Title: "Status board",
+	Desc:  "An Embed: a page of this site, in a frame. It is drawn on the server with no script, and cut off from this page.",
+	Src:   "/frame/status",
 }
 
 // SystemStatus is the status page.

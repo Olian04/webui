@@ -1077,6 +1077,33 @@ templ (r *Renderer) Markdown(v LoadedMarkdown) {
 	}
 }
 
+// Embed renders a page of this site in a frame, in a panel: the heading is the panel's, the frame is named by it, and below it is a link that opens the page in a tab of its own, for a
+// page that is too small for what it shows. The frame is plain markup, with no script of ours, and no sandbox: the page is the app's own, of its own site. What runs in it, and whether anything does, is the page's.
+templ (r *Renderer) Embed(v LoadedEmbed) {
+	{{ frame := r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, v.Retry) }}
+	{{ frame.Footer = r.embedFoot(v) }}
+	@c.Panel(frame) {
+		<div class="panel-body embed-body">
+			<iframe class="embed" src={ v.Src } title={ v.Node.Title } loading="lazy" referrerpolicy="same-origin"></iframe>
+		</div>
+	}
+}
+
+func (r *Renderer) embedFoot(v LoadedEmbed) templ.Component {
+	if v.Failed {
+		return nil
+	}
+	return r.embedOpen(v)
+}
+
+templ (r *Renderer) embedOpen(v LoadedEmbed) {
+	<a class="ext embed-open" href={ v.Src } target="_blank" rel="noopener noreferrer">
+		Open in a new tab
+		@c.Icon(c.IconProps{Name: c.IconExternal, Class: "ext-icon"})
+		<span class="sr-only">(opens in a new tab)</span>
+	</a>
+}
+
 // Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
 // one, then Show more when the source had more. Each part is shown as its field says to show it, as it is in a cell of a table.
 templ (r *Renderer) Items(v LoadedItems) {

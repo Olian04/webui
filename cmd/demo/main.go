@@ -226,9 +226,11 @@ func routes(app http.Handler) http.Handler {
 	mux.Handle("/admin/", authenticated(app))
 	mux.Handle("GET /uploads/{name}", authenticated(http.HandlerFunc(serveUpload))) // what a File holds, served by the app: see uploads.go
 	mux.Handle("GET /uploads/{name}/thumb", authenticated(http.HandlerFunc(serveThumb)))
-	mux.HandleFunc("GET /art/{name}", serveArt)          // the pictures of the Activity page: made from the name, on this site
-	mux.Handle("GET /metrics", metricsHandler(registry)) // the program's own, with the app's (App.Observer) in it
-	mux.HandleFunc("GET /login", loginPage)              // the app's menu links here: "Log out"
+	mux.Handle("GET /frame/status", authenticated(http.HandlerFunc(frameStatus)))      // the pages that an Embed shows: routes of the app's own, see frame.go
+	mux.Handle("GET /frame/device/{id}", authenticated(http.HandlerFunc(frameDevice))) // and signed in, as the app is
+	mux.HandleFunc("GET /art/{name}", serveArt)                                        // the pictures of the Activity page: made from the name, on this site
+	mux.Handle("GET /metrics", metricsHandler(registry))                               // the program's own, with the app's (App.Observer) in it
+	mux.HandleFunc("GET /login", loginPage)                                            // the app's menu links here: "Log out"
 	mux.Handle("POST /login", http.NewCrossOriginProtection().Handler(http.HandlerFunc(login)))
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/", http.StatusFound)
