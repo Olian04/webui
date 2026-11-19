@@ -614,7 +614,7 @@ Motion exists to say *something is happening*, or where a thing that has opened 
 - Spinner: 700ms linear.
 - Phone drawers (640px only): 180ms slide.
 - A category of the sidebar slides open and shut: 160ms, the height of its content (`::details-content`, with `interpolate-size`), and its chevron turns in 120ms. A browser that cannot animate it snaps.
-- A menu, the Export menu, a column filter, a description and a dialog fade in when they open: 120ms, with a 4px drop (a menu opens below its button and rises 4px for the Export menu, which opens upward) or, for a dialog, from 97%; a filter and a description fade only, since script places them. A dialog's backdrop fades in in 160ms. Nothing fades out: closing is at once.
+- A menu, the Export menu, a column filter and a description fade in when they open: 120ms, a menu with a 4px drop (the Export menu, which opens upward, rises 4px instead); a filter and a description fade only, since script places them. A dialog and its backdrop fade in in 160ms, and do not scale or move: a box that is still moving when it is clicked is one that a test, and a hand, has to wait for. Nothing fades out: closing is at once.
 - Search palette `.pending`: a static dim, no transition.
 
 Nothing else slides, nothing bounces, nothing loops (but a spinner and a skeleton), nothing animates on first paint, and `prefers-reduced-motion` takes every one of these away.

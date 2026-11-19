@@ -3068,12 +3068,6 @@ html.js .status-meta [data-built] {
     transform: translateY(4px);
   }
 }
-@keyframes dialog-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-}
 .nav-group::details-content {
   height: 0;
   overflow: clip;
@@ -3100,9 +3094,7 @@ html.js .status-meta [data-built] {
   animation: fade-in 0.12s ease-out;
 }
 dialog.confirm[open],
-dialog.preview-dialog[open] {
-  animation: dialog-in 0.16s ease-out;
-}
+dialog.preview-dialog[open],
 dialog.confirm[open]::backdrop,
 dialog.preview-dialog[open]::backdrop {
   animation: fade-in 0.16s ease-out;
