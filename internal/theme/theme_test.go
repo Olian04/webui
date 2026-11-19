@@ -73,7 +73,7 @@ func TestContrastIsTheWCAGRatio(t *testing.T) {
 func TestBaseIsTheStylesheetsPalette(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("../render/assets/css/app.css")
+	raw, err := os.ReadFile("../render/assets/css/tokens.css")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func cssBlockAfter(css, selector string) (string, bool) {
 func TestLightSystemFallbackMatchesThemeLight(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile("../render/assets/css/app.css")
+	raw, err := os.ReadFile("../render/assets/css/tokens.css")
 	if err != nil {
 		t.Fatal(err)
 	}

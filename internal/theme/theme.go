@@ -35,7 +35,7 @@ type Palette struct {
 	RedSolid, RedSolidHover       Color
 }
 
-// Base is the design's own palette for a mode. The stylesheet (app.css) is where these are drawn from, and a test
+// Base is the design's own palette for a mode. The stylesheet (tokens.css) is where these are drawn from, and a test
 // keeps the two equal.
 func Base(m Mode) Palette {
 	if m == Light {

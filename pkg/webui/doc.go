@@ -462,7 +462,7 @@
 //
 // The frame is a request like any other, and carries the visitor's cookies, so the route checks who the visitor is as any route does: the Guard of the page that holds the frame does not protect it.
 // A frame that is replaced with its panel, by a refresh or a tab, is loaded again, and a page that is printed is printed with a blank frame. The page can look as the app does by linking the
-// stylesheets that [App.Styles] gives.
+// classless stylesheet that [App.Styles] gives: plain semantic HTML (headings, paragraphs, tables, forms) looks like the app, and no class name is promised.
 //
 // # Tables
 //

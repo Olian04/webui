@@ -1,0 +1,110 @@
+/* Prose. Each element is given the look of its counterpart in the app, from the design's tokens: the panel's 14px body text, the form's checkbox, the editor's code. Headings and labels are
+   no heavier than 500, and the structure is drawn by space more than by lines.
+
+   This file has no class and no id in it, on purpose: it is what a page of plain markup looks like. It is built twice (see make assets): under .md, for a markdown text in the app's own pages,
+   and as it is, in classless.css, for a page that the app makes itself (App.Styles). A rule here is a rule for both. */
+:where(p, ul, ol, blockquote, pre) {
+  margin: 0 0 12px;
+}
+/* The small headings are captions, as the sidebar's sections are (.caption in the app's own pages). */
+:where(h4, h5, h6) {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+:where(h1, h2, h3, h4, h5, h6) {
+  margin: 22px 0 8px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--text);
+}
+h1 {
+  font-size: 18px;
+}
+h2 {
+  font-size: 15.5px;
+}
+h3 {
+  font-size: 14px;
+}
+/* The small headings are captions, as the sidebar's sections are (.caption). */
+/* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
+   600, the one place outside a full-page error that the app uses it. */
+strong {
+  font-weight: 600;
+}
+em {
+  font-style: italic;
+}
+del {
+  color: var(--text-2);
+}
+/* A picture from an origin the author trusts: no wider than the text, and in line with it. */
+img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+  border-radius: var(--radius);
+}
+a {
+  color: var(--blue-text);
+}
+a:hover {
+  text-decoration: underline;
+}
+:where(ul, ol) {
+  padding-left: 20px;
+}
+li {
+  padding-left: 2px;
+}
+li + li {
+  margin-top: 3px;
+}
+li > :where(ul, ol) {
+  margin: 3px 0 0;
+}
+li::marker {
+  color: var(--text-3);
+}
+blockquote {
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--border-2);
+  color: var(--text-2);
+}
+blockquote > :last-child {
+  margin-bottom: 0;
+}
+hr {
+  height: 1px;
+  margin: 20px 0;
+  border: 0;
+  background: var(--border);
+}
+/* Anything the reader might copy is monospace, small, and a step quieter than prose. */
+:where(code, pre) {
+  font:
+    12.5px/1.6 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+}
+:not(pre) > code {
+  padding: 1px 5px;
+  border-radius: var(--radius);
+  background: var(--hover);
+  color: var(--text);
+}
+pre {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--input-bg);
+  overflow: auto;
+  tab-size: 2;
+}
+pre:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
+}

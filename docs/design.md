@@ -360,6 +360,8 @@ its light or its dark theme.
 
 ### Text
 
+The rules for text (headings, paragraphs, lists, links, quotes, code) are one set, `prose.css`: Markdown takes it under `.md`, and the classless stylesheet that `App.Styles` serves takes it as it is, so a page of an app's own that writes plain HTML reads as Markdown does. Tables are the exception: Markdown keeps the grid's rules.
+
 A text set as Markdown is a panel with an article in it (`.md`): 14px on 1.6, in the panel's text colour, and
 it works without script. It is markup from outside the design, so each element is given the look of its counterpart in the app,
 from the same tokens.

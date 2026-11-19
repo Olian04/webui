@@ -43,15 +43,16 @@ func assetName(logical string, body []byte) (name, hash string) {
 	return strings.TrimSuffix(logical, ext) + "." + hash + ext, hash
 }
 
-// StyleHrefs are the addresses of the stylesheets that a page of the app links, in the order it links them, for code that makes a page of its own (the page in an Embed): the library's, and the
-// app's theme when it has one. They are what a page of the app carries, since the name of a file is a hash of its contents, which is the same in every app of this version of the library; only the
-// mount prefix and the theme are the app's. The icon stylesheet is not here: it is cut for the icons that one app names.
+// StyleHrefs are the addresses of the stylesheets that a page that the app makes itself links (the page in an Embed), in the order it links them: the classless one, which styles elements and
+// has no class in it, and the app's theme when it has one. They are served as every asset is, and named for a hash of their contents, which is the same in every app of this version of the
+// library; only the mount prefix and the theme are the app's. The app's own pages link app.css, whose classes are theirs and are not offered; nor is the icon stylesheet, which is cut for the icons
+// that one app names.
 func StyleHrefs(prefix string, t ir.Theme) []string {
-	css, err := assets.FS.ReadFile("min/css/app.css")
+	css, err := assets.FS.ReadFile("min/css/classless.css")
 	if err != nil {
 		return nil // the file is embedded: it is there
 	}
-	name, _ := assetName("app.css", css)
+	name, _ := assetName("classless.css", css)
 	hrefs := []string{prefix + AssetDir + "/" + name}
 	if t != (ir.Theme{}) {
 		themed, _ := assetName("theme.css", themeCSS(t))
@@ -97,7 +98,7 @@ func (r *Renderer) buildAssets() error {
 		return err
 	}
 
-	for logical, file := range map[string]string{"app.css": "min/css/app.css", "enhance.js": "min/js/enhance.js"} {
+	for logical, file := range map[string]string{"app.css": "min/css/app.css", "classless.css": "min/css/classless.css", "enhance.js": "min/js/enhance.js"} {
 		body, err := read(file)
 		if err != nil {
 			return err

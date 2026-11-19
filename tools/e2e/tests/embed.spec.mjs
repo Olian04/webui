@@ -19,10 +19,13 @@ test('the page in the frame has the look of the app, from the stylesheet that Ap
   await page.goto('/admin/system');
   const frame = status(page);
   await expect(frame.getByRole('img', { name: /Collector status/ })).toBeVisible();
-  const colours = (locator) => locator.evaluate((el) => ({ background: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }));
-  // A badge is the library's, in the frame as in the page that holds it, and so is the canvas behind the text.
-  expect(await colours(frame.locator('.badge.tone-ok').first())).toEqual(await colours(page.locator('.badge.tone-ok').first()));
-  expect(await colours(frame.locator('body'))).toEqual(await colours(page.locator('body')));
+  const look = (locator, ...props) => locator.evaluate((el, props) => Object.fromEntries(props.map((p) => [p, getComputedStyle(el)[p]])), props);
+  // The page has no class anywhere. Its canvas, its text and its font are the app's, and a table is a table of the app: its head is the app's quiet 500 weight, not the browser's bold.
+  expect(await look(frame.locator('body'), 'backgroundColor', 'color', 'fontFamily')).toEqual(await look(page.locator('body'), 'backgroundColor', 'color', 'fontFamily'));
+  expect(await frame.locator('a').first().evaluate((el) => getComputedStyle(el).color)).toBe(await frame.locator('body').evaluate((el) => { const probe = document.createElement('i'); probe.style.color = 'var(--blue-text)'; el.append(probe); return getComputedStyle(probe).color; }));
+  const head = await look(frame.getByRole('columnheader').first(), 'fontWeight', 'textTransform');
+  expect(head.fontWeight).toBe('500');
+  expect(await frame.locator('[class]').count()).toBe(0);
   expect(problems).toEqual([]);
 });
 

@@ -1,190 +1,3 @@
-/* ===========================================================================
-   Design tokens. The app's colours (webui.Theme) override the blue, green,
-   orange and red families, emitted as theme.css after this file. The values
-   below are tuned to Grafana's dark canvas, which is a theme choice, not a
-   structural one — the markup underneath is unchanged.
-   =========================================================================== */
-:root,
-[data-theme='dark'] {
-  color-scheme: dark;
-  --canvas: #111217;
-  --panel: #181b1f;
-  --raise: #22252b;
-  --input-bg: #0e0f12;
-  --border: rgba(204, 204, 220, 0.11);
-  --border-2: rgba(204, 204, 220, 0.22);
-  /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
-  --control-bd: var(--border-2);
-  --control-bd-strong: rgba(
-    204,
-    204,
-    220,
-    0.5
-  ); /* 3:1 vs the control's surface */
-  --text: rgb(204, 204, 220);
-  --text-2: rgba(204, 204, 220, 0.65);
-  --text-3: rgba(204, 204, 220, 0.45);
-  --hover: rgba(204, 204, 220, 0.07);
-  --active: rgba(204, 204, 220, 0.11);
-  --blue: #3d71d9;
-  --blue-hover: #3a6bd3;
-  --blue-text: #6e9fff;
-  --green: #6ccf8e;
-  --green-bg: rgba(108, 207, 142, 0.14);
-  --green-bd: rgba(108, 207, 142, 0.3);
-  --orange: #ff9830;
-  --orange-bg: rgba(255, 152, 48, 0.14);
-  --orange-bd: rgba(255, 152, 48, 0.3);
-  --red: #f57a7d;
-  --red-bg: rgba(245, 122, 125, 0.14);
-  --red-bd: rgba(245, 122, 125, 0.3);
-  --red-solid: #d03a3f;
-  --red-solid-hover: #bd3237;
-  --shadow: 0 4px 12px rgb(0 0 0/0.55);
-}
-[data-theme='light'] {
-  color-scheme: light;
-  --canvas: #f4f5f5;
-  --panel: #ffffff;
-  --raise: #ffffff;
-  --input-bg: #ffffff;
-  --border: rgba(36, 41, 46, 0.12);
-  --border-2: rgba(36, 41, 46, 0.24);
-  --control-bd: var(--border-2);
-  --control-bd-strong: rgba(36, 41, 46, 0.55);
-  --text: #24292e;
-  --text-2: #5c6269;
-  --text-3: #85888e;
-  --hover: rgba(36, 41, 46, 0.06);
-  --active: rgba(36, 41, 46, 0.1);
-  --blue: #3d71d9;
-  --blue-hover: #3265d4;
-  --blue-text: #1f62e0;
-  --green: #177244;
-  --green-bg: rgba(23, 114, 68, 0.12);
-  --green-bd: rgba(23, 114, 68, 0.28);
-  --orange: #a74a0b;
-  --orange-bg: rgba(167, 74, 11, 0.12);
-  --orange-bd: rgba(167, 74, 11, 0.28);
-  --red: #c20d54;
-  --red-bg: rgba(194, 13, 84, 0.12);
-  --red-bd: rgba(194, 13, 84, 0.28);
-  --red-solid: #c20d54;
-  --red-solid-hover: #a60b49;
-  --shadow: 0 4px 12px rgb(24 26 27/0.18);
-}
-/* No explicit choice: follow the viewer's system. A stored choice (the theme
-   switch) sets data-theme and wins over this. */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --canvas: #f4f5f5;
-    --panel: #ffffff;
-    --raise: #ffffff;
-    --input-bg: #ffffff;
-    --border: rgba(36, 41, 46, 0.12);
-    --border-2: rgba(36, 41, 46, 0.24);
-    --control-bd: var(--border-2);
-    --control-bd-strong: rgba(36, 41, 46, 0.55);
-    --text: #24292e;
-    --text-2: #5c6269;
-    --text-3: #85888e;
-    --hover: rgba(36, 41, 46, 0.06);
-    --active: rgba(36, 41, 46, 0.1);
-    --blue: #3d71d9;
-    --blue-hover: #3265d4;
-    --blue-text: #1f62e0;
-    --green: #177244;
-    --green-bg: rgba(23, 114, 68, 0.12);
-    --green-bd: rgba(23, 114, 68, 0.28);
-    --orange: #a74a0b;
-    --orange-bg: rgba(167, 74, 11, 0.12);
-    --orange-bd: rgba(167, 74, 11, 0.28);
-    --red: #c20d54;
-    --red-bg: rgba(194, 13, 84, 0.12);
-    --red-bd: rgba(194, 13, 84, 0.28);
-    --red-solid: #c20d54;
-    --red-solid-hover: #a60b49;
-    --shadow: 0 4px 12px rgb(24 26 27/0.18);
-  }
-}
-
-/* Rings and tints are made from the accent and the critical colour, so they follow
-   a webui.Theme and both modes instead of being the default blue and red. */
-:root {
-  /* The separator between the things of a row, such as the status bar's figures: a middle dot, in the quiet
-     text colour. */
-  --sep: '\00b7';
-  --ring: color-mix(in srgb, var(--blue) 25%, transparent);
-  --ring-bad: color-mix(in srgb, var(--red) 25%, transparent);
-  --tint: color-mix(in srgb, var(--blue) 10%, transparent);
-  --radius: 2px;
-  --radius-pill: 99px; /* switch, spinner, scrollbar thumb — design: pills only */
-  --control-h: 32px;
-  --control-h-sm: 28px;
-  --row-h: 34px;
-  --gutter: 8px;
-  --motion: 0.12s; /* mid of design §13 110–130ms */
-  --backdrop: rgb(0 0 0 / 50%);
-}
-
-* {
-  box-sizing: border-box;
-}
-/* Focus is a visible 2px ring, never removed. Inputs and the search box draw their
-   own, so this is for everything else that can be focused. */
-a:focus-visible,
-button:focus-visible,
-summary:focus-visible,
-[tabindex]:focus-visible {
-  outline: 2px solid var(--blue);
-  outline-offset: 1px;
-}
-html,
-body {
-  height: 100%;
-}
-body {
-  margin: 0;
-  background: var(--canvas);
-  color: var(--text);
-  font:
-    14px/1.5 Inter,
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-a {
-  color: inherit;
-  text-decoration: none;
-}
-button,
-input,
-select {
-  font: inherit;
-  color: inherit;
-}
-::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border-2);
-  border-radius: var(--radius-pill);
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-/* Both bars meet in a square the browser paints white. The track is already
-   clear, so the corner is too and the surface under the bars shows through. */
-::-webkit-scrollbar-corner {
-  background: transparent;
-}
-
 /* Shared chrome. Components add these next to their own class; placement stays local. */
 .raise,
 .gate:hover::after,
@@ -194,8 +7,7 @@ select {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
 }
-.caption,
-.md :where(h4, h5, h6) {
+.caption {
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.05em;
@@ -2627,66 +2439,8 @@ html.js button.toast-close-js {
 .md > :where(p, ul, ol, blockquote, h1, h2, h3, h4, h5, h6) {
   max-width: 84ch;
 }
-.md :where(p, ul, ol, blockquote, pre, table) {
-  margin: 0 0 12px;
-}
-.md :where(h1, h2, h3, h4, h5, h6) {
-  margin: 22px 0 8px;
-  font-weight: 500;
-  line-height: 1.35;
-  color: var(--text);
-}
-.md h1 {
-  font-size: 18px;
-}
-.md h2 {
-  font-size: 15.5px;
-}
-.md h3 {
-  font-size: 14px;
-}
-/* The small headings are captions, as the sidebar's sections are (.caption). */
-/* Strong has to be seen in running text, where 500 is too close to 400 to tell apart: it is
-   600, the one place outside a full-page error that the app uses it. */
-.md strong {
-  font-weight: 600;
-}
-.md em {
-  font-style: italic;
-}
 .md th {
   font-weight: 500;
-}
-.md del {
-  color: var(--text-2);
-}
-/* A picture from an origin the author trusts: no wider than the text, and in line with it. */
-.md img {
-  max-width: 100%;
-  height: auto;
-  vertical-align: middle;
-  border-radius: var(--radius);
-}
-.md a {
-  color: var(--blue-text);
-}
-.md a:hover {
-  text-decoration: underline;
-}
-.md :where(ul, ol) {
-  padding-left: 20px;
-}
-.md li {
-  padding-left: 2px;
-}
-.md li + li {
-  margin-top: 3px;
-}
-.md li > :where(ul, ol) {
-  margin: 3px 0 0;
-}
-.md li::marker {
-  color: var(--text-3);
 }
 /* A task list has the app's checkbox in place of a bullet. */
 .md li:has(> input[type='checkbox']) {
@@ -2703,45 +2457,10 @@ html.js button.toast-close-js {
   opacity: 0.85;
   cursor: default;
 }
-.md blockquote {
-  padding: 2px 0 2px 12px;
-  border-left: 2px solid var(--border-2);
-  color: var(--text-2);
+.md :where(table) {
+  margin: 0 0 12px;
 }
-.md blockquote > :last-child {
-  margin-bottom: 0;
-}
-.md hr {
-  height: 1px;
-  margin: 20px 0;
-  border: 0;
-  background: var(--border);
-}
-/* Anything the reader might copy is monospace, small, and a step quieter than prose. */
-.md :where(code, pre) {
-  font:
-    12.5px/1.6 ui-monospace,
-    SFMono-Regular,
-    Menlo,
-    monospace;
-}
-.md :not(pre) > code {
-  padding: 1px 5px;
-  border-radius: var(--radius);
-  background: var(--hover);
-  color: var(--text);
-}
-.md pre {
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--input-bg);
-  overflow: auto;
-  tab-size: 2;
-}
-.md pre:focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ring);
-}
+/* @prose: the rules of prose.css, under .md, are put here by `make assets` (a rule below, such as .md-code pre, wins over a rule of the same weight above it, so the place matters). */
 /* A code block with its copy button at the top right, which is there only with script. The button is over the block's own corner and is shown when the block is
    pointed at or has focus in it, and always where there is no pointer to point with; the block keeps its width, and its text is not under the button for long
    (a block is padded at the right by the button's width, so that a line is not hidden by it). */
