@@ -28,7 +28,11 @@ var Activity = webui.Page[webui.NoArgs]{
 			},
 			ActivityOnCall,
 		},
-		webui.Split{ActivityCalendar, ActivityDashboards},
+		// Columns of unequal weight: the calendar a third of the row and the dashboards, which scroll sideways and want the room, two thirds.
+		webui.Columns{
+			{Weight: 1, View: ActivityCalendar},
+			{Weight: 2, View: ActivityDashboards},
+		},
 		ActivityEscalation,
 	},
 }

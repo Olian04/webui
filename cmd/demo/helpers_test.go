@@ -237,16 +237,3 @@ func valuesOf(g page.El) map[string]string {
 	}
 	return got
 }
-
-// panelsOf are the panels of a page by the address of each (data-view) and its title, in the order they are met: where each is in the layouts.
-func panelsOf(p *page.Page) [][2]string {
-	var out [][2]string
-	for _, v := range p.Views() {
-		title := ""
-		if hs := v.ByRole("heading", ""); len(hs) > 0 {
-			title = hs[0].Name()
-		}
-		out = append(out, [2]string{v.Attr("data-view"), title})
-	}
-	return out
-}

@@ -94,6 +94,7 @@ var app = webui.App{
 		}},
 		webui.NavGroup{Label: "Operations", Icon: "gears", Items: []webui.NavItem{
 			webui.NavPage{Page: System, Label: "System", Icon: "wave-square"},
+			webui.NavPage{Page: HealthChecks, Label: "Health checks", Icon: "heart-pulse"},
 			webui.NavPage{Page: Audit, Label: "Audit log", Icon: "list"},
 			webui.NavPage{Page: FirmwarePage, Label: "Firmware", Icon: "database"},
 			webui.NavPage{Page: FilesRoot, Label: "Files", Icon: "folder-open"},
@@ -105,18 +106,8 @@ var app = webui.App{
 			webui.NavPage{Page: HandbookGlossary, Label: "Glossary", Icon: "spell-check"},
 			webui.NavURL{Label: "The library's reference", Icon: "arrow-up-right-from-square", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 		}},
-		webui.NavGroup{Label: "Loading", Icon: "spinner", Items: []webui.NavItem{
-			webui.NavPage{Page: LoadingOrder, Label: "In order", Icon: "list-ol"},
-			webui.NavPage{Page: LoadingStaircase, Label: "Staircase (10 s)", Icon: "stairs"},
-			webui.NavPage{Page: LoadingTabs, Label: "Tabs read one tab", Icon: "window-restore"},
-			webui.NavPage{Page: LoadingNested, Label: "Nested layouts", Icon: "layer-group"},
-			webui.NavPage{Page: LoadingFailures, Label: "Panels that fail", Icon: "triangle-exclamation"},
-			webui.NavPage{Page: LoadingWhole, Label: "Built whole (editor)", Icon: "file-code"},
-			webui.NavPage{Page: LoadingGuarded, Label: "Guard refuses", Icon: "shield-halved"},
-			webui.NavPage{Page: LoadingFast, Label: "Answers at once", Icon: "bolt"},
-		}},
 	},
-	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast},
+	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, HealthChecks},
 }
 
 var (
@@ -142,6 +133,9 @@ var BrokenTable = webui.Page[webui.NoArgs]{
 		Columns: []webui.Accessor[Device]{DeviceID},
 	},
 }
+
+// Note is the model of the one field of the broken pages: a text.
+type Note struct{ Text string }
 
 // A pattern is RE2, which has no lookahead, and this one has: Compile says so, and what to write instead.
 var BrokenPattern = webui.Page[webui.NoArgs]{
