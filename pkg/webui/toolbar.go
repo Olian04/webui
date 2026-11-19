@@ -25,8 +25,8 @@ import (
 // edge and the right ones at the right, and the space between them is what the page has to spare. When there is no longer room for
 // both in a row, the group with fewer values (a button is one, and a [Form] is the values it shows) is whole: it is in a row or in the next
 // one, and never split. The group with more flows in rows from its own edge, the left one from the left and the right one from the
-// right. With as many in each, the left one flows. A toolbar with controls in one of them only is fine. The "Toolbars" page of the demo
-// has each of these cases, to change the width of the window under.
+// right. With as many in each, the left one flows. A toolbar with controls in one of them only is fine. The demo's landing page has
+// a toolbar with many values at the left and few at the right, and its Devices page has one control at each edge: change the width of the window under them.
 //
 // The items are:
 //

@@ -27,17 +27,18 @@ test('a filter narrows the rows of the table in place', async ({ page }) => {
 });
 
 test('a tab shows its panel in place and the address keeps the choice', async ({ page }) => {
-  await page.goto('/admin/layout/tabs');
+  await page.goto('/admin/activity');
   await mark(page);
-  await expect(page.getByRole('table', { name: 'Open alerts' })).toBeVisible();
-  await page.getByRole('navigation', { name: 'Views: Alerts, Devices' }).getByRole('link', { name: 'Devices' }).click();
-  await expect(page).toHaveURL(/tabs\.tab=devices/);
-  await expect(page.getByRole('table', { name: 'Open alerts' })).toHaveCount(0);
+  const alerts = page.getByRole('heading', { name: 'Open alerts', level: 2 });
+  await expect(alerts).toBeVisible();
+  await page.getByRole('navigation', { name: 'Views: Alerts, Releases' }).getByRole('link', { name: 'Releases' }).click();
+  await expect(page).toHaveURL(/tabs\.tab=releases/);
+  await expect(alerts).toHaveCount(0);
   expect(await isKept(page)).toBe(true);
 
   // The choice is in the address, so it survives a reload.
   await page.reload();
-  await expect(page.getByRole('table', { name: 'Open alerts' })).toHaveCount(0);
+  await expect(alerts).toHaveCount(0);
 });
 
 test('a question that is asked before an action can be answered no', async ({ page }) => {

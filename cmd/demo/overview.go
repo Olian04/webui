@@ -9,15 +9,25 @@ import (
 )
 
 // The landing page is the page at "/", and it is the one that shows what the library looks like when it is all used at once: the
-// collector's status in a toolbar, and below it four panels in two Splits, two to a row (two tables that page, sort and filter, a table of another model,
-// and a form), each declared as it would be on a page of its own. It has no Nav of its own: the brand in the sidebar and the first breadcrumb both lead here.
+// collector's status in a toolbar, and below it four panels in two rows, each declared as it would be on a page of its own. The first row is Columns of unequal weight, the devices
+// twice as wide as the alerts beside them, as a dashboard gives the most room to what is read most; the second is a Split, two equal columns, the first of them Tabs of the collector's
+// recent events and its status, since only one of the two is read at a time. It has no Nav of its own: the brand in the sidebar and the first breadcrumb both lead here.
 // Without such a page the root goes to the first page it can find that needs no arguments, with no message.
 var Overview = webui.Page[webui.NoArgs]{
 	Path: "/",
 	View: webui.Stack{
 		OverviewToolbar,
-		webui.Split{OverviewDevices, OverviewAlerts},
-		webui.Split{OverviewEvents, OverviewSettings},
+		webui.Columns{
+			{Weight: 2, View: OverviewDevices},
+			{Weight: 1, View: OverviewAlerts},
+		},
+		webui.Split{
+			webui.Tabs{
+				{Label: "Events", View: OverviewEvents},
+				{Label: "Status", View: SystemStatus},
+			},
+			OverviewSettings,
+		},
 	},
 }
 

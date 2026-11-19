@@ -86,6 +86,26 @@ func TestTabsLoadOnlyTheSelectedPanel(t *testing.T) {
 	assert.True(t, shows(pageOf(t, h, "/admin/device/d1?tabs.tab=Gone"), "Overview-row"))
 }
 
+// A Tabs is not limited to a few tabs: a strip of sixteen has a link for each, and the one that is chosen is the one that is read, wherever it is in the strip.
+func TestATabsOfManyTabsReadsTheOneThatIsChosenWhereverItIs(t *testing.T) {
+	t.Parallel()
+
+	var tabs webui.Tabs
+	for i := range 16 {
+		label := "Tab " + strconv.Itoa(i+1)
+		tabs = append(tabs, webui.Tab{Label: label, View: webui.Markdown[handbook]{
+			Title: label + " panel", Load: func(context.Context) (handbook, webui.Loaded) { return handbook{Text: label}, webui.Ready() }, Content: handbookText,
+		}})
+	}
+	h := editorApp(tabs)
+	strip := page.One(t, "the strip", pageOf(t, h, "/admin/e").ByRoleContaining("navigation", "Views:"))
+	assert.Equal(t, len(strip.Links()), 16)
+
+	last := pageOf(t, h, "/admin/e?tabs.tab=tab-16")
+	assert.True(t, len(last.ByRole("heading", "Tab 16 panel")) > 0)
+	assert.Equal(t, len(last.ByRole("heading", "Tab 1 panel")), 0)
+}
+
 func TestLayoutsGivePanelsPositionalIDs(t *testing.T) {
 	t.Parallel()
 

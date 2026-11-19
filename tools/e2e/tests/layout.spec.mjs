@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.mjs';
 
-// How wide and where things are is the stylesheet's, and a Go test reads a page's text and not its pixels. The demo has a page for each layout, and
-// says on it what each is meant to do; these are the ones that can be measured.
+// How wide and where things are is the stylesheet's, and a Go test reads a page's text and not its pixels. The landing page has the layouts a dashboard uses (Columns of unequal
+// weight, a Split with Tabs in it), and these are the ones that can be measured.
 
 test.use({ viewport: { width: 1400, height: 900 } });
 
@@ -9,47 +9,40 @@ test.use({ viewport: { width: 1400, height: 900 } });
 const panel = (page, title) => page.getByRole('heading', { name: title, exact: true }).first().locator('xpath=ancestor::*[@data-view][1]');
 const width = async (page, title) => (await panel(page, title).boundingBox()).width;
 
-test('a weight is a share of the row: 1 and 3 is a quarter and three quarters', async ({ page }) => {
-  await page.goto('/admin/layout/weights');
-  const [a, b] = [await width(page, 'Alerts: 1'), await width(page, 'Devices: 3')];
-  expect(b / a).toBeGreaterThan(2.7);
-  expect(b / a).toBeLessThan(3.3);
+test('a weight is a share of the row: 2 and 1 is two thirds and a third', async ({ page }) => {
+  await page.goto('/admin/');
+  const [devices, alerts] = [await width(page, 'Devices'), await width(page, 'Open alerts')];
+  expect(devices / alerts).toBeGreaterThan(1.8);
+  expect(devices / alerts).toBeLessThan(2.2);
 });
 
-test('25, 50 and 25 is a quarter, a half and a quarter', async ({ page }) => {
-  await page.goto('/admin/layout/weights');
-  const [a, b] = [await width(page, 'Alerts: 25'), await width(page, 'Devices: 50')];
-  expect(b / a).toBeGreaterThan(1.8);
-  expect(b / a).toBeLessThan(2.2);
-});
-
-test('columns with no weight are as wide as each other', async ({ page }) => {
-  await page.setViewportSize({ width: 1800, height: 900 }); // four columns of at least 280px, in a row
-  await page.goto('/admin/layout/weights');
-  const ws = [await width(page, 'One'), await width(page, 'Two'), await width(page, 'Three'), await width(page, 'Four')];
-  for (const w of ws) expect(Math.abs(w - ws[0])).toBeLessThan(2);
+test('the panels of a Split are as wide as each other', async ({ page }) => {
+  await page.goto('/admin/');
+  const [events, settings] = [await width(page, 'Recent events'), await width(page, 'Collector settings')];
+  expect(Math.abs(events - settings)).toBeLessThan(40); // the Tabs the first is in adds nothing to its width
 });
 
 test('Tabs in a Split are one column: the strip is over its panel, and the next column is beside them', async ({ page }) => {
-  await page.goto('/admin/layout/tabs');
-  const strip = await page.getByRole('navigation', { name: 'Views: Alerts, Devices' }).boundingBox();
-  const shown = await panel(page, 'Open alerts').boundingBox();
-  const beside = await page.getByRole('navigation', { name: 'Views: Sites, Status' }).boundingBox();
+  await page.goto('/admin/');
+  const strip = await page.getByRole('navigation', { name: 'Views: Events, Status' }).boundingBox();
+  const shown = await panel(page, 'Recent events').boundingBox();
+  const beside = await panel(page, 'Collector settings').boundingBox();
   expect(Math.abs(strip.x - shown.x)).toBeLessThan(2); // the panel is in the strip's column
   expect(shown.y).toBeGreaterThan(strip.y);
-  expect(beside.x).toBeGreaterThan(strip.x + strip.width - 1); // and the other Tabs is not under it
+  expect(beside.x).toBeGreaterThan(strip.x + strip.width - 1); // and the other column is not under it
 });
 
-test('the columns of tables of the same columns are in the same proportions', async ({ page }) => {
-  await page.goto('/admin/layout/weights');
-  const shares = async (title) => {
-    const heads = await page.getByRole('table', { name: title, exact: true }).first().getByRole('columnheader').all();
+test('the columns of a table are in the same proportions whatever the width of its panel', async ({ page }) => {
+  const shares = async () => {
+    const heads = await page.getByRole('table', { name: 'Devices', exact: true }).first().getByRole('columnheader').all();
     const ws = await Promise.all(heads.map(async (h) => (await h.boundingBox()).width));
     const total = ws.reduce((a, b) => a + b, 0);
     return ws.map((w) => w / total);
   };
-  const narrow = await shares('Devices: 3'); // in the three quarters
-  const wide = await shares('Devices: 50'); // in the half
+  await page.goto('/admin/');
+  const narrow = await shares();
+  await page.setViewportSize({ width: 1800, height: 900 });
+  const wide = await shares();
   expect(narrow.length).toBe(wide.length);
   narrow.forEach((s, i) => expect(Math.abs(s - wide[i])).toBeLessThan(0.03));
 });
