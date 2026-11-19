@@ -44,19 +44,21 @@ templ Calendar(p CalendarProps) {
 			<h3 class="cal-title" id={ p.TitleID }>{ p.Title }</h3>
 			<div class="cal-steps">
 				if p.Current != "" {
-					<a class="btn btn-secondary btn-sm" href={ p.Current } { p.LinkAttrs... }>Today</a>
+					@Button(ButtonProps{Href: p.Current, Variant: VariantSecondary, Size: SizeSmall, Attrs: p.LinkAttrs}) {
+						Today
+					}
 				}
 				if p.Prev != "" {
-					<a class="btn btn-secondary btn-sm cal-step" href={ p.Prev } { p.LinkAttrs... }>
+					@Button(ButtonProps{Href: p.Prev, Variant: VariantSecondary, Size: SizeSmall, Class: "cal-step", Attrs: p.LinkAttrs}) {
 						<span aria-hidden="true">‹</span>
 						<span class="sr-only">{ p.PrevLabel }</span>
-					</a>
+					}
 				}
 				if p.Next != "" {
-					<a class="btn btn-secondary btn-sm cal-step" href={ p.Next } { p.LinkAttrs... }>
+					@Button(ButtonProps{Href: p.Next, Variant: VariantSecondary, Size: SizeSmall, Class: "cal-step", Attrs: p.LinkAttrs}) {
 						<span aria-hidden="true">›</span>
 						<span class="sr-only">{ p.NextLabel }</span>
-					</a>
+					}
 				}
 			</div>
 		</div>

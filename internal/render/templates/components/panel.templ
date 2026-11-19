@@ -98,6 +98,13 @@ type Refused struct {
 	Title, Desc, Label, Href string
 }
 
+// PanelFoot is the foot of a panel, below a rule: what its kind does with the panel as a whole, such as a pager or the buttons of a form. end puts it at the right.
+templ PanelFoot(end bool) {
+	<div class={ "panel-foot", templ.KV("end", end) }>
+		{ children... }
+	</div>
+}
+
 templ Panel(p PanelProps) {
 	<div
 		class={ "panel", templ.KV("grows", p.Grows) }
@@ -149,9 +156,9 @@ templ Panel(p PanelProps) {
 			}
 		</div>
 		if p.Footer != nil {
-			<div class="panel-foot">
+			@PanelFoot(false) {
 				@p.Footer
-			</div>
+			}
 		}
 	</div>
 }

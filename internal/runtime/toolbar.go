@@ -26,6 +26,7 @@ func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *i
 		return p.render.Toolbar(view)
 	}
 	view.Node = resolved
+	view.Items = resolved.Items
 	view.Access, view.Hrefs = p.controls(ctx, req, page, resolved.Items)
 	view.Forms = make([]render.ToolbarForm, len(resolved.Items))
 	for i, it := range resolved.Items {

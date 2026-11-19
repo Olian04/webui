@@ -46,7 +46,7 @@ func (p *Program) headed(ctx context.Context, req *Request, page *ir.Page, n ir.
 	if !ok || len(h.Head()) == 0 {
 		return comp
 	}
-	view := render.LoadedHead{At: n.Pos(), Page: page, Items: h.Head()}
+	view := render.LoadedHead{At: n.Pos(), Page: page, Controls: render.Controls{Items: h.Head()}}
 	view.Path, view.Query = req.encode(page)
 	view.Access, view.Hrefs = p.controls(ctx, req, page, view.Items)
 	return p.render.Head(comp, view)
