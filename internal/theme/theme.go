@@ -156,9 +156,9 @@ func Resolve(s Spec) []Result {
 		r := Result{Mode: m, Palette: Base(m)}
 		r.neutrals(c.Canvas)
 		r.accent(c.Accent)
-		r.tone("green", c.OK)
-		r.tone("orange", c.Warning)
-		r.tone("red", c.Critical)
+		r.tone("success", c.OK)
+		r.tone("warning", c.Warning)
+		r.tone("danger", c.Critical)
 		out = append(out, r)
 	}
 	return out
@@ -199,10 +199,10 @@ func (r *Result) neutrals(canvas string) {
 		name string
 		c    Color
 	}{
-		{"canvas", p.Canvas}, {"panel", p.Panel}, {"raise", p.Raise}, {"input-bg", p.Input},
-		{"text", p.Text}, {"text-2", p.Text2}, {"text-3", p.Text3},
-		{"border", p.Border}, {"border-2", p.Border2}, {"control-bd-strong", p.ControlHeavy},
-		{"hover", p.Hover}, {"active", p.Active},
+		{"page-color", p.Canvas}, {"surface-color", p.Panel}, {"raised-color", p.Raise}, {"field-color", p.Input},
+		{"text-color", p.Text}, {"text-muted-color", p.Text2}, {"text-faint-color", p.Text3},
+		{"border-color", p.Border}, {"border-strong-color", p.Border2}, {"control-border-strong-color", p.ControlHeavy},
+		{"hover-color", p.Hover}, {"active-color", p.Active},
 	} {
 		r.declare(t.name, t.c.CSS())
 	}
@@ -243,9 +243,9 @@ func (r *Result) accent(text string) {
 		hover, tint = mixed{text, c, 86, "black"}, mixed{text, c, 80, "black"}
 	}
 	r.Palette.Blue, r.Palette.BlueHover, r.Palette.BlueText = c, hover.color(), tint.color()
-	r.declare("blue", text)
-	r.declare("blue-hover", hover.css())
-	r.declare("blue-text", tint.css())
+	r.declare("accent-color", text)
+	r.declare("accent-hover-color", hover.css())
+	r.declare("accent-text-color", tint.css())
 }
 
 // tone derives a status colour's text tint, and the faint background and border of its badge. The destructive button's fill
@@ -262,21 +262,21 @@ func (r *Result) tone(name, text string) {
 	bg, bd := mixed{text, c, 14, "transparent"}, mixed{text, c, 30, "transparent"}
 	t := Tone{fg.color(), bg.color(), bd.color()}
 	switch name {
-	case "green":
+	case "success":
 		r.Palette.Green = t
-	case "orange":
+	case "warning":
 		r.Palette.Orange = t
 	default:
 		r.Palette.Red = t
 	}
-	r.declare(name, fg.css())
-	r.declare(name+"-bg", bg.css())
-	r.declare(name+"-bd", bd.css())
-	if name == "red" {
+	r.declare(name+"-color", fg.css())
+	r.declare(name+"-bg-color", bg.css())
+	r.declare(name+"-border-color", bd.css())
+	if name == "danger" {
 		hover := mixed{text, c, 88, "black"}
 		r.Palette.RedSolid, r.Palette.RedSolidHover = c, hover.color()
-		r.declare("red-solid", text)
-		r.declare("red-solid-hover", hover.css())
+		r.declare("danger-solid-color", text)
+		r.declare("danger-solid-hover-color", hover.css())
 	}
 }
 

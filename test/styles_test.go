@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -126,12 +127,12 @@ func TestTheClasslessStylesheetHasNoClass(t *testing.T) {
 
 // stableTokens are the custom properties that a page may use, and that the library keeps: a name here that is no longer defined is a breaking change. Their values are the design's to change.
 var stableTokens = []string{
-	"--canvas", "--panel", "--raise", "--input-bg",
-	"--border", "--border-2", "--control-bd",
-	"--text", "--text-2", "--text-3", "--hover",
-	"--blue", "--blue-text",
-	"--green", "--green-bg", "--green-bd", "--orange", "--orange-bg", "--orange-bd", "--red", "--red-bg", "--red-bd",
-	"--radius", "--control-h",
+	"--surface-color", "--field-color",
+	"--border-color", "--border-strong-color", "--control-border-color",
+	"--text-color", "--text-muted-color", "--text-faint-color", "--hover-color",
+	"--accent-color", "--accent-text-color",
+	"--success-color", "--success-bg-color", "--success-border-color", "--warning-color", "--warning-bg-color", "--warning-border-color", "--danger-color", "--danger-bg-color", "--danger-border-color",
+	"--focus-ring-color", "--radius", "--radius-pill", "--control-height",
 }
 
 func TestTheTokensThatAPageMayUseAreDefinedInBothStylesheets(t *testing.T) {
@@ -143,6 +144,16 @@ func TestTheTokensThatAPageMayUseAreDefinedInBothStylesheets(t *testing.T) {
 			if !strings.Contains(css, token+":") {
 				t.Errorf("%s does not define %s", sheet, token)
 			}
+		}
+	}
+	// What the classless stylesheet defines is the list and nothing else: a token that nothing in it needs, or that a page is not promised, is not shipped.
+	defined := map[string]bool{}
+	for _, m := range regexp.MustCompile(`(--[a-z0-9-]+):`).FindAllStringSubmatch(minified(t, "classless.css"), -1) {
+		defined[m[1]] = true
+	}
+	for token := range defined {
+		if !slices.Contains(stableTokens, token) {
+			t.Errorf("classless.css defines %s, which is not in the list of tokens a page may use", token)
 		}
 	}
 	// The stylesheet of the app's own pages is flat: the nesting that puts prose under .md is taken out when it is built.

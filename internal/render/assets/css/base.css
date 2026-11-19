@@ -7,7 +7,7 @@ a:focus-visible,
 button:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--blue);
+  outline: 2px solid var(--accent-color);
   outline-offset: 1px;
 }
 html,
@@ -16,8 +16,7 @@ body {
 }
 body {
   margin: 0;
-  background: var(--canvas);
-  color: var(--text);
+  color: var(--text-color);
   font:
     14px/1.5 Inter,
     ui-sans-serif,
@@ -43,7 +42,7 @@ select {
   height: 9px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-2);
+  background: var(--border-strong-color);
   border-radius: var(--radius-pill);
 }
 ::-webkit-scrollbar-track {

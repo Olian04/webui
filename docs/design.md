@@ -334,10 +334,10 @@ there is something to save); the body has no padding, and the editor fills it.
   13px on 20px monospace (`ui-monospace`, `SFMono-Regular`, `Menlo`), tab size 2, no wrapping, and scroll by
   themselves. When script runs Monaco mounts over them and hides them, with the colours of the app's tokens in
 its light or its dark theme.
-- **States.** Focus is an inset 2px ring in `--ring`; a refused text is an inset 2px ring in `--ring-bad`, with the
+- **States.** Focus is an inset 2px ring in `--focus-ring-color`; a refused text is an inset 2px ring in `--danger-ring-color`, with the
   reason under the editor in a rule-topped strip (8px 12px), where a form would put it under a field.
 - **From the keyboard.** Monaco holds the Tab key, since it is a character in the text, so a quiet line under an editable
-  editor (12px, `--text-2`, ruled above) says how to leave it: *Tab types a tab. To leave the editor, press Esc and then
+  editor (12px, `--text-muted-color`, ruled above) says how to leave it: *Tab types a tab. To leave the editor, press Esc and then
   Tab.* Esc, when nothing else has a use for it (suggestions, the find box, a snippet, a selection), lets the next Tab
   move on, and the editor holds Tab again at the next other key and when it loses the focus. Cmd+K and Ctrl+K are
   Monaco's chord prefix inside an editor, so the search shortcut is the page's again outside it. Cmd+S and Ctrl+S press
@@ -347,11 +347,11 @@ its light or its dark theme.
   *more contrast* the editor is drawn on Monaco's high contrast theme.
 - **A diff** is the two texts side by side when its panel is 900px wide or more, and in one column, the lines of
   both interleaved, when it is not, following the panel as it is resized. Above it is a header row (12px,
-  `--text-2`, ruled below) that names the sides: over each side when they are side by side, and as one line, *Deployed →
+  `--text-muted-color`, ruled below) that names the sides: over each side when they are side by side, and as one line, *Deployed →
   Saved*, when they are not, because in one column they are not sides but a change from one text to the other.
   Without script the server makes a unified
   diff: 12.5px on 19px monospace, a grid of the old line number, the new line number, a marker and the text
-  (3.5rem, 3.5rem, 1.25rem, the rest), inserted lines on `--green-bg` and deleted lines on `--red-bg`, a summary
+  (3.5rem, 3.5rem, 1.25rem, the rest), inserted lines on `--success-bg-color` and deleted lines on `--danger-bg-color`, a summary
   line of `+n` in green and `−m` in red, and a quiet `⋯` for each run of unchanged lines that was left out. Two
   texts that are too large or too different to compare there say so, and two that are the same say *No
   differences*.
@@ -368,16 +368,16 @@ from the same tokens.
 
 - **Measure.** Prose holds to 84ch; code and tables use the width they are given.
 - **Headings** are no heavier than 500. h1 is 18px, h2 15.5px and h3 14px, with 22px above and 8px below; h4 to
-  h6 are captions, 11px uppercase and spaced, in `--text-2`, as the sidebar's sections are. **Strong** is 600, the one
+  h6 are captions, 11px uppercase and spaced, in `--text-muted-color`, as the sidebar's sections are. **Strong** is 600, the one
   place outside a full-page error where the app is heavier than 500, because in running text 500 is too close to 400
   to tell apart.
-- **Links** are `--blue-text` and underline on hover. **Lists** are indented 20px, 3px between items, with the
-  marker in `--text-3`, and a task list has the app's checkbox in place of the bullet.
-- **Code** is 12.5px monospace and a step quieter than prose: inline on `--hover` (1px 5px), a block on the input
+- **Links** are `--accent-text-color` and underline on hover. **Lists** are indented 20px, 3px between items, with the
+  marker in `--text-faint-color`, and a task list has the app's checkbox in place of the bullet.
+- **Code** is 12.5px monospace and a step quieter than prose: inline on `--hover-color` (1px 5px), a block on the input
   surface with a 1px rule, an 8px 10px inset and 2px corners. A block that names a language is coloured by the
   editor, which the page then loads. With script a block has a copy button at its top right (shown on hover or focus, always on touch);
   it copies the block's text, turns to a check for a moment and says *Copied* to a screen reader.
-- **A table** is the app's table, framed: a 30px header on `--hover` at 12.5px, 34px rows at 13px, a rule between
+- **A table** is the app's table, framed: a 30px header on `--hover-color` at 12.5px, 34px rows at 13px, a rule between
   rows and none after the last, no lines between columns, and it scrolls by itself when it is wide.
 - **A picture** is drawn only from an origin the author trusts, no wider than the text and in line with it; any other
   is a link, named by its alt text.
@@ -560,7 +560,7 @@ pager has no total, and adds "· sorted within this page" when the table is sort
 ### Export
 
 A table that is told to offers its rows as a file, from the left of its footer: a quiet *Export* caption (12.5px,
-`--text-3`) and two small ghost buttons, *CSV* and *JSON*, beside the range, and the pager keeps the right. The file
+`--text-faint-color`) and two small ghost buttons, *CSV* and *JSON*, beside the range, and the pager keeps the right. The file
 is every row the sort and the filters keep, not the page on screen, and the columns the table shows. The links
 carry `download`, so the page's script, which replaces a panel when a link leads to the same page, leaves them to the
 browser; they are plain links, and work without script.
@@ -615,7 +615,7 @@ body that says *Could not load*, or the refusal's text and link, and the page st
 
 Motion exists to say *something is happening*, or where a thing that has opened came from, and nothing else.
 
-- Hover and border transitions: 110–130ms (`--motion` is 120ms).
+- Hover and border transitions: 110–130ms (`--motion-duration` is 120ms).
 - Toast entry: 160ms rise.
 - Skeleton pulse: 1.1s, 100% → 40%.
 - Spinner: 700ms linear.
@@ -695,7 +695,7 @@ different product.
   (`internal/theme`): a `Theme` whose accent cannot carry a white label, whose status text cannot be read on its badge, or whose canvas leaves its derived text
   under 4.5:1, in any mode it is drawn in, is a compile error that names the field and the pair, and not a page with a button whose label is out of sight.
 - The edge of a control (an input, a checkbox, the switch) is the quiet border, 1.6:1, which is the look of the app and is below the 3:1 that WCAG 1.4.11
-  asks of it. A visitor who asks for more contrast (`prefers-contrast: more`) gets `--control-bd-strong`, which clears 3:1 on the control's own background
+  asks of it. A visitor who asks for more contrast (`prefers-contrast: more`) gets `--control-border-strong-color`, which clears 3:1 on the control's own background
   and on the panel, and the quiet text at the strength of the ordinary. The choice is the design's, and is recorded in the decisions log.
 - Windows high contrast (`forced-colors`) is drawn for: a checked box, the switch, the focus rings, the active tab, entry and option, and the gauge are drawn
   again with the system's colours, an outline or a border, since a background or a shadow is gone there. A focus ring that a shadow draws has a transparent

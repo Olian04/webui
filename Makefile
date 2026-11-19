@@ -49,7 +49,7 @@ assets: ## Minify the stylesheets and scripts the renderer serves (sources in cs
 	mkdir -p $(CSSBUILD)
 	{ echo '.md {'; cat $(CSS)/prose.css; echo '}'; } > $(CSSBUILD)/prose-in-md.css
 	{ cat $(CSS)/tokens.css $(CSS)/base.css; awk -v f=$(CSSBUILD)/prose-in-md.css '/^\/\* @prose:/ { while ((getline line < f) > 0) print line; next } { print }' $(CSS)/app.css; } > $(CSSBUILD)/app.css
-	cat $(CSS)/tokens.css $(CSS)/base.css $(CSS)/prose.css $(CSS)/classless.css > $(CSSBUILD)/classless.css
+	{ grep -v '/\* app \*/' $(CSS)/tokens.css; cat $(CSS)/base.css $(CSS)/prose.css $(CSS)/classless.css; } > $(CSSBUILD)/classless.css
 	$(TOOL) esbuild $(CSSBUILD)/app.css --minify --supported:nesting=false --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
 	$(TOOL) esbuild $(CSSBUILD)/classless.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css
 	$(TOOL) esbuild $(CSS)/icons.css --minify --legal-comments=none --log-level=warning --outdir=$(ASSETS)/min/css

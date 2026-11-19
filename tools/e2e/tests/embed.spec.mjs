@@ -27,8 +27,8 @@ test('the page in the frame has the look of the app, from the stylesheet that Ap
   expect(frameBody.color).toBe(hostBody.color);
   expect(frameBody.fontFamily).toBe(hostBody.fontFamily);
   expect(frameBody.backgroundColor).not.toBe(hostBody.backgroundColor);
-  expect(frameBody.backgroundColor).toBe(await page.locator('main').first().evaluate((el) => { const p = document.createElement('i'); p.style.color = 'var(--panel)'; el.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }));
-  expect(await frame.locator('a').first().evaluate((el) => getComputedStyle(el).color)).toBe(await frame.locator('body').evaluate((el) => { const probe = document.createElement('i'); probe.style.color = 'var(--blue-text)'; el.append(probe); return getComputedStyle(probe).color; }));
+  expect(frameBody.backgroundColor).toBe(await page.locator('main').first().evaluate((el) => { const p = document.createElement('i'); p.style.color = 'var(--surface-color)'; el.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }));
+  expect(await frame.locator('a').first().evaluate((el) => getComputedStyle(el).color)).toBe(await frame.locator('body').evaluate((el) => { const probe = document.createElement('i'); probe.style.color = 'var(--accent-text-color)'; el.append(probe); return getComputedStyle(probe).color; }));
   const head = await look(frame.getByRole('columnheader').first(), 'fontWeight', 'textTransform');
   expect(head.fontWeight).toBe('500');
   expect(await frame.locator('[class]').count()).toBe(0);

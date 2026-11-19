@@ -8,8 +8,10 @@ import "github.com/Olian04/webui/internal/render"
 // Classless means that it styles elements and nothing else: headings, paragraphs, lists, links, quotes, code, tables and forms, the page's ground (the panel's colour, since the page is shown in a panel) and text, and the app's scrollbars and focus
 // ring. A page writes plain semantic HTML and looks like the app. No class name is promised, because there is none in it, so the library is free to change how an element looks. What is promised
 // is that, and the names of these custom properties, which the page may read in its own CSS (an SVG's fill, a border of its own) and which follow the visitor's colour scheme and the app's theme:
-// --canvas --panel --raise --input-bg --border --border-2 --control-bd --text --text-2 --text-3 --hover --blue --blue-text --green --green-bg --green-bd --orange --orange-bg --orange-bd --red
-// --red-bg --red-bd --radius --control-h.
+// --surface-color --field-color (the grounds: a panel's, and an input's), --border-color --border-strong-color --control-border-color (lines), --text-color --text-muted-color --text-faint-color (text),
+// --hover-color, --accent-color --accent-text-color (the accent as a fill and as text), --success-color --warning-color --danger-color each with a -bg-color and a -border-color (status: text, tint
+// and edge), --focus-ring-color, --radius --radius-pill and --control-height. Each is named by what it colours, and is in the stylesheet because the stylesheet itself draws with it or a page of
+// plain markup would want it; the app's own pages have more, which are not offered.
 //
 //	for _, href := range app.Styles("/admin") {
 //		fmt.Fprintf(w, `<link rel="stylesheet" href="%s">`, href)

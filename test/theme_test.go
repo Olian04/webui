@@ -31,14 +31,14 @@ func TestTheAccentDrivesTheWholeBlueFamilyInBothModes(t *testing.T) {
 	css := themeCSS(t, webui.Theme{Accent: "#1f7a6d"})
 	// Dark, the default: hover and text are lightened.
 	assert.Contains(t, css, "html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark'] {")
-	assert.Contains(t, css, "--blue-hover: color-mix(in srgb, #1f7a6d 88%, black);")
-	assert.Contains(t, css, "--blue-text: color-mix(in srgb, #1f7a6d 62%, white);")
+	assert.Contains(t, css, "--accent-hover-color: color-mix(in srgb, #1f7a6d 88%, black);")
+	assert.Contains(t, css, "--accent-text-color: color-mix(in srgb, #1f7a6d 62%, white);")
 	// Light, chosen or by the system: deepened.
 	assert.Contains(t, css, "html:root:root[data-theme='light'] {")
 	assert.Contains(t, css, "@media (prefers-color-scheme: light) {\n  html:root:root:not([data-theme]) {")
-	assert.Contains(t, css, "--blue-text: color-mix(in srgb, #1f7a6d 80%, black);")
+	assert.Contains(t, css, "--accent-text-color: color-mix(in srgb, #1f7a6d 80%, black);")
 	// And it touches nothing else.
-	for _, other := range []string{"--green", "--orange", "--red", "--canvas", "--text"} {
+	for _, other := range []string{"--success-color", "--warning-color", "--danger-color", "--page-color", "--text-color"} {
 		assert.False(t, strings.Contains(css, other))
 	}
 }
@@ -47,15 +47,15 @@ func TestAStatusColourDerivesItsTextBackgroundAndBorder(t *testing.T) {
 	t.Parallel()
 
 	css := themeCSS(t, webui.Theme{Critical: "#cc2244", OK: "#228855"})
-	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 60%, white);") // dark
-	assert.Contains(t, css, "--red: color-mix(in srgb, #cc2244 85%, black);") // light
-	assert.Contains(t, css, "--red-bg: color-mix(in srgb, #cc2244 14%, transparent);")
-	assert.Contains(t, css, "--red-solid: #cc2244;") // the button's fill, as given
-	assert.Contains(t, css, "--red-solid-hover: color-mix(in srgb, #cc2244 88%, black);")
-	assert.Contains(t, css, "--red-bd: color-mix(in srgb, #cc2244 30%, transparent);")
-	assert.Contains(t, css, "--green-bg:")
-	assert.False(t, strings.Contains(css, "--orange")) // Warning was not set
-	assert.False(t, strings.Contains(css, "--blue"))   // nor Accent
+	assert.Contains(t, css, "--danger-color: color-mix(in srgb, #cc2244 60%, white);") // dark
+	assert.Contains(t, css, "--danger-color: color-mix(in srgb, #cc2244 85%, black);") // light
+	assert.Contains(t, css, "--danger-bg-color: color-mix(in srgb, #cc2244 14%, transparent);")
+	assert.Contains(t, css, "--danger-solid-color: #cc2244;") // the button's fill, as given
+	assert.Contains(t, css, "--danger-solid-hover-color: color-mix(in srgb, #cc2244 88%, black);")
+	assert.Contains(t, css, "--danger-border-color: color-mix(in srgb, #cc2244 30%, transparent);")
+	assert.Contains(t, css, "--success-bg-color:")
+	assert.False(t, strings.Contains(css, "--warning-color")) // Warning was not set
+	assert.False(t, strings.Contains(css, "--accent-color"))  // nor Accent
 }
 
 func TestThemeCSSIsLinkedAfterTheStylesheet(t *testing.T) {
@@ -78,15 +78,15 @@ func TestACanvasForOneModeDerivesTheSurfacesOfThatModeAndLeavesTheOtherAlone(t *
 
 	dark := css[:strings.Index(css, "html:root:root[data-theme='light']")]
 	assert.Contains(t, dark, "html:root:root:not([data-theme]),\nhtml:root:root[data-theme='dark'] {")
-	assert.Contains(t, dark, "--canvas: #0e1224;")
-	for _, token := range []string{"--panel:", "--raise:", "--input-bg:", "--text:", "--text-2:", "--text-3:", "--border:", "--border-2:", "--hover:", "--active:"} {
+	assert.Contains(t, dark, "--page-color: #0e1224;")
+	for _, token := range []string{"--surface-color:", "--raised-color:", "--field-color:", "--text-color:", "--text-muted-color:", "--text-faint-color:", "--border-color:", "--border-strong-color:", "--hover-color:", "--active-color:"} {
 		assert.Contains(t, dark, token)
 	}
 	// The light block has the accent, which is shared, and none of the surfaces, which the design keeps.
 	light := css[strings.Index(css, "html:root:root[data-theme='light'] {"):]
-	assert.Contains(t, light, "--blue: #4361e8;")
-	assert.False(t, strings.Contains(light, "--canvas:"))
-	assert.False(t, strings.Contains(light, "--panel:"))
+	assert.Contains(t, light, "--accent-color: #4361e8;")
+	assert.False(t, strings.Contains(light, "--page-color:"))
+	assert.False(t, strings.Contains(light, "--surface-color:"))
 
 	// The canvas the page is drawn on before the stylesheet is the app's in the dark theme and the design's in the light.
 	assert.Contains(t, page, "html{background:#0e1224;color-scheme:dark}")
@@ -102,8 +102,8 @@ func TestACanvasForEachModeIsDerivedForBoth(t *testing.T) {
 	t.Parallel()
 
 	css := themeCSS(t, webui.Theme{Dark: webui.ModeColors{Canvas: "#0e1224"}, Light: webui.ModeColors{Canvas: "#eef0f9"}})
-	assert.Contains(t, css, "--canvas: #0e1224;")
-	assert.Contains(t, css, "--canvas: #eef0f9;")
+	assert.Contains(t, css, "--page-color: #0e1224;")
+	assert.Contains(t, css, "--page-color: #eef0f9;")
 	// The system's own preference gets the light block too, for a viewer who has not chosen.
 	assert.Contains(t, css, "@media (prefers-color-scheme: light) {\n  html:root:root:not([data-theme]) {")
 
@@ -121,9 +121,9 @@ func TestAModesOwnColourWinsOverTheSharedOneInThatModeOnly(t *testing.T) {
 	css := themeCSS(t, webui.Theme{Accent: "#1f7a6d", Light: webui.ModeColors{Accent: "#4361e8"}})
 	dark := css[:strings.Index(css, "html:root:root[data-theme='light']")]
 	light := css[strings.Index(css, "html:root:root[data-theme='light'] {"):]
-	assert.Contains(t, dark, "--blue: #1f7a6d;")
-	assert.Contains(t, light, "--blue: #4361e8;")
-	assert.False(t, strings.Contains(light, "--blue: #1f7a6d;"))
+	assert.Contains(t, dark, "--accent-color: #1f7a6d;")
+	assert.Contains(t, light, "--accent-color: #4361e8;")
+	assert.False(t, strings.Contains(light, "--accent-color: #1f7a6d;"))
 }
 
 // A zero theme, and a theme that only gives the shared colours, have nothing the document or the script need to know of.

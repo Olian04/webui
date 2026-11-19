@@ -16,7 +16,7 @@ import (
 //
 // They look as the app does because they link the stylesheets that App.Styles names: the classless one, which gives plain elements (a heading, a paragraph, a table) the app's look from its tokens, and
 // the theme that the app was given (so -accent and -palette reach them). There is no class in these pages: what they are promised is that semantic markup looks like the app, and a mark in the SVG
-// is coloured from a token (--green), the one place a colour is said.
+// is coloured from a token (--success-color), the one place a colour is said.
 
 // frameHeaders is what a page that is meant for a frame says of itself: that only its own stylesheets may be loaded into it, and that only this site may frame it.
 func frameHeaders(w http.ResponseWriter) {
@@ -32,14 +32,14 @@ const svgStyle = ` style="display:block;width:100%;max-width:560px;height:auto"`
 
 // fill is the style of a mark in the SVG: a colour from a token of the design, by what the mark says.
 func fill(tone string) string {
-	token := map[string]string{"ok": "--green", "warn": "--orange", "bad": "--red", "dim": "--border-2"}[tone]
+	token := map[string]string{"ok": "--success-color", "warn": "--warning-color", "bad": "--danger-color", "dim": "--border-strong-color"}[tone]
 	if token == "" {
-		token = "--border-2"
+		token = "--border-strong-color"
 	}
 	return ` style="fill:var(` + token + `)"`
 }
 
-const textStyle = ` style="fill:var(--text);font:12px system-ui,sans-serif"`
+const textStyle = ` style="fill:var(--text-color);font:12px system-ui,sans-serif"`
 
 func framePage(w http.ResponseWriter, styles []string, title, lead, body string) {
 	frameHeaders(w)

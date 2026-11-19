@@ -7,7 +7,7 @@
 /* The page is shown inside a panel (an Embed), so its ground is the panel's colour and not the app's canvas. This one rule is not in :where(): it has to outweigh base.css's body, which is
    the canvas. A page that wants another ground says so with a rule of its own, after this sheet. */
 body {
-  background: var(--panel);
+  background: var(--surface-color);
 }
 :where(body) {
   padding: 14px 16px;
@@ -17,10 +17,10 @@ body {
 }
 :where(kbd) {
   padding: 1px 5px;
-  border: 1px solid var(--border-2);
+  border: 1px solid var(--border-strong-color);
   border-bottom-width: 2px;
   border-radius: var(--radius);
-  background: var(--input-bg);
+  background: var(--field-color);
   font:
     12px/1.4 ui-monospace,
     SFMono-Regular,
@@ -32,10 +32,10 @@ body {
 }
 :where(summary) {
   cursor: pointer;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 :where(details[open] > summary) {
-  color: var(--text);
+  color: var(--text-color);
 }
 
 /* A table is rows with a rule between them, a quiet header, and figures that line up. */
@@ -49,22 +49,22 @@ body {
 :where(caption) {
   padding: 0 0 6px;
   text-align: left;
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
 }
 :where(th, td) {
   padding: 6px 10px;
   text-align: left;
   vertical-align: top;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-color);
 }
 :where(th) {
   font-weight: 500;
   font-size: 12.5px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 :where(thead th) {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 :where(tbody tr:last-child > td, tbody tr:last-child > th) {
   border-bottom: 0;
@@ -72,57 +72,57 @@ body {
 
 /* Controls: the look of the app's own inputs and buttons, from the same tokens. */
 :where(label) {
-  color: var(--text-2);
+  color: var(--text-muted-color);
   font-size: 12.5px;
 }
 :where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='submit'], [type='button'], [type='reset']), select, textarea) {
   width: 100%;
   max-width: 28rem;
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 9px;
   font-size: 13.5px;
-  background: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--control-bd);
+  background: var(--field-color);
+  color: var(--text-color);
+  border: 1px solid var(--control-border-color);
   border-radius: var(--radius);
   outline: 2px solid transparent;
 }
 :where(textarea) {
   height: auto;
-  min-height: var(--control-h);
+  min-height: var(--control-height);
   padding: 6px 9px;
   line-height: 1.45;
   font-family: inherit;
   resize: vertical;
 }
 :where(input, select, textarea):focus {
-  border-color: var(--blue);
-  box-shadow: 0 0 0 2px var(--ring);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--focus-ring-color);
 }
 :where(input, textarea)::placeholder {
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }
 :where(button, input[type='submit'], input[type='button'], input[type='reset']) {
-  height: var(--control-h);
+  height: var(--control-height);
   padding: 0 12px;
-  border: 1px solid var(--control-bd);
+  border: 1px solid var(--control-border-color);
   border-radius: var(--radius);
   background: none;
-  color: var(--text);
+  color: var(--text-color);
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
 }
 :where(button, input[type='submit'], input[type='button'], input[type='reset']):hover {
-  background: var(--hover);
+  background: var(--hover-color);
 }
 :where(fieldset) {
   margin: 0 0 12px;
   padding: 8px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
 }
 :where(legend) {
   padding: 0 4px;
-  color: var(--text-2);
+  color: var(--text-muted-color);
 }

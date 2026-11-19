@@ -115,23 +115,23 @@ function tokenRules() {
 
 function defineThemes() {
   const colors = {
-    'editor.background': colour('--panel', '#181b1f'),
-    'editor.foreground': colour('--text', '#ccccdc'),
+    'editor.background': colour('--surface-color', '#181b1f'),
+    'editor.foreground': colour('--text-color', '#ccccdc'),
     // Line numbers are text that a reader uses, so they are the secondary text colour and not the tertiary one, which is
     // for what can be missed: it is 3.3:1 on the editor's background, and WCAG asks 4.5:1.
-    'editorLineNumber.foreground': colour('--text-2', '#9090a0'),
-    'editorLineNumber.activeForeground': colour('--text', '#ccccdc'),
-    'editor.lineHighlightBackground': colour('--hover', '#22252b'),
-    'editor.selectionBackground': colour('--ring', '#3d71d955'),
-    'editorCursor.foreground': colour('--blue-text', '#6e9fff'),
-    'editorWidget.background': colour('--raise', '#22252b'),
-    'editorWidget.border': colour('--border-2', '#3a3d44'),
-    'editorSuggestWidget.background': colour('--raise', '#22252b'),
-    'editorSuggestWidget.border': colour('--border-2', '#3a3d44'),
-    'editorHoverWidget.background': colour('--raise', '#22252b'),
-    'editorHoverWidget.border': colour('--border-2', '#3a3d44'),
-    'scrollbarSlider.background': colour('--border-2', '#3a3d4488'),
-    'editorGutter.background': colour('--panel', '#181b1f'),
+    'editorLineNumber.foreground': colour('--text-muted-color', '#9090a0'),
+    'editorLineNumber.activeForeground': colour('--text-color', '#ccccdc'),
+    'editor.lineHighlightBackground': colour('--hover-color', '#22252b'),
+    'editor.selectionBackground': colour('--focus-ring-color', '#3d71d955'),
+    'editorCursor.foreground': colour('--accent-text-color', '#6e9fff'),
+    'editorWidget.background': colour('--raised-color', '#22252b'),
+    'editorWidget.border': colour('--border-strong-color', '#3a3d44'),
+    'editorSuggestWidget.background': colour('--raised-color', '#22252b'),
+    'editorSuggestWidget.border': colour('--border-strong-color', '#3a3d44'),
+    'editorHoverWidget.background': colour('--raised-color', '#22252b'),
+    'editorHoverWidget.border': colour('--border-strong-color', '#3a3d44'),
+    'scrollbarSlider.background': colour('--border-strong-color', '#3a3d4488'),
+    'editorGutter.background': colour('--surface-color', '#181b1f'),
     'diffEditor.insertedTextBackground': '#2ea04333',
     'diffEditor.removedTextBackground': '#f8514933',
   };

@@ -90,7 +90,7 @@ func TestAssetsAreServedWithValidators(t *testing.T) {
 	rec := serve(h, http.MethodGet, assetURL(t, h, "app.css"))
 	assert.Equal(t, rec.Code, http.StatusOK)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/css")
-	assert.Contains(t, rec.Body.String(), "--canvas")
+	assert.Contains(t, rec.Body.String(), "--page-color")
 	etag := rec.Header().Get("ETag")
 	assert.True(t, etag != "")
 
@@ -123,7 +123,7 @@ func TestThemeAndLogoAreServedAndLinked(t *testing.T) {
 	assetURL(t, h, "logo")
 
 	css := serve(h, http.MethodGet, assetURL(t, h, "theme.css"))
-	assert.Contains(t, css.Body.String(), "--blue: #c2410c;")
+	assert.Contains(t, css.Body.String(), "--accent-color: #c2410c;")
 
 	logo := serve(h, http.MethodGet, assetURL(t, h, "logo"))
 	assert.Equal(t, logo.Header().Get("Content-Type"), "image/png")
