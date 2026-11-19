@@ -31,6 +31,22 @@ func defaultGroups(a, b, c, d, home webui.Page[webui.NoArgs]) []webui.NavItem {
 	}
 }
 
+// A category of the sidebar is a disclosure of an exclusive accordion: they share one name, so that the browser closes the one that was open when another is opened, with no script.
+func TestTheCategoriesOfTheSidebarShareOneNameSoThatOnlyOneIsOpenAtATime(t *testing.T) {
+	t.Parallel()
+
+	h := groupsApp(defaultGroups)
+	var names []string
+	for _, c := range sidebarNav(t, pageOf(t, h, "/admin/a")).Children() {
+		if c.Tag() == "details" {
+			names = append(names, c.Attr("name"))
+		}
+	}
+	assert.Equal(t, len(names), 3)
+	assert.True(t, names[0] != "")
+	assert.DeepEqual(t, names, []string{names[0], names[0], names[0]})
+}
+
 // groups are the categories of the sidebar, in order, each as its name and whether it is open, with an icon when it has one.
 func groups(t *testing.T, p *page.Page) []string {
 	t.Helper()
