@@ -288,6 +288,9 @@ func (Group[M]) meta() accessorMeta { return accessorMeta{} }
 // they are kept, and takes the place of Options everywhere it is used: the list that is chosen from,
 // the values that a submission is checked against, what each value says and the tone it is drawn in,
 // and, in a table with Load, the options of the filter.
+//
+// With script, a select that is edited is a field that can be typed into: what is typed narrows the list to the options whose words contain it, and the options are all in the page, so
+// that no request is made. Without script it is the browser's own select.
 type Select[M any] struct {
 	// Label is the column header and the field's label. In a table it also names
 	// the column in the address and in a [PagedQuery].

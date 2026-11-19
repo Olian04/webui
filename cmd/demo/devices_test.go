@@ -267,3 +267,21 @@ func TestTheLastHourColumnSortsAndFiltersByItsChange(t *testing.T) {
 		assert.True(t, v >= 0)
 	}
 }
+
+// A device that has no site is in none: it is not a site of its own, which the select of sites could not offer (an option with no value), and the forms that hold it would not load.
+func TestADeviceWithNoSiteIsNotASiteAndTheFormsStillLoad(t *testing.T) {
+	h := handler(t)
+	before := len(service.devices)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.devices = service.devices[:before]
+		service.mu.Unlock()
+	})
+	rec := post(h, "/admin/device/new", url.Values{"_view": {"p"}, "f0": {"10.8.8.8"}, "f1_0": {"healthy"}, "f1_1": {""}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	for _, s := range service.Sites() {
+		assert.True(t, s.Name != "")
+	}
+	assert.Equal(t, get(h, "/admin/device/new").Code, http.StatusOK)
+	assert.False(t, strings.Contains(get(h, "/admin/device/new").Body.String(), "Could not load"))
+}

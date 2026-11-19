@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -344,4 +345,31 @@ func hasOption(f page.Field, value string) bool {
 		}
 	}
 	return false
+}
+
+// Typing narrows a select in the script alone: the options are all in the page, however many, and are the native select's own, so that the server asks nothing and the page without script is the
+// browser's control.
+func TestALongSelectHasEveryOptionInThePageForTheScriptToNarrow(t *testing.T) {
+	t.Parallel()
+
+	var options []webui.Option
+	for i := range 40 {
+		options = append(options, webui.Option{Value: "v" + strconv.Itoa(i)})
+	}
+	many := webui.Select[task]{
+		Label: "Many", Multi: true, Options: options,
+		Load:  func(t task) []string { return t.Labels },
+		Store: func(t *task, v []string) { t.Labels = v },
+	}
+	form := webui.Form[task]{
+		Load:   func(context.Context) (task, webui.Loaded) { return task{}, webui.Ready() },
+		Fields: []webui.Accessor[task]{many},
+		Submit: webui.Action[task]{Run: func(context.Context, task) (webui.Outcome, error) { return webui.Success("Saved"), nil }}, // a form with no Submit only shows its fields
+	}
+	h := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/t", View: form}}}.MustCompile("/admin")
+	p := pageOf(t, h, "/admin/t")
+
+	control := page.One(t, "the select", p.ByAttr("data-select", ""))
+	assert.Equal(t, control.Tag(), "select")
+	assert.Equal(t, len(p.ByRole("option", "")), 40) // none is left out of the page for a search to find
 }

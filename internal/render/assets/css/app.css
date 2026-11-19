@@ -2203,10 +2203,9 @@ select.input[multiple] option:checked {
   height: auto;
   min-height: var(--control-h);
   padding: 4px 28px 4px 8px;
-  cursor: pointer;
-  user-select: none;
+  cursor: text;
 }
-.msel-field:focus-visible,
+.msel-field:focus-within,
 .msel.open .msel-field {
   border-color: var(--blue);
   box-shadow: 0 0 0 2px var(--ring);
@@ -2215,13 +2214,31 @@ select.input[multiple] option:checked {
 .msel-field.invalid {
   border-color: var(--red);
 }
-.msel-field.invalid:focus-visible,
+.msel-field.invalid:focus-within,
 .msel.open .msel-field.invalid {
   box-shadow: 0 0 0 2px var(--ring-bad);
 }
-.msel-hint {
-  color: var(--text-2);
+/* What is typed into the field goes after the badges, and takes the room that they leave, with room enough to be typed into at a phone's width. */
+.msel-input {
+  flex: 1 1 5ch;
+  min-width: 5ch;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
   font-size: 13.5px;
+  outline: none;
+}
+.msel-input::placeholder {
+  color: var(--text-2);
+}
+/* What is said when nothing matches what was typed, in the place the list would be. */
+.msel-empty {
+  padding: 8px 12px;
+  color: var(--text-2);
+  font-size: 13px;
 }
 .msel-chevron {
   position: absolute;
@@ -2259,6 +2276,9 @@ select.input[multiple] option:checked {
   padding: 0 8px;
   border-radius: var(--radius);
   cursor: pointer;
+}
+.msel-opt[hidden] {
+  display: none;
 }
 .msel-opt.active {
   background: var(--hover);
@@ -3635,6 +3655,13 @@ th.num .filter-pop {
 .filter-opt:hover {
   background: var(--hover);
 }
+.filter-opt[hidden] {
+  display: none;
+}
+/* A box above a long list of options, to narrow it by what is typed. */
+.filter-find {
+  margin-bottom: 6px;
+}
 .filter-range {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3753,7 +3780,7 @@ thead th .filter-pop a {
   }
   .input:focus,
   .search:focus-within,
-  .msel-field:focus-visible,
+  .msel-field:focus-within,
   .msel.open .msel-field,
   .code-text:focus,
   .code-view:focus-visible,

@@ -577,6 +577,9 @@ func (s *Service) Sites() []SiteSummary {
 	by := map[string]*SiteSummary{}
 	var order []string
 	for _, d := range s.devices {
+		if d.Site == "" {
+			continue // a device that has no site is in none, and is not a site of its own, which a select of sites could not offer
+		}
 		site, ok := by[d.Site]
 		if !ok {
 			site = &SiteSummary{Name: d.Site}
