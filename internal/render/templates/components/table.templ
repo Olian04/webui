@@ -310,17 +310,24 @@ templ pagerButton(href string) {
 	}
 }
 
+// pagerBar is a pager's foot: what it says of where the reader is, the downloads, and the buttons that it is given.
+templ pagerBar(info, table string, export []ExportLink, note string) {
+	<div class="pager-info">{ info }</div>
+	@exportLinks(export, note)
+	<nav class="pager" aria-label={ pagesLabel(table) }>
+		{ children... }
+	</nav>
+}
+
 templ Pager(p PagerProps) {
-	<div class="pager-info">{ p.rangeLabel() }</div>
-	@exportLinks(p.Export, p.ExportNote)
-	<nav class="pager" aria-label={ pagesLabel(p.Label) }>
+	@pagerBar(p.rangeLabel(), p.Label, p.Export, p.ExportNote) {
 		@pagerButton(p.PrevHref) {
 			Previous
 		}
 		@pagerButton(p.NextHref) {
 			Next
 		}
-	</nav>
+	}
 }
 
 // pagesLabel names a pager for the table it pages, so that the pagers of a page are told apart.
@@ -380,9 +387,7 @@ func (p CursorPagerProps) rows() string {
 }
 
 templ CursorPager(p CursorPagerProps) {
-	<div class="pager-info">{ p.info() }</div>
-	@exportLinks(p.Export, p.ExportNote)
-	<nav class="pager" aria-label={ pagesLabel(p.Label) }>
+	@pagerBar(p.info(), p.Label, p.Export, p.ExportNote) {
 		@pagerButton(p.FirstHref) {
 			First page
 		}
@@ -392,5 +397,5 @@ templ CursorPager(p CursorPagerProps) {
 		@pagerButton(p.NextHref) {
 			Next
 		}
-	</nav>
+	}
 }

@@ -531,8 +531,10 @@ templ Switch(p SwitchProps) {
 
 // FormProps wraps a panel's controls. Method defaults to post: a form that only
 // reads should be a link.
+// FormProps is a form that posts. View is the panel it posts to, which the form says as its first field, "_view": every form of a panel has one.
 type FormProps struct {
 	Action string
+	View   string
 	Attrs  templ.Attributes
 }
 
@@ -544,6 +546,9 @@ templ Form(p FormProps) {
 		method="post"
 		{ p.Attrs... }
 	>
+		if p.View != "" {
+			<input type="hidden" name="_view" value={ p.View }/>
+		}
 		{ children... }
 	</form>
 }

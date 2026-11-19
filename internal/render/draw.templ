@@ -206,17 +206,11 @@ templ Columns(children []templ.Component, weights []int) {
 // form, so a button anywhere in it posts the selection with it.
 templ (r *Renderer) Table(v LoadedTable) {
 	{{ cols := r.columns(v) }}
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   ViewID(v.Node.At),
-		Grows:  true,
-		Footer: r.tableFooter(v),
-	}) {
+	{{ frame := r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, r.PageHref(v.Page, v.Path, v.Query)) }}
+	{{ frame.Grows, frame.Footer = true, r.tableFooter(v) }}
+	@c.Panel(frame) {
 		if v.interactive() {
-			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-				<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+			@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, nil)) {
 				@r.tableContent(v, cols)
 			}
 		} else {
@@ -502,17 +496,8 @@ templ present(f ir.Field, text string, model any) {
 // Cancel sit in the footer, inside the <form>, so they submit it. When the
 // submit is refused (SubmitRefused) they are replaced by a Back button.
 templ (r *Renderer) Form(v LoadedForm) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   ViewID(v.Node.At),
-	}) {
-		@c.Form(c.FormProps{
-			Action: r.PageHref(v.Page, v.Path, v.Query),
-			Attrs:  v.formAttrs(),
-		}) {
-			<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+	@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, r.PageHref(v.Page, v.Path, v.Query))) {
+		@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, v.formAttrs())) {
 			if v.Node.Editor != nil {
 				@r.editorBody(v)
 			} else {
@@ -526,7 +511,7 @@ templ (r *Renderer) Form(v LoadedForm) {
 				// A visitor who may not save has nothing to save or cancel: the footer
 				// offers the way back, or no footer when there is no way back.
 				if v.CancelHref != "" || v.SubmitReason != "" {
-					<div class="panel-foot end">
+					@c.PanelFoot(true) {
 						if v.SubmitReason != "" {
 							// Why it is only read, in words, when its Guard said (Disabled): the visitor is told, and not left to wonder.
 							<span class="panel-note dim">{ v.SubmitReason }</span>
@@ -536,10 +521,10 @@ templ (r *Renderer) Form(v LoadedForm) {
 								Back
 							}
 						}
-					</div>
+					}
 				}
 			} else if v.Node.Submit != nil {
-				<div class="panel-foot end">
+				@c.PanelFoot(true) {
 					if v.CancelHref != "" {
 						@c.Button(c.ButtonProps{Href: v.CancelHref, Variant: c.VariantGhost, Size: c.SizeSmall}) {
 							Cancel
@@ -550,13 +535,8 @@ templ (r *Renderer) Form(v LoadedForm) {
 						// would not ask. This one is disabled, which makes Enter do nothing: the way to save is the button.
 						<button type="submit" disabled hidden tabindex="-1" aria-hidden="true"></button>
 					}
-					@c.Button(c.ButtonProps{
-						Variant: variant(v.Node.Submit.Role), Size: c.SizeSmall,
-						Confirm: v.Node.Submit.Confirm, ConfirmID: confirmID(v.Node.At, "submit", 0),
-					}) {
-						{ v.Node.Submit.Label }
-					}
-				</div>
+					@r.submitButton(v.Node.At, "submit", v.Node.Submit, "")
+				}
 			}
 		}
 	}
@@ -720,13 +700,12 @@ templ Refused(ref *ir.Refusal) {
 // as one, so it is at the right edge of the row that it is in.
 templ (r *Renderer) Toolbar(v LoadedToolbar) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Failed: true, Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: ViewID(v.Node.At)}) {
+		@c.Panel(r.frame(v.Node.At, "", "", true, nil, r.PageHref(v.Page, v.Path, v.Query))) {
 		}
 	} else if v.drawn() {
 		<div class="toolbar" data-toolbar data-view={ ViewID(v.Node.At) } { c.RefreshAttrs(ctx)... }>
-			if v.hasActions() {
-				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+			if v.posts() {
+				@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, nil)) {
 					@r.toolbarItems(v)
 				}
 			} else {
@@ -740,8 +719,7 @@ templ (r *Renderer) Toolbar(v LoadedToolbar) {
 // are anchors. A form that holds nothing but them is the one thing in the head, so it never holds, or is held by, the form of a body.
 templ (r *Renderer) headActions(v LoadedHead) {
 	if v.posts() {
-		@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: templ.Attributes{"class": "panel-actions"}}) {
-			<input type="hidden" name="_view" value={ ViewID(v.At) }/>
+		@c.Form(r.postForm(v.Page, v.Path, v.Query, v.At, templ.Attributes{"class": "panel-actions"})) {
 			@r.headItems(v)
 		}
 	} else {
@@ -753,17 +731,30 @@ templ (r *Renderer) headActions(v LoadedHead) {
 
 templ (r *Renderer) headItems(v LoadedHead) {
 	for i, it := range v.Items {
-		switch {
-			case !v.access(i).Drawn():
-			case it.Action != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: HeadActionValue(i), Guard: v.access(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.At, "h", i)}) {
-					{ it.Label }
-				}
-			case it.Link != nil:
-				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
-					{ it.Label }
-				}
-		}
+		@r.control(v.At, "h", i, HeadActionValue(i), it, v.access(i), v.Hrefs[i])
+	}
+}
+
+// control is a button or a link of a toolbar or of a panel's head: a button posts value as what it was asked to do, and a link goes to href. kind and i tell its dialog from the
+// others of the page, when it asks first. One that is not drawn for this visitor leaves nothing.
+templ (r *Renderer) control(at ir.Pos, kind string, i int, value string, it ir.ToolbarItem, access Access, href string) {
+	switch {
+		case !access.Drawn():
+		case it.Action != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: value, Guard: access.Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(at, kind, i)}) {
+				{ it.Label }
+			}
+		case it.Link != nil:
+			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: href}) {
+				{ it.Label }
+			}
+	}
+}
+
+// submitButton is the button of a panel's one action, in its foot, which is the primary action of the panel: it asks first when the action says to. A guard is the reason that the visitor may not.
+templ (r *Renderer) submitButton(at ir.Pos, kind string, a *ir.Action, guard string) {
+	@c.Button(c.ButtonProps{Variant: variant(a.Role), Size: c.SizeSmall, Guard: guard, Confirm: a.Confirm, ConfirmID: confirmID(at, kind, 0)}) {
+		{ a.Label }
 	}
 }
 
@@ -819,18 +810,12 @@ func rightFlows(n *ir.Toolbar) bool {
 
 // toolbarItem is one control of a toolbar, by its declared position.
 templ (r *Renderer) toolbarItem(v LoadedToolbar, i int, it ir.ToolbarItem) {
-	switch {
-		case !v.access(i).Drawn():
-		case it.Action != nil:
-			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: strconv.Itoa(i), Guard: v.access(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.Node.At, "t", i)}) {
-				{ it.Label }
-			}
-		case it.Link != nil:
-			@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
-				{ it.Label }
-			}
-		case it.Form != nil:
+	if it.Form != nil {
+		if v.access(i).Drawn() {
 			@r.toolbarForm(it.Form, v.form(i))
+		}
+	} else {
+		@r.control(v.Node.At, "t", i, strconv.Itoa(i), it, v.access(i), v.Hrefs[i])
 	}
 }
 
@@ -877,12 +862,11 @@ templ (r *Renderer) toolbarForm(f *ir.Form, loaded ToolbarForm) {
 // with any other error has no panel.
 templ (r *Renderer) FileUpload(v LoadedFileUpload) {
 	if v.Failed {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, Failed: true, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query), ViewID: ViewID(v.Node.At)}) {
+		@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, true, v.Refusal, r.PageHref(v.Page, v.Path, v.Query))) {
 		}
 	} else if v.Access.Drawn() {
-		@c.Panel(c.PanelProps{Title: v.Node.Title, Desc: v.Node.Desc, ViewID: ViewID(v.Node.At)}) {
-			@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: v.formAttrs()}) {
-				<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+		@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, false, nil, "")) {
+			@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, v.formAttrs())) {
 				<div class="panel-body pad">
 					for _, f := range v.Form.Node.Fields {
 						@r.formField(v.Form, f)
@@ -893,14 +877,9 @@ templ (r *Renderer) FileUpload(v LoadedFileUpload) {
 						})
 					}
 				</div>
-				<div class="panel-foot end">
-					@c.Button(c.ButtonProps{
-						Variant: variant(v.Node.Receive.Role), Size: c.SizeSmall, Guard: v.Access.Reason,
-						Confirm: v.Node.Receive.Confirm, ConfirmID: confirmID(v.Node.At, "upload", 0),
-					}) {
-						{ v.Node.Receive.Label }
-					}
-				</div>
+				@c.PanelFoot(true) {
+					@r.submitButton(v.Node.At, "upload", v.Node.Receive, v.Access.Reason)
+				}
 			}
 		}
 	}
@@ -1070,12 +1049,7 @@ templ (r *Renderer) editorBody(v LoadedForm) {
 // the changes as a unified diff, which the server made, and the two texts apart for
 // Monaco, which replaces the diff with its own when script runs.
 templ (r *Renderer) Diff(v LoadedDiff) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		ViewID:   ViewID(v.Node.At),
-	}) {
+	@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, v.Retry)) {
 		<div class="panel-body code-body">
 			<div class="code-sides" aria-hidden="true">
 				<span>{ v.Node.Original.Label }</span>
@@ -1094,12 +1068,7 @@ templ (r *Renderer) Diff(v LoadedDiff) {
 // rendered by internal/markdown, which leaves nothing in it that could run, so it is
 // put in the page as it is.
 templ (r *Renderer) Markdown(v LoadedMarkdown) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: v.Retry,
-		ViewID:   ViewID(v.Node.At),
-	}) {
+	@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, v.Retry)) {
 		<div class="panel-body pad">
 			<article class="md" aria-label={ v.Node.Content.Label }>
 				@templ.Raw(v.Result.HTML)
@@ -1111,20 +1080,15 @@ templ (r *Renderer) Markdown(v LoadedMarkdown) {
 // Items renders a list of items as one panel: a list's column or cards, each item a headline, a badge and a line of small facts, and a picture when it has
 // one, then Show more when the source had more. Each part is shown as its field says to show it, as it is in a cell of a table.
 templ (r *Renderer) Items(v LoadedItems) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID:   ViewID(v.Node.At),
-		Footer: r.itemsFoot(v),
-	}) {
+	{{ frame := r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, r.PageHref(v.Page, v.Path, v.Query)) }}
+	{{ frame.Footer = r.itemsFoot(v) }}
+	@c.Panel(frame) {
 		<div class="panel-body items-body">
 			if len(v.Rows) == 0 {
 				@c.EmptyState(c.EmptyStateProps{Icon: c.IconSearch, Title: "Nothing here yet", Desc: "There is nothing to show."})
 			} else {
 				if v.posts() {
-					@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-						<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+					@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, nil)) {
 						@r.itemList(v)
 					}
 				} else {
@@ -1146,13 +1110,18 @@ templ (r *Renderer) itemList(v LoadedItems) {
 
 // itemsFoot is how many items are shown and, when the source had more, the link that shows more: a real link to the same page with a larger limit, so that it works without script, which
 // replaces the list in place. A list with nothing more to show has no foot.
-templ (r *Renderer) itemsFoot(v LoadedItems) {
-	if v.More {
-		<div class="pager-info">{ strconv.Itoa(len(v.Rows)) } shown</div>
-		@c.Button(c.ButtonProps{Href: r.moreHref(v), Variant: c.VariantSecondary, Size: c.SizeSmall, Attrs: inPlace}) {
-			Show more
-			<span class="sr-only">items of { v.label() }</span>
-		}
+func (r *Renderer) itemsFoot(v LoadedItems) templ.Component {
+	if !v.More {
+		return nil
+	}
+	return r.showMore(v)
+}
+
+templ (r *Renderer) showMore(v LoadedItems) {
+	<div class="pager-info">{ strconv.Itoa(len(v.Rows)) } shown</div>
+	@c.Button(c.ButtonProps{Href: r.moreHref(v), Variant: c.VariantSecondary, Size: c.SizeSmall, Attrs: inPlace}) {
+		Show more
+		<span class="sr-only">items of { v.label() }</span>
 	}
 }
 
@@ -1202,16 +1171,10 @@ func (r *Renderer) item(v LoadedItems, i int, row any) c.ItemProps {
 // Calendar renders a month as one panel: a grid of days, each marked when it has items and a link when it leads somewhere, with links to the months either side. It is a table,
 // so that a reader who goes by the grid is told each day's weekday and date and how many items there are.
 templ (r *Renderer) Calendar(v LoadedCalendar) {
-	@c.Panel(c.PanelProps{
-		Title:  v.Node.Title,
-		Desc:   v.Node.Desc,
-		Failed: v.Failed, Refused: refusedOf(v.Refusal), Retry: r.PageHref(v.Page, v.Path, v.Query),
-		ViewID: ViewID(v.Node.At),
-	}) {
+	@c.Panel(r.frame(v.Node.At, v.Node.Title, v.Node.Desc, v.Failed, v.Refusal, r.PageHref(v.Page, v.Path, v.Query))) {
 		<div class="panel-body cal-body">
 			if v.Node.Click.Posts() {
-				@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query)}) {
-					<input type="hidden" name="_view" value={ ViewID(v.Node.At) }/>
+				@c.Form(r.postForm(v.Page, v.Path, v.Query, v.Node.At, nil)) {
 					@c.Calendar(r.calendarProps(v))
 				}
 			} else {

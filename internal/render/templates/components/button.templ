@@ -27,6 +27,9 @@ type ButtonProps struct {
 	Confirm   string
 	ConfirmID string
 
+	// Class is what to add to the control's own classes, for the part of the page that styles it.
+	Class string
+
 	Attrs templ.Attributes
 }
 
@@ -49,7 +52,7 @@ templ Button(p ButtonProps) {
 		// A native dialog, opened by a button with an invoker command, so it needs no script. The dialog is inside the form
 		// that the button is in, so the button in it submits that form, with the name and the value the button had.
 		<button
-			class={ "btn", p.Variant.btn(), p.Size.btn() }
+			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV(p.Class, p.Class != "") }
 			type="button"
 			commandfor={ p.ConfirmID }
 			command="show-modal"
@@ -79,7 +82,7 @@ templ Button(p ButtonProps) {
 		</dialog>
 	} else if p.Href != "" && !p.Disabled {
 		<a
-			class={ "btn", p.Variant.btn(), p.Size.btn() }
+			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV(p.Class, p.Class != "") }
 			href={ p.Href }
 			{ p.Attrs... }
 		>
@@ -88,12 +91,12 @@ templ Button(p ButtonProps) {
 	} else if p.Href != "" {
 		// A disabled link is not a link. Rendering an <a> without href would
 		// leave a tab stop that goes nowhere.
-		<span class={ "btn", p.Variant.btn(), p.Size.btn(), "disabled" } aria-disabled="true" { p.Attrs... }>
+		<span class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV(p.Class, p.Class != ""), "disabled" } aria-disabled="true" { p.Attrs... }>
 			{ children... }
 		</span>
 	} else {
 		<button
-			class={ "btn", p.Variant.btn(), p.Size.btn() }
+			class={ "btn", p.Variant.btn(), p.Size.btn(), templ.KV(p.Class, p.Class != "") }
 			type="submit"
 			if p.Name != "" {
 				name={ p.Name }
