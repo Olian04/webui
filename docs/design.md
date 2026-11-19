@@ -414,8 +414,10 @@ surface, border and focus ring; a colour fills the whole field.
 **A phone number** is a segment: a selector of the country calling code (9.5em wide, square where it meets the number) joined
 to the input, which holds the national number, spaced as it is read when there is script. Both are in the page, and the server makes E.164 of them.
 
-**A choice with script** (`select`) is badges in the field and a popover list below it, 30px to a row with a 15px checkbox (round when only one
-may be chosen), flipping above when there is no room below and no taller than 260px, which scrolls. Without script it is the browser's own
+**A choice with script** (`select`) is badges in the field, followed by a text input, and a popover list below it, 30px to a row with a 15px checkbox (round when only one
+may be chosen), flipping above when there is no room below and no taller than 260px, which scrolls. It is an editable combobox: what is typed in the field narrows the list to the options
+whose words contain it, in any case, and says "No option matches" when none does; Enter ticks the active one, Escape takes back what was typed and then closes, and Backspace on nothing
+typed takes back the last value (several). A column's filter, which is a list of checkboxes, has a box above it that narrows it in the same way. Without script it is the browser's own
 `<select>`, a list of up to six rows when several may be chosen.
 
 **The rules and the help of a field** are in one popover, on hover and on keyboard focus of the information icon beside its label: at

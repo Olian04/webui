@@ -57,12 +57,16 @@ var (
 	}
 	// Multi lets it hold any number: a list to tick several of, and a badge for each when it is read.
 	Tags = webui.Select[Device]{
-		Label:   "Tags",
-		Load:    func(d Device) []string { return d.Tags },
-		Store:   func(d *Device, v []string) { d.Tags = v },
-		Multi:   true,
-		NoSort:  true, // a list of words has no order to sort by
-		Options: []webui.Option{{Value: "edge"}, {Value: "gpu"}, {Value: "legacy", Tone: webui.ToneWarning}, {Value: "staging"}},
+		Label:  "Tags",
+		Load:   func(d Device) []string { return d.Tags },
+		Store:  func(d *Device, v []string) { d.Tags = v },
+		Multi:  true,
+		NoSort: true, // a list of words has no order to sort by
+		// A list long enough to be worth typing into: with script, a select is a field that the options are filtered in by what is typed, and a column's filter has a box for it.
+		Options: []webui.Option{
+			{Value: "edge"}, {Value: "gpu"}, {Value: "legacy", Tone: webui.ToneWarning}, {Value: "staging"}, {Value: "arm64"}, {Value: "x86"},
+			{Value: "lorawan"}, {Value: "mqtt"}, {Value: "modbus"}, {Value: "indoor"}, {Value: "outdoor"}, {Value: "battery"},
+		},
 	}
 	// Multiline is a text area, for text of more than one line: its rules are Required, MinLen and MaxLen, and a line break
 	// is one character whatever the browser sent.

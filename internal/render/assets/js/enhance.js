@@ -1698,6 +1698,9 @@
     return node;
   }
 
+  // A select with script is an editable combobox: the chosen values are badges, followed by a text input that filters the list of options as it is typed in. The <select> stays in the
+  // form, hidden, and is what is submitted; without script it is the browser's own, and none of this is on the page. The input is what has the focus and the combobox role, and the
+  // field around it is only a box that holds the badges and the input.
   function enhanceSelect(sel) {
     var multi = sel.multiple;
     var required = sel.required;
@@ -1710,23 +1713,28 @@
     var wrap = make('div', 'msel' + (multi ? ' msel-multi' : ''));
     var field = make('div', 'input msel-field' + (sel.classList.contains('invalid') ? ' invalid' : ''));
     field.id = id + '-field';
-    field.tabIndex = 0;
-    field.setAttribute('role', 'combobox');
-    field.setAttribute('aria-haspopup', 'listbox');
-    field.setAttribute('aria-expanded', 'false');
-    field.setAttribute('aria-controls', id + '-list');
-    var labelled = document.getElementById(id + '-label');
-    if (labelled) field.setAttribute('aria-labelledby', id + '-label');
-    if (required) field.setAttribute('aria-required', 'true');
-    ['aria-invalid', 'aria-describedby'].forEach(function (name) {
-      if (sel.hasAttribute(name)) field.setAttribute(name, sel.getAttribute(name));
-    });
     var chips = make('span', 'badges');
-    var hint = make('span', 'msel-hint', emptyText);
+    var input = make('input', 'msel-input');
+    input.type = 'text';
+    input.id = id + '-input';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.setAttribute('autocapitalize', 'off');
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-haspopup', 'listbox');
+    input.setAttribute('aria-expanded', 'false');
+    input.setAttribute('aria-controls', id + '-list');
+    var labelled = document.getElementById(id + '-label');
+    if (labelled) input.setAttribute('aria-labelledby', id + '-label');
+    if (required) input.setAttribute('aria-required', 'true');
+    ['aria-invalid', 'aria-describedby'].forEach(function (name) {
+      if (sel.hasAttribute(name)) input.setAttribute(name, sel.getAttribute(name));
+    });
     var chevron = make('span', 'msel-chevron');
     chevron.setAttribute('aria-hidden', 'true');
     field.appendChild(chips);
-    field.appendChild(hint);
+    field.appendChild(input);
     field.appendChild(chevron);
 
     var list = make('div', 'msel-pop raise pop');
@@ -1735,6 +1743,10 @@
     list.hidden = true;
     if (multi) list.setAttribute('aria-multiselectable', 'true');
     if (labelled) list.setAttribute('aria-labelledby', id + '-label');
+    // What is said when what was typed matches no option: the list is not there, and this is, and is read.
+    var empty = make('div', 'msel-pop msel-empty raise pop', 'No option matches');
+    empty.setAttribute('role', 'status');
+    empty.hidden = true;
 
     // One row for each option, and for a select of one that may be left empty, a row for none.
     var rows = [];
@@ -1772,36 +1784,56 @@
         return o.selected;
       });
     }
+    // The rows that what was typed leaves: the option's words contain it, in any case. The row for none is there while nothing is typed.
+    function shown() {
+      return rows.filter(function (r) {
+        return !r.hidden;
+      });
+    }
+    function filter() {
+      var typed = input.value.trim().toLowerCase();
+      rows.forEach(function (r) {
+        r.hidden = typed !== '' && (!r.option || r.option.textContent.toLowerCase().indexOf(typed) < 0);
+      });
+      sync();
+    }
+    // The list is there when the field is open and something is left in it; when nothing is, the line that says so is.
+    function sync() {
+      var open = isOpen();
+      var any = shown().length > 0;
+      list.hidden = !open || !any;
+      empty.hidden = !open || any;
+    }
     function draw() {
       var picked = chosen();
       chips.textContent = '';
       picked.forEach(function (o) {
         chips.appendChild(badge(o));
       });
-      hint.hidden = picked.length > 0;
+      input.placeholder = picked.length > 0 ? '' : emptyText;
       rows.forEach(function (r, i) {
         var on = r.option ? r.option.selected : picked.length === 0;
         r.setAttribute('aria-selected', on ? 'true' : 'false');
         r.classList.toggle('on', on);
         r.classList.toggle('active', i === active);
       });
-      if (active >= 0) {
-        field.setAttribute('aria-activedescendant', rows[active].id);
+      if (active >= 0 && !rows[active].hidden) {
+        input.setAttribute('aria-activedescendant', rows[active].id);
       } else {
-        field.removeAttribute('aria-activedescendant');
+        input.removeAttribute('aria-activedescendant');
       }
     }
     function changed() {
       field.classList.remove('invalid');
-      field.removeAttribute('aria-invalid');
+      input.removeAttribute('aria-invalid');
       var made = document.getElementById(id + '-error');
       if (made && made.hasAttribute('data-made')) {
         made.remove(); // what this script said of a choice that was missing, which is made
-        var rest = (field.getAttribute('aria-describedby') || '').split(' ').filter(function (d) {
+        var rest = (input.getAttribute('aria-describedby') || '').split(' ').filter(function (d) {
           return d && d !== id + '-error';
         });
-        if (rest.length) field.setAttribute('aria-describedby', rest.join(' '));
-        else field.removeAttribute('aria-describedby');
+        if (rest.length) input.setAttribute('aria-describedby', rest.join(' '));
+        else input.removeAttribute('aria-describedby');
       }
       sel.dispatchEvent(new Event('change', { bubbles: true }));
       draw();
@@ -1820,48 +1852,79 @@
         });
       }
       changed();
-      if (!multi) close(true);
+      if (!multi) {
+        close(true);
+      } else if (input.value !== '') {
+        // A value is chosen from what was typed, and the next is looked for from the whole list again.
+        input.value = '';
+        filter();
+        move(0);
+      }
     }
 
     function isOpen() {
-      return !list.hidden;
+      return wrap.classList.contains('open');
     }
     function open() {
       if (isOpen()) return;
       closeSelects(wrap);
-      list.hidden = false;
       wrap.classList.add('open');
-      field.setAttribute('aria-expanded', 'true');
+      input.setAttribute('aria-expanded', 'true');
+      filter();
       // Above the field when there is not room beneath it and there is above.
       var box = field.getBoundingClientRect();
       var room = window.innerHeight - box.bottom;
-      list.classList.toggle('up', room < Math.min(list.scrollHeight, 260) + 12 && box.top > room);
-      var first = rows.findIndex(function (r) {
+      var up = room < Math.min(list.scrollHeight, 260) + 12 && box.top > room;
+      list.classList.toggle('up', up);
+      empty.classList.toggle('up', up);
+      var vis = shown();
+      var first = vis.findIndex(function (r) {
         return r.classList.contains('on') && r.option;
       });
       move(first >= 0 ? first : 0);
     }
     function close(refocus) {
       if (!isOpen()) return;
-      list.hidden = true;
       wrap.classList.remove('open');
-      field.setAttribute('aria-expanded', 'false');
+      input.setAttribute('aria-expanded', 'false');
+      input.value = '';
+      rows.forEach(function (r) {
+        r.hidden = false;
+      });
+      sync();
       active = -1;
       draw();
-      if (refocus) field.focus();
+      if (refocus) input.focus();
     }
+    // move makes the i-th of the rows that are shown the active one.
     function move(i) {
-      active = Math.max(0, Math.min(rows.length - 1, i));
+      var vis = shown();
+      if (vis.length === 0) {
+        active = -1;
+        draw();
+        return;
+      }
+      var at = Math.max(0, Math.min(vis.length - 1, i));
+      active = rows.indexOf(vis[at]);
       draw();
-      rows[active].scrollIntoView({ block: 'nearest' });
+      vis[at].scrollIntoView({ block: 'nearest' });
+    }
+    function step(by) {
+      var at = shown().indexOf(rows[active]);
+      move(at < 0 ? 0 : at + by);
     }
     wrap.close = close;
 
-    field.addEventListener('click', function () {
-      if (isOpen()) close(false);
+    // The field is a box around the input: a click on it, anywhere, is a click on the input, and the focus never leaves it for the box.
+    field.addEventListener('mousedown', function (e) {
+      if (e.target !== input) e.preventDefault();
+    });
+    field.addEventListener('click', function (e) {
+      input.focus();
+      if (e.target !== input && isOpen()) close(false);
       else open();
     });
-    // The list takes the click, and the focus stays on the field.
+    // The list takes the click, and the focus stays on the input.
     list.addEventListener('mousedown', function (e) {
       e.preventDefault();
     });
@@ -1876,67 +1939,61 @@
         draw();
       }
     });
-    field.addEventListener('keydown', function (e) {
+    // What is typed narrows the list, which opens for it.
+    input.addEventListener('input', function () {
+      if (!isOpen()) open();
+      filter();
+      move(0);
+    });
+    input.addEventListener('keydown', function (e) {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       var key = e.key;
+      if (multi && key === 'Backspace' && input.value === '') {
+        // With nothing typed, Backspace takes back the last value that was chosen.
+        var picked = chosen();
+        if (picked.length) {
+          picked[picked.length - 1].selected = false;
+          changed();
+        }
+        return;
+      }
       if (!isOpen()) {
-        if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter' || key === ' ') {
-          e.preventDefault();
+        if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter') {
+          e.preventDefault(); // Enter is not the form's
           open();
-        } else if (multi && (key === 'Backspace' || key === 'Delete')) {
-          var picked = chosen();
-          if (picked.length) {
-            picked[picked.length - 1].selected = false;
-            changed();
-          }
         }
         return;
       }
       switch (key) {
         case 'ArrowDown':
           e.preventDefault();
-          move(active + 1);
+          step(1);
           break;
         case 'ArrowUp':
           e.preventDefault();
-          move(active - 1);
-          break;
-        case 'Home':
-          e.preventDefault();
-          move(0);
-          break;
-        case 'End':
-          e.preventDefault();
-          move(rows.length - 1);
+          step(-1);
           break;
         case 'Enter':
-        case ' ':
           e.preventDefault();
           if (active >= 0) toggle(rows[active]);
           break;
         case 'Escape':
           e.preventDefault();
           e.stopPropagation();
-          close(true);
+          if (input.value !== '') {
+            input.value = ''; // the first Escape takes back what was typed, and the next closes the list
+            filter();
+            move(0);
+          } else {
+            close(true);
+          }
           break;
         case 'Tab':
           close(false);
           break;
-        default:
-          // Typing the start of an option moves to the next one that begins so.
-          if (key.length === 1) {
-            var typed = key.toLowerCase();
-            for (var n = 1; n <= rows.length; n++) {
-              var at = (active + n) % rows.length;
-              if (rows[at].textContent.trim().toLowerCase().indexOf(typed) === 0) {
-                move(at);
-                break;
-              }
-            }
-          }
       }
     });
-    field.addEventListener('focusout', function (e) {
+    input.addEventListener('focusout', function (e) {
       if (!wrap.contains(e.relatedTarget)) close(false);
     });
 
@@ -1950,7 +2007,7 @@
           if (chosen().length === 0) {
             e.preventDefault();
             field.classList.add('invalid');
-            field.setAttribute('aria-invalid', 'true');
+            input.setAttribute('aria-invalid', 'true');
             // The <select> that would have said what is wrong is hidden, so what it would have said is said here, in its words, and read as an alert.
             var err = document.getElementById(id + '-error');
             if (!err) {
@@ -1960,10 +2017,10 @@
               err.setAttribute('data-made', '');
               wrap.parentNode.appendChild(err);
             }
-            var described = (field.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
+            var described = (input.getAttribute('aria-describedby') || '').split(' ').filter(Boolean);
             if (described.indexOf(err.id) < 0) described.push(err.id);
-            field.setAttribute('aria-describedby', described.join(' '));
-            field.focus();
+            input.setAttribute('aria-describedby', described.join(' '));
+            input.focus();
           }
         });
       }
@@ -1971,7 +2028,7 @@
     if (labelled) {
       labelled.addEventListener('click', function (e) {
         e.preventDefault();
-        field.focus();
+        input.focus();
       });
     }
 
@@ -1979,10 +2036,35 @@
     sel.setAttribute('data-enhanced', '');
     wrap.appendChild(field);
     wrap.appendChild(list);
+    wrap.appendChild(empty);
     sel.parentNode.insertBefore(wrap, sel);
     draw();
     // The page opens with the focus on the first control that was refused, and the <select> that has it is the one that was just hidden.
-    if (sel.hasAttribute('autofocus')) field.focus();
+    if (sel.hasAttribute('autofocus')) input.focus();
+  }
+
+  // The options of a column's filter are a list of checkboxes, which a long one is no easier to read than a long select: a box above it narrows it by what is typed. A checkbox that is
+  // left out of the list is still ticked or not, and is sent as it was, so narrowing the list changes nothing that is filtered by.
+  function enhanceFilterOptions(root) {
+    $$('.filter-options:not([data-found])', root).forEach(function (list) {
+      list.setAttribute('data-found', '');
+      var find = make('input', 'input filter-find');
+      find.type = 'search';
+      find.placeholder = 'Find an option';
+      find.setAttribute('aria-label', 'Find an option');
+      find.autocomplete = 'off';
+      find.addEventListener('input', function () {
+        var typed = find.value.trim().toLowerCase();
+        $$('.filter-opt', list).forEach(function (label) {
+          label.hidden = typed !== '' && label.textContent.toLowerCase().indexOf(typed) < 0;
+        });
+      });
+      // Enter in it would send the form that applies the filter, which is not what a person looking for an option means.
+      find.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') e.preventDefault();
+      });
+      list.parentNode.insertBefore(find, list);
+    });
   }
 
   function closeSelects(except) {
@@ -2002,6 +2084,7 @@
   // A panel that is fetched again brings its selects as plain ones, and its table with the widths that the server drew.
   new MutationObserver(function () {
     enhanceSelects(document);
+    enhanceFilterOptions(document);
     enhanceGuards(document);
     enhanceColumns(document);
   }).observe(document.body, { childList: true, subtree: true });
@@ -2035,6 +2118,7 @@
   enhanceSidebarWidth();
   syncSelection(document);
   enhanceSelects(document);
+  enhanceFilterOptions(document);
   enhanceColumns(document);
   enhanceGuards(document);
   endArrival();
