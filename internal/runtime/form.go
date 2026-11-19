@@ -36,7 +36,7 @@ func (p *Program) form(ctx context.Context, req *Request, page *ir.Page, n *ir.F
 	view.CancelHref = p.returnHref(ctx, req, page, view.Path)
 
 	if sub != nil {
-		view.Model, view.Values = sub.model, sub.values
+		view.Model, view.Values, view.Resubmitted = sub.model, sub.values, true
 		view.Errors = make(map[string]string, len(sub.errs))
 		for _, e := range sub.errs {
 			view.Errors[e.Label] = e.Message

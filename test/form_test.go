@@ -369,3 +369,34 @@ func TestWritableSliderIsHeldToItsRangeOnTheServerAndEchoesInput(t *testing.T) {
 
 	assert.Equal(t, post(h, "/admin/device/dev1", formValues("f1", "40")).Code, http.StatusSeeOther)
 }
+
+// A form the visitor can save is one that script does not let them leave with what they changed in it; it says so, and a form that was drawn again after a refusal, with what
+// they typed, says that it already has changes. A form that they may not save says neither.
+func TestAFormTheVisitorCanSaveSaysThatItIsNotToBeLeftWithChangesAndOneDrawnAfterARefusalSaysItHasSome(t *testing.T) {
+	t.Parallel()
+
+	h := formApp(okForm())
+	opened := pageOf(t, h, "/admin/device/dev1")
+	assert.Equal(t, len(opened.ByAttr("data-warn-leave", "")), 1)
+	assert.Equal(t, len(opened.ByAttr("data-edited", "")), 0) // nothing has been typed yet
+
+	// every field is there and only one is refused by its rule, which is the form that the visitor sees again with what they typed in it
+	rec := post(h, "/admin/device/dev1", formValues("f0_0", "dev1", "f0_1", "not an address", "f1", "7"))
+	assert.Equal(t, rec.Code, http.StatusUnprocessableEntity)
+	refused := page.Parse(t, rec.Body.String())
+	assert.Equal(t, len(refused.ByAttr("data-warn-leave", "")), 1)
+	assert.Equal(t, len(refused.ByAttr("data-edited", "")), 1) // what was typed is only in this page
+}
+
+func TestAFormTheVisitorMayNotSaveIsNotGuardedAgainstBeingLeft(t *testing.T) {
+	t.Parallel()
+
+	f := okForm()
+	f.Submit.Guard = func(context.Context, Device) error { return errors.New("requires the editor role") }
+	p := pageOf(t, formApp(f), "/admin/device/dev1")
+	assert.Equal(t, len(p.ByAttr("data-warn-leave", "")), 0)
+
+	readOnly := okForm()
+	readOnly.Submit = webui.Action[Device]{}
+	assert.Equal(t, len(pageOf(t, formApp(readOnly), "/admin/device/dev1").ByAttr("data-warn-leave", "")), 0)
+}
