@@ -1271,6 +1271,13 @@ form[data-filter-form] {
   margin-left: auto;
   flex: none;
 }
+/* A head with controls is taller than one without, so that its buttons have room above and below them, and not the whole of the head. */
+.panel-head:has(.panel-actions) {
+  height: auto;
+  min-height: calc(var(--control-h) + 12px);
+  flex-basis: auto;
+  padding-block: 6px;
+}
 .panel-actions ~ .refresh-note {
   margin-left: 8px;
 }
@@ -3265,11 +3272,7 @@ html.js .status-meta [data-built] {
   }
   /* A head with controls may take a second row, rather than push the title out of it. */
   .panel-head:has(.panel-actions) {
-    height: auto;
-    min-height: var(--control-h);
-    flex-basis: auto;
     flex-wrap: wrap;
-    padding-block: 4px;
   }
   .toasts {
     left: 8px;
