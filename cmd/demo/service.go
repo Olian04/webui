@@ -80,21 +80,23 @@ type Event struct {
 type Settings struct {
 	Name       string
 	Port       int
-	SampleRate float64   // 0 to 1: the share of events kept
-	MaxLoad    float64   // percent: where ingest starts shedding
-	Maintain   time.Time // when the next maintenance window starts
-	APIKey     string    // what the collector signs in with: never shown, only replaced
-	Burst      *int      // events a second that are let through at once: nil is no limit, which is not the same as none
-	Quota      *float64  // percent of the plan that this collector may use: nil is all of it
-	Paused     *bool     // yes, no, or nil to follow the maintenance window
-	Compress   bool      // whether events are compressed on the wire
-	Contact    string    // who is told when something breaks
-	OnCall     string    // the number they are reached on
-	Webhook    string    // where alerts are posted
-	Label      string    // the colour its graphs are drawn in, "#rrggbb"
-	CertEnds   time.Time // midnight UTC of the day the certificate stops being valid
-	Logo       *Blob     // the image in the header of the reports
-	CertFile   *Blob     // the certificate itself, as a PDF
+	SampleRate float64    // 0 to 1: the share of events kept
+	MaxLoad    float64    // percent: where ingest starts shedding
+	Maintain   time.Time  // when the next maintenance window starts
+	APIKey     string     // what the collector signs in with: never shown, only replaced
+	Burst      *int       // events a second that are let through at once: nil is no limit, which is not the same as none
+	Quota      *float64   // percent of the plan that this collector may use: nil is all of it
+	Latency    *float64   // seconds that a write may take before it raises an alert: nil is that none does
+	SilencedTo *time.Time // alerts of severity info are not raised until then: nil is that they are
+	Paused     *bool      // yes, no, or nil to follow the maintenance window
+	Compress   bool       // whether events are compressed on the wire
+	Contact    string     // who is told when something breaks
+	OnCall     string     // the number they are reached on
+	Webhook    string     // where alerts are posted
+	Label      string     // the colour its graphs are drawn in, "#rrggbb"
+	CertEnds   time.Time  // midnight UTC of the day the certificate stops being valid
+	Logo       *Blob      // the image in the header of the reports
+	CertFile   *Blob      // the certificate itself, as a PDF
 }
 
 // Blob is a file that the demo keeps, in memory: the library keeps none, so what an app does with the bytes of an upload is its own.

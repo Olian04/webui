@@ -186,6 +186,7 @@ var Dismiss = webui.Action[Alert]{
 // SilenceInfo is a button in the head of the alerts panel, which acts on the open alerts that only inform, with no selection to make.
 var SilenceInfo = webui.Action[webui.NoArgs]{
 	Label:   "Silence info",
+	Role:    webui.RoleSecondary,
 	Confirm: "Silence every open alert that is only information?",
 	Guard:   canEdit[webui.NoArgs],
 	Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {

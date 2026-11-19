@@ -7,6 +7,19 @@ import (
 	"github.com/Olian04/webui/pkg/webui"
 )
 
+// collectorNameSchema is the patterns that a schema file gives for the collector's name, the newest first, which is not the app's to write: one that is not RE2 (this one has a lookahead)
+// would fail the whole app to compile, so the app asks ValidatePattern of each and takes the first that Compile would accept.
+var collectorNameSchema = []string{`(?=.*\d)[a-z0-9\-]+`, `[a-z0-9\-]+`}
+
+func firstValid(patterns []string) string {
+	for _, p := range patterns {
+		if webui.ValidatePattern(p) == nil {
+			return p
+		}
+	}
+	return ""
+}
+
 var (
 	CollectorName = webui.String[Settings]{
 		Label: "Collector name",
@@ -18,7 +31,7 @@ var (
 		Rules: webui.StringRules{
 			MinLen: 3, MaxLen: 32,
 			NotStartsWith: "-", NotEndsWith: "-", NotContains: "--",
-			Pattern: &webui.PatternRule{Expr: `[a-z0-9\-]+`, Message: "must be lowercase letters, digits and dashes"},
+			Pattern: &webui.PatternRule{Expr: firstValid(collectorNameSchema), Message: "must be lowercase letters, digits and dashes"},
 		},
 		// Shown in the input while it is empty.
 		Placeholder: "eu-north-1",
@@ -71,6 +84,21 @@ var (
 		Load:  func(s Settings) *float64 { return s.Quota },
 		Store: func(s *Settings, v *float64) { s.Quota = v },
 	}
+	// An OptionalFloat is a number with decimals that may be absent, as an OptionalInt is a whole number that may.
+	Latency = webui.OptionalFloat[Settings]{
+		Label: "Write latency budget (s)", Help: "How long a write may take before it raises an alert. Empty is no budget.",
+		Load:  func(s Settings) *float64 { return s.Latency },
+		Store: func(s *Settings, v *float64) { s.Latency = v },
+		Rules: webui.NumberRules[float64]{Min: new(0.0), Max: new(60.0)},
+		// Shown in the input while it is empty.
+		Placeholder: "No budget", Precision: 1,
+	}
+	// An OptionalTime is a moment that may be absent: cleared, the picker stores nil.
+	SilencedTo = webui.OptionalTime[Settings]{
+		Label: "Info alerts silenced until", Help: "No alert of severity info is raised until then. Empty is that they are.",
+		Load:  func(s Settings) *time.Time { return s.SilencedTo },
+		Store: func(s *Settings, v *time.Time) { s.SilencedTo = v },
+	}
 	// A Bool is yes or no, and is a checkbox: an unchecked one is not sent, so an absent field is no.
 	Compress = webui.Bool[Settings]{
 		Label: "Compress events", Help: "Compress what is sent to the sinks. Saves bandwidth and costs some CPU.",
@@ -90,6 +118,8 @@ var (
 		Label: "Contact email",
 		Load:  func(s Settings) string { return s.Contact },
 		Store: func(s *Settings, v string) { s.Contact = v },
+		// The rules of a String are those of an Email too: here, an address of the company's.
+		Rules: webui.StringRules{EndsWith: "@example.com"},
 	}
 	// A Phone is stored as E.164, "+46701234567", whatever it is typed as. It is a selector of the country calling code and
 	// the national number, which script spaces as it is typed; DefaultCountry is where the selector starts.
@@ -102,6 +132,8 @@ var (
 		Label: "Alert webhook", Placeholder: "https://hooks.example.com/…",
 		Load:  func(s Settings) string { return s.Webhook },
 		Store: func(s *Settings, v string) { s.Webhook = v },
+		// A webhook is sent over TLS, and a name with a dot in it is an address and not a word. StartsWith and Contains are checked as the others are.
+		Rules: webui.StringRules{StartsWith: "https://", Contains: "."},
 	}
 	// A color is picked, and is "#rrggbb". It has no rules: a picker cannot be empty or be of any other shape.
 	Label = webui.ColorPicker[Settings]{
@@ -146,6 +178,7 @@ var Ingest = webui.Page[webui.NoArgs]{
 			webui.Group[Settings]{Webhook, Label},
 			CertEnds,
 			webui.Group[Settings]{Logo, Certificate},
+			webui.Group[Settings]{Latency, SilencedTo},
 		},
 		Submit: SaveIngest,
 	},

@@ -207,3 +207,35 @@ func TestAFieldsHelpIsInThePopoverBesideItsLabel(t *testing.T) {
 	assert.Equal(t, len(p.ByRoleContaining("note", "Help: The share of events that are kept: 0.25 keeps one in four. Lower it when ingest is slow.")), 1)
 	assert.Equal(t, len(p.ByRoleContaining("note", "Help: Events a second let through at once. Empty is no limit, which is not the same as 0, which lets none through.")), 1)
 }
+
+// An OptionalFloat and an OptionalTime are stored as nothing when their inputs are emptied, and as a value when they are filled.
+func TestTheLatencyBudgetAndTheSilenceAreStoredAsNothingWhenEmptied(t *testing.T) {
+	h := handler(t)
+	t.Cleanup(func() {
+		service.mu.Lock()
+		service.settings.Latency, service.settings.SilencedTo = nil, nil
+		service.mu.Unlock()
+	})
+	base := func(latency, until string) url.Values {
+		return url.Values{"_view": {"p"}, "f0_0": {"eu-north-1"}, "f0_1": {"8125"}, "f1_0": {"0.5"}, "f1_1": {"60"}, "f10_0": {latency}, "f10_1": {until}}
+	}
+
+	rec := post(h, "/admin/settings", base("1.5", "2026-12-01T10:30"))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	s := service.Settings()
+	assert.True(t, s.Latency != nil && *s.Latency == 1.5)
+	assert.True(t, s.SilencedTo != nil && s.SilencedTo.Equal(time.Date(2026, 12, 1, 10, 30, 0, 0, time.UTC)))
+
+	rec = post(h, "/admin/settings", base("", ""))
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	s = service.Settings()
+	assert.True(t, s.Latency == nil && s.SilencedTo == nil)
+
+	// The rules of a webhook and of the contact address are held on the server: a webhook is https, and a contact is the company's.
+	bad := base("", "")
+	bad.Set("f6_0", "ops@elsewhere.org")
+	assert.Equal(t, post(h, "/admin/settings", bad).Code, http.StatusUnprocessableEntity)
+	bad = base("", "")
+	bad.Set("f7_0", "http://hooks.example.com/x")
+	assert.Equal(t, post(h, "/admin/settings", bad).Code, http.StatusUnprocessableEntity)
+}
