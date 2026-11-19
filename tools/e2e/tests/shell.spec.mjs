@@ -42,7 +42,8 @@ test('the console says once for a tab what built the page, and nothing else', as
 test('no page of the sidebar says anything wrong in the console', async ({ page }) => {
   const problems = watchConsole(page);
   await page.goto('/admin/');
-  const hrefs = await page.getByRole('navigation', { name: 'Main' }).getByRole('link').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  // every entry, the ones in a category that is shut included: they are there to be opened
+  const hrefs = await page.getByRole('navigation', { name: 'Main' }).locator('a[href]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
   expect(hrefs.length).toBeGreaterThan(5);
   for (const href of hrefs) {
     await page.goto(href);

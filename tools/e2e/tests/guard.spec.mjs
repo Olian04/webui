@@ -138,7 +138,8 @@ test.describe('a code editor that can be saved', () => {
     await expect(editor).toBeVisible({ timeout: 20000 });
     await editor.click();
     await page.keyboard.type('# a change\n');
-    await sidebarLink(page).click();
+    // the root of the breadcrumb: a link that is there on every page, and in a category of the sidebar that is open only for the page that is in it
+    await page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Collector' }).click();
     await expect.poll(() => asked).toEqual(['beforeunload']);
   });
 });
