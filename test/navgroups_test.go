@@ -1,6 +1,8 @@
 package webui_test
 
 import (
+	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -146,4 +148,25 @@ func TestTheMenuHoldsAddressesAndPagesInGroupsAndNotSeveralPagesAtOnce(t *testin
 		all += e.Error() + "\n"
 	}
 	refuses(t, all, "App.Menu[0]", "App.Navigation")
+}
+
+func TestAPageInTheMenuIsLeftOutForAVisitorWhoseGuardRefusesIt(t *testing.T) {
+	t.Parallel()
+
+	build := func(allowed bool) http.Handler {
+		home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Stack{}}
+		account := webui.Page[webui.NoArgs]{Path: "/account", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error {
+			if allowed {
+				return nil
+			}
+			return errors.New("not for you")
+		}}
+		return webui.App{
+			Navigation: []webui.NavItem{webui.NavPage{Page: home, Label: "Home"}},
+			Menu:       []webui.NavItem{webui.NavURL{Label: "Docs", URL: "/docs"}, webui.NavPage{Page: account, Label: "Account"}},
+			Pages:      webui.Pages{home, account},
+		}.MustCompile("/admin")
+	}
+	assert.DeepEqual(t, menuOutline(externalLinks(t, pageOf(t, build(true), "/admin/home"))), []string{"Docs", "Account"})
+	assert.DeepEqual(t, menuOutline(externalLinks(t, pageOf(t, build(false), "/admin/home"))), []string{"Docs"})
 }
