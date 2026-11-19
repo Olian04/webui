@@ -278,13 +278,15 @@ header and no divider between header and body.
 
 The header carries, left to right: the title (14/500); an information icon
 holding the description as a popover; and a status icon when the panel failed to
-load. A panel has
-no menu of its own: reloading is the page's Refresh in the top bar, so a panel
-changes only by following its own links, and the header stays quiet.
+load. Beside them, at the right, are the buttons and links that the app
+declared for the panel as a whole (`HeadActions`), small and in the order given, and after
+them the note of a panel that is not final. A panel has no menu of its own, so nothing is
+folded away: reloading is the page's Refresh in the top bar, and what an app puts in the head
+is drawn. On a phone a head that has controls may take a second row.
 
 A panel may have a footer separated by a 1px rule: pagination on the left (with the
 table's CSV and JSON download links, as quiet buttons, beside the range),
-navigation or actions on the right.
+navigation or actions on the right. The footer is the kind's own; an app adds to the head only.
 
 Panels never nest. A `Group` is layout only, with no frame and no caption.
 

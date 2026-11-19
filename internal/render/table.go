@@ -406,6 +406,9 @@ func RowClickValue(key string) string { return "click:0:" + key }
 // BulkActionValue is the "_act" value of a bulk action button.
 func BulkActionValue(action int) string { return fmt.Sprintf("bulk:%d", action) }
 
+// HeadActionValue is the "_act" value of a button in the head of a panel: its position among the controls that the panel declared.
+func HeadActionValue(i int) string { return fmt.Sprintf("head:%d", i) }
+
 // access is what row's action is for this visitor: not drawn, disabled, or as it is.
 func (v LoadedTable) access(row, action int) Access {
 	if row < len(v.Access) && action < len(v.Access[row]) {

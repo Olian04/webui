@@ -6,6 +6,7 @@ import "context"
 // between them. It only reads.
 type Diff struct {
 	At Pos
+	Headed
 
 	Title string
 	Desc  string

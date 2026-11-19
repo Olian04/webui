@@ -736,6 +736,37 @@ templ (r *Renderer) Toolbar(v LoadedToolbar) {
 	}
 }
 
+// headActions are the controls in the head of a panel, in order: its buttons post, in a form of their own beside the panel's body, by their position, and its links
+// are anchors. A form that holds nothing but them is the one thing in the head, so it never holds, or is held by, the form of a body.
+templ (r *Renderer) headActions(v LoadedHead) {
+	if v.posts() {
+		@c.Form(c.FormProps{Action: r.PageHref(v.Page, v.Path, v.Query), Attrs: templ.Attributes{"class": "panel-actions"}}) {
+			<input type="hidden" name="_view" value={ ViewID(v.At) }/>
+			@r.headItems(v)
+		}
+	} else {
+		<div class="panel-actions">
+			@r.headItems(v)
+		</div>
+	}
+}
+
+templ (r *Renderer) headItems(v LoadedHead) {
+	for i, it := range v.Items {
+		switch {
+			case !v.access(i).Drawn():
+			case it.Action != nil:
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Name: "_act", Value: HeadActionValue(i), Guard: v.access(i).Reason, Confirm: it.Action.Confirm, ConfirmID: confirmID(v.At, "h", i)}) {
+					{ it.Label }
+				}
+			case it.Link != nil:
+				@c.Button(c.ButtonProps{Variant: variant(it.Role), Size: c.SizeSmall, Href: v.Hrefs[i]}) {
+					{ it.Label }
+				}
+		}
+	}
+}
+
 // toolbarItems are the controls of a toolbar, in order. The group with fewer controls is one item of the row, which is in it whole or in the next
 // row whole; the group with more flows in rows from its own edge, the left one from the left, the right one from the right, and is one
 // item of the row that takes what the other panels, when it has the room for the widest of its controls. An item that is not drawn for this

@@ -94,6 +94,7 @@ does, and they let you design before you look up names.
 - **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, a panel with no frame and no type parameter: its buttons are
   `Action[webui.NoArgs]` and `Link[webui.NoArgs, B]` (the page's arguments come from `webui.ArgsOf(ctx)`), and its values are a read-only `Form` of
   a model that it loads, which may return `webui.Ready().RefreshAfter(d)` to have the toolbar asked for again. A toolbar takes no input: that is a `Form` panel.
+- **A button or link for one panel as a whole is its `HeadActions`.** Every panel but a toolbar has the field: the same `Action[webui.NoArgs]` and `Link[webui.NoArgs, B]` items as a toolbar (no `Form`), drawn at the right of its title. Its footer is the kind's own and is not added to.
 
 ## How to build an app
 

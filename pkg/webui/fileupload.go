@@ -55,6 +55,10 @@ type FileUpload[M any] struct {
 	// Desc is a description, shown in a popover from an information icon beside the title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Help is a line or two that tells the visitor what the file is for, where the label and the rules cannot: it is in the popover
 	// beside the label that lists the rules, above them. It is text, not markup.
 	Help string
@@ -136,6 +140,7 @@ func headKind(k FileKind) bool {
 }
 
 func (f FileUpload[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "FileUpload", f.HeadActions)
 	validateAction(v, "FileUpload.Receive", f.Receive, false)
 	validateAccessors(v, f.Fields, accessorSite{where: "FileUpload.Fields", allowGroup: true, uniqueLbl: true})
 	for i, acc := range f.Fields {
@@ -173,7 +178,7 @@ func (f FileUpload[M]) lowerView(at ir.Pos) ir.Node {
 	if load == nil {
 		load = func(context.Context) (M, Loaded) { var zero M; return zero, Ready() }
 	}
-	return &ir.FileUpload{
+	out := &ir.FileUpload{
 		At: at, Title: f.Title, Desc: f.Desc, Help: f.Help, Spec: spec, Multiple: f.Multiple,
 		Options: &ir.Form{At: at, Load: eraseLoad(load), Fields: lowerAccessors(f.Fields, "f"), Bind: bindFunc[M], Submit: &ir.Action{}},
 		Receive: lowerAction(a),
@@ -185,4 +190,6 @@ func (f FileUpload[M]) lowerView(at ir.Pos) ir.Node {
 			}
 		},
 	}
+	out.HeadActions = lowerHeadActions(at, f.HeadActions)
+	return out
 }

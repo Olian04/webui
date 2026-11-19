@@ -7,6 +7,7 @@ import "context"
 // is more when there is, and it only reads.
 type Items struct {
 	At Pos
+	Headed
 
 	// ID names this panel's view state in the address: "<ID>.limit" is how many it shows.
 	ID string

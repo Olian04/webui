@@ -37,6 +37,7 @@ into existence, and nothing is configured twice.
 | `Columns` / `Column.Weight` | One row of columns of unequal width, each as wide as its weight says; never narrower than 280px, so the last columns of a row that cannot hold them wrap to a row below |
 | `When` | One child, drawn only while a condition on a model that its `Load` reads holds (a `Bool` accessor says so), and nothing when it does not. What it hides is out of reach of a refresh, a post and an export |
 | `Tabs` / `Tab.Label` | The tab strip; the selection is view state in the address (`tabs.tab`) |
+| `HeadActions` | On every panel but a `Toolbar`: the buttons and links, an `Action` or a `Link` of `NoArgs` as a toolbar has them, at the right of the panel's title, small, in order, before the refresh note. A button posts to the panel as `head:<position>`; a `Guard` hides or disables it, and a `Link` to a page the visitor may not open is left out. A `Form` is not allowed. As any action, it ends in a redirect to the page |
 | `Toolbar` | A row of controls with no frame: buttons, links and the values of its forms' models, read-only, wrapping, with the buttons and the values' bottoms aligned. No inputs and no form of its own beyond the buttons'. The toolbar is a panel (`data-view`), so it refreshes as a panel does, with `data-refresh-after` and says nothing in the row |
 | `Form` | One panel containing a form and a footer with its submit |
 | `Table` | One panel containing a table and a pagination footer |
@@ -567,7 +568,7 @@ Four things in the original design mock were not expressible. Three are now clos
 one is deferred on purpose.
 
 1. **Panel titles and descriptions — closed.** Every panel (`Form`, `Table`,
-   `Editor`, `Diff`, `Markdown`) carries `Title` and `Desc`. A panel's title is part of what the panel *is* — the name of the
+   `Editor`, `Diff`, `Markdown`, `List`, `Cards`, `Calendar`, `FileUpload`) carries `Title`, `Desc` and `HeadActions`. A panel's title is part of what the panel *is* — the name of the
    thing being shown — and the alternative was that the runtime invents one.
 2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
    a `Label` without becoming a struct. A long page is scannable with `Tabs`
@@ -600,7 +601,8 @@ Absences that are choices, not gaps:
   is an accessor, and so `Trend` works in a table and a form. What a page needs beyond that, a chart with a scale, a time range or two lines, is
   not here, and is the app's own panel or a link to the tool that does it; see `design-decisions.md` for what the figures cost.
 - **No per-panel menu.** A panel's header carries a title, a description and a
-  status. Reloading is the page's Refresh, so a panel is replaced only by
-  following its own sort, pager or row links, which are the only per-panel
-  operations that exist. A panel-level menu would mean inventing a concept the
+  status, and the buttons and links the app declared for it (`HeadActions`), all
+  of them drawn. Reloading is the page's Refresh, so a panel is replaced only by
+  following its own sort, pager or row links. A menu that folds the controls away, or a
+  setting that changes how a panel is drawn, would mean inventing a concept the
   view tree does not have.

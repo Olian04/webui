@@ -26,6 +26,10 @@ type List[M any] struct {
 	// Desc is a description, shown in a popover from an information icon beside the title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Loader is where the items come from, in the order they are shown: a [RowsLoader] hands over every item and the library shows the first of them, a [PagedLoader] is asked for the
 	// window of the first items (an Offset of 0 and a Limit of what is on screen plus one, so that the panel can tell whether there are more, with no sort and no filter), and a
 	// [FeedLoader] for the first page of that size. A source that has more than it was asked for is not asked again to count. The loader is called on every request that needs
@@ -79,11 +83,15 @@ const (
 // Cards is a [List] whose items are cards: a picture over a headline, a badge and the line of small facts, in a grid that wraps or a row that scrolls. It has the same
 // source, the same Show more, and the same fields, and is for items that are looked at as much as read, such as videos or products.
 type Cards[M any] struct {
-	// Title, Desc, Loader, PageSize, Headline, Open, Key, Meta, Image, Badge and TrustedOrigins are those of a [List].
-	Title    string
-	Desc     string
-	Loader   Loader[M]
-	PageSize int
+	// Title, Desc, HeadActions, Loader, PageSize, Headline, Open, Key, Meta, Image, Badge and TrustedOrigins are those of a [List].
+	Title string
+	Desc  string
+
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+	Loader      Loader[M]
+	PageSize    int
 
 	Headline Accessor[M]
 	Open     Control[M]
@@ -111,6 +119,7 @@ type itemsSpec[M any] struct {
 	scroll   bool
 	title    string
 	desc     string
+	head     []ToolbarItem
 	loader   Loader[M]
 	pageSize int
 
@@ -126,14 +135,14 @@ type itemsSpec[M any] struct {
 
 func (f List[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
-		what: "List", title: f.Title, desc: f.Desc, loader: f.Loader, pageSize: f.PageSize,
+		what: "List", title: f.Title, desc: f.Desc, head: f.HeadActions, loader: f.Loader, pageSize: f.PageSize,
 		headline: f.Headline, open: f.Open, key: f.Key, meta: f.Meta, image: f.Image, badge: f.Badge, origins: f.TrustedOrigins,
 	}
 }
 
 func (c Cards[M]) spec() itemsSpec[M] {
 	return itemsSpec[M]{
-		what: "Cards", cards: true, scroll: c.Layout == CardsScroll, layout: c.Layout, title: c.Title, desc: c.Desc, loader: c.Loader, pageSize: c.PageSize,
+		what: "Cards", cards: true, scroll: c.Layout == CardsScroll, layout: c.Layout, title: c.Title, desc: c.Desc, head: c.HeadActions, loader: c.Loader, pageSize: c.PageSize,
 		headline: c.Headline, open: c.Open, key: c.Key, meta: c.Meta, image: c.Image, badge: c.Badge, origins: c.TrustedOrigins,
 	}
 }
@@ -145,6 +154,7 @@ func (f List[M]) lowerView(at ir.Pos) ir.Node  { return f.spec().lower(at) }
 func (c Cards[M]) lowerView(at ir.Pos) ir.Node { return c.spec().lower(at) }
 
 func (s itemsSpec[M]) validate(v *viewValidator) {
+	validateHeadActions(v, s.what, s.head)
 	if s.loader == nil {
 		v.add("a "+s.what+" has no Loader", "Set Loader to a RowsLoader, which lists every item, a PagedLoader, or a FeedLoader: the first items are asked of it.")
 	} else {
@@ -198,6 +208,7 @@ func (s itemsSpec[M]) lower(at ir.Pos) ir.Node {
 		Headline: fieldOf[M](s.headline, "h"),
 		Meta:     lowerAccessors(s.meta, "m"),
 	}
+	n.HeadActions = lowerHeadActions(at, s.head)
 	if s.pageSize > 0 {
 		n.PageSize = s.pageSize
 	}

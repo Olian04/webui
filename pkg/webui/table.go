@@ -35,6 +35,10 @@ type Table[M any] struct {
 	// the title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// PageSize is how many rows a page shows, or 25 when it is left zero. A table
 	// always pages, because one that listed every row would grow without bound.
 	PageSize int
@@ -111,6 +115,7 @@ type Table[M any] struct {
 var _ View = Table[struct{}]{}
 
 func (t Table[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Table", t.HeadActions)
 	if t.Loader == nil {
 		v.add("a Table has no Loader", "Set Loader to a RowsLoader, which lists every row and lets the library filter, sort and page; a PagedLoader, which does that itself; or a FeedLoader, for a source paged by a cursor.")
 	} else {
@@ -194,6 +199,7 @@ func (t Table[M]) lowerView(at ir.Pos) ir.Node {
 		Columns: columns,
 		Load:    loading.load,
 	}
+	out.HeadActions = lowerHeadActions(at, t.HeadActions)
 	if t.Key != nil {
 		out.Key = func(row any) string { return t.Key(row.(M)) }
 	}

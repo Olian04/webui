@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/Olian04/webui/test/util/assert"
@@ -58,4 +59,21 @@ func TestAcknowledgingACriticalAlertWarns(t *testing.T) {
 	assert.Equal(t, flashOf(rec), "wAcknowledged 2, including 1 critical")
 	rec = post(h, "/admin/alert", url.Values{"_view": {"p"}, "_act": {"bulk:0"}, "_sel": {"alt_007"}}) // a warning
 	assert.Equal(t, flashOf(rec), "oAcknowledged 1")
+}
+
+// A button in the head of the alerts panel acts on the open alerts that only inform, with no selection, and is the editor's as the others are.
+func TestSilencingInformationIsAButtonInThePanelsHead(t *testing.T) {
+	h := handler(t)
+	posts := map[string]string{}
+	for _, b := range pageAt(t, h, "/admin/alert").ByAttr("name", "_act") {
+		posts[b.Name()] = b.Attr("value")
+	}
+	assert.Equal(t, posts["Silence info"], "head:0")
+
+	rec := post(h, "/admin/alert", url.Values{"_view": {"p"}, "_act": {"head:0"}})
+	assert.Equal(t, rec.Code, http.StatusSeeOther)
+	assert.True(t, strings.HasPrefix(flashOf(rec), "oSilenced "))
+	p := pageAt(t, h, "/admin/alert")
+	assert.False(t, shown(p, "alt_005")) // an info alert is gone
+	assert.True(t, shown(p, "alt_003"))  // a critical one is not
 }

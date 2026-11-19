@@ -1263,6 +1263,17 @@ form[data-filter-form] {
 .panel-status.tone-bad {
   color: var(--red);
 }
+/* The controls that an app declared for the panel as a whole sit at the right of its head, and the refresh note, which is last, follows them. */
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex: none;
+}
+.panel-actions ~ .refresh-note {
+  margin-left: 8px;
+}
 /* A panel that is not final says so beside its title: with script it is asked for again, and without it, it says when to reload. */
 .refresh-note {
   margin-left: auto;
@@ -3251,6 +3262,14 @@ html.js .status-meta [data-built] {
   }
   .panel-foot {
     flex-wrap: wrap;
+  }
+  /* A head with controls may take a second row, rather than push the title out of it. */
+  .panel-head:has(.panel-actions) {
+    height: auto;
+    min-height: var(--control-h);
+    flex-basis: auto;
+    flex-wrap: wrap;
+    padding-block: 4px;
   }
   .toasts {
     left: 8px;

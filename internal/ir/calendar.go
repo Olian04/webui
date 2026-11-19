@@ -9,6 +9,7 @@ import (
 // address, and is changed by links. It only reads.
 type Calendar struct {
 	At Pos
+	Headed
 
 	// ID names this panel's view state in the address: "<ID>.month" is the month that is shown.
 	ID string

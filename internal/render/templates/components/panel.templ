@@ -43,6 +43,19 @@ type PanelProps struct {
 
 type refreshKey struct{}
 
+type headKey struct{}
+
+// WithHead is ctx for drawing a panel that has controls in its head: the component that draws them, which the panel puts at the right of its title.
+func WithHead(ctx context.Context, head templ.Component) context.Context {
+	return context.WithValue(ctx, headKey{}, head)
+}
+
+// headOf is the controls of the head of the panel drawn with ctx, nil for a panel that has none.
+func headOf(ctx context.Context) templ.Component {
+	h, _ := ctx.Value(headKey{}).(templ.Component)
+	return h
+}
+
 // WithRefresh is ctx for drawing a panel that its Load said is not final: it is to be asked for again after d. The panel says so, to the
 // reader in its head and to script in data-refresh-after, the delay in whole seconds, which script obeys until an answer does not say it.
 func WithRefresh(ctx context.Context, d time.Duration) context.Context {
@@ -100,6 +113,9 @@ templ Panel(p PanelProps) {
 			}
 			if p.Failed {
 				@Icon(IconProps{Name: IconAlert, Class: "glyph panel-status tone-bad", Title: "Failed"})
+			}
+			if h := headOf(ctx); h != nil {
+				@h
 			}
 			if p.ViewID != "" {
 				@RefreshNote(ctx)

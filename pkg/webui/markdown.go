@@ -40,6 +40,10 @@ type Markdown[M any] struct {
 	// title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Load returns the model that holds the text.
 	Load func(ctx context.Context) (M, Loaded)
 
@@ -62,6 +66,7 @@ type Markdown[M any] struct {
 var _ View = Markdown[struct{}]{}
 
 func (m Markdown[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Markdown", m.HeadActions)
 	needLoad(v, "a Markdown", m.Load != nil)
 	validateAccessors(v, []Accessor[M]{m.Content}, accessorSite{where: "Markdown.Content", uniqueLbl: true})
 	if m.Content.Store != nil {
@@ -88,11 +93,13 @@ func (m Markdown[M]) origins() []string {
 }
 
 func (m Markdown[M]) lowerView(at ir.Pos) ir.Node {
-	return &ir.Markdown{
+	n := &ir.Markdown{
 		At: at, Title: m.Title, Desc: m.Desc,
 		Load:    eraseLoad(m.Load),
 		Content: fieldOf[M](m.Content, "m"),
 
 		TrustedOrigins: m.origins(),
 	}
+	n.HeadActions = lowerHeadActions(at, m.HeadActions)
+	return n
 }
