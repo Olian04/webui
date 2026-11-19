@@ -67,7 +67,7 @@
 // # Navigation
 //
 // [App.Navigation] is the sidebar, in the order it is written: a [NavPage] is an entry that opens a page with no arguments, a [NavURL] one that opens an address, a [NavGroup]
-// a category that holds some of them and that the visitor opens and shuts (open when it holds the page on screen), and a [NavPages] the entries of a page that has arguments.
+// a category that holds some of them and that the visitor opens and shuts (open when it holds the page on screen, and only one is open at a time), and a [NavPages] the entries of a page that has arguments.
 // [App.Menu] is the links behind the button in the top bar, of the same kinds. A page that is in no entry is not in the sidebar, and lights the entry of its nearest ancestor, so a
 // page at "/device/{id}" lights the "Devices" entry of the page at "/device".
 //

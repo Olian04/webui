@@ -222,7 +222,8 @@ type NavGroupProps struct {
 }
 
 // NavGroup is a section of the sidebar as a category that the visitor opens and closes. It is a <details>, so that it needs no script, is a button to a reader, and works with the
-// keys that a button does: Enter and Space. The entries are inside it.
+// keys that a button does: Enter and Space. The entries are inside it. The categories of the sidebar share one name, which makes them an exclusive accordion that the browser keeps: opening
+// one closes the one that was open, so that the sidebar is as long as one category and the others' names. A browser that does not know the attribute keeps several open, as a <details> does.
 func NavGroup(p NavGroupProps) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -244,7 +245,7 @@ func NavGroup(p NavGroupProps) templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<details class=\"nav-group\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<details class=\"nav-group\" name=\"nav\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -261,7 +262,7 @@ func NavGroup(p NavGroupProps) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/nav.templ`, Line: 61, Col: 46}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/nav.templ`, Line: 62, Col: 46}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -284,7 +285,7 @@ func NavGroup(p NavGroupProps) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.Label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/nav.templ`, Line: 65, Col: 18}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/render/templates/components/nav.templ`, Line: 66, Col: 18}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 		if templ_7745c5c3_Err != nil {

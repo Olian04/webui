@@ -194,7 +194,7 @@ Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
 Awesome glyph; an item with none holds the place of one, empty, so that the labels line up). A group is a category: a row as tall as an item, 13.5px, with the icon that the app gave it (or none), its name, and a
 chevron at the right that points down shut and up open; it is a `<details>`, so it needs no script and is a button to a reader, and its entries are under it, as wide
 as any entry, with no background of their own (the category is told from its entries by its icon, its weight and its chevron). A category is open when it holds the page on screen, in the text colour and 600; the
-others are shut, in the secondary colour, and what the visitor opens by hand is not kept.
+others are shut, in the secondary colour, and what the visitor opens by hand is not kept. Only one is open at a time: the categories share one name (`<details name="nav">`), so the browser shuts the one that was open when another is opened, with no script; a browser that does not know the attribute keeps several open.
 The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.

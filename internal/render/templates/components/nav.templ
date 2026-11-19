@@ -55,9 +55,10 @@ type NavGroupProps struct {
 }
 
 // NavGroup is a section of the sidebar as a category that the visitor opens and closes. It is a <details>, so that it needs no script, is a button to a reader, and works with the
-// keys that a button does: Enter and Space. The entries are inside it.
+// keys that a button does: Enter and Space. The entries are inside it. The categories of the sidebar share one name, which makes them an exclusive accordion that the browser keeps: opening
+// one closes the one that was open, so that the sidebar is as long as one category and the others' names. A browser that does not know the attribute keeps several open, as a <details> does.
 templ NavGroup(p NavGroupProps) {
-	<details class="nav-group" open?={ p.Open }>
+	<details class="nav-group" name="nav" open?={ p.Open }>
 		<summary class="nav-section" title={ p.Label }>
 			if p.Icon != IconNone {
 				@Icon(IconProps{Name: p.Icon, Class: "ni"})

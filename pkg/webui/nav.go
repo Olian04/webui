@@ -72,7 +72,7 @@ type NavURL struct {
 }
 
 // NavGroup is a category: a name, an icon and the entries under it, which the visitor opens and shuts. In the sidebar it is open when it holds the page on screen, and shut
-// otherwise, and what the visitor opens is not kept; in the menu it is a caption above its entries. A group holds entries and not other groups, and one with nothing in it that the
+// otherwise, and what the visitor opens is not kept; only one is open at a time, since the browser shuts the one that was open when another is opened; in the menu it is a caption above its entries. A group holds entries and not other groups, and one with nothing in it that the
 // visitor may open is not drawn.
 type NavGroup struct {
 	// Label is the category's name. It is required.
