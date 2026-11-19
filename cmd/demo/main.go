@@ -56,20 +56,24 @@ var app = webui.App{
 	Description: "Collector: devices, alerts, rules and settings of a telemetry collector, in a small admin panel built with webui.",
 	// Where the app says what went wrong that it could not tell the visitor. Left out, it logs nothing.
 	Logger: slog.Default(),
-	// The links to places outside the app, behind their own button in the top bar: the same entries as the sidebar's. A NavURL is used as written: a web address opens in a tab of its
-	// own, a path such as /login in this one.
+	// The links behind their own button in the top bar, made of the same entries as the sidebar's: a NavURL on its own, a NavGroup of them under a caption, and a NavPage that opens a page
+	// of the app, which is left out for a visitor whose Guard refuses it. A NavURL is used as written: a web address opens in a tab of its own, a path such as /login in this one.
 	Menu: []webui.NavItem{
+		webui.NavURL{Label: "Status page", Icon: "heart-pulse", URL: "https://example.com/status"},
 		webui.NavGroup{Label: "Help", Items: []webui.NavItem{
 			webui.NavURL{Label: "Documentation", Icon: "book", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 			webui.NavURL{Label: "Report a problem", Icon: "bug", URL: "https://github.com/Olian04/webui/issues"},
 		}},
 		webui.NavGroup{Label: "Account", Items: []webui.NavItem{
+			webui.NavPage{Page: Audit, Label: "My audit log", Icon: "clock-rotate-left"},
 			webui.NavURL{Label: "Log out", Icon: "right-from-bracket", URL: "/login"},
 		}},
 	},
-	// The sidebar: categories that open and close, each with an icon, in this order. The one that holds the page on screen is open. A page that is in no entry (a detail page, a form
-	// for a new device) lights the entry of its nearest ancestor.
+	// The sidebar, in the order written, and made of all four kinds of entry. A NavPage on its own is an entry with no category (the first here); a NavGroup is a category that opens and
+	// closes, with an icon, open when it holds the page on screen; a NavPages is one entry for each address of a page that has arguments (the sites); a NavURL opens an address, in a tab of
+	// its own when it is on the web (the last of the handbook). A page that is in no entry (a detail page, a form for a new device) lights the entry of its nearest ancestor.
 	Navigation: []webui.NavItem{
+		webui.NavPage{Page: Overview, Label: "Overview", Icon: "house"},
 		webui.NavGroup{Label: "Platform", Icon: "server", Items: []webui.NavItem{
 			webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"},
 			webui.NavPage{Page: Compare, Label: "Compare devices", Icon: "code-compare"},
@@ -99,6 +103,7 @@ var app = webui.App{
 			webui.NavPage{Page: HandbookIncidents, Label: "Incidents", Icon: "triangle-exclamation"},
 			webui.NavPage{Page: HandbookSinks, Label: "Sinks", Icon: "plug"},
 			webui.NavPage{Page: HandbookGlossary, Label: "Glossary", Icon: "spell-check"},
+			webui.NavURL{Label: "The library's reference", Icon: "arrow-up-right-from-square", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 		}},
 		webui.NavGroup{Label: "Layout", Icon: "table-columns", Items: []webui.NavItem{
 			webui.NavPage{Page: LayoutSplit, Label: "Split rows", Icon: "table-columns"},
