@@ -55,11 +55,12 @@ func cancelApp(redirectToPlain bool) http.Handler {
 	details.View = webui.Stack{form, rows(details)} // and a way on to another form, so forms chain
 	notes.View = webui.Stack{}                      // a page with no form has nothing to cancel out of
 
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: rows(details)}
-	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, View: rows(details)}
+	list := webui.Page[webui.NoArgs]{Path: "/device", View: rows(details)}
+	other := webui.Page[webui.NoArgs]{Path: "/other", View: rows(details)}
 	plain := webui.Page[webui.NoArgs]{Path: plainPath, View: rows(notes)}
 	solo := webui.Page[cancelArgs]{Path: "/solo/{id}", View: form} // no parent page to cancel to
-	return webui.App{Pages: webui.Pages{list, other, plain, details, notes, solo}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{list, other, plain, details, notes, solo},
+		Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}, webui.NavPage{Page: other, Label: "Other"}}}.MustCompile("/admin")
 }
 
 // firstRowHref is where the first row of a page goes, as the page says it.

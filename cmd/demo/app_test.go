@@ -71,14 +71,14 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")
 }
 
-func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
+func TestNavEntriesHaveIconsOrTheEmptyPlaceOfOne(t *testing.T) {
 	p := pageAt(t, handler(t), "/admin/alert")
 	const long = "Retention and archival policy for every kind of collected event"
 	retention := page.One(t, "the entry with no icon", p.ByRole("link", long))
-	assert.Equal(t, retention.AllText(), "R "+long) // its initial, and the name whole; the stylesheet cuts it short
-	assert.Equal(t, retention.Attr("title"), long)  // and whole in its title
+	assert.Equal(t, retention.AllText(), long)     // the name whole, and nothing before it; the stylesheet cuts it short
+	assert.Equal(t, retention.Attr("title"), long) // and whole in its title
 	alerts := page.One(t, "the entry with an icon", p.ByRole("link", "Alerts"))
-	assert.Equal(t, alerts.AllText(), "Alerts") // it has the bell, and no initial
+	assert.Equal(t, alerts.AllText(), "Alerts") // it has the bell, which says nothing
 }
 
 func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {
@@ -164,4 +164,22 @@ func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *t
 	// The host serves its registry, and the app has no endpoint of its own for it.
 	assert.Equal(t, get(h, "/metrics").Code, http.StatusOK)
 	assert.Equal(t, get(compiled, "/admin/_webui/metrics").Code, http.StatusNotFound)
+}
+
+// The demo's navigation is made of every kind of entry there is, to show what can be written.
+func TestTheDemoNavigationUsesEveryKindOfEntry(t *testing.T) {
+	p := pageAt(t, handler(t), "/admin/device")
+	nav := page.One(t, "the sidebar", p.ByRole("navigation", "Main"))
+
+	assert.Equal(t, len(nav.ByRole("link", "Overview")), 1) // a NavPage with no category
+	assert.True(t, len(nav.ByAttr("open", "")) == 1)        // a NavGroup: the one that holds the page is open
+	// A NavPages: an entry for each site, and a NavURL: an address on the web, which opens in a tab of its own.
+	assert.Equal(t, len(nav.ByAttr("href", "/admin/site/Stockholm")), 1)
+	reference := page.One(t, "the reference entry", nav.ByAttr("href", "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"))
+	assert.Equal(t, reference.Attr("target"), "_blank")
+
+	// The menu: a NavURL on its own, and a NavGroup of them with a NavPage that opens a page of the app.
+	assert.Equal(t, len(p.ByAttr("href", "https://example.com/status")), 1)
+	assert.Equal(t, len(p.ByText("My audit log")), 1)
+	assert.Equal(t, len(p.ByAttr("href", "/login")), 1)
 }

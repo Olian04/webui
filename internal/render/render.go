@@ -12,11 +12,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/a-h/templ"
 
@@ -147,7 +145,6 @@ type Problem = c.Problem
 type Renderer struct {
 	app    *ir.App
 	prefix string
-	nav    []navEntry
 
 	// files is each asset by the name it is served as, with the hash of its contents in it, and
 	// served is that name by the one it is known by here.
@@ -178,16 +175,15 @@ type Renderer struct {
 	monaco assets.Monaco
 }
 
+// navEntry is an entry of the sidebar as it is drawn: what it says, where it goes, and whether it is the one on screen.
 type navEntry struct {
-	Label   string
-	Icon    string
-	Section string
-	Path    string // path template, the identity used for Active
-	Href    string
+	Label  string
+	Icon   string
+	Path   string // path template, the identity used for Active; empty for an address
+	Href   string
+	NewTab bool // the address is on the web, and opens in a tab of its own
 
-	// Dynamic is the place of a page that lists several entries, which are not known until a
-	// response is drawn: Label and Href are empty, and the entries are the response's NavLinks.
-	// Lit is whether one of those is the entry on screen.
+	// Dynamic is an entry of a page that lists several: Label and Href are the entry's own, and Lit is whether it is the one on screen.
 	Dynamic bool
 	Lit     bool
 }
@@ -212,16 +208,6 @@ func New(app *ir.App, prefix string, secret []byte) (*Renderer, error) {
 	for _, p := range app.Pages {
 		r.search = r.search || p.Search != nil
 	}
-	for _, p := range app.Pages {
-		if p.Nav.Hidden {
-			continue
-		}
-		e := navEntry{Label: p.Nav.Label, Icon: p.Nav.Icon, Section: p.Nav.Section, Path: p.PathTemplate, Href: r.Href(p.PathTemplate)}
-		if p.Nav.Dynamic {
-			e.Label, e.Href, e.Dynamic = "", "", true
-		}
-		r.nav = append(r.nav, e)
-	}
 	return r, nil
 }
 
@@ -242,24 +228,36 @@ func Refreshing(comp templ.Component, after time.Duration) templ.Component {
 func (r *Renderer) hasTheme() bool { return r.app.Theme != (ir.Theme{}) }
 func (r *Renderer) hasLogo() bool  { return len(r.app.Brand.Logo) > 0 }
 
-// FirstEntry is the address of the first sidebar entry the visitor may
+// FirstEntry is the address of the first page that the sidebar lists that the visitor may
 // open, or "". hide is the paths of the entries they may not.
 func (r *Renderer) FirstEntry(hide map[string]bool) string {
-	if shown := r.shown(hide, nil); len(shown) > 0 {
-		return shown[0].Href // the first the sidebar lists, which sections reorder
+	for _, top := range r.navTops(hide, nil) {
+		for _, e := range top.Entries {
+			if e.Path != "" && !e.Dynamic {
+				return e.Href
+			}
+		}
 	}
 	return ""
 }
 
-// NavPaths is the path template of every sidebar entry, in order, so the runtime
-// can ask which of them the visitor may open.
+// NavPaths is the path template of every page that an entry of the sidebar or of the menu opens, in order, so the runtime can ask which of them the visitor may open. The
+// pages that list several are not here: those are decided for each entry, with its own arguments, when they are loaded.
 func (r *Renderer) NavPaths() []string {
-	out := make([]string, 0, len(r.nav))
-	for _, e := range r.nav {
-		if !e.Dynamic { // those are decided for each entry, with its own arguments, when they are loaded
-			out = append(out, e.Path)
+	var out []string
+	seen := map[string]bool{}
+	var walk func(items []ir.NavItem)
+	walk = func(items []ir.NavItem) {
+		for _, it := range items {
+			if it.Kind == ir.NavKindPage && !seen[it.Path] {
+				seen[it.Path] = true
+				out = append(out, it.Path)
+			}
+			walk(it.Items)
 		}
 	}
+	walk(r.app.Navigation)
+	walk(r.app.Menu)
 	return out
 }
 
@@ -386,91 +384,73 @@ func (r *Renderer) brand() string {
 	return r.app.Brand.Name
 }
 
-// initial is the first letter of a label, capitalised: what an entry with no
-// icon shows when the sidebar is a rail.
-func initial(label string) string {
-	for _, c := range label {
-		return string(unicode.ToUpper(c))
-	}
-	return ""
-}
-
-// navGroup is one section of the sidebar, as the visitor sees it: the entries that they may open, and the icon the app gave the section. The first group is the
-// entries that belong to no section, which are drawn as they are and not under a category.
-type navGroup struct {
-	Section string
+// navTop is one thing the sidebar draws: an entry, or a category with the entries under it.
+type navTop struct {
+	Group   bool
+	Label   string // the category's name
 	Icon    string
-	Entries []navEntry
+	Entries []navEntry // one for an entry that is not in a category
 }
 
-// shown is the navigation entries the visitor may open, in the order the sidebar
-// lists them, which is grouped by Section and not by position: the entries with no
-// Section come first, then each section, each with its entries in the order given and
-// its name on the first of them. A section with nothing left in it is not there.
-func (r *Renderer) shown(hide map[string]bool, links map[string][]NavLink) []navEntry {
-	var out []navEntry
-	for _, g := range r.navGroups(hide, links) {
-		for i, e := range g.Entries {
-			e.Section = ""
-			if i == 0 {
-				e.Section = g.Section
-			}
-			out = append(out, e)
+// entriesOf is the entries that an item of the navigation draws for this visitor: none for a page that they may not open, one for a page or an address, and one for each address
+// that a page that lists several was loaded with.
+func (r *Renderer) entriesOf(it ir.NavItem, hide map[string]bool, links map[string][]NavLink) []navEntry {
+	switch it.Kind {
+	case ir.NavKindPage:
+		if hide[it.Path] {
+			return nil
 		}
+		return []navEntry{{Label: it.Label, Icon: it.Icon, Path: it.Path, Href: r.Href(it.Path)}}
+	case ir.NavKindPages:
+		if hide[it.Path] {
+			return nil
+		}
+		var out []navEntry
+		for _, l := range links[it.Path] {
+			out = append(out, navEntry{Label: l.Label, Icon: it.Icon, Path: it.Path, Href: l.Href, Dynamic: true, Lit: l.Active})
+		}
+		return out
+	case ir.NavKindURL:
+		return []navEntry{{Label: it.Label, Icon: it.Icon, Href: it.URL, NewTab: isWebAddress(it.URL)}}
 	}
-	return out
+	return nil
 }
 
-// navGroups is the sidebar's sections in the order it draws them: the entries of no section first, then the sections that the app named in App.Sections, in that order, and then
-// the others, each in the order it is first named by a page. A section that the visitor may open nothing of is left out.
-func (r *Renderer) navGroups(hide map[string]bool, links map[string][]NavLink) []navGroup {
-	var open []navEntry
-	for _, e := range r.nav {
-		switch {
-		case hide[e.Path]:
-		case e.Dynamic:
-			// The place of a page that lists several: an entry for each, in the order it gave them.
-			for _, l := range links[e.Path] {
-				open = append(open, navEntry{Label: l.Label, Icon: e.Icon, Section: e.Section, Path: e.Path, Href: l.Href, Dynamic: true, Lit: l.Active})
+// navTops is the sidebar as this visitor sees it, in the order the app declared it: what they may not open is left out, and so is a category with nothing left in it.
+func (r *Renderer) navTops(hide map[string]bool, links map[string][]NavLink) []navTop {
+	var out []navTop
+	for _, it := range r.app.Navigation {
+		if it.Kind != ir.NavKindGroup {
+			for _, e := range r.entriesOf(it, hide, links) {
+				out = append(out, navTop{Entries: []navEntry{e}})
 			}
-		default:
-			open = append(open, e)
-		}
-	}
-	groups := bySection(open, func(e navEntry) string { return e.Section })
-	icon := map[string]string{}
-	rank := map[string]int{}
-	for i, s := range r.app.Sections {
-		icon[s.Name], rank[s.Name] = s.Icon, i
-	}
-	// The entries of no section stay first; the sections the app named follow in its order, and the rest in theirs (a stable sort keeps it).
-	slices.SortStableFunc(groups[1:], func(a, b group[navEntry]) int {
-		ra, oka := rank[a.section]
-		rb, okb := rank[b.section]
-		switch {
-		case oka && okb:
-			return ra - rb
-		case oka:
-			return -1
-		case okb:
-			return 1
-		}
-		return 0
-	})
-	out := make([]navGroup, 0, len(groups))
-	for _, g := range groups {
-		if len(g.items) == 0 {
 			continue
 		}
-		out = append(out, navGroup{Section: g.section, Icon: icon[g.section], Entries: g.items})
+		var entries []navEntry
+		for _, sub := range it.Items {
+			entries = append(entries, r.entriesOf(sub, hide, links)...)
+		}
+		if len(entries) > 0 {
+			out = append(out, navTop{Group: true, Label: it.Label, Icon: it.Icon, Entries: entries})
+		}
 	}
 	return out
 }
 
-// hasSidebar is whether the app draws a list of places to go: it does when any page declares a Nav entry (a Label, or NavEntries), and not
+// holds is whether a category holds the entry that is on screen, which is why it is open.
+func (t navTop) holds(active string) bool {
+	for _, e := range t.Entries {
+		if e.lit(active) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasSidebar is whether the app draws a list of places to go: it does when the app declares a Navigation, and not
 // otherwise. It is the declaration that decides, and not what a visitor may open of it, so that the author of the app says whether it has
 // a sidebar, and a page does not change shape for a visitor whose Guards hide what it lists.
-func (r *Renderer) hasSidebar() bool { return len(r.nav) > 0 }
+func (r *Renderer) hasSidebar() bool { return len(r.app.Navigation) > 0 }
 
 // topMark is the app's mark at the head of a top bar that has no sidebar to carry it, and nil when there is one.
 func (r *Renderer) topMark(bare bool) templ.Component {
@@ -497,32 +477,6 @@ func (e navEntry) lit(active string) bool {
 	return e.Path == active
 }
 
-// group is the entries of one section, in the order they were given.
-type group[T any] struct {
-	section string
-	items   []T
-}
-
-// bySection groups entries by the section each names: the ones that name none
-// first, then each section in the order it is first named. An entry belongs to a
-// section only by naming it, wherever it stands in the list.
-func bySection[T any](items []T, section func(T) string) []group[T] {
-	index := map[string]int{}
-	groups := []group[T]{{}}
-	index[""] = 0
-	for _, it := range items {
-		s := section(it)
-		i, ok := index[s]
-		if !ok {
-			i = len(groups)
-			index[s] = i
-			groups = append(groups, group[T]{section: s})
-		}
-		groups[i].items = append(groups[i].items, it)
-	}
-	return groups
-}
-
 // earlyCSS is the canvas colour of each theme, inline, ahead of the stylesheet. The
 // values are the stylesheet's --canvas tokens; a test keeps the two equal.
 const earlyCSS = `html{background:#111217;color-scheme:dark}` +
@@ -543,19 +497,37 @@ func (r *Renderer) earlyStyle() string {
 		fmt.Sprintf("@media (prefers-color-scheme:light){html:not([data-theme]){background:%s;color-scheme:light}}", light)
 }
 
-// linkEntries are the external links as the component draws them, grouped by Section
-// like the sidebar: the entries with no Section first, then each section in the order it
-// is first named, each with its caption above the first of its entries. A link to a web
-// address opens in a tab of its own; a path on this site and a mail address do not.
-func (r *Renderer) linkEntries() []c.LinkEntry {
-	out := make([]c.LinkEntry, 0, len(r.app.ExternalLinks))
-	for _, g := range bySection(r.app.ExternalLinks, func(e ir.ExternalLink) string { return e.Section }) {
-		for i, e := range g.items {
-			entry := c.LinkEntry{Label: e.Label, Href: e.URL, Icon: c.IconName(e.Icon), NewTab: isWebAddress(e.URL)}
-			if i == 0 {
-				entry.Section = g.section
+// linkEntries are the entries of the menu as the component draws them, in the order the app declared them: a page that the visitor may not open is left out, a category is a
+// caption above the first of its entries, and an address on the web opens in a tab of its own, which a path on this site and a mail address do not.
+func (r *Renderer) linkEntries(hide map[string]bool) []c.LinkEntry {
+	var out []c.LinkEntry
+	entry := func(it ir.NavItem) (c.LinkEntry, bool) {
+		switch it.Kind {
+		case ir.NavKindPage:
+			if hide[it.Path] {
+				return c.LinkEntry{}, false
 			}
-			out = append(out, entry)
+			return c.LinkEntry{Label: it.Label, Href: r.Href(it.Path), Icon: c.IconName(it.Icon)}, true
+		case ir.NavKindURL:
+			return c.LinkEntry{Label: it.Label, Href: it.URL, Icon: c.IconName(it.Icon), NewTab: isWebAddress(it.URL)}, true
+		}
+		return c.LinkEntry{}, false
+	}
+	for _, it := range r.app.Menu {
+		if it.Kind != ir.NavKindGroup {
+			if e, ok := entry(it); ok {
+				out = append(out, e)
+			}
+			continue
+		}
+		first := true
+		for _, sub := range it.Items {
+			if e, ok := entry(sub); ok {
+				if first {
+					e.Section, first = it.Label, false
+				}
+				out = append(out, e)
+			}
 		}
 	}
 	return out
@@ -622,14 +594,4 @@ func refusedTitle(refused int, title string) string {
 		return "Not saved, " + strconv.Itoa(refused) + " fields need attention — " + title
 	}
 	return title
-}
-
-// holds is whether a section holds the entry that is on screen, which is why it is open.
-func (g navGroup) holds(active string) bool {
-	for _, e := range g.Entries {
-		if e.lit(active) {
-			return true
-		}
-	}
-	return false
 }

@@ -18,21 +18,25 @@ func TestThePanelsTheGuardsAndTheNavEntriesAreAskedForAtTheSameTime(t *testing.T
 	t.Parallel()
 
 	var arrived, met atomic.Int32
-	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, View: webui.Table[Device]{
+	home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Table[Device]{
 		Title: "Devices", Columns: []webui.Accessor[Device]{formID},
 		Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			meet(ctx, &arrived, 3, &met)
 			return webui.PagedWindow[Device]{Items: []Device{{Id: "row"}}, Total: 1}, webui.Ready()
 		}},
 	}}
-	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, View: webui.Stack{},
+	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", View: webui.Stack{},
 		Guard: func(ctx context.Context, _ webui.NoArgs) error { meet(ctx, &arrived, 3, &met); return nil }}
-	site := webui.Page[navSiteArgs]{Path: "/site/{name}", Nav: webui.Nav{Section: "Sites"}, View: webui.Stack{},
-		NavEntries: func(ctx context.Context) ([]webui.NavEntry[navSiteArgs], error) {
-			meet(ctx, &arrived, 3, &met)
-			return []webui.NavEntry[navSiteArgs]{{Args: navSiteArgs{Name: "a"}, Label: "Site A"}}, nil
-		}}
-	h := webui.App{Pages: webui.Pages{home, guarded, site}}.MustCompile("/admin")
+	site := webui.Page[navSiteArgs]{Path: "/site/{name}", View: webui.Stack{}}
+	sites := func(ctx context.Context) ([]webui.NavEntry[navSiteArgs], error) {
+		meet(ctx, &arrived, 3, &met)
+		return []webui.NavEntry[navSiteArgs]{{Args: navSiteArgs{Name: "a"}, Label: "Site A"}}, nil
+	}
+	h := webui.App{Pages: webui.Pages{home, guarded, site}, Navigation: []webui.NavItem{
+		webui.NavPage{Page: home, Label: "Home"},
+		webui.NavPage{Page: guarded, Label: "Guarded"},
+		webui.NavGroup{Label: "Sites", Items: []webui.NavItem{webui.NavPages[navSiteArgs]{Page: site, Entries: sites}}},
+	}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/home")
 	assert.Equal(t, rec.Code, http.StatusOK)

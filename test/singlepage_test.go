@@ -23,8 +23,8 @@ func noNav() http.Handler {
 
 // onePage is an app whose one page has an entry in the navigation.
 func onePage(guard func(context.Context, webui.NoArgs) error) http.Handler {
-	only := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "Devices"}, Guard: guard, View: webui.Stack{}}
-	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{only}}.MustCompile("/admin")
+	only := webui.Page[webui.NoArgs]{Path: "/devices", Guard: guard, View: webui.Stack{}}
+	return webui.App{Brand: webui.Brand{Name: "Demo"}, Pages: webui.Pages{only}, Navigation: []webui.NavItem{webui.NavPage{Page: only, Label: "Devices"}}}.MustCompile("/admin")
 }
 
 // Whether an app has a sidebar is the author's to say, by the pages that have an entry: where no page declares one, there is nothing for a sidebar to
@@ -38,7 +38,6 @@ func TestAnAppWhosePagesDeclareNoEntryHasNoSidebar(t *testing.T) {
 
 	assert.Equal(t, len(p.ByRole("complementary", "")), 0)
 	assert.Equal(t, len(p.ByRole("navigation", "Main")), 0)
-	assert.Equal(t, len(p.ByAttr("data-sidebar-toggle", "")), 0)
 	assert.Equal(t, len(p.ByRole("main", "")), 1)
 
 	// The first crumb is the brand, which is where it leads back to.
@@ -92,10 +91,9 @@ func TestAPageThatListsEntriesGivesTheAppASidebar(t *testing.T) {
 			t.Parallel()
 
 			site := webui.Page[siteArgs]{
-				Path: "/site/{name}", Nav: webui.Nav{Icon: "location-dot"},
-				NavEntries: siteEntries(names...), View: webui.Stack{},
+				Path: "/site/{name}", View: webui.Stack{},
 			}
-			h := webui.App{Pages: webui.Pages{site}}.MustCompile("/admin")
+			h := webui.App{Pages: webui.Pages{site}, Navigation: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Entries: siteEntries(names...), Icon: "location-dot"}}}.MustCompile("/admin")
 			p := pageOf(t, h, "/admin/site/Stockholm")
 			assert.Equal(t, len(p.ByRole("complementary", "")), 1)
 			assert.Equal(t, len(sidebarNav(t, p).Links()), len(names))

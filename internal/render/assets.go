@@ -16,6 +16,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/Olian04/webui/internal/assetserve"
+	"github.com/Olian04/webui/internal/ir"
 	"github.com/Olian04/webui/internal/render/assets"
 )
 
@@ -130,7 +131,7 @@ func (r *Renderer) Asset(name string) (*assetserve.Blob, bool) {
 // faviconName is the asset a favicon of one size is served as.
 func faviconName(size int) string { return "favicon-" + strconv.Itoa(size) + ".png" }
 
-// addIcons makes the icon stylesheet of this app, and serves its font. An app can name an icon in three places only, a page's Nav, a section and an external link, and all are
+// addIcons makes the icon stylesheet of this app, and serves its font. An app can name an icon in two places only, an entry of its Navigation and one of its Menu (a group and what it holds), and both are
 // checked against the list of icons when it compiles, so the icons it can draw are known now: those, and the ones the library draws itself. The font is cut to
 // them, and the stylesheet has a rule for each of them and no other: the stylesheet of every icon was 83 KB of which a page used a few lines, and the font 120 KB of
 // which it drew a few glyphs.
@@ -139,21 +140,17 @@ func (r *Renderer) addIcons(add func(logical string, body []byte, mime string, b
 	for _, name := range assets.CoreIcons() {
 		names[name] = true
 	}
-	for _, p := range r.app.Pages {
-		if p.Nav.Icon != "" {
-			names[p.Nav.Icon] = true
+	var collect func(items []ir.NavItem)
+	collect = func(items []ir.NavItem) {
+		for _, it := range items {
+			if it.Icon != "" {
+				names[it.Icon] = true
+			}
+			collect(it.Items)
 		}
 	}
-	for _, s := range r.app.Sections {
-		if s.Icon != "" {
-			names[s.Icon] = true
-		}
-	}
-	for _, l := range r.app.ExternalLinks {
-		if l.Icon != "" {
-			names[l.Icon] = true
-		}
-	}
+	collect(r.app.Navigation)
+	collect(r.app.Menu)
 	sorted := slices.Sorted(maps.Keys(names))
 
 	font, err := assets.IconFont(sorted)

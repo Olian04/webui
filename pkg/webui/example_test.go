@@ -24,11 +24,10 @@ var (
 	IP = webui.String[Device]{Label: "IP", Load: func(d Device) string { return d.IP }}
 )
 
-// A page is a path, a sidebar entry, and a body. This one is a table whose rows
+// A page is a path and a body; the app lists it in its sidebar. This one is a table whose rows
 // are a slice; the library sorts, filters and pages them.
 var Devices = webui.Page[webui.NoArgs]{
 	Path: "/device",
-	Nav:  webui.Nav{Label: "Devices", Icon: "display"},
 	View: webui.Table[Device]{
 		Title:   "Devices",
 		Loader:  webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return devices, webui.Ready() }},
@@ -42,6 +41,9 @@ func Example() {
 	app := webui.App{
 		Brand: webui.Brand{Name: "Acme"},
 		Pages: webui.Pages{Devices},
+		Navigation: []webui.NavItem{
+			webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"},
+		},
 	}
 
 	// Compile checks the declaration and returns an http.Handler. In a real

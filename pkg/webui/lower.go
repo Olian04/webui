@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/png"
-	"strings"
 
-	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/favicon"
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -35,13 +33,6 @@ import (
 // (page.go, form.go, table.go, layout.go, link.go, action.go), and the
 // interiors are ordinary switches (accessor.go).
 func (a App) lower() (*ir.App, error) {
-	entries := map[string]bool{} // the paths of the pages that have a sidebar entry
-	for _, p := range a.Pages {
-		if p.hasNavEntry() {
-			entries[p.pagePath()] = true
-		}
-	}
-
 	brand, err := lowerBrand(a.Brand)
 	if err != nil {
 		return nil, err
@@ -51,18 +42,17 @@ func (a App) lower() (*ir.App, error) {
 		Description:      a.Description,
 		NoConsoleMessage: a.NoConsoleMessage,
 		Theme:            lowerTheme(a.Theme),
-		Sections:         convert.Slice(a.Sections, func(s NavSection) ir.NavSection { return ir.NavSection{Name: s.Name, Icon: s.Icon} }),
-		ExternalLinks:    lowerExternalLinks(a.ExternalLinks),
 		Logger:           a.Logger,
 		Secret:           a.Secret,
 		Observer:         a.Observer,
 		ByPath:           map[string]*ir.Page{},
 	}
 	for _, p := range a.Pages {
-		page := p.lowerPage(entries)
+		page := p.lowerPage()
 		out.Pages = append(out.Pages, page)
 		out.ByPath[page.PathTemplate] = page
 	}
+	a.lowerNavigation(out)
 	return out, nil
 }
 
@@ -93,25 +83,6 @@ func lowerBrand(b Brand) (ir.Brand, error) {
 	return out, nil
 }
 
-// lowerNav resolves a declared Nav to the IR's. A page with no entry of its own
-// borrows the nearest ancestor's: the longest proper prefix of its path, by
-// segments, that is a page with an entry. The root is never an ancestor, so a
-// labelled landing page does not light for every hidden page in the app.
-func lowerNav(entries map[string]bool, n Nav, path string, dynamic bool) ir.Nav {
-	out := ir.Nav{Label: n.Label, Icon: n.Icon, Section: n.Section, Hidden: n.Label == "" && !dynamic, Dynamic: dynamic}
-	if n.Label != "" || dynamic {
-		return out
-	}
-	segs := strings.Split(strings.Trim(path, "/"), "/")
-	for i := len(segs) - 1; i >= 1; i-- {
-		if prefix := "/" + strings.Join(segs[:i], "/"); entries[prefix] {
-			out.Shadow = prefix
-			break
-		}
-	}
-	return out
-}
-
 func lowerTheme(t Theme) ir.Theme {
 	return ir.Theme{
 		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
@@ -121,10 +92,4 @@ func lowerTheme(t Theme) ir.Theme {
 
 func lowerModeColors(m ModeColors) ir.ModeColors {
 	return ir.ModeColors{Canvas: string(m.Canvas), Accent: string(m.Accent), OK: string(m.OK), Warning: string(m.Warning), Critical: string(m.Critical)}
-}
-
-func lowerExternalLinks(items []ExternalLink) []ir.ExternalLink {
-	return convert.Slice(items, func(it ExternalLink) ir.ExternalLink {
-		return ir.ExternalLink{Label: it.Label, Icon: it.Icon, Section: it.Section, URL: it.URL}
-	})
 }

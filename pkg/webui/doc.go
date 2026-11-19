@@ -19,7 +19,6 @@
 //
 //	var Devices = webui.Page[webui.NoArgs]{
 //		Path: "/device",
-//		Nav:  webui.Nav{Label: "Devices", Icon: "display"},
 //		View: webui.Table[Device]{
 //			Title: "Devices",
 //			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) {
@@ -30,7 +29,12 @@
 //	}
 //
 //	func main() {
-//		app := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{Devices}}
+//		app := webui.App{
+//			Brand: webui.Brand{Name: "Acme"},
+//			// The sidebar: what it lists, in this order. A page that is in no entry is not in it.
+//			Navigation: []webui.NavItem{webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"}},
+//			Pages:      webui.Pages{Devices},
+//		}
 //		http.Handle("/admin/", app.MustCompile("/admin"))
 //		log.Fatal(http.ListenAndServe(":8080", nil))
 //	}
@@ -43,7 +47,7 @@
 //
 // # Pages and arguments
 //
-// A [Page] has a path, an optional [Nav] entry, an optional Guard, and a View. Its
+// A [Page] has a path, an optional Guard, and a View, and an entry in the sidebar when the app's [App.Navigation] lists it. Its
 // type parameter is the page's argument struct. A field named by a placeholder in
 // the path is a path segment, and every other field is a query parameter:
 //
@@ -60,24 +64,29 @@
 // is answered with 403, or with the status of a [Refusal] (see Refusals). Inside any
 // closure that serves the page, [ArgsOf] returns the arguments.
 //
-// A page with arguments in its path has no entry in the sidebar by itself, since an entry
-// is a link with one address and "/site/{name}" has none until a name is filled in. Its
-// NavEntries lists them: one for each address, loaded whenever a page is drawn, each with the
-// words it says and the arguments it opens.
+// # Navigation
 //
-//	var SitePage = webui.Page[SiteArgs]{
-//		Path: "/site/{name}",
-//		Nav:  webui.Nav{Icon: "location-dot", Section: "Sites"},
-//		NavEntries: func(ctx context.Context) ([]webui.NavEntry[SiteArgs], error) {
-//			...
+// [App.Navigation] is the sidebar, in the order it is written: a [NavPage] is an entry that opens a page with no arguments, a [NavURL] one that opens an address, a [NavGroup]
+// a category that holds some of them and that the visitor opens and shuts (open when it holds the page on screen), and a [NavPages] the entries of a page that has arguments.
+// [App.Menu] is the links behind the button in the top bar, of the same kinds. A page that is in no entry is not in the sidebar, and lights the entry of its nearest ancestor, so a
+// page at "/device/{id}" lights the "Devices" entry of the page at "/device".
+//
+//	app := webui.App{
+//		Navigation: []webui.NavItem{
+//			webui.NavPage{Page: Overview, Label: "Overview", Icon: "house"},
+//			webui.NavGroup{Label: "Fleet", Icon: "server", Items: []webui.NavItem{
+//				webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"},
+//				webui.NavPages[SiteArgs]{Page: SitePage, Entries: sites, Icon: "location-dot"},
+//			}},
 //		},
+//		Menu: []webui.NavItem{webui.NavURL{Label: "Log out", Icon: "right-from-bracket", URL: "/login"}},
+//		Pages: webui.Pages{Overview, Devices, SitePage},
 //	}
 //
-// Nav gives the entries their icon and section, and no label. The entry of the site on screen
-// is lit, and so is it for a page that borrows the place, such as "/site/{name}/log". An
-// entry is left out for a visitor whom the page's Guard refuses, checked with the entry's own
-// arguments. Loading is bounded: a deadline of two seconds, and the first fifty entries; and
-// a failure leaves the page drawn without them.
+// A page with arguments in its path has no entry of its own, since an entry is a link with one address and "/site/{name}" has none until a name is filled in. A [NavPages] lists
+// one for each address: its Entries are loaded whenever a page is drawn, each with the words it says and the arguments it opens. The entry of the site on screen is lit, and so is it
+// for a page that borrows the place, such as "/site/{name}/log". An entry is left out for a visitor whom the page's Guard refuses, checked with the entry's own arguments. Loading is
+// bounded: a deadline of two seconds, and the first fifty entries; and a failure leaves the page drawn without them.
 //
 // A path says its arguments as they are: "/device/dev_27c38b" reads "dev_27c38b" in the
 // breadcrumb and the tab title. A page whose argument is not what a person knows the
@@ -815,19 +824,16 @@
 // # Looks
 //
 // [Brand] gives the name and logo. The logo is also scaled into the browser's favicon,
-// unless NoFavicon is set. [App.Description] is the pages' meta description, what a search engine shows under the title. Each page also says in its source that it was built with this library (a generator meta), and the page script says so in the browser's console, once for a tab, with a link to the repository, for the developer who opens it; [App.NoConsoleMessage] leaves both out. [App.ExternalLinks] are the app's links to places outside
-// it, such as signing out or the documentation, behind a button beside Refresh in the
-// top bar. An [ExternalLink] is a [Nav] entry with a URL, used as written: a web
-// address opens in a tab of its own, and a path on this site in the same one. Its
-// Section groups it, and the entries without one come first. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#1f7a6d" that Compile refuses when it is anything else, and the library derives
+// unless NoFavicon is set. [App.Description] is the pages' meta description, what a search engine shows under the title. Each page also says in its source that it was built with this library (a generator meta), and the page script says so in the browser's console, once for a tab, with a link to the repository, for the developer who opens it; [App.NoConsoleMessage] leaves both out. [App.Menu] is the app's links, such as signing out or the documentation, behind a button beside
+// Refresh in the top bar. A [NavURL] is used as written: a web address opens in a tab of its own, and a path on this site in the same one. A [NavGroup]
+// is a caption above its entries. [Theme] restyles the four colours that carry meaning (accent, ok, warning and critical), each a [Color], a hex string such as "#1f7a6d" that Compile refuses when it is anything else, and the library derives
 // the rest for light and dark, which follow the visitor's system. A Theme may also give Light and Dark, each a [ModeColors], the page's Canvas in that mode, from which the surfaces, borders and
 // text of the mode are derived, and colours that win over the shared ones in that mode: a look of its own in each, with the visitor still choosing between the modes. Compile checks that what a Theme
-// derives can be read, and refuses one that cannot, naming the field and the pair. A [Nav] Icon is the
+// derives can be read, and refuses one that cannot, naming the field and the pair. An entry's Icon is the
 // name of a Font Awesome Free solid icon, "house" for fa-house, served by the app
 // itself.
 //
-// There is a sidebar when any page declares an entry in it, with a Nav Label or with
-// NavEntries, and none when no page does: an app whose pages are all reached by link has
+// There is a sidebar when the app declares a Navigation, and none when it does not: an app whose pages are all reached by link has
 // the width for its pages, and its top bar begins with the app's mark. The declaration
 // decides, and not what a visitor may open of it. The theme, light or dark, is an icon
 // button in the top bar of every app.
@@ -835,8 +841,7 @@
 // The sidebar is 240px wide, and a label that is wider is cut short with an ellipsis,
 // its whole being its title. With script its edge can be dragged to a width of 180 to
 // 480px, no more than half the window, which the browser keeps (in its own storage,
-// never sent to the server) and which a double click or Enter on the edge resets; the
-// icon rail that the collapse button makes has a width of its own.
+// never sent to the server) and which a double click or Enter on the edge resets.
 //
 // # Figures
 //

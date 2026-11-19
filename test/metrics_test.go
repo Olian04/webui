@@ -70,7 +70,7 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 			},
 		},
 		webui.Page[webui.NoArgs]{
-			Path: "/things", Nav: webui.Nav{Label: "Things"},
+			Path: "/things",
 			View: webui.Table[thing]{
 				Title: "Things",
 				Loader: webui.PagedLoader[thing]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[thing], webui.Loaded) {
@@ -81,7 +81,7 @@ func metricsApp(reg prometheus.Registerer, loadErr, runErr error) http.Handler {
 				Export:  true,
 			},
 		},
-	}}.MustCompile("/admin")
+	}, Navigation: []webui.NavItem{webui.NavPage{Page: webui.PageID[webui.NoArgs]("/things"), Label: "Things"}}}.MustCompile("/admin")
 }
 
 // gathered is every sample of a metric, as its labels and value: a histogram's is its count.

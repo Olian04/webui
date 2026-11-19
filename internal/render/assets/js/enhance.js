@@ -921,22 +921,6 @@
     syncThemeToggle();
   });
 
-  // The sidebar's collapse button narrows it to the icon rail and back. The
-  // choice is a browser preference, like the theme, so it stays out of the URL.
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-sidebar-toggle]');
-    if (!btn) return;
-    var root = document.documentElement;
-    var collapsed = root.getAttribute('data-sidebar') !== 'collapsed';
-    if (collapsed) root.setAttribute('data-sidebar', 'collapsed');
-    else root.removeAttribute('data-sidebar');
-    syncSidebarToggle();
-    try {
-      if (collapsed) localStorage.setItem('webui.sidebar', 'collapsed');
-      else localStorage.removeItem('webui.sidebar');
-    } catch (err) {}
-  });
-
   // On a phone the sidebar (a drawer) and the top bar's actions (a drawer from the right) are each opened by a checkbox, and work
   // without this. What script adds is what a drawer over the page owes the visitor who cannot see the page: while one is open, the page
   // behind it is inert (not read, not reached by a key), the focus is moved into it, and Escape closes it and puts the focus back on the box
@@ -1101,7 +1085,7 @@
     });
   }
 
-  // The sidebar's edge is a splitter. Its width is a browser preference, like the collapse, kept in localStorage and put back by prefs.js before first
+  // The sidebar's edge is a splitter. Its width is a browser preference, like the theme, kept in localStorage and put back by prefs.js before first
   // paint. A window too small for the width it was given holds it to what fits, without storing the smaller one.
   var SIDE_DEFAULT = 240;
   var SIDE_MIN = 180;
@@ -1416,13 +1400,6 @@
     e.preventDefault();
     e.returnValue = '';
   });
-
-  function syncSidebarToggle() {
-    var btn = $('[data-sidebar-toggle]');
-    if (!btn) return;
-    var collapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
-    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-  }
 
   document.addEventListener('change', function (e) {
     var t = e.target;
@@ -2054,7 +2031,6 @@
   if (hint && !isMac) hint.textContent = 'Ctrl K';
 
   credit();
-  syncSidebarToggle();
   syncThemeToggle();
   enhanceSidebarWidth();
   syncSelection(document);

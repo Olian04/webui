@@ -84,9 +84,12 @@ func deviceHit(d Device) webui.Hit[detailsArgs] {
 // that decides which of them a visitor may open.
 func searchApp(search func(context.Context, string, int) ([]webui.Hit[detailsArgs], error), guard func(context.Context, detailsArgs) error) http.Handler {
 	details := webui.Page[detailsArgs]{Path: "/device/{id}", Guard: guard, Search: search, View: webui.Stack{}}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
-	other := webui.Page[webui.NoArgs]{Path: "/other", Nav: webui.Nav{Label: "Other"}, View: webui.Stack{}}
-	return webui.App{Pages: webui.Pages{list, details, other}}.MustCompile("/admin")
+	list := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
+	other := webui.Page[webui.NoArgs]{Path: "/other", View: webui.Stack{}}
+	return webui.App{
+		Pages:      webui.Pages{list, details, other},
+		Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}, webui.NavPage{Page: other, Label: "Other"}},
+	}.MustCompile("/admin")
 }
 
 // rowsSearch is a page's Search made from the devices in memory.
@@ -126,10 +129,10 @@ func TestAPagesResultsAreListedUnderItsNameInTheNavigationOrTheEntryItBorrowsFro
 	h := webui.App{Pages: webui.Pages{labelled}}.MustCompile("/admin")
 	assert.Equal(t, search(t, h, "gate").Results[0].Group, "/thing/{id}") // none at all: the path
 
-	own := webui.Page[webui.NoArgs]{Path: "/devices", Nav: webui.Nav{Label: "All devices"}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+	own := webui.Page[webui.NoArgs]{Path: "/devices", Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		return []webui.Hit[webui.NoArgs]{{Title: "The list"}}, nil
 	}, View: webui.Stack{}}
-	h = webui.App{Pages: webui.Pages{own}}.MustCompile("/admin")
+	h = webui.App{Pages: webui.Pages{own}, Navigation: []webui.NavItem{webui.NavPage{Page: own, Label: "All devices"}}}.MustCompile("/admin")
 	assert.Equal(t, search(t, h, "x").Results[0].Group, "All devices")
 	assert.Equal(t, search(t, h, "x").Results[0].Href, "/admin/devices")
 }
@@ -177,14 +180,16 @@ func TestSearchCapsTheHitsOfAPageAndSurvivesAFailingOrPanickingPage(t *testing.T
 	}
 	assert.Equal(t, len(search(t, searchApp(many, nil), "d").Results), 8)
 
-	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		return nil, errors.New("db secret-host is down")
 	}}
-	panics := webui.Page[webui.NoArgs]{Path: "/panics", Nav: webui.Nav{Label: "Panics"}, View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
+	panics := webui.Page[webui.NoArgs]{Path: "/panics", View: webui.Stack{}, Search: func(context.Context, string, int) ([]webui.Hit[webui.NoArgs], error) {
 		panic("boom")
 	}}
 	ok := webui.Page[detailsArgs]{Path: "/device/{id}", View: webui.Stack{}, Search: rowsSearch()}
-	h := webui.App{Pages: webui.Pages{broken, panics, ok}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{broken, panics, ok}, Navigation: []webui.NavItem{
+		webui.NavPage{Page: broken, Label: "Broken"}, webui.NavPage{Page: panics, Label: "Panics"},
+	}}.MustCompile("/admin")
 	got := search(t, h, "gate")
 	assert.Equal(t, len(got.Results), 1) // the others answer
 	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/_webui/search?q=gate").Body.String(), "secret-host"))

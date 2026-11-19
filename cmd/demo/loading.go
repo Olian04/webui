@@ -71,7 +71,6 @@ func backend(title string, d time.Duration, rows int) webui.Table[Probe] {
 // 400 ms one above it and waits for it, and the sidebar and the first panels are there long before.
 var LoadingOrder = webui.Page[webui.NoArgs]{
 	Path: "/loading/order",
-	Nav:  webui.Nav{Label: "In order", Icon: "list-ol", Section: "Loading"},
 	View: webui.Stack{
 		intro("The sidebar and the panels above the slow one are on screen at once. The 400 ms panel arrives, and the 250 ms panel, which was ready before it, is drawn after it, because the page arrives in the order it is written. The page moves down as each panel arrives. Reload to see it again."),
 		backend("Quick (10 ms)", 10*time.Millisecond, 2),
@@ -92,7 +91,6 @@ const staircasePanels = 10
 // last, at a steady pace, with the spinner and the status bar saying that more is coming until the end.
 var LoadingStaircase = webui.Page[webui.NoArgs]{
 	Path: "/loading/staircase",
-	Nav:  webui.Nav{Label: "Staircase (10 s)", Icon: "stairs", Section: "Loading"},
 	View: staircase(),
 }
 
@@ -129,7 +127,6 @@ func stamped(title string, d time.Duration) webui.Table[Stamp] {
 // the page, as it always was.
 var LoadingTabs = webui.Page[webui.NoArgs]{
 	Path: "/loading/tabs",
-	Nav:  webui.Nav{Label: "Tabs read one tab", Icon: "window-restore", Section: "Loading"},
 	View: webui.Stack{
 		intro("Follow a tab. The panels above and below the Tabs keep the moment they were read at, because only the Tabs is asked for, and only the tab that you chose is read: its panels say when, and the tab you left is read again only if you come back. Each tab takes 500 ms. Reload the page, which reads all of it, to see the difference. Without script a tab is a link to the page, and the whole page is read."),
 		stamped("Above the tabs (read with the page)", 0),
@@ -146,7 +143,6 @@ var LoadingTabs = webui.Page[webui.NoArgs]{
 // Split waits for the slow one on its left. Tabs build the strip with the selected tab, so they arrive together.
 var LoadingNested = webui.Page[webui.NoArgs]{
 	Path: "/loading/nested",
-	Nav:  webui.Nav{Label: "Nested layouts", Icon: "layer-group", Section: "Loading"},
 	View: webui.Stack{
 		intro("A Split of a slow panel (300 ms) and a quick one (20 ms), then Tabs whose selected tab is slow (200 ms), then a last panel. A layout is sent in order like the page: the quick panel on the right of the Split is ready first and is drawn after the slow one on its left. The Tabs strip arrives together with the tab it selects. Each part waits for the part above it."),
 		webui.Split{
@@ -166,7 +162,6 @@ var LoadingNested = webui.Page[webui.NoArgs]{
 // could not load too, the cause is logged, and the panels after it are drawn.
 var LoadingFailures = webui.Page[webui.NoArgs]{
 	Path: "/loading/failures",
-	Nav:  webui.Nav{Label: "Panels that fail", Icon: "triangle-exclamation", Section: "Loading"},
 	View: webui.Stack{
 		intro("The first panel is slow (300 ms), so the page is on its way when the others fail. A panel whose Load returns an error and a panel whose Load panics each say that they could not load, where they are, and the panel after them is drawn. The cause of each is in the server's log, and is never shown."),
 		backend("Slow (300 ms)", 300*time.Millisecond, 2),
@@ -194,7 +189,6 @@ var LoadingFailures = webui.Page[webui.NoArgs]{
 // which is sent before any panel is, so nothing of this page arrives until the slow panel has answered.
 var LoadingWhole = webui.Page[webui.NoArgs]{
 	Path: "/loading/whole",
-	Nav:  webui.Nav{Label: "Built whole (editor)", Icon: "file-code", Section: "Loading"},
 	View: webui.Stack{
 		intro("This page has a code editor, and an editor needs its script and stylesheet in the head of the page, which is sent first. So it is not sent as it is built: nothing of it arrives until the 400 ms panel has answered, and then all of it does, as one piece. Compare with 'In order'."),
 		backend("Slow (400 ms)", 400*time.Millisecond, 3),
@@ -212,7 +206,6 @@ var LoadingWhole = webui.Page[webui.NoArgs]{
 // A Guard decides before anything is loaded, so a page that refuses is a 403 at once, whatever its panels are.
 var LoadingGuarded = webui.Page[webui.NoArgs]{
 	Path:  "/loading/guarded",
-	Nav:   webui.Nav{Label: "Guard refuses", Icon: "shield-halved", Section: "Loading"},
 	Guard: canEdit[webui.NoArgs],
 	View: webui.Stack{
 		intro("This page is for editors. As a viewer it is the 'Not permitted' state at once, with the status 403, and its slow panels were never read. As an editor it is sent as it is built, like 'In order'."),
@@ -226,7 +219,6 @@ var LoadingGuarded = webui.Page[webui.NoArgs]{
 // asked for on every page, beside the panels, so every page's first byte waits for it and for nothing else.
 var LoadingFast = webui.Page[webui.NoArgs]{
 	Path: "/loading/fast",
-	Nav:  webui.Nav{Label: "Answers at once", Icon: "bolt", Section: "Loading"},
 	Guard: func(ctx context.Context, _ webui.NoArgs) error {
 		wait(ctx, *slowSidebar)
 		return nil

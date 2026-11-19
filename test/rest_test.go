@@ -21,10 +21,10 @@ type objectArgs struct {
 // bucketApp is a bucket, and the objects in it at any depth: the key is the rest of
 // the path, so a nested folder is a path of its own.
 func bucketApp() http.Handler {
-	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, View: webui.Stack{}}
+	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", View: webui.Stack{}}
 	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", View: webui.Stack{}}
 	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
-	return webui.App{Pages: webui.Pages{buckets, bucket, object}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{buckets, bucket, object}, Navigation: []webui.NavItem{webui.NavPage{Page: buckets, Label: "Buckets"}}}.MustCompile("/admin")
 }
 
 func TestARestPlaceholderTakesTheRestOfThePathAndEachSegmentIsACrumb(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 func everythingThatLogs(log *slog.Logger) http.Handler {
 	broken := webui.Int[blob]{Label: "Size", Load: func(b blob) int { return b.Size }, Format: func(int) string { panic("format") }}
 	home := webui.Page[webui.NoArgs]{
-		Path: "/home", Nav: webui.Nav{Label: "Home"},
+		Path: "/home",
 		View: webui.Stack{
 			webui.Table[blob]{
 				Title:   "Formatted",
@@ -42,7 +42,7 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 		),
 	}
 	guarded := webui.Page[webui.NoArgs]{
-		Path: "/guarded", Nav: webui.Nav{Label: "Guarded"}, View: webui.Stack{},
+		Path: "/guarded", View: webui.Stack{},
 		Guard: func(context.Context, webui.NoArgs) error { panic("guard") },
 	}
 	crash := webui.Page[webui.NoArgs]{
@@ -52,7 +52,7 @@ func everythingThatLogs(log *slog.Logger) http.Handler {
 			Fields: []webui.Accessor[Device]{formID},
 		},
 	}
-	return webui.App{Logger: log, Pages: webui.Pages{home, guarded, crash}}.MustCompile("/admin")
+	return webui.App{Logger: log, Pages: webui.Pages{home, guarded, crash}, Navigation: []webui.NavItem{webui.NavPage{Page: home, Label: "Home"}, webui.NavPage{Page: guarded, Label: "Guarded"}}}.MustCompile("/admin")
 }
 
 func visitEverything(h http.Handler) {
@@ -116,7 +116,7 @@ func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
 
 	var started, done atomic.Int32
 	slow := webui.Page[webui.NoArgs]{
-		Path: "/slow", Nav: webui.Nav{Label: "Slow"}, View: webui.Stack{},
+		Path: "/slow", View: webui.Stack{},
 		Guard: func(context.Context, webui.NoArgs) error {
 			if started.Add(1) == 1 {
 				time.Sleep(300 * time.Millisecond) // the first, which is the workers of the request that panics: the error page's own are quick
@@ -132,7 +132,7 @@ func TestARequestThatPanicsLeavesNoSidebarWorkerRunningAfterIt(t *testing.T) {
 			Fields: []webui.Accessor[Device]{formID},
 		},
 	}
-	h := webui.App{Pages: webui.Pages{slow, crash}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{slow, crash}, Navigation: []webui.NavItem{webui.NavPage{Page: slow, Label: "Slow"}}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/crash")
 	assert.Equal(t, rec.Code, http.StatusInternalServerError)

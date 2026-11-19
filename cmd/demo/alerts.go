@@ -53,7 +53,6 @@ const AlertsPath webui.PageID[webui.NoArgs] = "/alert"
 
 var Alerts = webui.Page[webui.NoArgs]{
 	Path: AlertsPath,
-	Nav:  webui.Nav{Label: "Alerts", Icon: "bell", Section: "Platform"},
 	View: webui.Table[Alert]{
 		Title: "Alerts",
 		Desc:  "Bulk actions exist because the table declares them; the checkbox column is their consequence.",

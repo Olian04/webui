@@ -1,6 +1,7 @@
 package webui_test
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -9,24 +10,26 @@ import (
 	"github.com/Olian04/webui/test/util/page"
 )
 
-func item(label, url string) webui.ExternalLink {
-	return webui.ExternalLink{Label: label, URL: url}
+func item(label, url string) webui.NavURL {
+	return webui.NavURL{Label: label, URL: url}
 }
 
-func linksApp(items ...webui.ExternalLink) http.Handler {
+func linksApp(items ...webui.NavItem) http.Handler {
+	device := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
 	return webui.App{
-		ExternalLinks: items,
-		Pages:         webui.Pages{webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}},
+		Menu:       items,
+		Pages:      webui.Pages{device},
+		Navigation: []webui.NavItem{webui.NavPage{Page: device, Label: "Devices"}},
 	}.MustCompile("/admin")
 }
 
-func TestThereIsNoExternalLinksButtonWithoutExternalLinks(t *testing.T) {
+func TestThereIsNoMenuButtonWithoutMenuItems(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, len(pageOf(t, linksApp(), "/admin/device").ByRole("button", "External links")), 0)
 }
 
-func TestTheExternalLinksButtonOpensTheAppsLinksAsWritten(t *testing.T) {
+func TestTheMenuButtonOpensTheAppsMenuAsWritten(t *testing.T) {
 	t.Parallel()
 
 	logout := item("Log out", "/logout")
@@ -51,42 +54,63 @@ func TestTheExternalLinksButtonOpensTheAppsLinksAsWritten(t *testing.T) {
 	assert.Equal(t, page.One(t, "the Docs link", menu.ByRole("link", "Docs (opens in a new tab)")).Attr("rel"), "noopener noreferrer")
 }
 
-func TestTheExternalLinksAreGroupedBySectionAndNotByPosition(t *testing.T) {
+func TestTheMenuIsInTheOrderWrittenWithItsGroupsAsCaptions(t *testing.T) {
 	t.Parallel()
 
 	docs, bug, out, about, status := item("Docs", "https://example.com/help"), item("Report", "https://example.com/bugs"),
 		item("Log out", "/logout"), item("About", "https://example.com/about"), item("Status", "https://example.com/status")
-	docs.Section, bug.Section, out.Section = "Help", "Help", "Account"
-	// Given out of order: an entry with no Section between sections, and a section
-	// that is named again after another.
-	p := pageOf(t, linksApp(docs, about, out, bug, status), "/admin/device")
+	// Entries with no group first, then a group for each caption: the menu is in the order it is written.
+	p := pageOf(t, linksApp(about, status,
+		webui.NavGroup{Label: "Help", Items: []webui.NavItem{docs, bug}},
+		webui.NavGroup{Label: "Account", Items: []webui.NavItem{out}},
+	), "/admin/device")
 
-	// No Section: first, in the order given, and with no caption above them. Sections in the order first named, each with its entries in the order given, and
-	// one caption for each section.
+	// The entries outside a group have no caption above them; each group has one caption, above its entries in the order written.
 	assert.DeepEqual(t, menuOutline(externalLinks(t, p)), []string{"About (opens in a new tab)", "Status (opens in a new tab)", "# Help", "Docs (opens in a new tab)", "Report (opens in a new tab)", "# Account", "Log out"})
 }
 
-func TestAnExternalLinkMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) {
+func TestAMenuItemMustHaveALabelAndAnAddressThatIsNotAScript(t *testing.T) {
 	t.Parallel()
 
-	errorsOf := func(it webui.ExternalLink) string {
+	errorsOf := func(it webui.NavItem) string {
 		var all string
-		for _, e := range compileErrors(t, webui.App{ExternalLinks: []webui.ExternalLink{it}}) {
+		for _, e := range compileErrors(t, webui.App{Menu: []webui.NavItem{it}}) {
 			all += e.Error() + "\n"
 		}
 		return all
 	}
-	refuses(t, errorsOf(webui.ExternalLink{URL: "/x"}), "App.ExternalLinks[0]", "Label")
+	refuses(t, errorsOf(webui.NavURL{URL: "/x"}), "App.Menu[0]", "Label")
 	badIcon := item("x", "/x")
 	badIcon.Icon = "rocket-ship"
-	refuses(t, errorsOf(badIcon), "App.ExternalLinks[0]", `"rocket-ship"`, "Icon")
+	refuses(t, errorsOf(badIcon), "App.Menu[0]", `"rocket-ship"`, "Icon")
 	for _, evil := range []string{"", "javascript:alert(1)", "//evil.example/", `/\evil.example`, "data:text/html,x", "ftp://example.com", "relative/path", "https://"} {
-		refuses(t, errorsOf(item("x", evil)), "App.ExternalLinks[0]", "URL")
+		refuses(t, errorsOf(item("x", evil)), "App.Menu[0]", "URL")
 	}
 	for _, ok := range []string{"/x", "/x?y=1", "http://example.com", "https://example.com/a?b=c", "mailto:ops@example.com"} {
-		_, err := webui.App{ExternalLinks: []webui.ExternalLink{item("x", ok)}}.Compile("")
+		_, err := webui.App{Menu: []webui.NavItem{item("x", ok)}}.Compile("")
 		assert.NoError(t, err)
 	}
+
+	// The same rules hold for a link inside a group, which is named by where it is declared.
+	refuses(t, errorsOf(webui.NavGroup{Label: "Help", Items: []webui.NavItem{item("x", "javascript:alert(1)")}}), "App.Menu[0].Items[0]", "URL")
+	refuses(t, errorsOf(webui.NavGroup{Label: "Help"}), "App.Menu[0]", "Items")
+	refuses(t, errorsOf(webui.NavGroup{Items: []webui.NavItem{item("x", "/x")}}), "App.Menu[0]", "Label")
+	refuses(t, errorsOf(webui.NavGroup{Label: "A", Items: []webui.NavItem{webui.NavGroup{Label: "B", Items: []webui.NavItem{item("x", "/x")}}}}), "App.Menu[0].Items[0]", "group")
+}
+
+func TestAMenuRefusesAPageThatListsSeveralAddresses(t *testing.T) {
+	t.Parallel()
+
+	site := webui.Page[navSiteArgs]{Path: "/site/{name}", View: webui.Stack{}}
+	app := webui.App{Pages: webui.Pages{site}, Menu: []webui.NavItem{webui.NavPages[navSiteArgs]{
+		Page:    site,
+		Entries: func(context.Context) ([]webui.NavEntry[navSiteArgs], error) { return nil, nil },
+	}}}
+	var all string
+	for _, e := range compileErrors(t, app) {
+		all += e.Error() + "\n"
+	}
+	refuses(t, all, "App.Menu[0]", "NavPages")
 }
 
 func TestOnlyAWebAddressOpensInATabOfItsOwn(t *testing.T) {

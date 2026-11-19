@@ -29,16 +29,14 @@ type App struct {
 	// Pages are the pages to serve. Each page that another links to must be here.
 	Pages Pages
 
-	// Sections says how the sidebar's sections look and in what order they stand. A section is a name that entries give themselves in [Nav.Section], and is drawn as a category
-	// that the visitor can open and close: it is open when it holds the page on screen, and shut otherwise, and what the visitor opens is not kept. A section that is named
-	// here has the icon that it gives, and stands before the ones that are not, in the order of this list; one that is not named here has no icon, and follows in the order
-	// it is first named by a page, which is what every section did before. A name that no entry gives itself is not an error: its section has nothing in it, and is not drawn.
-	Sections []NavSection
+	// Navigation is the sidebar, in this order: a [NavPage] for a page with no arguments, a [NavPages] for a page that lists an entry for each of several addresses, a [NavURL] for
+	// an address, and a [NavGroup] for a category that holds some of them and that the visitor opens and shuts. A page that is in no entry is not in the sidebar, and lights the
+	// entry of its nearest ancestor. With none, the app has no sidebar, and the top bar begins with its mark. A page is listed once.
+	Navigation []NavItem
 
-	// ExternalLinks are the app's links to places outside it, behind a button in the top
-	// bar that is not part of the sidebar: signing out, an account page on another
-	// service, the documentation. With none, there is no button.
-	ExternalLinks []ExternalLink
+	// Menu is the links behind the button in the top bar that is not part of the sidebar: signing out, an account page on another service, the documentation. It is a list of the
+	// same entries, a [NavURL], a [NavPage] and a [NavGroup] of them, where a group is a caption above its entries. With none, there is no button.
+	Menu []NavItem
 
 	// Observer is told what the app does, so that the program can count it: the requests each page answers and how long they take, how long the application's Load
 	// functions take and how often they fail, what actions come to, searches, exports, and the sidebar entries of pages that list several. It is an [Observer], which the
@@ -73,37 +71,6 @@ type App struct {
 	// addresses that another must accept. Changing it, like restarting, changes the addresses,
 	// so a browser fetches the files again once.
 	Secret []byte
-}
-
-// NavSection is a section of the sidebar that an app gives an icon, and a place in the order: see [App.Sections].
-type NavSection struct {
-	// Name is the section's name, as the entries that belong to it say it in [Nav.Section]. It is what the category says, and must be set and not given twice.
-	Name string
-
-	// Icon is the name of a Font Awesome Free solid icon, "display" for fa-display, drawn before the name. An unknown name is a compile error. Without one the category is its
-	// name and its chevron.
-	Icon string
-}
-
-// ExternalLink is a link in [App.ExternalLinks]. It is a [Nav] entry, with the Label
-// that is its text, the Icon beside it, and the Section that captions it, and with an
-// address outside the app.
-//
-// An address on the web opens in a tab of its own, so the app stays where it was; a path
-// on the same site, such as "/logout", and a mail address, open in the same tab.
-//
-// Like the sidebar, the list is grouped by Section and not by position: the
-// entries with no Section come first, and each Section follows, in the order it is
-// first named, with its entries in the order they were given. An entry belongs to
-// a section only by saying so.
-type ExternalLink struct {
-	Nav
-
-	// URL is where the link goes, used as written: an http, https or mailto
-	// address, or a path elsewhere on the same site such as "/logout". The mount
-	// prefix is not added, so it is no way to link to one of the app's own pages;
-	// give the page a [Nav] entry for that.
-	URL string
 }
 
 // Brand is the product identity shown in the sidebar, or at the start of the top bar when the app has no sidebar.
@@ -185,10 +152,9 @@ type ModeColors struct {
 // pageLike is Page[A] with the argument type erased so Pages can mix A.
 type pageLike interface {
 	pagePath() string
-	hasNavEntry() bool
 	pageArgType() reflect.Type
 	validatePage(f *facts) []CompileError
-	lowerPage(entries map[string]bool) *ir.Page
+	lowerPage() *ir.Page
 }
 
 // Pages is the list of pages in an [App]. A [Page] differs by its argument type,

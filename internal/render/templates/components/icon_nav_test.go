@@ -85,7 +85,7 @@ func TestANavItemIsALinkThatIsCalledWhatItsLabelSaysAndLeadsWhereItsAddressSays(
 	t.Parallel()
 
 	for _, label := range []string{"Devices", `A "q" <b> & 'x'`, "Ünï", ""} {
-		entry := navOf(t, NavItemProps{Label: label, Href: "/admin/a?x=1&y=\"2\"", Icon: "bell", Letter: "A"})
+		entry := navOf(t, NavItemProps{Label: label, Href: "/admin/a?x=1&y=\"2\"", Icon: "bell"})
 		assert.Equal(t, entry.Attr("href"), "/admin/a?x=1&y=\"2\"")
 		assert.Equal(t, entry.Attr("title"), label)
 		assert.Equal(t, entry.Name(), label)
@@ -94,19 +94,16 @@ func TestANavItemIsALinkThatIsCalledWhatItsLabelSaysAndLeadsWhereItsAddressSays(
 	assert.Equal(t, navOf(t, NavItemProps{Label: "Devices", Href: "/admin/device", Active: true}).Attr("aria-current"), "page")
 }
 
-func TestANavItemHasAnIconOrItsLetterAndNeitherIsItsName(t *testing.T) {
+func TestANavItemHasAnIconOrAnEmptyPlaceOfOneAndNeitherIsItsName(t *testing.T) {
 	t.Parallel()
 
-	withIcon := navOf(t, NavItemProps{Label: "Devices", Href: "/x", Icon: "display", Letter: "D"})
+	withIcon := navOf(t, NavItemProps{Label: "Devices", Href: "/x", Icon: "display"})
 	assert.True(t, len(withIcon.ByAttr("class", "")) > 0) // the icon is drawn
-	assert.Equal(t, withIcon.AllText(), "Devices")        // and the letter is not
-
-	withLetter := navOf(t, NavItemProps{Label: "Sites", Href: "/x", Letter: "S"})
-	assert.Equal(t, withLetter.AllText(), "S Sites") // the letter stands where the icon would
-	assert.Equal(t, withLetter.Name(), "Sites")      // and a reader is not told it
+	assert.Equal(t, withIcon.AllText(), "Devices")        // and says nothing
 
 	plain := navOf(t, NavItemProps{Label: "Plain", Href: "/x"})
-	assert.Equal(t, plain.AllText(), "Plain")
+	assert.Equal(t, plain.AllText(), "Plain") // the place of an icon holds nothing, so that the labels line up
+	assert.Equal(t, plain.Name(), "Plain")
 }
 
 // An address that a browser would run, and not follow, is not one that an entry leads to.

@@ -37,7 +37,6 @@ var (
 // shown as a value. Here that is a status page, with a badge and a bar.
 var System = webui.Page[webui.NoArgs]{
 	Path: "/system",
-	Nav:  webui.Nav{Label: "System", Icon: "wave-square", Section: "Operations"},
 	View: SystemStatus,
 }
 
@@ -60,7 +59,6 @@ var (
 // a viewer the page is the "Not permitted" state, and the log was never read.
 var Audit = webui.Page[webui.NoArgs]{
 	Path:  "/audit",
-	Nav:   webui.Nav{Label: "Audit log", Icon: "list", Section: "Operations"},
 	Guard: canEdit[webui.NoArgs],
 	View: webui.Table[AuditEntry]{
 		Title:    "Audit log",

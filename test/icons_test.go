@@ -34,12 +34,15 @@ func TestAnAppCanNameAnyIconAndEachGetsItsRule(t *testing.T) {
 	codes := iconCodes(t)
 	assert.True(t, len(codes) > 1500)
 	pages := make(webui.Pages, 0, len(codes))
+	var nav []webui.NavItem
 	i := 0
 	for name := range codes {
-		pages = append(pages, webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/i" + strconv.Itoa(i)), Nav: webui.Nav{Label: name, Icon: name}, View: webui.Stack{}})
+		id := webui.PageID[webui.NoArgs]("/i" + strconv.Itoa(i))
+		pages = append(pages, webui.Page[webui.NoArgs]{Path: id, View: webui.Stack{}})
+		nav = append(nav, webui.NavPage{Page: id, Label: name, Icon: name})
 		i++
 	}
-	h := webui.App{Pages: pages}.MustCompile("/admin")
+	h := webui.App{Pages: pages, Navigation: nav}.MustCompile("/admin")
 	sheet := serve(h, http.MethodGet, assetURL(t, h, "fontawesome.css")).Body.String()
 	for name, code := range codes {
 		assert.Contains(t, sheet, ".fa-"+name+`:before{content:"\`+code+`"}`)
@@ -55,7 +58,7 @@ func TestTheFontOfOneAppHasTheSameAddressWheneverItIsMade(t *testing.T) {
 	t.Parallel()
 
 	app := func() http.Handler {
-		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: "bell"}, View: webui.Stack{}}}}.MustCompile("/admin")
+		return webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}}}, Navigation: []webui.NavItem{webui.NavPage{Page: webui.PageID[webui.NoArgs]("/a"), Label: "A", Icon: "bell"}}}.MustCompile("/admin")
 	}
 	first, second := app(), app()
 	assert.Equal(t, assetURL(t, first, "fa-solid.woff"), assetURL(t, second, "fa-solid.woff"))

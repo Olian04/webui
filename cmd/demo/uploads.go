@@ -132,7 +132,6 @@ type FirmwareChoice struct {
 // disabled and says why, and again when the file arrives, which is what refuses a post that is made by hand.
 var FirmwarePage = webui.Page[webui.NoArgs]{
 	Path: "/firmware",
-	Nav:  webui.Nav{Label: "Firmware", Icon: "database", Section: "Operations"},
 	View: webui.Stack{
 		webui.FileUpload[FirmwareChoice]{
 			Title: "Upload firmware", Desc: "A FileUpload: one file, of any size up to its MaxSize, handed to Receive as it arrives. The demo hashes it as it is read and keeps only what it was.",

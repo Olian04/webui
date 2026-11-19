@@ -141,7 +141,11 @@ func TestASidebarLabelWiderThanTheSidebarIsWholeInItsTitle(t *testing.T) {
 	t.Parallel()
 
 	h := webui.App{Brand: webui.Brand{Name: "A name that is far too long for the sidebar to hold"}, Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "An entry that is far too long for the sidebar to hold", Section: "A caption that is far too long for the sidebar to hold"}, View: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}},
+	}, Navigation: []webui.NavItem{
+		webui.NavGroup{Label: "A caption that is far too long for the sidebar to hold", Items: []webui.NavItem{
+			webui.NavPage{Page: webui.PageID[webui.NoArgs]("/a"), Label: "An entry that is far too long for the sidebar to hold"},
+		}},
 	}}.MustCompile("/admin")
 	body := serve(h, http.MethodGet, "/admin/a").Body.String()
 	assert.Contains(t, body, `title="An entry that is far too long for the sidebar to hold"`)

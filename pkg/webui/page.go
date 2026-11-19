@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	"github.com/Olian04/webui/internal/args"
 	"github.com/Olian04/webui/internal/convert"
 	"github.com/Olian04/webui/internal/ir"
-	"github.com/Olian04/webui/internal/render/assets"
 )
 
 // NoArgs is the argument type of a page with no path or query parameters, as in
@@ -57,9 +55,6 @@ type Page[A any] struct {
 	// depth, so a nested folder reads as the folders on the way to it.
 	Path PageID[A]
 
-	// Nav is the page's entry in the sidebar. A page with no Label has no entry.
-	Nav Nav
-
 	// Guard decides whether the visitor may open the page. It runs before anything
 	// is loaded, on every request to the page, with the decoded arguments. A
 	// non-nil error answers 403, and its text is shown as the reason, unless it is
@@ -78,23 +73,6 @@ type Page[A any] struct {
 	// functions are. An answer that came of a visitor who left, or of a deadline that ran
 	// out, is not kept.
 	Guard func(ctx context.Context, a A) error
-
-	// NavEntries gives a page with arguments entries of its own in the sidebar: one for each
-	// address of the page that it returns, such as one for each site of a page at
-	// "/site/{name}". A page with arguments has no entry otherwise, since an entry is a link with
-	// one address and a path with {arguments} has none until they are filled in.
-	//
-	// Each [NavEntry] is the page's arguments and the words the entry says. [Nav]'s Icon and
-	// Section are the icon and the group of all of them; its Label must be empty, since each
-	// entry has its own. A page's pages that borrow its place, such as "/site/{name}/log", light
-	// the entry of the same site.
-	//
-	// It is called whenever a full page is drawn, for every visitor, so it must be quick and
-	// not rely on what the page's Guard would refuse: the library calls it with a deadline of two seconds,
-	// keeps the first 50 entries, and runs the Guard for each, with the entry's arguments, leaving
-	// out those that would be refused. A failure, or a panic, leaves the entries out and the page
-	// as it is.
-	NavEntries func(ctx context.Context) ([]NavEntry[A], error)
 
 	// Crumb is what the page's crumb says in the breadcrumb and the tab title, for the arguments it was opened with,
 	// where the path would say the value it took: a page at "/device/{id}" that returns the device's name reads
@@ -119,38 +97,16 @@ type Page[A any] struct {
 	// has when nothing is selected, so it returns what any of them could look for and does
 	// not rely on the page's Guard. The library runs that Guard for each hit, with the
 	// hit's own arguments, and offers a result only if the visitor could open it. The results
-	// are shown under the page's [Nav] label, or under the entry it borrows its place from.
+	// are shown under the words of the page's entry in [App.Navigation], or of the entry it borrows its place from.
 	//
 	// Match however the source can, ignoring case, against whatever the visitor sees of a
 	// result. [SearchRows] makes one from rows held in memory. If it returns an error the
 	// page is left out of the search, the cause is logged, and the rest are searched.
-	// A page with no Search is not searched, though its [Nav] entry is still listed.
+	// A page with no Search is not searched, though its entry in [App.Navigation] is still listed.
 	Search func(ctx context.Context, query string, limit int) ([]Hit[A], error)
 
 	// View is what the page shows: a [Table], a [Form], or a layout of them.
 	View View
-}
-
-// Nav is a sidebar entry. A page with an empty Label has no entry of its own, and
-// lights the entry of its nearest ancestor: the page whose path is the longest
-// prefix of its own that has a Label. A page at "/device/{id}" borrows the
-// "Devices" entry of the page at "/device", so there is nothing to declare. A page whose
-// path has arguments has no single address to link to, so it has entries only through
-// [Page.NavEntries], which lists one for each address.
-type Nav struct {
-	// Label is the entry's text. A page with no Label has no entry of its own.
-	Label string
-
-	// Icon is the name of a Font Awesome Free solid icon, "house" for fa-house,
-	// drawn beside the label. An unknown name is a compile error. Without one, the
-	// label's first letter, capitalised, is shown where the sidebar is collapsed to
-	// icons.
-	Icon string
-
-	// Section is the name of the group this entry is listed in, which the sidebar draws as a category that the visitor opens and shuts (see [App.Sections], which gives it
-	// an icon and a place). The list is grouped by Section and not by position: the entries with no Section come first, then each section in the order it is first named,
-	// or the order the app lists them in, with its entries in the order the pages are given. An entry belongs to a section only by saying so.
-	Section string
 }
 
 // View is what a page shows, and what a layout holds: a panel, which loads its own data ([Table], [Form], [Editor], [Diff], [Markdown], [List], [Cards],
@@ -160,8 +116,7 @@ type View interface {
 	lowerView(at ir.Pos) ir.Node
 }
 
-// NavEntry is one entry in the sidebar of a [Page] that has [Page.NavEntries]: an address
-// of the page, and what it says.
+// NavEntry is one entry that a [NavPages] lists: an address of the page, and what it says.
 type NavEntry[A any] struct {
 	// Args are the page's arguments that the entry opens, with the path ones filled in.
 	Args A
@@ -169,9 +124,6 @@ type NavEntry[A any] struct {
 	// Label is what the entry says. An entry with none is left out.
 	Label string
 }
-
-// hasNavEntry is whether the page has an entry of its own in the sidebar, or lists several.
-func (p Page[A]) hasNavEntry() bool { return p.Nav.Label != "" || p.NavEntries != nil }
 
 func (p Page[A]) pagePath() string { return string(p.Path) }
 
@@ -207,27 +159,12 @@ func (p Page[A]) validatePage(f *facts) []CompileError {
 		return v.errs // every later check reads A's fields
 	}
 
-	if p.Nav.Label != "" && len(args.Placeholders(path)) > 0 {
-		v.add(fmt.Sprintf("the page has the sidebar entry %q but its path has arguments", p.Nav.Label),
-			"A sidebar entry is a link with one address, and a path with {arguments} has none until they are filled in. Remove Nav.Label, give the page NavEntries to list an entry for each address, or link to the page from another page's table with a Link.")
-	}
-	if p.NavEntries != nil && p.Nav.Label != "" {
-		v.add(fmt.Sprintf("the page has NavEntries and Nav.Label %q", p.Nav.Label),
-			"Each entry says its own words, in NavEntry.Label. Remove Nav.Label; Nav.Icon and Nav.Section are the icon and the group of all the entries.")
-	}
 	if p.Crumb != nil {
 		segs := strings.Split(strings.Trim(path, "/"), "/")
 		if _, rest, ok := args.Placeholder(segs[len(segs)-1]); ok && rest {
 			v.add("the page has a Crumb and its path ends in a {name...}",
 				"The crumbs of a path that takes the rest are its segments, one for each. Remove Crumb, or end the path in a placeholder that takes one segment.")
 		}
-	}
-	if p.Nav.Icon != "" && !assets.HasIcon(p.Nav.Icon) {
-		fix := "Use the name of a Font Awesome Free solid icon, such as \"house\", or leave Icon empty."
-		if after, ok := strings.CutPrefix(p.Nav.Icon, "fa-"); ok {
-			fix = fmt.Sprintf("Write the icon's name without the \"fa-\" prefix: %q.", after)
-		}
-		v.add(fmt.Sprintf("Nav.Icon %q is not a Font Awesome Free solid icon", p.Nav.Icon), fix)
 	}
 	if p.View == nil {
 		v.add("View is nil", "Set View to "+viewKinds+".")
@@ -279,7 +216,7 @@ func typeName(t reflect.Type) string {
 	return t.String()
 }
 
-func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
+func (p Page[A]) lowerPage() *ir.Page {
 	typ := reflect.TypeFor[A]()
 	specs, _ := args.Spec(typ, string(p.Path))
 	codec := args.NewCodec(typ, specs)
@@ -287,21 +224,11 @@ func (p Page[A]) lowerPage(entries map[string]bool) *ir.Page {
 	page := &ir.Page{
 		PathTemplate: string(p.Path),
 		Args:         specs,
-		Nav:          lowerNav(entries, p.Nav, string(p.Path), p.NavEntries != nil),
 		Decode:       codec.Decode,
 		Encode:       codec.Encode,
 	}
 	if p.Guard != nil {
 		page.Guard = func(ctx context.Context, a any) error { return refused(p.Guard(ctx, a.(A))) }
-	}
-	if p.NavEntries != nil {
-		page.NavEntries = func(ctx context.Context) ([]ir.NavEntry, error) {
-			entries, err := p.NavEntries(ctx)
-			if err != nil {
-				return nil, err
-			}
-			return convert.Slice(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
-		}
 	}
 	if p.Crumb != nil {
 		page.Crumb = func(ctx context.Context, a any) string { return p.Crumb(ctx, a.(A)) }

@@ -20,8 +20,8 @@ func titles(r searchResponse) []string {
 
 // resultsPages are a list page that is named label, and the page for one of its things, whose Search finds the given titles, each leading to
 // the page with its own argument, which is what makes them different results. They are listed under the list's name.
-func resultsPages(path, label string, titles ...string) webui.Pages {
-	list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, View: webui.Stack{}}
+func resultsPages(path, label string, titles ...string) (webui.Pages, []webui.NavItem) {
+	list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), View: webui.Stack{}}
 	one := webui.Page[detailsArgs]{
 		Path: webui.PageID[detailsArgs](path + "/{id}"), View: webui.Stack{},
 		Search: func(context.Context, string, int) ([]webui.Hit[detailsArgs], error) {
@@ -32,13 +32,14 @@ func resultsPages(path, label string, titles ...string) webui.Pages {
 			return hits, nil
 		},
 	}
-	return webui.Pages{list, one}
+	return webui.Pages{list, one}, []webui.NavItem{webui.NavPage{Page: list, Label: label}}
 }
 
 func TestTheResultsOfASearchAreOrderedByHowWellTheyMatch(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Pages: resultsPages("/things", "Things", "My devices", "Device", "Subdevice", "Devices", "device list", "Odevice x")}.MustCompile("/admin")
+	pages, nav := resultsPages("/things", "Things", "My devices", "Device", "Subdevice", "Devices", "device list", "Odevice x")
+	h := webui.App{Pages: pages, Navigation: nav}.MustCompile("/admin")
 
 	got := search(t, h, "device")
 	// exact, then a word that starts it, then a start, then an end, then a word's start, then inside a word.
@@ -50,10 +51,19 @@ func TestTheGroupsAreOrderedByTheirBestResultAndKeptTogether(t *testing.T) {
 
 	// Alerts is first in the app and its best result is the weakest; Sites has the exact match, and Devices has a start.
 	var pages webui.Pages
-	pages = append(pages, resultsPages("/alerts", "Alerts", "my stockholm alert", "alert for stockholm")...)
-	pages = append(pages, resultsPages("/sites", "Sites", "My stockholm", "Stockholm")...)
-	pages = append(pages, resultsPages("/devices", "Devices", "stockholm-gw")...)
-	h := webui.App{Pages: pages}.MustCompile("/admin")
+	var nav []webui.NavItem
+	for _, r := range []struct {
+		path, label string
+		titles      []string
+	}{
+		{"/alerts", "Alerts", []string{"my stockholm alert", "alert for stockholm"}},
+		{"/sites", "Sites", []string{"My stockholm", "Stockholm"}},
+		{"/devices", "Devices", []string{"stockholm-gw"}},
+	} {
+		ps, n := resultsPages(r.path, r.label, r.titles...)
+		pages, nav = append(pages, ps...), append(nav, n...)
+	}
+	h := webui.App{Pages: pages, Navigation: nav}.MustCompile("/admin")
 
 	got := search(t, h, "stockholm")
 	var order []string
@@ -92,7 +102,7 @@ func TestSearchRowsKeepsTheBestMatchesAndNotTheFirstOnes(t *testing.T) {
 func TestThereIsNoSearchBoxWhenNoPageHasASearch(t *testing.T) {
 	t.Parallel()
 
-	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}}}}.MustCompile("/admin")
+	without := webui.App{Pages: webui.Pages{webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}}}}.MustCompile("/admin")
 	none := pageOf(t, without, "/admin/a")
 	assert.Equal(t, len(none.ByRole("search", "")), 0)
 	for _, absent := range []string{"data-palette-input", "data-palette", "data-search-url"} {

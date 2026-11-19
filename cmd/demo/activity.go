@@ -19,7 +19,6 @@ const ActivityPath webui.PageID[webui.NoArgs] = "/activity"
 // The source of each is a plain list: it is asked for one more than is shown, which is how the panel knows there are more without counting them.
 var Activity = webui.Page[webui.NoArgs]{
 	Path: ActivityPath,
-	Nav:  webui.Nav{Label: "Activity", Icon: "bolt", Section: "Platform"},
 	View: webui.Stack{
 		webui.Split{
 			// The two views of what is new share one panel's place: only the tab that is selected is read.

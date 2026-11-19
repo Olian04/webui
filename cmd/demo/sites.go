@@ -43,7 +43,6 @@ const SitesPath webui.PageID[webui.NoArgs] = "/site"
 
 var Sites = webui.Page[webui.NoArgs]{
 	Path: SitesPath,
-	Nav:  webui.Nav{Label: "Sites", Icon: "location-dot", Section: "Platform"},
 	View: SitesTable,
 }
 
@@ -60,21 +59,17 @@ var SitesTable = webui.Table[SiteSummary]{
 	Columns: []webui.Accessor[SiteSummary]{SiteName, SiteDevicesCount, SiteDegraded, SiteHealth, SiteRate},
 }
 
+// siteEntries is the sidebar's entry for each site, which is loaded when a page is drawn: each says its own words.
+func siteEntries(context.Context) ([]webui.NavEntry[SiteArgs], error) {
+	var entries []webui.NavEntry[SiteArgs]
+	for _, s := range service.Sites() {
+		entries = append(entries, webui.NavEntry[SiteArgs]{Args: SiteArgs{Name: s.Name}, Label: s.Name})
+	}
+	return entries, nil
+}
+
 var SiteDetail = webui.Page[SiteArgs]{
 	Path: "/site/{name}",
-	// A page with path arguments has no entry of its own, since an entry is a link with one address
-	// and this has one for each site. NavEntries gives it one for each, which it loads when a page is
-	// drawn: the icon and the section are the group's, and each entry says its own words. The page of a
-	// site lights its entry, and so does any page below it that borrows its place.
-	Nav: webui.Nav{Icon: "location-dot", Section: "Sites"},
-	NavEntries: func(context.Context) ([]webui.NavEntry[SiteArgs], error) {
-		var entries []webui.NavEntry[SiteArgs]
-		for _, s := range service.Sites() {
-			entries = append(entries, webui.NavEntry[SiteArgs]{Args: SiteArgs{Name: s.Name}, Label: s.Name})
-		}
-		return entries, nil
-	},
-
 	// Search makes the sites findable from the search box: typing "stock" finds the site beside
 	// the devices that match. The page says what a site is as a result, and SearchRows, for
 	// rows that are held in memory, does the matching over the fields it is given.

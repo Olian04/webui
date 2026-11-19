@@ -48,7 +48,6 @@ func ExampleTable() {
 
 	list := webui.Page[webui.NoArgs]{
 		Path: "/device",
-		Nav:  webui.Nav{Label: "Devices"},
 		View: webui.Table[device]{
 			Title:  "Devices",
 			Loader: webui.RowsLoader[device]{Load: func(context.Context) ([]device, webui.Loaded) { return devices, webui.Ready() }},
@@ -60,7 +59,10 @@ func ExampleTable() {
 		},
 	}
 
-	handler := webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+	handler := webui.App{
+		Pages:      webui.Pages{list, details},
+		Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}},
+	}.MustCompile("/admin")
 
 	// Typing "192.168" in the search box finds the second device, by its address,
 	// and links to its page. The box lists the answer, which is HTML: a heading for the page

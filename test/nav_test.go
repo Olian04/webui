@@ -15,15 +15,15 @@ import (
 )
 
 func navApp() http.Handler {
-	empty := func(path string, nav webui.Nav) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: nav, View: webui.Stack{}}
-	}
+	devices := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
+	retention := webui.Page[webui.NoArgs]{Path: "/retention", View: webui.Stack{}}
 	return webui.App{
 		Brand: webui.Brand{Name: "Acme"},
-		Pages: webui.Pages{
-			empty("/device", webui.Nav{Label: "Devices", Icon: "display"}),
-			empty("/retention", webui.Nav{Label: "retention"}), // no Icon
+		Navigation: []webui.NavItem{
+			webui.NavPage{Page: devices, Label: "Devices", Icon: "display"},
+			webui.NavPage{Page: retention, Label: "retention"}, // no Icon
 		},
+		Pages: webui.Pages{devices, retention},
 	}.MustCompile("/admin")
 }
 
@@ -37,21 +37,23 @@ func TestANavEntryWithAnIconDrawsIt(t *testing.T) {
 	assert.Equal(t, entry.AllText(), "Devices")          // and there is no initial beside it
 }
 
-func TestANavEntryWithoutAnIconCarriesItsCapitalisedInitialForTheRail(t *testing.T) {
+func TestANavEntryWithoutAnIconHoldsTheEmptyPlaceOfOneAndSaysOnlyItsLabel(t *testing.T) {
 	t.Parallel()
 
 	entry := page.One(t, "the retention entry", pageOf(t, navApp(), "/admin/device").ByRole("link", "retention"))
-	letter := entry.Children()[0]
-	assert.Equal(t, letter.AllText(), "R")              // for the rail, which has no room for the label
-	assert.Equal(t, letter.Attr("aria-hidden"), "true") // a reader has the label, and not the letter as well
+	place := entry.Children()[0]
+	assert.Equal(t, place.AllText(), "")               // nothing is drawn in it
+	assert.Equal(t, place.Attr("aria-hidden"), "true") // and a reader has the label and nothing else
+	assert.Equal(t, entry.AllText(), "retention")
 }
 
 func TestTheBrandLinksToTheLandingPage(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{
+	devices := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
+	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Navigation: []webui.NavItem{webui.NavPage{Page: devices, Label: "Devices"}}, Pages: webui.Pages{
 		webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}},
-		webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}},
+		devices,
 	}}.MustCompile("/admin")
 	p := pageOf(t, h, "/admin/device")
 	home := linksTo(p, "/admin/")
@@ -103,11 +105,13 @@ func TestWithoutALandingPageTheRootGoesToTheFirstEntry(t *testing.T) {
 func TestAPageAtTheRootIsTheLandingPage(t *testing.T) {
 	t.Parallel()
 
+	devices := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
 	h := webui.App{
-		Brand: webui.Brand{Name: "Acme"},
+		Brand:      webui.Brand{Name: "Acme"},
+		Navigation: []webui.NavItem{webui.NavPage{Page: devices, Label: "Devices"}},
 		Pages: webui.Pages{
 			webui.Page[webui.NoArgs]{Path: "/", View: webui.Stack{}},
-			webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}},
+			devices,
 		},
 	}.MustCompile("/admin")
 
@@ -124,12 +128,11 @@ func TestCompileRefusesAnIconThatIsNotAFontAwesomeIcon(t *testing.T) {
 	t.Parallel()
 
 	for icon, names := range map[string][]string{
-		"rocket-ship": {"Nav.Icon", `"rocket-ship"`},
-		"fa-house":    {"Nav.Icon", `"fa-house"`, `"house"`}, // and what to write instead
+		"rocket-ship": {"App.Navigation[0]", "Icon", `"rocket-ship"`},
+		"fa-house":    {"App.Navigation[0]", "Icon", `"fa-house"`, `"house"`}, // and what to write instead
 	} {
-		app := webui.App{Pages: webui.Pages{
-			webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A", Icon: icon}, View: webui.Stack{}},
-		}}
+		a := webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}}
+		app := webui.App{Navigation: []webui.NavItem{webui.NavPage{Page: a, Label: "A", Icon: icon}}, Pages: webui.Pages{a}}
 		var all string
 		for _, e := range compileErrors(t, app) {
 			all += e.Error() + "\n"
@@ -158,19 +161,17 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 	assert.True(t, font.Body.Len() < 10_000)                                      // and not the hundred and twenty kilobytes of all of them
 }
 
-func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
-	t.Parallel()
-
-	// That it is not there without script is a scenario of the browser suite.
-	assert.Equal(t, len(pageOf(t, navApp(), "/admin/device").ByAttr("data-sidebar-toggle", "")), 1)
-}
-
 // ancestryApp has pages at several depths, to see which entry a page lights.
 func ancestryApp() http.Handler {
+	var nav []webui.NavItem
 	page := func(path string, label string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label}, View: webui.Stack{}}
+		p := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), View: webui.Stack{}}
+		if label != "" {
+			nav = append(nav, webui.NavPage{Page: p, Label: label})
+		}
+		return p
 	}
-	return webui.App{Pages: webui.Pages{
+	return webui.App{Navigation: nav, Pages: webui.Pages{
 		page("/", "Overview"),
 		page("/device", "Devices"),
 		page("/device/archive", ""),     // hidden, below Devices
@@ -205,21 +206,21 @@ func TestAPageWithItsOwnEntryLightsOnlyThat(t *testing.T) {
 
 // guardedNavApp has a guarded entry first in its section, and in the app.
 func guardedNavApp(allowed func(context.Context) error) http.Handler {
-	guarded := func(path, label, section string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{
-			Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section},
-			Guard: func(ctx context.Context, _ webui.NoArgs) error { return allowed(ctx) }, View: webui.Stack{},
-		}
+	guarded := func(path webui.PageID[webui.NoArgs]) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: path, Guard: func(ctx context.Context, _ webui.NoArgs) error { return allowed(ctx) }, View: webui.Stack{}}
 	}
-	open := func(path, label, section string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, View: webui.Stack{}}
+	open := func(path webui.PageID[webui.NoArgs]) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: path, View: webui.Stack{}}
 	}
-	return webui.App{Pages: webui.Pages{
-		guarded("/audit", "Audit log", "Operations"),
-		open("/system", "System", "Operations"),
-		open("/device", "Devices", "Platform"),
-		guarded("/secret", "Secret", "Hidden section"),
-	}}.MustCompile("/admin")
+	audit, system, device, secret := guarded("/audit"), open("/system"), open("/device"), guarded("/secret")
+	return webui.App{
+		Navigation: []webui.NavItem{
+			webui.NavGroup{Label: "Operations", Items: []webui.NavItem{webui.NavPage{Page: audit, Label: "Audit log"}, webui.NavPage{Page: system, Label: "System"}}},
+			webui.NavGroup{Label: "Platform", Items: []webui.NavItem{webui.NavPage{Page: device, Label: "Devices"}}},
+			webui.NavGroup{Label: "Hidden section", Items: []webui.NavItem{webui.NavPage{Page: secret, Label: "Secret"}}},
+		},
+		Pages: webui.Pages{audit, system, device, secret},
+	}.MustCompile("/admin")
 }
 
 func TestASidebarEntryTheVisitorMayNotOpenIsLeftOut(t *testing.T) {
@@ -232,11 +233,11 @@ func TestASidebarEntryTheVisitorMayNotOpenIsLeftOut(t *testing.T) {
 	assert.DeepEqual(t, outline(t, pageOf(t, allow, "/admin/device")), []string{"# Operations", "Audit log", "System", "# Platform", "Devices", "# Hidden section", "Secret"})
 }
 
-func TestASectionCaptionStaysAboveWhatIsStillShownAndGoesWithAnEmptySection(t *testing.T) {
+func TestACategoryStaysWithWhatIsStillShownAndGoesWithAnEmptyOne(t *testing.T) {
 	t.Parallel()
 
 	refuse := guardedNavApp(func(context.Context) error { return errors.New("no") })
-	// Audit log, first in Operations, is hidden; the caption goes to System, the first one shown. A section with every entry hidden has no caption.
+	// Audit log, first in Operations, is hidden; the category keeps System, the first one shown. A category with every entry hidden is not drawn.
 	assert.DeepEqual(t, outline(t, pageOf(t, refuse, "/admin/device")), []string{"# Operations", "System", "# Platform", "Devices"})
 }
 
@@ -254,44 +255,43 @@ func TestAHiddenEntryStillAnswers403ToItsAddressAndTheRootSkipsIt(t *testing.T) 
 	assert.Equal(t, root.Header().Get("Location"), "/admin/system")
 }
 
-func TestTheSidebarIsGroupedBySectionAndNotByPosition(t *testing.T) {
+func TestTheSidebarIsListedInTheOrderTheAppWritesItWithEntriesAndCategoriesAsTheyStand(t *testing.T) {
 	t.Parallel()
 
-	entry := func(path, label, section string) webui.Page[webui.NoArgs] {
-		return webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](path), Nav: webui.Nav{Label: label, Section: section}, View: webui.Stack{}}
+	page := func(path webui.PageID[webui.NoArgs]) webui.Page[webui.NoArgs] {
+		return webui.Page[webui.NoArgs]{Path: path, View: webui.Stack{}}
 	}
-	// Given out of order: sections interleaved, and entries with no Section among them.
-	h := webui.App{Pages: webui.Pages{
-		entry("/device", "Devices", "Platform"),
-		entry("/retention", "Retention", "Configuration"),
-		entry("/home", "Home", ""),
-		entry("/site", "Sites", "Platform"),
-		entry("/ingest", "Ingest", "Configuration"),
-		entry("/about", "About", ""),
-	}}.MustCompile("/admin")
-	// No Section: first, in the order given, under no caption. Sections in the order first named, entries in the order given, one caption for each section.
-	assert.DeepEqual(t, outline(t, pageOf(t, h, "/admin/device")), []string{
-		"Home", "About", "# Platform", "Devices", "Sites", "# Configuration", "Retention", "Ingest",
-	})
+	device, site, retention, ingest, home, about := page("/device"), page("/site"), page("/retention"), page("/ingest"), page("/home"), page("/about")
+	h := webui.App{
+		// Entries and categories, as the app wrote them: an entry that is in no category stands where it is written.
+		Navigation: []webui.NavItem{
+			webui.NavPage{Page: home, Label: "Home"},
+			webui.NavGroup{Label: "Platform", Items: []webui.NavItem{webui.NavPage{Page: device, Label: "Devices"}, webui.NavPage{Page: site, Label: "Sites"}}},
+			webui.NavPage{Page: about, Label: "About"},
+			webui.NavGroup{Label: "Configuration", Items: []webui.NavItem{webui.NavPage{Page: retention, Label: "Retention"}, webui.NavPage{Page: ingest, Label: "Ingest"}}},
+		},
+		Pages: webui.Pages{device, retention, home, site, ingest, about},
+	}.MustCompile("/admin")
+	assert.DeepEqual(t, outline(t, pageOf(t, h, "/admin/device")), []string{"Home", "# Platform", "Devices", "Sites", "About", "# Configuration", "Retention", "Ingest"})
 
 	// And the root goes to the first entry the sidebar lists.
 	assert.Equal(t, serve(h, http.MethodGet, "/admin/").Header().Get("Location"), "/admin/home")
 }
 
-func TestAPageWithPathArgumentsCannotHaveANavLabelBecauseItHasNoAddress(t *testing.T) {
+func TestAPageWithPathArgumentsCannotBeANavPageBecauseItHasNoAddress(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }
-	declared := webui.Page[one]{Path: "/device/{id}", Nav: webui.Nav{Label: "Device"}, View: webui.Stack{}}
-	errs := compileErrors(t, webui.App{Pages: webui.Pages{declared}})
-	refuses(t, errs[0].Error(), `"Device"`, "/device/{id}")
+	declared := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}}
+	errs := compileErrors(t, webui.App{Navigation: []webui.NavItem{webui.NavPage{Page: declared, Label: "Device"}}, Pages: webui.Pages{declared}})
+	refuses(t, errs[0].Error(), "App.Navigation[0]", "/device/{id}")
 }
 
 func TestTheRootOfAnAppWithPagesButNoStartSaysThereIsNothingToOpen(t *testing.T) {
 	t.Parallel()
 
 	type one struct{ ID string }
-	declared := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // no Nav, and none at "/"
+	declared := webui.Page[one]{Path: "/device/{id}", View: webui.Stack{}} // in no entry, and none at "/"
 	h := webui.App{Brand: webui.Brand{Name: "Acme"}, Pages: webui.Pages{declared}}.MustCompile("/admin")
 
 	for _, at := range []string{"/admin", "/admin/"} {

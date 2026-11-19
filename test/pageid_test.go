@@ -27,7 +27,6 @@ const (
 
 var shopList = webui.Page[webui.NoArgs]{
 	Path: shopListPath,
-	Nav:  webui.Nav{Label: "Shop"},
 	View: webui.Table[Device]{
 		Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 			return webui.PagedWindow[Device]{Items: []Device{{Id: "a"}, {Id: "b"}}, Total: 2}, webui.Ready()
@@ -55,7 +54,7 @@ var shopSave = webui.Action[Device]{
 	},
 }
 
-var shopApp = webui.App{Pages: webui.Pages{shopList, shopDetail}}
+var shopApp = webui.App{Pages: webui.Pages{shopList, shopDetail}, Navigation: []webui.NavItem{webui.NavPage{Page: shopListPath, Label: "Shop"}}}
 
 func TestPagesThatLinkBothWaysAreStaticVars(t *testing.T) {
 	t.Parallel()

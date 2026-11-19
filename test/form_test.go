@@ -32,9 +32,9 @@ var (
 )
 
 func formApp(form webui.Form[Device]) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
 	details := webui.Page[detailsArgs]{Path: "/device/{id}", View: form}
-	return webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{list, details}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}}}.MustCompile("/admin")
 }
 
 func okForm() webui.Form[Device] {

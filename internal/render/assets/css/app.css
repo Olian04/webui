@@ -234,7 +234,7 @@ select {
 
 /* ------------------------------ sidebar ---------------------------------- */
 .sidebar {
-  /* a person's choice, set before first paint; the rail below does not take it */
+  /* a person's choice, set before first paint */
   width: var(--sidebar-w, 240px);
   flex: 0 0 var(--sidebar-w, 240px);
   background: var(--panel);
@@ -246,7 +246,7 @@ select {
   height: 100vh;
 }
 /* The edge to drag, which script adds (a splitter: the sidebar's, and each column's of a table): a hit area a little wider than the border it is on, with
-   a line that shows on hover, focus and while it is dragged. The sidebar's is not there in the rail, which has one width. */
+   a line that shows on hover, focus and while it is dragged. The sidebar's is not there on a phone, where the sidebar is a drawer. */
 .splitter {
   position: absolute;
   top: 0;
@@ -278,9 +278,6 @@ html.splitting,
 html.splitting * {
   cursor: col-resize !important;
   user-select: none;
-}
-html[data-sidebar='collapsed'] .sidebar .splitter {
-  display: none;
 }
 .side-brand {
   display: flex;
@@ -436,47 +433,9 @@ a.side-brand:hover {
   flex: 0 0 16px;
   opacity: 0.85;
 }
-.nav-item .ni-letter {
-  display: grid; /* holds the place of an icon, so labels line up; seen only in the rail */
-  visibility: hidden;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 500;
-  opacity: 1;
-}
-.side-foot {
-  border-top: 1px solid var(--border);
-  padding: 8px 12px 34px;
-}
-.side-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-2);
-  height: 26px;
-}
-.side-collapse {
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-.side-collapse:hover {
-  color: var(--text);
-}
-.side-collapse-icon {
-  width: 14px;
-  height: 14px;
-  font-size: 12px;
-  flex: 0 0 14px;
-  transform: rotate(
-    90deg
-  ); /* the chevron points down; this points at the edge it moves */
+/* An entry with no icon holds the place of one, so that the labels line up. */
+.nav-item .ni-blank {
+  display: block;
 }
 
 /* switch */
@@ -3088,84 +3047,8 @@ html.js .status-meta [data-built] {
   }
 }
 
-/* The rail, by choice: the sidebar's collapse button sets it. It is the only way to the rail; a narrow window does not make
-   one. A phone has no rail: the sidebar there is a drawer (see the phone tier), so a
-   stored choice of the rail does not reach it. */
-@media (min-width: 641px) {
-  html[data-sidebar='collapsed'] .sidebar {
-    width: 56px;
-    flex: 0 0 56px;
-  }
-  html[data-sidebar='collapsed'] .side-brand b,
-  html[data-sidebar='collapsed'] .nav-item span:not(.ni-letter),
-  html[data-sidebar='collapsed'] .side-row > span {
-    display: none;
-  }
-  /* A section is a short dash in the rail, so the groups can be told apart: 21px of height for each
-     group, with its name in a tooltip, and none above the first group, which has nothing before it. It is
-     short and thick where the line under the brand is the width of the rail and thin, so the two are not
-     taken for each other: one is an edge, the other says that the icons around it are a group. It is as quiet as
-     a border, so that it is not taken for another icon. A rail has no categories to open: every entry of every section is there, whether the section is open or not. */
-  html[data-sidebar='collapsed'] .nav-section {
-    height: 21px;
-    min-height: 0;
-    padding: 0;
-    overflow: hidden;
-    font-size: 0;
-    pointer-events: none;
-  }
-  html[data-sidebar='collapsed'] .nav-section > * {
-    display: none;
-  }
-  html[data-sidebar='collapsed'] .nav-section:hover {
-    background: none;
-  }
-  html[data-sidebar='collapsed'] .nav-group-items {
-    padding: 0;
-  }
-  html[data-sidebar='collapsed'] .nav-group-items .nav-item {
-    padding: 0;
-  }
-  html[data-sidebar='collapsed'] .nav-section::before {
-    content: '';
-    display: block;
-    width: 32px;
-    height: 3px;
-    margin: 9px auto 0;
-    border-radius: var(--radius);
-    background: var(--border-2);
-  }
-  html[data-sidebar='collapsed'] .side-scroll > .nav-group:first-child > .nav-section {
-    display: none;
-  }
-  html[data-sidebar='collapsed'] .nav-group::details-content {
-    content-visibility: visible;
-    display: block;
-  }
-  html[data-sidebar='collapsed'] .side-brand {
-    justify-content: center;
-    padding: 0;
-  }
-  html[data-sidebar='collapsed'] .nav-item {
-    justify-content: center;
-    padding: 0;
-  }
-  html[data-sidebar='collapsed'] .nav-item .ni-letter {
-    visibility: visible;
-  }
-  html[data-sidebar='collapsed'] .side-foot {
-    padding-inline: 0;
-  }
-  html[data-sidebar='collapsed'] .side-row {
-    justify-content: center;
-  }
-  html[data-sidebar='collapsed'] .side-collapse-icon {
-    transform: rotate(-90deg);
-  }
-}
-
 /* ------------------------------ phone ------------------------------------ */
-/* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it, or as the rail, by choice);
+/* The widths of the shell, from the widest: a desktop (the sidebar as wide as its owner has set it);
    up to 640px a phone. That one, 640px, is the only width at which the shape of the shell
    changes (a narrow desktop is a desktop: the sidebar keeps its width), and every rule for it is in this block (the crumbs, which without script are cut to the parent and the page, are beside the top bar):
    the sidebar is a drawer from the left behind a button, and the actions on the right of the top bar are a drawer from the right behind one. Both are a
@@ -3257,7 +3140,6 @@ html.js .status-meta [data-built] {
     background: var(--backdrop);
     transition: opacity 0.18s;
   }
-  .side-collapse,
   .splitter {
     display: none;
   }
@@ -3281,10 +3163,6 @@ html.js .status-meta [data-built] {
   .nav-item,
   .nav-section {
     min-height: 44px;
-  }
-  /* The footer holds the switch that narrows the sidebar to its rail; the drawer has no rail, so the footer has nothing to hold. */
-  .side-foot {
-    display: none;
   }
 
   /* The actions of the top bar are a drawer of their own, from the right (the sidebar's is from the left), opened by the button at
