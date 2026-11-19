@@ -19,7 +19,7 @@ export default defineConfig({
     url: 'http://localhost:7792/login',
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
-    // The demo has pages that fail on purpose (/probes), and its Logger says so on stderr, as it should. That is not a failure of the suite, and
+    // The demo has pages that fail on purpose (/health), and its Logger says so on stderr, as it should. That is not a failure of the suite, and
     // in its output it reads as one, so it is left out. E2E_LOGS=1 brings it back, to see why a scenario fails.
     stderr: process.env.E2E_LOGS ? 'pipe' : 'ignore',
   },

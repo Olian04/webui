@@ -94,7 +94,7 @@ var app = webui.App{
 		}},
 		webui.NavGroup{Label: "Operations", Icon: "gears", Items: []webui.NavItem{
 			webui.NavPage{Page: System, Label: "System", Icon: "wave-square"},
-			webui.NavPage{Page: Probes, Label: "Probes", Icon: "heart-pulse"},
+			webui.NavPage{Page: HealthChecks, Label: "Health checks", Icon: "heart-pulse"},
 			webui.NavPage{Page: Audit, Label: "Audit log", Icon: "list"},
 			webui.NavPage{Page: FirmwarePage, Label: "Firmware", Icon: "database"},
 			webui.NavPage{Page: FilesRoot, Label: "Files", Icon: "folder-open"},
@@ -107,7 +107,7 @@ var app = webui.App{
 			webui.NavURL{Label: "The library's reference", Icon: "arrow-up-right-from-square", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
 		}},
 	},
-	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, Probes},
+	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, HealthChecks},
 }
 
 var (

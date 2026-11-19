@@ -22,7 +22,7 @@ func TestEveryPageServes(t *testing.T) {
 		"/admin/device", "/admin/device/dev_27c38b", "/admin/device/dev_27c38b?minutes=15&tabs.tab=raw-events",
 		"/admin/site", "/admin/site/Stockholm", "/admin/alert", "/admin/alert/alt_000", "/admin/settings", "/admin/retention",
 		"/admin/system", "/admin/audit", "/admin/config", "/admin/rule", "/admin/files", "/admin/files/logs/2026/10", "/admin/files/logs/2026/10/collector.log", "/admin/handbook", "/admin/handbook/incidents", "/admin/handbook/sinks", "/admin/handbook/glossary", "/admin/",
-		"/admin/compare", "/admin/probes",
+		"/admin/compare", "/admin/health",
 	} {
 		rec := get(h, path)
 		if rec.Code != http.StatusOK && rec.Code != http.StatusFound {
