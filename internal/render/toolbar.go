@@ -13,10 +13,9 @@ type LoadedToolbar struct {
 	// Path and Query are the page's current address, as its arguments and view state encode.
 	Path, Query map[string]string
 
-	// Access is what each item is for this visitor, by the position it was declared at: a button whose Guard refuses them, or a link
-	// to a page that does, is not drawn, or is drawn disabled. Hrefs is where each link goes.
-	Access []Access
-	Hrefs  []string
+	// Controls are the buttons and links, by the position they were declared at, with what each is for this visitor: a button whose Guard refuses them, or a link to a page
+	// that does, is not drawn, or is drawn disabled; and where each link goes.
+	Controls
 
 	// Forms is what each form of the toolbar loaded, by the position it was declared at: the model that its values show, or that it could not
 	// be loaded, which its place in the row says without taking the rest of the toolbar down.
@@ -38,33 +37,4 @@ func (v LoadedToolbar) form(i int) ToolbarForm {
 		return v.Forms[i]
 	}
 	return ToolbarForm{}
-}
-
-// hasActions is whether the toolbar has a button that posts, and so a form to post it with. A toolbar of links and values has none:
-// there is nothing in it to submit.
-func (v LoadedToolbar) hasActions() bool {
-	for i, it := range v.Node.Items {
-		if it.Action != nil && v.access(i).Drawn() {
-			return true
-		}
-	}
-	return false
-}
-
-// drawn is whether any item is drawn for this visitor. A toolbar whose items are all refused to them is not there at all.
-func (v LoadedToolbar) drawn() bool {
-	for i := range v.Node.Items {
-		if v.access(i).Drawn() {
-			return true
-		}
-	}
-	return false
-}
-
-// access is what item i is for this visitor.
-func (v LoadedToolbar) access(i int) Access {
-	if i < len(v.Access) {
-		return v.Access[i]
-	}
-	return Access{}
 }
