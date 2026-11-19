@@ -111,7 +111,7 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 	t.Parallel()
 
 	back := webui.PageID[webui.NoArgs]("/records")
-	list := webui.Page[webui.NoArgs]{Path: back, Nav: webui.Nav{Label: "Records"}, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: back, View: webui.Stack{}}
 	one := webui.Page[recordArgs]{
 		Path: "/records/{id}",
 		Guard: func(ctx context.Context, a recordArgs) error {
@@ -123,7 +123,7 @@ func TestARefusedPostOfScriptsKeepsTheWordsAndTheLinkOfTheRefusal(t *testing.T) 
 			},
 		}},
 	}
-	h := webui.App{Pages: webui.Pages{list, one}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{list, one}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Records"}}}.MustCompile("/admin")
 	rec := post(h, "/admin/records/x", nil, func(r *http.Request) { r.Header.Set("X-Webui-View", "p") })
 	assert.Equal(t, rec.Code, http.StatusNotFound)
 	told := page.Parse(t, rec.Body.String())

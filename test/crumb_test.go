@@ -25,10 +25,10 @@ type crumbSub struct {
 
 // crumbApp is a list, a page for one thing at "/thing/{id}" whose crumb says its name, and a page below it.
 func crumbApp(logger *slog.Logger, crumb func(context.Context, crumbArgs) string, guard func(context.Context, crumbArgs) error) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: "/thing", Nav: webui.Nav{Label: "Things"}, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: "/thing", View: webui.Stack{}}
 	one := webui.Page[crumbArgs]{Path: "/thing/{id}", Crumb: crumb, Guard: guard, View: webui.Stack{}}
 	log := webui.Page[crumbSub]{Path: "/thing/{id}/log", View: webui.Stack{}}
-	return webui.App{Brand: webui.Brand{Name: "Demo"}, Logger: logger, Pages: webui.Pages{list, one, log}}.MustCompile("/admin")
+	return webui.App{Brand: webui.Brand{Name: "Demo"}, Logger: logger, Pages: webui.Pages{list, one, log}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Things"}}}.MustCompile("/admin")
 }
 
 func nameOf(_ context.Context, a crumbArgs) string { return "Thing " + strings.ToUpper(a.Id) }
@@ -118,10 +118,10 @@ func TestACrumbOnAPageThatTakesTheRestIsACompileErrorAndAParentAboveItMayHaveOne
 	errs := compileErrors(t, webui.App{Pages: webui.Pages{rest}})
 	refuses(t, errs[0].Error(), "Crumb", "{name...}")
 
-	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", Nav: webui.Nav{Label: "Buckets"}, View: webui.Stack{}}
+	buckets := webui.Page[webui.NoArgs]{Path: "/bucket", View: webui.Stack{}}
 	bucket := webui.Page[bucketArgs]{Path: "/bucket/{name}", Crumb: func(_ context.Context, a bucketArgs) string { return "Bucket " + a.Name }, View: webui.Stack{}}
 	object := webui.Page[objectArgs]{Path: "/bucket/{name}/{key...}", View: webui.Stack{}}
-	h := webui.App{Pages: webui.Pages{buckets, bucket, object}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{buckets, bucket, object}, Navigation: []webui.NavItem{webui.NavPage{Page: buckets, Label: "Buckets"}}}.MustCompile("/admin")
 	assert.DeepEqual(t, trail(t, pageOf(t, h, "/admin/bucket/photos/2026/img.png"))[2:], []string{
 		"Bucket photos>/admin/bucket/photos", "2026>/admin/bucket/photos/2026", "img.png",
 	})
@@ -131,8 +131,8 @@ func TestACrumbOnAPageThatTakesTheRestIsACompileErrorAndAParentAboveItMayHaveOne
 func TestTheLandingPagesCrumbReplacesItsNavigationLabelInTheTrail(t *testing.T) {
 	t.Parallel()
 
-	home := webui.Page[webui.NoArgs]{Path: "/", Nav: webui.Nav{Label: "Status"}, Crumb: func(context.Context, webui.NoArgs) string { return "All systems" }, View: webui.Stack{}}
-	got := trail(t, pageOf(t, webui.App{Pages: webui.Pages{home}}.MustCompile("/admin"), "/admin/"))
+	home := webui.Page[webui.NoArgs]{Path: "/", Crumb: func(context.Context, webui.NoArgs) string { return "All systems" }, View: webui.Stack{}}
+	got := trail(t, pageOf(t, webui.App{Pages: webui.Pages{home}, Navigation: []webui.NavItem{webui.NavPage{Page: home, Label: "Status"}}}.MustCompile("/admin"), "/admin/"))
 	assert.Equal(t, got[len(got)-1], "All systems") // and not "Status", the label the page has in the sidebar
 }
 

@@ -233,7 +233,7 @@ func TestValidateDuplicatePaths(t *testing.T) {
 	t.Parallel()
 
 	app := webui.App{Pages: webui.Pages{
-		webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{}},
+		webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}},
 		webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{}},
 	}}
 	var all string

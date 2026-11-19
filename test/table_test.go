@@ -30,7 +30,6 @@ func tableApp(load func(context.Context, webui.PagedQuery) (webui.PagedWindow[De
 	details := webui.Page[detailsArgs]{Path: "/device/{id}", View: webui.Stack{}}
 	list := webui.Page[tableArgs]{
 		Path: "/device",
-		Nav:  webui.Nav{Label: "Devices"},
 		View: webui.Table[Device]{
 			Title: "Devices",
 			Loader: webui.PagedLoader[Device]{Load: func(ctx context.Context, q webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -69,7 +68,7 @@ func tableApp(load func(context.Context, webui.PagedQuery) (webui.PagedWindow[De
 			},
 		},
 	}
-	h := webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{list, details}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}}}.MustCompile("/admin")
 	return h, &last
 }
 

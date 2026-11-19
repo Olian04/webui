@@ -74,9 +74,9 @@ func TestThePageStillServesAfterAPanic(t *testing.T) {
 }
 
 func brokenGuardApp(log *slog.Logger, guard func(context.Context, webui.NoArgs) error) http.Handler {
-	home := webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, View: webui.Stack{}}
-	broken := webui.Page[webui.NoArgs]{Path: "/broken", Nav: webui.Nav{Label: "Broken"}, View: webui.Stack{}, Guard: guard}
-	return webui.App{Logger: log, Pages: webui.Pages{home, broken}}.MustCompile("/admin")
+	home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Stack{}}
+	broken := webui.Page[webui.NoArgs]{Path: "/broken", View: webui.Stack{}, Guard: guard}
+	return webui.App{Logger: log, Pages: webui.Pages{home, broken}, Navigation: []webui.NavItem{webui.NavPage{Page: home, Label: "Home"}, webui.NavPage{Page: broken, Label: "Broken"}}}.MustCompile("/admin")
 }
 
 func TestANavigationPageWhoseGuardPanicsIsHiddenAndTheCauseIsLogged(t *testing.T) {

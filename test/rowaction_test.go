@@ -23,7 +23,6 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 	entries := []Device{{Id: "photos/"}, {Id: "cat.png"}, {Id: "locked.txt"}}
 	list := webui.Page[webui.NoArgs]{
 		Path: "/entry",
-		Nav:  webui.Nav{Label: "Entries"},
 		View: webui.Table[Device]{
 			Title:  "Entries",
 			Loader: webui.RowsLoader[Device]{Load: func(context.Context) ([]Device, webui.Loaded) { return entries, webui.Ready() }},
@@ -42,7 +41,7 @@ func browserApp(guard func(context.Context, Device) error) http.Handler {
 	}
 	folder := webui.Page[detailsArgs]{Path: folderPath, View: webui.Stack{}}
 	object := webui.Page[detailsArgs]{Path: objectPath, View: webui.Stack{}}
-	return webui.App{Pages: webui.Pages{list, folder, object}}.MustCompile("/admin")
+	return webui.App{Pages: webui.Pages{list, folder, object}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Entries"}}}.MustCompile("/admin")
 }
 
 func TestARowClickCanBeAnActionThatChoosesTheDestinationFromTheRow(t *testing.T) {

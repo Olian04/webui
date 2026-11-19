@@ -56,23 +56,73 @@ var app = webui.App{
 	Description: "Collector: devices, alerts, rules and settings of a telemetry collector, in a small admin panel built with webui.",
 	// Where the app says what went wrong that it could not tell the visitor. Left out, it logs nothing.
 	Logger: slog.Default(),
-	// The app's links to places outside it, behind their own button in the top bar. An
-	// ExternalLink is a Nav entry (a Label, an Icon and a Section) with a URL, used as
-	// written: a web address opens in a tab of its own, a path such as /login in this one.
-	ExternalLinks: []webui.ExternalLink{
-		{Label: "Documentation", Icon: "book", Section: "Help", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
-		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
-		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
+	// The links to places outside the app, behind their own button in the top bar: the same entries as the sidebar's. A NavURL is used as written: a web address opens in a tab of its
+	// own, a path such as /login in this one.
+	Menu: []webui.NavItem{
+		webui.NavGroup{Label: "Help", Items: []webui.NavItem{
+			webui.NavURL{Label: "Documentation", Icon: "book", URL: "https://pkg.go.dev/github.com/Olian04/webui/pkg/webui"},
+			webui.NavURL{Label: "Report a problem", Icon: "bug", URL: "https://github.com/Olian04/webui/issues"},
+		}},
+		webui.NavGroup{Label: "Account", Items: []webui.NavItem{
+			webui.NavURL{Label: "Log out", Icon: "right-from-bracket", URL: "/login"},
+		}},
 	},
-	// A section is a category of the sidebar that opens and closes; here each has an icon, and they stand in this order. The one that holds the page on screen is open.
-	Sections: []webui.NavSection{
-		{Name: "Platform", Icon: "server"},
-		{Name: "Sites", Icon: "location-dot"},
-		{Name: "Configuration", Icon: "sliders"},
-		{Name: "Operations", Icon: "gears"},
-		{Name: "Handbook", Icon: "book"},
-		{Name: "Layout", Icon: "table-columns"},
-		{Name: "Loading", Icon: "spinner"},
+	// The sidebar: categories that open and close, each with an icon, in this order. The one that holds the page on screen is open. A page that is in no entry (a detail page, a form
+	// for a new device) lights the entry of its nearest ancestor.
+	Navigation: []webui.NavItem{
+		webui.NavGroup{Label: "Platform", Icon: "server", Items: []webui.NavItem{
+			webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"},
+			webui.NavPage{Page: Compare, Label: "Compare devices", Icon: "code-compare"},
+			webui.NavPage{Page: Sites, Label: "Sites", Icon: "location-dot"},
+			webui.NavPage{Page: Alerts, Label: "Alerts", Icon: "bell"},
+			webui.NavPage{Page: Activity, Label: "Activity", Icon: "bolt"},
+		}},
+		webui.NavGroup{Label: "Sites", Icon: "location-dot", Items: []webui.NavItem{
+			// A page with arguments has one entry for each address it lists: each site, which the page loads when a page is drawn. The page of a site lights its entry, and so does
+			// any page below it that borrows its place.
+			webui.NavPages[SiteArgs]{Page: SiteDetail, Entries: siteEntries, Icon: "location-dot"},
+		}},
+		webui.NavGroup{Label: "Configuration", Icon: "sliders", Items: []webui.NavItem{
+			webui.NavPage{Page: Ingest, Label: "Ingest", Icon: "database"},
+			webui.NavPage{Page: Retention, Label: "Retention and archival policy for every kind of collected event"}, // no Icon: the place of one stays empty, and the label is cut short when it is wider than the sidebar
+			webui.NavPage{Page: Configuration, Label: "Config", Icon: "file-code"},
+			webui.NavPage{Page: PagingRule, Label: "Paging rule", Icon: "code"},
+		}},
+		webui.NavGroup{Label: "Operations", Icon: "gears", Items: []webui.NavItem{
+			webui.NavPage{Page: System, Label: "System", Icon: "wave-square"},
+			webui.NavPage{Page: Audit, Label: "Audit log", Icon: "list"},
+			webui.NavPage{Page: FirmwarePage, Label: "Firmware", Icon: "database"},
+			webui.NavPage{Page: FilesRoot, Label: "Files", Icon: "folder-open"},
+		}},
+		webui.NavGroup{Label: "Handbook", Icon: "book", Items: []webui.NavItem{
+			webui.NavPage{Page: HandbookRunbook, Label: "Runbook", Icon: "book-open"},
+			webui.NavPage{Page: HandbookIncidents, Label: "Incidents", Icon: "triangle-exclamation"},
+			webui.NavPage{Page: HandbookSinks, Label: "Sinks", Icon: "plug"},
+			webui.NavPage{Page: HandbookGlossary, Label: "Glossary", Icon: "spell-check"},
+		}},
+		webui.NavGroup{Label: "Layout", Icon: "table-columns", Items: []webui.NavItem{
+			webui.NavPage{Page: LayoutSplit, Label: "Split rows", Icon: "table-columns"},
+			webui.NavPage{Page: LayoutRail, Label: "Main and rail", Icon: "table-cells-large"},
+			webui.NavPage{Page: LayoutColumns, Label: "Columns in columns", Icon: "grip"},
+			webui.NavPage{Page: LayoutWeights, Label: "Weighted columns", Icon: "table-columns"},
+			webui.NavPage{Page: LayoutTabs, Label: "Tabs side by side", Icon: "window-restore"},
+			webui.NavPage{Page: LayoutManyTabs, Label: "Many tabs", Icon: "folder-tree"},
+			webui.NavPage{Page: LayoutDeep, Label: "Nested five deep", Icon: "layer-group"},
+			webui.NavPage{Page: LayoutReview, Label: "Review a change", Icon: "code-compare"},
+			webui.NavPage{Page: LayoutRunbook, Label: "Runbook and state", Icon: "book-open"},
+			webui.NavPage{Page: LayoutToolbars, Label: "Toolbars", Icon: "grip"},
+			webui.NavPage{Page: LayoutList, Label: "A long list", Icon: "list"},
+		}},
+		webui.NavGroup{Label: "Loading", Icon: "spinner", Items: []webui.NavItem{
+			webui.NavPage{Page: LoadingOrder, Label: "In order", Icon: "list-ol"},
+			webui.NavPage{Page: LoadingStaircase, Label: "Staircase (10 s)", Icon: "stairs"},
+			webui.NavPage{Page: LoadingTabs, Label: "Tabs read one tab", Icon: "window-restore"},
+			webui.NavPage{Page: LoadingNested, Label: "Nested layouts", Icon: "layer-group"},
+			webui.NavPage{Page: LoadingFailures, Label: "Panels that fail", Icon: "triangle-exclamation"},
+			webui.NavPage{Page: LoadingWhole, Label: "Built whole (editor)", Icon: "file-code"},
+			webui.NavPage{Page: LoadingGuarded, Label: "Guard refuses", Icon: "shield-halved"},
+			webui.NavPage{Page: LoadingFast, Label: "Answers at once", Icon: "bolt"},
+		}},
 	},
 	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutWeights, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook, LayoutToolbars, LayoutList},
 }

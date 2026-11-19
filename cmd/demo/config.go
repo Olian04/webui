@@ -61,6 +61,5 @@ var ConfigDiff = webui.Diff[Config]{
 
 var Configuration = webui.Page[webui.NoArgs]{
 	Path: "/config",
-	Nav:  webui.Nav{Label: "Config", Icon: "file-code", Section: "Configuration"},
 	View: webui.Stack{ConfigEditor, ConfigDiff},
 }

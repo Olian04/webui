@@ -90,8 +90,8 @@ func TestAGuardRunsOncePerAddressInARequestHoweverManyLinksLeadThere(t *testing.
 	bar := webui.Toolbar{Left: []webui.ToolbarItem{webui.Link[webui.NoArgs, linkedArgs]{
 		Label: "First", Page: &item, Args: func(context.Context, webui.NoArgs) linkedArgs { return linkedArgs{ID: 1} },
 	}}}
-	list := webui.Page[webui.NoArgs]{Path: "/list", Nav: webui.Nav{Label: "List"}, View: webui.Stack{bar, linkRows(12, &item, func(i int) int { return 1 + i%3 })}}
-	h := webui.App{Pages: webui.Pages{list, item}}.MustCompile("/admin")
+	list := webui.Page[webui.NoArgs]{Path: "/list", View: webui.Stack{bar, linkRows(12, &item, func(i int) int { return 1 + i%3 })}}
+	h := webui.App{Pages: webui.Pages{list, item}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "List"}}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/list").Body.String()
 	assert.Equal(t, strings.Count(body, `href="/admin/item/1"`), 5) // the button, and four rows: each is still drawn
@@ -108,15 +108,15 @@ func TestThePageGuardIsNotAskedAgainByTheSidebarOrByALinkBackToIt(t *testing.T) 
 	t.Parallel()
 
 	var a, b atomic.Int32
-	self := &webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}}
-	other := &webui.Page[webui.NoArgs]{Path: "/b", Nav: webui.Nav{Label: "B"}, View: webui.Stack{}}
+	self := &webui.Page[webui.NoArgs]{Path: "/a"}
+	other := &webui.Page[webui.NoArgs]{Path: "/b", View: webui.Stack{}}
 	self.Guard = func(context.Context, webui.NoArgs) error { a.Add(1); return nil }
 	other.Guard = func(context.Context, webui.NoArgs) error { b.Add(1); return nil }
 	to := func(p webui.PageRef[webui.NoArgs]) webui.ToolbarItem {
 		return webui.Link[webui.NoArgs, webui.NoArgs]{Label: "Go", Page: p, Args: func(context.Context, webui.NoArgs) webui.NoArgs { return webui.NoArgs{} }}
 	}
 	self.View = webui.Stack{webui.Toolbar{Left: []webui.ToolbarItem{to(self), to(other), to(other)}}}
-	h := webui.App{Pages: webui.Pages{*self, *other}}.MustCompile("/admin")
+	h := webui.App{Pages: webui.Pages{*self, *other}, Navigation: []webui.NavItem{webui.NavPage{Page: self, Label: "A"}, webui.NavPage{Page: other, Label: "B"}}}.MustCompile("/admin")
 
 	body := serve(h, http.MethodGet, "/admin/a").Body.String()
 	assert.Equal(t, strings.Count(body, `href="/admin/b"`), 3) // the entry, and two buttons
@@ -133,7 +133,6 @@ func TestAGuardThatChangesItsMindGivesAPageThatAgreesWithItself(t *testing.T) {
 		var calls atomic.Int32
 		var bare webui.Page[webui.NoArgs]
 		bare.Path = "/b"
-		bare.Nav = webui.Nav{Label: "B"}
 		bare.View = webui.Stack{}
 		bare.Guard = func(context.Context, webui.NoArgs) error {
 			if calls.Add(1) == 1 {
@@ -149,8 +148,8 @@ func TestAGuardThatChangesItsMindGivesAPageThatAgreesWithItself(t *testing.T) {
 			Columns:  []webui.Accessor[parcel]{parcelName},
 			RowClick: webui.Link[parcel, webui.NoArgs]{Page: &bare, Args: func(context.Context, parcel) webui.NoArgs { return webui.NoArgs{} }},
 		}
-		a := webui.Page[webui.NoArgs]{Path: "/a", Nav: webui.Nav{Label: "A"}, View: webui.Stack{webui.Toolbar{Left: []webui.ToolbarItem{to, to}}, table}}
-		h := webui.App{Pages: webui.Pages{a, bare}}.MustCompile("/admin")
+		a := webui.Page[webui.NoArgs]{Path: "/a", View: webui.Stack{webui.Toolbar{Left: []webui.ToolbarItem{to, to}}, table}}
+		h := webui.App{Pages: webui.Pages{a, bare}, Navigation: []webui.NavItem{webui.NavPage{Page: a, Label: "A"}, webui.NavPage{Page: &bare, Label: "B"}}}.MustCompile("/admin")
 
 		body := serve(h, http.MethodGet, "/admin/a").Body.String()
 		got := strings.Count(body, `href="/admin/b"`)
@@ -212,11 +211,15 @@ func TestTheGuardsOfTheSidebarAreAskedAtTheSameTime(t *testing.T) {
 		inflight.Add(-1)
 		return nil
 	}
-	app := webui.Pages{webui.Page[webui.NoArgs]{Path: "/home", Nav: webui.Nav{Label: "Home"}, View: webui.Stack{}}} // the page that is asked for has no Guard: its own would run first, and alone
+	home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Stack{}}
+	nav := []webui.NavItem{webui.NavPage{Page: home, Label: "Home"}}
+	app := webui.Pages{home} // the page that is asked for has no Guard: its own would run first, and alone
 	for i := range pages {
-		app = append(app, webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](fmt.Sprintf("/p%d", i)), Nav: webui.Nav{Label: fmt.Sprintf("P%d", i)}, View: webui.Stack{}, Guard: guard})
+		p := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs](fmt.Sprintf("/p%d", i)), View: webui.Stack{}, Guard: guard}
+		app = append(app, p)
+		nav = append(nav, webui.NavPage{Page: p, Label: fmt.Sprintf("P%d", i)})
 	}
-	h := webui.App{Pages: app}.MustCompile("/admin")
+	h := webui.App{Pages: app, Navigation: nav}.MustCompile("/admin")
 
 	started := time.Now()
 	body := serve(h, http.MethodGet, "/admin/home").Body.String()

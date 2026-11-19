@@ -22,7 +22,7 @@ const recordsPath webui.PageID[webui.NoArgs] = "/records"
 
 // refusalApp is a list of records and a page for one of them, whose Guard refuses in the way that its id asks.
 func refusalApp(log *slog.Logger) http.Handler {
-	list := webui.Page[webui.NoArgs]{Path: recordsPath, Nav: webui.Nav{Label: "Records"}, View: webui.Stack{}}
+	list := webui.Page[webui.NoArgs]{Path: recordsPath, View: webui.Stack{}}
 	one := webui.Page[recordArgs]{
 		Path: "/records/{id}",
 		Guard: func(ctx context.Context, a recordArgs) error {
@@ -55,7 +55,7 @@ func refusalApp(log *slog.Logger) http.Handler {
 			},
 		},
 	}
-	return webui.App{Logger: log, Pages: webui.Pages{list, one}}.MustCompile("/admin")
+	return webui.App{Logger: log, Pages: webui.Pages{list, one}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Records"}}}.MustCompile("/admin")
 }
 
 // A Guard says what a visitor may be told, with the status that goes with it, and a way on.

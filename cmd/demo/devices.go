@@ -142,7 +142,6 @@ const DevicesPath webui.PageID[webui.NoArgs] = "/device"
 
 var Devices = webui.Page[webui.NoArgs]{
 	Path: DevicesPath,
-	Nav:  webui.Nav{Label: "Devices", Icon: "display", Section: "Platform"},
 	// A Toolbar is a row of controls for the page it is on, and not a panel: a Link to the page that makes a device and a button
 	// that does something.
 	View: webui.Stack{DevicesToolbar, DevicesTable},

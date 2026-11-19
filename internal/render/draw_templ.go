@@ -69,7 +69,7 @@ func (r *Renderer) Document(d Doc) templ.Component {
 			Scripts:     r.scripts(d),
 			Head:        r.head(d.Code),
 			Sidebar:     r.sidebarFor(d),
-			TopBar:      r.topbar(d.Crumbs, d.URL, d.Query, !r.hasSidebar()),
+			TopBar:      r.topbar(d.Crumbs, d.URL, d.Query, !r.hasSidebar(), d.HideNav),
 			Status:      r.statusBar(d, c.StatusBar),
 			Toasts:      toastRegion(d.Toasts),
 			Heading:     d.Title,
@@ -425,8 +425,8 @@ func (r *Renderer) favicons() templ.Component {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-// sidebar lists the entries the visitor may open, grouped by section. The entries of no section are drawn as they are, first; a section is a category that opens and
-// closes, open when it holds the page on screen, and one with nothing left in it that the visitor may open is not drawn at all.
+// sidebar lists the entries the visitor may open, in the order the app declared them: an entry is drawn as it is, and a group is a category that opens and closes, open when
+// it holds the page on screen, and one with nothing left in it that the visitor may open is not drawn at all.
 func (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[string][]NavLink) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -460,10 +460,10 @@ func (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			for _, g := range r.navGroups(hide, links) {
-				if g.Section == "" {
-					for _, e := range g.Entries {
-						templ_7745c5c3_Err = c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon)}).Render(ctx, templ_7745c5c3_Buffer)
+			for _, t := range r.navTops(hide, links) {
+				if !t.Group {
+					for _, e := range t.Entries {
+						templ_7745c5c3_Err = r.navItem(e, active).Render(ctx, templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -481,15 +481,15 @@ func (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						for _, e := range g.Entries {
-							templ_7745c5c3_Err = c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon)}).Render(ctx, templ_7745c5c3_Buffer)
+						for _, e := range t.Entries {
+							templ_7745c5c3_Err = r.navItem(e, active).Render(ctx, templ_7745c5c3_Buffer)
 							if templ_7745c5c3_Err != nil {
 								return templ_7745c5c3_Err
 							}
 						}
 						return nil
 					})
-					templ_7745c5c3_Err = c.NavGroup(c.NavGroupProps{Label: g.Section, Icon: c.IconName(g.Icon), Open: g.holds(active)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = c.NavGroup(c.NavGroupProps{Label: t.Label, Icon: c.IconName(t.Icon), Open: t.holds(active)}).Render(templ.WithChildren(ctx, templ_7745c5c3_Var20), templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -511,7 +511,7 @@ func (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[
 // The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-func (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) templ.Component {
+func (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool, hide map[string]bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -565,7 +565,7 @@ func (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) templ
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			if items := r.linkEntries(); len(items) > 0 {
+			if items := r.linkEntries(hide); len(items) > 0 {
 				templ_7745c5c3_Err = c.ExternalLinks(items).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -5667,6 +5667,36 @@ func SearchPage(query string, groups []SearchGroup) templ.Component {
 			}
 		}
 		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 275, "</div></div>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
+// navItem is an entry of the sidebar: a link to a page, or to an address, which opens in a tab of its own when it is on the web.
+func (r *Renderer) navItem(e navEntry, active string) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var251 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var251 == nil {
+			templ_7745c5c3_Var251 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), NewTab: e.NewTab}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

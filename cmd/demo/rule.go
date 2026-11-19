@@ -45,7 +45,6 @@ var (
 
 var PagingRule = webui.Page[webui.NoArgs]{
 	Path: "/rule",
-	Nav:  webui.Nav{Label: "Paging rule", Icon: "code", Section: "Configuration"},
 	View: RuleEditor,
 }
 

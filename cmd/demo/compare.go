@@ -62,7 +62,6 @@ var CompareDevices = webui.Table[Device]{
 // A page whose arguments are lists. Its address is the whole of what it shows.
 var Compare = webui.Page[CompareArgs]{
 	Path: "/compare",
-	Nav:  webui.Nav{Label: "Compare devices", Icon: "code-compare", Section: "Platform"},
 	View: webui.Stack{
 		webui.Markdown[Handbook]{
 			Title:   "Compare devices",

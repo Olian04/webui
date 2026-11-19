@@ -131,7 +131,6 @@ var (
 
 var Ingest = webui.Page[webui.NoArgs]{
 	Path: "/settings",
-	Nav:  webui.Nav{Label: "Ingest", Icon: "database", Section: "Configuration"},
 	View: webui.Form[Settings]{
 		Title: "Ingest",
 		Desc:  "Every constraint below is declared as data and rendered as an HTML attribute.",
@@ -154,7 +153,6 @@ var Ingest = webui.Page[webui.NoArgs]{
 
 var Retention = webui.Page[webui.NoArgs]{
 	Path: "/retention",
-	Nav:  webui.Nav{Label: "Retention and archival policy for every kind of collected event", Section: "Configuration"}, // no Icon: its initial, R, stands in when the sidebar is a rail; the label is wider than the sidebar, so it is cut short with an ellipsis
 	View: webui.Form[RetentionPolicy]{
 		Title:  "Retention",
 		Load:   func(context.Context) (RetentionPolicy, webui.Loaded) { return service.Retention(), webui.Ready() },

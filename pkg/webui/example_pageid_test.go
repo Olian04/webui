@@ -40,7 +40,6 @@ func ExamplePageID() {
 	// The list links forward to the detail page by its variable.
 	list := webui.Page[webui.NoArgs]{
 		Path: listPath,
-		Nav:  webui.Nav{Label: "Items"},
 		View: webui.Table[item]{
 			Loader: webui.RowsLoader[item]{Load: func(context.Context) ([]item, webui.Loaded) { return []item{{ID: "a", Name: "Alpha"}}, webui.Ready() }},
 			RowClick: webui.Link[item, itemArgs]{
@@ -51,7 +50,10 @@ func ExamplePageID() {
 		},
 	}
 
-	handler := webui.App{Pages: webui.Pages{list, detail}}.MustCompile("/admin")
+	handler := webui.App{
+		Pages:      webui.Pages{list, detail},
+		Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Items"}},
+	}.MustCompile("/admin")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/admin/item", nil))
 	fmt.Println(strings.Contains(rec.Body.String(), `href="/admin/item/a?webui.from=%2Fadmin%2Fitem"`))

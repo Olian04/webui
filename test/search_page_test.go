@@ -15,10 +15,11 @@ import (
 
 // timedPages are list pages of things, each with a detail page whose Search takes the given time to answer, with the one result it is
 // named for, so that results of different pages are different and each page's time is its own.
-func timedPages(wait func(context.Context), names ...string) webui.Pages {
+func timedPages(wait func(context.Context), names ...string) (webui.Pages, []webui.NavItem) {
 	var pages webui.Pages
+	var nav []webui.NavItem
 	for _, name := range names {
-		list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/" + name), Nav: webui.Nav{Label: strings.ToUpper(name[:1]) + name[1:]}, View: webui.Stack{}}
+		list := webui.Page[webui.NoArgs]{Path: webui.PageID[webui.NoArgs]("/" + name), View: webui.Stack{}}
 		one := webui.Page[detailsArgs]{
 			Path: webui.PageID[detailsArgs]("/" + name + "/{id}"), View: webui.Stack{},
 			Search: func(ctx context.Context, _ string, _ int) ([]webui.Hit[detailsArgs], error) {
@@ -27,20 +28,22 @@ func timedPages(wait func(context.Context), names ...string) webui.Pages {
 			},
 		}
 		pages = append(pages, list, one)
+		nav = append(nav, webui.NavPage{Page: list, Label: strings.ToUpper(name[:1]) + name[1:]})
 	}
-	return pages
+	return pages, nav
 }
 
 // Every page is searched at once, so the answer takes as long as the slowest page and not as long as all of them.
 func TestThePagesAreSearchedAtOnceAndNotOneAfterTheOther(t *testing.T) {
 	t.Parallel()
 
-	h := webui.App{Pages: timedPages(func(ctx context.Context) {
+	pages, nav := timedPages(func(ctx context.Context) {
 		select {
 		case <-time.After(400 * time.Millisecond):
 		case <-ctx.Done():
 		}
-	}, "alpha", "bravo", "charlie", "delta", "echo")}.MustCompile("/admin")
+	}, "alpha", "bravo", "charlie", "delta", "echo")
+	h := webui.App{Pages: pages, Navigation: nav}.MustCompile("/admin")
 
 	started := time.Now()
 	got := search(t, h, "a")
@@ -58,7 +61,7 @@ func TestAPageThatDoesNotAnswerInTimeIsLeftOutAndTheOthersAnswer(t *testing.T) {
 	t.Cleanup(func() { close(release) })
 	var mu sync.Mutex
 	asked := 0
-	pages := timedPages(func(context.Context) {
+	pages, nav := timedPages(func(context.Context) {
 		mu.Lock()
 		asked++
 		first := asked == 1
@@ -67,7 +70,7 @@ func TestAPageThatDoesNotAnswerInTimeIsLeftOutAndTheOthersAnswer(t *testing.T) {
 			<-release // the first page asked ignores its context, and never answers
 		}
 	}, "alpha", "bravo", "charlie")
-	h := webui.App{Pages: pages}.MustCompile("/admin")
+	h := webui.App{Pages: pages, Navigation: nav}.MustCompile("/admin")
 
 	started := time.Now()
 	got := search(t, h, "a")

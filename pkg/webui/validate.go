@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Olian04/webui/internal/render/assets"
 	"github.com/Olian04/webui/internal/theme"
 )
 
@@ -27,8 +26,7 @@ func (a App) validate() []CompileError {
 	f := a.collectFacts()
 	var errs []CompileError
 	errs = append(errs, validateTheme(a.Theme)...)
-	errs = append(errs, validateNavSections(a.Sections)...)
-	errs = append(errs, validateExternalLinks(a.ExternalLinks)...)
+	errs = append(errs, a.validateNavigation()...)
 	if n := len(a.Secret); n > 0 && n < 16 {
 		errs = append(errs, CompileError{
 			Detail: fmt.Sprintf("App.Secret is %d bytes, which is too short to keep an address private", n),
@@ -141,50 +139,6 @@ func specOf(t Theme) theme.Spec {
 		Accent: string(t.Accent), OK: string(t.OK), Warning: string(t.Warning), Critical: string(t.Critical),
 		Light: mode(t.Light), Dark: mode(t.Dark),
 	}
-}
-
-// validateNavSections checks the sections the app gave an icon: each has a name that is its own, and an icon that there is.
-func validateNavSections(items []NavSection) []CompileError {
-	var errs []CompileError
-	seen := map[string]bool{}
-	for i, it := range items {
-		at := fmt.Sprintf("App.Sections[%d]", i)
-		bad := func(detail, fix string) { errs = append(errs, CompileError{Detail: at + " " + detail, Fix: fix}) }
-		switch {
-		case it.Name == "":
-			bad("has no Name", "Set Name to the section's name, as the entries that belong to it say it in Nav.Section.")
-		case seen[it.Name]:
-			bad(fmt.Sprintf("names the section %q, which an earlier one has", it.Name), "Name each section once: its icon and its place are one.")
-		}
-		seen[it.Name] = true
-		if it.Icon != "" && !assets.HasIcon(it.Icon) {
-			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
-				"Use the name of a Font Awesome Free solid icon, such as \"display\", or leave Icon empty.")
-		}
-	}
-	return errs
-}
-
-// validateExternalLinks checks the app's external links: every one has a label and an
-// address that is a path on this site or a web or mail address, never a script.
-func validateExternalLinks(items []ExternalLink) []CompileError {
-	var errs []CompileError
-	for i, it := range items {
-		at := fmt.Sprintf("App.ExternalLinks[%d]", i)
-		bad := func(detail, fix string) { errs = append(errs, CompileError{Detail: at + " " + detail, Fix: fix}) }
-		if it.Label == "" {
-			bad("has no Label", "Set Label; it is the entry's text.")
-		}
-		if it.Icon != "" && !assets.HasIcon(it.Icon) {
-			bad(fmt.Sprintf("has the Icon %q, which is not a Font Awesome Free solid icon", it.Icon),
-				"Use the name of a Font Awesome Free solid icon, such as \"book\", or leave Icon empty.")
-		}
-		if !validURL(it.URL) {
-			bad(fmt.Sprintf("has the URL %q, which is not a path on this site, or an http, https or mailto address", it.URL),
-				"Use a path such as \"/logout\", or an address such as \"https://example.com/help\".")
-		}
-	}
-	return errs
 }
 
 // validURL is whether an address may be a link: a path on this site, or an http,

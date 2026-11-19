@@ -323,6 +323,7 @@ type NavItemProps struct {
 	Href   string
 	Icon   IconName
 	Active bool
+	NewTab bool // the address is on the web: it opens in a tab of its own, and says so to a reader
 }
 
 // NavItem is one entry of the sidebar. It is Go and not a templ component, for the same reason as Icon: it is on every page, once for each page of the app, and a component costs a closure, a
@@ -343,13 +344,20 @@ func NavItem(p NavItemProps) templ.Component {
 	if p.Active {
 		b.WriteString(` aria-current="page"`)
 	}
+	if p.NewTab {
+		b.WriteString(` target="_blank" rel="noopener noreferrer"`)
+	}
 	b.WriteByte('>')
 	if p.Icon != IconNone {
 		b.WriteString(iconOf(p.Icon, "ni").markup)
 	} else {
 		b.WriteString(`<span class="ni ni-blank" aria-hidden="true"></span>`) // holds the place of an icon, so that the labels line up
 	}
-	b.WriteString("<span>" + html.EscapeString(p.Label) + "</span></a>")
+	b.WriteString("<span>" + html.EscapeString(p.Label) + "</span>")
+	if p.NewTab {
+		b.WriteString(`<span class="sr-only">(opens in a new tab)</span>`)
+	}
+	b.WriteString("</a>")
 	return templ.Raw(b.String())
 }
 

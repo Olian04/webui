@@ -101,7 +101,7 @@ func newShop() *shop {
 		},
 	}
 	list = webui.Page[webui.NoArgs]{
-		Path: "/device", Nav: webui.Nav{Label: "Devices"},
+		Path: "/device",
 		View: webui.Table[Device]{
 			Title: "Devices",
 			Loader: webui.PagedLoader[Device]{Load: func(context.Context, webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
@@ -140,7 +140,7 @@ func newShop() *shop {
 		},
 	}
 	s.redirect = nil
-	s.h = webui.App{Pages: webui.Pages{list, details}}.MustCompile("/admin")
+	s.h = webui.App{Pages: webui.Pages{list, details}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}}}.MustCompile("/admin")
 	return s
 }
 

@@ -53,7 +53,9 @@ func TestAnAppCanNameAnyIconAndTheFontItIsServedHasEachGlyph(t *testing.T) {
 	assert.True(t, len(names) > 1500)
 	app := &ir.App{}
 	for i, name := range names {
-		app.Pages = append(app.Pages, &ir.Page{PathTemplate: "/i" + strconv.Itoa(i), Nav: ir.Nav{Label: name, Icon: name}})
+		path := "/i" + strconv.Itoa(i)
+		app.Pages = append(app.Pages, &ir.Page{PathTemplate: path, Nav: ir.Nav{Label: name}})
+		app.Navigation = append(app.Navigation, ir.NavItem{Kind: ir.NavKindPage, Label: name, Icon: name, Path: path})
 	}
 	sheet, font := iconSheetAndFont(t, app)
 
@@ -84,11 +86,11 @@ func TestAnAppThatNamesNoIconCarriesTheOnesTheLibraryDrawsAndNothingElse(t *test
 	assert.True(t, int(font.NumGlyphs()) <= len(codes)+1) // the glyphs, and the one that stands for a character the font has not got
 }
 
-// An external link's icon is the second place an app names one, and its font has the glyph too.
-func TestAnExternalLinksIconIsDrawnFromTheAppsFont(t *testing.T) {
+// A menu entry's icon is the second place an app names one, and its font has the glyph too.
+func TestAMenuEntrysIconIsDrawnFromTheAppsFont(t *testing.T) {
 	t.Parallel()
 
-	sheet, font := iconSheetAndFont(t, &ir.App{ExternalLinks: []ir.ExternalLink{{Label: "Docs", Icon: "book-skull", URL: "/docs"}}})
+	sheet, font := iconSheetAndFont(t, &ir.App{Menu: []ir.NavItem{{Kind: ir.NavKindURL, Label: "Docs", Icon: "book-skull", URL: "/docs"}}})
 	code, ok := assets.IconCode("book-skull")
 	assert.True(t, ok)
 	assert.Contains(t, sheet, `.fa-book-skull:before{content:"\`+strconv.FormatInt(int64(code), 16)+`"}`)

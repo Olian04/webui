@@ -48,8 +48,8 @@ func returnsApp() http.Handler {
 			Submit: webui.Action[Device]{Run: run},
 		},
 	}
-	list := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
-	return webui.App{Pages: webui.Pages{list, details, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}}.MustCompile("/admin")
+	list := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
+	return webui.App{Pages: webui.Pages{list, details, webui.Page[webui.NoArgs]{Path: elsewhere, View: webui.Stack{}}}, Navigation: []webui.NavItem{webui.NavPage{Page: list, Label: "Devices"}}}.MustCompile("/admin")
 }
 
 // sent is what the user is left with after a submit: the status, where they go, and the
@@ -207,9 +207,9 @@ func TestBackAndStayOnATableActionLeaveForTheParentOrStay(t *testing.T) {
 			Columns: []webui.Accessor[Device]{formID},
 			Actions: []webui.Control[Device]{webui.Action[Device]{Label: "Go", Run: func(context.Context, Device) (webui.Outcome, error) { return o, nil }}},
 		}
-		parent := webui.Page[webui.NoArgs]{Path: "/device", Nav: webui.Nav{Label: "Devices"}, View: webui.Stack{}}
+		parent := webui.Page[webui.NoArgs]{Path: "/device", View: webui.Stack{}}
 		child := webui.Page[webui.NoArgs]{Path: "/device/log", View: table}
-		return webui.App{Pages: webui.Pages{parent, child}}.MustCompile("/admin")
+		return webui.App{Pages: webui.Pages{parent, child}, Navigation: []webui.NavItem{webui.NavPage{Page: parent, Label: "Devices"}}}.MustCompile("/admin")
 	}
 	post1 := func(h http.Handler) *httptest.ResponseRecorder {
 		return post(h, "/admin/device/log", url.Values{"_view": {"p"}, "_act": {"row:0:a"}})

@@ -16,12 +16,9 @@ type App struct {
 	Pages            []*Page
 	ByPath           map[string]*Page // destination resolution, not a route table
 
-	// Sections are the sidebar's sections that the app gave an icon and a place in the order, in that order.
-	Sections []NavSection
-
-	// ExternalLinks are the app's own links to places outside it, behind a button in the
-	// top bar.
-	ExternalLinks []ExternalLink
+	// Navigation is the sidebar and Menu the links behind the button in the top bar, in order.
+	Navigation []NavItem
+	Menu       []NavItem
 
 	// Observer is told what the runtime does, or nil for nothing told.
 	Observer Observer
@@ -73,10 +70,4 @@ type Theme struct {
 // ModeColors are an app's colours for one mode, empty where it has none.
 type ModeColors struct {
 	Canvas, Accent, OK, Warning, Critical string
-}
-
-// NavSection is a sidebar section that the app gave an icon and a place in the order.
-type NavSection struct {
-	Name string
-	Icon string
 }

@@ -21,7 +21,7 @@ templ (r *Renderer) Document(d Doc) {
 		Scripts:     r.scripts(d),
 		Head:        r.head(d.Code),
 		Sidebar:     r.sidebarFor(d),
-		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query, !r.hasSidebar()),
+		TopBar:      r.topbar(d.Crumbs, d.URL, d.Query, !r.hasSidebar(), d.HideNav),
 		Status:      r.statusBar(d, c.StatusBar),
 		Toasts:      toastRegion(d.Toasts),
 		Heading:     d.Title,
@@ -100,19 +100,19 @@ templ (r *Renderer) favicons() {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-// sidebar lists the entries the visitor may open, grouped by section. The entries of no section are drawn as they are, first; a section is a category that opens and
-// closes, open when it holds the page on screen, and one with nothing left in it that the visitor may open is not drawn at all.
+// sidebar lists the entries the visitor may open, in the order the app declared them: an entry is drawn as it is, and a group is a category that opens and closes, open when
+// it holds the page on screen, and one with nothing left in it that the visitor may open is not drawn at all.
 templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[string][]NavLink) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: home}) {
-		for _, g := range r.navGroups(hide, links) {
-			if g.Section == "" {
-				for _, e := range g.Entries {
-					@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon)})
+		for _, t := range r.navTops(hide, links) {
+			if !t.Group {
+				for _, e := range t.Entries {
+					@r.navItem(e, active)
 				}
 			} else {
-				@c.NavGroup(c.NavGroupProps{Label: g.Section, Icon: c.IconName(g.Icon), Open: g.holds(active)}) {
-					for _, e := range g.Entries {
-						@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon)})
+				@c.NavGroup(c.NavGroupProps{Label: t.Label, Icon: c.IconName(t.Icon), Open: t.holds(active)}) {
+					for _, e := range t.Entries {
+						@r.navItem(e, active)
 					}
 				}
 			}
@@ -126,7 +126,7 @@ templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map
 // The search is only there when some page has a Search, since it is only the results of those: an app with none has no search box.
 // It is a form, so without script it has a button, and the answer is a page of results. Refresh is a link to the address the browser is on, so it
 // reloads the page, state in the address and all, with or without script.
-templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
+templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool, hide map[string]bool) {
 	@c.TopBar(c.TopBarProps{Crumbs: crumbs, Mark: r.topMark(bare), Nav: !bare}) {
 		if r.search {
 			@c.Search(c.SearchProps{Placeholder: "Search…", Shortcut: "⌘K", Action: r.AssetHref("search"), Value: query, Attrs: r.searchAttrs()})
@@ -136,7 +136,7 @@ templ (r *Renderer) topbar(crumbs []c.Crumb, here, query string, bare bool) {
 			Attrs: templ.Attributes{"data-refresh": true},
 		})
 		@c.ThemeToggle()
-		if items := r.linkEntries(); len(items) > 0 {
+		if items := r.linkEntries(hide); len(items) > 0 {
 			@c.ExternalLinks(items)
 		}
 		if r.search {
@@ -1279,4 +1279,9 @@ templ SearchPage(query string, groups []SearchGroup) {
 			}
 		</div>
 	</div>
+}
+
+// navItem is an entry of the sidebar: a link to a page, or to an address, which opens in a tab of its own when it is on the web.
+templ (r *Renderer) navItem(e navEntry, active string) {
+	@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), NewTab: e.NewTab})
 }

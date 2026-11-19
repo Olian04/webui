@@ -24,8 +24,6 @@ type DetailsArgs struct {
 func TestSketchTypes(t *testing.T) {
 	t.Parallel()
 
-	var DevicesNav = webui.Nav{Label: "Devices"}
-
 	var (
 		ID = webui.String[Device]{
 			Label: "ID",
@@ -84,7 +82,6 @@ func TestSketchTypes(t *testing.T) {
 
 	var Devices = webui.Page[webui.NoArgs]{
 		Path: "/device",
-		Nav:  DevicesNav,
 		View: webui.Table[Device]{
 			Loader: webui.PagedLoader[Device]{Load: func(_ context.Context, _ webui.PagedQuery) (webui.PagedWindow[Device], webui.Loaded) {
 				return webui.PagedWindow[Device]{}, webui.Ready()
@@ -121,6 +118,9 @@ func TestSketchTypes(t *testing.T) {
 		Pages: webui.Pages{
 			Devices,
 			Details,
+		},
+		Navigation: []webui.NavItem{
+			webui.NavPage{Page: Devices, Label: "Devices"},
 		},
 	}
 
