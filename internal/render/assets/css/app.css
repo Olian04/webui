@@ -388,6 +388,10 @@ a.side-brand:hover {
 .nav-group-items {
   padding-bottom: 6px;
 }
+/* The entries of a category are a little in from its own icon, so that they are told as under it. */
+.nav-group-items .nav-item {
+  padding-left: 24px;
+}
 .nav-item {
   display: flex;
   align-items: center;
@@ -3117,6 +3121,9 @@ html.js .status-meta [data-built] {
     background: none;
   }
   html[data-sidebar='collapsed'] .nav-group-items {
+    padding: 0;
+  }
+  html[data-sidebar='collapsed'] .nav-group-items .nav-item {
     padding: 0;
   }
   html[data-sidebar='collapsed'] .nav-section::before {
