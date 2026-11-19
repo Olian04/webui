@@ -112,10 +112,10 @@ next.
    library does for you in each.
 4. **Actions.** Mutations are actions with a guard and a way of reporting how they
    ended. Keep them thin: call your own functions, return an outcome.
-5. **Pages.** A path (with arguments in it where a page is about one thing), a
-   sidebar entry only where the page belongs in the sidebar, an optional guard, and a
-   view. Detail pages usually have no entry of their own; the library works out which
-   entry to light.
+5. **Pages.** A path (with arguments in it where a page is about one thing), an
+   optional guard, and a view; the app's navigation lists an entry only for a page that
+   belongs in the sidebar. Detail pages usually have no entry of their own; the library
+   works out which entry to light.
 6. **The app.** Pages, the brand, an optional theme, and the links to places outside the app.
 7. **Mount it.** Compile with the prefix the app lives under, and mount the handler
    there, behind your own authentication. See "Authentication" below.

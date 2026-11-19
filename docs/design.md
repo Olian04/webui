@@ -178,7 +178,7 @@ becomes a top bar and never turns into a hamburger on a desktop, and it is not n
 (640px and under) it is a drawer behind a hamburger. The structure of the
 application is the one thing that should not disappear: when there is any.
 
-**An app has a sidebar when a page declares an entry for it.** It is drawn when any page has a `Nav` entry (a `Label`, or `NavEntries`), and not otherwise: where no page
+**An app has a sidebar when it declares a Navigation.** It is drawn when `App.Navigation` has an entry, and not otherwise: where no page
 declares one there is nothing for a sidebar to list, the page has the width, and the app's author, who writes the declarations, is the one who decides. It is the declaration that decides
 and not what a visitor may open of it, so a page does not change shape with who is looking: a visitor whom every Guard refuses sees the sidebar with an empty list, as one whose list is short
 sees a short one. A detail page that has no entry of its own does not give the app a sidebar. Where there is none, the top bar begins with the app's mark, since the sidebar's brand is not there to show it. The collapse button and the resize handle have nothing to act on, and are not drawn.

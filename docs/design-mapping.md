@@ -25,14 +25,11 @@ into existence, and nothing is configured twice.
 | `Page.Crumb` | What the page's crumb reads, in the breadcrumb and the tab title, in place of the value that the path has for the segment; it names the page as the parent of one below it too, when the path has the arguments the parent needs. Asked whenever a full page is drawn, within two seconds for all of a page's crumbs, and not for a parent whose `Guard` refuses the visitor |
 | `Page` argument struct `A` | The address: path fields are the breadcrumb, query fields have no control |
 | `Page.Guard` | The **Not permitted** full-page state; a `Refusal` it returns is the **Not found**, **Not signed in** or **Not permitted** state of its status, with its message and, when it has one, a link on |
-| `Nav.Label` | A sidebar entry (a page with no `Label` has none), shown only to a visitor whose page `Guard` lets them in |
-| `Page.NavEntries` | An entry for each of a page's arguments, read when a page is drawn, in the place and with the icon of the page's `Nav`; the one whose arguments fit the address is lit |
-| `Nav.Section` | The name of a category of the sidebar: a `<details>` that the visitor opens and shuts, open when it holds the page on screen, with its entries under it. The sidebar is grouped by it, not by position: entries without one first, drawn as they are, then each section in the order `App.Sections` lists them, and then the rest in the order each is first named |
-| `App.Sections` | A `NavSection` (a `Name` and an `Icon`) for each section that is to have an icon of its own and a place in the order. A section that is not listed works as before, without an icon, after the ones that are |
+| `App.Navigation` | The sidebar, in the order written. A `NavPage` is one 32px entry that opens a page whose path has no arguments (a `Label`, an `Icon`), shown only to a visitor whose page `Guard` lets them in; a `NavURL` opens an address (a web address in a tab of its own); a `NavGroup` is a category: a `<details>` that the visitor opens and shuts, open when it holds the page on screen, with its entries under it, one level; a `NavPages` is an entry for each address of a page that has arguments, read when a page is drawn, with the icon given, the one whose arguments fit the address lit |
 | `Page.Search` | The page's things as a group of results in the top bar's search, which lists nothing else and is not drawn at all when no page has a `Search`; empty, it shows nothing, and it says "Searching…" and "Nothing matches." Each `Hit` is the page's arguments that it leads to, a title and a line beneath, grouped under the page's name in the navigation (or the entry it borrows from). `SearchRows` makes a `Search` from rows in memory |
 | Search results, ranked | Ranked by how well the `Hit`'s title (and its line beneath, for a little over half as much) matches what was typed, the best group first and the best result first in each; each page keeps its best eight. A result appears only if the page would let the visitor in (its `Guard`, run with the hit's own arguments) |
 | Search, with and without script | Every page's search is asked at once and the answer is sent whole, as HTML: with script the box lists it as it is typed; without, the box is a form with a *Search* button joined to its right edge, and its answer is a page of results in the shell |
-| `App.ExternalLinks` | The button in the top bar, beside Refresh, and the popover list of the app's links to places outside it behind it. An `ExternalLink` is a `Nav` entry (label, icon, section caption) with a `URL`, used as written (a web address opens in a tab of its own; the list groups by `Section`, not by position: entries without one come first, then each section in the order it is first named), so it is outside the app: signing out, the documentation |
+| `App.Menu` | The button in the top bar, beside Refresh, and the popover list behind it: the same entries as the sidebar's (a `NavURL`, a `NavPage`, a `NavGroup` of them, drawn as a caption above its entries), outside the app or in it: signing out, the documentation. A `NavPages` is not allowed in it |
 | *(a page with no `Label`)* | Lights its nearest ancestor path's entry while open |
 | `Page.View` | The arrangement of panels inside the content region |
 | `Stack` | Panels in a column, 8px apart |
@@ -197,14 +194,14 @@ the page is handed is what it declared.
 
 ## Navigation
 
-### `Nav.Label` → a sidebar entry
+### `NavPage` → a sidebar entry
 
 Straightforward: one page, one 32px entry, with the active treatment (Active
 background, full-strength text, 2px primary bar at the left edge) when it is
-the current page. An app in which no page has one draws no sidebar, so there is
+the current page. An app with no `Navigation` draws no sidebar, so there is
 no entry to draw.
 
-`Nav.Icon` is the name of a Font Awesome Free solid icon, `"house"` for
+An entry's `Icon` is the name of a Font Awesome Free solid icon, `"house"` for
 `fa-house`, drawn at the left of the entry. The renderer uses it as a class
 (`<i class="fa-solid fa-house">`) and serves the icon font itself, so the
 content security policy stays `'self'` and nothing is fetched from a CDN. A
@@ -227,18 +224,16 @@ nowhere to go, the brand is plain text and the root says so.
 ### A page with arguments → an entry for each address
 
 An entry is a link, and a link has one address. A page at `/site/{name}` has none until a
-name is given, so on its own it has no entry (a `Nav.Label` on it is a compile error). With
-`NavEntries` it has one for each address the function returns, each a `NavEntry` of the page's
-arguments and what it says, in the place the page has in the sidebar and under the icon and
-section of its `Nav`. The entry of the address on screen is lit, and so is it for a page
+name is given, so a `NavPage` of it is a compile error. A `NavPages` has one for each address its `Entries` returns, each a `NavEntry` of the page's
+arguments and what it says, in the place it stands in the sidebar and under the icon it was given. The entry of the address on screen is lit, and so is it for a page
 below it that borrows its place.
 
 ### A page with no entry → the ancestor's highlight
 
 A detail page has no business adding a permanent sidebar entry, but it must not
 leave the sidebar looking like nothing is selected. Nothing is declared for
-this: a page with no `Label` lights the entry of its nearest ancestor path, the
-longest proper prefix of its own that is a page with a `Label` (the root is never
+this: a page that is in no entry of the `Navigation` lights the entry of its nearest ancestor path, the
+longest proper prefix of its own that is a page with an entry (the root is never
 one). `/device/{id}` lights *Devices*, the page at `/device`. Visually: the
 sidebar stays on *Devices* while you are on a device, and the **breadcrumb**
 carries the fact that you have gone a level deeper. It is the same derivation
@@ -577,9 +572,8 @@ one is deferred on purpose.
 2. **Collapsible rows — deferred.** `Stack` is a slice type, so it cannot carry
    a `Label` without becoming a struct. A long page is scannable with `Tabs`
    until that is wanted.
-3. **Sidebar grouping — closed, flat.** `Nav.Section` is a caption above a group
-   of entries, named by each entry that belongs to it. Nesting (`Nav.Parent`) would need the compile step to validate a
-   tree and is not worth it until an app exceeds a screenful of entries.
+3. **Sidebar grouping — closed, one level.** A `NavGroup` holds entries and not other groups, and the order is the one the app writes. Nesting would need
+   indentation, open-state and keyboard rules for a tree and is not worth it until an app exceeds a screenful of entries; the type can allow it later.
 4. **Badges and inline bars — closed.** `Select` and `Slider` are accessors
    alongside `String`, `Int` and `Float`, not a display mode bolted on top: a
    status is a select, drawn as a badge, and a quantity is a slider — read-only it is the progress

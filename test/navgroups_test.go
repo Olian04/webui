@@ -71,7 +71,7 @@ func TestAGroupIsACategoryThatIsOpenWhenItHoldsThePageOnScreen(t *testing.T) {
 func TestAGroupHasItsIconAndStandsWhereTheAppWroteIt(t *testing.T) {
 	t.Parallel()
 
-	h := groupsApp(func(a, b, c, d, home webui.Page[webui.NoArgs]) []webui.NavItem {
+	h := groupsApp(func(a, _, c, d, _ webui.Page[webui.NoArgs]) []webui.NavItem {
 		return []webui.NavItem{
 			webui.NavGroup{Label: "Extras", Icon: "book", Items: []webui.NavItem{webui.NavPage{Page: d, Label: "Delta"}}},
 			webui.NavGroup{Label: "Access", Icon: "server", Items: []webui.NavItem{webui.NavPage{Page: c, Label: "Gamma"}}},
@@ -88,7 +88,7 @@ func TestAGroupHasItsIconAndStandsWhereTheAppWroteIt(t *testing.T) {
 func TestAnAddressInTheSidebarOpensWhereItSaysAndInATabOfItsOwnWhenItIsOnTheWeb(t *testing.T) {
 	t.Parallel()
 
-	h := groupsApp(func(a, b, c, d, home webui.Page[webui.NoArgs]) []webui.NavItem {
+	h := groupsApp(func(_, _, _, _, home webui.Page[webui.NoArgs]) []webui.NavItem {
 		return []webui.NavItem{
 			webui.NavPage{Page: home, Label: "Home"},
 			webui.NavGroup{Label: "Help", Items: []webui.NavItem{

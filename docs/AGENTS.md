@@ -62,7 +62,7 @@ two sections before adding a field to close one.
 
 Icons are Font Awesome Free (solid), drawn with a vendored font that is not served whole. The font of all 2,000 icons is 120 KB and a page draws a few, so when an app starts, `addIcons`
 (`internal/render/assets.go`) cuts a font of the icons that the app can draw and no others (`assets.IconFont`, with `internal/sfnt`), and makes its icon stylesheet: a rule for each of them. The icons
-are the ones the library draws itself (`icons_core.txt`) and the ones the app names, which it can do in two places only, a page's `Nav.Icon` and an `ExternalLink.Icon`, both checked by `Compile`.
+are the ones the library draws itself (`icons_core.txt`) and the ones the app names, which it can do in two places only, an entry of `App.Navigation` and one of `App.Menu` (a group's icon too), all checked by `Compile`.
 The font of the demo is 5 KB and its stylesheet 0.7 KB, from 120 KB and 15 KB. No icon is left out for an app that names it: `TestAnAppCanNameAnyIconAndTheFontItIsServedHasEachGlyph` names all
 of them and checks each. When the library starts to draw an icon of its own it goes in `icons_core.txt`; `TestEveryIconThatTheLibraryDrawsIsInTheCoreList` says so when it is not.
 `fonts/fa-solid-900.woff` is the whole font (SIL OFL, license in `fonts/`), as WOFF 1.0 so that the standard library reads it; `icons.txt` is each name `Compile` accepts and its code point, generated from a
