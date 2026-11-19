@@ -5,7 +5,7 @@ import "github.com/Olian04/webui/internal/render"
 // Styles are the addresses of the stylesheets that make a page of your own look as the app does, for a page that the app makes itself, such as the page in an [Embed]: a classless stylesheet,
 // and the app's theme when it has one.
 //
-// Classless means that it styles elements and nothing else: headings, paragraphs, lists, links, quotes, code, tables and forms, the page's background and text, and the app's scrollbars and focus
+// Classless means that it styles elements and nothing else: headings, paragraphs, lists, links, quotes, code, tables and forms, the page's ground (the panel's colour, since the page is shown in a panel) and text, and the app's scrollbars and focus
 // ring. A page writes plain semantic HTML and looks like the app. No class name is promised, because there is none in it, so the library is free to change how an element looks. What is promised
 // is that, and the names of these custom properties, which the page may read in its own CSS (an SVG's fill, a border of its own) and which follow the visitor's colour scheme and the app's theme:
 // --canvas --panel --raise --input-bg --border --border-2 --control-bd --text --text-2 --text-3 --hover --blue --blue-text --green --green-bg --green-bd --orange --orange-bg --orange-bd --red

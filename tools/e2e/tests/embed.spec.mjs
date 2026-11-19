@@ -21,7 +21,13 @@ test('the page in the frame has the look of the app, from the stylesheet that Ap
   await expect(frame.getByRole('img', { name: /Collector status/ })).toBeVisible();
   const look = (locator, ...props) => locator.evaluate((el, props) => Object.fromEntries(props.map((p) => [p, getComputedStyle(el)[p]])), props);
   // The page has no class anywhere. Its canvas, its text and its font are the app's, and a table is a table of the app: its head is the app's quiet 500 weight, not the browser's bold.
-  expect(await look(frame.locator('body'), 'backgroundColor', 'color', 'fontFamily')).toEqual(await look(page.locator('body'), 'backgroundColor', 'color', 'fontFamily'));
+  // The frame sits in a panel, so its ground is the panel's, not the app's canvas behind it.
+  const frameBody = await look(frame.locator('body'), 'backgroundColor', 'color', 'fontFamily');
+  const hostBody = await look(page.locator('body'), 'backgroundColor', 'color', 'fontFamily');
+  expect(frameBody.color).toBe(hostBody.color);
+  expect(frameBody.fontFamily).toBe(hostBody.fontFamily);
+  expect(frameBody.backgroundColor).not.toBe(hostBody.backgroundColor);
+  expect(frameBody.backgroundColor).toBe(await page.locator('main').first().evaluate((el) => { const p = document.createElement('i'); p.style.color = 'var(--panel)'; el.append(p); const c = getComputedStyle(p).color; p.remove(); return c; }));
   expect(await frame.locator('a').first().evaluate((el) => getComputedStyle(el).color)).toBe(await frame.locator('body').evaluate((el) => { const probe = document.createElement('i'); probe.style.color = 'var(--blue-text)'; el.append(probe); return getComputedStyle(probe).color; }));
   const head = await look(frame.getByRole('columnheader').first(), 'fontWeight', 'textTransform');
   expect(head.fontWeight).toBe('500');

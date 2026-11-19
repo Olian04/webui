@@ -4,6 +4,11 @@
    There is no class and no id in this file, on purpose: what is promised to a page is that semantic markup looks like the app, and not the name of a class (the one test of it is
    TestTheClasslessStylesheetHasNoClass). Every rule is inside :where(), so it has no weight, and a page that wants an element otherwise needs only to say so. */
 
+/* The page is shown inside a panel (an Embed), so its ground is the panel's colour and not the app's canvas. This one rule is not in :where(): it has to outweigh base.css's body, which is
+   the canvas. A page that wants another ground says so with a rule of its own, after this sheet. */
+body {
+  background: var(--panel);
+}
 :where(body) {
   padding: 14px 16px;
 }
