@@ -130,7 +130,7 @@ func (r *Renderer) Asset(name string) (*assetserve.Blob, bool) {
 // faviconName is the asset a favicon of one size is served as.
 func faviconName(size int) string { return "favicon-" + strconv.Itoa(size) + ".png" }
 
-// addIcons makes the icon stylesheet of this app, and serves its font. An app can name an icon in two places only, a page's Nav and an external link, and both are
+// addIcons makes the icon stylesheet of this app, and serves its font. An app can name an icon in three places only, a page's Nav, a section and an external link, and all are
 // checked against the list of icons when it compiles, so the icons it can draw are known now: those, and the ones the library draws itself. The font is cut to
 // them, and the stylesheet has a rule for each of them and no other: the stylesheet of every icon was 83 KB of which a page used a few lines, and the font 120 KB of
 // which it drew a few glyphs.
@@ -142,6 +142,11 @@ func (r *Renderer) addIcons(add func(logical string, body []byte, mime string, b
 	for _, p := range r.app.Pages {
 		if p.Nav.Icon != "" {
 			names[p.Nav.Icon] = true
+		}
+	}
+	for _, s := range r.app.Sections {
+		if s.Icon != "" {
+			names[s.Icon] = true
 		}
 	}
 	for _, l := range r.app.ExternalLinks {

@@ -100,16 +100,25 @@ func sidebarNav(t *testing.T, p *page.Page) page.El {
 	return page.One(t, "main navigation", p.ByRole("navigation", "Main"))
 }
 
-// outline lists what a reader of the sidebar is told, in order: the name of each entry, and the caption of each section after a "#".
+// outline lists what a reader of the sidebar is told, in order: the name of each entry, and the name of each section after a "#", with the entries that are in it after that. A
+// section is a category that is opened and shut, and what is in it is there to be read when it is shut.
 func outline(t *testing.T, p *page.Page) []string {
 	t.Helper()
 
 	var out []string
 	for _, c := range sidebarNav(t, p).Children() {
-		if c.Role() == "link" {
+		switch {
+		case c.Role() == "link":
 			out = append(out, c.Name())
-		} else if text := c.Text(); text != "" {
-			out = append(out, "# "+text)
+		case c.Tag() == "details":
+			for _, part := range c.Children() {
+				if part.Tag() == "summary" {
+					out = append(out, "# "+part.Text())
+				}
+			}
+			for _, l := range c.ByRole("link", "") {
+				out = append(out, l.Name())
+			}
 		}
 	}
 	return out

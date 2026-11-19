@@ -100,16 +100,22 @@ templ (r *Renderer) favicons() {
 
 func sizes(n int) string { return strconv.Itoa(n) + "x" + strconv.Itoa(n) }
 
-// sidebar lists the entries the visitor may open, grouped by section. A section's
-// caption appears above its first entry that is shown, so a section with nothing
-// left in it has no caption either.
+// sidebar lists the entries the visitor may open, grouped by section. The entries of no section are drawn as they are, first; a section is a category that opens and
+// closes, open when it holds the page on screen, and one with nothing left in it that the visitor may open is not drawn at all.
 templ (r *Renderer) sidebar(home, active string, hide map[string]bool, links map[string][]NavLink) {
 	@c.Sidebar(c.SidebarProps{Brand: r.brand(), Logo: r.logoHref(), Home: home, Footer: r.sidebarFooter()}) {
-		for _, e := range r.shown(hide, links) {
-			if e.Section != "" {
-				@c.NavSection(e.Section)
+		for _, g := range r.navGroups(hide, links) {
+			if g.Section == "" {
+				for _, e := range g.Entries {
+					@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
+				}
+			} else {
+				@c.NavGroup(c.NavGroupProps{Label: g.Section, Icon: c.IconName(g.Icon), Open: g.holds(active)}) {
+					for _, e := range g.Entries {
+						@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
+					}
+				}
 			}
-			@c.NavItem(c.NavItemProps{Label: e.Label, Href: e.Href, Active: e.lit(active), Icon: c.IconName(e.Icon), Letter: initial(e.Label)})
 		}
 	}
 }

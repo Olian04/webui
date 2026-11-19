@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -394,12 +395,35 @@ func initial(label string) string {
 	return ""
 }
 
+// navGroup is one section of the sidebar, as the visitor sees it: the entries that they may open, and the icon the app gave the section. The first group is the
+// entries that belong to no section, which are drawn as they are and not under a category.
+type navGroup struct {
+	Section string
+	Icon    string
+	Entries []navEntry
+}
+
 // shown is the navigation entries the visitor may open, in the order the sidebar
 // lists them, which is grouped by Section and not by position: the entries with no
-// Section come first, then each section in the order it is first named, each with
-// its entries in the order given and its caption on the first of them. A section
-// with nothing left in it has no caption either.
+// Section come first, then each section, each with its entries in the order given and
+// its name on the first of them. A section with nothing left in it is not there.
 func (r *Renderer) shown(hide map[string]bool, links map[string][]NavLink) []navEntry {
+	var out []navEntry
+	for _, g := range r.navGroups(hide, links) {
+		for i, e := range g.Entries {
+			e.Section = ""
+			if i == 0 {
+				e.Section = g.Section
+			}
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// navGroups is the sidebar's sections in the order it draws them: the entries of no section first, then the sections that the app named in App.Sections, in that order, and then
+// the others, each in the order it is first named by a page. A section that the visitor may open nothing of is left out.
+func (r *Renderer) navGroups(hide map[string]bool, links map[string][]NavLink) []navGroup {
 	var open []navEntry
 	for _, e := range r.nav {
 		switch {
@@ -413,15 +437,32 @@ func (r *Renderer) shown(hide map[string]bool, links map[string][]NavLink) []nav
 			open = append(open, e)
 		}
 	}
-	var out []navEntry
-	for _, g := range bySection(open, func(e navEntry) string { return e.Section }) {
-		for i, e := range g.items {
-			e.Section = ""
-			if i == 0 {
-				e.Section = g.section
-			}
-			out = append(out, e)
+	groups := bySection(open, func(e navEntry) string { return e.Section })
+	icon := map[string]string{}
+	rank := map[string]int{}
+	for i, s := range r.app.Sections {
+		icon[s.Name], rank[s.Name] = s.Icon, i
+	}
+	// The entries of no section stay first; the sections the app named follow in its order, and the rest in theirs (a stable sort keeps it).
+	slices.SortStableFunc(groups[1:], func(a, b group[navEntry]) int {
+		ra, oka := rank[a.section]
+		rb, okb := rank[b.section]
+		switch {
+		case oka && okb:
+			return ra - rb
+		case oka:
+			return -1
+		case okb:
+			return 1
 		}
+		return 0
+	})
+	out := make([]navGroup, 0, len(groups))
+	for _, g := range groups {
+		if len(g.items) == 0 {
+			continue
+		}
+		out = append(out, navGroup{Section: g.section, Icon: icon[g.section], Entries: g.items})
 	}
 	return out
 }
@@ -581,4 +622,14 @@ func refusedTitle(refused int, title string) string {
 		return "Not saved, " + strconv.Itoa(refused) + " fields need attention — " + title
 	}
 	return title
+}
+
+// holds is whether a section holds the entry that is on screen, which is why it is open.
+func (g navGroup) holds(active string) bool {
+	for _, e := range g.Entries {
+		if e.lit(active) {
+			return true
+		}
+	}
+	return false
 }

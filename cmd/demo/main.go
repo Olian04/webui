@@ -64,6 +64,16 @@ var app = webui.App{
 		{Label: "Report a problem", Icon: "bug", Section: "Help", URL: "https://github.com/Olian04/webui/issues"},
 		{Label: "Log out", Icon: "right-from-bracket", Section: "Account", URL: "/login"},
 	},
+	// A section is a category of the sidebar that opens and closes; here each has an icon, and they stand in this order. The one that holds the page on screen is open.
+	Sections: []webui.NavSection{
+		{Name: "Platform", Icon: "server"},
+		{Name: "Sites", Icon: "location-dot"},
+		{Name: "Configuration", Icon: "sliders"},
+		{Name: "Operations", Icon: "gears"},
+		{Name: "Handbook", Icon: "book"},
+		{Name: "Layout", Icon: "table-columns"},
+		{Name: "Loading", Icon: "spinner"},
+	},
 	Pages: webui.Pages{Overview, Devices, NewDevicePage, Details, Compare, Sites, SiteDetail, Alerts, AlertDetails, Activity, ReleaseDay, Ingest, Retention, Configuration, PagingRule, System, Audit, FirmwarePage, FilesRoot, FilesAt, HandbookRunbook, HandbookIncidents, HandbookSinks, HandbookGlossary, LoadingOrder, LoadingStaircase, LoadingTabs, LoadingNested, LoadingFailures, LoadingWhole, LoadingGuarded, LoadingFast, LayoutSplit, LayoutRail, LayoutColumns, LayoutWeights, LayoutTabs, LayoutManyTabs, LayoutDeep, LayoutReview, LayoutRunbook, LayoutToolbars, LayoutList},
 }
 

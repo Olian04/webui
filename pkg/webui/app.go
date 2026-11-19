@@ -29,6 +29,12 @@ type App struct {
 	// Pages are the pages to serve. Each page that another links to must be here.
 	Pages Pages
 
+	// Sections says how the sidebar's sections look and in what order they stand. A section is a name that entries give themselves in [Nav.Section], and is drawn as a category
+	// that the visitor can open and close: it is open when it holds the page on screen, and shut otherwise, and what the visitor opens is not kept. A section that is named
+	// here has the icon that it gives, and stands before the ones that are not, in the order of this list; one that is not named here has no icon, and follows in the order
+	// it is first named by a page, which is what every section did before. A name that no entry gives itself is not an error: its section has nothing in it, and is not drawn.
+	Sections []NavSection
+
 	// ExternalLinks are the app's links to places outside it, behind a button in the top
 	// bar that is not part of the sidebar: signing out, an account page on another
 	// service, the documentation. With none, there is no button.
@@ -67,6 +73,16 @@ type App struct {
 	// addresses that another must accept. Changing it, like restarting, changes the addresses,
 	// so a browser fetches the files again once.
 	Secret []byte
+}
+
+// NavSection is a section of the sidebar that an app gives an icon, and a place in the order: see [App.Sections].
+type NavSection struct {
+	// Name is the section's name, as the entries that belong to it say it in [Nav.Section]. It is what the category says, and must be set and not given twice.
+	Name string
+
+	// Icon is the name of a Font Awesome Free solid icon, "display" for fa-display, drawn before the name. An unknown name is a compile error. Without one the category is its
+	// name and its chevron.
+	Icon string
 }
 
 // ExternalLink is a link in [App.ExternalLinks]. It is a [Nav] entry, with the Label

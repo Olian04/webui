@@ -51,6 +51,7 @@ func (a App) lower() (*ir.App, error) {
 		Description:      a.Description,
 		NoConsoleMessage: a.NoConsoleMessage,
 		Theme:            lowerTheme(a.Theme),
+		Sections:         convert.Slice(a.Sections, func(s NavSection) ir.NavSection { return ir.NavSection{Name: s.Name, Icon: s.Icon} }),
 		ExternalLinks:    lowerExternalLinks(a.ExternalLinks),
 		Logger:           a.Logger,
 		Secret:           a.Secret,
