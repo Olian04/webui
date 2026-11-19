@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/a-h/templ"
 
@@ -384,15 +383,6 @@ func (r *Renderer) brand() string {
 		return "Home"
 	}
 	return r.app.Brand.Name
-}
-
-// initial is the first letter of a label, capitalised: what an entry with no
-// icon shows when the sidebar is a rail.
-func initial(label string) string {
-	for _, c := range label {
-		return string(unicode.ToUpper(c))
-	}
-	return ""
 }
 
 // navGroup is one section of the sidebar, as the visitor sees it: the entries that they may open, and the icon the app gave the section. The first group is the

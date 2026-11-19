@@ -835,8 +835,7 @@
 // The sidebar is 240px wide, and a label that is wider is cut short with an ellipsis,
 // its whole being its title. With script its edge can be dragged to a width of 180 to
 // 480px, no more than half the window, which the browser keeps (in its own storage,
-// never sent to the server) and which a double click or Enter on the edge resets; the
-// icon rail that the collapse button makes has a width of its own.
+// never sent to the server) and which a double click or Enter on the edge resets.
 //
 // # Figures
 //

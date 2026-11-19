@@ -143,8 +143,7 @@ type Nav struct {
 
 	// Icon is the name of a Font Awesome Free solid icon, "house" for fa-house,
 	// drawn beside the label. An unknown name is a compile error. Without one, the
-	// label's first letter, capitalised, is shown where the sidebar is collapsed to
-	// icons.
+	// place of an icon is left empty, so that the labels line up.
 	Icon string
 
 	// Section is the name of the group this entry is listed in, which the sidebar draws as a category that the visitor opens and shuts (see [App.Sections], which gives it

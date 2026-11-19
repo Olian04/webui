@@ -71,14 +71,14 @@ func TestTheLandingPageIsServedAtTheRoot(t *testing.T) {
 	assert.Equal(t, get(h, "/admin").Header().Get("Location"), "/admin/")
 }
 
-func TestNavEntriesHaveIconsOrTheirInitial(t *testing.T) {
+func TestNavEntriesHaveIconsOrTheEmptyPlaceOfOne(t *testing.T) {
 	p := pageAt(t, handler(t), "/admin/alert")
 	const long = "Retention and archival policy for every kind of collected event"
 	retention := page.One(t, "the entry with no icon", p.ByRole("link", long))
-	assert.Equal(t, retention.AllText(), "R "+long) // its initial, and the name whole; the stylesheet cuts it short
-	assert.Equal(t, retention.Attr("title"), long)  // and whole in its title
+	assert.Equal(t, retention.AllText(), long)     // the name whole, and nothing before it; the stylesheet cuts it short
+	assert.Equal(t, retention.Attr("title"), long) // and whole in its title
 	alerts := page.One(t, "the entry with an icon", p.ByRole("link", "Alerts"))
-	assert.Equal(t, alerts.AllText(), "Alerts") // it has the bell, and no initial
+	assert.Equal(t, alerts.AllText(), "Alerts") // it has the bell, which says nothing
 }
 
 func TestATabIsNamedByItsLabelInTheAddress(t *testing.T) {

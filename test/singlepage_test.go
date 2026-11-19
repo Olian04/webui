@@ -38,7 +38,6 @@ func TestAnAppWhosePagesDeclareNoEntryHasNoSidebar(t *testing.T) {
 
 	assert.Equal(t, len(p.ByRole("complementary", "")), 0)
 	assert.Equal(t, len(p.ByRole("navigation", "Main")), 0)
-	assert.Equal(t, len(p.ByAttr("data-sidebar-toggle", "")), 0)
 	assert.Equal(t, len(p.ByRole("main", "")), 1)
 
 	// The first crumb is the brand, which is where it leads back to.

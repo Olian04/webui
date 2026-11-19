@@ -37,13 +37,14 @@ func TestANavEntryWithAnIconDrawsIt(t *testing.T) {
 	assert.Equal(t, entry.AllText(), "Devices")          // and there is no initial beside it
 }
 
-func TestANavEntryWithoutAnIconCarriesItsCapitalisedInitialForTheRail(t *testing.T) {
+func TestANavEntryWithoutAnIconHoldsTheEmptyPlaceOfOneAndSaysOnlyItsLabel(t *testing.T) {
 	t.Parallel()
 
 	entry := page.One(t, "the retention entry", pageOf(t, navApp(), "/admin/device").ByRole("link", "retention"))
-	letter := entry.Children()[0]
-	assert.Equal(t, letter.AllText(), "R")              // for the rail, which has no room for the label
-	assert.Equal(t, letter.Attr("aria-hidden"), "true") // a reader has the label, and not the letter as well
+	place := entry.Children()[0]
+	assert.Equal(t, place.AllText(), "")               // nothing is drawn in it
+	assert.Equal(t, place.Attr("aria-hidden"), "true") // and a reader has the label and nothing else
+	assert.Equal(t, entry.AllText(), "retention")
 }
 
 func TestTheBrandLinksToTheLandingPage(t *testing.T) {
@@ -156,13 +157,6 @@ func TestTheIconFontAndItsClassesAreServedAndLinked(t *testing.T) {
 	assert.Equal(t, font.Code, http.StatusOK)
 	assert.True(t, strings.HasPrefix(font.Header().Get("Content-Type"), "font/")) // a font, in whatever format is served
 	assert.True(t, font.Body.Len() < 10_000)                                      // and not the hundred and twenty kilobytes of all of them
-}
-
-func TestTheSidebarOffersACollapseControlOnlyWithScript(t *testing.T) {
-	t.Parallel()
-
-	// That it is not there without script is a scenario of the browser suite.
-	assert.Equal(t, len(pageOf(t, navApp(), "/admin/device").ByAttr("data-sidebar-toggle", "")), 1)
 }
 
 // ancestryApp has pages at several depths, to see which entry a page lights.

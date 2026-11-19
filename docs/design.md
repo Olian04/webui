@@ -142,7 +142,7 @@ Everything is a multiple of 2, and the working gutter is 8.
 | Panel gutter                    | 8                                                            |
 | Page padding                    | 12 on the top and sides, 46 below (it clears the status bar) |
 | Corner radius                   | 2, except the pills (the switch, the spinner)                |
-| Sidebar                         | 240 (56 when collapsed)                                      |
+| Sidebar                         | 240                                                          |
 | Top bar                         | 48                                                           |
 | Status bar                      | 26                                                           |
 | Panel header                    | 32                                                           |
@@ -174,8 +174,7 @@ Four fixed regions. Only the content region scrolls.
 
 240px on the left unless a visitor has dragged it (180px to 480px, never more than half the
 window), panel surface, full height, always visible. It never
-becomes a top bar and never turns into a hamburger on a desktop; a button in its footer collapses it
-to a 56px icon rail at any desktop width (the choice is a browser preference). On a phone
+becomes a top bar and never turns into a hamburger on a desktop, and it is not narrowed to icons: its width is the visitor's to drag, or a drawer. On a phone
 (640px and under) it is a drawer behind a hamburger. The structure of the
 application is the one thing that should not disappear: when there is any.
 
@@ -186,29 +185,22 @@ sees a short one. A detail page that has no entry of its own does not give the a
 
 Its right edge is a handle, with script: a 7px hit area over the border, a `col-resize` cursor, and a 2px
 line in the accent colour on hover, on keyboard focus and while it is dragged. It is a window splitter: the arrow keys
-move it, Home and End go to the ends, and Enter or a double click puts it back to 240px. The rail has no handle.
+move it, Home and End go to the ends, and Enter or a double click puts it back to 240px.
 
 Contents, top to bottom: brand mark and product name (48px, matching the top
-bar so the two align); grouped navigation; a footer pinned to the bottom.
+bar so the two align); grouped navigation.
 
 Navigation items are 32px, 13.5px, text-secondary, with a 16px icon (a Font
-Awesome glyph; an item with none holds the place of one, and shows its label's
-capitalised initial in the rail). A group is a category: a row as tall as an item, 13.5px, with the icon that the app gave it (or none), its name, and a
+Awesome glyph; an item with none holds the place of one, empty, so that the labels line up). A group is a category: a row as tall as an item, 13.5px, with the icon that the app gave it (or none), its name, and a
 chevron at the right that points down shut and up open; it is a `<details>`, so it needs no script and is a button to a reader, and its entries are under it, as wide
 as any entry, with no background of their own (the category is told from its entries by its icon, its weight and its chevron). A category is open when it holds the page on screen, in the text colour and 600; the
-others are shut, in the secondary colour, and what the visitor opens by hand is not kept. In the rail the category has no room, so it becomes a short, thick dash (32px by 3px, rounded, in the border colour `--border-2`, so that it is quieter than the icons around it)
-centred in 21px of height for each group, and the name is its tooltip. Nothing is drawn above the first
-group, and every entry of every category is drawn, whether the category is open or not. It is short and thick on purpose: the line under the brand is the width of the rail and 1px, and a rail
-whose groups were marked by the same kind of line would have two things that look alike and mean different
-things, an edge and *these belong together*. A line across the rail, a dot, a short thin rule, the caption's
-first letters (clipped, "CONFIGU") and space alone were tried. The status bar separates its figures with a
-middle dot (token `--sep`, *render 0.1 ms · built 14:49:31Z* where script is off), which is a separator between
-things in a row, not between groups in a column. The active item takes the Active background, full-strength text, weight
+others are shut, in the secondary colour, and what the visitor opens by hand is not kept.
+The active item takes the Active background, full-strength text, weight
 500, and a 2px primary-coloured bar flush against the left edge. An item the
 visitor may not open is not drawn.
 
 **A label wider than the sidebar** is cut with an ellipsis, on one line, in the entry, the section's caption and the brand; its whole is the
-title. The icon, or the initial that holds its place, keeps its size.
+title. The icon, or the empty place that holds it, keeps its size.
 
 ### Top bar
 
@@ -228,7 +220,7 @@ its own.
 
 **The search palette** (the results under the box) is 360px wide with 30px items, as tall as the window leaves between the top bar and the
 status bar and scrolling inside, dimmed and out of reach while a newer question is pending. The box says the key that opens it (⌘K, or Ctrl K).
-The sidebar's foot has the collapse button, and nothing else. **The theme** is an icon button at the right of every top bar, after Refresh and before the external links:
+**The theme** is an icon button at the right of every top bar, after Refresh and before the external links:
 the sun in the dark theme and the moon in the light one, the theme that a press brings, 16px in the icon-button treatment of Refresh. It was a labelled switch in the sidebar's foot, which a top bar
 without a sidebar had no room for, and one control in one place is the same for every app. It is a switch for a reader (`role="switch"`, named *Light theme*, `aria-checked` when the light
 theme is on), and it is there only with script, since the choice it makes is kept in the browser.

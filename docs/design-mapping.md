@@ -210,11 +210,7 @@ no entry to draw.
 content security policy stays `'self'` and nothing is fetched from a CDN. A
 name that is not in the free solid set (or is written `fa-house`) is a compile
 error, so a typo cannot draw nothing. Every icon the library draws for itself
-(info, alert, filter, sort carets, refresh) is a Font Awesome icon too. The sidebar can be collapsed to a 56px rail of icons, by the
-button in its footer (the choice is a browser preference, so it stays out of
-the address); a narrow window does not make one. An entry with no icon holds the place of one
-in the full sidebar, so labels line up, and shows its label's first letter,
-capitalised, in the rail.
+(info, alert, filter, sort carets, refresh) is a Font Awesome icon too. An entry with no icon holds the empty place of one, so labels line up.
 
 ### The landing page
 

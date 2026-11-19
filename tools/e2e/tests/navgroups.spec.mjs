@@ -1,7 +1,7 @@
 import { test, expect } from './fixtures.mjs';
 
 // A section of the sidebar is a category that opens and shuts. It is open when it holds the page on screen, what the visitor opens is not kept, and it works without script, since
-// it is a disclosure of the page's own. A rail shows every entry, whether the category is open or not.
+// it is a disclosure of the page's own. There is no way to narrow the sidebar to icons: it is as wide as its owner dragged it, or a drawer on a phone.
 
 test.use({ viewport: { width: 1400, height: 900 } });
 
@@ -53,15 +53,10 @@ test.describe('the sidebar', () => {
     await expect(entry(page, 'Devices')).toBeHidden();
   });
 
-  test('shows a rail every entry of every category, open or not', async ({ page }) => {
+  test('cannot be narrowed to icons, and has no control that says it can', async ({ page }) => {
     await page.goto('/admin/device');
-    await expect(entry(page, 'System')).toBeHidden();
-    await page.locator('[data-sidebar-toggle]').click(); // the rail
-    await expect(entry(page, 'System')).toBeVisible();
-    await expect(entry(page, 'Audit log')).toBeVisible();
-    await expect(entry(page, 'Devices')).toBeVisible();
-    await page.locator('[data-sidebar-toggle]').click();
-    await expect(entry(page, 'System')).toBeHidden(); // and the categories are as they were
+    await expect(page.getByRole('button', { name: /collapse/i })).toHaveCount(0);
+    await expect(nav(page).getByRole('link', { name: 'Devices', exact: true })).toContainText('Devices');
   });
 
   test('is a drawer on a phone, with the same categories', async ({ page }) => {

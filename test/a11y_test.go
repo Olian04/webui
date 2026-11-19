@@ -308,16 +308,10 @@ func TestARefusedFormSaysSoInItsTitleAndFocusesTheFirstControlThatWasRefused(t *
 	assert.Equal(t, len(ok.ByAttr("autofocus", "")), 0)
 }
 
-// The sidebar's button says what it controls and whether it is open, and the search has a live region for how many results it has: what script keeps up
-// to date needs both in the page it starts from.
-func TestThePageHasTheSidebarButtonAndTheLiveRegionThatScriptKeepsUpToDate(t *testing.T) {
+// The search has a live region for how many results it has: what script keeps up to date needs it in the page it starts from.
+func TestThePageHasTheLiveRegionThatScriptKeepsUpToDate(t *testing.T) {
 	t.Parallel()
 
-	h, _ := tableApp(nil)
-	p := pageOf(t, h, "/admin/device")
-	collapse := page.One(t, "the sidebar button", p.ByAttr("title", "Collapse sidebar"))
-	assert.Equal(t, collapse.Attr("aria-expanded"), "true")
-	assert.Equal(t, len(p.ByAttr("id", collapse.Attr("aria-controls"))), 1) // it names what it controls
 	status := page.One(t, "the search's status", pageOf(t, searchApp(rowsSearch(), nil), "/admin/device").ByAttr("data-palette-status", ""))
 	assert.Equal(t, status.Attr("aria-live"), "polite")
 }

@@ -10,14 +10,10 @@ import (
 // entry (see Renderer.hasSidebar). It does not become a top bar and it does not
 // become a menu button on a desktop; on a phone it is a drawer.
 
-// Footer is a slot rather than part of { children... } because it sits outside
-// the scrolling nav: session switches are not navigation and must not scroll
-// away with it.
 type SidebarProps struct {
-	Brand  string
-	Logo   string // image address; empty draws the default mark
-	Home   string // where the brand goes: the landing page. Empty makes it plain text
-	Footer templ.Component
+	Brand string
+	Logo  string // image address; empty draws the default mark
+	Home  string // where the brand goes: the landing page. Empty makes it plain text
 }
 
 templ Sidebar(p SidebarProps) {
@@ -34,9 +30,6 @@ templ Sidebar(p SidebarProps) {
 		<nav class="side-scroll" aria-label="Main">
 			{ children... }
 		</nav>
-		if p.Footer != nil {
-			@p.Footer
-		}
 	</aside>
 }
 
@@ -54,24 +47,6 @@ templ BrandLogo(logo string) {
 	}
 }
 
-// SidebarFooter holds session-level switches. It is separated from the nav
-// because nothing in it navigates.
-templ SidebarFooter() {
-	<div class="side-foot">
-		{ children... }
-	</div>
-}
-
-// SidebarCollapse is the control that narrows the sidebar to its icon rail and
-// widens it again. It needs script, and its state is a browser preference, so it
-// lives in the footer with the other session switches.
-templ SidebarCollapse() {
-	<button class="side-row side-collapse" type="button" data-sidebar-toggle aria-expanded="true" aria-controls="sidebar" title="Collapse sidebar">
-		<span>Collapse</span>
-		@Icon(IconProps{Name: IconChevron, Class: "side-collapse-icon"})
-	</button>
-}
-
 // NavGroupProps is a category of the sidebar: a name, the icon that the app gave it, and whether it is open.
 type NavGroupProps struct {
 	Label string
@@ -80,7 +55,7 @@ type NavGroupProps struct {
 }
 
 // NavGroup is a section of the sidebar as a category that the visitor opens and closes. It is a <details>, so that it needs no script, is a button to a reader, and works with the
-// keys that a button does: Enter and Space. The entries are inside it. A rail shows them all, whether it is open or not (see the stylesheet).
+// keys that a button does: Enter and Space. The entries are inside it.
 templ NavGroup(p NavGroupProps) {
 	<details class="nav-group" open?={ p.Open }>
 		<summary class="nav-section" title={ p.Label }>
@@ -104,7 +79,6 @@ type NavItemProps struct {
 	Label  string
 	Href   string
 	Icon   IconName
-	Letter string // the label's initial, drawn where the sidebar is a rail, for an entry with no Icon
 	Active bool
 }
 
@@ -129,8 +103,8 @@ func NavItem(p NavItemProps) templ.Component {
 	b.WriteByte('>')
 	if p.Icon != IconNone {
 		b.WriteString(iconOf(p.Icon, "ni").markup)
-	} else if p.Letter != "" {
-		b.WriteString(`<span class="ni ni-letter" aria-hidden="true">` + html.EscapeString(p.Letter) + `</span> `)
+	} else {
+		b.WriteString(`<span class="ni ni-blank" aria-hidden="true"></span>`) // holds the place of an icon, so that the labels line up
 	}
 	b.WriteString("<span>" + html.EscapeString(p.Label) + "</span></a>")
 	return templ.Raw(b.String())
