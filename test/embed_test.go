@@ -18,6 +18,11 @@ type embedArgs struct {
 	ID string `webui:"id"`
 }
 
+// fixed is a Load for a page that does not change.
+func fixed(path string) func(context.Context) (string, webui.Loaded) {
+	return func(context.Context) (string, webui.Loaded) { return path, webui.Ready() }
+}
+
 func theFrame(t *testing.T, p *page.Page) page.El {
 	t.Helper()
 
@@ -34,7 +39,7 @@ func theFrame(t *testing.T, p *page.Page) page.El {
 func TestAnEmbedIsAFrameOfAPageOfThisSiteWithTheNameOfThePanel(t *testing.T) {
 	t.Parallel()
 
-	h := editorApp(webui.Embed{Title: "Site map", Desc: "Where it is.", Src: "/frame/site-map"})
+	h := editorApp(webui.Embed{Title: "Site map", Desc: "Where it is.", Load: fixed("/frame/site-map")})
 	p := pageOf(t, h, "/admin/e")
 
 	frame := theFrame(t, p)
@@ -105,7 +110,7 @@ func TestAnEmbedLoadThatFailsOrRefusesSaysSoAndNothingIsFramed(t *testing.T) {
 func TestThePolicyOfAPageWithAnEmbedIsTheLibrarysOwn(t *testing.T) {
 	t.Parallel()
 
-	embedded := serve(editorApp(webui.Embed{Title: "Site map", Src: "/frame/site-map"}), http.MethodGet, "/admin/e").Header().Get("Content-Security-Policy")
+	embedded := serve(editorApp(webui.Embed{Title: "Site map", Load: fixed("/frame/site-map")}), http.MethodGet, "/admin/e").Header().Get("Content-Security-Policy")
 	plain := serve(markdownApp("hello"), http.MethodGet, "/admin/e").Header().Get("Content-Security-Policy")
 	assert.Equal(t, embedded, plain)
 	assert.False(t, strings.Contains(embedded, "frame-src"))
@@ -115,17 +120,11 @@ func TestThePolicyOfAPageWithAnEmbedIsTheLibrarysOwn(t *testing.T) {
 func TestAnEmbedIsCheckedWhenTheAppCompiles(t *testing.T) {
 	t.Parallel()
 
-	load := func(context.Context) (string, webui.Loaded) { return "/frame/x", webui.Ready() }
-	refuses(t, editorErrors(t, webui.Embed{Src: "/frame/x"}), "Embed", "Title")
-	refuses(t, editorErrors(t, webui.Embed{Title: "A"}), "Embed", "Src", "Load")
-	refuses(t, editorErrors(t, webui.Embed{Title: "A", Src: "/frame/x", Load: load}), "Embed", "both")
-	for _, src := range []string{"https://elsewhere.example/x", "//elsewhere.example/x", "frame/x", `/\x`, "javascript:alert(1)"} {
-		refuses(t, editorErrors(t, webui.Embed{Title: "A", Src: src}), "Embed.Src", "not a path on this site")
-	}
-	_ = editorApp(webui.Embed{Title: "A", Src: "/frame/x"}) // each of the two ways to say the address compiles
-	_ = editorApp(webui.Embed{Title: "A", Load: load})
+	refuses(t, editorErrors(t, webui.Embed{Load: fixed("/frame/x")}), "Embed", "Title")
+	refuses(t, editorErrors(t, webui.Embed{Title: "A"}), "an Embed", "no Load")
+	_ = editorApp(webui.Embed{Title: "A", Load: fixed("/frame/x")}) // it compiles
 	form := webui.Form[toolState]{Title: "State", Load: loadToolState, Fields: []webui.Accessor[toolState]{minutesInput}}
-	refuses(t, editorErrors(t, webui.Embed{Title: "A", Src: "/frame/x", HeadActions: []webui.ToolbarItem{form}}), "Embed.HeadActions[0] is a Form")
+	refuses(t, editorErrors(t, webui.Embed{Title: "A", Load: fixed("/frame/x"), HeadActions: []webui.ToolbarItem{form}}), "Embed.HeadActions[0] is a Form")
 }
 
 // An Embed is a panel like any, so a button in its head posts to it, and is done.
@@ -134,7 +133,7 @@ func TestAButtonInTheHeadOfAnEmbedIsDone(t *testing.T) {
 
 	ran := 0
 	h := editorApp(webui.Embed{
-		Title: "Site map", Src: "/frame/site-map",
+		Title: "Site map", Load: fixed("/frame/site-map"),
 		HeadActions: []webui.ToolbarItem{webui.Action[webui.NoArgs]{Label: "Rescan", Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
 			ran++
 			return webui.Success("Scanned"), nil

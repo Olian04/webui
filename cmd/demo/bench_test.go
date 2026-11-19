@@ -30,7 +30,7 @@ func benchSite(tb testing.TB) http.Handler {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	site := routes(compiled)
+	site := routes(compiled, app.Styles("/admin"))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//nolint:gosec // G124: a request the benchmark makes, not a cookie the app sets.
 		r.AddCookie(&http.Cookie{Name: sessionCookie, Value: sign(Editor)})

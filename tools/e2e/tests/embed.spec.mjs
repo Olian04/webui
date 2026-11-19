@@ -14,6 +14,18 @@ test('the status board of the System page is a frame of a page of this site, whi
   expect(problems).toEqual([]);
 });
 
+test('the page in the frame has the look of the app, from the stylesheet that App.Styles names', async ({ page }) => {
+  const problems = watchConsole(page);
+  await page.goto('/admin/system');
+  const frame = status(page);
+  await expect(frame.getByRole('img', { name: /Collector status/ })).toBeVisible();
+  const colours = (locator) => locator.evaluate((el) => ({ background: getComputedStyle(el).backgroundColor, color: getComputedStyle(el).color }));
+  // A badge is the library's, in the frame as in the page that holds it, and so is the canvas behind the text.
+  expect(await colours(frame.locator('.badge.tone-ok').first())).toEqual(await colours(page.locator('.badge.tone-ok').first()));
+  expect(await colours(frame.locator('body'))).toEqual(await colours(page.locator('body')));
+  expect(problems).toEqual([]);
+});
+
 test('the page in the frame was asked for with the visitor\'s session', async ({ page, context }) => {
   await context.request.post('/login', { form: { role: 'viewer' } });
   await page.goto('/admin/system');

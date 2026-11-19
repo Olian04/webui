@@ -5,16 +5,13 @@ import (
 	"strings"
 )
 
-// Embed is a panel that shows a page of this site in a frame. The address is Src, or what Load returns for the request.
+// Embed is a panel that shows a page of this site in a frame. The address is what Load returns for the request.
 type Embed struct {
 	At Pos
 	Headed
 
 	Title string
 	Desc  string
-
-	// Src is the path of the page, or "" when Load gives it.
-	Src string
 
 	// Load returns the path of the page: the model it returns is a string.
 	Load func(ctx context.Context) (any, error)

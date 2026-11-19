@@ -26,7 +26,7 @@ func handlerAs(t *testing.T, role Role) http.Handler {
 
 	compiled, err := app.Compile("/admin")
 	assert.NoError(t, err)
-	site := routes(compiled)
+	site := routes(compiled, app.Styles("/admin"))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//nolint:gosec // G124: a request the test makes, not a cookie the app sets.
 		r.AddCookie(&http.Cookie{Name: sessionCookie, Value: sign(role)}) // beside what the request carries, such as the flash

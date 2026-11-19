@@ -45,7 +45,7 @@ var System = webui.Page[webui.NoArgs]{
 var StatusBoard = webui.Embed{
 	Title: "Status board",
 	Desc:  "An Embed: a page of this site, in a frame. It is drawn on the server with no script, and cut off from this page.",
-	Src:   "/frame/status",
+	Load:  func(context.Context) (string, webui.Loaded) { return "/frame/status", webui.Ready() },
 }
 
 // SystemStatus is the status page.

@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -11,10 +10,12 @@ import (
 // It is the way out for what a panel cannot be, and it asks nothing of script: the frame is plain markup, and whether the page in it uses script, or has a version for a reader with
 // none, is the app's to say. It is only for pages of this site; it does not show another one.
 //
-//	webui.Embed{Title: "Site map", Src: "/frame/site-map"}
+//	webui.Embed{Title: "Site map", Load: func(ctx context.Context) (string, webui.Loaded) {
+//		return "/frame/device/" + webui.ArgsOf[DeviceArgs](ctx).ID, webui.Ready()
+//	}}
 //
-// The address is one of two. Src is a path that does not change. Load is asked for each request and returns the address, which may be built from the page's arguments with [ArgsOf]
-// and from who the visitor is: a page for each device, at "/frame/device/" and its id. Its [Loaded] says, as for any panel, that it failed, that it is not final, or that the visitor
+// Load is asked for each request and returns the address, which may be built from the page's arguments with [ArgsOf] and from who the visitor is: a page for each device, at
+// "/frame/device/" and its id. A page that does not change is a Load that returns its path. Its [Loaded] says, as for any panel, that it failed, that it is not final, or that the visitor
 // may not be told. An address that is not a path on this site is a failure of the app's, which is logged and not shown.
 //
 // The page in the frame is the app's own code, from the app's own site, and is as trusted as any route of the app is: the frame is not sandboxed, so the page has the visitor's cookies and
@@ -35,10 +36,7 @@ type Embed struct {
 	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
 	HeadActions []ToolbarItem
 
-	// Src is the path of the page to show, such as "/frame/status". Exactly one of Src and Load is set.
-	Src string
-
-	// Load returns the path of the page to show, for the request being answered. Exactly one of Src and Load is set.
+	// Load returns the path of the page to show, such as "/frame/status", for the request being answered.
 	Load func(ctx context.Context) (string, Loaded)
 }
 
@@ -50,21 +48,11 @@ func (e Embed) validateView(v *viewValidator) {
 	if e.Title == "" {
 		v.add("an Embed has no Title", "Set Title: it is the heading of the panel and the name of the frame to a reader.")
 	}
-	switch {
-	case e.Src == "" && e.Load == nil:
-		v.add("an Embed has neither Src nor Load", "Set Src to the path of the page to show, or Load to func(ctx) (string, webui.Loaded) that returns it.")
-	case e.Src != "" && e.Load != nil:
-		v.add("an Embed has both Src and Load", "Set one: Src for a path that does not change, Load for one that is built for the request.")
-	case e.Src != "" && !samePath(e.Src):
-		v.add(fmt.Sprintf("Embed.Src, %q, is not a path on this site", e.Src), "Use a path such as \"/frame/status\", served by a route of the app's own. An Embed shows pages of this site, and not an address on another one.")
-	}
+	needLoad(v, "an Embed", e.Load != nil)
 }
 
 func (e Embed) lowerView(at ir.Pos) ir.Node {
-	out := &ir.Embed{At: at, Title: e.Title, Desc: e.Desc, Src: e.Src}
-	if e.Load != nil {
-		out.Load = eraseLoad(e.Load)
-	}
+	out := &ir.Embed{At: at, Title: e.Title, Desc: e.Desc, Load: eraseLoad(e.Load)}
 	out.HeadActions = lowerHeadActions(at, e.HeadActions)
 	return out
 }

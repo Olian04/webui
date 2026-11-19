@@ -450,16 +450,19 @@
 // site, and nothing more: it asks nothing of script, and whether the page in the frame uses script, or has a version for a reader with none, is the app's to say. The page is the app's own code,
 // from the app's own site, so it is not sandboxed, and is as trusted as any route of the app is.
 //
-//	webui.Embed{Title: "Site map", Src: "/frame/site-map"}
+//	webui.Embed{Title: "Site map", Load: func(ctx context.Context) (string, webui.Loaded) {
+//		return "/frame/device/" + webui.ArgsOf[DeviceArgs](ctx).ID, webui.Ready()
+//	}}
 //
-// A page that depends on the request, one for each device, is the address that a Load returns, built from the page's arguments with [ArgsOf]. The page in the frame is served by a route of the
+// The address is what a Load returns, built from the page's arguments with [ArgsOf] and from who the visitor is; a page that does not change is a Load that returns it. The page in the frame is served by a route of the
 // app's own and not by the library, outside the app's pages: those say that no page may frame them. The route should say that only this site may, and what its own page loads, a library or a
 // worker from another site, is allowed by its own policy, which is the reason for a page of its own:
 //
 //	w.Header().Set("Content-Security-Policy", "frame-ancestors 'self'")
 //
 // The frame is a request like any other, and carries the visitor's cookies, so the route checks who the visitor is as any route does: the Guard of the page that holds the frame does not protect it.
-// A frame that is replaced with its panel, by a refresh or a tab, is loaded again, and a page that is printed is printed with a blank frame.
+// A frame that is replaced with its panel, by a refresh or a tab, is loaded again, and a page that is printed is printed with a blank frame. The page can look as the app does by linking the
+// stylesheets that [App.Styles] gives.
 //
 // # Tables
 //
