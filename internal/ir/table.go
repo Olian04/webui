@@ -60,6 +60,7 @@ type Window struct {
 // Table is a panel listing rows.
 type Table struct {
 	At Pos
+	Headed
 
 	Title string
 	Desc  string

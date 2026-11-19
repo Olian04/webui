@@ -27,6 +27,10 @@ type Form[M any] struct {
 	// the title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Load returns the model the form shows. On submit it is loaded again, and the
 	// submitted values are applied to it, so a field with no Store keeps its value.
 	//
@@ -51,6 +55,7 @@ type Form[M any] struct {
 var _ View = Form[struct{}]{}
 
 func (f Form[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Form", f.HeadActions)
 	needLoad(v, "a Form", f.Load != nil)
 	validateAccessors(v, f.Fields, accessorSite{where: "Form.Fields", allowGroup: true, uniqueLbl: true})
 	if f.Submit.Run != nil {
@@ -67,6 +72,7 @@ func (f Form[M]) lowerView(at ir.Pos) ir.Node {
 		Load: eraseLoad(f.Load),
 		Bind: bindFunc[M],
 	}
+	out.HeadActions = lowerHeadActions(at, f.HeadActions)
 	if f.Submit.Run != nil {
 		a := f.Submit
 		if a.Label == "" {

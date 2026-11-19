@@ -58,6 +58,9 @@ func tabsOf(root ir.Node) map[string]*ir.Tabs {
 // actionable reports whether any panel under root posts.
 func actionable(panels map[string]ir.Node) bool {
 	for _, n := range panels {
+		if h, ok := n.(ir.HasHead); ok && slices.ContainsFunc(h.Head(), func(it ir.ToolbarItem) bool { return it.Action != nil }) {
+			return true // a button in a panel's head posts, whatever the panel is
+		}
 		switch n := n.(type) {
 		case *ir.Form:
 			if n.Submit != nil {
@@ -134,7 +137,12 @@ func (p *Program) postHandler(page *ir.Page, panels map[string]ir.Node, conditio
 		if multipart && !p.receive(w, r, page, req, reachable, rec, valueLimit) {
 			return
 		}
-		switch n := reachable[r.PostForm.Get("_view")].(type) {
+		panel := reachable[r.PostForm.Get("_view")]
+		if position, ok := headPosition(r.PostForm.Get("_act")); ok {
+			p.headAct(w, r, page, req, panel, position) // a button in the panel's head, whatever the panel is
+			return
+		}
+		switch n := panel.(type) {
 		case *ir.Form:
 			p.submit(w, r, page, req, n, rec)
 		case *ir.Table:

@@ -5,6 +5,7 @@ import "context"
 // Markdown is a panel that shows one text of a model, set as markdown. It only reads.
 type Markdown struct {
 	At Pos
+	Headed
 
 	Title string
 	Desc  string

@@ -22,6 +22,10 @@ type Diff[M any] struct {
 	// title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Load returns the model that holds both texts.
 	Load func(ctx context.Context) (M, Loaded)
 
@@ -38,6 +42,7 @@ type Diff[M any] struct {
 var _ View = Diff[struct{}]{}
 
 func (d Diff[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Diff", d.HeadActions)
 	needEditor(v, "a Diff")
 	needLoad(v, "a Diff", d.Load != nil)
 	validateAccessors(v, []Accessor[M]{d.Original, d.Modified}, accessorSite{where: "Diff", uniqueLbl: true})
@@ -48,10 +53,12 @@ func (d Diff[M]) validateView(v *viewValidator) {
 }
 
 func (d Diff[M]) lowerView(at ir.Pos) ir.Node {
-	return &ir.Diff{
+	n := &ir.Diff{
 		At: at, Title: d.Title, Desc: d.Desc, Language: d.Language.id(),
 		Load:     eraseLoad(d.Load),
 		Original: fieldOf[M](d.Original, "o"),
 		Modified: fieldOf[M](d.Modified, "m"),
 	}
+	n.HeadActions = lowerHeadActions(at, d.HeadActions)
+	return n
 }

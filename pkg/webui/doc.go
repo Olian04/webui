@@ -429,6 +429,21 @@
 // [Loaded.RefreshAfter] has the whole toolbar asked for again (see Following a job), after the
 // shortest delay of its Forms. Unlike a panel, a toolbar says nothing of it in the row, which has little room; without script it is not refreshed.
 //
+// # Actions in a panel's head
+//
+// Every panel but a toolbar has a HeadActions field: the buttons and links for the panel as a whole, drawn small at the right of its title. They are a toolbar's items, an
+// [Action] or a [Link] of [NoArgs] (a [Form] is not one), with the same Guard, Confirm and Role, and have no subject: what they need of the page they read from the request, as a toolbar's do.
+//
+//	webui.Table[Alert]{
+//		Title: "Alerts",
+//		HeadActions: []webui.ToolbarItem{
+//			webui.Action[webui.NoArgs]{Label: "Silence all", Confirm: "Silence every open alert?", Run: silenceAll},
+//		},
+//		...
+//	}
+//
+// A panel's footer is its kind's own (a table's pager, a form's Save), and is not added to. A head's button posts as a toolbar's does, and the page is drawn again with its outcome.
+//
 // # Tables
 //
 // A [Table] is a list of rows of a model M, with columns that are [Accessor] values:

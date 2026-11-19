@@ -9,6 +9,7 @@ import (
 // Form is a panel holding one model.
 type Form struct {
 	At Pos
+	Headed
 
 	Title string
 	Desc  string

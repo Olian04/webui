@@ -40,6 +40,10 @@ type Calendar[M any] struct {
 	// Desc is a description, shown in a popover from an information icon beside the title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Load returns the items that are in the span, which is the days the grid shows: the month's, and the days of the first and last weeks that are not. It is asked for the
 	// span and not for the month, so that a day at the edge shows what is on it. Return the items in the span, and no others, in any order. If Load returns [Failed] the panel says
 	// "Could not load", the cause is logged and the rest of the page stands. It is called on every request that needs the calendar, and nothing is kept between them.
@@ -70,6 +74,7 @@ type Calendar[M any] struct {
 var _ View = Calendar[struct{}]{}
 
 func (c Calendar[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Calendar", c.HeadActions)
 	if c.Load == nil {
 		v.add("a Calendar has no Load", "Set Load to func(ctx, span Span) ([]M, Loaded), returning the items that are in the span.")
 	}
@@ -96,6 +101,7 @@ func (c Calendar[M]) lowerView(at ir.Pos) ir.Node {
 			return convert.Any(rows), nil
 		},
 	}
+	n.HeadActions = lowerHeadActions(at, c.HeadActions)
 	if c.Open != nil {
 		n.Click = c.Open.lowerControl()
 		remapControl(n.Click, func(row any) any { // what the runtime holds of a day is the IR's, and what the app's functions take is a Day

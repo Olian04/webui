@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -27,29 +26,12 @@ func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *i
 		return p.render.Toolbar(view)
 	}
 	view.Node = resolved
-	view.Access = make([]render.Access, len(resolved.Items))
-	view.Hrefs = make([]string, len(resolved.Items))
+	view.Access, view.Hrefs = p.controls(ctx, req, page, resolved.Items)
 	view.Forms = make([]render.ToolbarForm, len(resolved.Items))
 	for i, it := range resolved.Items {
-		switch {
-		case it.Form != nil:
+		if it.Form != nil {
 			model, ok, refusal := loaded(p, ctx, page, "toolbar", "toolbar form", n.At, func() (any, error) { return it.Form.Load(ctx) })
 			view.Forms[i] = render.ToolbarForm{Model: model, Failed: !ok, Refusal: refusal}
-		case it.Action != nil && it.Action.Guard != nil:
-			// The same Guard that will refuse the POST decides the button. It has no subject: what it needs of the page it reads from the request.
-			view.Access[i] = p.accessOf(page, "the action "+strconv.Quote(it.Label), func() error { return it.Action.Guard(ctx, nil) })
-		case it.Link != nil:
-			href, err := p.open(it.Link.Dest, it.Link.Args(ctx, nil), req.Address)
-			if err != nil {
-				p.log.Error("webui: a toolbar link failed", "page", page.PathTemplate, "dest", it.Link.Dest, "err", err)
-				view.Access[i] = render.Access{Hidden: true}
-				continue
-			}
-			if !p.mayFollow(ctx, page, it.Link, href) {
-				view.Access[i] = render.Access{Hidden: true}
-				continue
-			}
-			view.Hrefs[i] = href
 		}
 	}
 	return p.render.Toolbar(view)
@@ -58,20 +40,9 @@ func (p *Program) toolbar(ctx context.Context, req *Request, page *ir.Page, n *i
 // toolbarAct runs a toolbar's button. It has no subject: what it needs of the page it reads from the request.
 func (p *Program) toolbarAct(w http.ResponseWriter, r *http.Request, page *ir.Page, req *Request, n *ir.Toolbar) {
 	index, err := strconv.Atoi(r.PostForm.Get("_act"))
-	if err != nil || index < 0 || index >= len(n.Items) || n.Items[index].Action == nil {
+	if err != nil {
 		p.refuse(w, r, notUnderstood)
 		return
 	}
-	action := n.Items[index].Action
-	outcome, ok := p.perform(w, r, page, req, action, nil, fmt.Sprintf("action %q", n.Items[index].Label))
-	if !ok {
-		return
-	}
-	switch outcome.Kind {
-	case ir.OutcomeFailure, ir.OutcomeReject:
-		// A toolbar has no fields to point at, so the messages are the reason.
-		p.refuse(w, r, outcomeText(outcome))
-	case ir.OutcomeSuccess, ir.OutcomeWarning:
-		p.leave(w, r, outcome, r.URL.RequestURI())
-	}
+	p.itemAct(w, r, page, req, n.Items, index)
 }

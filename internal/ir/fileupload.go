@@ -6,6 +6,7 @@ import "io"
 // visitor chooses beside the file, if there are any; what it does is its Receive.
 type FileUpload struct {
 	At Pos
+	Headed
 
 	Title, Desc string
 	Help        string

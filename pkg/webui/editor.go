@@ -34,6 +34,10 @@ type Editor[M any] struct {
 	// title.
 	Desc string
 
+	// HeadActions are buttons and links in the panel's head, at the right of its title, for the panel as a whole: an [Action] or a [Link] of [NoArgs], as in a
+	// [Toolbar], and with the same Guard, Confirm and Role. They are not a menu: each is drawn, and an app that has more than a few has a Toolbar.
+	HeadActions []ToolbarItem
+
 	// Load returns the model the editor shows. On submit it is loaded again, and the
 	// text is applied to it, as with a [Form].
 	Load func(ctx context.Context) (M, Loaded)
@@ -92,6 +96,7 @@ var _ View = Editor[struct{}]{}
 func (e Editor[M]) editable() bool { return e.Content.Store != nil }
 
 func (e Editor[M]) validateView(v *viewValidator) {
+	validateHeadActions(v, "Editor", e.HeadActions)
 	needEditor(v, "an Editor")
 	needLoad(v, "an Editor", e.Load != nil)
 	validateAccessors(v, []Accessor[M]{e.Content}, accessorSite{where: "Editor.Content", uniqueLbl: true})
@@ -108,7 +113,7 @@ func (e Editor[M]) validateView(v *viewValidator) {
 }
 
 func (e Editor[M]) lowerView(at ir.Pos) ir.Node {
-	f := Form[M]{Title: e.Title, Desc: e.Desc, Load: e.Load, Fields: []Accessor[M]{e.Content}, Submit: e.Submit}
+	f := Form[M]{Title: e.Title, Desc: e.Desc, Load: e.Load, Fields: []Accessor[M]{e.Content}, Submit: e.Submit, HeadActions: e.HeadActions}
 	out := f.lowerView(at).(*ir.Form)
 	out.Editor = &ir.Editor{Language: e.Language.id(), Service: e.Language.service(), Context: lowerContext(e.Context, e.Language)}
 	return out

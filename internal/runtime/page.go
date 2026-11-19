@@ -278,25 +278,25 @@ func (p *Program) body(ctx context.Context, req *Request, page *ir.Page, n ir.No
 	case *ir.Tabs:
 		return p.tabs(ctx, req, page, n)
 	case *ir.Table:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.table(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.table(ctx, req, page, n) })), nil
 	case *ir.Diff:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.diff(ctx, req, page, n) })), nil
 	case *ir.Markdown:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.markdown(ctx, req, page, n) })), nil
 	case *ir.Items:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.items(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.items(ctx, req, page, n) })), nil
 	case *ir.Calendar:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.calendar(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.calendar(ctx, req, page, n) })), nil
 	case *ir.Toolbar:
 		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.toolbar(ctx, req, page, n) }), nil
 	case *ir.FileUpload:
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.fileUpload(ctx, req, page, n) })), nil
 	case *ir.Form:
 		var sub *submission
 		if req.sub != nil && req.subView == render.ViewID(n.At) {
 			sub = req.sub
 		}
-		return refreshing(ctx, func(ctx context.Context) templ.Component { return p.form(ctx, req, page, n, sub) }), nil
+		return p.headed(ctx, req, page, n, refreshing(ctx, func(ctx context.Context) templ.Component { return p.form(ctx, req, page, n, sub) })), nil
 	default:
 		return nil, errors.New("runtime: node kind not served")
 	}

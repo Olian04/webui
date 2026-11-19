@@ -60,7 +60,10 @@ var Alerts = webui.Page[webui.NoArgs]{
 		// there is no query code on this page.
 		// With Rows, an export is every row the sort and filters keep, with nothing to write.
 		Export: true,
-		Loader: webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() }},
+		// A button in the panel's head is for the panel as a whole, where a bulk action is for the rows that were chosen. It has no subject: it says what it does to
+		// the alerts that are open.
+		HeadActions: []webui.ToolbarItem{SilenceInfo},
+		Loader:      webui.RowsLoader[Alert]{Load: func(context.Context) ([]Alert, webui.Loaded) { return service.OpenAlerts(), webui.Ready() }},
 		// A row opens that alert's own page, whose id is a path argument.
 		RowClick: webui.Link[Alert, AlertArgs]{
 			Page: AlertDetails,
@@ -177,6 +180,23 @@ var Dismiss = webui.Action[Alert]{
 	Run: func(_ context.Context, a Alert) (webui.Outcome, error) {
 		service.Acknowledge(a.ID)
 		return webui.Success("Dismissed " + a.ID), nil
+	},
+}
+
+// SilenceInfo is a button in the head of the alerts panel, which acts on the open alerts that only inform, with no selection to make.
+var SilenceInfo = webui.Action[webui.NoArgs]{
+	Label:   "Silence info",
+	Confirm: "Silence every open alert that is only information?",
+	Guard:   canEdit[webui.NoArgs],
+	Run: func(context.Context, webui.NoArgs) (webui.Outcome, error) {
+		var ids []string
+		for _, a := range service.OpenAlerts() {
+			if a.Severity == "info" {
+				ids = append(ids, a.ID)
+			}
+		}
+		service.Acknowledge(ids...)
+		return webui.Success(fmt.Sprintf("Silenced %d", len(ids))), nil
 	},
 }
 
