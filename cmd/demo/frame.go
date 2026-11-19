@@ -35,7 +35,7 @@ text{fill:currentColor;font:12px system-ui,sans-serif}
 
 func framePage(w http.ResponseWriter, title, lead, body string) {
 	frameHeaders(w)
-	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<h1>%s</h1><p>%s</p>%s`, html.EscapeString(title), frameStyle, html.EscapeString(title), lead, body)
+	_, _ = fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<h1>%s</h1><p>%s</p>%s`, html.EscapeString(title), frameStyle, html.EscapeString(title), lead, body)
 }
 
 // frameStatus is the collector's status as a board of bars: how full the disk is, how deep the queue is, and whether it is healthy.
