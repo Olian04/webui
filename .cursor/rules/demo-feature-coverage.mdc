@@ -1,0 +1,15 @@
+---
+description: Keep the demo a device-monitoring app that uses every public feature of the library at least once (docs/demo.md).
+globs: cmd/demo/**,pkg/webui/**,docs/demo.md
+alwaysApply: false
+---
+
+# The demo uses every feature, as a monitor would
+
+Read `docs/demo.md` before editing `cmd/demo/**` or the public API in `pkg/webui/**`.
+
+- The demo is **Collector**, a mock device-monitoring app. Every page belongs to it. No page exists only to show a feature, and none is named for a layout, a loading case or a feature.
+- A new or changed public name, field or option of `pkg/webui` is used in a page of the demo where a monitor would need it, in that page's words. If it has no sensible use there, list it in `docs/demo.md` under "Not used, and why", with the reason. Do not invent a use for it.
+- Update the table in `docs/demo.md` in the same change.
+- The landing page (`/`) is the plain one: ordinary panels, ordinary layout, no edge cases. It is what the README shows.
+- Keep page paths (the browser suite and `TestEveryPageServes` read them) and what a page's tests prove. Add no check that fails on an unused name.

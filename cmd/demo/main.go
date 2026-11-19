@@ -21,6 +21,8 @@
 //
 //	go run ./cmd/demo                        # http://localhost:7689/admin/
 //	go run ./cmd/demo -accent '#1f7a6d'      # override the theme's accent colour
+//	go run ./cmd/demo -palette forest        # a theme with its own colours for each mode, and the status colours
+//	go run ./cmd/demo -no-favicon -no-console-message -secret "at least sixteen bytes"
 //	go run ./cmd/demo -broken                # the failed-to-compile page: three pages, broken in three ways
 package main
 
@@ -111,8 +113,12 @@ var app = webui.App{
 }
 
 var (
-	broken = flag.Bool("broken", false, "declare three invalid pages, each broken in its own way, to see the compile error page")
-	accent = flag.String("accent", "", "override the theme's accent colour, such as '#1f7a6d'")
+	broken           = flag.Bool("broken", false, "declare three invalid pages, each broken in its own way, to see the compile error page")
+	accent           = flag.String("accent", "", "override the theme's accent colour, such as '#1f7a6d'")
+	palette          = flag.String("palette", "", "use a prepared theme, with colours of its own for each mode: 'forest'")
+	noFavicon        = flag.Bool("no-favicon", false, "do not make and serve the browser tab's icon from the logo (Brand.NoFavicon)")
+	noConsoleMessage = flag.Bool("no-console-message", false, "leave out the generator tag and the line in the browser's console that say what built the pages (App.NoConsoleMessage)")
+	sessionSecret    = flag.String("secret", "", "the secret that keys the addresses of an editor's context files, of at least 16 bytes; the same on every instance behind a balancer (App.Secret)")
 )
 
 // Arguments must be string, bool, int, int64 or float64, or a slice of one of them for a
@@ -161,11 +167,23 @@ var brokenPages = webui.Pages{Broken, BrokenTable, BrokenPattern}
 // library derives the rest and tunes it for light and dark, which are the viewer's choice.
 // A value that is not a hex colour is a Compile error, so a colour cannot break out of its
 // declaration, and one that cannot be read where it is drawn is too.
-func themeFor(accent string) webui.Theme {
-	if accent == "" {
-		return webui.Theme{}
+func themeFor(accent, palette string) webui.Theme {
+	theme := webui.Theme{}
+	if palette == "forest" {
+		theme = forest
 	}
-	return webui.Theme{Accent: webui.Color(accent)}
+	if accent != "" {
+		theme.Accent = webui.Color(accent)
+	}
+	return theme
+}
+
+// forest is a prepared theme: the colours of the Theme are those of both modes, and Light and Dark are what the app gives one mode alone, here the page's background (Canvas, from which
+// the panels, the borders and the text are derived) and colours for the status badges that are tuned to read on it.
+var forest = webui.Theme{
+	Accent: "#2e7d5b", OK: "#2e7d32", Warning: "#b26a00", Critical: "#b3261e",
+	Light: webui.ModeColors{Canvas: "#f3f6f2", Accent: "#256d4e"},
+	Dark:  webui.ModeColors{Canvas: "#101612", Accent: "#2a7552", OK: "#66bb6a", Warning: "#ffb74d", Critical: "#c62828"},
 }
 
 func main() {
@@ -173,7 +191,12 @@ func main() {
 	flag.Parse()
 
 	a := app
-	a.Theme = themeFor(*accent)
+	a.Theme = themeFor(*accent, *palette)
+	a.Brand.NoFavicon = *noFavicon
+	a.NoConsoleMessage = *noConsoleMessage
+	if *sessionSecret != "" {
+		a.Secret = []byte(*sessionSecret)
+	}
 	observer, err := prom.New(registry) // what the app counts, to be served below with the program's own
 	if err != nil {
 		log.Fatal(err)

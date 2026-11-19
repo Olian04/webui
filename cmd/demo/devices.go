@@ -51,7 +51,7 @@ var (
 			}
 		},
 		Options: []webui.Option{
-			{Value: "healthy", Label: "Healthy", Tone: webui.ToneOK}, {Value: "degraded", Label: "Degraded", Tone: webui.ToneWarning}, {Value: "quiet", Label: "Quiet"},
+			{Value: "healthy", Label: "Healthy", Tone: webui.ToneOK}, {Value: "degraded", Label: "Degraded", Tone: webui.ToneWarning}, {Value: "quiet", Label: "Quiet", Tone: webui.ToneNeutral},
 		},
 		Required: true,
 	}

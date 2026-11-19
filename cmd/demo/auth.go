@@ -6,9 +6,10 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/Olian04/webui/pkg/webui"
 )
 
 // The demo's authentication, small but real. A visitor with no session is sent to
@@ -39,11 +40,18 @@ func RoleOf(ctx context.Context) Role {
 
 // canEdit is the Guard of every action and of the pages for editors. One function
 // serves them all: it takes the subject and ignores it, and asks the session.
+//
+// A Guard may return any error, and says why to the visitor with a Refusal: Unauthorized for one who is not signed in (a 401), Forbidden for one who is signed in and may not (a 403). The
+// words are the same for a plain error, which is what a Guard that returns one answers; a Refusal chooses the status and lets the page say more.
 func canEdit[T any](ctx context.Context, _ T) error {
-	if RoleOf(ctx) != Editor {
-		return errors.New("requires the editor role")
+	switch RoleOf(ctx) {
+	case Editor:
+		return nil
+	case "":
+		return webui.Unauthorized("requires a signed-in session")
+	default:
+		return webui.Forbidden("requires the editor role")
 	}
-	return nil
 }
 
 const sessionCookie = "demo_session"

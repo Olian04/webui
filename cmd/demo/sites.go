@@ -35,6 +35,8 @@ var (
 	SiteRate = webui.Slider[SiteSummary]{
 		Label: "Mean rate / s", Max: 15, StepSize: 0.01,
 		Load: func(s SiteSummary) float64 { return s.Rate },
+		// A mean that is a bar on the page has no number to type a bound for: its column is sorted and not filtered.
+		NoFilter: true,
 	}
 )
 
@@ -43,11 +45,26 @@ const SitesPath webui.PageID[webui.NoArgs] = "/site"
 
 var Sites = webui.Page[webui.NoArgs]{
 	Path: SitesPath,
-	View: SitesTable,
+	View: webui.Stack{SitesTable, SitesCards},
 }
 
-// SitesTable is also on the landing page: a panel is a value, so any page can
-// hold the one a page already has.
+// SitesCards is the same sites as cards in a grid that wraps, as many to a row as there is room for: CardsGrid, which is what a Cards is when it is given no Layout, and is written out here
+// beside the Activity page's cards, which scroll sideways.
+var SitesCards = webui.Cards[SiteSummary]{
+	Title:    "Sites at a glance",
+	Layout:   webui.CardsGrid,
+	PageSize: 6,
+	Loader:   webui.RowsLoader[SiteSummary]{Load: func(context.Context) ([]SiteSummary, webui.Loaded) { return service.Sites(), webui.Ready() }},
+	Headline: SiteName,
+	Open: webui.Link[SiteSummary, SiteArgs]{
+		Page: SiteDetail,
+		Args: func(_ context.Context, s SiteSummary) SiteArgs { return SiteArgs{Name: s.Name} },
+	},
+	Meta:  []webui.Accessor[SiteSummary]{SiteDevicesCount, SiteDegraded},
+	Badge: SiteHealth,
+}
+
+// SitesTable is the list of sites. A panel is a value, so a page can hold the one another page has.
 var SitesTable = webui.Table[SiteSummary]{
 	Title:  "Sites",
 	Desc:   "An unpaged table. It only says what its rows are, and the library sorts and filters them.",
