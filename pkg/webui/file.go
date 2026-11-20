@@ -2,6 +2,7 @@ package webui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Olian04/webui/internal/ir"
 )
@@ -193,6 +194,12 @@ func validateFile[M any](v *viewValidator, at string, a File[M]) {
 			v.add(fmt.Sprintf("%s: Accept[%d] is not a FileKind", at, i), "Use one of the File… constants.")
 		}
 	}
+}
+
+// samePath is whether an address is a path on this site, which is the only place that a picture is shown from: the content security policy
+// lets an image be this site's own, and a thumbnail is not one that an address elsewhere should be asked for.
+func samePath(s string) bool {
+	return strings.HasPrefix(s, "/") && !strings.HasPrefix(s, "//") && !strings.HasPrefix(s, `/\`) && !strings.ContainsAny(s, "\n\r")
 }
 
 // lowerFile is a File as the IR holds it.

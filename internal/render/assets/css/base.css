@@ -16,6 +16,7 @@ body {
 }
 body {
   margin: 0;
+  background: var(--page-color);
   color: var(--text-color);
   font:
     14px/1.5 Inter,

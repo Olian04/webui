@@ -149,7 +149,7 @@ func TestTheAppsMetricsAreCollectedForTheHostToServeAndAreNotServedByTheApp(t *t
 	a.Observer = observer
 	compiled, err := a.Compile("/admin")
 	assert.NoError(t, err)
-	h := routes(compiled, app.Styles("/admin"))
+	h := routes(compiled)
 
 	login := post(h, "/login", url.Values{"role": {"editor"}})
 	req := httptest.NewRequest(http.MethodGet, "/admin/device", nil)

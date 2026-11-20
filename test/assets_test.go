@@ -231,3 +231,15 @@ func TestTheServedStylesheetsAndScriptsAreTheMinifiedSources(t *testing.T) {
 		assert.True(t, len(served) < len(assetSource(t, name)))
 	}
 }
+
+// The stylesheet of the app's pages is made of parts, and the prose rules are put under .md when it is built. The nesting that makes is taken out of the output, so what is
+// served is flat css that any browser reads, and no rule of it says & or opens a rule inside a rule.
+func TestTheServedAppStylesheetIsFlat(t *testing.T) {
+	t.Parallel()
+
+	raw, err := os.ReadFile(filepath.Join("..", "internal", "render", "assets", "min", "css", "app.css"))
+	assert.NoError(t, err)
+	css := string(raw)
+	assert.False(t, strings.Contains(css, "&"))
+	assert.True(t, strings.Contains(css, ".md h1{")) // a prose rule, under .md and flat
+}

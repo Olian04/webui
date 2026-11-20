@@ -174,8 +174,6 @@ func nodeTitle(n ir.Node) string {
 		return n.Title
 	case *ir.FileUpload:
 		return n.Title
-	case *ir.Embed:
-		return n.Title
 	}
 	return ""
 }

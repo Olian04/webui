@@ -35,7 +35,7 @@ func panelsOf(root ir.Node) map[string]ir.Node {
 	out := map[string]ir.Node{}
 	ir.Walk(root, func(n ir.Node) {
 		switch n.(type) {
-		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Items, *ir.Calendar, *ir.Toolbar, *ir.FileUpload, *ir.Embed:
+		case *ir.Form, *ir.Table, *ir.Diff, *ir.Markdown, *ir.Items, *ir.Calendar, *ir.Toolbar, *ir.FileUpload:
 			out[render.ViewID(n.Pos())] = n
 		}
 	})

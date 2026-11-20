@@ -1,32 +1,28 @@
 /* ===========================================================================
    Design tokens, named by what they colour. The app's colours (webui.Theme) override the
-   accent, success, warning and danger families, emitted as theme.css after this file.
-   A line that ends in the marker "app" is for the app's own pages only: classless.css (what
-   App.Styles serves) is built without those lines, so what a page of the app's own can
-   read is what is left, and a test keeps that to what the stylesheet itself uses plus the
-   status colours. The values
+   accent, success, warning and danger families, emitted as theme.css after this file. The values
    below are tuned to Grafana's dark canvas, which is a theme choice, not a
    structural one — the markup underneath is unchanged.
    =========================================================================== */
 :root,
 [data-theme='dark'] {
   color-scheme: dark;
-  --page-color: #111217; /* app */
+  --page-color: #111217;
   --surface-color: #181b1f;
-  --raised-color: #22252b; /* app */
+  --raised-color: #22252b;
   --field-color: #0e0f12;
   --border-color: rgba(204, 204, 220, 0.11);
   --border-strong-color: rgba(204, 204, 220, 0.22);
   /* the edge of a control: the ordinary one, unless the visitor asks for more contrast */
   --control-border-color: var(--border-strong-color);
-  --control-border-strong-color: rgba(204, 204, 220, 0.5); /* 3:1 vs the control's surface */ /* app */
+  --control-border-strong-color: rgba(204, 204, 220, 0.5); /* 3:1 vs the control's surface */
   --text-color: rgb(204, 204, 220);
   --text-muted-color: rgba(204, 204, 220, 0.65);
   --text-faint-color: rgba(204, 204, 220, 0.45);
   --hover-color: rgba(204, 204, 220, 0.07);
-  --active-color: rgba(204, 204, 220, 0.11); /* app */
+  --active-color: rgba(204, 204, 220, 0.11);
   --accent-color: #3d71d9;
-  --accent-hover-color: #3a6bd3; /* app */
+  --accent-hover-color: #3a6bd3;
   --accent-text-color: #6e9fff;
   --success-color: #6ccf8e;
   --success-bg-color: rgba(108, 207, 142, 0.14);
@@ -37,27 +33,27 @@
   --danger-color: #f57a7d;
   --danger-bg-color: rgba(245, 122, 125, 0.14);
   --danger-border-color: rgba(245, 122, 125, 0.3);
-  --danger-solid-color: #d03a3f; /* app */
-  --danger-solid-hover-color: #bd3237; /* app */
-  --shadow: 0 4px 12px rgb(0 0 0/0.55); /* app */
+  --danger-solid-color: #d03a3f;
+  --danger-solid-hover-color: #bd3237;
+  --shadow: 0 4px 12px rgb(0 0 0/0.55);
 }
 [data-theme='light'] {
   color-scheme: light;
-  --page-color: #f4f5f5; /* app */
+  --page-color: #f4f5f5;
   --surface-color: #ffffff;
-  --raised-color: #ffffff; /* app */
+  --raised-color: #ffffff;
   --field-color: #ffffff;
   --border-color: rgba(36, 41, 46, 0.12);
   --border-strong-color: rgba(36, 41, 46, 0.24);
   --control-border-color: var(--border-strong-color);
-  --control-border-strong-color: rgba(36, 41, 46, 0.55); /* app */
+  --control-border-strong-color: rgba(36, 41, 46, 0.55);
   --text-color: #24292e;
   --text-muted-color: #5c6269;
   --text-faint-color: #85888e;
   --hover-color: rgba(36, 41, 46, 0.06);
-  --active-color: rgba(36, 41, 46, 0.1); /* app */
+  --active-color: rgba(36, 41, 46, 0.1);
   --accent-color: #3d71d9;
-  --accent-hover-color: #3265d4; /* app */
+  --accent-hover-color: #3265d4;
   --accent-text-color: #1f62e0;
   --success-color: #177244;
   --success-bg-color: rgba(23, 114, 68, 0.12);
@@ -68,30 +64,30 @@
   --danger-color: #c20d54;
   --danger-bg-color: rgba(194, 13, 84, 0.12);
   --danger-border-color: rgba(194, 13, 84, 0.28);
-  --danger-solid-color: #c20d54; /* app */
-  --danger-solid-hover-color: #a60b49; /* app */
-  --shadow: 0 4px 12px rgb(24 26 27/0.18); /* app */
+  --danger-solid-color: #c20d54;
+  --danger-solid-hover-color: #a60b49;
+  --shadow: 0 4px 12px rgb(24 26 27/0.18);
 }
 /* No explicit choice: follow the viewer's system. A stored choice (the theme
    switch) sets data-theme and wins over this. */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme]) {
     color-scheme: light;
-    --page-color: #f4f5f5; /* app */
+    --page-color: #f4f5f5;
     --surface-color: #ffffff;
-    --raised-color: #ffffff; /* app */
+    --raised-color: #ffffff;
     --field-color: #ffffff;
     --border-color: rgba(36, 41, 46, 0.12);
     --border-strong-color: rgba(36, 41, 46, 0.24);
     --control-border-color: var(--border-strong-color);
-    --control-border-strong-color: rgba(36, 41, 46, 0.55); /* app */
+    --control-border-strong-color: rgba(36, 41, 46, 0.55);
     --text-color: #24292e;
     --text-muted-color: #5c6269;
     --text-faint-color: #85888e;
     --hover-color: rgba(36, 41, 46, 0.06);
-    --active-color: rgba(36, 41, 46, 0.1); /* app */
+    --active-color: rgba(36, 41, 46, 0.1);
     --accent-color: #3d71d9;
-    --accent-hover-color: #3265d4; /* app */
+    --accent-hover-color: #3265d4;
     --accent-text-color: #1f62e0;
     --success-color: #177244;
     --success-bg-color: rgba(23, 114, 68, 0.12);
@@ -102,9 +98,9 @@
     --danger-color: #c20d54;
     --danger-bg-color: rgba(194, 13, 84, 0.12);
     --danger-border-color: rgba(194, 13, 84, 0.28);
-    --danger-solid-color: #c20d54; /* app */
-    --danger-solid-hover-color: #a60b49; /* app */
-    --shadow: 0 4px 12px rgb(24 26 27/0.18); /* app */
+    --danger-solid-color: #c20d54;
+    --danger-solid-hover-color: #a60b49;
+    --shadow: 0 4px 12px rgb(24 26 27/0.18);
   }
 }
 
@@ -113,16 +109,16 @@
 :root {
   /* The separator between the things of a row, such as the status bar's figures: a middle dot, in the quiet
      text colour. */
-  --separator: '\00b7'; /* app */
+  --separator: '\00b7';
   --focus-ring-color: color-mix(in srgb, var(--accent-color) 25%, transparent);
-  --danger-ring-color: color-mix(in srgb, var(--danger-color) 25%, transparent); /* app */
-  --accent-tint-color: color-mix(in srgb, var(--accent-color) 10%, transparent); /* app */
+  --danger-ring-color: color-mix(in srgb, var(--danger-color) 25%, transparent);
+  --accent-tint-color: color-mix(in srgb, var(--accent-color) 10%, transparent);
   --radius: 2px;
   --radius-pill: 99px; /* switch, spinner, scrollbar thumb — design: pills only */
   --control-height: 32px;
-  --control-height-small: 28px; /* app */
-  --row-height: 34px; /* app */
-  --gutter: 8px; /* app */
-  --motion-duration: 0.12s; /* mid of design §13 110–130ms */ /* app */
-  --backdrop-color: rgb(0 0 0 / 50%); /* app */
+  --control-height-small: 28px;
+  --row-height: 34px;
+  --gutter: 8px;
+  --motion-duration: 0.12s; /* mid of design §13 110–130ms */
+  --backdrop-color: rgb(0 0 0 / 50%);
 }

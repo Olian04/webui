@@ -62,7 +62,7 @@ type NavPages[A any] struct {
 }
 
 // NavURL is an entry that opens an address: a path on the same site, such as "/logout", or an http, https or mailto address. The address is used as written, and the mount prefix is
-// not added, so it is no way to open a page of the app: give the page a [NavPage] for that. An address on the web opens in a tab of its own, so the app stays where it was; a path
+// not added, so it is no way to open a page of the app: give the page a [NavPage] for that. It is the way to a page of the program's own, which is a route beside the app's handler. An address on the web opens in a tab of its own, so the app stays where it was; a path
 // on the same site and a mail address open in the same tab.
 type NavURL struct {
 	// Label is what the entry says. It is required.

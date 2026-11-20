@@ -34,33 +34,6 @@ var failureHead = sync.OnceValue(func() templ.Component {
 	return templ.Raw("<style>" + string(css) + "</style>")
 })
 
-// assetName is the name that a file is served as, and the hash in it: its own name with a short hash of its contents before the extension. It is the one place that says it, so that the name a
-// page links to and the name that StyleHrefs gives to code that is not a page cannot differ.
-func assetName(logical string, body []byte) (name, hash string) {
-	sum := sha256.Sum256(body)
-	hash = hex.EncodeToString(sum[:4])
-	ext := path.Ext(logical)
-	return strings.TrimSuffix(logical, ext) + "." + hash + ext, hash
-}
-
-// StyleHrefs are the addresses of the stylesheets that a page that the app makes itself links (the page in an Embed), in the order it links them: the classless one, which styles elements and
-// has no class in it, and the app's theme when it has one. They are served as every asset is, and named for a hash of their contents, which is the same in every app of this version of the
-// library; only the mount prefix and the theme are the app's. The app's own pages link app.css, whose classes are theirs and are not offered; nor is the icon stylesheet, which is cut for the icons
-// that one app names.
-func StyleHrefs(prefix string, t ir.Theme) []string {
-	css, err := assets.FS.ReadFile("min/css/classless.css")
-	if err != nil {
-		return nil // the file is embedded: it is there
-	}
-	name, _ := assetName("classless.css", css)
-	hrefs := []string{prefix + AssetDir + "/" + name}
-	if t != (ir.Theme{}) {
-		themed, _ := assetName("theme.css", themeCSS(t))
-		hrefs = append(hrefs, prefix+AssetDir+"/"+themed)
-	}
-	return hrefs
-}
-
 // buildAssets reads, hashes and compresses every file the app serves under AssetDir, once, so that
 // a request does no work. Each is named for a short hash of its contents before the extension: the
 // address changes when, and only when, the file does, so it is cached for a year as immutable. It
@@ -69,7 +42,10 @@ func StyleHrefs(prefix string, t ir.Theme) []string {
 func (r *Renderer) buildAssets() error {
 	r.files, r.served = map[string]*assetserve.Blob{}, map[string]string{}
 	add := func(logical string, body []byte, mime string, brotli ...[]byte) {
-		name, hash := assetName(logical, body)
+		sum := sha256.Sum256(body)
+		hash := hex.EncodeToString(sum[:4])
+		ext := path.Ext(logical)
+		name := strings.TrimSuffix(logical, ext) + "." + hash + ext
 		b := &assetserve.Blob{Mime: mime, Cache: "public, max-age=31536000, immutable", ETag: `"` + hash + `"`, Body: body}
 		if assetserve.Compressible(mime) {
 			if gz := assetserve.Gzip(body); len(gz) < len(body) {
@@ -98,7 +74,7 @@ func (r *Renderer) buildAssets() error {
 		return err
 	}
 
-	for logical, file := range map[string]string{"app.css": "min/css/app.css", "classless.css": "min/css/classless.css", "enhance.js": "min/js/enhance.js"} {
+	for logical, file := range map[string]string{"app.css": "min/css/app.css", "enhance.js": "min/js/enhance.js"} {
 		body, err := read(file)
 		if err != nil {
 			return err

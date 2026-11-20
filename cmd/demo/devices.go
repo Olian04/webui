@@ -267,16 +267,6 @@ var Details = webui.Page[DeviceArgs]{
 	View: webui.Tabs{
 		{Label: "Overview", View: webui.Split{DeviceForm, RecentEvents}},
 		{Label: "Raw events", View: RawEvents},
-		{Label: "Location", View: DeviceLocation},
-	},
-}
-
-// DeviceLocation is the same kind of panel with an address that is built for the request: Load returns the path of the page of the device on screen, from the page's arguments.
-var DeviceLocation = webui.Embed{
-	Title: "Site map",
-	Desc:  "An Embed whose Load returns the address for this device, from the page's arguments.",
-	Load: func(ctx context.Context) (string, webui.Loaded) {
-		return framePath(webui.ArgsOf[DeviceArgs](ctx).ID), webui.Ready()
 	},
 }
 

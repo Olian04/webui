@@ -284,9 +284,6 @@ them the note of a panel that is not final. A panel has no menu of its own, so n
 folded away: reloading is the page's Refresh in the top bar, and what an app puts in the head
 is drawn. On a phone a head that has controls may take a second row.
 
-An `Embed` is a panel whose body is a frame of a page of the app's own: borderless, as tall as the code editor (`max(16rem, 100dvh - chrome - 8rem)`), with an "Open in a new tab" link in its footer. The page in it is
-drawn by its own route and follows the visitor's colour scheme, not the app's switch.
-
 A panel may have a footer separated by a 1px rule: pagination on the left (with the
 table's CSV and JSON download links, as quiet buttons, beside the range),
 navigation or actions on the right. The footer is the kind's own; an app adds to the head only.
@@ -360,7 +357,7 @@ its light or its dark theme.
 
 ### Text
 
-The rules for text (headings, paragraphs, lists, links, quotes, code) are one set, `prose.css`: Markdown takes it under `.md`, and the classless stylesheet that `App.Styles` serves takes it as it is, so a page of an app's own that writes plain HTML reads as Markdown does. Tables are the exception: Markdown keeps the grid's rules.
+The rules for text (headings, paragraphs, lists, links, quotes, code) are one set, `prose.css`, which the build puts under `.md`: Markdown takes it, and tables are the grid's own.
 
 A text set as Markdown is a panel with an article in it (`.md`): 14px on 1.6, in the panel's text colour, and
 it works without script. It is markup from outside the design, so each element is given the look of its counterpart in the app,
