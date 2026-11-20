@@ -678,11 +678,11 @@
 //		Submit:   webui.Action[Config]{Run: saveConfig},
 //	}
 //
-// The editor is the files of pkg/monaco, which a program that has an Editor or a [Diff]
+// The editor is the files of pkg/codeeditor, which a program that has an Editor or a [Diff]
 // imports to carry them (a program that has neither does not, and does not link a few
 // megabytes it never serves):
 //
-//	import _ "github.com/Olian04/webui/pkg/monaco"
+//	import _ "github.com/Olian04/webui/pkg/codeeditor"
 //
 // An app that has one and was not given them is refused when it is compiled, with this import
 // as the fix. Without script an editor is a text box with a Save button, a viewer is the text
@@ -694,10 +694,10 @@
 // (with JavaScript). A service is a worker of its own, so it is an optional import, which brings
 // the editor with it, so that it is the one import a program needs:
 //
-//	import _ "github.com/Olian04/webui/pkg/monaco/json"
+//	import _ "github.com/Olian04/webui/pkg/codeeditor/json"
 //
 // and without it the editor highlights and nothing more. The packages are
-// pkg/monaco/json, pkg/monaco/css, pkg/monaco/html and pkg/monaco/typescript. A
+// pkg/codeeditor/json, pkg/codeeditor/css, pkg/codeeditor/html and pkg/codeeditor/typescript. A
 // service goes only to an editor that can be edited, by the visitor who is shown it:
 // a viewer, a visitor whose Submit Guard refuses them, and every [Diff] are
 // highlighted only, so no service is sent for text that cannot change.

@@ -14,7 +14,7 @@ import (
 )
 
 // FS holds min/ (the minified stylesheets and scripts, built from css/ and js/ by make assets), fonts/ and the default favicon. Nothing else is served, and not the
-// editor, which is in pkg/monaco, so that a program that has no editor does not carry it.
+// editor, which is in pkg/codeeditor, so that a program that has no editor does not carry it.
 //
 //go:embed min fonts favicon.svg
 var FS embed.FS
@@ -45,7 +45,7 @@ type Monaco struct {
 	Fonts   []string `json:"fonts"`
 }
 
-// The editor is the files of pkg/monaco, which a program imports to have it. The package
+// The editor is the files of pkg/codeeditor, which a program imports to have it. The package
 // registers them here from init, as a language service registers its worker.
 var (
 	editorMu sync.RWMutex
@@ -73,7 +73,7 @@ func MonacoFiles() (Monaco, error) {
 	files := editor
 	editorMu.RUnlock()
 	if files == nil {
-		return m, errors.New("the editor is not installed: import _ \"github.com/Olian04/webui/pkg/monaco\"")
+		return m, errors.New("the editor is not installed: import _ \"github.com/Olian04/webui/pkg/codeeditor\"")
 	}
 	b, err := fs.ReadFile(files, "manifest.json")
 	if err != nil {
@@ -82,7 +82,7 @@ func MonacoFiles() (Monaco, error) {
 	return m, json.Unmarshal(b, &m)
 }
 
-// The language services are workers, one package each under pkg/monaco, so an
+// The language services are workers, one package each under pkg/codeeditor, so an
 // application that does not import one does not carry it. A package registers its
 // worker here when it is imported.
 var (

@@ -2,7 +2,7 @@
 //
 // Import it for its effect:
 //
-//	import _ "github.com/Olian04/webui/pkg/monaco/html"
+//	import _ "github.com/Olian04/webui/pkg/codeeditor/html"
 //
 // An [webui.Editor] that can be edited, and whose language is lang.HTML, lang.Handlebars and lang.Razor, then
 // offers HTML, Handlebars and Razor (tag and attribute completion, auto-closing tags, formatting), from a worker that the page loads only when it has such an
@@ -16,7 +16,7 @@ import (
 	"embed"
 
 	"github.com/Olian04/webui/internal/render/assets"
-	_ "github.com/Olian04/webui/pkg/monaco" // the editor that the service is for
+	_ "github.com/Olian04/webui/pkg/codeeditor" // the editor that the service is for
 )
 
 //go:embed worker

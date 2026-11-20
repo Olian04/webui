@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Olian04/webui/pkg/lang"
-	_ "github.com/Olian04/webui/pkg/monaco/json"
+	_ "github.com/Olian04/webui/pkg/codeeditor/json"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )

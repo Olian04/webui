@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/Olian04/webui/pkg/lang"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -11,7 +11,7 @@ import (
 // language. With a Store on its Content it is edited and saved, like a Form; without
 // one it is a viewer of the text. A language service (JSON's, here, which checks the
 // syntax as you type) is only offered to an editor that can be edited, and only because
-// this program imports pkg/monaco/json; without that import the editor still highlights.
+// this program imports pkg/codeeditor/json; without that import the editor still highlights.
 var (
 	ConfigText = webui.String[Config]{
 		Label: "Configuration",

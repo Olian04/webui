@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Olian04/webui/pkg/lang"
-	_ "github.com/Olian04/webui/pkg/monaco" // the editor that an Editor and a Diff are drawn with, which a program imports to have
+	_ "github.com/Olian04/webui/pkg/codeeditor" // the editor that an Editor and a Diff are drawn with, which a program imports to have
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 	"github.com/Olian04/webui/test/util/page"
@@ -265,7 +265,7 @@ func TestTheEditorsIconFontIsGzippedForAClientThatAcceptsIt(t *testing.T) {
 	t.Parallel()
 
 	h := editorApp(webui.Editor[snippet]{Title: "Config", Load: loadSnippet, Content: snippetView}) // the font is linked by the stylesheet, which the editor page links
-	fonts, err := filepath.Glob(filepath.Join("..", "pkg", "monaco", "editor", "assets", "codicon-*.ttf"))
+	fonts, err := filepath.Glob(filepath.Join("..", "pkg", "codeeditor", "editor", "assets", "codicon-*.ttf"))
 	assert.NoError(t, err)
 	assert.Equal(t, len(fonts), 1)
 	font := []string{"", "/admin/_webui/monaco/assets/" + filepath.Base(fonts[0])}

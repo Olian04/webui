@@ -56,7 +56,7 @@ assets: ## Minify the stylesheets and scripts the renderer serves (sources in cs
 
 monaco: ## Rebuild the embedded Monaco editor assets (needs node); the output is committed
 	cd tools/monaco && npm ci && node build.mjs
-	cd tools && go run ./precompress ../pkg/monaco/editor ../pkg/monaco/css/worker ../pkg/monaco/html/worker ../pkg/monaco/json/worker ../pkg/monaco/typescript/worker
+	cd tools && go run ./precompress ../pkg/codeeditor/editor ../pkg/codeeditor/css/worker ../pkg/codeeditor/html/worker ../pkg/codeeditor/json/worker ../pkg/codeeditor/typescript/worker
 
 build: generate ## Build the application
 	go build -o webui ./cmd/demo

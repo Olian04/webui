@@ -2,7 +2,7 @@
 
 package webui
 
-// languages is every language the editor highlights, by Monaco's own language id, for validation. The constants for them are in pkg/lang.
+// languages is every language the editor highlights, by Monaco's own language id, for validation. The constants for them are in pkg/codeeditor/lang.
 var languages = map[Language]bool{
 	"abap":             true,
 	"aes":              true,

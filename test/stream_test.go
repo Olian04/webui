@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Olian04/webui/pkg/lang"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 	"github.com/Olian04/webui/test/util/page"

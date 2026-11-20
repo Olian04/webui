@@ -14,7 +14,7 @@ import (
 
 	"github.com/andybalholm/brotli"
 
-	"github.com/Olian04/webui/pkg/lang"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -195,9 +195,9 @@ func TestEveryBrotliFileIsItsFilesCompressedCopyAndEveryFileThatShrinksHasOne(t 
 	checked := 0
 	for _, dir := range []string{
 		filepath.Join("..", "internal", "render", "assets", "min"),
-		filepath.Join("..", "pkg", "monaco", "editor"),
-		filepath.Join("..", "pkg", "monaco", "css", "worker"), filepath.Join("..", "pkg", "monaco", "html", "worker"),
-		filepath.Join("..", "pkg", "monaco", "json", "worker"), filepath.Join("..", "pkg", "monaco", "typescript", "worker"),
+		filepath.Join("..", "pkg", "codeeditor", "editor"),
+		filepath.Join("..", "pkg", "codeeditor", "css", "worker"), filepath.Join("..", "pkg", "codeeditor", "html", "worker"),
+		filepath.Join("..", "pkg", "codeeditor", "json", "worker"), filepath.Join("..", "pkg", "codeeditor", "typescript", "worker"),
 	} {
 		assert.NoError(t, filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() || filepath.Base(path) == "manifest.json" {

@@ -37,15 +37,15 @@ import (
 
 	// The code editor that the Editor and the Diff are drawn with: a program that has either imports it, and one that has
 	// neither does not link it. The language services below import it too, so it is written here for the reader.
-	_ "github.com/Olian04/webui/pkg/monaco"
+	_ "github.com/Olian04/webui/pkg/codeeditor"
 
 	// The JSON language service for the editor: an optional import, since it is a worker of
 	// its own. The program is smaller without it, and the editor still highlights.
-	_ "github.com/Olian04/webui/pkg/monaco/json"
+	_ "github.com/Olian04/webui/pkg/codeeditor/json"
 
 	// And TypeScript's, which is large (about 7 MB of worker), so it is the one to leave out when
 	// the program should be small: the editor then highlights TypeScript and checks nothing.
-	_ "github.com/Olian04/webui/pkg/monaco/typescript"
+	_ "github.com/Olian04/webui/pkg/codeeditor/typescript"
 	"github.com/Olian04/webui/pkg/prom"
 	"github.com/Olian04/webui/pkg/webui"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Olian04/webui/pkg/lang"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )
@@ -56,7 +56,7 @@ func TestTheIconFontIsAskedForAsTheHeadIsRead(t *testing.T) {
 func TestAPageWithAnEditorAsksForItsModulesAndFontAsTheHeadIsRead(t *testing.T) {
 	t.Parallel()
 
-	raw, err := os.ReadFile(filepath.Join("..", "pkg", "monaco", "editor", "manifest.json")) //nolint:gosec // G304: a fixed file of this repository
+	raw, err := os.ReadFile(filepath.Join("..", "pkg", "codeeditor", "editor", "manifest.json")) //nolint:gosec // G304: a fixed file of this repository
 	assert.NoError(t, err)
 	var manifest struct {
 		Entry   string   `json:"entry"`

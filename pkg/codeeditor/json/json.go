@@ -2,7 +2,7 @@
 //
 // Import it for its effect:
 //
-//	import _ "github.com/Olian04/webui/pkg/monaco/json"
+//	import _ "github.com/Olian04/webui/pkg/codeeditor/json"
 //
 // An [webui.Editor] that can be edited, and whose language is lang.JSON, then
 // offers JSON (diagnostics against the syntax, completion, formatting, folding), from a worker that the page loads only when it has such an
@@ -19,7 +19,7 @@ import (
 	"embed"
 
 	"github.com/Olian04/webui/internal/render/assets"
-	_ "github.com/Olian04/webui/pkg/monaco" // the editor that the service is for
+	_ "github.com/Olian04/webui/pkg/codeeditor" // the editor that the service is for
 )
 
 //go:embed worker
