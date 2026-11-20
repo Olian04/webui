@@ -21,7 +21,7 @@ To see what the demo does not use yet, list the exported names of `pkg/webui` an
 |---|---|
 | `App`: `Brand` (`Name`, `Logo`, `NoFavicon`), `Description`, `Logger`, `Observer`, `Secret`, `NoConsoleMessage`, `Menu`, `Navigation` | `main.go` (`NoFavicon`, `NoConsoleMessage` and `Secret` by flags), `metrics.go` |
 | `Theme`: `Accent`, `OK`, `Warning`, `Critical`, `Light` and `Dark` (`ModeColors`: `Canvas`, `Accent`, `OK`, `Warning`, `Critical`) | `main.go` (`-accent`, `-palette forest`) |
-| Navigation: `NavPage`, `NavPages` (`NavEntry`), `NavURL`, `NavGroup` | `main.go`, `sites.go` |
+| Navigation: `NavPage`, `NavPages` (`Load`, `Label`), `NavURL`, `NavGroup` | `main.go`, `sites.go` |
 | `Page`, `PageID`, `Guard`, `Crumb`, `Search` (`Hit`), `Open`, `ArgsOf`, path and query arguments, `{path...}` | `devices.go`, `sites.go`, `alerts.go`, `files.go`, `compare.go` |
 | `Table` and its options: `Columns`, `PageSize`, `Export`, `Key`, `RowClick`, `Actions`, `BulkActions`, `HeadActions`; `NoFilter`, `NoSort` on an accessor | `devices.go`, `alerts.go`, `sites.go`, `system.go` |
 | Loaders: `RowsLoader`, `PagedLoader` (`PagedQuery`, `PagedWindow`), `FeedLoader` | `alerts.go`, `devices.go`, `system.go` |

@@ -116,15 +116,6 @@ type View interface {
 	lowerView(at ir.Pos) ir.Node
 }
 
-// NavEntry is one entry that a [NavPages] lists: an address of the page, and what it says.
-type NavEntry[A any] struct {
-	// Args are the page's arguments that the entry opens, with the path ones filled in.
-	Args A
-
-	// Label is what the entry says. An entry with none is left out.
-	Label string
-}
-
 func (p Page[A]) pagePath() string { return string(p.Path) }
 
 func (p Page[A]) pageArgType() reflect.Type { return reflect.TypeFor[A]() }

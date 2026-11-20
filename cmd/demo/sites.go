@@ -76,14 +76,16 @@ var SitesTable = webui.Table[SiteSummary]{
 	Columns: []webui.Accessor[SiteSummary]{SiteName, SiteDevicesCount, SiteDegraded, SiteHealth, SiteRate},
 }
 
-// siteEntries is the sidebar's entry for each site, which is loaded when a page is drawn: each says its own words.
-func siteEntries(context.Context) ([]webui.NavEntry[SiteArgs], error) {
-	var entries []webui.NavEntry[SiteArgs]
+// siteAddresses are the addresses of the site page that the sidebar lists, one for each site, loaded when a page is drawn; siteLabel is what each is called.
+func siteAddresses(context.Context) ([]SiteArgs, webui.Loaded) {
+	var addresses []SiteArgs
 	for _, s := range service.Sites() {
-		entries = append(entries, webui.NavEntry[SiteArgs]{Args: SiteArgs{Name: s.Name}, Label: s.Name})
+		addresses = append(addresses, SiteArgs{Name: s.Name})
 	}
-	return entries, nil
+	return addresses, webui.Ready()
 }
+
+func siteLabel(a SiteArgs) string { return a.Name }
 
 var SiteDetail = webui.Page[SiteArgs]{
 	Path: "/site/{name}",

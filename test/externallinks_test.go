@@ -103,8 +103,9 @@ func TestAMenuRefusesAPageThatListsSeveralAddresses(t *testing.T) {
 
 	site := webui.Page[navSiteArgs]{Path: "/site/{name}", View: webui.Stack{}}
 	app := webui.App{Pages: webui.Pages{site}, Menu: []webui.NavItem{webui.NavPages[navSiteArgs]{
-		Page:    site,
-		Entries: func(context.Context) ([]webui.NavEntry[navSiteArgs], error) { return nil, nil },
+		Page:  site,
+		Load:  func(context.Context) ([]navSiteArgs, webui.Loaded) { return nil, webui.Ready() },
+		Label: func(a navSiteArgs) string { return a.Name },
 	}}}
 	var all string
 	for _, e := range compileErrors(t, app) {

@@ -42,16 +42,20 @@ type NavPage struct {
 	Icon string
 }
 
-// NavPages is an entry for a page that lists an entry for each of several addresses: the sites of a fleet, the projects of a team. Entries is called whenever a full page is
-// drawn, and returns each [NavEntry]: the page's arguments and the words the entry says. It has a deadline of two seconds, the first fifty entries are kept, an entry with
-// no Label is left out, and an error or a panic leaves the page's entries out and is logged. The page's Guard is asked with each entry's own arguments, and an entry that it
-// refuses is not drawn. All of them have the Icon given here.
+// NavPages is an entry for a page that lists an entry for each of several addresses: the sites of a fleet, the projects of a team. The page is the one it opens, and A its arguments,
+// so what is listed is addresses of that page and nothing else: Load returns them, and Label says what the entry for each is called. Load is called whenever a full page is drawn. It has a
+// deadline of two seconds, the first fifty addresses are kept, an address that Label gives no words is left out, and a failure ([Failed]) or a panic, in Load or in Label, leaves the page's entries
+// out and is logged. A [Loaded.RefreshAfter] means nothing in a sidebar and is ignored. The page's Guard is asked with each address, and an entry that it refuses is not drawn. All of them have
+// the Icon given here.
 type NavPages[A any] struct {
 	// Page is the page it opens, with the arguments A.
 	Page PageRef[A]
 
-	// Entries lists the entries.
-	Entries func(ctx context.Context) ([]NavEntry[A], error)
+	// Load returns the addresses of the page that are listed: its arguments, with the path ones filled in.
+	Load func(ctx context.Context) ([]A, Loaded)
+
+	// Label is what the entry for an address says. It is required, and an address that it gives no words is left out.
+	Label func(a A) string
 
 	// Icon is drawn beside each entry, as [NavPage.Icon] is.
 	Icon string
@@ -150,8 +154,11 @@ func (n NavPages[A]) validateNav(c *navCheck, at string) {
 	if c.menu {
 		c.bad(at, "is a NavPages, which lists an entry for each of several addresses and so belongs in App.Navigation", "Move it to App.Navigation, or list one address with a NavPage or a NavURL.")
 	}
-	if n.Entries == nil {
-		c.bad(at, "has no Entries", "Set Entries to func(ctx) ([]webui.NavEntry[A], error).")
+	if n.Load == nil {
+		c.bad(at, "has no Load", "Set Load to func(ctx) ([]A, webui.Loaded): the arguments of the page that it lists.")
+	}
+	if n.Label == nil {
+		c.bad(at, "has no Label", "Set Label to func(A) string: what the entry for each address says.")
 	}
 	path := ""
 	if n.Page != nil {
@@ -229,11 +236,11 @@ func (n NavPage) lowerNav(*navLower) ir.NavItem {
 func (n NavPages[A]) lowerNav(l *navLower) ir.NavItem {
 	path := n.Page.pagePath()
 	l.entries[path] = func(ctx context.Context) ([]ir.NavEntry, error) {
-		entries, err := n.Entries(ctx)
-		if err != nil {
+		addresses, loaded := n.Load(ctx)
+		if err := loaded.apply(ctx); err != nil { // a RefreshAfter does nothing here: only a panel's Load has a hint to keep it in
 			return nil, err
 		}
-		return convert.Slice(entries, func(e NavEntry[A]) ir.NavEntry { return ir.NavEntry{Args: e.Args, Label: e.Label} }), nil
+		return convert.Slice(addresses, func(a A) ir.NavEntry { return ir.NavEntry{Args: a, Label: n.Label(a)} }), nil
 	}
 	return ir.NavItem{Kind: ir.NavKindPages, Icon: n.Icon, Path: path}
 }
