@@ -1,11 +1,11 @@
-// Package monaco installs the code editor: the files that an [webui.Editor] and a [webui.Diff] draw with, which are most of what the library carries, a few megabytes. Import
+// Package codeeditor installs the code editor (built on Monaco): the files that an [webui.Editor] and a [webui.Diff] draw with, which are most of what the library carries, a few megabytes. Import
 // it for its effect, and only a program that has an editor or a diff needs to:
 //
-//	import _ "github.com/Olian04/webui/pkg/monaco"
+//	import _ "github.com/Olian04/webui/pkg/codeeditor"
 //
 // A program that does not import it does not link the files, and an app that has an Editor or a Diff and was not given them is refused when it is compiled, with this import as the
-// fix. The language services (pkg/monaco/css, html, json and typescript) import this package themselves, so a program that imports one has the editor already.
-package monaco
+// fix. The language services (pkg/codeeditor/css, html, json and typescript) import this package themselves, so a program that imports one has the editor already.
+package codeeditor
 
 import (
 	"embed"

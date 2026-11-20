@@ -29,7 +29,7 @@ func TestAnEditorOrADiffWithoutTheCodeEditorIsACompileError(t *testing.T) {
 		_, err := App{Pages: Pages{Page[NoArgs]{Path: "/e", View: body}}}.Compile("/admin")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), name+" is drawn with the code editor, which this program does not carry")
-		assert.True(t, strings.Contains(err.Error(), `import _ "github.com/Olian04/webui/pkg/monaco"`))
+		assert.True(t, strings.Contains(err.Error(), `import _ "github.com/Olian04/webui/pkg/codeeditor"`))
 	}
 }
 
@@ -80,7 +80,7 @@ func TestAMarkdownThatCannotBeColouredIsSaidOnceForEachPageWhenTheAppHasALogger(
 	logged := out.String()
 	assert.Equal(t, strings.Count(logged, "level=WARN"), 2) // each page once, and not at each request
 	assert.Contains(t, logged, "does not carry the code editor")
-	assert.Contains(t, logged, `import _ \"github.com/Olian04/webui/pkg/monaco\"`)
+	assert.Contains(t, logged, `import _ \"github.com/Olian04/webui/pkg/codeeditor\"`)
 	assert.Contains(t, logged, "page=/a")
 	assert.Contains(t, logged, "page=/b")
 

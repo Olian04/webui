@@ -1,4 +1,4 @@
-package monaco_test
+package codeeditor_test
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/Olian04/webui/pkg/lang"
-	_ "github.com/Olian04/webui/pkg/monaco/css"
-	_ "github.com/Olian04/webui/pkg/monaco/html"
-	_ "github.com/Olian04/webui/pkg/monaco/json"
-	_ "github.com/Olian04/webui/pkg/monaco/typescript"
+	_ "github.com/Olian04/webui/pkg/codeeditor/css"
+	_ "github.com/Olian04/webui/pkg/codeeditor/html"
+	_ "github.com/Olian04/webui/pkg/codeeditor/json"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
+	_ "github.com/Olian04/webui/pkg/codeeditor/typescript"
 	"github.com/Olian04/webui/pkg/webui"
 	"github.com/Olian04/webui/test/util/assert"
 )

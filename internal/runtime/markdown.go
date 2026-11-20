@@ -36,5 +36,5 @@ func (p *Program) warnNoHighlight(page *ir.Page) {
 		return
 	}
 	p.log.Warn("webui: a Markdown has a code block that names a language, and it is drawn without colour because this program does not carry the code editor that colours it; "+
-		`to colour it, import the editor for its effect: import _ "github.com/Olian04/webui/pkg/monaco"`, "page", page.PathTemplate)
+		`to colour it, import the editor for its effect: import _ "github.com/Olian04/webui/pkg/codeeditor"`, "page", page.PathTemplate)
 }

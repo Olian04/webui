@@ -172,7 +172,7 @@ func needLoad(v *viewValidator, what string, loads bool) {
 func validateLanguage(v *viewValidator, where string, l Language) {
 	if !l.known() {
 		v.add(fmt.Sprintf("%s.Language %q is not a language the editor highlights", where, string(l)),
-			"Use one of the constants of pkg/lang, such as lang.JSON or lang.Go; there is one for each language the editor knows.")
+			"Use one of the constants of pkg/codeeditor/lang, such as lang.JSON or lang.Go; there is one for each language the editor knows.")
 	}
 }
 

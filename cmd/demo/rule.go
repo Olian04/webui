@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/Olian04/webui/pkg/lang"
+	"github.com/Olian04/webui/pkg/codeeditor/lang"
 	"github.com/Olian04/webui/pkg/webui"
 )
 
@@ -12,7 +12,7 @@ import (
 type Rule struct{ Source string }
 
 // An Editor whose Language has a language service gets it only if the program imports the package
-// that carries it (see main.go: pkg/monaco/typescript), and only for a visitor who can edit: a
+// that carries it (see main.go: pkg/codeeditor/typescript), and only for a visitor who can edit: a
 // viewer reads the same text, highlighted, and is sent no service. The service is TypeScript's
 // own, so it checks the types as you type: the errors below are not marked by the library, and
 // fixing one removes it.

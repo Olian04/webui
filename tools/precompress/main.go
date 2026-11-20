@@ -2,7 +2,7 @@
 // why it is done when the files are built and not when they are served. The renderer serves the copy to a client that takes Brotli. It is in the module of the tools, which is
 // not the library's, so the library does not carry it.
 //
-//	go run ./precompress ../internal/render/assets/min ../pkg/monaco/editor
+//	go run ./precompress ../internal/render/assets/min ../pkg/codeeditor/editor
 //
 // A copy is written only where it is smaller, and a copy whose file is gone is removed, so that what is committed is what the files are.
 package main
