@@ -186,3 +186,37 @@ func TestAPageInTheMenuIsLeftOutForAVisitorWhoseGuardRefusesIt(t *testing.T) {
 	assert.DeepEqual(t, menuOutline(externalLinks(t, pageOf(t, build(true), "/admin/home"))), []string{"Docs", "Account"})
 	assert.DeepEqual(t, menuOutline(externalLinks(t, pageOf(t, build(false), "/admin/home"))), []string{"Docs"})
 }
+
+// A category is a heading over its entries, so one with nothing left to open is not drawn: its pages are refused to this visitor, or the page that it lists several of has no
+// addresses to list, or failed to load them. The same holds for a group in the menu, whose caption stands above its first entry.
+func TestAGroupWithNothingLeftInItIsNotDrawn(t *testing.T) {
+	t.Parallel()
+
+	open := webui.Page[webui.NoArgs]{Path: "/open", View: webui.Stack{}}
+	shut := webui.Page[webui.NoArgs]{Path: "/shut", View: webui.Stack{}, Guard: func(context.Context, webui.NoArgs) error { return errors.New("not for you") }}
+	site := webui.Page[siteArgs]{Path: "/site/{name}", View: webui.Stack{}}
+	broken := webui.Page[siteArgs]{Path: "/broken/{name}", View: webui.Stack{}}
+	barred := webui.Page[siteArgs]{Path: "/barred/{name}", View: webui.Stack{}, Guard: func(context.Context, siteArgs) error { return errors.New("not for you") }}
+	none := func(context.Context) ([]siteArgs, webui.Loaded) { return nil, webui.Ready() }
+	failed := func(context.Context) ([]siteArgs, webui.Loaded) {
+		return []siteArgs{{Name: "x"}}, webui.Failed(errors.New("backend is down"))
+	}
+	h := webui.App{
+		Navigation: []webui.NavItem{
+			webui.NavGroup{Label: "Refused", Items: []webui.NavItem{webui.NavPage{Page: shut, Label: "Shut"}}},
+			webui.NavGroup{Label: "Listing nothing", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Load: none, Label: siteLabel}}},
+			webui.NavGroup{Label: "Listing fails", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: broken, Load: failed, Label: siteLabel}}},
+			webui.NavGroup{Label: "Every address refused", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: barred, Load: siteAddresses("a", "b"), Label: siteLabel}}},
+			webui.NavGroup{Label: "Open", Items: []webui.NavItem{webui.NavPage{Page: open, Label: "Open page"}}},
+		},
+		Menu:  []webui.NavItem{webui.NavGroup{Label: "Menu refused", Items: []webui.NavItem{webui.NavPage{Page: shut, Label: "Shut"}}}},
+		Pages: webui.Pages{open, shut, site, broken, barred},
+	}.MustCompile("/admin")
+
+	p := pageOf(t, h, "/admin/open")
+	assert.DeepEqual(t, groups(t, p), []string{"Open (open)"})
+	body := serve(h, http.MethodGet, "/admin/open").Body.String()
+	for _, gone := range []string{"Refused", "Listing nothing", "Listing fails", "Every address refused", "Menu refused"} {
+		assert.False(t, strings.Contains(body, gone))
+	}
+}
