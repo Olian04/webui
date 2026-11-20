@@ -160,7 +160,7 @@ func TestTheMenuHoldsAddressesAndPagesInGroupsAndNotSeveralPagesAtOnce(t *testin
 	assert.NoError(t, err) // a page may be in the menu as well as in the sidebar
 
 	var all string
-	for _, e := range compileErrors(t, app(webui.NavPages[siteArgs]{Page: site, Entries: siteEntries("x")})) {
+	for _, e := range compileErrors(t, app(webui.NavPages[siteArgs]{Page: site, Load: siteAddresses("x"), Label: siteLabel})) {
 		all += e.Error() + "\n"
 	}
 	refuses(t, all, "App.Menu[0]", "App.Navigation")

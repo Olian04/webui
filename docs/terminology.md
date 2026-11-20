@@ -44,7 +44,7 @@ A page's View is a panel or a layout. There is no other kind, so a new kind of V
 | **Guard** | A function that says whether a visitor may open a page or use a control. It **refuses**. | A `Refusal` is what a visitor may be told (`NotFound`, `Unauthorized`, `Forbidden`). |
 | **Outcome** | How an action ended: `Success`, `Warning`, `Failure`, `Reject`. | An outcome **rejects** when the input was wrong; a Guard **refuses**. They are not the same word on purpose. |
 | **visitor** | The person using the app. | Not "viewer", not "user" (the user is the developer who writes the declaration). |
-| **sidebar**, **entry** | The list of pages at the side, and one line in it. `App.Navigation` is the list, a `NavPage`, `NavURL` or `NavPages` is an entry, a `NavGroup` is a category of them, and `NavEntry` is one of several that a `NavPages` lists. | Not "navbar", "navigation" or "menu". |
+| **sidebar**, **entry** | The list of pages at the side, and one line in it. `App.Navigation` is the list, a `NavPage`, `NavURL` or `NavPages` is an entry, a `NavGroup` is a category of them, and a `NavPages` lists one for each address of its page, which its `Load` returns as the page's arguments. | Not "navbar", "navigation" or "menu". |
 | **top bar**, **status bar**, **breadcrumb**, **crumb** | The strip with search, Refresh and the theme; the bar that says how old the page is; the trail of parents and one step in it. | Not "chrome". The three of them around a page's content are the **shell** to the code and the design documents; text that a user reads says which one it means. |
 
 ## Internal terms

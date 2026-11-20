@@ -226,8 +226,7 @@ nowhere to go, the brand is plain text and the root says so.
 ### A page with arguments → an entry for each address
 
 An entry is a link, and a link has one address. A page at `/site/{name}` has none until a
-name is given, so a `NavPage` of it is a compile error. A `NavPages` has one for each address its `Entries` returns, each a `NavEntry` of the page's
-arguments and what it says, in the place it stands in the sidebar and under the icon it was given. The entry of the address on screen is lit, and so is it for a page
+name is given, so a `NavPage` of it is a compile error. A `NavPages` has one for each address its `Load` returns (the page's own arguments, so what it lists is addresses of that page and nothing else), each named by its `Label`, in the place it stands in the sidebar and under the icon it was given. The entry of the address on screen is lit, and so is it for a page
 below it that borrows its place.
 
 ### A page with no entry → the ancestor's highlight

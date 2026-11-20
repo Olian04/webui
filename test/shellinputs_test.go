@@ -3,6 +3,7 @@ package webui_test
 import (
 	"context"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -28,14 +29,14 @@ func TestThePanelsTheGuardsAndTheNavEntriesAreAskedForAtTheSameTime(t *testing.T
 	guarded := webui.Page[webui.NoArgs]{Path: "/guarded", View: webui.Stack{},
 		Guard: func(ctx context.Context, _ webui.NoArgs) error { meet(ctx, &arrived, 3, &met); return nil }}
 	site := webui.Page[navSiteArgs]{Path: "/site/{name}", View: webui.Stack{}}
-	sites := func(ctx context.Context) ([]webui.NavEntry[navSiteArgs], error) {
+	sites := func(ctx context.Context) ([]navSiteArgs, webui.Loaded) {
 		meet(ctx, &arrived, 3, &met)
-		return []webui.NavEntry[navSiteArgs]{{Args: navSiteArgs{Name: "a"}, Label: "Site A"}}, nil
+		return []navSiteArgs{{Name: "a"}}, webui.Ready()
 	}
 	h := webui.App{Pages: webui.Pages{home, guarded, site}, Navigation: []webui.NavItem{
 		webui.NavPage{Page: home, Label: "Home"},
 		webui.NavPage{Page: guarded, Label: "Guarded"},
-		webui.NavGroup{Label: "Sites", Items: []webui.NavItem{webui.NavPages[navSiteArgs]{Page: site, Entries: sites}}},
+		webui.NavGroup{Label: "Sites", Items: []webui.NavItem{webui.NavPages[navSiteArgs]{Page: site, Load: sites, Label: func(a navSiteArgs) string { return "Site " + strings.ToUpper(a.Name) }}}},
 	}}.MustCompile("/admin")
 
 	rec := serve(h, http.MethodGet, "/admin/home")

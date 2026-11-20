@@ -86,7 +86,7 @@ var app = webui.App{
 		webui.NavGroup{Label: "Sites", Icon: "location-dot", Items: []webui.NavItem{
 			// A page with arguments has one entry for each address it lists: each site, which the page loads when a page is drawn. The page of a site lights its entry, and so does
 			// any page below it that borrows its place.
-			webui.NavPages[SiteArgs]{Page: SiteDetail, Entries: siteEntries, Icon: "location-dot"},
+			webui.NavPages[SiteArgs]{Page: SiteDetail, Load: siteAddresses, Label: siteLabel, Icon: "location-dot"},
 		}},
 		webui.NavGroup{Label: "Configuration", Icon: "sliders", Items: []webui.NavItem{
 			webui.NavPage{Page: Ingest, Label: "Ingest", Icon: "database"},

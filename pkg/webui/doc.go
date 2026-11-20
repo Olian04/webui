@@ -76,7 +76,7 @@
 //			webui.NavPage{Page: Overview, Label: "Overview", Icon: "house"},
 //			webui.NavGroup{Label: "Fleet", Icon: "server", Items: []webui.NavItem{
 //				webui.NavPage{Page: Devices, Label: "Devices", Icon: "display"},
-//				webui.NavPages[SiteArgs]{Page: SitePage, Entries: sites, Icon: "location-dot"},
+//				webui.NavPages[SiteArgs]{Page: SitePage, Load: sites, Label: siteName, Icon: "location-dot"},
 //			}},
 //		},
 //		Menu: []webui.NavItem{webui.NavURL{Label: "Log out", Icon: "right-from-bracket", URL: "/login"}},
@@ -84,7 +84,7 @@
 //	}
 //
 // A page with arguments in its path has no entry of its own, since an entry is a link with one address and "/site/{name}" has none until a name is filled in. A [NavPages] lists
-// one for each address: its Entries are loaded whenever a page is drawn, each with the words it says and the arguments it opens. The entry of the site on screen is lit, and so is it
+// one for each address: its Load returns the page's arguments, whenever a page is drawn, and its Label says what each is called. The entry of the site on screen is lit, and so is it
 // for a page that borrows the place, such as "/site/{name}/log". An entry is left out for a visitor whom the page's Guard refuses, checked with the entry's own arguments. Loading is
 // bounded: a deadline of two seconds, and the first fifty entries; and a failure leaves the page drawn without them.
 //

@@ -24,19 +24,37 @@ type queryArgs struct {
 // siteNames are the sites the entries are made of.
 var siteNames = []string{"Stockholm", "Malmö", "Göteborg"}
 
-func siteEntries(names ...string) func(context.Context) ([]webui.NavEntry[siteArgs], error) {
-	return func(context.Context) ([]webui.NavEntry[siteArgs], error) {
-		var out []webui.NavEntry[siteArgs]
+// siteAddresses loads the addresses of the site page that these names make, and siteLabel says what each is called: its name.
+func siteAddresses(names ...string) func(context.Context) ([]siteArgs, webui.Loaded) {
+	return func(context.Context) ([]siteArgs, webui.Loaded) {
+		var out []siteArgs
 		for _, n := range names {
-			out = append(out, webui.NavEntry[siteArgs]{Args: siteArgs{Name: n}, Label: n})
+			out = append(out, siteArgs{Name: n})
 		}
-		return out, nil
+		return out, webui.Ready()
 	}
+}
+
+func siteLabel(a siteArgs) string { return a.Name }
+
+// queryLabel names the addresses of a page whose arguments are in the query: none is every device, a site is the site, and a kind of gpu is its GPUs.
+func queryLabel(a queryArgs) string {
+	switch {
+	case a.Site == "":
+		return "All devices"
+	case a.Kind == "gpu":
+		return a.Site + " GPUs"
+	}
+	return a.Site
 }
 
 // entriesApp has a page for each site, listed in the sidebar between two fixed entries, a page
 // below it that borrows its place, and the guard that says which sites a visitor may open.
-func entriesApp(entries func(context.Context) ([]webui.NavEntry[siteArgs], error), guard func(context.Context, siteArgs) error) http.Handler {
+func entriesApp(load func(context.Context) ([]siteArgs, webui.Loaded), guard func(context.Context, siteArgs) error) http.Handler {
+	return labelledEntriesApp(load, siteLabel, guard)
+}
+
+func labelledEntriesApp(load func(context.Context) ([]siteArgs, webui.Loaded), label func(siteArgs) string, guard func(context.Context, siteArgs) error) http.Handler {
 	home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Stack{}}
 	site := webui.Page[siteArgs]{Path: "/site/{name}", Guard: guard, View: webui.Stack{}}
 	log := webui.Page[siteArgs]{Path: "/site/{name}/log", View: webui.Stack{}}
@@ -44,7 +62,7 @@ func entriesApp(entries func(context.Context) ([]webui.NavEntry[siteArgs], error
 	return webui.App{
 		Navigation: []webui.NavItem{webui.NavGroup{Label: "Platform", Items: []webui.NavItem{
 			webui.NavPage{Page: home, Label: "Home"},
-			webui.NavPages[siteArgs]{Page: site, Entries: entries, Icon: "location-dot"},
+			webui.NavPages[siteArgs]{Page: site, Load: load, Label: label, Icon: "location-dot"},
 			webui.NavPage{Page: alerts, Label: "Alerts"},
 		}}},
 		Pages: webui.Pages{home, site, log, alerts},
@@ -65,7 +83,7 @@ func sidebar(t *testing.T, h http.Handler, target string) []string {
 func TestAPageWithNavEntriesHasAnEntryForEachOfThemInTheSidebarInOrder(t *testing.T) {
 	t.Parallel()
 
-	h := entriesApp(siteEntries(siteNames...), nil)
+	h := entriesApp(siteAddresses(siteNames...), nil)
 	got := sidebar(t, h, "/admin/home")
 	assert.DeepEqual(t, got, []string{
 		"Home>/admin/home*",
@@ -95,7 +113,7 @@ func TestAPageWithNavEntriesHasAnEntryForEachOfThemInTheSidebarInOrder(t *testin
 func TestTheEntryOfThePageOnScreenIsLitAndSoIsTheEntryOfThePageThatBorrowsItsPlace(t *testing.T) {
 	t.Parallel()
 
-	h := entriesApp(siteEntries(siteNames...), nil)
+	h := entriesApp(siteAddresses(siteNames...), nil)
 	lit := func(target string) []string {
 		var out []string
 		for _, e := range sidebar(t, h, target) {
@@ -119,16 +137,12 @@ func TestTheEntryOfThePageOnScreenIsLitAndSoIsTheEntryOfThePageThatBorrowsItsPla
 func TestEntriesOfAPageWithQueryArgumentsLightTheOneThatFitsTheAddressBest(t *testing.T) {
 	t.Parallel()
 
-	entries := func(context.Context) ([]webui.NavEntry[queryArgs], error) {
-		return []webui.NavEntry[queryArgs]{
-			{Args: queryArgs{}, Label: "All devices"},
-			{Args: queryArgs{Site: "Stockholm"}, Label: "Stockholm"},
-			{Args: queryArgs{Site: "Stockholm", Kind: "gpu"}, Label: "Stockholm GPUs"},
-		}, nil
+	load := func(context.Context) ([]queryArgs, webui.Loaded) {
+		return []queryArgs{{}, {Site: "Stockholm"}, {Site: "Stockholm", Kind: "gpu"}}, webui.Ready()
 	}
 	devices := webui.Page[queryArgs]{Path: "/device", View: webui.Stack{}}
 	h := webui.App{
-		Navigation: []webui.NavItem{webui.NavGroup{Label: "Devices", Items: []webui.NavItem{webui.NavPages[queryArgs]{Page: devices, Entries: entries}}}},
+		Navigation: []webui.NavItem{webui.NavGroup{Label: "Devices", Items: []webui.NavItem{webui.NavPages[queryArgs]{Page: devices, Load: load, Label: queryLabel}}}},
 		Pages:      webui.Pages{devices},
 	}.MustCompile("/admin")
 	lit := func(target string) string {
@@ -152,7 +166,7 @@ func TestAnEntryTheVisitorMayNotOpenIsLeftOutAndTheGuardIsAskedWithItsOwnArgumen
 	t.Parallel()
 
 	seen := map[string]bool{}
-	h := entriesApp(siteEntries(siteNames...), func(_ context.Context, a siteArgs) error {
+	h := entriesApp(siteAddresses(siteNames...), func(_ context.Context, a siteArgs) error {
 		seen[a.Name] = true
 		if a.Name == "Malmö" {
 			return errors.New("not for you")
@@ -170,18 +184,18 @@ func TestAnEntryTheVisitorMayNotOpenIsLeftOutAndTheGuardIsAskedWithItsOwnArgumen
 func TestEntriesThatFailPanicOrAreSlowLeaveThePageDrawnWithoutThem(t *testing.T) {
 	t.Parallel()
 
-	for name, entries := range map[string]func(context.Context) ([]webui.NavEntry[siteArgs], error){
-		"an error": func(context.Context) ([]webui.NavEntry[siteArgs], error) {
-			return nil, errors.New("db secret-host is down")
+	for name, load := range map[string]func(context.Context) ([]siteArgs, webui.Loaded){
+		"a failure": func(context.Context) ([]siteArgs, webui.Loaded) {
+			return []siteArgs{{Name: "Stockholm"}}, webui.Failed(errors.New("db secret-host is down")) // what came with a failure is not listed
 		},
-		"a panic": func(context.Context) ([]webui.NavEntry[siteArgs], error) { panic("boom") },
-		"slow": func(ctx context.Context) ([]webui.NavEntry[siteArgs], error) {
+		"a panic": func(context.Context) ([]siteArgs, webui.Loaded) { panic("boom") },
+		"slow": func(ctx context.Context) ([]siteArgs, webui.Loaded) {
 			<-ctx.Done() // until the deadline the library gave it
-			return nil, ctx.Err()
+			return nil, webui.Failed(ctx.Err())
 		},
 	} {
 		start := time.Now()
-		h := entriesApp(entries, nil)
+		h := entriesApp(load, nil)
 		rec := serve(h, http.MethodGet, "/admin/home")
 		assert.Equal(t, rec.Code, http.StatusOK)
 		assert.DeepEqual(t, sidebar(t, h, "/admin/home"), []string{"Home>/admin/home*", "Alerts>/admin/alerts"})
@@ -192,20 +206,43 @@ func TestEntriesThatFailPanicOrAreSlowLeaveThePageDrawnWithoutThem(t *testing.T)
 	}
 }
 
+func TestALabelThatPanicsOrALoadThatAsksToBeRefreshedDoNotTakeThePageDown(t *testing.T) {
+	t.Parallel()
+
+	// A Label that panics leaves the page's entries out, as a Load that panics does.
+	h := labelledEntriesApp(siteAddresses(siteNames...), func(siteArgs) string { panic("boom") }, nil)
+	assert.Equal(t, serve(h, http.MethodGet, "/admin/home").Code, http.StatusOK)
+	assert.DeepEqual(t, sidebar(t, h, "/admin/home"), []string{"Home>/admin/home*", "Alerts>/admin/alerts"})
+
+	// A RefreshAfter means nothing in a sidebar: the entries are listed and the page is as any other.
+	h = entriesApp(func(ctx context.Context) ([]siteArgs, webui.Loaded) {
+		addresses, loaded := siteAddresses(siteNames...)(ctx)
+		return addresses, loaded.RefreshAfter(time.Second)
+	}, nil)
+	assert.Equal(t, len(sidebar(t, h, "/admin/home")), 5)
+	assert.False(t, strings.Contains(serve(h, http.MethodGet, "/admin/home").Body.String(), "data-refresh-after"))
+}
+
 func TestOnlyTheFirstFiftyEntriesAreShownAndAnEntryWithNoLabelOrNoAddressIsLeftOut(t *testing.T) {
 	t.Parallel()
 
-	many := func(context.Context) ([]webui.NavEntry[siteArgs], error) {
-		out := []webui.NavEntry[siteArgs]{
-			{Args: siteArgs{Name: "no-label"}},         // says nothing
-			{Args: siteArgs{Name: ""}, Label: "Empty"}, // an empty path argument has no address
-		}
+	many := func(context.Context) ([]siteArgs, webui.Loaded) {
+		out := []siteArgs{{Name: "no-label"}, {Name: ""}} // the first is given no words, and an empty path argument has no address
 		for i := range 80 {
-			out = append(out, webui.NavEntry[siteArgs]{Args: siteArgs{Name: fmt.Sprintf("s%02d", i)}, Label: fmt.Sprintf("Site %02d", i)})
+			out = append(out, siteArgs{Name: fmt.Sprintf("s%02d", i)})
 		}
-		return out, nil
+		return out, webui.Ready()
 	}
-	h := entriesApp(many, nil)
+	label := func(a siteArgs) string {
+		switch a.Name {
+		case "no-label":
+			return ""
+		case "":
+			return "Empty"
+		}
+		return "Site " + strings.TrimPrefix(a.Name, "s")
+	}
+	h := labelledEntriesApp(many, label, nil)
 	got := sidebar(t, h, "/admin/home")
 	// Of the fifty it takes, two are not entries: Home, Alerts and 48.
 	assert.Equal(t, len(got), 50)
@@ -217,9 +254,9 @@ func TestEntriesAreOnlyLoadedForAFullPage(t *testing.T) {
 	t.Parallel()
 
 	var calls atomic.Int32
-	h := entriesApp(func(context.Context) ([]webui.NavEntry[siteArgs], error) {
+	h := entriesApp(func(context.Context) ([]siteArgs, webui.Loaded) {
 		calls.Add(1)
-		return nil, nil
+		return nil, webui.Ready()
 	}, nil)
 	serve(h, http.MethodGet, "/admin/home")
 	assert.Equal(t, int(calls.Load()), 1)
@@ -244,7 +281,7 @@ func TestTheRootGoesToTheFirstFixedEntryAndNotToAPageThatListsSeveral(t *testing
 	home := webui.Page[webui.NoArgs]{Path: "/home", View: webui.Stack{}}
 	h := webui.App{
 		Navigation: []webui.NavItem{
-			webui.NavGroup{Label: "A", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Entries: siteEntries("Stockholm")}}},
+			webui.NavGroup{Label: "A", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Load: siteAddresses("Stockholm"), Label: siteLabel}}},
 			webui.NavGroup{Label: "B", Items: []webui.NavItem{webui.NavPage{Page: home, Label: "Home"}}},
 		},
 		Pages: webui.Pages{site, home},
@@ -255,7 +292,7 @@ func TestTheRootGoesToTheFirstFixedEntryAndNotToAPageThatListsSeveral(t *testing
 func TestThePageThatListsSeveralIsStillAPageWithItsOwnGuard(t *testing.T) {
 	t.Parallel()
 
-	h := entriesApp(siteEntries(siteNames...), func(_ context.Context, a siteArgs) error {
+	h := entriesApp(siteAddresses(siteNames...), func(_ context.Context, a siteArgs) error {
 		if a.Name == "Malmö" {
 			return errors.New("not for you")
 		}
@@ -279,26 +316,23 @@ func TestAPageThatListsSeveralIsCheckedWhenTheAppCompiles(t *testing.T) {
 	// A page with arguments has no single address, so it is not an entry of its own: the way out is said.
 	refuses(t, problems(webui.NavPage{Page: site, Label: "Site"}), "App.Navigation[0]", "/site/{name}", "NavPages")
 	// The entries are the page's to list, and the list has to be there.
-	refuses(t, problems(webui.NavPages[siteArgs]{Page: site}), "App.Navigation[0]", "Entries")
+	refuses(t, problems(webui.NavPages[siteArgs]{Page: site, Label: siteLabel}), "App.Navigation[0]", "Load")
+	refuses(t, problems(webui.NavPages[siteArgs]{Page: site, Load: siteAddresses("x")}), "App.Navigation[0]", "Label")
 	// And an icon is the group's, and the entries' own.
-	_, err := webui.App{Navigation: []webui.NavItem{webui.NavGroup{Label: "Platform", Icon: "server", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Entries: siteEntries("x"), Icon: "location-dot"}}}}, Pages: webui.Pages{site}}.Compile("/admin")
+	_, err := webui.App{Navigation: []webui.NavItem{webui.NavGroup{Label: "Platform", Icon: "server", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Load: siteAddresses("x"), Label: siteLabel, Icon: "location-dot"}}}}, Pages: webui.Pages{site}}.Compile("/admin")
 	assert.NoError(t, err)
 }
 
 func TestAPageThatBorrowsTheNavigationPlaceLightsOnlyTheEntryItsAddressFits(t *testing.T) {
 	t.Parallel()
 
-	entries := func(context.Context) ([]webui.NavEntry[queryArgs], error) {
-		return []webui.NavEntry[queryArgs]{
-			{Args: queryArgs{}, Label: "All devices"},
-			{Args: queryArgs{Site: "Stockholm"}, Label: "Stockholm"},
-			{Args: queryArgs{Site: "Malmö"}, Label: "Malmö"},
-		}, nil
+	load := func(context.Context) ([]queryArgs, webui.Loaded) {
+		return []queryArgs{{}, {Site: "Stockholm"}, {Site: "Malmö"}}, webui.Ready()
 	}
 	list := webui.Page[queryArgs]{Path: "/device", View: webui.Stack{}}
 	log := webui.Page[queryArgs]{Path: "/device/log", View: webui.Stack{}} // no entry of its own: it borrows the place
 	h := webui.App{
-		Navigation: []webui.NavItem{webui.NavGroup{Label: "Devices", Items: []webui.NavItem{webui.NavPages[queryArgs]{Page: list, Entries: entries}}}},
+		Navigation: []webui.NavItem{webui.NavGroup{Label: "Devices", Items: []webui.NavItem{webui.NavPages[queryArgs]{Page: list, Load: load, Label: queryLabel}}}},
 		Pages:      webui.Pages{list, log},
 	}.MustCompile("/admin")
 	lit := func(target string) string {
@@ -331,7 +365,7 @@ func TestTheSearchResultsOfAPageThatListsEntriesAreGroupedUnderTheNearestNamedPa
 	h := webui.App{
 		Navigation: []webui.NavItem{
 			webui.NavPage{Page: sites, Label: "Sites"},
-			webui.NavGroup{Label: "Sites", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Entries: siteEntries("Stockholm")}}},
+			webui.NavGroup{Label: "Sites", Items: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Load: siteAddresses("Stockholm"), Label: siteLabel}}},
 		},
 		Pages: webui.Pages{sites, site},
 	}.MustCompile("/admin")

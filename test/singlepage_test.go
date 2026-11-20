@@ -93,7 +93,7 @@ func TestAPageThatListsEntriesGivesTheAppASidebar(t *testing.T) {
 			site := webui.Page[siteArgs]{
 				Path: "/site/{name}", View: webui.Stack{},
 			}
-			h := webui.App{Pages: webui.Pages{site}, Navigation: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Entries: siteEntries(names...), Icon: "location-dot"}}}.MustCompile("/admin")
+			h := webui.App{Pages: webui.Pages{site}, Navigation: []webui.NavItem{webui.NavPages[siteArgs]{Page: site, Load: siteAddresses(names...), Label: siteLabel, Icon: "location-dot"}}}.MustCompile("/admin")
 			p := pageOf(t, h, "/admin/site/Stockholm")
 			assert.Equal(t, len(p.ByRole("complementary", "")), 1)
 			assert.Equal(t, len(sidebarNav(t, p).Links()), len(names))
