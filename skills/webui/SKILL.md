@@ -91,7 +91,7 @@ does, and they let you design before you look up names.
 - **The library keeps nothing of yours.** Uploaded files, caches and storage are the app's: a `File` in a form is held in memory for the request and `Store` is handed it
   to copy, a file too large for that is a `FileUpload` panel whose `Receive` action reads it as a stream, and `Load` says what is kept. Do not
   look for a place in the library to put them, or to serve them from.
-- **What the library has no view for is an `Embed`.** It is a frame of a page of this site that the app serves itself (a map, a scene): a `Load` that returns the path, no sandbox, no script of the library's; the page can link `app.Styles(prefix)` (a classless stylesheet: write plain semantic HTML, no class, and it looks as the app does; the token names are the contract). The route must say `frame-ancestors 'self'` and check the visitor; the pages of the app cannot be framed.
+- **A page of the program's own is a route, not a view.** The app is an `http.Handler`: a map or a scene is a route of the program beside it, which the program checks the visitor for, and a `NavURL` in the sidebar opens it. There is no panel that frames it.
 - **Page-level buttons, links and a few values are a `Toolbar`.** It is a row for the page, a panel with no frame and no type parameter: its buttons are
   `Action[webui.NoArgs]` and `Link[webui.NoArgs, B]` (the page's arguments come from `webui.ArgsOf(ctx)`), and its values are a read-only `Form` of
   a model that it loads, which may return `webui.Ready().RefreshAfter(d)` to have the toolbar asked for again. A toolbar takes no input: that is a `Form` panel.

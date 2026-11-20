@@ -1,8 +1,7 @@
 /* Prose. Each element is given the look of its counterpart in the app, from the design's tokens: the panel's 14px body text, the form's checkbox, the editor's code. Headings and labels are
    no heavier than 500, and the structure is drawn by space more than by lines.
 
-   This file has no class and no id in it, on purpose: it is what a page of plain markup looks like. It is built twice (see make assets): under .md, for a markdown text in the app's own pages,
-   and as it is, in classless.css, for a page that the app makes itself (App.Styles). A rule here is a rule for both. */
+   This file is the prose rules, with no class or id in them: they are put under .md when the stylesheet is built (see make assets), for a markdown text in the app's own pages. */
 :where(p, ul, ol, blockquote, pre) {
   margin: 0 0 12px;
 }

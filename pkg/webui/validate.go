@@ -12,7 +12,7 @@ import (
 )
 
 // viewKinds is what every error about a missing View says one may be, so that the four of them agree.
-const viewKinds = "a panel (Table, Form, Editor, Diff, Markdown, List, Cards, Calendar, Toolbar, FileUpload or Embed) or a layout (Stack, Split, Columns, When or Tabs)"
+const viewKinds = "a panel (Table, Form, Editor, Diff, Markdown, List, Cards, Calendar, Toolbar or FileUpload) or a layout (Stack, Split, Columns, When or Tabs)"
 
 // validate checks what the type system cannot, and never stops at the first
 // problem: Compile reports every error at once so one fix cycle clears them
